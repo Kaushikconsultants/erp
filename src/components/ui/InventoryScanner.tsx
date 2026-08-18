@@ -5,6 +5,7 @@ import { adjustInventory } from "@/app/actions/inventoryActions";
 import { lookupBarcode } from "@/app/actions/scannerActions";
 import CameraScanner from "@/components/scanner/CameraScanner";
 import BarcodeLabelModal from "@/components/products/BarcodeLabelModal";
+import MobileConnectModal from "@/components/scanner/MobileConnectModal";
 import { playSuccessSound, playErrorSound } from "@/lib/soundUtils";
 import {
   ScanBarcode,
@@ -17,7 +18,8 @@ import {
   History,
   Package,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Smartphone
 } from "lucide-react";
 
 interface ScanHistoryItem {
@@ -36,6 +38,7 @@ export default function InventoryScanner() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showCamera, setShowCamera] = useState(false);
+  const [showMobileModal, setShowMobileModal] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<any>(null);
   const [printModalProduct, setPrintModalProduct] = useState<any>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
@@ -131,7 +134,27 @@ export default function InventoryScanner() {
         <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px", color: "var(--text-primary)" }}>
           <ScanBarcode className="text-indigo-600" /> Fast Barcode & QR Scanner
         </h3>
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="action-btn"
+            onClick={() => setShowMobileModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              background: "#4f46e5",
+              color: "#ffffff",
+              border: "none",
+              padding: "8px 14px",
+              borderRadius: "8px",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            <Smartphone size={16} /> Connect Mobile Scanner
+          </button>
           <button
             type="button"
             className="action-btn"
@@ -140,7 +163,7 @@ export default function InventoryScanner() {
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              background: showCamera ? "#4f46e5" : "#ffffff",
+              background: showCamera ? "#334155" : "#ffffff",
               color: showCamera ? "#ffffff" : "#334155",
               border: "1px solid #cbd5e1",
               padding: "8px 14px",
@@ -362,6 +385,19 @@ export default function InventoryScanner() {
       {/* Barcode Label Modal */}
       {printModalProduct && (
         <BarcodeLabelModal product={printModalProduct} onClose={() => setPrintModalProduct(null)} />
+      )}
+
+      {/* Mobile Connect Scanner Modal */}
+      {showMobileModal && (
+        <MobileConnectModal
+          mode="INVENTORY"
+          onScan={(code) => {
+            setSku(code);
+            handleLookup(code);
+            handleScan("IN", code);
+          }}
+          onClose={() => setShowMobileModal(false)}
+        />
       )}
     </div>
   );

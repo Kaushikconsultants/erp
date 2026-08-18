@@ -196,3 +196,91 @@ export async function dispatchOrderByAWB(orderId: string, awbNumber: string, cou
     return { error: "Failed to dispatch order with AWB." };
   }
 }
+
+export async function createMobileScanSession(mode: string = "INVENTORY", orderId?: string) {
+  try {
+    const randomCode = `SC-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newSession = await prisma.mobileScanSession.create({
+      data: {
+        sessionCode: randomCode,
+        mode: mode,
+        orderId: orderId || null,
+        status: "ACTIVE"
+      }
+    });
+
+    return { success: true, sessionCode: newSession.sessionCode, id: newSession.id };
+  } catch (error) {
+    console.error("Create mobile scan session error:", error);
+    return { error: "Failed to create mobile scan session." };
+  }
+}
+
+export async function getMobileScanUpdate(sessionCode: string) {
+  if (!sessionCode) return { error: "Session code required" };
+  try {
+    const session = await prisma.mobileScanSession.findUnique({
+      where: { sessionCode }
+    });
+
+    if (!session) return { error: "Session not found" };
+
+    const scanned = session.scannedCode;
+    if (scanned) {
+      // Clear scanned code so it's not processed twice
+      await prisma.mobileScanSession.update({
+        where: { id: session.id },
+        data: { scannedCode: null, status: "CONNECTED" }
+      });
+    }
+
+    return {
+      success: true,
+      scannedCode: scanned,
+      status: session.status,
+      mode: session.mode,
+      orderId: session.orderId
+    };
+  } catch (error) {
+    console.error("Get mobile scan update error:", error);
+    return { error: "Failed to poll mobile scan update." };
+  }
+}
+
+export async function pushMobileScan(sessionCode: string, code: string) {
+  if (!sessionCode || !code) return { error: "Session code and scanned code required" };
+  try {
+    const session = await prisma.mobileScanSession.findUnique({
+      where: { sessionCode }
+    });
+
+    if (!session) return { error: "Session not found or expired" };
+
+    await prisma.mobileScanSession.update({
+      where: { id: session.id },
+      data: {
+        scannedCode: code.trim(),
+        status: "CONNECTED",
+        updatedAt: new Date()
+      }
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Push mobile scan error:", error);
+    return { error: "Failed to push scan code." };
+  }
+}
+
+export async function closeMobileScanSession(sessionCode: string) {
+  if (!sessionCode) return { error: "Session code required" };
+  try {
+    await prisma.mobileScanSession.deleteMany({
+      where: { sessionCode }
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Close mobile scan session error:", error);
+    return { error: "Failed to close session." };
+  }
+}

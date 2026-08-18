@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
-import { Camera, CameraOff, RefreshCw, Volume2, VolumeX } from "lucide-react";
-import { playSuccessSound, playErrorSound } from "@/lib/soundUtils";
+import React, { useEffect, useRef, useState, useId } from "react";
+import { Camera, CameraOff, AlertCircle, RefreshCw } from "lucide-react";
+import { playSuccessSound } from "@/lib/soundUtils";
 
 interface CameraScannerProps {
   onScan: (decodedText: string) => void;
@@ -15,62 +14,91 @@ interface CameraScannerProps {
 export default function CameraScanner({
   onScan,
   fps = 10,
-  qrbox = 250,
+  qrbox = 240,
   soundEnabled = true
 }: CameraScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [cameraList, setCameraList] = useState<Array<{ id: string; label: string }>>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [lastScanned, setLastScanned] = useState<string | null>(null);
+  const [starting, setStarting] = useState(false);
 
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const readerId = useRef(`html5-qr-reader-${Math.random().toString(36).substring(2, 9)}`);
+  const containerId = useId().replace(/:/g, "_") + "_qr_box";
+  const scannerInstanceRef = useRef<any>(null);
   const lastScanTimestamp = useRef<number>(0);
+  const isMounted = useRef<boolean>(true);
 
   useEffect(() => {
-    // Get available video input devices
-    Html5Qrcode.getCameras()
-      .then(devices => {
-        if (devices && devices.length) {
-          setCameraList(devices);
-          // Prefer back/environment camera if available
-          const backCam = devices.find(d => d.label.toLowerCase().includes("back") || d.label.toLowerCase().includes("environment"));
-          setSelectedCameraId(backCam ? backCam.id : devices[0].id);
-        }
+    isMounted.current = true;
+
+    // Dynamically import html5-qrcode on client only
+    import("html5-qrcode")
+      .then(({ Html5Qrcode }) => {
+        if (!isMounted.current) return;
+        Html5Qrcode.getCameras()
+          .then((devices) => {
+            if (!isMounted.current || !devices || !devices.length) return;
+            setCameraList(devices);
+            const backCam = devices.find((d) =>
+              d.label.toLowerCase().includes("back") || d.label.toLowerCase().includes("environment")
+            );
+            setSelectedCameraId(backCam ? backCam.id : devices[0].id);
+          })
+          .catch((err) => {
+            console.warn("Cameras enumeration warning:", err);
+          });
       })
-      .catch(err => {
-        console.warn("Could not list cameras:", err);
-      });
+      .catch((err) => console.error("Html5Qrcode import failed:", err));
 
     return () => {
-      stopScanner();
+      isMounted.current = false;
+      cleanupScanner();
     };
   }, []);
 
+  const cleanupScanner = async () => {
+    if (scannerInstanceRef.current) {
+      try {
+        if (scannerInstanceRef.current.isScanning) {
+          await scannerInstanceRef.current.stop();
+        }
+        await scannerInstanceRef.current.clear();
+      } catch (e) {
+        console.warn("Cleanup scanner warning:", e);
+      }
+      scannerInstanceRef.current = null;
+    }
+  };
+
   const startScanner = async (cameraIdToUse?: string) => {
     setErrorMsg(null);
-    const targetCam = cameraIdToUse || selectedCameraId;
+    setStarting(true);
 
     try {
-      if (!scannerRef.current) {
-        scannerRef.current = new Html5Qrcode(readerId.current, {
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.QR_CODE,
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E
-          ],
-          verbose: false
-        });
-      }
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import("html5-qrcode");
+      
+      // Clean up previous instance safely
+      await cleanupScanner();
 
+      const html5QrCode = new Html5Qrcode(containerId, {
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.QR_CODE,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+        ],
+        verbose: false
+      });
+
+      scannerInstanceRef.current = html5QrCode;
+
+      const targetCam = cameraIdToUse || selectedCameraId;
       const cameraConfig = targetCam ? { deviceId: { exact: targetCam } } : { facingMode: "environment" };
 
-      await scannerRef.current.start(
+      await html5QrCode.start(
         cameraConfig,
         {
           fps: fps,
@@ -79,38 +107,43 @@ export default function CameraScanner({
         },
         (decodedText) => {
           const now = Date.now();
-          // 1.5s debounce to avoid repeating same code within 1.5 seconds
-          if (now - lastScanTimestamp.current > 1500 || decodedText !== lastScanned) {
+          if (now - lastScanTimestamp.current > 1500) {
             lastScanTimestamp.current = now;
-            setLastScanned(decodedText);
             if (soundEnabled) {
               playSuccessSound();
             }
             onScan(decodedText);
           }
         },
-        (errorMessage) => {
-          // Ignore frequent scan misses
+        () => {
+          // Frame missed, ignore
         }
       );
 
-      setIsScanning(true);
+      if (isMounted.current) {
+        setIsScanning(true);
+      }
     } catch (err: any) {
-      console.error("Camera start failed:", err);
-      setErrorMsg(err?.message || "Failed to access camera. Please allow camera permissions in browser.");
-      setIsScanning(false);
+      console.error("Camera activation error:", err);
+      if (isMounted.current) {
+        setErrorMsg(
+          err?.message ||
+            "Unable to access camera. Please check camera permissions or use the 'Connect Mobile Phone' option."
+        );
+        setIsScanning(false);
+      }
+    } finally {
+      if (isMounted.current) {
+        setStarting(false);
+      }
     }
   };
 
   const stopScanner = async () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
-      try {
-        await scannerRef.current.stop();
-      } catch (e) {
-        console.warn("Error stopping scanner:", e);
-      }
+    await cleanupScanner();
+    if (isMounted.current) {
+      setIsScanning(false);
     }
-    setIsScanning(false);
   };
 
   const handleCameraChange = async (newCamId: string) => {
@@ -122,16 +155,15 @@ export default function CameraScanner({
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: "480px", margin: "0 auto", position: "relative" }}>
-      {/* Scanner container */}
+    <div style={{ width: "100%", maxWidth: "460px", margin: "0 auto" }}>
+      {/* Viewfinder Frame */}
       <div
-        id={readerId.current}
         style={{
           width: "100%",
           borderRadius: "12px",
           overflow: "hidden",
           background: "#0f172a",
-          minHeight: isScanning ? "280px" : "180px",
+          minHeight: isScanning ? "260px" : "180px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -139,44 +171,55 @@ export default function CameraScanner({
           position: "relative"
         }}
       >
+        {/* Dedicated Mount Div for Html5Qrcode - Children never modified by React when scanning */}
+        <div id={containerId} style={{ width: "100%", display: isScanning ? "block" : "none" }} />
+
+        {/* Placeholder UI when camera is stopped */}
         {!isScanning && (
           <div style={{ textAlign: "center", padding: "24px 16px", color: "#94a3b8" }}>
-            <Camera size={44} style={{ margin: "0 auto 12px", opacity: 0.7, color: "#818cf8" }} />
-            <p style={{ margin: "0 0 16px 0", fontSize: "0.9rem", color: "#e2e8f0" }}>
-              Camera Scanner is currently paused.
+            <Camera size={40} style={{ margin: "0 auto 12px", opacity: 0.8, color: "#818cf8" }} />
+            <p style={{ margin: "0 0 14px 0", fontSize: "0.9rem", color: "#e2e8f0" }}>
+              {starting ? "Starting camera stream..." : "Camera is ready"}
             </p>
             <button
               type="button"
               className="primary-btn hover-lift"
               onClick={() => startScanner()}
+              disabled={starting}
               style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "8px",
-                padding: "10px 20px",
+                padding: "9px 18px",
                 borderRadius: "8px",
-                fontSize: "0.9rem"
+                fontSize: "0.85rem"
               }}
             >
-              <Camera size={18} /> Turn On Camera
+              <Camera size={16} /> {starting ? "Starting..." : "Start Camera Stream"}
             </button>
           </div>
         )}
       </div>
 
-      {/* Error message if any */}
+      {/* Error Message with Mobile Scanner Tip */}
       {errorMsg && (
         <div
           style={{
-            marginTop: "10px",
+            marginTop: "12px",
             padding: "10px 14px",
             borderRadius: "8px",
             background: "#fee2e2",
             color: "#991b1b",
-            fontSize: "0.85rem"
+            fontSize: "0.82rem",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "8px"
           }}
         >
-          {errorMsg}
+          <AlertCircle size={18} style={{ flexShrink: 0, marginTop: "2px" }} />
+          <div>
+            <strong>Camera Notice:</strong> {errorMsg}
+          </div>
         </div>
       )}
 
@@ -184,7 +227,7 @@ export default function CameraScanner({
       {isScanning && (
         <div
           style={{
-            marginTop: "12px",
+            marginTop: "10px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -202,7 +245,7 @@ export default function CameraScanner({
                 border: "1px solid #cbd5e1",
                 fontSize: "0.8rem",
                 background: "#fff",
-                maxWidth: "220px"
+                maxWidth: "200px"
               }}
             >
               {cameraList.map((cam) => (

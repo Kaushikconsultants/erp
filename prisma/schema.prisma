@@ -748,3 +748,15 @@ model Expense {
   updatedAt       DateTime @updatedAt
 }
 
+model MobileScanSession {
+  id          String   @id @default(uuid())
+  sessionCode String   @unique
+  scannedCode String?
+  mode        String   @default("INVENTORY") // INVENTORY, PACKING
+  orderId     String?
+  status      String   @default("ACTIVE")    // ACTIVE, CONNECTED, COMPLETED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+

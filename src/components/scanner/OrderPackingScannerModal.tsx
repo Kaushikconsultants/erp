@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getOrderPackingDetails, completeOrderPacking } from "@/app/actions/scannerActions";
 import CameraScanner from "./CameraScanner";
+import MobileConnectModal from "./MobileConnectModal";
 import { playSuccessSound, playErrorSound, playCompleteSound } from "@/lib/soundUtils";
 import {
   PackageCheck,
@@ -14,7 +15,8 @@ import {
   Layers,
   ArrowRight,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Smartphone
 } from "lucide-react";
 
 interface OrderPackingScannerModalProps {
@@ -43,6 +45,7 @@ export default function OrderPackingScannerModal({
   const [items, setItems] = useState<PackingItem[]>([]);
   const [barcodeInput, setBarcodeInput] = useState("");
   const [showCamera, setShowCamera] = useState(false);
+  const [showMobileModal, setShowMobileModal] = useState(false);
   const [alertState, setAlertState] = useState<{ type: "success" | "error" | "warning"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -257,8 +260,8 @@ export default function OrderPackingScannerModal({
             )}
 
             {/* Scanning Controls */}
-            <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "20px" }}>
-              <form onSubmit={handleManualScanSubmit} style={{ flex: 1, display: "flex", gap: "8px" }}>
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", marginBottom: "20px", flexWrap: "wrap" }}>
+              <form onSubmit={handleManualScanSubmit} style={{ flex: "1 1 240px", display: "flex", gap: "8px" }}>
                 <input
                   ref={inputRef}
                   type="text"
@@ -282,6 +285,26 @@ export default function OrderPackingScannerModal({
 
               <button
                 type="button"
+                onClick={() => setShowMobileModal(true)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "10px 16px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: "#4f46e5",
+                  color: "#ffffff",
+                  fontWeight: 600,
+                  fontSize: "0.85rem",
+                  cursor: "pointer"
+                }}
+              >
+                <Smartphone size={16} /> Connect Mobile
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowCamera(!showCamera)}
                 style={{
                   display: "flex",
@@ -290,7 +313,7 @@ export default function OrderPackingScannerModal({
                   padding: "10px 16px",
                   borderRadius: "8px",
                   border: "1px solid #cbd5e1",
-                  background: showCamera ? "#4f46e5" : "#fff",
+                  background: showCamera ? "#334155" : "#fff",
                   color: showCamera ? "#fff" : "#334155",
                   fontWeight: 600,
                   fontSize: "0.85rem",
@@ -421,6 +444,16 @@ export default function OrderPackingScannerModal({
           </button>
         </div>
       </div>
+
+      {/* Mobile Connect Modal */}
+      {showMobileModal && (
+        <MobileConnectModal
+          mode="PACKING"
+          orderId={orderId}
+          onScan={(code) => processScanCode(code)}
+          onClose={() => setShowMobileModal(false)}
+        />
+      )}
     </div>
   );
 }

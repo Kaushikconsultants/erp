@@ -1,0 +1,285 @@
+"use client";
+
+import React, { useState, useEffect, Suspense, useRef } from "react";
+import { useSearchParams } from "next/navigation";
+import CameraScanner from "@/components/scanner/CameraScanner";
+import { pushMobileScan, lookupBarcode } from "@/app/actions/scannerActions";
+import { playSuccessSound, playErrorSound } from "@/lib/soundUtils";
+import {
+  Smartphone,
+  ScanBarcode,
+  CheckCircle2,
+  AlertCircle,
+  Radio,
+  Package,
+  Layers,
+  ArrowRight,
+  Sparkles
+} from "lucide-react";
+
+export default function MobileScanPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: "40px", textAlign: "center" }}>Loading scanner...</div>}>
+      <MobileScanClient />
+    </Suspense>
+  );
+}
+
+function MobileScanClient() {
+  const searchParams = useSearchParams();
+  const initialSession = searchParams.get("session") || "";
+
+  const [sessionCode, setSessionCode] = useState(initialSession);
+  const [manualCode, setManualCode] = useState("");
+  const [lastScanned, setLastScanned] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [lookupData, setLookupData] = useState<any>(null);
+
+  useEffect(() => {
+    if (initialSession) {
+      setSessionCode(initialSession);
+    }
+  }, [initialSession]);
+
+  const handleScanDetected = async (code: string) => {
+    if (!code || !code.trim()) return;
+    const cleanCode = code.trim();
+    setLastScanned(cleanCode);
+
+    // Vibrate device if supported on mobile
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      try {
+        navigator.vibrate([80, 40, 80]);
+      } catch (e) {}
+    }
+
+    if (sessionCode.trim()) {
+      // Transmit to desktop session
+      setSending(true);
+      const res = await pushMobileScan(sessionCode.trim(), cleanCode);
+      if (res.success) {
+        playSuccessSound();
+        setStatusMessage({
+          type: "success",
+          text: `Transmitted "${cleanCode}" to desktop session!`
+        });
+      } else {
+        playErrorSound();
+        setStatusMessage({
+          type: "error",
+          text: res.error || "Failed to transmit to desktop."
+        });
+      }
+      setSending(false);
+    } else {
+      // Standalone lookup mode
+      playSuccessSound();
+      const res = await lookupBarcode(cleanCode);
+      if (res.type === "PRODUCT" && res.product) {
+        setLookupData(res.product);
+        setStatusMessage({
+          type: "success",
+          text: `Found Product: ${res.product.name} (Stock: ${res.product.stockQuantity})`
+        });
+      } else {
+        setLookupData(null);
+        setStatusMessage({
+          type: "success",
+          text: `Scanned: ${cleanCode}`
+        });
+      }
+    }
+  };
+
+  const handleManualSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (manualCode.trim()) {
+      handleScanDetected(manualCode.trim());
+      setManualCode("");
+    }
+  };
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)",
+        color: "#ffffff",
+        padding: "16px 12px",
+        fontFamily: "'Inter', sans-serif",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center"
+      }}
+    >
+      {/* Top App Bar */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: "480px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "16px",
+          padding: "4px 8px"
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ScanBarcode size={18} />
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, letterSpacing: "-0.2px" }}>
+              Mobile Scanner
+            </h1>
+            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Heart Of Business</span>
+          </div>
+        </div>
+
+        {sessionCode ? (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              background: "rgba(34, 197, 94, 0.2)",
+              border: "1px solid #22c55e",
+              color: "#4ade80",
+              padding: "4px 10px",
+              borderRadius: "16px",
+              fontSize: "0.75rem",
+              fontWeight: 700
+            }}
+          >
+            <Radio size={12} className="animate-pulse" />
+            <span>Paired: {sessionCode}</span>
+          </div>
+        ) : (
+          <div style={{ fontSize: "0.75rem", color: "#cbd5e1" }}>Standalone Mode</div>
+        )}
+      </div>
+
+      {/* Main Scanner Container */}
+      <div style={{ width: "100%", maxWidth: "480px" }}>
+        {/* Status Toast */}
+        {statusMessage && (
+          <div
+            style={{
+              padding: "10px 14px",
+              borderRadius: "8px",
+              marginBottom: "12px",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: statusMessage.type === "success" ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)",
+              border: statusMessage.type === "success" ? "1px solid #22c55e" : "1px solid #ef4444",
+              color: statusMessage.type === "success" ? "#4ade80" : "#f87171"
+            }}
+          >
+            {statusMessage.type === "success" ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+            <span>{statusMessage.text}</span>
+          </div>
+        )}
+
+        {/* Live Camera Viewfinder */}
+        <div style={{ background: "rgba(30, 41, 59, 0.7)", borderRadius: "16px", padding: "12px", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "16px" }}>
+          <CameraScanner onScan={handleScanDetected} fps={12} qrbox={260} />
+        </div>
+
+        {/* Standalone product lookup preview if available */}
+        {lookupData && (
+          <div
+            style={{
+              background: "rgba(255, 255, 255, 0.08)",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              borderRadius: "12px",
+              padding: "12px 16px",
+              marginBottom: "16px"
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#ffffff" }}>{lookupData.name}</div>
+            <div style={{ fontSize: "0.8rem", color: "#94a3b8", marginTop: "2px" }}>
+              SKU: {lookupData.sku} • Stock: <strong style={{ color: "#4ade80" }}>{lookupData.stockQuantity} Units</strong>
+            </div>
+          </div>
+        )}
+
+        {/* Manual Barcode input fallback */}
+        <form onSubmit={handleManualSubmit} style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+          <input
+            type="text"
+            value={manualCode}
+            onChange={(e) => setManualCode(e.target.value)}
+            placeholder="Type barcode / SKU manually..."
+            style={{
+              flex: 1,
+              padding: "10px 14px",
+              borderRadius: "8px",
+              border: "1px solid #475569",
+              background: "rgba(15, 23, 42, 0.8)",
+              color: "#ffffff",
+              fontSize: "0.9rem",
+              outline: "none"
+            }}
+          />
+          <button
+            type="submit"
+            style={{
+              padding: "10px 16px",
+              borderRadius: "8px",
+              background: "#4f46e5",
+              color: "#ffffff",
+              border: "none",
+              fontWeight: 600,
+              fontSize: "0.85rem",
+              cursor: "pointer"
+            }}
+          >
+            Send
+          </button>
+        </form>
+
+        {/* Pairing Code Settings Box */}
+        <div
+          style={{
+            background: "rgba(15, 23, 42, 0.6)",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            borderRadius: "12px",
+            padding: "14px",
+            fontSize: "0.85rem"
+          }}
+        >
+          <div style={{ fontWeight: 600, color: "#cbd5e1", marginBottom: "8px" }}>
+            Pair with Desktop Computer
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              type="text"
+              value={sessionCode}
+              onChange={(e) => setSessionCode(e.target.value.toUpperCase())}
+              placeholder="e.g. SC-1234"
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                borderRadius: "6px",
+                border: "1px solid #334155",
+                background: "#020617",
+                color: "#4ade80",
+                fontFamily: "monospace",
+                fontWeight: 700,
+                fontSize: "0.9rem",
+                outline: "none"
+              }}
+            />
+          </div>
+          <p style={{ margin: "8px 0 0 0", fontSize: "0.75rem", color: "#64748b" }}>
+            Enter the 6-character code displayed on your desktop to link this phone.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
