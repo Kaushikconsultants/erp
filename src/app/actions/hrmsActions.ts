@@ -122,8 +122,8 @@ export async function getPayrollData(month: string) {
     const processedEmployees = employees.map(emp => {
       const formattedOrders: OrderData[] = emp.orders.map((order: any) => ({
         id: order.id,
-        taxableValue: order.subtotal || order.totalValue,
-        discount: order.discount || 0,
+        taxableValue: Number(order.subtotal) || Number(order.totalValue) || 0,
+        discount: Number(order.discount) || 0,
         isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
       }));
       
