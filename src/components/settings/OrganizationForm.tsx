@@ -1,0 +1,299 @@
+"use client";
+
+import React, { useState } from 'react';
+import { updateCompanySettings } from '@/app/actions/companyActions';
+import { Building, Upload, Save, CheckCircle } from 'lucide-react';
+
+interface OrganizationFormProps {
+  initialData: any;
+}
+
+export default function OrganizationForm({ initialData }: OrganizationFormProps) {
+  const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [logoUrl, setLogoUrl] = useState(initialData?.logoUrl || '');
+  const [callOutcomes, setCallOutcomes] = useState<string[]>(initialData?.callOutcomes || ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support"]);
+  const [newOutcome, setNewOutcome] = useState('');
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    setSuccessMsg('');
+
+    const formData = new FormData(e.currentTarget);
+    formData.set('logoUrl', logoUrl);
+    formData.set('callOutcomes', JSON.stringify(callOutcomes));
+
+    const res = await updateCompanySettings(formData);
+    setLoading(false);
+
+    if (res.success) {
+      setSuccessMsg("Organization profile & numbering preferences updated successfully!");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="zoho-form-card">
+      {successMsg && (
+        <div style={{ padding: '12px 16px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', borderRadius: '6px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+          <CheckCircle size={18} /> {successMsg}
+        </div>
+      )}
+
+      {/* Logo Section */}
+      <div className="zoho-section-box">
+        <h3 className="zoho-section-title">Company Logo</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ width: '90px', height: '90px', border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', overflow: 'hidden' }}>
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '4px' }} />
+            ) : (
+              <div style={{ textAlign: 'center', color: '#94a3b8' }}>
+                <Upload size={22} style={{ margin: '0 auto 4px auto' }} />
+                <span style={{ fontSize: '10px' }}>Upload</span>
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleLogoUpload}
+              style={{ fontSize: '12px', color: '#64748b' }}
+            />
+            <p style={{ fontSize: '11px', color: '#64748b', margin: 0 }}>Recommended: Transparent PNG or JPG logo.</p>
+            <input 
+              type="text" 
+              placeholder="Or paste Image URL (https://...)" 
+              value={logoUrl} 
+              onChange={e => setLogoUrl(e.target.value)}
+              className="zoho-input-field"
+              style={{ maxWidth: '400px' }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Basic Organization Details */}
+      <div className="zoho-form-grid-2">
+        <div className="zoho-field-group">
+          <label className="zoho-field-label zoho-field-required">Company / Organization Name</label>
+          <input 
+            type="text" 
+            name="companyName" 
+            defaultValue={initialData?.companyName || "Espon Clothing Private Limited"} 
+            className="zoho-input-field"
+            required
+          />
+        </div>
+        <div className="zoho-field-group">
+          <label className="zoho-field-label zoho-field-required">GSTIN</label>
+          <input 
+            type="text" 
+            name="gstin" 
+            defaultValue={initialData?.gstin || "06AAHCE7721Q1Z4"} 
+            className="zoho-input-field zoho-input-mono"
+            required
+          />
+        </div>
+      </div>
+
+      <div className="zoho-form-grid-2">
+        <div className="zoho-field-group">
+          <label className="zoho-field-label zoho-field-required">Address</label>
+          <input 
+            type="text" 
+            name="address" 
+            defaultValue={initialData?.address || "Sco 71A , 2nd Floor , Ashoka PlazaDelhi Road"} 
+            className="zoho-input-field"
+            required
+          />
+        </div>
+        <div className="zoho-form-grid-3" style={{ margin: 0 }}>
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">City</label>
+            <input type="text" name="city" defaultValue={initialData?.city || "Rohtak"} className="zoho-input-field" />
+          </div>
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">State</label>
+            <input type="text" name="state" defaultValue={initialData?.state || "Haryana"} className="zoho-input-field" />
+          </div>
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">Pincode</label>
+            <input type="text" name="pincode" defaultValue={initialData?.pincode || "124001"} className="zoho-input-field" />
+          </div>
+        </div>
+      </div>
+
+      <div className="zoho-form-grid-3">
+        <div className="zoho-field-group">
+          <label className="zoho-field-label">Phone Number</label>
+          <input type="text" name="mobile" defaultValue={initialData?.mobile || "7206066678"} className="zoho-input-field" />
+        </div>
+        <div className="zoho-field-group">
+          <label className="zoho-field-label">Email Address</label>
+          <input type="email" name="email" defaultValue={initialData?.email || "clothingespon@gmail.com"} className="zoho-input-field" />
+        </div>
+        <div className="zoho-field-group">
+          <label className="zoho-field-label">Website URL</label>
+          <input type="text" name="website" defaultValue={initialData?.website || "www.espon.in"} className="zoho-input-field" />
+        </div>
+      </div>
+
+      {/* Bank & Payment Details */}
+      <div className="zoho-section-box">
+        <h3 className="zoho-section-title">Bank & Payment Account Details (Appears on Invoices/Quotes)</h3>
+        <div className="zoho-form-grid-2">
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">A/C Name</label>
+            <input 
+              type="text" 
+              name="bankAccountName" 
+              defaultValue={initialData?.bankAccountName || "ESPON CLOTHING PRIVATE LIMITED."} 
+              className="zoho-input-field"
+            />
+          </div>
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">Account Number</label>
+            <input 
+              type="text" 
+              name="accountNumber" 
+              defaultValue={initialData?.accountNumber || "016805006415"} 
+              className="zoho-input-field zoho-input-mono"
+            />
+          </div>
+        </div>
+
+        <div className="zoho-form-grid-3" style={{ margin: 0 }}>
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">IFSC Code</label>
+            <input 
+              type="text" 
+              name="ifscCode" 
+              defaultValue={initialData?.ifscCode || "ICIC0000168"} 
+              className="zoho-input-field zoho-input-mono"
+            />
+          </div>
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">Branch</label>
+            <input 
+              type="text" 
+              name="branch" 
+              defaultValue={initialData?.branch || "Rohtak"} 
+              className="zoho-input-field"
+            />
+          </div>
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">UPI ID</label>
+            <input 
+              type="text" 
+              name="upiId" 
+              defaultValue={initialData?.upiId || "7206066678@OKBIZAXIS"} 
+              className="zoho-input-field zoho-input-mono"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Document Numbering Preferences */}
+      <div className="zoho-section-box">
+        <h3 className="zoho-section-title">Default Document Numbering Preferences</h3>
+        <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>Set your starting or next default Quotation and Invoice number format (e.g. QT-1001, INV-1001).</p>
+        <div className="zoho-form-grid-2">
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">Default / Next Quotation No.</label>
+            <input 
+              type="text" 
+              name="nextQuotationNumber" 
+              defaultValue={initialData?.nextQuotationNumber || "QT-1001"} 
+              placeholder="e.g. QT-1001"
+              className="zoho-input-field zoho-input-mono"
+            />
+          </div>
+          <div className="zoho-field-group">
+            <label className="zoho-field-label">Default / Next Invoice No.</label>
+            <input 
+              type="text" 
+              name="nextInvoiceNumber" 
+              defaultValue={initialData?.nextInvoiceNumber || "INV-1001"} 
+              placeholder="e.g. INV-1001"
+              className="zoho-input-field zoho-input-mono"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* CRM Settings */}
+      <div className="zoho-section-box">
+        <h3 className="zoho-section-title">CRM Settings</h3>
+        <div className="zoho-field-group">
+          <label className="zoho-field-label">Call Outcomes</label>
+          <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>Customize the list of outcomes available when logging a call.</p>
+          
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            {callOutcomes.map((outcome, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f1f5f9', padding: '6px 12px', borderRadius: '20px', fontSize: '13px', border: '1px solid #cbd5e1' }}>
+                <span>{outcome}</span>
+                <button type="button" onClick={() => setCallOutcomes(callOutcomes.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>×</button>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', maxWidth: '400px' }}>
+            <input 
+              type="text" 
+              value={newOutcome} 
+              onChange={e => setNewOutcome(e.target.value)} 
+              placeholder="E.g. Call Back Later" 
+              className="zoho-input-field" 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (newOutcome.trim()) {
+                    setCallOutcomes([...callOutcomes, newOutcome.trim()]);
+                    setNewOutcome('');
+                  }
+                }
+              }}
+            />
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              onClick={() => {
+                if (newOutcome.trim()) {
+                  setCallOutcomes([...callOutcomes, newOutcome.trim()]);
+                  setNewOutcome('');
+                }
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '16px' }}>
+        <button 
+          type="submit" 
+          disabled={loading} 
+          className="primary-btn hover-lift"
+          style={{ padding: '12px 28px', display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <Save size={16} /> {loading ? "Saving Profile..." : "Save Organization Profile"}
+        </button>
+      </div>
+    </form>
+  );
+}

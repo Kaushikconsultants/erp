@@ -1,0 +1,750 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------
+// User & Role Management
+// ---------------------------------------------------------
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   @default("SALES")
+  roleId    String?
+  roleDef   Role?    @relation(fields: [roleId], references: [id])
+  isActive  Boolean  @default(true)
+  canManageSettings Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  employee Employee?
+  auditLogs AuditLog[]
+  notifications Notification[]
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  permissions String   // JSON string of permissions
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// Employee & HR Management
+// ---------------------------------------------------------
+model Employee {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id])
+  employeeId      String   @unique // Company generated ID
+  mobile          String?
+  joiningDate     DateTime?
+  department      String?
+  designation     String?
+  employmentStatus String  @default("Active")
+  salary          Float?
+  target          Float?
+  bankDetails     String?
+  address         String?
+  emergencyContact String?
+  notes           String?
+  
+  branchId        String?
+  branch          Branch?  @relation(fields: [branchId], references: [id])
+
+  teamId          String?
+  team            Team?    @relation(fields: [teamId], references: [id])
+  managerId       String?
+  manager         Employee? @relation("ManagerToEmployee", fields: [managerId], references: [id])
+  subordinates    Employee[] @relation("ManagerToEmployee")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  customers       Customer[] @relation("AssignedSalesperson")
+  calls           Call[]
+  followUps       FollowUp[]
+  tasksAssigned   Task[]     @relation("TaskAssignee")
+  tasksCreated    Task[]     @relation("TaskCreator")
+  orders          Order[]
+  attendances     Attendance[]
+  leaves          Leave[]
+  salaries        Salary[]
+  incentives      Incentive[]
+  quotations      Quotation[]
+  inventoryTransactions InventoryTransaction[]
+  expenses        Expense[]
+}
+
+model Team {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  leaderId    String?  @unique
+  members     Employee[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// Customer CRM
+// ---------------------------------------------------------
+model Customer {
+  id              String   @id @default(uuid())
+  businessName    String
+  contactPerson   String
+  mobile          String
+  whatsappNumber  String?
+  email           String?
+  alternatePhone  String?
+  gstNumber       String?
+  pan             String?
+  billingAddress  String?
+  shippingAddress String?
+  city            String?
+  state           String?
+  pincode         String?
+  landmark        String?
+  
+  regularDiscount String?
+  preferredPaymentMethod String?
+  
+  customerType    String?  // e.g., Wholesaler, Retailer
+  businessCategory String? 
+  source          String?  // e.g., Website, Reference, Cold Call
+
+  status          String   @default("New Lead")
+  leadStage       String   @default("Contacted")
+  
+  assignedSalespersonId String?
+  assignedSalesperson   Employee? @relation("AssignedSalesperson", fields: [assignedSalespersonId], references: [id])
+
+  lastContactDate DateTime?
+  nextFollowUp    DateTime?
+  notes           String?
+  tags            String?
+
+  healthScore          Float?
+  expectedValue        Float? @default(0)
+  averageOrderCycleDays Int?
+  preferences          String? // JSON string
+  territoryId          String?
+  territory            Territory? @relation(fields: [territoryId], references: [id])
+
+  totalPurchaseValue Float @default(0)
+  totalOrders        Int   @default(0)
+  retentionStatus    String @default("Active")
+
+  branchId        String?
+  branch          Branch?  @relation(fields: [branchId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  calls           Call[]
+  followUps       FollowUp[]
+  tasks           Task[]
+  orders          Order[]
+  quotations      Quotation[]
+  invoices        Invoice[]
+}
+
+// ---------------------------------------------------------
+// Sales & Activity (Calls, FollowUps, Tasks)
+// ---------------------------------------------------------
+model Call {
+  id           String   @id @default(uuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id])
+  callType     String   // Incoming / Outgoing
+  durationSec  Int?
+  status       String   // Connected, Missed, etc.
+  outcome      String   // Order Confirmed, Call Back, etc.
+  notes        String?
+  nextAction   String?
+  followUpDate DateTime?
+  recordingUrl String?
+  summary      String?
+
+  createdAt    DateTime @default(now())
+}
+
+model FollowUp {
+  id           String   @id @default(uuid())
+  customerId   String
+  customer     Customer @relation(fields: [customerId], references: [id])
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id])
+  date         DateTime
+  followUpType String
+  priority     String   @default("Medium")
+  notes        String?
+  expectedOutcome String?
+  status       String   @default("Pending") // Pending, Completed, Rescheduled, Cancelled
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Task {
+  id           String   @id @default(uuid())
+  title        String
+  description  String?
+  priority     String   @default("Medium")
+  dueDate      DateTime?
+  status       String   @default("To Do")
+
+  assigneeId   String
+  assignee     Employee @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  creatorId    String
+  creator      Employee @relation("TaskCreator", fields: [creatorId], references: [id])
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// Products & Orders
+// ---------------------------------------------------------
+model Product {
+  id              String   @id @default(uuid())
+  name            String
+  sku             String?  @unique
+  articleNumber   String?  @unique
+  hsnCode         String?
+  category        String
+  subCategory     String?
+  fabric          String?
+  color           String?
+  size            String?
+  purchasePrice   Float
+  sellingPrice    Float
+  mrp             Float
+  stockQuantity   Int      @default(0)
+  minimumStock    Int      @default(10)
+  status          String   @default("Active")
+  description     String?
+  weight          Float?   @default(0)
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  orderItems      OrderItem[]
+  quotationItems  QuotationItem[]
+  inventoryTransactions InventoryTransaction[]
+  purchaseOrderItems PurchaseOrderItem[]
+}
+
+model ProductCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  weight      Float    @default(0)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model InventoryTransaction {
+  id          String   @id @default(uuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id])
+  type        String   // "IN", "OUT", "ADJUSTMENT"
+  quantity    Int
+  reference   String?  // Order ID, PO number, or manual scan
+  date        DateTime @default(now())
+  employeeId  String?
+  employee    Employee? @relation(fields: [employeeId], references: [id])
+  warehouseId String?
+  warehouse   Warehouse? @relation(fields: [warehouseId], references: [id])
+  notes       String?
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  orderNumber     String   @unique
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  salespersonId   String
+  salesperson     Employee @relation(fields: [salespersonId], references: [id])
+  
+  orderDate       DateTime @default(now())
+  deliveryDate    DateTime?
+  
+  totalValue      Float
+  discount        Float    @default(0)
+  tax             Float    @default(0)
+  paymentReceived Float    @default(0)
+  outstandingAmount Float  @default(0)
+
+  paymentStatus   String   @default("Unpaid") // Unpaid, Partially Paid, Paid
+  orderStatus     String   @default("Processing") // Processing, Packed, Dispatched, Delivered, Cancelled
+  notes           String?
+
+  // GST & Financial Fields
+  placeOfSupply   String?
+  subtotal        Float    @default(0)
+  cgst            Float    @default(0)
+  sgst            Float    @default(0)
+  igst            Float    @default(0)
+  isInterstate    Boolean  @default(false)
+
+  // Shipping & Tracking fields
+  awbNumber       String?
+  courierName     String?
+  trackingUrl     String?
+  dispatchDate    DateTime?
+  expectedDeliveryDate DateTime?
+  shippingStatus  String? // e.g. "In Transit", "Out for Delivery", "Delivered", "RTO"
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           OrderItem[]
+  invoices        Invoice[]
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  
+  quantity  Int
+  rate      Float
+  hsnCode   String? @default("6109")
+  gstRate   Float   @default(12)
+  cgst      Float   @default(0)
+  sgst      Float   @default(0)
+  igst      Float   @default(0)
+  total     Float
+}
+
+// ---------------------------------------------------------
+// Performance & Financials
+// ---------------------------------------------------------
+model Attendance {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+  status      String   @default("Present") // Present, Absent, Half Day, Leave
+  workingHours Float?
+  notes       String?
+
+  createdAt   DateTime @default(now())
+}
+
+model Leave {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  leaveType   String
+  startDate   DateTime
+  endDate     DateTime
+  numberOfDays Int
+  reason      String
+  status      String   @default("Pending") // Pending, Approved, Rejected
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Salary {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  month       String   // e.g. "2023-10"
+  basicSalary Float
+  hra         Float    @default(0)
+  allowances  Float    @default(0)
+  deductions  Float    @default(0)
+  bonus       Float    @default(0)
+  advance     Float    @default(0)
+  netSalary   Float
+  paymentDate DateTime?
+  status      String   @default("Pending") // Pending, Processed, Paid
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Incentive {
+  id              String   @id @default(uuid())
+  employeeId      String
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  month           String   // e.g. "2023-10"
+  eligibleSales   Float
+  incentiveRate   Float
+  incentiveEarned Float
+  status          String   @default("Pending") // Pending, Approved, Paid
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// System & Admin
+// ---------------------------------------------------------
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  action      String
+  module      String
+  recordId    String
+  previousValue String? // JSON string
+  newValue      String? // JSON string
+  createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------
+// Telecalling (Scripts & Objections)
+// ---------------------------------------------------------
+model CallScript {
+  id          String   @id @default(uuid())
+  stage       String   @unique // e.g. "New Lead", "Follow Up", "Negotiation"
+  content     String   // The actual script content (can be markdown)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Objection {
+  id          String   @id @default(uuid())
+  concern     String   // e.g. "Price is too high"
+  response    String   // The suggested response
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// CRM Additions
+// ---------------------------------------------------------
+model Territory {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  pincodes    String?  // comma-separated list
+  description String?
+  customers   Customer[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      String   // e.g. Alert, Reminder, Message
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+model IncentiveRule {
+  id          String   @id @default(uuid())
+  name        String
+  condition   String   // JSON string describing the condition
+  rewardType  String   // e.g. Percentage, Fixed
+  rewardValue Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// Company Settings & Invoicing / Quotations
+// ---------------------------------------------------------
+model CompanySettings {
+  id            String   @id @default("default")
+  companyName   String   @default("Espon Clothing Private Limited")
+  address       String   @default("Sco 71A , 2nd Floor , Ashoka PlazaDelhi Road")
+  city          String   @default("Rohtak")
+  state         String   @default("Haryana")
+  pincode       String   @default("124001")
+  country       String   @default("India")
+  gstin         String?  @default("06AAHCE7721Q1Z4")
+  pan           String?  @default("AAHCE7721Q")
+  mobile        String?  @default("7206066678")
+  email         String?  @default("clothingespon@gmail.com")
+  website       String?  @default("www.espon.in")
+  logoUrl       String?
+  
+  bankAccountName String? @default("ESPON CLOTHING PRIVATE LIMITED.")
+  accountNumber   String? @default("016805006415")
+  ifscCode        String? @default("ICIC0000168")
+  branch          String? @default("Rohtak")
+  upiId           String? @default("7206066678@OKBIZAXIS")
+  
+  themeColor      String? @default("#4f46e5")
+  fontFamily      String? @default("Inter")
+  buttonRadius    String? @default("8px")
+  useBoldText     Boolean @default(false)
+  monthlyTarget   Float   @default(2000000)
+
+  callOutcomes    String[] @default(["INTERESTED", "NOT_INTERESTED", "NO_ANSWER", "ORDER_PLACED", "COMPLAINT"])
+
+  nextQuotationNumber String? @default("QT-1001")
+  nextInvoiceNumber   String? @default("INV-1001")
+
+  updatedAt       DateTime @updatedAt
+}
+
+model Quotation {
+  id              String   @id @default(uuid())
+  quotationNumber String   @unique
+  revisionNumber  Int      @default(0)
+  parentQuoteId   String?
+  referenceNumber String?
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  salespersonId   String
+  salesperson     Employee @relation(fields: [salespersonId], references: [id])
+  
+  date            DateTime @default(now())
+  expiryDate      DateTime?
+  placeOfSupply   String?
+  subject         String?
+  shippingAddress String?
+  billingAddress  String?
+
+  currency        String   @default("INR")
+  paymentTerms    String?
+  priceList       String?
+  warehouse       String?
+  deliveryTerms   String?
+  shippingMethod  String?
+  expectedDeliveryDate DateTime?
+  template        String   @default("Standard")
+
+  subtotal        Float    @default(0)
+  itemDiscount    Float    @default(0)
+  additionalDiscount Float @default(0)
+  taxableAmount   Float    @default(0)
+  shippingCharges Float    @default(0)
+  adjustment      Float    @default(0)
+  roundOff        Float    @default(0)
+  receivedAmount  Float    @default(0)
+  taxTotal        Float    @default(0)
+  cgst            Float    @default(0)
+  sgst            Float    @default(0)
+  igst            Float    @default(0)
+  totalValue      Float
+  totalQuantity   Float    @default(0)
+  totalItems      Int      @default(0)
+  totalWeight     Float?   @default(0)
+  
+  isInterstate    Boolean  @default(false)
+  status          String   @default("Draft") // Draft, Sent, Viewed, Accepted, Declined, Expired, Converted
+  approvalStatus  String   @default("Approved") // Pending Approval, Approved, Rejected
+  
+  notes           String?
+  internalNotes   String?
+  termsConditions String?
+
+  viewedDate      DateTime?
+  acceptedDate    DateTime?
+  declinedDate    DateTime?
+  ipAddress       String?
+  digitalSignature String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           QuotationItem[]
+  activities      QuotationActivity[]
+}
+
+model QuotationItem {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  
+  sku         String?
+  description String?
+  hsnCode     String?   @default("6103")
+  quantity    Float     @default(1)
+  unit        String?   @default("pcs")
+  unitWeight  Float?    @default(0)
+  rate        Float
+  discountPercent Float @default(0)
+  discountAmount  Float @default(0)
+  taxableAmount   Float @default(0)
+  gstRate     Float     @default(0)
+  taxAmount   Float     @default(0)
+  cgst        Float     @default(0)
+  sgst        Float     @default(0)
+  igst        Float     @default(0)
+  total       Float
+  
+  warehouse   String?
+  availableStock Int?
+}
+
+model QuotationActivity {
+  id          String    @id @default(uuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  userId      String?
+  userName    String?
+  action      String    // e.g. "Created", "Updated", "Sent", "Viewed", "Accepted"
+  details     String?
+  createdAt   DateTime  @default(now())
+}
+
+// ---------------------------------------------------------
+// NEW ERP MODELS (PHASE 1)
+// ---------------------------------------------------------
+
+model Branch {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  code        String?  @unique
+  address     String?
+  city        String?
+  state       String?
+  pincode     String?
+  phone       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  employees   Employee[]
+  customers   Customer[]
+  warehouses  Warehouse[]
+}
+
+model Warehouse {
+  id          String   @id @default(uuid())
+  name        String
+  code        String?  @unique
+  address     String?
+  managerId   String?
+  branchId    String?
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  inventoryTransactions InventoryTransaction[]
+}
+
+model Vendor {
+  id              String   @id @default(uuid())
+  companyName     String
+  contactPerson   String?
+  email           String?  @unique
+  mobile          String?
+  gstNumber       String?
+  pan             String?
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  paymentTerms    String?
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  purchaseOrders  PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id              String   @id @default(uuid())
+  poNumber        String   @unique
+  vendorId        String
+  vendor          Vendor   @relation(fields: [vendorId], references: [id])
+  orderDate       DateTime @default(now())
+  expectedDate    DateTime?
+  status          String   @default("Draft") // Draft, Issued, Partially Received, Received, Cancelled
+  totalValue      Float    @default(0)
+  taxAmount       Float    @default(0)
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  quantity        Int
+  receivedQty     Int           @default(0)
+  rate            Float
+  taxAmount       Float         @default(0)
+  total           Float
+}
+
+model Invoice {
+  id              String   @id @default(uuid())
+  invoiceNumber   String   @unique
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  orderId         String?
+  order           Order?   @relation(fields: [orderId], references: [id])
+  invoiceDate     DateTime @default(now())
+  dueDate         DateTime?
+  subtotal        Float    @default(0)
+  taxAmount       Float    @default(0)
+  discountAmount  Float    @default(0)
+  totalAmount     Float
+  amountPaid      Float    @default(0)
+  amountDue       Float
+  status          String   @default("Unpaid") // Draft, Sent, Unpaid, Partially Paid, Paid, Overdue, Cancelled
+  paymentTerms    String?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  payments        Payment[]
+}
+
+model Payment {
+  id              String   @id @default(uuid())
+  paymentNumber   String   @unique
+  invoiceId       String?
+  invoice         Invoice? @relation(fields: [invoiceId], references: [id])
+  amount          Float
+  paymentDate     DateTime @default(now())
+  paymentMode     String   // Cash, Bank Transfer, UPI, Cheque, Card
+  referenceNumber String?
+  status          String   @default("Completed") // Pending, Completed, Failed, Refunded
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Expense {
+  id              String   @id @default(uuid())
+  expenseNumber   String   @unique
+  date            DateTime @default(now())
+  category        String   // Travel, Meals, Supplies, etc.
+  amount          Float
+  description     String?
+  employeeId      String?
+  employee        Employee? @relation(fields: [employeeId], references: [id])
+  status          String   @default("Pending") // Pending, Approved, Rejected, Paid
+  receiptUrl      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+

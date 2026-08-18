@@ -1,0 +1,10 @@
+{
+  "name": "antigravity-crm",
+  "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron/sync-tracking",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
