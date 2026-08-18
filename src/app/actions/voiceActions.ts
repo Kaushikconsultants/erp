@@ -19,7 +19,29 @@ export async function parseVoiceIntent(spokenText: string): Promise<VoiceIntentR
   const raw = spokenText.trim();
   const lower = raw.toLowerCase();
 
-  // 1. COMPREHENSIVE FILLER STRIPPING FOR ENTITY EXTRACTION
+  // 1. CHECK FOR SPECIFIC "ADD PRODUCT" INTENT
+  // e.g. "add iPhone 15 to quotation", "insert macbook into invoice"
+  const addProductMatch = lower.match(/\b(add|insert|include|put)\b\s+(?:product\s+|item\s+)?(.+?)\s+\b(in|into|to|inside)\b\s+(quotation|quote|invoice|order|bill)\b/i);
+  if (addProductMatch) {
+    const productName = addProductMatch[2].trim();
+    const docType = addProductMatch[4].toLowerCase();
+
+    if (docType === 'invoice' || docType === 'order' || docType === 'bill') {
+      return {
+        route: `/orders?add_product=${encodeURIComponent(productName)}&action=add`,
+        actionText: `Add "${productName}" to Order/Invoice`,
+        aiExplanation: `Opening Order/Invoice with "${productName}" added...`
+      };
+    } else {
+      return {
+        route: `/quotations/new?add_product=${encodeURIComponent(productName)}`,
+        actionText: `Add "${productName}" to Quotation`,
+        aiExplanation: `Opening Quotation form with "${productName}" added...`
+      };
+    }
+  }
+
+  // 2. COMPREHENSIVE FILLER STRIPPING FOR ENTITY EXTRACTION
   let cleanEntityText = lower
     .replace(/\b(create|new|add|make|build|banao|bnao|bana|nayi|naya|generate|issue|log)\b/gi, '')
     .replace(/\b(show\s+me\s+all|take\s+me\s+to|show\s+me|show\s+all|go\s+to|open\s+my|open\s+the|open|display\s+all|display|list\s+all|list|search\s+for|search|find|look\s+up|dikhao|dikhaye|dikhado|batao|bataiye|chalo|lao|dekho|deko|dekhne|karo|dhoondho|dhoondh)\b/gi, '')

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { createOrder } from "@/app/actions/orderActions";
 import { lookupBarcode } from "@/app/actions/scannerActions";
 import ShippingRateCalculator from "./ShippingRateCalculator";
@@ -33,6 +34,10 @@ export default function CreateOrderModal({ onClose, customers, products, employe
     );
 
     if (!matched) {
+      matched = products.find((p: any) => p.name && p.name.toLowerCase().includes(q));
+    }
+
+    if (!matched) {
       const res = await lookupBarcode(code);
       if (res.type === "PRODUCT" && res.product) {
         matched = products.find((p) => p.id === res.product?.id);
@@ -50,6 +55,18 @@ export default function CreateOrderModal({ onClose, customers, products, employe
       alert(`No product found matching barcode "${code}"`);
     }
   };
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const addProductParam = searchParams?.get('add_product');
+    if (addProductParam && products?.length > 0) {
+      handleBarcodeScan(addProductParam);
+      
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('add_product');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [searchParams, products]);
 
   const orderValue = useMemo(() => {
     const product = products.find(p => p.id === selectedProductId);

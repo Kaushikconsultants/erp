@@ -219,6 +219,18 @@ export default function CreateQuotationForm({ customers, products, employees, ca
   }, [searchParams, localCustomers, formData.customerId]);
 
   useEffect(() => {
+    const addProductParam = searchParams?.get('add_product');
+    // Only auto-add if products are loaded and we have exactly 1 empty default item
+    if (addProductParam && products?.length > 0 && items.length === 1 && !items[0].productId) {
+      handleBarcodeScan(addProductParam);
+      // Remove it from URL to prevent adding again on re-renders
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('add_product');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [searchParams, products, items.length]);
+
+  useEffect(() => {
     if (formData.customerId && localCustomers.length > 0) {
       const cust = localCustomers.find((c: any) => c.id === formData.customerId);
       if (cust) {
@@ -321,6 +333,11 @@ export default function CreateQuotationForm({ customers, products, employees, ca
       (p.id && p.id.toLowerCase() === q) ||
       (p.name && p.name.toLowerCase() === q)
     );
+
+    // 1.5. Partial match (useful for Voice AI e.g. "iPhone 15" matching "Apple iPhone 15 Pro")
+    if (!matchedProduct) {
+      matchedProduct = products?.find((p: any) => p.name && p.name.toLowerCase().includes(q));
+    }
 
     // 2. Query lookupBarcode if not found locally
     if (!matchedProduct) {

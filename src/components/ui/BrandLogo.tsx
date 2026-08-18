@@ -16,9 +16,9 @@ export default function BrandLogo({
   className = ""
 }: BrandLogoProps) {
   // Dimensions based on size
-  const iconSize = size === "sm" ? 34 : size === "lg" ? 54 : 42;
-  const titleSize = size === "sm" ? "1.05rem" : size === "lg" ? "1.65rem" : "1.28rem";
-  const subtitleSize = size === "sm" ? "0.62rem" : size === "lg" ? "0.72rem" : "0.65rem";
+  const iconSize = size === "sm" ? 32 : size === "lg" ? 48 : 38;
+  const titleSize = size === "sm" ? "1.1rem" : size === "lg" ? "1.65rem" : "1.35rem";
+  const subtitleSize = size === "sm" ? "0.6rem" : size === "lg" ? "0.72rem" : "0.65rem";
 
   return (
     <div
@@ -26,14 +26,14 @@ export default function BrandLogo({
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: collapsed ? "0" : "12px",
+        gap: collapsed ? "0" : "14px",
         textDecoration: "none",
         userSelect: "none"
       }}
     >
-      {/* Dynamic Geometric Heart & Business Growth SVG Emblem */}
+      {/* Sleek Minimalist Geometric Heart Vector */}
       <div
-        className="brand-icon-wrapper hover-glow"
+        className="brand-icon-wrapper"
         style={{
           width: `${iconSize}px`,
           height: `${iconSize}px`,
@@ -41,94 +41,54 @@ export default function BrandLogo({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: size === "sm" ? "10px" : size === "lg" ? "16px" : "13px",
-          background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #0f172a 100%)",
-          boxShadow: "0 6px 18px -2px rgba(79, 70, 229, 0.35), 0 2px 6px -1px rgba(0, 0, 0, 0.2)",
-          border: "1px solid rgba(255, 255, 255, 0.15)",
           flexShrink: 0,
-          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+          transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
         }}
       >
-        {/* Ambient Glow Backdrop */}
-        <div
-          style={{
-            position: "absolute",
-            inset: "2px",
-            borderRadius: size === "sm" ? "8px" : size === "lg" ? "14px" : "11px",
-            background: "radial-gradient(circle at 30% 20%, rgba(129, 140, 248, 0.4), transparent 70%)",
-            pointerEvents: "none"
-          }}
-        />
-
-        {/* Vector SVG Heart + Surge Pulse */}
         <svg
           viewBox="0 0 100 100"
-          style={{
-            width: "68%",
-            height: "68%",
-            filter: "drop-shadow(0 2px 6px rgba(99, 102, 241, 0.5))"
+          style={{ 
+            width: "100%", 
+            height: "100%", 
+            filter: "drop-shadow(0 6px 10px rgba(79, 70, 229, 0.25))" 
           }}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            {/* Multi-tone Cyber Gradient */}
-            <linearGradient id="heartGradient" x1="10" y1="10" x2="90" y2="90" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#ec4899" />
-              <stop offset="35%" stopColor="#8b5cf6" />
-              <stop offset="70%" stopColor="#6366f1" />
-              <stop offset="100%" stopColor="#06b6d4" />
+            <linearGradient id="gradLeft" x1="20" y1="20" x2="50" y2="90" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#f43f5e" />
+              <stop offset="100%" stopColor="#7c3aed" />
             </linearGradient>
-
-            {/* Glowing Accent Gradient */}
-            <linearGradient id="pulseGradient" x1="0" y1="50" x2="100" y2="50" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
-              <stop offset="50%" stopColor="#38bdf8" />
-              <stop offset="100%" stopColor="#4ade80" />
+            <linearGradient id="gradRight" x1="80" y1="20" x2="50" y2="90" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#0ea5e9" />
+              <stop offset="100%" stopColor="#4f46e5" />
             </linearGradient>
-
-            <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
+            <linearGradient id="gradCenter" x1="50" y1="15" x2="50" y2="60" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#a855f7" />
+              <stop offset="100%" stopColor="#6366f1" />
+            </linearGradient>
           </defs>
 
-          {/* Geometric Faceted Heart Path */}
+          {/* Left Heart Lobe */}
           <path
-            d="M50 85 C20 60 5 42 5 26 C5 12 16 5 28 5 C38 5 46 11 50 19 C54 11 62 5 72 5 C84 5 95 12 95 26 C95 42 80 60 50 85 Z"
-            fill="url(#heartGradient)"
+            d="M 50 90 C 50 90, 10 55, 12 30 C 14 12, 35 10, 50 30 Z"
+            fill="url(#gradLeft)"
+            opacity="0.9"
+          />
+          {/* Right Heart Lobe */}
+          <path
+            d="M 50 90 C 50 90, 90 55, 88 30 C 86 12, 65 10, 50 30 Z"
+            fill="url(#gradRight)"
+            opacity="0.9"
+            style={{ mixBlendMode: "multiply" }}
+          />
+          {/* Center Upward Growth Prism (Business Growth) */}
+          <path
+            d="M 50 22 L 64 45 L 50 85 L 36 45 Z"
+            fill="url(#gradCenter)"
             opacity="0.95"
           />
-
-          {/* Inner Facet Overlay / Prism Cuts */}
-          <path
-            d="M50 19 L28 5 L15 26 L50 85 L85 26 L72 5 Z"
-            fill="white"
-            fillOpacity="0.08"
-          />
-          <path
-            d="M50 19 L50 85 L28 45 Z"
-            fill="black"
-            fillOpacity="0.12"
-          />
-          <path
-            d="M50 19 L50 85 L72 45 Z"
-            fill="white"
-            fillOpacity="0.15"
-          />
-
-          {/* Upward Business Pulse & Growth Arrow */}
-          <path
-            d="M18 45 L34 45 L43 28 L53 62 L62 38 L70 48 L82 48"
-            stroke="url(#pulseGradient)"
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            filter="url(#neonGlow)"
-          />
-
-          {/* Peak Growth Sparkle Dot */}
-          <circle cx="82" cy="48" r="3.5" fill="#ffffff" filter="url(#neonGlow)" />
         </svg>
       </div>
 
@@ -142,13 +102,13 @@ export default function BrandLogo({
             gap: "2px"
           }}
         >
-          {/* Main Title: "Heart Of Business" with Creative Typographic Treatment */}
+          {/* Main Title: Sleek and Minimal */}
           <div
             style={{
               display: "flex",
               alignItems: "baseline",
-              gap: "4px",
-              lineHeight: 1.15,
+              gap: "6px",
+              lineHeight: 1.1,
               whiteSpace: "nowrap"
             }}
           >
@@ -156,80 +116,63 @@ export default function BrandLogo({
               style={{
                 fontSize: titleSize,
                 fontWeight: 900,
-                letterSpacing: "-0.6px",
-                background: "linear-gradient(135deg, #0f172a 0%, #334155 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                fontFamily: "var(--font-inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)"
+                color: "#0f172a",
+                letterSpacing: "-0.5px",
+                fontFamily: "var(--font-inter, -apple-system, sans-serif)"
               }}
             >
               Heart
             </span>
-
-            {/* Stylized 'Of' Badge */}
             <span
               style={{
-                fontSize: `calc(${titleSize} * 0.72)`,
-                fontWeight: 800,
+                fontSize: titleSize,
+                fontWeight: 300,
+                color: "#64748b",
                 fontStyle: "italic",
-                padding: "1px 5px",
-                borderRadius: "6px",
-                background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-                color: "#ffffff",
-                lineHeight: 1,
-                boxShadow: "0 2px 6px rgba(79, 70, 229, 0.3)",
-                letterSpacing: "0.2px"
+                fontFamily: "var(--font-inter, -apple-system, sans-serif)"
               }}
             >
               of
             </span>
-
             <span
               style={{
                 fontSize: titleSize,
                 fontWeight: 900,
-                letterSpacing: "-0.6px",
-                background: "linear-gradient(135deg, #059669 0%, #0284c7 50%, #4f46e5 100%)",
+                letterSpacing: "-0.5px",
+                background: "linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
-                fontFamily: "var(--font-inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)"
+                fontFamily: "var(--font-inter, -apple-system, sans-serif)"
               }}
             >
               Business
             </span>
           </div>
 
-          {/* Creative Author Pill Badge */}
+          {/* Minimalist Subtitle */}
           {showSubtitle && (
             <div
               style={{
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
-                gap: "5px",
-                padding: "2px 7px",
-                borderRadius: "12px",
-                background: "linear-gradient(90deg, rgba(238, 242, 255, 0.9) 0%, rgba(243, 232, 255, 0.9) 100%)",
-                border: "1px solid rgba(165, 180, 252, 0.4)",
-                marginTop: "2px",
-                boxShadow: "0 1px 3px rgba(79, 70, 229, 0.05)"
+                gap: "8px",
+                marginTop: "2px"
               }}
             >
-              <span
+              <div
                 style={{
-                  width: "5px",
-                  height: "5px",
-                  borderRadius: "50%",
-                  background: "#10b981",
-                  display: "inline-block",
-                  boxShadow: "0 0 6px #10b981"
+                  width: "24px",
+                  height: "2px",
+                  background: "linear-gradient(90deg, #818cf8, transparent)",
+                  borderRadius: "2px"
                 }}
               />
               <span
                 style={{
                   fontSize: subtitleSize,
                   fontWeight: 700,
-                  color: "#4338ca",
-                  letterSpacing: "0.6px",
+                  color: "#64748b",
+                  letterSpacing: "1.2px",
                   textTransform: "uppercase",
                   fontFamily: "var(--font-inter, sans-serif)"
                 }}
