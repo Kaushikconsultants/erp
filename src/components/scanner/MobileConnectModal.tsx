@@ -132,17 +132,19 @@ export default function MobileConnectModal({
               display: "inline-flex",
               alignItems: "center",
               gap: "8px",
-              padding: "6px 14px",
+              padding: "8px 18px",
               borderRadius: "20px",
-              fontSize: "0.85rem",
+              fontSize: "0.9rem",
               fontWeight: 700,
-              marginBottom: "16px",
+              marginBottom: "18px",
               background: status === "CONNECTED" ? "#dcfce7" : "#e0e7ff",
-              color: status === "CONNECTED" ? "#15803d" : "#4338ca"
+              color: status === "CONNECTED" ? "#15803d" : "#4338ca",
+              border: status === "CONNECTED" ? "1.5px solid #86efac" : "1.5px solid #c7d2fe",
+              boxShadow: status === "CONNECTED" ? "0 0 12px rgba(34, 197, 94, 0.25)" : "none"
             }}
           >
-            <Radio size={14} className="animate-pulse" />
-            {status === "CONNECTED" ? "Phone Connected & Active" : "Waiting for phone connection..."}
+            <Radio size={15} className="animate-pulse" />
+            {status === "CONNECTED" ? "🟢 Smartphone Connected & Ready!" : "Waiting for phone connection..."}
           </div>
 
           {/* QR Code Container */}
@@ -154,7 +156,8 @@ export default function MobileConnectModal({
               display: "inline-block",
               boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
               border: "1px solid #cbd5e1",
-              marginBottom: "16px"
+              marginBottom: "16px",
+              position: "relative"
             }}
           >
             {qrDataUrl ? (
@@ -164,15 +167,44 @@ export default function MobileConnectModal({
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
               </div>
             )}
+
+            {status === "CONNECTED" && (
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "rgba(240, 253, 244, 0.92)",
+                  borderRadius: "12px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  padding: "12px"
+                }}
+              >
+                <div style={{ width: "48px", height: "48px", borderRadius: "50%", background: "#22c55e", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 12px rgba(34, 197, 94, 0.4)" }}>
+                  <CheckCircle size={28} />
+                </div>
+                <div style={{ fontWeight: 800, fontSize: "1.05rem", color: "#166534" }}>
+                  Device Linked!
+                </div>
+                <div style={{ fontSize: "0.8rem", color: "#15803d", lineHeight: 1.3 }}>
+                  Point phone camera at any barcode to scan.
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Instruction */}
           <div style={{ maxWidth: "380px", margin: "0 auto 16px" }}>
             <p style={{ margin: "0 0 8px 0", fontSize: "0.95rem", fontWeight: 600, color: "#1e293b" }}>
-              Scan this QR code with your phone's camera
+              {status === "CONNECTED" ? "Phone scanner active" : "Scan this QR code with your phone's camera"}
             </p>
             <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b", lineHeight: 1.4 }}>
-              Open your mobile camera or browser, scan the code, and start scanning products. Every scan transmits instantly to this computer!
+              {status === "CONNECTED"
+                ? "Your phone is actively paired. Every scan transmits directly to this computer in real-time."
+                : "Open your mobile camera or browser, scan the code, and start scanning products. Every scan transmits instantly to this computer!"}
             </p>
           </div>
 
@@ -226,20 +258,21 @@ export default function MobileConnectModal({
             <div
               style={{
                 marginTop: "16px",
-                padding: "10px 14px",
+                padding: "12px 16px",
                 background: "#f0fdf4",
                 border: "1.5px solid #86efac",
-                borderRadius: "8px",
+                borderRadius: "10px",
                 color: "#166534",
-                fontSize: "0.85rem",
+                fontSize: "0.9rem",
                 fontWeight: 700,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "8px"
+                gap: "8px",
+                boxShadow: "0 4px 12px rgba(34, 197, 94, 0.15)"
               }}
             >
-              <Sparkles size={16} /> Received from phone: <span style={{ fontFamily: "monospace" }}>{lastReceivedCode}</span>
+              <Sparkles size={18} /> Scanned from phone: <span style={{ fontFamily: "monospace", fontSize: "1rem", color: "#15803d" }}>{lastReceivedCode}</span>
             </div>
           )}
         </div>
@@ -247,7 +280,7 @@ export default function MobileConnectModal({
         {/* Footer */}
         <div className="modal-footer" style={{ display: "flex", justifyContent: "flex-end" }}>
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Done
+            {status === "CONNECTED" ? "Done (Keep Active)" : "Close"}
           </button>
         </div>
       </div>

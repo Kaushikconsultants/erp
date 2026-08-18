@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import CameraScanner from "@/components/scanner/CameraScanner";
-import { pushMobileScan, lookupBarcode } from "@/app/actions/scannerActions";
+import { pushMobileScan, lookupBarcode, pingMobileConnect } from "@/app/actions/scannerActions";
 import { playSuccessSound, playErrorSound } from "@/lib/soundUtils";
 import {
   Smartphone,
@@ -14,7 +14,8 @@ import {
   Package,
   Layers,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Wifi
 } from "lucide-react";
 
 export default function MobileScanPage() {
@@ -30,6 +31,7 @@ function MobileScanClient() {
   const initialSession = searchParams.get("session") || "";
 
   const [sessionCode, setSessionCode] = useState(initialSession);
+  const [isPaired, setIsPaired] = useState(false);
   const [manualCode, setManualCode] = useState("");
   const [lastScanned, setLastScanned] = useState<string | null>(null);
   const [sentItems, setSentItems] = useState<Array<{ code: string; time: string }>>([]);
@@ -42,6 +44,35 @@ function MobileScanClient() {
       setSessionCode(initialSession);
     }
   }, [initialSession]);
+
+  // Immediate connect & heartbeat ping to desktop
+  useEffect(() => {
+    if (!sessionCode || !sessionCode.trim()) {
+      setIsPaired(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function sendPing() {
+      const res = await pingMobileConnect(sessionCode);
+      if (isMounted) {
+        if (res.success) {
+          setIsPaired(true);
+        } else {
+          setIsPaired(false);
+        }
+      }
+    }
+
+    sendPing();
+    const interval = setInterval(sendPing, 5000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [sessionCode]);
 
   const handleScanDetected = async (code: string) => {
     if (!code || !code.trim()) return;

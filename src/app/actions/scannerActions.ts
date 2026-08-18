@@ -272,6 +272,30 @@ export async function pushMobileScan(sessionCode: string, code: string) {
   }
 }
 
+export async function pingMobileConnect(sessionCode: string) {
+  if (!sessionCode) return { error: "Session code required" };
+  try {
+    const session = await prisma.mobileScanSession.findUnique({
+      where: { sessionCode: sessionCode.trim().toUpperCase() }
+    });
+
+    if (!session) return { error: "Session not found or expired" };
+
+    await prisma.mobileScanSession.update({
+      where: { id: session.id },
+      data: {
+        status: "CONNECTED",
+        updatedAt: new Date()
+      }
+    });
+
+    return { success: true, mode: session.mode, orderId: session.orderId };
+  } catch (error) {
+    console.error("Ping mobile connect error:", error);
+    return { error: "Failed to connect session." };
+  }
+}
+
 export async function closeMobileScanSession(sessionCode: string) {
   if (!sessionCode) return { error: "Session code required" };
   try {
