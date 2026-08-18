@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, ChevronDown, Edit, Trash2, Scale } from 'lucide-react';
+import { Search, ChevronDown, Edit, Trash2, Scale, Tag } from 'lucide-react';
 import AddProductButton from '@/components/ui/AddProductButton';
 import ManageCategoriesModal from '@/components/products/ManageCategoriesModal';
 import EditProductModal from '@/components/ui/EditProductModal';
+import BarcodeLabelModal from '@/components/products/BarcodeLabelModal';
 import { deleteProduct } from '@/app/actions/productActions';
 
 interface Product {
@@ -43,6 +44,7 @@ export default function ProductListClient({ products, categories, categoriesData
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [printLabelProduct, setPrintLabelProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleDeleteProduct = async (product: Product) => {
@@ -258,6 +260,15 @@ export default function ProductListClient({ products, categories, categoriesData
                   {canManage ? (
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                       <button 
+                        onClick={() => setPrintLabelProduct(product)}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#4f46e5', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }} 
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                        title="Print Barcode / QR Label"
+                      >
+                        <Tag size={16} />
+                      </button>
+                      <button 
                         onClick={() => setEditingProduct(product)}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#3b82f6', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }} 
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
@@ -300,6 +311,13 @@ export default function ProductListClient({ products, categories, categoriesData
           product={editingProduct}
           categories={categories}
           onClose={() => setEditingProduct(null)}
+        />
+      )}
+
+      {printLabelProduct && (
+        <BarcodeLabelModal
+          product={printLabelProduct}
+          onClose={() => setPrintLabelProduct(null)}
         />
       )}
     </div>

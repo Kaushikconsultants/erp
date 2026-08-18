@@ -1,12 +1,14 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { getDispatchPipelineOrders, updateOrderStatus, updateDispatchDetails } from '@/app/actions/orderActions';
-import { Truck, Package, Printer, FileText, CheckCircle2, Eye } from 'lucide-react';
+import { Truck, Package, Printer, FileText, CheckCircle2, Eye, PackageCheck, ScanBarcode } from 'lucide-react';
+import OrderPackingScannerModal from '@/components/scanner/OrderPackingScannerModal';
 
 export default function DispatchesPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [awbModal, setAwbModal] = useState<string | null>(null); // orderId
+  const [packingModalOrderId, setPackingModalOrderId] = useState<string | null>(null);
   const [awbInput, setAwbInput] = useState('');
   const [courierInput, setCourierInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -143,11 +145,22 @@ export default function DispatchesPage() {
               <Package size={16} /> 2. Packing ({packingOrders.length})
             </h3>
             {packingOrders.map(order => renderCard(order, 
-              <button 
-                onClick={() => handleMarkPacked(order.id)}
-                className="action-btn secondary" style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '8px', background: '#fff', border: '1px solid #cbd5e1', color: '#334155' }}>
-                <CheckCircle2 size={16} color="#10b981" /> Mark Packed
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                <button 
+                  onClick={() => setPackingModalOrderId(order.id)}
+                  className="action-btn primary hover-lift" 
+                  style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', background: '#4f46e5', color: '#ffffff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  <PackageCheck size={16} /> Scan & Pack Items
+                </button>
+                <button 
+                  onClick={() => handleMarkPacked(order.id)}
+                  className="action-btn secondary" 
+                  style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '6px', background: '#fff', border: '1px solid #cbd5e1', color: '#475569', fontSize: '0.8rem' }}
+                >
+                  <CheckCircle2 size={15} color="#10b981" /> Quick Mark Packed
+                </button>
+              </div>
             ))}
             {packingOrders.length === 0 && <p style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>No orders in packing</p>}
           </div>
@@ -221,6 +234,18 @@ export default function DispatchesPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* PACKING SCANNER MODAL */}
+      {packingModalOrderId && (
+        <OrderPackingScannerModal
+          orderId={packingModalOrderId}
+          onClose={() => setPackingModalOrderId(null)}
+          onSuccess={() => {
+            setPackingModalOrderId(null);
+            loadOrders();
+          }}
+        />
       )}
     </div>
   );
