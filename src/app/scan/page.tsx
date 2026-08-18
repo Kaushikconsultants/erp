@@ -32,6 +32,7 @@ function MobileScanClient() {
   const [sessionCode, setSessionCode] = useState(initialSession);
   const [manualCode, setManualCode] = useState("");
   const [lastScanned, setLastScanned] = useState<string | null>(null);
+  const [sentItems, setSentItems] = useState<Array<{ code: string; time: string }>>([]);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [lookupData, setLookupData] = useState<any>(null);
@@ -60,9 +61,14 @@ function MobileScanClient() {
       const res = await pushMobileScan(sessionCode.trim(), cleanCode);
       if (res.success) {
         playSuccessSound();
+        const newEntry = {
+          code: cleanCode,
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+        };
+        setSentItems((prev) => [newEntry, ...prev.slice(0, 7)]);
         setStatusMessage({
           type: "success",
-          text: `Transmitted "${cleanCode}" to desktop session!`
+          text: `Transmitted "${cleanCode}" to computer!`
         });
       } else {
         playErrorSound();
@@ -279,6 +285,43 @@ function MobileScanClient() {
             Enter the 6-character code displayed on your desktop to link this phone.
           </p>
         </div>
+
+        {/* Live Transmitted Items History */}
+        {sentItems.length > 0 && (
+          <div
+            style={{
+              marginTop: "16px",
+              background: "rgba(15, 23, 42, 0.6)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "12px",
+              padding: "14px"
+            }}
+          >
+            <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#94a3b8", marginBottom: "8px", display: "flex", justifyContent: "space-between" }}>
+              <span>Transmitted to Computer</span>
+              <span style={{ color: "#4ade80" }}>{sentItems.length} Scanned</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {sentItems.map((item, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "6px 10px",
+                    background: "rgba(255, 255, 255, 0.05)",
+                    borderRadius: "6px",
+                    fontSize: "0.8rem"
+                  }}
+                >
+                  <span style={{ fontFamily: "monospace", fontWeight: 700, color: "#38bdf8" }}>{item.code}</span>
+                  <span style={{ fontSize: "0.7rem", color: "#64748b" }}>{item.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
