@@ -42,15 +42,37 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async redirect({ url, baseUrl }) {
+      const isLocalhost = baseUrl.includes("localhost");
+      const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+      const effectiveBaseUrl = (isLocalhost && vercelHost)
+        ? `https://${vercelHost}`
+        : baseUrl;
+
       // Allows relative callback URLs
-      if (url.startsWith("/")) return `${baseUrl}${url}`
-      // Allows callback URLs on the same origin
-      if (new URL(url).origin === baseUrl) return url
-      // Allow dynamic localhost ports in development
-      if (process.env.NODE_ENV === 'development' && url.startsWith('http://localhost:')) {
-        return url
+      if (url.startsWith("/")) {
+        return `${effectiveBaseUrl}${url}`;
       }
-      return baseUrl
+
+      try {
+        const targetUrl = new URL(url);
+        // Allows callback URLs on the same origin or Vercel deployments
+        if (
+          targetUrl.origin === baseUrl ||
+          targetUrl.origin === effectiveBaseUrl ||
+          targetUrl.hostname.endsWith(".vercel.app")
+        ) {
+          return url;
+        }
+      } catch {
+        // ignore invalid URL
+      }
+
+      // Allow dynamic localhost ports in development
+      if (process.env.NODE_ENV === "development" && url.startsWith("http://localhost:")) {
+        return url;
+      }
+
+      return effectiveBaseUrl;
     },
     async jwt({ token, user }) {
       if (user) {

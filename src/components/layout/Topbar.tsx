@@ -73,7 +73,10 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
               </Link>
               <button 
                 className="dropdown-item text-danger" 
-                onClick={() => signOut({ callbackUrl: `${window.location.origin}/login` })}
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  signOut({ callbackUrl: "/login" });
+                }}
               >
                 <LogOut size={16} />
                 <span>Sign out</span>
