@@ -23,6 +23,7 @@ import {
   CalendarDays,
   ShieldCheck
 } from 'lucide-react';
+import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -43,13 +44,9 @@ const Sidebar = ({ showSettings = false, showAnalytics = true, showProcurement =
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <div className="logo-container">
-          <div className="logo-top-row">
-            <img src={require("../../../public/logo.jpg").default.src} alt="Heart Of Business Logo" className="logo-img" />
-            <h2>Heart Of Business</h2>
-          </div>
-          <span className="logo-creator">Made By Ashish Aggarwal</span>
-        </div>
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <BrandLogo size="md" showSubtitle={true} />
+        </Link>
         <button className="mobile-close-btn" onClick={onClose}>×</button>
       </div>
       

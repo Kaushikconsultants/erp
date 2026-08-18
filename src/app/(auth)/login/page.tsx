@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import BrandLogo from "@/components/ui/BrandLogo";
 import "./login.css";
 
 export default function LoginPage() {
@@ -35,10 +36,9 @@ export default function LoginPage() {
   return (
     <div className="login-container">
       <div className="login-card glass-panel">
-        <div className="login-header">
-          <img src={require("../../../../public/logo.jpg").default.src} alt="Heart Of Business Logo" className="login-logo-img" style={{ width: '48px', height: '48px', marginBottom: '16px' }} />
-          <h2>Heart Of Business</h2>
-          <p>Sign in to your account</p>
+        <div className="login-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+          <BrandLogo size="lg" showSubtitle={true} />
+          <p style={{ marginTop: '8px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Sign in to your account</p>
         </div>
 
         {error && <div className="login-error">{error}</div>}

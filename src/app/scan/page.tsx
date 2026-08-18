@@ -3,6 +3,7 @@
 import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import CameraScanner from "@/components/scanner/CameraScanner";
+import BrandLogo from "@/components/ui/BrandLogo";
 import { pushMobileScan, lookupBarcode, pingMobileConnect } from "@/app/actions/scannerActions";
 import { playSuccessSound, playErrorSound } from "@/lib/soundUtils";
 import {
@@ -162,16 +163,8 @@ function MobileScanClient() {
           padding: "4px 8px"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ScanBarcode size={18} />
-          </div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, letterSpacing: "-0.2px" }}>
-              Mobile Scanner
-            </h1>
-            <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>Heart Of Business</span>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <BrandLogo size="sm" showSubtitle={false} />
         </div>
 
         {sessionCode ? (
