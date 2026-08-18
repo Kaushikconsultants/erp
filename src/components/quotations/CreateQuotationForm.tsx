@@ -9,8 +9,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { createQuotation, updateQuotationFull } from '@/app/actions/quotationActions';
+import { lookupBarcode } from '@/app/actions/scannerActions';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
 import ShippingRateCalculator from '@/components/ui/ShippingRateCalculator';
+import QuickBarcodeScannerBar from '@/components/scanner/QuickBarcodeScannerBar';
 
 import { useSearchParams } from 'next/navigation';
 
@@ -305,6 +307,69 @@ export default function CreateQuotationForm({ customers, products, employees, ca
     setItems(newItems);
     setShowProductSearch(-1);
     setProductSearchTerm("");
+  };
+
+  const handleBarcodeScan = async (code: string) => {
+    if (!code || !code.trim()) return;
+    const q = code.trim().toLowerCase();
+
+    // 1. Check local products
+    let matchedProduct = products?.find((p: any) =>
+      (p.sku && p.sku.toLowerCase() === q) ||
+      (p.articleNumber && p.articleNumber.toLowerCase() === q) ||
+      (p.barcode && p.barcode.toLowerCase() === q) ||
+      (p.id && p.id.toLowerCase() === q) ||
+      (p.name && p.name.toLowerCase() === q)
+    );
+
+    // 2. Query lookupBarcode if not found locally
+    if (!matchedProduct) {
+      const res = await lookupBarcode(code);
+      if (res.type === "PRODUCT" && res.product) {
+        matchedProduct = res.product;
+      }
+    }
+
+    if (matchedProduct) {
+      const existingIndex = items.findIndex((i: any) => i.productId === matchedProduct.id);
+      if (existingIndex !== -1) {
+        const newItems = [...items];
+        newItems[existingIndex].quantity = (Number(newItems[existingIndex].quantity) || 1) + 1;
+        setItems(newItems);
+      } else {
+        const emptyIndex = items.findIndex((i: any) => !i.productId);
+        const catWeight = categoriesData?.find((c: any) => c.name.toLowerCase() === (matchedProduct.category || '').toLowerCase())?.weight || 0;
+        const resolvedWeight = (matchedProduct.weight && Number(matchedProduct.weight) > 0)
+          ? Number(matchedProduct.weight)
+          : (catWeight > 0 ? catWeight : 0.25);
+
+        const newItemData = {
+          productId: matchedProduct.id,
+          productName: matchedProduct.name,
+          sku: matchedProduct.articleNumber || matchedProduct.sku || '',
+          description: matchedProduct.description || '',
+          hsnCode: matchedProduct.hsnCode || '6109',
+          quantity: 1,
+          rate: matchedProduct.sellingPrice || matchedProduct.price || 0,
+          unitWeight: resolvedWeight,
+          discountType: 'percent',
+          discountPercent: 0,
+          discountAmount: 0,
+          gstRate: matchedProduct.gstRate || 5,
+          availableStock: matchedProduct.stockQuantity || 0
+        };
+
+        if (emptyIndex !== -1) {
+          const newItems = [...items];
+          newItems[emptyIndex] = newItemData;
+          setItems(newItems);
+        } else {
+          setItems([...items, newItemData]);
+        }
+      }
+    } else {
+      alert(`No product found matching barcode "${code}"`);
+    }
   };
 
   // Calculations
@@ -838,6 +903,13 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Item Details</h2>
             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>All prices in INR (₹)</span>
           </div>
+
+          {/* Quick Barcode, Camera & Mobile Wireless Scanner Bar */}
+          <QuickBarcodeScannerBar
+            onScan={handleBarcodeScan}
+            label="Quotation Barcode Scanner"
+            placeholder="Scan product barcode / SKU to auto-add item into quotation..."
+          />
 
           <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto', overflowY: 'visible', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>

@@ -2,13 +2,15 @@
 
 import React, { useState, useMemo } from "react";
 import { createOrder } from "@/app/actions/orderActions";
+import { lookupBarcode } from "@/app/actions/scannerActions";
 import ShippingRateCalculator from "./ShippingRateCalculator";
+import QuickBarcodeScannerBar from "@/components/scanner/QuickBarcodeScannerBar";
 import "@/components/ui/modal.css";
 
 interface CreateOrderModalProps {
   onClose: () => void;
   customers: { id: string; companyName: string }[];
-  products: { id: string; name: string; price: number }[];
+  products: { id: string; name: string; price: number; sku?: string; articleNumber?: string }[];
   employees?: { id: string; name: string }[];
 }
 
@@ -18,6 +20,36 @@ export default function CreateOrderModal({ onClose, customers, products, employe
   const [selectedProductId, setSelectedProductId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [shippingCharge, setShippingCharge] = useState(0);
+
+  const handleBarcodeScan = async (code: string) => {
+    if (!code || !code.trim()) return;
+    const q = code.trim().toLowerCase();
+
+    let matched = products.find((p: any) =>
+      (p.sku && p.sku.toLowerCase() === q) ||
+      (p.articleNumber && p.articleNumber.toLowerCase() === q) ||
+      (p.id && p.id.toLowerCase() === q) ||
+      (p.name && p.name.toLowerCase() === q)
+    );
+
+    if (!matched) {
+      const res = await lookupBarcode(code);
+      if (res.type === "PRODUCT" && res.product) {
+        matched = products.find((p) => p.id === res.product?.id);
+      }
+    }
+
+    if (matched) {
+      if (selectedProductId === matched.id) {
+        setQuantity((prev) => prev + 1);
+      } else {
+        setSelectedProductId(matched.id);
+        setQuantity(1);
+      }
+    } else {
+      alert(`No product found matching barcode "${code}"`);
+    }
+  };
 
   const orderValue = useMemo(() => {
     const product = products.find(p => p.id === selectedProductId);
@@ -60,6 +92,14 @@ export default function CreateOrderModal({ onClose, customers, products, employe
               ))}
             </select>
           </div>
+
+          {/* Quick Barcode Scanner */}
+          <QuickBarcodeScannerBar
+            onScan={handleBarcodeScan}
+            compact
+            label="Product Barcode Scanner"
+            placeholder="Scan barcode or type SKU to auto-select item..."
+          />
 
           <div className="form-group">
             <label>Product</label>
