@@ -333,9 +333,18 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             </div>
 
             {/* Authorized Signature Box */}
-            <div style={{ padding: '24px 12px 12px 12px', textAlign: 'center', borderTop: '1px solid #9ca3af' }}>
-              <div style={{ marginTop: '40px', borderTop: '1px solid #000', paddingTop: '4px', fontSize: '11px', fontWeight: 'bold' }}>
-                Authorized Signature
+            <div style={{ padding: '16px 12px 12px 12px', textAlign: 'center', borderTop: '1px solid #9ca3af', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', minHeight: '110px' }}>
+              {company.signatoryUrl ? (
+                <img 
+                  src={company.signatoryUrl} 
+                  alt="Signature" 
+                  style={{ height: '46px', maxWidth: '160px', objectFit: 'contain', marginBottom: '6px' }} 
+                />
+              ) : (
+                <div style={{ height: '36px' }}></div>
+              )}
+              <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontSize: '11px', fontWeight: 'bold', width: '100%' }}>
+                {company.signatoryName ? `${company.signatoryName} (${company.signatoryDesignation || 'Authorized Signatory'})` : 'Authorized Signature'}
               </div>
             </div>
           </div>

@@ -349,10 +349,20 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <p style={{ margin: '0 0 2px 0' }}>2. All disputes subject to local jurisdiction only.</p>
             <p style={{ margin: '0' }}>3. E. & O.E.</p>
           </div>
-          <div style={{ textAlign: 'center', width: '30%' }}>
-            <div style={{ height: '50px' }}></div>
-            <p style={{ fontWeight: 700, margin: '0 0 4px 0', color: '#111827' }}>For {company.companyName}</p>
-            <p style={{ fontSize: '10px', color: '#6b7280', margin: 0 }}>(Authorized Signatory)</p>
+          <div style={{ textAlign: 'center', width: '35%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end' }}>
+            {company.signatoryUrl ? (
+              <img 
+                src={company.signatoryUrl} 
+                alt="Authorized Signature" 
+                style={{ height: '48px', maxWidth: '160px', objectFit: 'contain', marginBottom: '4px' }} 
+              />
+            ) : (
+              <div style={{ height: '48px' }}></div>
+            )}
+            <p style={{ fontWeight: 700, margin: '0 0 2px 0', color: '#111827', fontSize: '11px' }}>For {company.companyName}</p>
+            <p style={{ fontSize: '10px', color: '#4b5563', margin: 0, fontWeight: 600 }}>
+              {company.signatoryName ? `${company.signatoryName} (${company.signatoryDesignation || 'Authorized Signatory'})` : '(Authorized Signatory)'}
+            </p>
           </div>
         </div>
 

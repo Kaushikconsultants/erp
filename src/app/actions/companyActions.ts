@@ -17,6 +17,9 @@ const FALLBACK_SETTINGS = {
   email: "clothingespon@gmail.com",
   website: "www.espon.in",
   logoUrl: null as string | null,
+  signatoryUrl: null as string | null,
+  signatoryName: "Ashish Aggarwal",
+  signatoryDesignation: "Authorized Signatory",
   bankAccountName: "ESPON CLOTHING PRIVATE LIMITED.",
   accountNumber: "016805006415",
   ifscCode: "ICIC0000168",
@@ -59,7 +62,9 @@ const getCachedSettings = unstable_cache(
             accountNumber: "016805006415",
             ifscCode: "ICIC0000168",
             branch: "Rohtak",
-            upiId: "7206066678@OKBIZAXIS"
+            upiId: "7206066678@OKBIZAXIS",
+            signatoryName: "Ashish Aggarwal",
+            signatoryDesignation: "Authorized Signatory"
           }
         });
       }
@@ -115,6 +120,10 @@ export async function updateCompanySettings(formData: FormData) {
     const mobile = formData.get("mobile") as string;
     const website = formData.get("website") as string;
     const logoUrl = formData.get("logoUrl") as string;
+    const signatoryUrl = formData.get("signatoryUrl") as string;
+    const signatoryName = formData.get("signatoryName") as string;
+    const signatoryDesignation = formData.get("signatoryDesignation") as string;
+
     const bankAccountName = formData.get("bankAccountName") as string;
     const accountNumber = formData.get("accountNumber") as string;
     const ifscCode = formData.get("ifscCode") as string;
@@ -140,7 +149,11 @@ export async function updateCompanySettings(formData: FormData) {
     const updated = await prisma.companySettings.upsert({
       where: { id: "default" },
       update: {
-        companyName, gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl, bankAccountName, accountNumber, ifscCode, branch, upiId,
+        companyName, gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl, 
+        signatoryUrl: signatoryUrl || null,
+        signatoryName: signatoryName || "Ashish Aggarwal",
+        signatoryDesignation: signatoryDesignation || "Authorized Signatory",
+        bankAccountName, accountNumber, ifscCode, branch, upiId,
         ...(nextQuotationNumber ? { nextQuotationNumber } : {}),
         ...(nextInvoiceNumber ? { nextInvoiceNumber } : {}),
         ...(themeColor ? { themeColor } : {}),
@@ -151,7 +164,11 @@ export async function updateCompanySettings(formData: FormData) {
       },
       create: {
         id: "default",
-        companyName, gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl, bankAccountName, accountNumber, ifscCode, branch, upiId,
+        companyName, gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl,
+        signatoryUrl: signatoryUrl || null,
+        signatoryName: signatoryName || "Ashish Aggarwal",
+        signatoryDesignation: signatoryDesignation || "Authorized Signatory",
+        bankAccountName, accountNumber, ifscCode, branch, upiId,
         nextQuotationNumber: nextQuotationNumber || "QT-1001",
         nextInvoiceNumber: nextInvoiceNumber || "INV-1001",
         themeColor: themeColor || "#4f46e5",

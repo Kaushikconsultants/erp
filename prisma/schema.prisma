@@ -500,6 +500,10 @@ model CompanySettings {
   branch          String? @default("Rohtak")
   upiId           String? @default("7206066678@OKBIZAXIS")
   
+  signatoryUrl    String?
+  signatoryName   String? @default("Ashish Aggarwal")
+  signatoryDesignation String? @default("Authorized Signatory")
+  
   themeColor      String? @default("#4f46e5")
   fontFamily      String? @default("Inter")
   buttonRadius    String? @default("8px")

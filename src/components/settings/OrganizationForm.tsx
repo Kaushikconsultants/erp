@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { updateCompanySettings } from '@/app/actions/companyActions';
-import { Building, Upload, Save, CheckCircle } from 'lucide-react';
+import { Building, Upload, Save, CheckCircle, FileCheck2, UserCheck } from 'lucide-react';
 
 interface OrganizationFormProps {
   initialData: any;
@@ -12,6 +12,10 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [logoUrl, setLogoUrl] = useState(initialData?.logoUrl || '');
+  const [signatoryUrl, setSignatoryUrl] = useState(initialData?.signatoryUrl || '');
+  const [signatoryName, setSignatoryName] = useState(initialData?.signatoryName || 'Ashish Aggarwal');
+  const [signatoryDesignation, setSignatoryDesignation] = useState(initialData?.signatoryDesignation || 'Authorized Signatory');
+
   const [callOutcomes, setCallOutcomes] = useState<string[]>(initialData?.callOutcomes || ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support"]);
   const [newOutcome, setNewOutcome] = useState('');
 
@@ -26,6 +30,17 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
     }
   };
 
+  const handleSignatoryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignatoryUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -33,13 +48,16 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
 
     const formData = new FormData(e.currentTarget);
     formData.set('logoUrl', logoUrl);
+    formData.set('signatoryUrl', signatoryUrl);
+    formData.set('signatoryName', signatoryName);
+    formData.set('signatoryDesignation', signatoryDesignation);
     formData.set('callOutcomes', JSON.stringify(callOutcomes));
 
     const res = await updateCompanySettings(formData);
     setLoading(false);
 
     if (res.success) {
-      setSuccessMsg("Organization profile & numbering preferences updated successfully!");
+      setSuccessMsg("Organization profile & Authorized Signatory settings updated successfully!");
     }
   };
 
@@ -53,7 +71,7 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
 
       {/* Logo Section */}
       <div className="zoho-section-box">
-        <h3 className="zoho-section-title">Company Logo</h3>
+        <h3 className="zoho-section-title">Company Logo (Displayed on Invoices/Quotes)</h3>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ width: '90px', height: '90px', border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', overflow: 'hidden' }}>
             {logoUrl ? (
@@ -83,6 +101,94 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
               style={{ maxWidth: '400px' }}
             />
           </div>
+        </div>
+      </div>
+
+      {/* ─── AUTHORIZED SIGNATORY & STAMP SECTION ─── */}
+      <div className="zoho-section-box" style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '20px', borderRadius: '10px' }}>
+        <h3 className="zoho-section-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a' }}>
+          <UserCheck size={20} style={{ color: 'var(--accent-primary, #4f46e5)' }} /> Authorized Signatory & Digital Signature
+        </h3>
+        <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
+          Upload signature image and signatory details. This will automatically appear on all Quotations and Invoices.
+        </p>
+
+        <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          
+          {/* Signature Preview Box */}
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+              Signature Image
+            </label>
+            <div style={{ width: '180px', height: '90px', border: '2px dashed #cbd5e1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', overflow: 'hidden', position: 'relative' }}>
+              {signatoryUrl ? (
+                <img src={signatoryUrl} alt="Authorized Signature" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: '6px' }} />
+              ) : (
+                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '10px' }}>
+                  <Upload size={20} style={{ margin: '0 auto 4px auto' }} />
+                  <span style={{ fontSize: '11px', fontWeight: 500 }}>Upload Signature</span>
+                </div>
+              )}
+            </div>
+            {signatoryUrl && (
+              <button type="button" onClick={() => setSignatoryUrl('')} style={{ fontSize: '11px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', marginTop: '4px' }}>
+                Remove Signature
+              </button>
+            )}
+          </div>
+
+          {/* Upload Inputs & Signatory Details */}
+          <div style={{ flex: 1, minWidth: '280px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                Upload Signature Image (PNG/JPG)
+              </label>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={handleSignatoryUpload}
+                style={{ fontSize: '12px', color: '#64748b' }}
+              />
+              <p style={{ fontSize: '11px', color: '#64748b', margin: '4px 0 0 0' }}>Or paste image link / Base64 below:</p>
+              <input 
+                type="text" 
+                placeholder="https://... signature image URL" 
+                value={signatoryUrl} 
+                onChange={e => setSignatoryUrl(e.target.value)}
+                className="zoho-input-field"
+                style={{ marginTop: '4px' }}
+              />
+            </div>
+
+            <div className="zoho-form-grid-2" style={{ margin: 0, gap: '12px' }}>
+              <div className="zoho-field-group">
+                <label className="zoho-field-label">Signatory Name</label>
+                <input 
+                  type="text" 
+                  name="signatoryName" 
+                  value={signatoryName} 
+                  onChange={e => setSignatoryName(e.target.value)}
+                  placeholder="e.g. Ashish Aggarwal" 
+                  className="zoho-input-field"
+                />
+              </div>
+
+              <div className="zoho-field-group">
+                <label className="zoho-field-label">Designation / Title</label>
+                <input 
+                  type="text" 
+                  name="signatoryDesignation" 
+                  value={signatoryDesignation} 
+                  onChange={e => setSignatoryDesignation(e.target.value)}
+                  placeholder="e.g. Authorized Signatory / Managing Director" 
+                  className="zoho-input-field"
+                />
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </div>
 
