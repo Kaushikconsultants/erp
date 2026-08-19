@@ -91,8 +91,8 @@ export default function BrandLogo({
       <div
         className="brand-icon-wrapper"
         style={{
-          width: \`\${iconSize}px\`,
-          height: \`\${iconSize}px\`,
+          width: `${iconSize}px`,
+          height: `${iconSize}px`,
           position: "relative",
           display: "flex",
           alignItems: "center",
@@ -186,7 +186,7 @@ export default function BrandLogo({
             </span>
             <span
               style={{
-                fontSize: \`calc(\${titleSize} * 0.75)\`,
+                fontSize: `calc(${titleSize} * 0.75)`,
                 fontWeight: 500,
                 color: "var(--text-secondary)",
                 fontStyle: "italic",
