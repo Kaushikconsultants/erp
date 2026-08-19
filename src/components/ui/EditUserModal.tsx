@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { updateUser } from "@/app/actions/userActions";
+import { KeyRound, Eye, EyeOff, Sparkles, ShieldCheck } from "lucide-react";
 import "./modal.css";
 
 interface User {
@@ -38,6 +39,8 @@ const ALL_SECTIONS = [
 export default function EditUserModal({ user, onClose }: EditUserModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(true);
 
   // Parse existing allowed sections
   const initialAllowed: string[] = (() => {
@@ -63,6 +66,17 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
   const selectAll = () => setSelectedSections(ALL_SECTIONS.map(s => s.id));
   const deselectAll = () => setSelectedSections([]);
 
+  const handleGeneratePassword = () => {
+    const randomChars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    let rand = "";
+    for (let i = 0; i < 8; i++) {
+      rand += randomChars.charAt(Math.floor(Math.random() * randomChars.length));
+    }
+    const generated = `Espon@${rand}`;
+    setNewPassword(generated);
+    setShowPassword(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -74,6 +88,9 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
     
     // Store allowed sections as JSON string
     formData.set("allowedSections", JSON.stringify(selectedSections));
+    if (newPassword.trim()) {
+      formData.set("newPassword", newPassword.trim());
+    }
 
     const result = await updateUser(user.id, formData);
 
@@ -86,13 +103,13 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
   };
 
   return (
-    <div className="modal-backdrop" style={{ overflowY: 'auto', padding: '20px 10px' }}>
+    <div className="modal-backdrop" style={{ overflowY: 'auto', padding: '20px 10px', zIndex: 10000 }}>
       <div className="modal-content glass-panel animate-in" style={{ maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
         
         <div className="modal-header" style={{ paddingBottom: '16px', borderBottom: '1px solid #e2e8f0' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Edit Access & Role: {user.name}</h2>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>Configure department role and specific section access permissions.</p>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Edit Access & Password: {user.name}</h2>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>Configure department role, password reset, and section access permissions.</p>
           </div>
           <button type="button" className="close-btn" onClick={onClose}>×</button>
         </div>
@@ -123,6 +140,62 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
               <option value="SUPPORT">📞 Customer Support & Calls</option>
               <option value="CLIENT">🌐 Portal Client / Partner</option>
             </select>
+          </div>
+
+          {/* ADMIN PASSWORD CHANGE SECTION */}
+          <div style={{ backgroundColor: '#fffbeb', padding: '14px', borderRadius: '10px', border: '1px solid #fde68a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <label style={{ fontWeight: 700, color: '#92400e', fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <KeyRound size={16} /> Admin Password Change (Optional)
+              </label>
+              <button 
+                type="button" 
+                onClick={handleGeneratePassword} 
+                style={{ background: 'none', border: 'none', color: '#b45309', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              >
+                <Sparkles size={13} /> Auto-Generate
+              </button>
+            </div>
+
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input 
+                type={showPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                placeholder="Leave blank to keep existing password, or enter new password"
+                style={{ 
+                  width: '100%', 
+                  padding: '9px 36px 9px 12px', 
+                  borderRadius: '6px', 
+                  border: '1px solid #fcd34d', 
+                  fontSize: '0.85rem', 
+                  backgroundColor: '#ffffff',
+                  outline: 'none',
+                  fontFamily: showPassword && newPassword ? 'monospace' : 'inherit'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#b45309',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <p style={{ fontSize: '0.72rem', color: '#b45309', margin: '4px 0 0 0' }}>
+              Type a new password or auto-generate. You can view the text while typing.
+            </p>
           </div>
 
           {/* SECTION VISIBILITY CONTROL (ADMIN DECIDES WHO CAN SEE WHICH SECTION) */}
@@ -202,7 +275,7 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
           <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button type="button" className="btn-secondary" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
             <button type="submit" className="primary-btn" disabled={loading} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: 'var(--accent-primary, #4f46e5)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-              {loading ? "Saving Permissions..." : "Save Role & Permissions"}
+              {loading ? "Saving Settings..." : "Save Role, Password & Permissions"}
             </button>
           </div>
         </form>

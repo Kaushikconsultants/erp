@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import EditUserModal from "./EditUserModal";
+import ChangePasswordModal from "./ChangePasswordModal";
+import { KeyRound, ShieldCheck } from "lucide-react";
 
 interface User {
   id: string;
@@ -16,6 +18,7 @@ interface User {
 
 export default function UserManagementTable({ initialUsers }: { initialUsers: User[] }) {
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [passwordUser, setPasswordUser] = useState<User | null>(null);
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
@@ -72,7 +75,7 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
             <th>Section Access</th>
             <th>Status</th>
             <th>Joined</th>
-            <th>Actions</th>
+            <th style={{ textAlign: 'center' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -111,14 +114,37 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
                   </span>
                 </td>
                 <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                <td>
-                  <button 
-                    className="action-btn text-blue"
-                    onClick={() => setEditingUser(user)}
-                    style={{ fontWeight: 600, cursor: 'pointer' }}
-                  >
-                    Edit Role & Access
-                  </button>
+                <td style={{ textAlign: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                    <button 
+                      className="action-btn text-blue"
+                      onClick={() => setEditingUser(user)}
+                      style={{ fontWeight: 600, cursor: 'pointer', padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <ShieldCheck size={14} /> Edit Role & Access
+                    </button>
+
+                    <button 
+                      className="action-btn"
+                      onClick={() => setPasswordUser(user)}
+                      style={{ 
+                        fontWeight: 600, 
+                        cursor: 'pointer', 
+                        padding: '6px 12px', 
+                        fontSize: '0.8rem', 
+                        backgroundColor: '#fffbeb', 
+                        color: '#b45309', 
+                        border: '1px solid #fde68a',
+                        borderRadius: '6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="View & Change User Password"
+                    >
+                      <KeyRound size={14} /> Change Password
+                    </button>
+                  </div>
                 </td>
               </tr>
             );
@@ -135,6 +161,10 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
 
       {editingUser && (
         <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} />
+      )}
+
+      {passwordUser && (
+        <ChangePasswordModal user={passwordUser} onClose={() => setPasswordUser(null)} />
       )}
     </div>
   );

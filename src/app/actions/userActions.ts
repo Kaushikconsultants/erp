@@ -67,6 +67,7 @@ export async function createUser(formData: FormData) {
     });
 
     revalidatePath("/settings");
+    revalidatePath("/settings/roles");
     return { success: true };
   } catch (error: any) {
     console.error("Failed to create user:", error);
@@ -79,26 +80,55 @@ export async function updateUser(id: string, formData: FormData) {
   const canManageSettings = formData.get("canManageSettings") === "true";
   const isActive = formData.get("isActive") === "true";
   const allowedSections = formData.get("allowedSections") as string;
+  const newPassword = formData.get("newPassword") as string;
 
   if (!id) {
     return { error: "User ID is required" };
   }
 
   try {
+    const updateData: any = {
+      role,
+      canManageSettings,
+      isActive,
+      allowedSections: allowedSections || null
+    };
+
+    if (newPassword && newPassword.trim().length >= 4) {
+      updateData.password = await bcrypt.hash(newPassword.trim(), 10);
+    }
+
     await prisma.user.update({
       where: { id },
-      data: {
-        role,
-        canManageSettings,
-        isActive,
-        allowedSections: allowedSections || null
-      },
+      data: updateData,
     });
 
     revalidatePath("/settings");
+    revalidatePath("/settings/roles");
     return { success: true };
   } catch (error: any) {
     console.error("Failed to update user:", error);
     return { error: error?.message || "Failed to update user. Please try again." };
+  }
+}
+
+export async function updateUserPassword(userId: string, newPassword: string) {
+  if (!userId || !newPassword || newPassword.trim().length < 4) {
+    return { error: "Password must be at least 4 characters long" };
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+
+    revalidatePath("/settings");
+    revalidatePath("/settings/roles");
+    return { success: true, message: "User password updated successfully!" };
+  } catch (error: any) {
+    console.error("Failed to update password:", error);
+    return { error: error?.message || "Failed to update password. Please try again." };
   }
 }
