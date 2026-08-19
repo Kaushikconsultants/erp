@@ -78,7 +78,10 @@ export async function parseVoiceIntent(spokenText: string): Promise<VoiceIntentR
       }
     });
 
-    const text = response.text || "{}";
+    let text = response.text || "{}";
+    // Clean up any markdown code blocks Gemini might have added
+    text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
     const parsed = JSON.parse(text);
 
     return {
