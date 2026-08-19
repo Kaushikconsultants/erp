@@ -73,16 +73,17 @@ export default function ConvertQuotationBtn({ quotationId }: { quotationId: stri
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '8px 16px',
-          borderRadius: '8px',
-          fontSize: '0.85rem',
+          gap: '5px',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          fontSize: '0.8rem',
           fontWeight: 700,
-          backgroundColor: '#059669',
+          background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
           color: '#ffffff',
           border: 'none',
           cursor: loading ? 'not-allowed' : 'pointer',
           boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)',
+          whiteSpace: 'nowrap',
           transition: 'all 0.15s ease'
         }}
       >
@@ -90,7 +91,7 @@ export default function ConvertQuotationBtn({ quotationId }: { quotationId: stri
           "Processing..."
         ) : (
           <>
-            <ShieldCheck size={16} /> Confirm & Process to Order <ArrowRight size={14} />
+            <CheckCircle2 size={14} /> Confirm Order
           </>
         )}
       </button>
