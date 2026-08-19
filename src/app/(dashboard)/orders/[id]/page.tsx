@@ -321,6 +321,16 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   <span>Total Amount:</span>
                   <span>₹{order.totalValue.toLocaleString('en-IN')}</span>
                 </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 700, color: '#16a34a', marginTop: '6px' }}>
+                  <span>Payment / Token Received:</span>
+                  <span>₹{order.paymentReceived.toLocaleString('en-IN')}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', fontWeight: 700, color: order.outstandingAmount > 0 ? '#dc2626' : '#16a34a', marginTop: '4px' }}>
+                  <span>Balance Outstanding:</span>
+                  <span>₹{order.outstandingAmount.toLocaleString('en-IN')}</span>
+                </div>
               </div>
             </div>
 

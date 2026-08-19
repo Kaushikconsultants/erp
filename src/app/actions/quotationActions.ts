@@ -607,6 +607,7 @@ export async function convertQuotationToOrder(
         igst: quotation.igst,
         isInterstate: quotation.isInterstate,
         placeOfSupply: quotation.placeOfSupply,
+        paymentReceived: effectiveReceived,
         outstandingAmount: Math.max(0, quotation.totalValue - effectiveReceived),
         orderStatus: "Processing",
         paymentStatus: overridePaymentStatus,
@@ -631,12 +632,13 @@ export async function convertQuotationToOrder(
       where: { id: quotationId },
       data: { 
         status: "Converted",
+        receivedAmount: effectiveReceived,
         activities: {
           create: {
             userId,
             userName,
             action: "Converted to Order",
-            details: `Converted to Sales Order ${orderNumber}`
+            details: `Converted to Sales Order ${orderNumber} with Payment Received ₹${effectiveReceived}`
           }
         }
       }
