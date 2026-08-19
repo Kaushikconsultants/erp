@@ -53,6 +53,28 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Global Bold Typography Enforcer */
+body.global-bold-text,
+body.global-bold-text p,
+body.global-bold-text span,
+body.global-bold-text div,
+body.global-bold-text a,
+body.global-bold-text td,
+body.global-bold-text th,
+body.global-bold-text label,
+body.global-bold-text input,
+body.global-bold-text select,
+body.global-bold-text textarea,
+body.global-bold-text button,
+body.global-bold-text h1,
+body.global-bold-text h2,
+body.global-bold-text h3,
+body.global-bold-text h4,
+body.global-bold-text h5,
+body.global-bold-text h6 {
+  font-weight: 700 !important;
+}
+
 a {
   color: inherit;
   text-decoration: none;

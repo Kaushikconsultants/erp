@@ -38,14 +38,14 @@ export default async function SettingsPage() {
       </div>
 
       <div className="settings-grid">
+        <SettingsMenu />
+
         <div className="glass-panel settings-card full-width">
           <h3>User Management</h3>
           <p className="section-desc">Create and manage access for employees across the application.</p>
           
           <UserManagementTable initialUsers={users} />
         </div>
-
-        <SettingsMenu />
       </div>
     </div>
   );
