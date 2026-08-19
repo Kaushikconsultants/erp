@@ -45,42 +45,59 @@ export default function WorkflowsPage() {
   };
 
   if (loading) {
-    return <div className="p-8 text-center text-slate-500 animate-pulse">Loading workflow engine...</div>;
+    return (
+      <div style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>
+        Loading workflow engine...
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto p-6">
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '28px' }}>
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-6">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Zap className="text-amber-500" />
+          <h1 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Zap style={{ color: '#f59e0b' }} size={26} />
             Automated Workflows & Omnichannel Rules
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '4px' }}>
             Configure automated CRM triggers, WhatsApp reminders, and background sales rep tasks.
           </p>
         </div>
         <button
           onClick={handleRunNow}
           disabled={executing}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm rounded-xl shadow-md transition flex items-center gap-2 self-start md:self-auto"
+          style={{
+            padding: '10px 18px',
+            backgroundColor: '#4f46e5',
+            color: '#ffffff',
+            fontWeight: '600',
+            fontSize: '0.875rem',
+            borderRadius: '10px',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            cursor: executing ? 'not-allowed' : 'pointer',
+            opacity: executing ? 0.6 : 1,
+            boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)',
+            transition: 'background-color 0.2s'
+          }}
         >
-          {executing ? <RefreshCw className="animate-spin" size={16} /> : <Play size={16} />}
+          {executing ? <RefreshCw style={{ animation: 'spin 1s linear infinite' }} size={16} /> : <Play size={16} />}
           {executing ? "Evaluating Rules..." : "Run Workflows Now"}
         </button>
       </div>
 
       {/* Manual Execution Banner */}
       {execResult && (
-        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-emerald-900 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="text-emerald-600" size={24} />
-            <div>
-              <div className="font-bold text-sm">Automated Rules Executed Successfully!</div>
-              <div className="text-xs text-emerald-700">
-                Processed {execResult.processedCount || 0} overdue invoices &bull; Sent {execResult.remindersSent || 0} WhatsApp reminders &bull; Created {execResult.tasksCreated || 0} tasks
-              </div>
+        <div style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', padding: '16px 20px', borderRadius: '12px', color: '#065f46', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <CheckCircle2 style={{ color: '#059669', flexShrink: 0 }} size={24} />
+          <div>
+            <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>Automated Rules Executed Successfully!</div>
+            <div style={{ fontSize: '0.825rem', marginTop: '2px', color: '#047857' }}>
+              Processed {execResult.processedCount || 0} overdue invoices &bull; Sent {execResult.remindersSent || 0} WhatsApp reminders &bull; Created {execResult.tasksCreated || 0} follow-up tasks
             </div>
           </div>
         </div>
@@ -88,37 +105,37 @@ export default function WorkflowsPage() {
 
       {/* Active Rules Grid */}
       <div>
-        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <Sliders size={20} className="text-indigo-600" />
+        <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Sliders size={20} style={{ color: '#4f46e5' }} />
           Active Automation Triggers
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
           {rules.map((rule) => (
-            <div key={rule.id} className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm flex flex-col justify-between gap-4">
+            <div key={rule.id} style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', padding: '20px', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '16px' }}>
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md uppercase tracking-wider">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '3px 10px', backgroundColor: '#eef2ff', color: '#4338ca', border: '1px solid #c7d2fe', borderRadius: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {rule.trigger}
                   </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
+                  <label style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={rule.isActive}
                       onChange={() => handleToggle(rule.id, rule.isActive)}
-                      className="sr-only peer"
+                      style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: '#4f46e5' }}
                     />
-                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                   </label>
                 </div>
-                <h3 className="font-bold text-slate-900">{rule.name}</h3>
-                <p className="text-xs text-slate-500 mt-1">{rule.description}</p>
+                <h3 style={{ fontSize: '1rem', fontWeight: '700', color: '#0f172a', marginBottom: '4px' }}>{rule.name}</h3>
+                <p style={{ fontSize: '0.825rem', color: '#64748b', lineHeight: '1.4' }}>{rule.description}</p>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                <span className="flex items-center gap-1">
-                  <ShieldCheck size={14} className="text-emerald-500" /> Auto-Enforced
+              <div style={{ paddingTop: '12px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#059669', fontWeight: '600' }}>
+                  <ShieldCheck size={14} /> Auto-Enforced
                 </span>
-                <span>Action: {rule.action}</span>
+                <span style={{ fontWeight: '500' }}>Action: {rule.action}</span>
               </div>
             </div>
           ))}
@@ -127,50 +144,53 @@ export default function WorkflowsPage() {
 
       {/* Communication Log Table */}
       <div>
-        <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
-          <MessageSquare size={20} className="text-emerald-600" />
+        <h2 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <MessageSquare size={20} style={{ color: '#059669' }} />
           Omnichannel Message History
         </h2>
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+
+        <div style={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           {logs.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm">
+            <div style={{ padding: '32px', textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem' }}>
               No WhatsApp or SMS communication logs recorded yet. Click "Run Workflows Now" above to trigger rules!
             </div>
           ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="p-4">Channel</th>
-                  <th className="p-4">Recipient</th>
-                  <th className="p-4">Message</th>
-                  <th className="p-4">Trigger</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Sent At</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
-                {logs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-50 transition">
-                    <td className="p-4">
-                      <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 font-bold rounded-md text-xs">
-                        {log.type}
-                      </span>
-                    </td>
-                    <td className="p-4 font-semibold text-slate-900">+{log.recipient}</td>
-                    <td className="p-4 text-xs text-slate-600 max-w-xs truncate">{log.message}</td>
-                    <td className="p-4 text-xs font-medium text-slate-500">{log.triggerEvent || "MANUAL"}</td>
-                    <td className="p-4">
-                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-semibold rounded text-xs">
-                        {log.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-xs text-slate-500">
-                      {new Date(log.createdAt).toLocaleString()}
-                    </td>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '0.72rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <th style={{ padding: '12px 16px' }}>Channel</th>
+                    <th style={{ padding: '12px 16px' }}>Recipient</th>
+                    <th style={{ padding: '12px 16px' }}>Message</th>
+                    <th style={{ padding: '12px 16px' }}>Trigger</th>
+                    <th style={{ padding: '12px 16px' }}>Status</th>
+                    <th style={{ padding: '12px 16px' }}>Sent At</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {logs.map((log, idx) => (
+                    <tr key={log.id} style={{ borderBottom: idx === logs.length - 1 ? 'none' : '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '3px 8px', backgroundColor: '#ecfdf5', color: '#047857', fontWeight: '700', borderRadius: '6px', fontSize: '0.75rem' }}>
+                          {log.type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: '600', color: '#0f172a' }}>+{log.recipient}</td>
+                      <td style={{ padding: '12px 16px', color: '#475569', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.message}</td>
+                      <td style={{ padding: '12px 16px', color: '#64748b', fontSize: '0.8rem' }}>{log.triggerEvent || "MANUAL"}</td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{ padding: '2px 8px', backgroundColor: '#dcfce7', color: '#15803d', fontWeight: '600', borderRadius: '4px', fontSize: '0.75rem' }}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: '#64748b', fontSize: '0.8rem' }}>
+                        {new Date(log.createdAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>
