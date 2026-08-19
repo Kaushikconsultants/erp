@@ -10,36 +10,36 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }>) {
   const session = await getServerSession(authOptions);
-  const userRole = (session?.user as any)?.role;
-  const canManageSettings = (session?.user as any)?.canManageSettings;
-  const showSettings = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || canManageSettings;
+  
+  let userRole = (session?.user as any)?.role || 'SALES';
+  let canManageSettings = (session?.user as any)?.canManageSettings || false;
+  let allowedSectionsList: string[] | null = null;
 
-  let showAnalytics = false;
-  let showProcurement = false;
-
-  if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
-    showAnalytics = true;
-    showProcurement = true;
-  } else if (session?.user) {
-    const user = await prisma.user.findUnique({
+  if (session?.user) {
+    const dbUser = await prisma.user.findUnique({
       where: { id: (session.user as any).id },
-      include: { roleDef: true }
+      select: { role: true, canManageSettings: true, allowedSections: true }
     });
-    if (user?.roleDef?.permissions) {
-      try {
-        const perms = JSON.parse(user.roleDef.permissions);
-        if (perms.includes("View Analytics")) showAnalytics = true;
-        if (
-          perms.includes("Manage Procurement") ||
-          perms.includes("Manage Vendors") ||
-          perms.includes("Manage Purchases") ||
-          perms.includes("Manage Warehouses")
-        ) {
-          showProcurement = true;
-        }
-      } catch (e) {}
+
+    if (dbUser) {
+      userRole = dbUser.role;
+      canManageSettings = dbUser.canManageSettings;
+      if (dbUser.allowedSections) {
+        try {
+          if (dbUser.allowedSections.startsWith('[')) {
+            allowedSectionsList = JSON.parse(dbUser.allowedSections);
+          } else {
+            allowedSectionsList = dbUser.allowedSections.split(',').map(s => s.trim());
+          }
+        } catch {}
+      }
     }
   }
+
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+  const showSettings = isSuperOrAdmin || canManageSettings;
+  const showAnalytics = isSuperOrAdmin || (allowedSectionsList ? allowedSectionsList.includes('reports') : true);
+  const showProcurement = isSuperOrAdmin || (allowedSectionsList ? allowedSectionsList.includes('procurement') : true);
 
   return (
     <DashboardShell 
@@ -47,6 +47,7 @@ export default async function DashboardLayout({
       showAnalytics={showAnalytics}
       showProcurement={showProcurement}
       userRole={userRole}
+      allowedSections={allowedSectionsList}
     >
       {children}
     </DashboardShell>

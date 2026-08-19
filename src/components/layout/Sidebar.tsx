@@ -32,16 +32,43 @@ interface SidebarProps {
   showAnalytics?: boolean;
   showProcurement?: boolean;
   userRole?: string;
+  allowedSections?: string[] | null;
   onClose?: () => void;
 }
 
-const Sidebar = ({ showSettings = false, showAnalytics = true, showProcurement = false, userRole, onClose }: SidebarProps) => {
+const Sidebar = ({ 
+  showSettings = false, 
+  showAnalytics = true, 
+  showProcurement = false, 
+  userRole, 
+  allowedSections = null,
+  onClose 
+}: SidebarProps) => {
   const pathname = usePathname();
 
   const isActive = (path: string) => {
     if (path === '/' && pathname !== '/') return false;
     return pathname.startsWith(path);
   };
+
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
+  const canAccess = (sectionKey: string): boolean => {
+    if (isSuperOrAdmin) return true;
+    if (!allowedSections || allowedSections.length === 0) {
+      // Default Role Fallbacks if no custom allowedSections specified
+      if (userRole === 'DISPATCH') return ['dispatches'].includes(sectionKey);
+      if (userRole === 'SALES') return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
+      if (userRole === 'HR') return ['dashboard', 'hrms'].includes(sectionKey);
+      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms'].includes(sectionKey);
+      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'procurement', 'dispatches'].includes(sectionKey);
+      if (userRole === 'PURCHASE') return ['dashboard', 'procurement', 'products'].includes(sectionKey);
+      if (userRole === 'SUPPORT') return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);
+      return true;
+    }
+    return allowedSections.includes(sectionKey);
+  };
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -51,71 +78,88 @@ const Sidebar = ({ showSettings = false, showAnalytics = true, showProcurement =
         <button className="mobile-close-btn" onClick={onClose}>×</button>
       </div>
       
-      {userRole === 'DISPATCH' ? (
-        <nav className="sidebar-nav">
+      <nav className="sidebar-nav">
+        {/* MAIN SECTION */}
+        {canAccess('dashboard') && (
           <div className="nav-section">
-            <p className="nav-section-title">DISPATCH PIPELINE</p>
-            <Link href="/dispatches" className={`nav-item ${isActive('/dispatches') ? 'active' : ''}`}>
-              <Truck size={20} />
-              <span>Dispatches Board</span>
+            <p className="nav-section-title">MAIN</p>
+            <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
+              <LayoutDashboard size={20} />
+              <span>Dashboard</span>
             </Link>
           </div>
-        </nav>
-      ) : (
-        <nav className="sidebar-nav">
+        )}
+
+        {/* CRM SECTION */}
+        {(canAccess('customers') || canAccess('calls_tasks')) && (
           <div className="nav-section">
-          <p className="nav-section-title">MAIN</p>
-          <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
-            <LayoutDashboard size={20} />
-            <span>Dashboard</span>
-          </Link>
-        </div>
+            <p className="nav-section-title">CRM & CLIENTS</p>
+            {canAccess('customers') && (
+              <Link href="/customers" className={`nav-item ${isActive('/customers') ? 'active' : ''}`}>
+                <Users size={20} />
+                <span>Customers</span>
+              </Link>
+            )}
+            {canAccess('calls_tasks') && (
+              <>
+                <Link href="/calls" className={`nav-item ${isActive('/calls') ? 'active' : ''}`}>
+                  <PhoneCall size={20} />
+                  <span>Calls & Follow-ups</span>
+                </Link>
+                <Link href="/tasks" className={`nav-item ${isActive('/tasks') ? 'active' : ''}`}>
+                  <CheckSquare size={20} />
+                  <span>Tasks</span>
+                </Link>
+              </>
+            )}
+          </div>
+        )}
 
-        <div className="nav-section">
-          <p className="nav-section-title">CRM</p>
-          <Link href="/customers" className={`nav-item ${isActive('/customers') ? 'active' : ''}`}>
-            <Users size={20} />
-            <span>Customers</span>
-          </Link>
-          <Link href="/calls" className={`nav-item ${isActive('/calls') ? 'active' : ''}`}>
-            <PhoneCall size={20} />
-            <span>Calls & Follow-ups</span>
-          </Link>
-          <Link href="/tasks" className={`nav-item ${isActive('/tasks') ? 'active' : ''}`}>
-            <CheckSquare size={20} />
-            <span>Tasks</span>
-          </Link>
-        </div>
+        {/* SALES SECTION */}
+        {(canAccess('orders') || canAccess('quotations') || canAccess('invoices') || canAccess('payments') || canAccess('products') || canAccess('dispatches')) && (
+          <div className="nav-section">
+            <p className="nav-section-title">SALES & DISPATCH</p>
+            {canAccess('orders') && (
+              <Link href="/orders" className={`nav-item ${isActive('/orders') ? 'active' : ''}`}>
+                <ShoppingCart size={20} />
+                <span>Orders</span>
+              </Link>
+            )}
+            {canAccess('quotations') && (
+              <Link href="/quotations" className={`nav-item ${isActive('/quotations') ? 'active' : ''}`}>
+                <FileSpreadsheet size={20} />
+                <span>Quotations</span>
+              </Link>
+            )}
+            {canAccess('invoices') && (
+              <Link href="/invoices" className={`nav-item ${isActive('/invoices') ? 'active' : ''}`}>
+                <Receipt size={20} />
+                <span>Invoices</span>
+              </Link>
+            )}
+            {canAccess('payments') && (
+              <Link href="/payments" className={`nav-item ${isActive('/payments') ? 'active' : ''}`}>
+                <Wallet size={20} />
+                <span>Payments</span>
+              </Link>
+            )}
+            {canAccess('products') && (
+              <Link href="/products" className={`nav-item ${isActive('/products') ? 'active' : ''}`}>
+                <Package size={20} />
+                <span>Products</span>
+              </Link>
+            )}
+            {canAccess('dispatches') && (
+              <Link href="/dispatches" className={`nav-item ${isActive('/dispatches') ? 'active' : ''}`}>
+                <Truck size={20} />
+                <span>Dispatches</span>
+              </Link>
+            )}
+          </div>
+        )}
 
-        <div className="nav-section">
-          <p className="nav-section-title">SALES</p>
-          <Link href="/orders" className={`nav-item ${isActive('/orders') ? 'active' : ''}`}>
-            <ShoppingCart size={20} />
-            <span>Orders</span>
-          </Link>
-          <Link href="/quotations" className={`nav-item ${isActive('/quotations') ? 'active' : ''}`}>
-            <FileSpreadsheet size={20} />
-            <span>Quotations</span>
-          </Link>
-          <Link href="/invoices" className={`nav-item ${isActive('/invoices') ? 'active' : ''}`}>
-            <Receipt size={20} />
-            <span>Invoices</span>
-          </Link>
-          <Link href="/payments" className={`nav-item ${isActive('/payments') ? 'active' : ''}`}>
-            <Wallet size={20} />
-            <span>Payments</span>
-          </Link>
-          <Link href="/products" className={`nav-item ${isActive('/products') ? 'active' : ''}`}>
-            <Package size={20} />
-            <span>Products</span>
-          </Link>
-          <Link href="/dispatches" className={`nav-item ${isActive('/dispatches') ? 'active' : ''}`}>
-            <Truck size={20} />
-            <span>Dispatches</span>
-          </Link>
-        </div>
-
-        {showProcurement && (
+        {/* PROCUREMENT SECTION */}
+        {(showProcurement || canAccess('procurement')) && canAccess('procurement') && (
           <div className="nav-section">
             <p className="nav-section-title">PROCUREMENT</p>
             <Link href="/vendors" className={`nav-item ${isActive('/vendors') ? 'active' : ''}`}>
@@ -133,59 +177,65 @@ const Sidebar = ({ showSettings = false, showAnalytics = true, showProcurement =
           </div>
         )}
 
-        <div className="nav-section">
-          <p className="nav-section-title">HRMS</p>
-          <Link href="/payroll" className={`nav-item ${isActive('/payroll') ? 'active' : ''}`}>
-            <Banknote size={20} />
-            <span>Payroll</span>
-          </Link>
-          <Link href="/attendance" className={`nav-item ${isActive('/attendance') ? 'active' : ''}`}>
-            <CalendarDays size={20} />
-            <span>Attendance</span>
-          </Link>
-          <Link href="/expenses" className={`nav-item ${isActive('/expenses') ? 'active' : ''}`}>
-            <ClipboardList size={20} />
-            <span>Expenses</span>
-          </Link>
-          <Link href="/leaves" className={`nav-item ${isActive('/leaves') ? 'active' : ''}`}>
-            <CheckSquare size={20} />
-            <span>Leaves</span>
-          </Link>
-          <Link href="/hiring" className={`nav-item ${isActive('/hiring') ? 'active' : ''}`}>
-            <Users size={20} />
-            <span>Hiring & Interviews</span>
-          </Link>
-        </div>
-
-        <div className={`nav-section ${userRole === 'DISPATCH' ? 'hidden' : ''}`}>
-          <p className="nav-section-title">REPORTS</p>
-          {showAnalytics && (
-            <Link href="/analytics" className={`nav-item ${isActive('/analytics') ? 'active' : ''}`}>
-              <BarChart3 size={20} />
-              <span>Analytics</span>
+        {/* HRMS SECTION */}
+        {canAccess('hrms') && (
+          <div className="nav-section">
+            <p className="nav-section-title">HRMS</p>
+            <Link href="/payroll" className={`nav-item ${isActive('/payroll') ? 'active' : ''}`}>
+              <Banknote size={20} />
+              <span>Payroll</span>
             </Link>
-          )}
-          <Link href="/reports" className={`nav-item ${isActive('/reports') ? 'active' : ''}`}>
-            <FileSpreadsheet size={20} />
-            <span>Reports Center</span>
-          </Link>
-          <Link href="/settings/workflows" className={`nav-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
-            <Zap size={20} />
-            <span>AI Workflows</span>
-          </Link>
-          <Link href="/settings/audit-logs" className={`nav-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
-            <ShieldCheck size={20} />
-            <span>Audit Logs</span>
-          </Link>
-        </div>
-      </nav>
-      )}
+            <Link href="/attendance" className={`nav-item ${isActive('/attendance') ? 'active' : ''}`}>
+              <CalendarDays size={20} />
+              <span>Attendance</span>
+            </Link>
+            <Link href="/expenses" className={`nav-item ${isActive('/expenses') ? 'active' : ''}`}>
+              <ClipboardList size={20} />
+              <span>Expenses</span>
+            </Link>
+            <Link href="/leaves" className={`nav-item ${isActive('/leaves') ? 'active' : ''}`}>
+              <CheckSquare size={20} />
+              <span>Leaves</span>
+            </Link>
+            <Link href="/hiring" className={`nav-item ${isActive('/hiring') ? 'active' : ''}`}>
+              <Users size={20} />
+              <span>Hiring & Interviews</span>
+            </Link>
+          </div>
+        )}
 
-      {showSettings && userRole !== 'DISPATCH' && (
+        {/* REPORTS & ANALYTICS SECTION */}
+        {canAccess('reports') && (
+          <div className="nav-section">
+            <p className="nav-section-title">REPORTS & INTELLIGENCE</p>
+            {showAnalytics && (
+              <Link href="/analytics" className={`nav-item ${isActive('/analytics') ? 'active' : ''}`}>
+                <BarChart3 size={20} />
+                <span>Analytics</span>
+              </Link>
+            )}
+            <Link href="/reports" className={`nav-item ${isActive('/reports') ? 'active' : ''}`}>
+              <FileSpreadsheet size={20} />
+              <span>Reports Center</span>
+            </Link>
+            <Link href="/settings/workflows" className={`nav-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
+              <Zap size={20} />
+              <span>AI Workflows</span>
+            </Link>
+            <Link href="/settings/audit-logs" className={`nav-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
+              <ShieldCheck size={20} />
+              <span>Audit Logs</span>
+            </Link>
+          </div>
+        )}
+      </nav>
+
+      {/* SETTINGS FOOTER */}
+      {(showSettings || canAccess('settings')) && canAccess('settings') && (
         <div className="sidebar-footer">
           <Link href="/settings" className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
             <Settings size={20} />
-            <span>Settings</span>
+            <span>Settings & Admin</span>
           </Link>
         </div>
       )}

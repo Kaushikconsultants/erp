@@ -8,9 +8,35 @@ interface AddUserModalProps {
   onClose: () => void;
 }
 
+const ALL_SECTIONS = [
+  { id: 'dashboard', label: '📊 Main Dashboard', desc: 'Overview metrics & executive summary' },
+  { id: 'customers', label: '👥 Customers & CRM', desc: 'Customer accounts, profiles & details' },
+  { id: 'calls_tasks', label: '📞 Calls & Tasks', desc: 'Call logs, follow-ups & task management' },
+  { id: 'orders', label: '🛒 Sales Orders', desc: 'Order creation, status & details' },
+  { id: 'quotations', label: '📋 Quotations', desc: 'Estimate pipeline & quote creation' },
+  { id: 'invoices', label: '🧾 Invoices & Billing', desc: 'Tax invoices & billing document section' },
+  { id: 'payments', label: '💳 Payments', desc: 'Payment tracking & received amounts' },
+  { id: 'products', label: '📦 Products Catalog', desc: 'Item pricing, SKU & product management' },
+  { id: 'dispatches', label: '🚚 Dispatches', desc: 'Shipping pipeline & delivery tracking' },
+  { id: 'procurement', label: '🏬 Procurement', desc: 'Vendors, purchase orders & warehouses' },
+  { id: 'hrms', label: '💼 HRMS & Payroll', desc: 'Payroll, attendance, expenses, leaves & hiring' },
+  { id: 'reports', label: '📈 Reports & Analytics', desc: 'Analytics charts, reports center & audit logs' },
+  { id: 'settings', label: '⚙️ Settings & Admin', desc: 'System settings, roles & user management' }
+];
+
 export default function AddUserModal({ onClose }: AddUserModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedSections, setSelectedSections] = useState<string[]>(ALL_SECTIONS.map(s => s.id));
+
+  const toggleSection = (id: string) => {
+    setSelectedSections(prev => 
+      prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
+    );
+  };
+
+  const selectAll = () => setSelectedSections(ALL_SECTIONS.map(s => s.id));
+  const deselectAll = () => setSelectedSections([]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -18,62 +44,125 @@ export default function AddUserModal({ onClose }: AddUserModalProps) {
     setError("");
 
     const formData = new FormData(e.currentTarget);
+    formData.set("allowedSections", JSON.stringify(selectedSections));
+    
     const result = await createUser(formData);
 
     if (result?.error) {
       setError(result.error);
       setLoading(false);
     } else {
-      onClose(); // Close modal on success (revalidatePath will refresh data)
+      onClose();
     }
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-content glass-panel animate-in">
-        <div className="modal-header">
-          <h2>Add New User</h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+    <div className="modal-backdrop" style={{ overflowY: 'auto', padding: '20px 10px' }}>
+      <div className="modal-content glass-panel animate-in" style={{ maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div className="modal-header" style={{ paddingBottom: '16px', borderBottom: '1px solid #e2e8f0' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Add New Software User</h2>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>Create user credentials, assign role, and set section access permissions.</p>
+          </div>
+          <button type="button" className="close-btn" onClick={onClose}>×</button>
         </div>
         
-        <form onSubmit={handleSubmit} className="modal-body">
-          {error && <div className="error-message">{error}</div>}
+        <form onSubmit={handleSubmit} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '16px' }}>
+          {error && <div className="error-message" style={{ padding: '10px', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '6px', fontSize: '0.85rem' }}>{error}</div>}
           
-          <div className="form-group">
-            <label>Full Name</label>
-            <input type="text" name="name" required placeholder="John Doe" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '0.85rem', color: '#334155' }}>Full Name *</label>
+              <input type="text" name="name" required placeholder="John Doe" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '0.85rem', color: '#334155' }}>Email Address *</label>
+              <input type="email" name="email" required placeholder="john@espon.in" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '0.85rem', color: '#334155' }}>Password *</label>
+              <input type="password" name="password" required placeholder="Temporary password" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+            </div>
+
+            <div className="form-group">
+              <label style={{ fontWeight: 600, fontSize: '0.85rem', color: '#334155' }}>Monthly Base Salary (₹)</label>
+              <input type="number" name="salary" min="0" step="500" placeholder="e.g. 35000" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+            </div>
           </div>
 
           <div className="form-group">
-            <label>Email Address</label>
-            <input type="email" name="email" required placeholder="john@company.com" />
-          </div>
-
-          <div className="form-group">
-            <label>Password</label>
-            <input type="password" name="password" required placeholder="Temporary password" />
-          </div>
-
-          <div className="form-group">
-            <label>Role</label>
-            <select name="role" required>
-              <option value="SALES">Sales Executive</option>
-              <option value="MANAGER">Manager / Team Leader</option>
-              <option value="HR">HR / Admin Staff</option>
-              <option value="ADMIN">Admin</option>
-              <option value="SUPER_ADMIN">Super Admin</option>
+            <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>Department Role *</label>
+            <select name="role" required style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', backgroundColor: '#f8fafc' }}>
+              <option value="SALES">💼 Sales Executive / CRM</option>
+              <option value="MANAGER">👔 Operations Manager</option>
+              <option value="DISPATCH">🚚 Dispatch & Logistics Team</option>
+              <option value="ACCOUNTS">💰 Accounts & Finance Team</option>
+              <option value="HR">👥 HR & Recruitment Manager</option>
+              <option value="WAREHOUSE">🏬 Warehouse & Stock Manager</option>
+              <option value="PURCHASE">🛒 Purchase & Procurement</option>
+              <option value="SUPPORT">📞 Customer Support & Calls</option>
+              <option value="ADMIN">🛡️ Admin (System Administrator)</option>
+              <option value="SUPER_ADMIN">👑 Super Admin (Full Unrestricted Access)</option>
+              <option value="CLIENT">🌐 Portal Client / Partner</option>
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Monthly Base Salary (₹)</label>
-            <input type="number" name="salary" min="0" step="500" placeholder="e.g. 35000" />
+          {/* SECTION VISIBILITY CONTROL */}
+          <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div>
+                <label style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem', margin: 0 }}>
+                  Allowed Section Access (Admin Controls)
+                </label>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                  Check sections this user can access in software navigation:
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button type="button" onClick={selectAll} style={{ background: 'none', border: 'none', color: 'var(--accent-primary, #4f46e5)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Select All</button>
+                <span style={{ color: '#cbd5e1' }}>|</span>
+                <button type="button" onClick={deselectAll} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Deselect All</button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
+              {ALL_SECTIONS.map(sec => (
+                <label 
+                  key={sec.id} 
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    padding: '6px 8px',
+                    borderRadius: '6px',
+                    backgroundColor: selectedSections.includes(sec.id) ? '#ffffff' : 'transparent',
+                    border: selectedSections.includes(sec.id) ? '1px solid var(--accent-primary, #cbd5e1)' : '1px solid transparent',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input 
+                    type="checkbox"
+                    checked={selectedSections.includes(sec.id)}
+                    onChange={() => toggleSection(sec.id)}
+                    style={{ marginTop: '2px', accentColor: 'var(--accent-primary, #4f46e5)' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>{sec.label}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{sec.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
-          <div className="modal-footer">
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="primary-btn" disabled={loading}>
-              {loading ? "Creating..." : "Create User"}
+          <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '14px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="btn-secondary" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+            <button type="submit" className="primary-btn" disabled={loading} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: 'var(--accent-primary, #4f46e5)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+              {loading ? "Creating User..." : "Create User"}
             </button>
           </div>
         </form>

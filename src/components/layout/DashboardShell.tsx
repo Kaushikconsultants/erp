@@ -11,9 +11,17 @@ interface DashboardShellProps {
   showAnalytics?: boolean;
   showProcurement?: boolean;
   userRole?: string;
+  allowedSections?: string[] | null;
 }
 
-export default function DashboardShell({ children, showSettings, showAnalytics = true, showProcurement = false, userRole }: DashboardShellProps) {
+export default function DashboardShell({ 
+  children, 
+  showSettings, 
+  showAnalytics = true, 
+  showProcurement = false, 
+  userRole,
+  allowedSections = null
+}: DashboardShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
 
@@ -38,6 +46,7 @@ export default function DashboardShell({ children, showSettings, showAnalytics =
         showAnalytics={showAnalytics}
         showProcurement={showProcurement}
         userRole={userRole}
+        allowedSections={allowedSections}
         onClose={() => setIsSidebarOpen(false)} 
       />
       

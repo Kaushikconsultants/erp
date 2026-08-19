@@ -21,6 +21,7 @@ model User {
   roleDef   Role?    @relation(fields: [roleId], references: [id])
   isActive  Boolean  @default(true)
   canManageSettings Boolean @default(false)
+  allowedSections   String? // Comma-separated or JSON array of section keys allowed for this user
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -9,12 +9,13 @@ export async function createUser(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const role = formData.get("role") as string;
+  const allowedSections = formData.get("allowedSections") as string;
 
   const salaryStr = formData.get("salary") as string;
   const salary = salaryStr ? parseFloat(salaryStr) : null;
 
   if (!name || !email || !password || !role) {
-    return { error: "All fields are required" };
+    return { error: "All required fields must be filled" };
   }
 
   try {
@@ -23,10 +24,12 @@ export async function createUser(formData: FormData) {
     });
 
     if (existingUser) {
-      return { error: "Email already exists" };
+      return { error: "A user with this email address already exists" };
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    const isSuperOrAdmin = role === "SUPER_ADMIN" || role === "ADMIN";
 
     const user = await prisma.user.create({
       data: {
@@ -34,15 +37,30 @@ export async function createUser(formData: FormData) {
         email,
         password: hashedPassword,
         role,
+        canManageSettings: isSuperOrAdmin,
+        allowedSections: allowedSections || null
       },
     });
 
     // Automatically create an employee record for them
+    const departmentMap: Record<string, string> = {
+      HR: "HR & Recruitment",
+      SALES: "Sales & CRM",
+      DISPATCH: "Dispatch & Logistics",
+      ACCOUNTS: "Accounts & Finance",
+      WAREHOUSE: "Warehouse & Stock",
+      PURCHASE: "Purchase & Procurement",
+      SUPPORT: "Customer Support",
+      MANAGER: "Operations Management",
+      ADMIN: "Administration",
+      SUPER_ADMIN: "Executive Leadership"
+    };
+
     await prisma.employee.create({
       data: {
         userId: user.id,
         employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-        department: role === "HR" ? "HR" : role === "SALES" ? "Sales" : "Management",
+        department: departmentMap[role] || "General Operations",
         employmentStatus: "Active",
         salary: salary,
       }
@@ -50,9 +68,9 @@ export async function createUser(formData: FormData) {
 
     revalidatePath("/settings");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to create user:", error);
-    return { error: "Failed to create user. Please try again." };
+    return { error: error?.message || "Failed to create user. Please try again." };
   }
 }
 
@@ -60,6 +78,7 @@ export async function updateUser(id: string, formData: FormData) {
   const role = formData.get("role") as string;
   const canManageSettings = formData.get("canManageSettings") === "true";
   const isActive = formData.get("isActive") === "true";
+  const allowedSections = formData.get("allowedSections") as string;
 
   if (!id) {
     return { error: "User ID is required" };
@@ -72,13 +91,14 @@ export async function updateUser(id: string, formData: FormData) {
         role,
         canManageSettings,
         isActive,
+        allowedSections: allowedSections || null
       },
     });
 
     revalidatePath("/settings");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to update user:", error);
-    return { error: "Failed to update user. Please try again." };
+    return { error: error?.message || "Failed to update user. Please try again." };
   }
 }
