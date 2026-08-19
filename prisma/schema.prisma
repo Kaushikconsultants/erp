@@ -764,4 +764,29 @@ model MobileScanSession {
   updatedAt   DateTime @updatedAt
 }
 
+// ---------------------------------------------------------
+// Omnichannel & Automated Workflows
+// ---------------------------------------------------------
+model CommunicationLog {
+  id           String   @id @default(uuid())
+  type         String   // WHATSAPP, EMAIL, SMS
+  recipient    String
+  message      String
+  status       String   @default("SENT")
+  triggerEvent String?
+  createdAt    DateTime @default(now())
+}
+
+model WorkflowRule {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  trigger     String   // UNPAID_INVOICE_7_DAYS, NEW_ORDER, NEW_LEAD
+  action      String   // SEND_WHATSAPP, CREATE_TASK, SEND_EMAIL
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
 

@@ -21,7 +21,8 @@ import {
   Wallet,
   ClipboardList,
   CalendarDays,
-  ShieldCheck
+  ShieldCheck,
+  Zap
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -163,6 +164,10 @@ const Sidebar = ({ showSettings = false, showAnalytics = true, showProcurement =
           <Link href="/reports" className={`nav-item ${isActive('/reports') ? 'active' : ''}`}>
             <FileSpreadsheet size={20} />
             <span>Reports Center</span>
+          </Link>
+          <Link href="/settings/workflows" className={`nav-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
+            <Zap size={20} />
+            <span>AI Workflows</span>
           </Link>
           <Link href="/settings/audit-logs" className={`nav-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
             <ShieldCheck size={20} />
