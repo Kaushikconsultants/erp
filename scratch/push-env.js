@@ -1,8 +1,7 @@
 const { execSync } = require('child_process');
 
 const envs = {
-  DATABASE_URL: "postgresql://postgres.qhcdojiqfyvawirywwuf:itsMAZIK%2A22@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=10&pool_timeout=15",
-  DIRECT_URL: "postgresql://postgres.qhcdojiqfyvawirywwuf:itsMAZIK%2A22@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres",
+  GEMINI_API_KEY: "00000000000000000000000000000000000000000000000000000",
 };
 
 for (const [key, value] of Object.entries(envs)) {
