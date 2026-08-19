@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { createCandidate } from '@/app/actions/hiringActions';
 
 interface AddCandidateModalProps {
@@ -46,7 +46,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
         backgroundColor: '#ffffff',
         width: '100%',
         maxWidth: '560px',
-        borderRadius: '16px',
+        borderRadius: 'var(--radius-lg, 16px)',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
         overflow: 'hidden',
         border: '1px solid #e2e8f0'
@@ -62,8 +62,8 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
           alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <UserPlus size={20} color="#4f46e5" />
+            <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'var(--accent-light, #e0e7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <UserPlus size={20} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
             </div>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', fontFamily: 'inherit' }}>
@@ -93,7 +93,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
               name="name"
               required
               placeholder="e.g. Anish Sharma"
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
             />
           </div>
 
@@ -107,7 +107,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
                 name="email"
                 required
                 placeholder="anish@example.com"
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
               />
             </div>
             <div>
@@ -118,7 +118,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
                 type="text"
                 name="phone"
                 placeholder="+91 98765 43210"
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
               />
             </div>
           </div>
@@ -133,7 +133,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
                 name="appliedRole"
                 required
                 placeholder="e.g. Senior Sales Manager"
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
               />
             </div>
             <div>
@@ -145,7 +145,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
                 step="0.5"
                 name="experienceYears"
                 placeholder="e.g. 4.5"
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
               />
             </div>
           </div>
@@ -160,7 +160,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
                 type="text"
                 name="referenceName"
                 placeholder="e.g. Rahul Verma / Agency / Self"
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
               />
             </div>
             <div>
@@ -171,7 +171,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
                 type="text"
                 name="expectedSalary"
                 placeholder="e.g. ₹12,00,000 PA"
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
               />
             </div>
           </div>
@@ -184,7 +184,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
               type="url"
               name="resumeUrl"
               placeholder="https://drive.google.com/..."
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', outline: 'none', backgroundColor: '#ffffff' }}
             />
           </div>
 
@@ -195,7 +195,7 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
               onClick={onClose}
               style={{
                 padding: '9px 18px',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-md, 8px)',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
                 color: '#475569',
@@ -211,14 +211,14 @@ export default function AddCandidateModal({ isOpen, onClose, onSuccess }: AddCan
               disabled={loading}
               style={{
                 padding: '9px 20px',
-                borderRadius: '8px',
-                backgroundColor: '#4f46e5',
+                borderRadius: 'var(--radius-md, 8px)',
+                backgroundColor: 'var(--accent-primary, #4f46e5)',
                 color: '#ffffff',
                 border: 'none',
                 fontWeight: 600,
                 fontSize: '0.85rem',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)'
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
               }}
             >
               {loading ? "Adding..." : "Add Candidate"}

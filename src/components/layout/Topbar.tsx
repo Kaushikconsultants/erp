@@ -1,11 +1,11 @@
 "use client";
+
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, LogOut, Settings, Menu, Palette } from 'lucide-react';
+import { Bell, Search, User, LogOut, Settings, Menu } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
-import ThemeSettingsModal from '@/components/ui/ThemeSettingsModal';
 import './Topbar.css';
 
 interface TopbarProps {
@@ -15,7 +15,6 @@ interface TopbarProps {
 const Topbar = ({ onMenuClick }: TopbarProps) => {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || 'Loading...';
@@ -46,29 +45,6 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
       </div>
 
       <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        
-        {/* QUICK THEME & APPEARANCE BUTTON */}
-        <button
-          onClick={() => setIsThemeModalOpen(true)}
-          title="Appearance & Theme Settings"
-          style={{
-            background: 'var(--accent-light, #e0e7ff)',
-            border: '1px solid var(--border, #e2e8f0)',
-            color: 'var(--accent-primary, #4f46e5)',
-            cursor: 'pointer',
-            padding: '8px 12px',
-            borderRadius: 'var(--radius-md, 8px)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            fontSize: '0.8rem',
-            fontWeight: 600
-          }}
-        >
-          <Palette size={16} />
-          <span>Theme</span>
-        </button>
-
         <NotificationBell />
         
         <div className="user-profile-container" ref={dropdownRef}>
@@ -92,13 +68,6 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
                 <span className="dropdown-email">{session?.user?.email}</span>
               </div>
               <div className="dropdown-divider"></div>
-              <button 
-                className="dropdown-item" 
-                onClick={() => { setIsDropdownOpen(false); setIsThemeModalOpen(true); }}
-              >
-                <Palette size={16} />
-                <span>Appearance & Theme</span>
-              </button>
               <Link href="/profile" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
                 <Settings size={16} />
                 <span>My Profile</span>
@@ -117,10 +86,6 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
           )}
         </div>
       </div>
-
-      {isThemeModalOpen && (
-        <ThemeSettingsModal onClose={() => setIsThemeModalOpen(false)} />
-      )}
     </header>
   );
 };

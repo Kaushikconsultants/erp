@@ -2,12 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  X, 
   Star, 
   UserCheck, 
   CheckCircle2, 
-  ShieldCheck,
-  User
+  ShieldCheck
 } from 'lucide-react';
 import { 
   getQuestionsByRound, 
@@ -160,7 +158,7 @@ export default function InterviewEvaluationModal({
         backgroundColor: '#ffffff',
         width: '100%',
         maxWidth: '850px',
-        borderRadius: '16px',
+        borderRadius: 'var(--radius-lg, 16px)',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
         overflow: 'hidden',
         border: '1px solid #e2e8f0',
@@ -180,7 +178,7 @@ export default function InterviewEvaluationModal({
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ backgroundColor: '#e0e7ff', color: '#4f46e5', padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+              <span style={{ backgroundColor: 'var(--accent-light, #e0e7ff)', color: 'var(--accent-primary, #4f46e5)', padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', fontSize: '0.75rem', fontWeight: 700 }}>
                 {candidate.candidateNumber}
               </span>
               <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>
@@ -191,7 +189,7 @@ export default function InterviewEvaluationModal({
               <span>Role: <strong style={{ color: '#1e293b' }}>{candidate.appliedRole}</strong></span>
               <span>Exp: <strong style={{ color: '#1e293b' }}>{candidate.experienceYears} yrs</strong></span>
               {candidate.referenceName && (
-                <span style={{ color: '#4f46e5', fontWeight: 600 }}>
+                <span style={{ color: 'var(--accent-primary, #4f46e5)', fontWeight: 600 }}>
                   👤 Referred by: <strong>{candidate.referenceName}</strong>
                 </span>
               )}
@@ -199,7 +197,7 @@ export default function InterviewEvaluationModal({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ textAlign: 'right', backgroundColor: '#f8fafc', padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <div style={{ textAlign: 'right', backgroundColor: '#f8fafc', padding: '6px 12px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #e2e8f0' }}>
               <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</div>
               <div style={{ fontSize: '1rem', fontWeight: 700, color: '#d97706', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 ★ {candidate.overallRating || '0.0'} / 5.0
@@ -229,9 +227,9 @@ export default function InterviewEvaluationModal({
                   flex: 1,
                   padding: '12px 10px',
                   border: 'none',
-                  borderBottom: isActive ? '3px solid #4f46e5' : '3px solid transparent',
+                  borderBottom: isActive ? '3px solid var(--accent-primary, #4f46e5)' : '3px solid transparent',
                   backgroundColor: isActive ? '#ffffff' : 'transparent',
-                  color: isActive ? '#4f46e5' : '#64748b',
+                  color: isActive ? 'var(--accent-primary, #4f46e5)' : '#64748b',
                   fontWeight: isActive ? 700 : 600,
                   fontSize: '0.85rem',
                   cursor: 'pointer',
@@ -252,7 +250,7 @@ export default function InterviewEvaluationModal({
         <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* SECTION 1: ADMIN INTERVIEWER ASSIGNMENT */}
-          <div style={{ padding: '12px 16px', borderRadius: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ padding: '12px 16px', borderRadius: 'var(--radius-md, 8px)', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <UserCheck size={18} color="#16a34a" />
               <div>
@@ -269,7 +267,7 @@ export default function InterviewEvaluationModal({
               <select
                 value={selectedInterviewerId}
                 onChange={(e) => setSelectedInterviewerId(e.target.value)}
-                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #86efac', fontSize: '0.82rem', fontWeight: 600, backgroundColor: '#ffffff', outline: 'none' }}
+                style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm, 6px)', border: '1px solid #86efac', fontSize: '0.82rem', fontWeight: 600, backgroundColor: '#ffffff', outline: 'none' }}
               >
                 <option value="">-- Select Interviewer --</option>
                 {employees.map((emp) => (
@@ -280,7 +278,7 @@ export default function InterviewEvaluationModal({
               </select>
               <button
                 onClick={handleAssignInterviewer}
-                style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
+                style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
               >
                 Assign
               </button>
@@ -293,7 +291,7 @@ export default function InterviewEvaluationModal({
               <h3 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Round {activeRound} Evaluation Rubric (1 - 5 Scale)
               </h3>
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '3px 10px', borderRadius: '6px' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', backgroundColor: 'var(--accent-light, #e0e7ff)', padding: '3px 10px', borderRadius: 'var(--radius-sm, 6px)' }}>
                 Round Score: ★ {liveRoundAvg} / 5.0
               </div>
             </div>
@@ -306,7 +304,7 @@ export default function InterviewEvaluationModal({
                     key={q.id}
                     style={{
                       padding: '14px 16px',
-                      borderRadius: '8px',
+                      borderRadius: 'var(--radius-md, 8px)',
                       border: '1px solid #e2e8f0',
                       backgroundColor: '#ffffff'
                     }}
@@ -314,7 +312,7 @@ export default function InterviewEvaluationModal({
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4f46e5', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
                             Q{idx + 1}
                           </span>
                           <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>
@@ -362,7 +360,7 @@ export default function InterviewEvaluationModal({
                         width: '100%',
                         marginTop: '8px',
                         padding: '7px 10px',
-                        borderRadius: '6px',
+                        borderRadius: 'var(--radius-sm, 6px)',
                         border: '1px solid #cbd5e1',
                         fontSize: '0.8rem',
                         outline: 'none'
@@ -375,7 +373,7 @@ export default function InterviewEvaluationModal({
           </div>
 
           {/* SECTION 3: ROUND RECOMMENDATION & FEEDBACK */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #e2e8f0' }}>
             <h4 style={{ margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
               Round {activeRound} Recommendation & Feedback
             </h4>
@@ -404,7 +402,7 @@ export default function InterviewEvaluationModal({
               placeholder="Overall round assessment notes, candidate strengths, and areas of concern..."
               value={feedbackNotes}
               onChange={(e) => setFeedbackNotes(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm, 6px)', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
             />
 
             <button
@@ -413,8 +411,8 @@ export default function InterviewEvaluationModal({
               style={{
                 marginTop: '10px',
                 padding: '9px 18px',
-                borderRadius: '6px',
-                backgroundColor: '#4f46e5',
+                borderRadius: 'var(--radius-md, 6px)',
+                backgroundColor: 'var(--accent-primary, #4f46e5)',
                 color: '#ffffff',
                 border: 'none',
                 fontWeight: 600,
@@ -430,9 +428,9 @@ export default function InterviewEvaluationModal({
           </div>
 
           {/* SECTION 4: FINAL CONCLUSION & DECISION */}
-          <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}>
+          <div style={{ padding: '16px', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-              <ShieldCheck size={18} color="#4f46e5" />
+              <ShieldCheck size={18} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
               <h3 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>
                 Admin Final Hiring Conclusion & Decision
               </h3>
@@ -467,7 +465,7 @@ export default function InterviewEvaluationModal({
               placeholder="Enter final HR/Admin conclusion notes, salary agreement, and offer decision summary..."
               value={finalConclusionText}
               onChange={(e) => setFinalConclusionText(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: 'var(--radius-sm, 6px)', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
             />
 
             <button
@@ -476,7 +474,7 @@ export default function InterviewEvaluationModal({
               style={{
                 marginTop: '10px',
                 padding: '9px 20px',
-                borderRadius: '6px',
+                borderRadius: 'var(--radius-md, 6px)',
                 backgroundColor: finalDecision === 'HIRED' ? '#16a34a' : '#dc2626',
                 color: '#ffffff',
                 border: 'none',
@@ -497,7 +495,7 @@ export default function InterviewEvaluationModal({
             onClick={onClose}
             style={{
               padding: '8px 18px',
-              borderRadius: '6px',
+              borderRadius: 'var(--radius-md, 6px)',
               border: '1px solid #cbd5e1',
               backgroundColor: '#ffffff',
               color: '#475569',

@@ -91,7 +91,7 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
         backgroundColor: '#ffffff',
         width: '100%',
         maxWidth: '680px',
-        borderRadius: '16px',
+        borderRadius: 'var(--radius-lg, 16px)',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
         overflow: 'hidden',
         border: '1px solid #e2e8f0'
@@ -107,8 +107,8 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
           alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <HelpCircle size={20} color="#4f46e5" />
+            <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'var(--accent-light, #e0e7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <HelpCircle size={20} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
             </div>
             <div>
               <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
@@ -141,9 +141,9 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
                 flex: 1,
                 padding: '12px 10px',
                 border: 'none',
-                borderBottom: selectedRound === tab.id ? '3px solid #4f46e5' : '3px solid transparent',
+                borderBottom: selectedRound === tab.id ? '3px solid var(--accent-primary, #4f46e5)' : '3px solid transparent',
                 backgroundColor: 'transparent',
-                color: selectedRound === tab.id ? '#4f46e5' : '#64748b',
+                color: selectedRound === tab.id ? 'var(--accent-primary, #4f46e5)' : '#64748b',
                 fontWeight: selectedRound === tab.id ? 700 : 600,
                 fontSize: '0.85rem',
                 cursor: 'pointer',
@@ -168,7 +168,7 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
               style={{
                 flex: 1,
                 padding: '9px 12px',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-md, 8px)',
                 border: '1px solid #cbd5e1',
                 fontSize: '0.85rem',
                 color: '#0f172a',
@@ -183,7 +183,7 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
               style={{
                 width: '130px',
                 padding: '9px 12px',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-md, 8px)',
                 border: '1px solid #cbd5e1',
                 fontSize: '0.85rem',
                 color: '#0f172a',
@@ -195,8 +195,8 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
               disabled={loading || !newQuestionText.trim()}
               style={{
                 padding: '9px 16px',
-                borderRadius: '8px',
-                backgroundColor: '#4f46e5',
+                borderRadius: 'var(--radius-md, 8px)',
+                backgroundColor: 'var(--accent-primary, #4f46e5)',
                 color: '#ffffff',
                 border: 'none',
                 fontWeight: 600,
@@ -223,7 +223,7 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
                   key={q.id}
                   style={{
                     padding: '12px 16px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-md, 8px)',
                     border: '1px solid #e2e8f0',
                     backgroundColor: '#ffffff',
                     display: 'flex',
@@ -233,7 +233,7 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1 }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#4f46e5', backgroundColor: '#e0e7ff', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', backgroundColor: 'var(--accent-light, #e0e7ff)', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
                       {idx + 1}
                     </span>
                     {editingId === q.id ? (
@@ -245,7 +245,7 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
                           flex: 1,
                           padding: '6px 10px',
                           borderRadius: '6px',
-                          border: '1px solid #4f46e5',
+                          border: '1px solid var(--accent-primary, #4f46e5)',
                           fontSize: '0.85rem',
                           outline: 'none'
                         }}
@@ -301,8 +301,8 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
             onClick={onClose}
             style={{
               padding: '8px 18px',
-              borderRadius: '8px',
-              backgroundColor: '#4f46e5',
+              borderRadius: 'var(--radius-md, 8px)',
+              backgroundColor: 'var(--accent-primary, #4f46e5)',
               color: '#ffffff',
               border: 'none',
               fontWeight: 600,

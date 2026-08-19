@@ -11,8 +11,7 @@ import {
   Clock, 
   ChevronRight, 
   Award,
-  FileText,
-  UserCheck
+  FileText
 } from 'lucide-react';
 import { getCandidates } from '@/app/actions/hiringActions';
 import ManageQuestionsModal from '@/components/hiring/ManageQuestionsModal';
@@ -79,21 +78,21 @@ export default function HiringPage() {
   const renderStatusBadge = (status: string) => {
     switch (status) {
       case 'NEW':
-        return <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#1d4ed8', fontSize: '0.75rem', fontWeight: 600 }}>NEW APPLICANT</span>;
+        return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: 'var(--accent-light, #eff6ff)', color: 'var(--accent-primary, #1d4ed8)', fontSize: '0.75rem', fontWeight: 600 }}>NEW APPLICANT</span>;
       case 'ROUND_1_PENDING':
-        return <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#fef3c7', color: '#b45309', fontSize: '0.75rem', fontWeight: 600 }}>ROUND 1 (BASIC)</span>;
+        return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#fef3c7', color: '#b45309', fontSize: '0.75rem', fontWeight: 600 }}>ROUND 1 (BASIC)</span>;
       case 'ROUND_1_PASSED':
       case 'ROUND_2_PENDING':
-        return <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#e0e7ff', color: '#4338ca', fontSize: '0.75rem', fontWeight: 600 }}>ROUND 2 (TECH)</span>;
+        return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#e0e7ff', color: '#4338ca', fontSize: '0.75rem', fontWeight: 600 }}>ROUND 2 (TECH)</span>;
       case 'ROUND_2_PASSED':
       case 'ROUND_3_PENDING':
-        return <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#fae8ff', color: '#86198f', fontSize: '0.75rem', fontWeight: 600 }}>ROUND 3 (FINAL)</span>;
+        return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#fae8ff', color: '#86198f', fontSize: '0.75rem', fontWeight: 600 }}>ROUND 3 (FINAL)</span>;
       case 'HIRED':
-        return <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#dcfce7', color: '#15803d', fontSize: '0.75rem', fontWeight: 700 }}>🏆 HIRED</span>;
+        return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#dcfce7', color: '#15803d', fontSize: '0.75rem', fontWeight: 700 }}>🏆 HIRED</span>;
       case 'REJECTED':
-        return <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '0.75rem', fontWeight: 600 }}>REJECTED</span>;
+        return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#fee2e2', color: '#b91c1c', fontSize: '0.75rem', fontWeight: 600 }}>REJECTED</span>;
       default:
-        return <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#f1f5f9', color: '#475569', fontSize: '0.75rem', fontWeight: 600 }}>{status}</span>;
+        return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#f1f5f9', color: '#475569', fontSize: '0.75rem', fontWeight: 600 }}>{status}</span>;
     }
   };
 
@@ -117,7 +116,7 @@ export default function HiringPage() {
               onClick={() => setIsQuestionsModalOpen(true)}
               style={{
                 padding: '9px 16px',
-                borderRadius: '8px',
+                borderRadius: 'var(--radius-md, 8px)',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
                 color: '#334155',
@@ -129,7 +128,7 @@ export default function HiringPage() {
                 gap: '8px'
               }}
             >
-              <HelpCircle size={16} color="#4f46e5" />
+              <HelpCircle size={16} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
               Edit Question Bank
             </button>
 
@@ -137,8 +136,8 @@ export default function HiringPage() {
               onClick={() => setIsAddCandidateOpen(true)}
               style={{
                 padding: '9px 18px',
-                borderRadius: '8px',
-                backgroundColor: '#4f46e5',
+                borderRadius: 'var(--radius-md, 8px)',
+                backgroundColor: 'var(--accent-primary, #4f46e5)',
                 color: '#ffffff',
                 border: 'none',
                 fontWeight: 600,
@@ -147,7 +146,7 @@ export default function HiringPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)'
+                boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
               }}
             >
               <UserPlus size={16} />
@@ -159,7 +158,7 @@ export default function HiringPage() {
         {/* METRICS CARDS */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           {[
-            { label: 'Total Applicants', val: totalCandidates, icon: <Users size={18} color="#4f46e5" />, bg: '#e0e7ff' },
+            { label: 'Total Applicants', val: totalCandidates, icon: <Users size={18} style={{ color: 'var(--accent-primary)' }} />, bg: 'var(--accent-light, #e0e7ff)' },
             { label: 'Round 1: Basic Fit', val: round1Count, icon: <Clock size={18} color="#d97706" />, bg: '#fef3c7' },
             { label: 'Round 2: Technical', val: round2Count, icon: <Award size={18} color="#2563eb" />, bg: '#dbeafe' },
             { label: 'Round 3: Final / HR', val: round3Count, icon: <Star size={18} color="#9333ea" />, bg: '#f3e8ff' },
@@ -168,7 +167,7 @@ export default function HiringPage() {
             <div key={idx} style={{
               backgroundColor: '#ffffff',
               padding: '16px 20px',
-              borderRadius: '12px',
+              borderRadius: 'var(--radius-lg, 12px)',
               border: '1px solid #e2e8f0',
               display: 'flex',
               alignItems: 'center',
@@ -182,7 +181,7 @@ export default function HiringPage() {
                   {m.val}
                 </div>
               </div>
-              <div style={{ padding: '8px', borderRadius: '8px', backgroundColor: m.bg }}>
+              <div style={{ padding: '8px', borderRadius: 'var(--radius-md, 8px)', backgroundColor: m.bg }}>
                 {m.icon}
               </div>
             </div>
@@ -192,7 +191,7 @@ export default function HiringPage() {
         {/* CANDIDATES TABLE PANEL */}
         <div style={{
           backgroundColor: '#ffffff',
-          borderRadius: '12px',
+          borderRadius: 'var(--radius-lg, 12px)',
           border: '1px solid #e2e8f0',
           boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
           overflow: 'hidden'
@@ -200,7 +199,7 @@ export default function HiringPage() {
           
           {/* SEARCH & FILTERS BAR */}
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '7px 12px', borderRadius: '8px', width: '320px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '7px 12px', borderRadius: 'var(--radius-md, 8px)', width: '320px' }}>
               <Search size={15} color="#64748b" />
               <input
                 type="text"
@@ -211,7 +210,7 @@ export default function HiringPage() {
               />
             </div>
 
-            {/* FILTER PILLS */}
+            {/* FILTER PILLS USING THEME ACCENT COLOR */}
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {[
                 { id: 'ALL', label: 'All Candidates' },
@@ -226,14 +225,15 @@ export default function HiringPage() {
                   key={f.id}
                   onClick={() => setStatusFilter(f.id)}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
+                    padding: '6px 14px',
+                    borderRadius: 'var(--radius-md, 6px)',
                     border: 'none',
-                    backgroundColor: statusFilter === f.id ? '#4f46e5' : '#f1f5f9',
+                    backgroundColor: statusFilter === f.id ? 'var(--accent-primary, #4f46e5)' : '#f1f5f9',
                     color: statusFilter === f.id ? '#ffffff' : '#475569',
-                    fontWeight: statusFilter === f.id ? 600 : 500,
+                    fontWeight: statusFilter === f.id ? 700 : 500,
                     fontSize: '0.78rem',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   {f.label}
@@ -277,7 +277,7 @@ export default function HiringPage() {
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>{c.name}</div>
                         <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', display: 'flex', gap: '6px' }}>
-                          <span style={{ fontFamily: 'monospace', color: '#4f46e5', fontWeight: 600 }}>{c.candidateNumber}</span>
+                          <span style={{ fontFamily: 'monospace', color: 'var(--accent-primary, #4f46e5)', fontWeight: 600 }}>{c.candidateNumber}</span>
                           <span>• {c.email}</span>
                         </div>
                       </td>
@@ -293,7 +293,7 @@ export default function HiringPage() {
                       {/* REFERENCE / REFERRED BY COLUMN */}
                       <td style={{ padding: '14px 16px' }}>
                         {c.referenceName ? (
-                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#4338ca', backgroundColor: '#e0e7ff', padding: '3px 8px', borderRadius: '6px' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--accent-primary, #4338ca)', backgroundColor: 'var(--accent-light, #e0e7ff)', padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)' }}>
                             👤 {c.referenceName}
                           </span>
                         ) : (
@@ -328,9 +328,9 @@ export default function HiringPage() {
                         <button
                           onClick={() => setSelectedCandidateForEval(c)}
                           style={{
-                            padding: '7px 12px',
-                            borderRadius: '6px',
-                            backgroundColor: '#4f46e5',
+                            padding: '7px 14px',
+                            borderRadius: 'var(--radius-md, 6px)',
+                            backgroundColor: 'var(--accent-primary, #4f46e5)',
                             color: '#ffffff',
                             border: 'none',
                             fontWeight: 600,
