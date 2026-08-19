@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { GoogleGenAI } from "@google/genai";
 import { revalidatePath } from "next/cache";
 
