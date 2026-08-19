@@ -151,6 +151,10 @@ const Sidebar = ({ showSettings = false, showAnalytics = true, showProcurement =
             <CheckSquare size={20} />
             <span>Leaves</span>
           </Link>
+          <Link href="/hiring" className={`nav-item ${isActive('/hiring') ? 'active' : ''}`}>
+            <Users size={20} />
+            <span>Hiring & Interviews</span>
+          </Link>
         </div>
 
         <div className={`nav-section ${userRole === 'DISPATCH' ? 'hidden' : ''}`}>

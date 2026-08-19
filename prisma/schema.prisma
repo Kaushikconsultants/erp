@@ -84,6 +84,9 @@ model Employee {
   quotations      Quotation[]
   inventoryTransactions InventoryTransaction[]
   expenses        Expense[]
+  round1Candidates Candidate[] @relation("CandidateRound1Interviewer")
+  round2Candidates Candidate[] @relation("CandidateRound2Interviewer")
+  round3Candidates Candidate[] @relation("CandidateRound3Interviewer")
 }
 
 model Team {
@@ -786,6 +789,80 @@ model WorkflowRule {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// Hiring & 3-Round Interview Evaluation Module
+// ---------------------------------------------------------
+model Candidate {
+  id              String   @id @default(uuid())
+  candidateNumber String   @unique
+  name            String
+  email           String
+  phone           String
+  appliedRole     String
+  experienceYears Float    @default(0)
+  expectedSalary  String?
+  resumeUrl       String?
+  status          String   @default("NEW") // NEW, ROUND_1_PENDING, ROUND_1_PASSED, ROUND_2_PENDING, ROUND_2_PASSED, ROUND_3_PENDING, HIRED, REJECTED
+
+  round1InterviewerId String?
+  round1Interviewer   Employee? @relation("CandidateRound1Interviewer", fields: [round1InterviewerId], references: [id])
+
+  round2InterviewerId String?
+  round2Interviewer   Employee? @relation("CandidateRound2Interviewer", fields: [round2InterviewerId], references: [id])
+
+  round3InterviewerId String?
+  round3Interviewer   Employee? @relation("CandidateRound3Interviewer", fields: [round3InterviewerId], references: [id])
+
+  overallRating   Float    @default(0)
+  finalConclusion String?
+  finalDecisionBy String?
+  
+  evaluations     CandidateEvaluation[]
+  roundSummaries  CandidateRoundSummary[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model InterviewQuestion {
+  id          String   @id @default(uuid())
+  roundNumber Int      // 1 = Basic/Screening, 2 = Technical, 3 = Final/HR
+  question    String
+  category    String?  @default("General")
+  isDefault   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  evaluations CandidateEvaluation[]
+}
+
+model CandidateEvaluation {
+  id          String   @id @default(uuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  roundNumber Int
+  questionId  String
+  question    InterviewQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  rating      Int      // 1 to 5
+  notes       String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CandidateRoundSummary {
+  id                  String    @id @default(uuid())
+  candidateId         String
+  candidate           Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  roundNumber         Int
+  interviewerId       String?
+  interviewerName     String?
+  averageRating       Float     @default(0)
+  recommendation      String    // ADVANCE, REJECT, HOLD
+  feedbackNotes       String?
+  completedAt         DateTime  @default(now())
 }
 
 
