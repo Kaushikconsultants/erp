@@ -199,39 +199,15 @@ export default async function OrdersPage() {
     });
   });
 
-  quotations.forEach(q => {
-    unifiedDocs.push({
-      id: q.id,
-      type: 'Quotation',
-      date: formatDate(q.createdAt),
-      customerName: q.customer?.businessName || 'Unknown',
-      customerSub: q.customer?.contactPerson || '',
-      agentName: q.salesperson?.user?.name || allEmployees.find(e => e.id === q.salespersonId)?.name || 'Unknown',
-      totalAmount: q.totalValue,
-      taxableAmount: q.taxableAmount,
-      paymentType: '-',
-      discountBadge: 'Quotation',
-      discountColor: '#64748b',
-      commissionValue: 0,
-      commissionAvg: '0%',
-      documentNumber: q.quotationNumber,
-      status: q.status,
-      statusColor: getStatusStyle(q.status).color,
-      statusBg: getStatusStyle(q.status).bg,
-      awbNumber: null,
-      notes: q.notes || '-',
-      isCreditCustomer: false
-    });
-  });
-
+  // Only include actual confirmed Sales Orders in the Orders section
   unifiedDocs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <div className="page-container" style={{ maxWidth: '1400px', margin: '0 auto' }}>
       <div className="dashboard-header" style={{ marginBottom: '24px' }}>
         <div>
-          <h1 className="page-title">All Orders & Quotations</h1>
-          <p className="page-subtitle">Track orders, quotations, shipping statuses, and commissions.</p>
+          <h1 className="page-title">Sales Orders & Invoices</h1>
+          <p className="page-subtitle">Track confirmed orders, shipping statuses, and sales commissions.</p>
         </div>
         <CreateOrderButton customers={mappedCustomers} products={mappedProducts} employees={allEmployees} />
       </div>

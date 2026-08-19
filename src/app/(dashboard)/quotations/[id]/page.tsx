@@ -158,79 +158,94 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
           </div>
         </div>
 
-        {/* Item Table */}
-        <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #9ca3af', marginBottom: '16px' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid #9ca3af', backgroundColor: '#f9fafb', fontSize: '11px' }}>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left', width: '30px' }}>#</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left' }}>Item & Description</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'center', width: '70px' }}>HSN/SAC</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Qty</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Rate</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Discount</th>
-              {isInterstate ? (
-                <>
-                  <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '50px' }}>IGST %</th>
-                  <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
-                </>
-              ) : (
-                <>
-                  <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '50px' }}>CGST %</th>
-                  <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
-                </>
-              )}
-              <th style={{ padding: '6px', textAlign: 'right', width: '90px' }}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {quotation.items.map((item, index) => (
-              <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', verticalAlign: 'top' }}>{index + 1}</td>
-                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', verticalAlign: 'top' }}>
-                  <div style={{ fontWeight: 'bold' }}>{item.product.articleNumber || item.product.name}</div>
-                  <div style={{ color: '#4b5563', whiteSpace: 'pre-line', fontSize: '11px', marginTop: '2px' }}>
-                    {item.description || item.product.name}
-                  </div>
-                </td>
-                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'center', verticalAlign: 'top' }}>
-                  {item.hsnCode || '6103'}
-                </td>
-                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                  <div>{item.quantity.toFixed(2)}</div>
-                  <div style={{ color: '#6b7280', fontSize: '10px' }}>{item.unit || 'pcs'}</div>
-                </td>
-                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                  {fmt(item.rate)}
-                </td>
-                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                  {item.discountPercent > 0 ? `${item.discountPercent.toFixed(2)}%` : '0.00%'}
-                </td>
-                {isInterstate ? (
-                  <>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                      {item.gstRate}%
-                    </td>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                      {fmt(item.igst)}
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                      {(item.gstRate / 2)}%
-                    </td>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                      {fmt(item.cgst)}
-                    </td>
-                  </>
-                )}
-                <td style={{ padding: '8px 6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold' }}>
-                  {fmt(item.total)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {/* Calculate if discount was given anywhere */}
+        {(() => {
+          const totalItemDiscount = quotation.items.reduce((sum, item) => sum + (item.discountPercent || 0), 0);
+          const totalAdditionalDiscount = quotation.additionalDiscount || quotation.itemDiscount || 0;
+          const hasDiscount = totalItemDiscount > 0 || totalAdditionalDiscount > 0;
+
+          return (
+            <>
+              {/* Item Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #9ca3af', marginBottom: '16px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #9ca3af', backgroundColor: '#f9fafb', fontSize: '11px' }}>
+                    <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left', width: '30px' }}>#</th>
+                    <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left' }}>Item & Description</th>
+                    <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'center', width: '70px' }}>HSN/SAC</th>
+                    <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Qty</th>
+                    <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Rate</th>
+                    {hasDiscount && (
+                      <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Discount</th>
+                    )}
+                    {isInterstate ? (
+                      <>
+                        <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '50px' }}>IGST %</th>
+                        <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
+                      </>
+                    ) : (
+                      <>
+                        <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '50px' }}>CGST %</th>
+                        <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
+                      </>
+                    )}
+                    <th style={{ padding: '6px', textAlign: 'right', width: '90px' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {quotation.items.map((item, index) => (
+                    <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', verticalAlign: 'top' }}>{index + 1}</td>
+                      <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', verticalAlign: 'top' }}>
+                        <div style={{ fontWeight: 'bold' }}>{item.product.articleNumber || item.product.name}</div>
+                        <div style={{ color: '#4b5563', whiteSpace: 'pre-line', fontSize: '11px', marginTop: '2px' }}>
+                          {item.description || item.product.name}
+                        </div>
+                      </td>
+                      <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'center', verticalAlign: 'top' }}>
+                        {item.hsnCode || '6103'}
+                      </td>
+                      <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                        <div>{item.quantity.toFixed(2)}</div>
+                        <div style={{ color: '#6b7280', fontSize: '10px' }}>{item.unit || 'pcs'}</div>
+                      </td>
+                      <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                        {fmt(item.rate)}
+                      </td>
+                      {hasDiscount && (
+                        <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                          {item.discountPercent > 0 ? `${item.discountPercent.toFixed(2)}%` : '0.00%'}
+                        </td>
+                      )}
+                      {isInterstate ? (
+                        <>
+                          <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                            {item.gstRate}%
+                          </td>
+                          <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                            {fmt(item.igst)}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                            {(item.gstRate / 2)}%
+                          </td>
+                          <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                            {fmt(item.cgst)}
+                          </td>
+                        </>
+                      )}
+                      <td style={{ padding: '8px 6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold' }}>
+                        {fmt(item.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          );
+        })()}
 
         {/* Bottom Section: Notes & Terms on Left | Totals & Signature on Right */}
         <div style={{ border: '1px solid #9ca3af', display: 'grid', gridTemplateColumns: '1fr 300px' }}>

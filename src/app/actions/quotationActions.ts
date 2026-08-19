@@ -537,7 +537,15 @@ export async function updateQuotationStatus(id: string, status: string) {
   }
 }
 
-export async function convertQuotationToOrder(quotationId: string, discountSlab: string = '1-15') {
+export async function convertQuotationToOrder(
+  quotationId: string, 
+  discountSlab: string = '1-15',
+  confirmationData?: {
+    paymentOption: 'FULL' | 'TOKEN' | 'CREDIT';
+    tokenAmount?: number;
+    paymentMode?: string;
+  }
+) {
   try {
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id || null;
@@ -545,14 +553,33 @@ export async function convertQuotationToOrder(quotationId: string, discountSlab:
 
     const quotation = await prisma.quotation.findUnique({
       where: { id: quotationId },
-      include: { items: true }
+      include: { items: true, customer: true }
     });
 
     if (!quotation) return { error: "Quotation not found" };
 
-    let overrideDiscount = quotation.itemDiscount + quotation.additionalDiscount;
-    let overridePaymentStatus = quotation.receivedAmount > 0 ? (quotation.receivedAmount >= quotation.totalValue ? "Paid" : "Partially Paid") : "Unpaid";
+    const paymentOption = confirmationData?.paymentOption || 'FULL';
+    let effectiveReceived = 0;
+    let overridePaymentStatus = "Unpaid";
 
+    if (paymentOption === 'FULL') {
+      effectiveReceived = quotation.totalValue;
+      overridePaymentStatus = "Paid";
+    } else if (paymentOption === 'TOKEN') {
+      const amt = Number(confirmationData?.tokenAmount || 0);
+      if (amt <= 0) {
+        return { error: "Please enter a valid token/advance payment amount (greater than ₹0)." };
+      }
+      effectiveReceived = amt;
+      overridePaymentStatus = amt >= quotation.totalValue ? "Paid" : "Partially Paid";
+    } else if (paymentOption === 'CREDIT') {
+      const isCreditAllowed = quotation.customer?.status?.toLowerCase() === 'credit' || 
+                              quotation.customer?.preferredPaymentMethod?.toLowerCase() === 'credit';
+      effectiveReceived = 0;
+      overridePaymentStatus = "Credit";
+    }
+
+    let overrideDiscount = quotation.itemDiscount + quotation.additionalDiscount;
     if (discountSlab === '0') {
       overrideDiscount = 0;
     } else if (discountSlab === '1-15') {
@@ -580,10 +607,10 @@ export async function convertQuotationToOrder(quotationId: string, discountSlab:
         igst: quotation.igst,
         isInterstate: quotation.isInterstate,
         placeOfSupply: quotation.placeOfSupply,
-        outstandingAmount: Math.max(0, quotation.totalValue - quotation.receivedAmount),
+        outstandingAmount: Math.max(0, quotation.totalValue - effectiveReceived),
         orderStatus: "Processing",
         paymentStatus: overridePaymentStatus,
-        notes: `Converted from Quotation #${quotation.quotationNumber}`,
+        notes: `Converted from Quotation #${quotation.quotationNumber} [Method: ${paymentOption}, Received: ₹${effectiveReceived}]`,
         items: {
           create: quotation.items.map(item => ({
             productId: item.productId,
