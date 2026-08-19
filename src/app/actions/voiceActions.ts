@@ -71,7 +71,7 @@ export async function parseVoiceIntent(spokenText: string): Promise<VoiceIntentR
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.6-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
