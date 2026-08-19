@@ -252,12 +252,39 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                     </tr>
                   </>
                 )}
-                <tr style={{ borderTop: '2px solid #1e1b4b', borderBottom: '2px solid #1e1b4b' }}>
-                  <td style={{ padding: '10px 0', fontWeight: 800, fontSize: '16px', color: '#1e1b4b' }}>Total Invoice Amount:</td>
-                  <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 800, fontSize: '16px', color: '#1e1b4b' }}>
+                <tr style={{ borderTop: '2px solid #1e1b4b', borderBottom: '1px solid #e2e8f0' }}>
+                  <td style={{ padding: '10px 0', fontWeight: 800, fontSize: '15px', color: '#1e1b4b' }}>Total Invoice Amount:</td>
+                  <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 800, fontSize: '15px', color: '#1e1b4b' }}>
                     ₹{grandTotal.toLocaleString('en-IN')}
                   </td>
                 </tr>
+                
+                {/* Parse payment received fallback from notes if db field is 0 */}
+                {(() => {
+                  const notesMatch = order.notes?.match(/Received:\s*₹?\s*(\d+(\.\d+)?)/i);
+                  const parsedReceived = notesMatch ? parseFloat(notesMatch[1]) : 0;
+                  const effectiveReceived = order.paymentReceived > 0 ? order.paymentReceived : parsedReceived;
+                  const balanceDue = Math.max(0, grandTotal - effectiveReceived);
+
+                  return (
+                    <>
+                      <tr>
+                        <td style={{ padding: '8px 0', color: '#16a34a', fontWeight: 700 }}>Less: Payment / Token Advance Received:</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right', color: '#16a34a', fontWeight: 800 }}>
+                          ₹{effectiveReceived.toLocaleString('en-IN')}
+                        </td>
+                      </tr>
+                      <tr style={{ borderTop: '2px solid #1e1b4b', borderBottom: '2px solid #1e1b4b', backgroundColor: '#f8fafc' }}>
+                        <td style={{ padding: '10px 0', fontWeight: 800, fontSize: '15px', color: balanceDue > 0 ? '#dc2626' : '#15803d' }}>
+                          Balance Due / Outstanding:
+                        </td>
+                        <td style={{ padding: '10px 0', textAlign: 'right', fontWeight: 800, fontSize: '15px', color: balanceDue > 0 ? '#dc2626' : '#15803d' }}>
+                          ₹{balanceDue.toLocaleString('en-IN')}
+                        </td>
+                      </tr>
+                    </>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
