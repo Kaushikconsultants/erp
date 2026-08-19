@@ -4,17 +4,24 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Heart Of Business - CRM & Sales ERP',
     short_name: 'HOB CRM',
-    description: 'Comprehensive B2B CRM and Sales ERP software',
+    description: 'Comprehensive Enterprise B2B CRM and Sales ERP Software by Ashish Aggarwal',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0f172a',
-    theme_color: '#4f46e5',
-    orientation: 'portrait',
+    background_color: '#ffffff',
+    theme_color: '#ef4444',
+    orientation: 'any',
+    categories: ['business', 'productivity', 'finance', 'utilities'],
     icons: [
       {
-        src: '/favicon.ico',
-        sizes: '64x64',
-        type: 'image/x-icon',
+        src: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'any'
+      },
+      {
+        src: '/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
         purpose: 'maskable'
       }
     ],

@@ -1,0 +1,15 @@
+{
+  "appId": "com.espon.heartofbusiness",
+  "appName": "Heart of Business",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://effective-palm-tree.vercel.app",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "backgroundColor": "#ffffff"
+  }
+}

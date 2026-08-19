@@ -6,6 +6,7 @@ import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
+import InstallPwaPrompt from '../ui/InstallPwaPrompt';
 import './Topbar.css';
 
 interface TopbarProps {
@@ -45,6 +46,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
       </div>
 
       <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <InstallPwaPrompt />
         <NotificationBell />
         
         <div className="user-profile-container" ref={dropdownRef}>
