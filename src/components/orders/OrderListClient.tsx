@@ -232,7 +232,7 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
                 
                 {/* Customer */}
                 <td style={{ padding: '20px', verticalAlign: 'top' }}>
-                  <div style={{ color: '#2563eb', fontWeight: 600, fontSize: '0.95rem', marginBottom: '4px' }}>{doc.customerName}</div>
+                  <div style={{ color: 'var(--accent-primary, #2563eb)', fontWeight: 600, fontSize: '0.95rem', marginBottom: '4px' }}>{doc.customerName}</div>
                   <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{doc.customerSub}</div>
                 </td>
                 
@@ -253,7 +253,7 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
                     backgroundColor: '#f1f5f9', 
                     color: '#475569', 
                     padding: '4px 10px', 
-                    borderRadius: '4px', 
+                    borderRadius: 'var(--radius-sm, 4px)', 
                     fontSize: '0.75rem', 
                     fontWeight: 600,
                     border: '1px solid #e2e8f0'
@@ -265,11 +265,11 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
                 {/* Discount */}
                 <td style={{ padding: '20px', verticalAlign: 'top' }}>
                   <span style={{ 
-                    backgroundColor: '#ede9fe', 
-                    color: '#6d28d9', 
+                    backgroundColor: 'var(--accent-light, #ede9fe)', 
+                    color: 'var(--accent-primary, #6d28d9)', 
                     padding: '4px 10px', 
-                    borderRadius: '4px', 
-                    border: '1px solid #ddd6fe',
+                    borderRadius: 'var(--radius-sm, 4px)', 
+                    border: '1px solid var(--accent-light, #ddd6fe)',
                     fontSize: '0.75rem', 
                     fontWeight: 600,
                     whiteSpace: 'nowrap'

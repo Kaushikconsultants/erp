@@ -1,8 +1,7 @@
 import React from 'react';
 import { getQuotations } from '@/app/actions/quotationActions';
 import Link from 'next/link';
-import { FileSpreadsheet, Plus, FileText, ArrowRight, BarChart3, Clock, CheckCircle, XCircle } from 'lucide-react';
-import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
+import { FileSpreadsheet, Plus, BarChart3, Clock, CheckCircle2 } from 'lucide-react';
 import QuotationTableClient from '@/components/quotations/QuotationTableClient';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +14,6 @@ export default async function QuotationsPage() {
   // Calculate Dashboard Metrics
   const totalQuotes = quotations.length;
   const draftQuotes = quotations.filter(q => q.status === 'Draft').length;
-  const sentQuotes = quotations.filter(q => q.status === 'Sent' || q.status === 'Viewed').length;
   const acceptedQuotes = quotations.filter(q => q.status === 'Accepted' || q.status === 'Converted').length;
   
   const totalValue = quotations.reduce((sum, q) => sum + q.totalValue, 0);
@@ -24,66 +22,86 @@ export default async function QuotationsPage() {
   const conversionRate = totalQuotes > 0 ? Math.round((acceptedQuotes / totalQuotes) * 100) : 0;
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', fontFamily: '"Inter", sans-serif' }}>
+    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      {/* STANDARD SOFTWARE HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '12px', color: '#1e293b' }}>
-            <FileSpreadsheet color="#4f46e5" size={32} /> Quotation Dashboard
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#0f172a', fontFamily: 'inherit' }}>
+            <FileSpreadsheet style={{ color: 'var(--accent-primary, #4f46e5)' }} size={28} /> 
+            Quotation Dashboard
           </h1>
-          <p style={{ margin: 0, color: '#64748b' }}>Manage your estimates, track conversions, and convert to sales orders.</p>
+          <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+            Manage your estimates, track conversion pipelines, and issue sales orders.
+          </p>
         </div>
-        <Link href="/quotations/new" style={{ backgroundColor: '#4f46e5', color: 'white', padding: '12px 24px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)' }}>
-          <Plus size={20} /> Create New Quote
+        <Link 
+          href="/quotations/new" 
+          style={{ 
+            backgroundColor: 'var(--accent-primary, #4f46e5)', 
+            color: '#ffffff', 
+            padding: '10px 20px', 
+            borderRadius: 'var(--radius-md, 8px)', 
+            textDecoration: 'none', 
+            fontWeight: 600, 
+            fontSize: '0.875rem',
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <Plus size={18} /> Create New Quote
         </Link>
       </div>
 
-      {/* ─── ANALYTICS CARDS ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+      {/* ─── ANALYTICS KPI CARDS ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '28px' }}>
         
-        <div className="zoho-form-card" style={{ padding: '20px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ backgroundColor: '#eef2ff', padding: '12px', borderRadius: '12px' }}>
-            <BarChart3 color="#4f46e5" size={24} />
+        <div style={{ padding: '20px', borderRadius: 'var(--radius-lg, 12px)', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ backgroundColor: 'var(--accent-light, #e0e7ff)', padding: '12px', borderRadius: 'var(--radius-md, 10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <BarChart3 style={{ color: 'var(--accent-primary, #4f46e5)' }} size={22} />
           </div>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, marginBottom: '4px' }}>Total Pipeline Value</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b' }}>₹{totalValue.toLocaleString('en-IN')}</div>
+            <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, marginBottom: '2px' }}>Total Pipeline Value</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a' }}>₹{totalValue.toLocaleString('en-IN')}</div>
           </div>
         </div>
         
-        <div className="zoho-form-card" style={{ padding: '20px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ backgroundColor: '#ecfdf5', padding: '12px', borderRadius: '12px' }}>
-            <CheckCircle color="#10b981" size={24} />
+        <div style={{ padding: '20px', borderRadius: 'var(--radius-lg, 12px)', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ backgroundColor: '#dcfce7', padding: '12px', borderRadius: 'var(--radius-md, 10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <CheckCircle2 color="#16a34a" size={22} />
           </div>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, marginBottom: '4px' }}>Accepted / Converted</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b' }}>₹{acceptedValue.toLocaleString('en-IN')}</div>
+            <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, marginBottom: '2px' }}>Accepted / Converted</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a' }}>₹{acceptedValue.toLocaleString('en-IN')}</div>
           </div>
         </div>
 
-        <div className="zoho-form-card" style={{ padding: '20px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ backgroundColor: '#fef3c7', padding: '12px', borderRadius: '12px' }}>
-            <Clock color="#d97706" size={24} />
+        <div style={{ padding: '20px', borderRadius: 'var(--radius-lg, 12px)', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ backgroundColor: '#fef3c7', padding: '12px', borderRadius: 'var(--radius-md, 10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Clock color="#d97706" size={22} />
           </div>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, marginBottom: '4px' }}>Pending Drafts</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b' }}>{draftQuotes} <span style={{fontSize:'0.9rem', fontWeight:400, color:'#64748b'}}>quotes</span></div>
+            <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, marginBottom: '2px' }}>Pending Drafts</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a' }}>{draftQuotes} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#64748b' }}>quotes</span></div>
           </div>
         </div>
 
-        <div className="zoho-form-card" style={{ padding: '20px', borderRadius: '12px', backgroundColor: '#fff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ backgroundColor: '#f3e8ff', padding: '12px', borderRadius: '12px' }}>
-            <BarChart3 color="#9333ea" size={24} />
+        <div style={{ padding: '20px', borderRadius: 'var(--radius-lg, 12px)', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ backgroundColor: 'var(--accent-light, #e0e7ff)', padding: '12px', borderRadius: 'var(--radius-md, 10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <BarChart3 style={{ color: 'var(--accent-primary, #4f46e5)' }} size={22} />
           </div>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 500, marginBottom: '4px' }}>Conversion Rate</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b' }}>{conversionRate}%</div>
+            <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, marginBottom: '2px' }}>Conversion Rate</div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#0f172a' }}>{conversionRate}%</div>
           </div>
         </div>
 
       </div>
 
-      {/* ─── QUOTATIONS LIST ─── */}
+      {/* ─── QUOTATIONS LIST TABLE ─── */}
       <QuotationTableClient initialQuotations={quotations} />
       
     </div>
