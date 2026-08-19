@@ -6,12 +6,8 @@ import {
   Star, 
   UserCheck, 
   CheckCircle2, 
-  XCircle, 
-  Award, 
-  FileText, 
-  Clock, 
-  ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  User
 } from 'lucide-react';
 import { 
   getQuestionsByRound, 
@@ -60,20 +56,18 @@ export default function InterviewEvaluationModal({
     if (qRes.success && qRes.questions) {
       setQuestions(qRes.questions);
 
-      // Pre-fill ratings if evaluation already exists for this round
       const existingEvs = candidate.evaluations?.filter((e: any) => e.roundNumber === roundNum) || [];
       const initRatings: any = {};
       const initNotes: any = {};
       qRes.questions.forEach((q: any) => {
         const found = existingEvs.find((e: any) => e.questionId === q.id);
-        initRatings[q.id] = found ? found.rating : 4; // default 4 stars
+        initRatings[q.id] = found ? found.rating : 4;
         initNotes[q.id] = found ? (found.notes || "") : "";
       });
       setRatings(initRatings);
       setNotes(initNotes);
     }
 
-    // Set interviewer for active round
     if (roundNum === 1) setSelectedInterviewerId(candidate.round1InterviewerId || "");
     else if (roundNum === 2) setSelectedInterviewerId(candidate.round2InterviewerId || "");
     else if (roundNum === 3) setSelectedInterviewerId(candidate.round3InterviewerId || "");
@@ -124,7 +118,7 @@ export default function InterviewEvaluationModal({
 
     setLoading(false);
     if (res.success) {
-      alert(`Round ${activeRound} Evaluation Submitted Successfully! Overall Score: ${res.overallRating}/5⭐`);
+      alert(`Round ${activeRound} Evaluation Submitted! Overall Score: ${res.overallRating}/5⭐`);
       onSuccess();
     } else {
       alert(res.error || "Failed to submit evaluation");
@@ -137,7 +131,7 @@ export default function InterviewEvaluationModal({
     const res = await finalizeCandidateDecision(candidate.id, finalDecision, finalConclusionText);
     setLoading(false);
     if (res.success) {
-      alert(`Candidate finalized as ${finalDecision}!`);
+      alert(`Candidate decision saved as ${finalDecision}!`);
       onSuccess();
       onClose();
     } else {
@@ -145,7 +139,6 @@ export default function InterviewEvaluationModal({
     }
   };
 
-  // Compute live round average
   const ratingValues = Object.values(ratings);
   const liveRoundAvg = ratingValues.length > 0 
     ? (ratingValues.reduce((a, b) => a + b, 0) / ratingValues.length).toFixed(1) 
@@ -167,8 +160,8 @@ export default function InterviewEvaluationModal({
         backgroundColor: '#ffffff',
         width: '100%',
         maxWidth: '850px',
-        borderRadius: '20px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        borderRadius: '16px',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
         overflow: 'hidden',
         border: '1px solid #e2e8f0',
         display: 'flex',
@@ -178,38 +171,42 @@ export default function InterviewEvaluationModal({
 
         {/* TOP CANDIDATE BANNER */}
         <div style={{
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
-          color: '#ffffff',
+          backgroundColor: '#ffffff',
           padding: '20px 24px',
+          borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-start'
         }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ backgroundColor: '#4f46e5', color: '#ffffff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800 }}>
+              <span style={{ backgroundColor: '#e0e7ff', color: '#4f46e5', padding: '3px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
                 {candidate.candidateNumber}
               </span>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>
+              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>
                 {candidate.name}
               </h2>
             </div>
-            <div style={{ display: 'flex', gap: '16px', fontSize: '0.82rem', color: '#94a3b8', marginTop: '6px' }}>
-              <span>Role: <strong style={{ color: '#e2e8f0' }}>{candidate.appliedRole}</strong></span>
-              <span>Exp: <strong style={{ color: '#e2e8f0' }}>{candidate.experienceYears} yrs</strong></span>
-              <span>Expected CTC: <strong style={{ color: '#e2e8f0' }}>{candidate.expectedSalary || 'N/A'}</strong></span>
+            <div style={{ display: 'flex', gap: '14px', fontSize: '0.82rem', color: '#64748b', marginTop: '4px', flexWrap: 'wrap' }}>
+              <span>Role: <strong style={{ color: '#1e293b' }}>{candidate.appliedRole}</strong></span>
+              <span>Exp: <strong style={{ color: '#1e293b' }}>{candidate.experienceYears} yrs</strong></span>
+              {candidate.referenceName && (
+                <span style={{ color: '#4f46e5', fontWeight: 600 }}>
+                  👤 Referred by: <strong>{candidate.referenceName}</strong>
+                </span>
+              )}
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ textAlign: 'right', backgroundColor: 'rgba(255,255,255,0.08)', padding: '6px 12px', borderRadius: '10px' }}>
-              <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Overall Rating</div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ textAlign: 'right', backgroundColor: '#f8fafc', padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '0.7rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Overall Score</div>
+              <div style={{ fontSize: '1rem', fontWeight: 700, color: '#d97706', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 ★ {candidate.overallRating || '0.0'} / 5.0
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#ffffff', opacity: 0.8, cursor: 'pointer' }}>
-              <X size={20} />
+            <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', fontSize: '1.25rem', lineHeight: 1 }}>
+              ×
             </button>
           </div>
         </div>
@@ -230,19 +227,19 @@ export default function InterviewEvaluationModal({
                 onClick={() => setActiveRound(r.round)}
                 style={{
                   flex: 1,
-                  padding: '14px 12px',
+                  padding: '12px 10px',
                   border: 'none',
                   borderBottom: isActive ? '3px solid #4f46e5' : '3px solid transparent',
                   backgroundColor: isActive ? '#ffffff' : 'transparent',
                   color: isActive ? '#4f46e5' : '#64748b',
-                  fontWeight: isActive ? 800 : 600,
+                  fontWeight: isActive ? 700 : 600,
                   fontSize: '0.85rem',
                   cursor: 'pointer',
                   textAlign: 'center'
                 }}
               >
                 <div>{r.title}</div>
-                <div style={{ fontSize: '0.72rem', color: r.interviewer ? '#15803d' : '#94a3b8', fontWeight: 600, marginTop: '2px' }}>
+                <div style={{ fontSize: '0.72rem', color: r.interviewer ? '#16a34a' : '#94a3b8', fontWeight: 600, marginTop: '2px' }}>
                   {r.interviewer ? `👤 ${r.interviewer}` : '⚠️ Unassigned'}
                   {roundSummary && ` (★ ${roundSummary.averageRating})`}
                 </div>
@@ -252,14 +249,14 @@ export default function InterviewEvaluationModal({
         </div>
 
         {/* SCROLLABLE EVALUATION CONTENT */}
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           {/* SECTION 1: ADMIN INTERVIEWER ASSIGNMENT */}
-          <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ padding: '12px 16px', borderRadius: '8px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <UserCheck size={20} className="text-emerald-600" />
+              <UserCheck size={18} color="#16a34a" />
               <div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#166534' }}>
                   Admin Interviewer Assignment (Round {activeRound})
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#15803d' }}>
@@ -272,7 +269,7 @@ export default function InterviewEvaluationModal({
               <select
                 value={selectedInterviewerId}
                 onChange={(e) => setSelectedInterviewerId(e.target.value)}
-                style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #86efac', fontSize: '0.82rem', fontWeight: 600, backgroundColor: '#ffffff', outline: 'none' }}
+                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #86efac', fontSize: '0.82rem', fontWeight: 600, backgroundColor: '#ffffff', outline: 'none' }}
               >
                 <option value="">-- Select Interviewer --</option>
                 {employees.map((emp) => (
@@ -283,7 +280,7 @@ export default function InterviewEvaluationModal({
               </select>
               <button
                 onClick={handleAssignInterviewer}
-                style={{ padding: '6px 12px', borderRadius: '8px', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+                style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
               >
                 Assign
               </button>
@@ -292,48 +289,47 @@ export default function InterviewEvaluationModal({
 
           {/* SECTION 2: PRE-DEFINED QUESTIONS & 1-5 RATINGS */}
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Round {activeRound} Evaluation Rubric (1 - 5 Scale)
               </h3>
-              <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '4px 10px', borderRadius: '8px' }}>
-                Round Average: ★ {liveRoundAvg} / 5.0
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#4f46e5', backgroundColor: '#e0e7ff', padding: '3px 10px', borderRadius: '6px' }}>
+                Round Score: ★ {liveRoundAvg} / 5.0
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {questions.map((q, idx) => {
                 const currentRating = ratings[q.id] || 4;
                 return (
                   <div
                     key={q.id}
                     style={{
-                      padding: '16px',
-                      borderRadius: '12px',
+                      padding: '14px 16px',
+                      borderRadius: '8px',
                       border: '1px solid #e2e8f0',
-                      backgroundColor: '#ffffff',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                      backgroundColor: '#ffffff'
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#4f46e5', backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4f46e5', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>
                             Q{idx + 1}
                           </span>
-                          <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#0f172a' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>
                             {q.question}
                           </span>
                         </div>
                         {q.category && (
-                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px', fontWeight: 600 }}>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px' }}>
                             Category: {q.category}
                           </div>
                         )}
                       </div>
 
                       {/* 1 TO 5 STAR RATING INTERACTIVE WIDGET */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
                             key={star}
@@ -344,21 +340,19 @@ export default function InterviewEvaluationModal({
                               border: 'none',
                               cursor: 'pointer',
                               padding: '2px',
-                              color: star <= currentRating ? '#f59e0b' : '#cbd5e1',
-                              transition: 'transform 0.1s ease'
+                              color: star <= currentRating ? '#f59e0b' : '#cbd5e1'
                             }}
                             title={`Rate ${star} / 5`}
                           >
-                            <Star size={20} fill={star <= currentRating ? '#f59e0b' : 'none'} />
+                            <Star size={18} fill={star <= currentRating ? '#f59e0b' : 'none'} />
                           </button>
                         ))}
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', marginLeft: '6px', minWidth: '30px' }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', marginLeft: '6px', minWidth: '28px' }}>
                           {currentRating}/5
                         </span>
                       </div>
                     </div>
 
-                    {/* Question Specific Note */}
                     <input
                       type="text"
                       placeholder="Interviewer notes / specific answer observations..."
@@ -366,9 +360,9 @@ export default function InterviewEvaluationModal({
                       onChange={(e) => setNotes(prev => ({ ...prev, [q.id]: e.target.value }))}
                       style={{
                         width: '100%',
-                        marginTop: '10px',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
+                        marginTop: '8px',
+                        padding: '7px 10px',
+                        borderRadius: '6px',
                         border: '1px solid #cbd5e1',
                         fontSize: '0.8rem',
                         outline: 'none'
@@ -381,18 +375,18 @@ export default function InterviewEvaluationModal({
           </div>
 
           {/* SECTION 3: ROUND RECOMMENDATION & FEEDBACK */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '18px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
+          <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
               Round {activeRound} Recommendation & Feedback
             </h4>
 
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '10px' }}>
               {[
                 { id: 'ADVANCE', label: '✅ Pass & Advance to Next Round', color: '#16a34a' },
                 { id: 'HOLD', label: '⏸️ Hold / Waitlist', color: '#d97706' },
                 { id: 'REJECT', label: '❌ Reject Candidate', color: '#dc2626' }
               ].map((opt) => (
-                <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: opt.color, cursor: 'pointer' }}>
+                <label key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 600, color: opt.color, cursor: 'pointer' }}>
                   <input
                     type="radio"
                     name="roundRecommendation"
@@ -410,20 +404,20 @@ export default function InterviewEvaluationModal({
               placeholder="Overall round assessment notes, candidate strengths, and areas of concern..."
               value={feedbackNotes}
               onChange={(e) => setFeedbackNotes(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
             />
 
             <button
               onClick={handleSubmitEvaluation}
               disabled={loading}
               style={{
-                marginTop: '12px',
-                padding: '10px 20px',
-                borderRadius: '8px',
+                marginTop: '10px',
+                padding: '9px 18px',
+                borderRadius: '6px',
                 backgroundColor: '#4f46e5',
                 color: '#ffffff',
                 border: 'none',
-                fontWeight: 700,
+                fontWeight: 600,
                 fontSize: '0.85rem',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
@@ -431,69 +425,64 @@ export default function InterviewEvaluationModal({
                 gap: '6px'
               }}
             >
-              <CheckCircle2 size={16} /> Submit Round {activeRound} Evaluation
+              <CheckCircle2 size={15} /> Submit Round {activeRound} Evaluation
             </button>
           </div>
 
-          {/* SECTION 4: FINAL CONCLUSION & DECISION (ADMIN ONLY) */}
-          <div style={{ padding: '20px', borderRadius: '16px', border: '2px solid #6366f1', backgroundColor: '#eef2ff' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <ShieldCheck size={20} className="text-indigo-600" />
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#312e81', textTransform: 'uppercase' }}>
+          {/* SECTION 4: FINAL CONCLUSION & DECISION */}
+          <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <ShieldCheck size={18} color="#4f46e5" />
+              <h3 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>
                 Admin Final Hiring Conclusion & Decision
               </h3>
             </div>
 
-            <p style={{ margin: '0 0 12px 0', fontSize: '0.8rem', color: '#4338ca' }}>
-              Record final conclusion notes after reviewing all 3 round evaluations.
-            </p>
-
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: '#15803d', cursor: 'pointer' }}>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '10px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#16a34a', cursor: 'pointer', fontSize: '0.85rem' }}>
                 <input
                   type="radio"
                   name="finalDecision"
                   checked={finalDecision === 'HIRED'}
                   onChange={() => setFinalDecision('HIRED')}
-                  style={{ accentColor: '#15803d' }}
+                  style={{ accentColor: '#16a34a' }}
                 />
                 🏆 HIRE CANDIDATE
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 800, color: '#b91c1c', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#dc2626', cursor: 'pointer', fontSize: '0.85rem' }}>
                 <input
                   type="radio"
                   name="finalDecision"
                   checked={finalDecision === 'REJECTED'}
                   onChange={() => setFinalDecision('REJECTED')}
-                  style={{ accentColor: '#b91c1c' }}
+                  style={{ accentColor: '#dc2626' }}
                 />
                 🚫 REJECT CANDIDATE
               </label>
             </div>
 
             <textarea
-              rows={3}
+              rows={2}
               placeholder="Enter final HR/Admin conclusion notes, salary agreement, and offer decision summary..."
               value={finalConclusionText}
               onChange={(e) => setFinalConclusionText(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #a5b4fc', fontSize: '0.85rem', outline: 'none', backgroundColor: '#ffffff' }}
+              style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
             />
 
             <button
               onClick={handleFinalConclusion}
               disabled={loading}
               style={{
-                marginTop: '12px',
-                padding: '10px 24px',
-                borderRadius: '8px',
-                backgroundColor: finalDecision === 'HIRED' ? '#15803d' : '#b91c1c',
+                marginTop: '10px',
+                padding: '9px 20px',
+                borderRadius: '6px',
+                backgroundColor: finalDecision === 'HIRED' ? '#16a34a' : '#dc2626',
                 color: '#ffffff',
                 border: 'none',
-                fontWeight: 800,
+                fontWeight: 600,
                 fontSize: '0.85rem',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
               Save Final Hiring Conclusion ({finalDecision})
@@ -503,12 +492,12 @@ export default function InterviewEvaluationModal({
         </div>
 
         {/* MODAL FOOTER */}
-        <div style={{ backgroundColor: '#f8fafc', padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ backgroundColor: '#f8fafc', padding: '12px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
             style={{
               padding: '8px 18px',
-              borderRadius: '8px',
+              borderRadius: '6px',
               border: '1px solid #cbd5e1',
               backgroundColor: '#ffffff',
               color: '#475569',

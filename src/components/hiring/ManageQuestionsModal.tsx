@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Edit2, Save, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { HelpCircle, Plus, Trash2, Edit2, Save } from 'lucide-react';
 import { getQuestionsByRound, addQuestion, updateQuestion, deleteQuestion } from '@/app/actions/hiringActions';
 
 interface ManageQuestionsModalProps {
@@ -91,36 +91,39 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
         backgroundColor: '#ffffff',
         width: '100%',
         maxWidth: '680px',
-        borderRadius: '20px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        borderRadius: '16px',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
         overflow: 'hidden',
         border: '1px solid #e2e8f0'
       }} onClick={(e) => e.stopPropagation()}>
         
-        {/* HEADER */}
+        {/* CLEAN SOFTWARE THEME HEADER */}
         <div style={{
-          background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
-          color: '#ffffff',
+          backgroundColor: '#ffffff',
           padding: '20px 24px',
+          borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'rgba(255, 255, 255, 0.15)' }}>
-              <HelpCircle size={22} color="#ffffff" />
+            <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <HelpCircle size={20} color="#4f46e5" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#ffffff' }}>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
                 Pre-defined Interview Questions Manager
               </h2>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.85)' }}>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
                 Add, edit, or customize interview questions for each round
               </p>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#ffffff', opacity: 0.8, cursor: 'pointer' }}>
-            <X size={20} />
+          <button 
+            onClick={onClose} 
+            style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', fontSize: '1.25rem', lineHeight: 1 }}
+          >
+            ×
           </button>
         </div>
 
@@ -136,7 +139,7 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
               onClick={() => setSelectedRound(tab.id)}
               style={{
                 flex: 1,
-                padding: '14px 12px',
+                padding: '12px 10px',
                 border: 'none',
                 borderBottom: selectedRound === tab.id ? '3px solid #4f46e5' : '3px solid transparent',
                 backgroundColor: 'transparent',
@@ -153,7 +156,7 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
         </div>
 
         {/* BODY */}
-        <div style={{ padding: '24px', maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ padding: '20px 24px', maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* ADD QUESTION FORM */}
           <form onSubmit={handleAddQuestion} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
@@ -164,10 +167,11 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
               onChange={(e) => setNewQuestionText(e.target.value)}
               style={{
                 flex: 1,
-                padding: '10px 14px',
-                borderRadius: '10px',
+                padding: '9px 12px',
+                borderRadius: '8px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.875rem',
+                fontSize: '0.85rem',
+                color: '#0f172a',
                 outline: 'none'
               }}
             />
@@ -178,10 +182,11 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
               onChange={(e) => setNewCategory(e.target.value)}
               style={{
                 width: '130px',
-                padding: '10px 12px',
-                borderRadius: '10px',
+                padding: '9px 12px',
+                borderRadius: '8px',
                 border: '1px solid #cbd5e1',
                 fontSize: '0.85rem',
+                color: '#0f172a',
                 outline: 'none'
               }}
             />
@@ -189,12 +194,12 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
               type="submit"
               disabled={loading || !newQuestionText.trim()}
               style={{
-                padding: '10px 16px',
-                borderRadius: '10px',
+                padding: '9px 16px',
+                borderRadius: '8px',
                 backgroundColor: '#4f46e5',
                 color: '#ffffff',
                 border: 'none',
-                fontWeight: 700,
+                fontWeight: 600,
                 fontSize: '0.85rem',
                 cursor: 'pointer',
                 display: 'flex',
@@ -217,19 +222,18 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
                 <div
                   key={q.id}
                   style={{
-                    padding: '14px 16px',
-                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
                     border: '1px solid #e2e8f0',
                     backgroundColor: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    gap: '12px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                    gap: '12px'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1 }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#4f46e5', backgroundColor: '#e0e7ff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#4f46e5', backgroundColor: '#e0e7ff', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px' }}>
                       {idx + 1}
                     </span>
                     {editingId === q.id ? (
@@ -242,17 +246,17 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
                           padding: '6px 10px',
                           borderRadius: '6px',
                           border: '1px solid #4f46e5',
-                          fontSize: '0.875rem',
+                          fontSize: '0.85rem',
                           outline: 'none'
                         }}
                       />
                     ) : (
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>
                           {q.question}
                         </div>
                         {q.category && (
-                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', display: 'inline-block' }}>
                             {q.category}
                           </span>
                         )}
@@ -264,25 +268,25 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
                     {editingId === q.id ? (
                       <button
                         onClick={() => handleSaveEdit(q.id)}
-                        style={{ padding: '6px 10px', borderRadius: '6px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 700 }}
+                        style={{ padding: '5px 10px', borderRadius: '6px', backgroundColor: '#10b981', color: '#ffffff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 600 }}
                       >
-                        <Save size={14} /> Save
+                        <Save size={13} /> Save
                       </button>
                     ) : (
                       <button
                         onClick={() => { setEditingId(q.id); setEditText(q.question); }}
-                        style={{ padding: '6px 8px', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', cursor: 'pointer' }}
+                        style={{ padding: '5px 8px', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                         title="Edit Question"
                       >
-                        <Edit2 size={14} />
+                        <Edit2 size={13} />
                       </button>
                     )}
                     <button
                       onClick={() => handleDelete(q.id)}
-                      style={{ padding: '6px 8px', borderRadius: '6px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', cursor: 'pointer' }}
+                      style={{ padding: '5px 8px', borderRadius: '6px', backgroundColor: '#fef2f2', color: '#dc2626', border: '1px solid #fca5a5', cursor: 'pointer' }}
                       title="Delete Question"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </div>
@@ -292,16 +296,16 @@ export default function ManageQuestionsModal({ isOpen, onClose }: ManageQuestion
         </div>
 
         {/* FOOTER */}
-        <div style={{ backgroundColor: '#f8fafc', padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ backgroundColor: '#f8fafc', padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
             style={{
-              padding: '9px 20px',
+              padding: '8px 18px',
               borderRadius: '8px',
               backgroundColor: '#4f46e5',
               color: '#ffffff',
               border: 'none',
-              fontWeight: 700,
+              fontWeight: 600,
               fontSize: '0.85rem',
               cursor: 'pointer'
             }}

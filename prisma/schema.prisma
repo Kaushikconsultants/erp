@@ -804,6 +804,7 @@ model Candidate {
   experienceYears Float    @default(0)
   expectedSalary  String?
   resumeUrl       String?
+  referenceName   String?  // Reference Name / Referred By
   status          String   @default("NEW") // NEW, ROUND_1_PENDING, ROUND_1_PASSED, ROUND_2_PENDING, ROUND_2_PASSED, ROUND_3_PENDING, HIRED, REJECTED
 
   round1InterviewerId String?

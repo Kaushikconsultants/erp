@@ -65,6 +65,7 @@ export async function createCandidate(formData: FormData) {
     const experienceYears = parseFloat((formData.get("experienceYears") as string) || "0");
     const expectedSalary = formData.get("expectedSalary") as string || "";
     const resumeUrl = formData.get("resumeUrl") as string || "";
+    const referenceName = formData.get("referenceName") as string || "";
 
     if (!name || !email || !appliedRole) {
       return { error: "Name, Email, and Applied Role are required." };
@@ -82,6 +83,7 @@ export async function createCandidate(formData: FormData) {
         experienceYears,
         expectedSalary,
         resumeUrl,
+        referenceName,
         status: "NEW"
       }
     });
