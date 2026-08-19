@@ -59,7 +59,7 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
           <p className="page-subtitle">Contact Person: {customer.contactPerson}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link href="/portal" target="_blank" className="action-btn text-blue" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: '600' }}>
+          <Link href={`/portal?customerId=${customer.id}`} target="_blank" className="action-btn text-blue" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: '600' }}>
             🌐 Open Client Portal
           </Link>
           <Link href="/customers" className="action-btn text-blue">← Back to Customers</Link>
