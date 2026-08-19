@@ -86,8 +86,8 @@ export default function ChangePasswordModal({ user, onClose }: ChangePasswordMod
         <div 
           style={{
             padding: '18px 20px',
-            backgroundColor: '#fffbeb',
-            borderBottom: '1px solid #fef3c7',
+            backgroundColor: 'var(--accent-light, #f0f4ff)',
+            borderBottom: '1px solid var(--accent-light, #e0e7ff)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -99,21 +99,22 @@ export default function ChangePasswordModal({ user, onClose }: ChangePasswordMod
                 width: '40px', 
                 height: '40px', 
                 borderRadius: '12px', 
-                backgroundColor: '#fef3c7', 
-                color: '#d97706', 
+                backgroundColor: '#ffffff', 
+                color: 'var(--accent-primary, #4f46e5)', 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                border: '1px solid #fde68a'
+                border: '1px solid var(--accent-light, #c7d2fe)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
               }}
             >
               <KeyRound size={22} />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#92400e' }}>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-primary, #4f46e5)' }}>
                 Change User Password
               </h2>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#b45309' }}>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#475569' }}>
                 Set new login credentials for <strong>{user.name}</strong>
               </p>
             </div>
@@ -125,7 +126,7 @@ export default function ChangePasswordModal({ user, onClose }: ChangePasswordMod
               background: 'none', 
               border: 'none', 
               fontSize: '1.5rem', 
-              color: '#b45309', 
+              color: 'var(--accent-primary, #4f46e5)', 
               cursor: 'pointer',
               lineHeight: 1,
               padding: '4px'
@@ -152,7 +153,7 @@ export default function ChangePasswordModal({ user, onClose }: ChangePasswordMod
 
           {/* User Account Info Banner */}
           <div style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <User size={18} style={{ color: '#64748b' }} />
+            <User size={18} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
             <div>
               <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Target User Account</div>
               <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>{user.email}</div>
@@ -255,19 +256,19 @@ export default function ChangePasswordModal({ user, onClose }: ChangePasswordMod
             <button 
               type="submit" 
               disabled={loading}
+              className="primary-btn hover-lift"
               style={{
                 padding: '9px 22px',
                 borderRadius: '8px',
                 border: 'none',
-                backgroundColor: '#d97706',
+                backgroundColor: 'var(--accent-primary, #4f46e5)',
                 color: '#ffffff',
                 fontWeight: 700,
                 fontSize: '0.85rem',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 2px 6px rgba(217, 119, 6, 0.3)'
+                gap: '6px'
               }}
             >
               <Lock size={15} /> {loading ? "Updating Password..." : "Update Password"}

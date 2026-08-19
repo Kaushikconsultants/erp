@@ -143,15 +143,15 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
           </div>
 
           {/* ADMIN PASSWORD CHANGE SECTION */}
-          <div style={{ backgroundColor: '#fffbeb', padding: '14px', borderRadius: '10px', border: '1px solid #fde68a' }}>
+          <div style={{ backgroundColor: 'var(--accent-light, #f0f4ff)', padding: '14px', borderRadius: '10px', border: '1px solid var(--accent-light, #e0e7ff)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontWeight: 700, color: '#92400e', fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <label style={{ fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', fontSize: '0.85rem', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <KeyRound size={16} /> Admin Password Change (Optional)
               </label>
               <button 
                 type="button" 
                 onClick={handleGeneratePassword} 
-                style={{ background: 'none', border: 'none', color: '#b45309', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                style={{ background: 'none', border: 'none', color: 'var(--accent-primary, #4f46e5)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
                 <Sparkles size={13} /> Auto-Generate
               </button>
@@ -167,7 +167,7 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
                   width: '100%', 
                   padding: '9px 36px 9px 12px', 
                   borderRadius: '6px', 
-                  border: '1px solid #fcd34d', 
+                  border: '1px solid var(--accent-light, #cbd5e1)', 
                   fontSize: '0.85rem', 
                   backgroundColor: '#ffffff',
                   outline: 'none',
@@ -182,7 +182,7 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
                   right: '8px',
                   background: 'none',
                   border: 'none',
-                  color: '#b45309',
+                  color: 'var(--accent-primary, #4f46e5)',
                   cursor: 'pointer',
                   padding: '2px',
                   display: 'flex',
@@ -193,7 +193,7 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            <p style={{ fontSize: '0.72rem', color: '#b45309', margin: '4px 0 0 0' }}>
+            <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '4px 0 0 0' }}>
               Type a new password or auto-generate. You can view the text while typing.
             </p>
           </div>
