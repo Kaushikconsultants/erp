@@ -16,8 +16,8 @@ export default function BrandLogo({
   className = ""
 }: BrandLogoProps) {
   // Dimensions based on size
-  const iconSize = size === "sm" ? 32 : size === "lg" ? 48 : 38;
-  const titleSize = size === "sm" ? "1.1rem" : size === "lg" ? "1.65rem" : "1.35rem";
+  const iconSize = size === "sm" ? 32 : size === "lg" ? 48 : 40;
+  const titleSize = size === "sm" ? "1.1rem" : size === "lg" ? "1.65rem" : "1.4rem";
   const subtitleSize = size === "sm" ? "0.6rem" : size === "lg" ? "0.72rem" : "0.65rem";
 
   return (
@@ -26,23 +26,78 @@ export default function BrandLogo({
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: collapsed ? "0" : "14px",
+        gap: collapsed ? "0" : "16px",
         textDecoration: "none",
-        userSelect: "none"
+        userSelect: "none",
+        position: "relative"
       }}
     >
-      {/* Sleek Minimalist Geometric Heart Vector */}
+      <style>
+        {`
+          @keyframes heartbeat {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.1); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.1); }
+            70% { transform: scale(1); }
+            100% { transform: scale(1); }
+          }
+          @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            80% { transform: scale(1.4); opacity: 0; }
+            100% { transform: scale(0.8); opacity: 0; }
+          }
+          @keyframes gradientShift1 {
+            0% { stop-color: var(--accent-primary); }
+            50% { stop-color: var(--accent-secondary); }
+            100% { stop-color: var(--accent-primary); }
+          }
+          @keyframes gradientShift2 {
+            0% { stop-color: var(--accent-secondary); }
+            50% { stop-color: var(--accent-primary); }
+            100% { stop-color: var(--accent-secondary); }
+          }
+          @keyframes gradientFlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          .brand-identity:hover .heart-icon {
+            animation: none;
+            transform: scale(1.1) rotate(5deg);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+          }
+          .brand-identity:hover .pulse-ring-circle {
+            animation: pulse-ring 1s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+          }
+          .brand-identity:hover .subtitle-line {
+            width: 32px !important;
+            background: var(--accent-secondary) !important;
+          }
+          .heart-icon {
+            animation: heartbeat 2.5s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+            transform-origin: center;
+          }
+          .pulse-ring-circle {
+            transform-origin: center;
+            opacity: 0;
+          }
+          .grad-stop-1 { animation: gradientShift1 4s infinite alternate; }
+          .grad-stop-2 { animation: gradientShift2 4s infinite alternate; }
+        `}
+      </style>
+
+      {/* Animated Brand Icon */}
       <div
         className="brand-icon-wrapper"
         style={{
-          width: `${iconSize}px`,
-          height: `${iconSize}px`,
+          width: \`\${iconSize}px\`,
+          height: \`\${iconSize}px\`,
           position: "relative",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          flexShrink: 0,
-          transition: "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
+          flexShrink: 0
         }}
       >
         <svg
@@ -50,45 +105,50 @@ export default function BrandLogo({
           style={{ 
             width: "100%", 
             height: "100%", 
-            filter: "drop-shadow(0 6px 10px rgba(79, 70, 229, 0.25))" 
+            filter: "drop-shadow(0 4px 8px rgba(79, 70, 229, 0.35))",
+            overflow: "visible"
           }}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <linearGradient id="gradLeft" x1="20" y1="20" x2="50" y2="90" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#f43f5e" />
-              <stop offset="100%" stopColor="#7c3aed" />
+            <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" className="grad-stop-1" />
+              <stop offset="100%" className="grad-stop-2" />
             </linearGradient>
-            <linearGradient id="gradRight" x1="80" y1="20" x2="50" y2="90" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#0ea5e9" />
-              <stop offset="100%" stopColor="#4f46e5" />
-            </linearGradient>
-            <linearGradient id="gradCenter" x1="50" y1="15" x2="50" y2="60" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#a855f7" />
-              <stop offset="100%" stopColor="#6366f1" />
+            <linearGradient id="ringGrad" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" className="grad-stop-2" />
+              <stop offset="100%" className="grad-stop-1" />
             </linearGradient>
           </defs>
 
-          {/* Left Heart Lobe */}
-          <path
-            d="M 50 90 C 50 90, 10 55, 12 30 C 14 12, 35 10, 50 30 Z"
-            fill="url(#gradLeft)"
-            opacity="0.9"
+          {/* Background Pulse Ring */}
+          <circle 
+            cx="50" cy="50" r="35" 
+            fill="none" 
+            stroke="url(#ringGrad)" 
+            strokeWidth="3" 
+            className="pulse-ring-circle" 
           />
-          {/* Right Heart Lobe */}
-          <path
-            d="M 50 90 C 50 90, 90 55, 88 30 C 86 12, 65 10, 50 30 Z"
-            fill="url(#gradRight)"
-            opacity="0.9"
-            style={{ mixBlendMode: "multiply" }}
-          />
-          {/* Center Upward Growth Prism (Business Growth) */}
-          <path
-            d="M 50 22 L 64 45 L 50 85 L 36 45 Z"
-            fill="url(#gradCenter)"
-            opacity="0.95"
-          />
+
+          {/* Elegant Modern Heart Path */}
+          <g className="heart-icon">
+            <path
+              d="M 50 85 C 50 85, 15 55, 18 28 C 20 12, 42 12, 50 32 C 58 12, 80 12, 82 28 C 85 55, 50 85, 50 85 Z"
+              fill="url(#heartGrad)"
+              opacity="0.95"
+            />
+            {/* Inner dynamic swoosh/chart line */}
+            <path
+              d="M 32 46 L 46 62 L 70 30"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.2))" }}
+            />
+          </g>
         </svg>
       </div>
 
@@ -102,7 +162,7 @@ export default function BrandLogo({
             gap: "2px"
           }}
         >
-          {/* Main Title: Sleek and Minimal */}
+          {/* Main Title: Creative & Stylish */}
           <div
             style={{
               display: "flex",
@@ -115,21 +175,23 @@ export default function BrandLogo({
             <span
               style={{
                 fontSize: titleSize,
-                fontWeight: 900,
-                color: "#0f172a",
+                fontWeight: 800,
+                color: "var(--text-primary)",
                 letterSpacing: "-0.5px",
-                fontFamily: "var(--font-inter, -apple-system, sans-serif)"
+                fontFamily: "var(--font-family, -apple-system, sans-serif)",
+                transition: "color 0.3s ease"
               }}
             >
               Heart
             </span>
             <span
               style={{
-                fontSize: titleSize,
-                fontWeight: 300,
-                color: "#64748b",
+                fontSize: \`calc(\${titleSize} * 0.75)\`,
+                fontWeight: 500,
+                color: "var(--text-secondary)",
                 fontStyle: "italic",
-                fontFamily: "var(--font-inter, -apple-system, sans-serif)"
+                fontFamily: "var(--font-family, -apple-system, sans-serif)",
+                opacity: 0.8
               }}
             >
               of
@@ -139,10 +201,12 @@ export default function BrandLogo({
                 fontSize: titleSize,
                 fontWeight: 900,
                 letterSpacing: "-0.5px",
-                background: "linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%)",
+                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)",
+                backgroundSize: "200% auto",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
-                fontFamily: "var(--font-inter, -apple-system, sans-serif)"
+                fontFamily: "var(--font-family, -apple-system, sans-serif)",
+                animation: "gradientFlow 3s ease infinite"
               }}
             >
               Business
@@ -156,25 +220,28 @@ export default function BrandLogo({
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
-                marginTop: "2px"
+                marginTop: "4px"
               }}
             >
               <div
+                className="subtitle-line"
                 style={{
-                  width: "24px",
+                  width: "16px",
                   height: "2px",
-                  background: "linear-gradient(90deg, #818cf8, transparent)",
-                  borderRadius: "2px"
+                  background: "var(--accent-primary)",
+                  borderRadius: "2px",
+                  transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
                 }}
               />
               <span
                 style={{
                   fontSize: subtitleSize,
                   fontWeight: 700,
-                  color: "#64748b",
-                  letterSpacing: "1.2px",
+                  color: "var(--text-secondary)",
+                  letterSpacing: "1.5px",
                   textTransform: "uppercase",
-                  fontFamily: "var(--font-inter, sans-serif)"
+                  fontFamily: "var(--font-family, sans-serif)",
+                  opacity: 0.85
                 }}
               >
                 Made by Ashish Aggarwal
