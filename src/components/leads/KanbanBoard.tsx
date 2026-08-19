@@ -1,23 +1,25 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { updateLeadStage, updateLeadValue } from '@/app/actions/leadActions';
+import React, { useState } from 'react';
+import { updateLeadStage } from '@/app/actions/leadActions';
 import Link from 'next/link';
+import { Phone, MessageSquare, ChevronRight, Filter, TrendingUp, Award, Layers } from 'lucide-react';
 
 const STAGES = [
-  { id: 'New Lead', title: 'New Lead', color: 'bg-blue-100 border-blue-200 text-blue-800' },
-  { id: 'Contacted', title: 'Contacted', color: 'bg-indigo-100 border-indigo-200 text-indigo-800' },
-  { id: 'Qualified', title: 'Qualified', color: 'bg-purple-100 border-purple-200 text-purple-800' },
-  { id: 'Opportunity', title: 'Opportunity', color: 'bg-orange-100 border-orange-200 text-orange-800' },
-  { id: 'Won', title: 'Won', color: 'bg-green-100 border-green-200 text-green-800' },
-  { id: 'Lost', title: 'Lost', color: 'bg-red-100 border-red-200 text-red-800' },
+  { id: 'New Lead', title: 'New Lead', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  { id: 'Contacted', title: 'Contacted', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+  { id: 'Qualified', title: 'Qualified', color: 'bg-purple-100 text-purple-800 border-purple-200' },
+  { id: 'Opportunity', title: 'Opportunity', color: 'bg-orange-100 text-orange-800 border-orange-200' },
+  { id: 'Won', title: 'Won', color: 'bg-green-100 text-green-800 border-green-200' },
+  { id: 'Lost', title: 'Lost', color: 'bg-red-100 text-red-800 border-red-200' },
 ];
 
 export default function KanbanBoard({ initialLeads }: { initialLeads: any[] }) {
   const [leads, setLeads] = useState(initialLeads);
+  const [activeStage, setActiveStage] = useState('New Lead');
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  // Derive pipeline value and win rate
+  // Derive pipeline metrics
   const pipelineValue = leads
     .filter(l => l.leadStage !== 'Lost' && l.leadStage !== 'Won')
     .reduce((sum, l) => sum + (l.expectedValue || 0), 0);
@@ -26,6 +28,21 @@ export default function KanbanBoard({ initialLeads }: { initialLeads: any[] }) {
   const lostCount = leads.filter(l => l.leadStage === 'Lost').length;
   const closedTotal = wonCount + lostCount;
   const winRate = closedTotal > 0 ? Math.round((wonCount / closedTotal) * 100) : 0;
+
+  const handleStageChange = async (leadId: string, targetStage: string) => {
+    const previousLeads = [...leads];
+    setLeads(leads.map(l => l.id === leadId ? { ...l, leadStage: targetStage } : l));
+
+    let newStatus = undefined;
+    if (targetStage === 'Won') newStatus = 'Active Lead';
+    if (targetStage === 'Lost') newStatus = 'Inactive';
+    
+    const res = await updateLeadStage(leadId, targetStage, newStatus);
+    if (res?.error) {
+      alert(res.error);
+      setLeads(previousLeads);
+    }
+  };
 
   const handleDragStart = (e: React.DragEvent, leadId: string) => {
     setDraggingId(leadId);
@@ -40,111 +57,187 @@ export default function KanbanBoard({ initialLeads }: { initialLeads: any[] }) {
     e.preventDefault();
     const leadId = e.dataTransfer.getData('leadId');
     if (!leadId) return;
-
-    // Optimistic update
-    const previousLeads = [...leads];
-    setLeads(leads.map(l => l.id === leadId ? { ...l, leadStage: targetStage } : l));
+    handleStageChange(leadId, targetStage);
     setDraggingId(null);
-
-    // Call server action
-    let newStatus = undefined;
-    if (targetStage === 'Won') newStatus = 'Active Lead';
-    if (targetStage === 'Lost') newStatus = 'Inactive';
-    
-    const res = await updateLeadStage(leadId, targetStage, newStatus);
-    if (res?.error) {
-      alert(res.error);
-      setLeads(previousLeads);
-    }
   };
+
+  const activeStageLeads = leads.filter(l => (l.leadStage || 'New Lead') === activeStage);
+  const activeStageValue = activeStageLeads.reduce((sum, l) => sum + (l.expectedValue || 0), 0);
 
   return (
     <div>
-      {/* Analytics Header */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="text-sm text-gray-500">Total Leads</div>
-          <div className="text-2xl font-bold">{leads.length}</div>
+      {/* ─── MOBILE PIPELINE METRICS ─── */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '16px' }}>
+        <div style={{ flex: 1, minWidth: '110px', padding: '10px 12px', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Total Leads</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{leads.length}</span>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="text-sm text-gray-500">Pipeline Value</div>
-          <div className="text-2xl font-bold text-indigo-700">₹{pipelineValue.toLocaleString()}</div>
+        <div style={{ flex: 1, minWidth: '130px', padding: '10px 12px', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Pipeline Value</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#ef4444' }}>₹{(pipelineValue / 1000).toFixed(1)}k</span>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="text-sm text-gray-500">Win Rate</div>
-          <div className="text-2xl font-bold text-green-600">{winRate}%</div>
-        </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="text-sm text-gray-500">Lost</div>
-          <div className="text-2xl font-bold text-red-600">{lostCount}</div>
+        <div style={{ flex: 1, minWidth: '100px', padding: '10px 12px', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Win Rate</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981' }}>{winRate}%</span>
         </div>
       </div>
 
-      {/* Kanban Board */}
-      <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: '600px' }}>
+      {/* ─── STAGE SELECTOR TABS (MOBILE & DESKTOP) ─── */}
+      <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '14px' }}>
         {STAGES.map(stage => {
-          const stageLeads = leads.filter(l => (l.leadStage || 'New Lead') === stage.id);
-          const stageValue = stageLeads.reduce((sum, l) => sum + (l.expectedValue || 0), 0);
-
+          const count = leads.filter(l => (l.leadStage || 'New Lead') === stage.id).length;
+          const isSelected = activeStage === stage.id;
           return (
-            <div 
-              key={stage.id} 
-              className="flex-shrink-0 w-80 flex flex-col bg-gray-50 rounded-xl border border-gray-200"
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDrop(e, stage.id)}
+            <button
+              key={stage.id}
+              onClick={() => setActiveStage(stage.id)}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '20px',
+                border: isSelected ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                backgroundColor: isSelected ? '#ef4444' : '#ffffff',
+                color: isSelected ? '#ffffff' : '#475569',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
             >
-              {/* Stage Header */}
-              <div className={`p-3 rounded-t-xl border-b font-semibold flex justify-between items-center ${stage.color}`}>
-                <span>{stage.title}</span>
-                <span className="text-xs bg-white bg-opacity-50 px-2 py-1 rounded-full">{stageLeads.length}</span>
-              </div>
-              
-              {/* Stage Value */}
-              <div className="px-3 py-2 text-xs text-gray-500 font-medium text-right border-b border-gray-200 bg-white">
-                ₹{stageValue.toLocaleString()}
-              </div>
-
-              {/* Cards Container */}
-              <div className="flex-1 p-2 overflow-y-auto flex flex-col gap-2">
-                {stageLeads.map(lead => (
-                  <div 
-                    key={lead.id}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, lead.id)}
-                    className={`bg-white p-3 rounded-lg border border-gray-200 shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-colors ${draggingId === lead.id ? 'opacity-50' : ''}`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <Link href={`/customers/${lead.id}`} className="font-semibold text-gray-800 hover:text-indigo-600">
-                        {lead.businessName}
-                      </Link>
-                      {lead.healthScore && (
-                        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${lead.healthScore >= 70 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                          {lead.healthScore}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="text-sm text-gray-600 mb-2">
-                      {lead.contactPerson}
-                    </div>
-
-                    <div className="flex justify-between items-center text-xs mt-3 pt-2 border-t border-gray-100">
-                      <span className="text-gray-500">{lead.assignedSalesperson?.user?.name || 'Unassigned'}</span>
-                      <span className="font-bold text-gray-700">₹{(lead.expectedValue || 0).toLocaleString()}</span>
-                    </div>
-                  </div>
-                ))}
-                
-                {stageLeads.length === 0 && (
-                  <div className="text-center py-6 text-sm text-gray-400 border-2 border-dashed border-gray-200 rounded-lg m-2">
-                    Drop here
-                  </div>
-                )}
-              </div>
-            </div>
+              <span>{stage.title}</span>
+              <span style={{ 
+                backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : '#f1f5f9', 
+                color: isSelected ? '#ffffff' : '#64748b',
+                padding: '1px 6px', 
+                borderRadius: '10px', 
+                fontSize: '0.7rem' 
+              }}>
+                {count}
+              </span>
+            </button>
           );
         })}
       </div>
+
+      {/* ─── ACTIVE STAGE CARDS VIEW (MOBILE TOUCH OPTIMIZED) ─── */}
+      <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+              {activeStage} Stage
+            </h3>
+            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              Total Value: ₹{activeStageValue.toLocaleString('en-IN')}
+            </span>
+          </div>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', backgroundColor: '#fee2e2', padding: '3px 10px', borderRadius: '12px' }}>
+            {activeStageLeads.length} Deals
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {activeStageLeads.length > 0 ? (
+            activeStageLeads.map(lead => {
+              const cleanPhone = (lead.mobile || '').replace(/[^0-9]/g, '');
+
+              return (
+                <div 
+                  key={lead.id}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    padding: '14px',
+                    borderRadius: '12px',
+                    border: '1px solid #cbd5e1',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <Link href={`/customers/${lead.id}`} style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem', textDecoration: 'none' }}>
+                        {lead.businessName}
+                      </Link>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                        {lead.contactPerson} • {lead.city || 'Rohtak'}
+                      </p>
+                    </div>
+
+                    <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#10b981' }}>
+                      ₹{(lead.expectedValue || 0).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', color: '#475569', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
+                    <span>Rep: <strong>{lead.assignedSalesperson?.user?.name || 'Unassigned'}</strong></span>
+                    
+                    {/* Stage Selector Dropdown */}
+                    <select
+                      value={lead.leadStage || 'New Lead'}
+                      onChange={(e) => handleStageChange(lead.id, e.target.value)}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a'
+                      }}
+                    >
+                      {STAGES.map(s => (
+                        <option key={s.id} value={s.id}>{s.title}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* One-tap Quick Action Buttons */}
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                    {cleanPhone && (
+                      <>
+                        <a 
+                          href={`tel:${cleanPhone}`} 
+                          className="action-btn outline-success" 
+                          style={{ textDecoration: 'none', padding: '5px 10px', fontSize: '0.75rem', flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Phone size={12} /> Call
+                        </a>
+                        <a 
+                          href={`https://wa.me/91${cleanPhone}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="action-btn" 
+                          style={{ textDecoration: 'none', padding: '5px 10px', fontSize: '0.75rem', flex: 1, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#25D366', color: '#fff' }}
+                        >
+                          <MessageSquare size={12} /> WhatsApp
+                        </a>
+                      </>
+                    )}
+                    <Link 
+                      href={`/customers/${lead.id}`} 
+                      className="action-btn outline-primary" 
+                      style={{ textDecoration: 'none', padding: '5px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '2px' }}
+                    >
+                      Details <ChevronRight size={12} />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ textAlign: 'center', padding: '24px 12px', color: '#64748b', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+              <Layers size={28} style={{ color: '#94a3b8', margin: '0 auto 8px auto' }} />
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '0.85rem' }}>No leads in {activeStage} stage</p>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem' }}>Use stage tabs above or add a new lead.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
     </div>
   );
 }

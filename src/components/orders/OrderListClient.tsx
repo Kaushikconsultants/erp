@@ -205,8 +205,111 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
         </button>
       </div>
 
-      {/* ─── TABLE ─── */}
-      <div style={{ overflowX: 'auto' }}>
+      {/* ─── MOBILE ORDER CARDS VIEW (HIDDEN ON DESKTOP) ─── */}
+      <div className="mobile-order-cards" style={{ display: 'none', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+        {filteredDocs.map((doc) => (
+          <div 
+            key={doc.id}
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '14px',
+              padding: '14px',
+              border: '1px solid #cbd5e1',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <FileText size={13} /> {doc.documentNumber} • {doc.date}
+                </span>
+                <h4 style={{ margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent-primary, #2563eb)' }}>
+                  {doc.customerName}
+                </h4>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                  {doc.customerSub} • Rep: {doc.agentName}
+                </p>
+              </div>
+
+              <span style={{ 
+                backgroundColor: doc.statusBg, 
+                color: doc.statusColor, 
+                padding: '4px 10px', 
+                borderRadius: '12px', 
+                fontSize: '0.75rem', 
+                fontWeight: 700 
+              }}>
+                {doc.status}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '10px 12px', borderRadius: '10px' }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Total Amount</span>
+                <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>₹{doc.totalAmount.toLocaleString()}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Payment Method</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>{doc.paymentType}</span>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Commission</span>
+                <button 
+                  onClick={() => setCommissionModal(doc)}
+                  style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}
+                >
+                  ₹{doc.commissionValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </button>
+              </div>
+            </div>
+
+            {doc.awbNumber && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', color: '#475569', backgroundColor: '#f0fdf4', padding: '6px 10px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                <span>AWB: <strong>{doc.awbNumber}</strong></span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => copyToClipboard(doc.awbNumber!)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                    Copy
+                  </button>
+                  <button onClick={() => setTrackingOrder(doc)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                    <Truck size={13} /> Track
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
+              <a 
+                href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}`} 
+                className="action-btn outline-primary" 
+                style={{ flex: 1, textAlign: 'center', textDecoration: 'none', justifyContent: 'center', fontSize: '0.78rem' }}
+              >
+                View Order
+              </a>
+              <a 
+                href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}/invoice`} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="action-btn" 
+                style={{ flex: 1, textAlign: 'center', textDecoration: 'none', justifyContent: 'center', fontSize: '0.78rem', backgroundColor: '#4f46e5', color: '#fff' }}
+              >
+                Invoice PDF
+              </a>
+            </div>
+          </div>
+        ))}
+
+        {filteredDocs.length === 0 && (
+          <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', backgroundColor: '#ffffff', borderRadius: '12px' }}>
+            No records found matching your filters.
+          </div>
+        )}
+      </div>
+
+      {/* ─── DESKTOP TABLE ─── */}
+      <div className="desktop-order-table" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
           <thead>
             <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>

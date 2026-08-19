@@ -522,6 +522,14 @@ button {
   }
 
   /* Full mobile table responsiveness */
+  /* Mobile Cards vs Desktop Table Overrides */
+  .mobile-order-cards {
+    display: flex !important;
+  }
+  .desktop-order-table {
+    display: none !important;
+  }
+
   .table-responsive,
   .data-table-container,
   div[style*="overflowX"],
