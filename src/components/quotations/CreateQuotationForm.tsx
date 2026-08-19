@@ -495,9 +495,13 @@ export default function CreateQuotationForm({ customers, products, employees, ca
       if (res.error) {
         alert(res.error);
       } else {
-        alert(`Quotation ${res.quotation?.quotationNumber || ''} ${initialQuotation ? 'Updated' : 'Created'} Successfully!`);
-        router.refresh();
-        router.push('/quotations');
+        const savedId = res.quotation?.id || initialQuotation?.id;
+        if (savedId) {
+          router.refresh();
+          router.push(`/quotations/${savedId}`);
+        } else {
+          router.push('/quotations');
+        }
       }
     } catch (err: any) {
       alert("Error: " + (err?.message || "An unexpected error occurred"));
