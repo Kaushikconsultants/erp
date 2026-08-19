@@ -428,10 +428,21 @@ button {
 }
 
 @media (max-width: 768px) {
-  /* Layout Overrides */
+  html, body {
+    overflow-x: hidden !important;
+    position: relative;
+    touch-action: manipulation;
+  }
+
+  /* Layout Overrides for Mobile App */
   .app-container {
     flex-direction: column;
+    padding-bottom: 64px; /* Space for MobileBottomNav */
   }
+  .main-content {
+    padding: 12px 10px 80px 10px !important;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
@@ -454,38 +465,24 @@ button {
     z-index: 999;
   }
 
-  /* Buttons */
-  .mobile-menu-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .mobile-close-btn {
-    display: block;
-  }
-
-  /* Topbar */
+  /* Mobile App Header & Topbar */
   .topbar {
-    padding: 0 16px;
-    gap: 12px;
+    padding: 0 12px;
+    gap: 8px;
+    height: 58px;
   }
   .search-container {
-    width: 160px; /* shrink search bar */
-    padding: 6px 12px;
+    width: 140px; /* shrink search bar */
+    padding: 6px 10px;
   }
   .topbar-actions {
-    gap: 12px;
+    gap: 8px;
   }
   .user-info {
     display: none; /* hide name on mobile */
   }
 
-  /* Main content */
-  .main-content {
-    padding: 16px;
-  }
-
-  /* Grids & Cards */
+  /* Grids & Cards - Single Column Mobile Stack */
   .kpi-grid,
   .dashboard-charts,
   .zoho-kpi-grid,
@@ -499,22 +496,22 @@ button {
   .quotation-address-grid,
   .quotation-bottom-grid {
     grid-template-columns: 1fr !important;
-    gap: 16px !important;
+    gap: 12px !important;
   }
 
   .quotation-page-container {
-    padding: 12px 10px !important;
+    padding: 8px 6px !important;
   }
 
   .quotation-canvas-card {
-    padding: 16px 12px !important;
+    padding: 14px 10px !important;
     border-radius: 8px !important;
   }
 
   .quotation-header-bar {
     flex-direction: column !important;
     align-items: flex-start !important;
-    gap: 12px !important;
+    gap: 10px !important;
   }
 
   .quotation-header-actions {
@@ -533,61 +530,66 @@ button {
     max-width: 100vw !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    border-radius: 8px;
   }
 
   table {
-    min-width: 600px !important;
+    min-width: 580px !important;
   }
 
-  /* Touch Targets for Mobile */
+  /* Touch Targets & Native Input Size */
   input[type="text"],
   input[type="number"],
   input[type="email"],
+  input[type="password"],
   input[type="date"],
   select,
   textarea {
-    font-size: 16px !important; /* Prevents auto-zoom on iOS safari */
+    font-size: 16px !important; /* Prevents auto-zoom on iOS safari & Android Chrome */
+    min-height: 42px;
   }
 
   .page-header-actions,
   .dashboard-header {
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 12px !important;
+    gap: 10px !important;
   }
 
-  /* specific adjustments */
+  /* Charts & Page Titles */
   .chart-container {
-    min-height: 260px;
+    min-height: 240px;
   }
   .page-title {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
   }
-  
-  /* Modals */
+
+  /* Mobile Bottom Sheets / Modals */
   .modal-content,
   .zoho-form-card {
-    max-width: 96vw !important;
-    max-height: 92vh !important;
+    max-width: 95vw !important;
+    max-height: 88vh !important;
     margin: 8px auto !important;
-    width: 96vw !important;
-    border-radius: 12px !important;
+    width: 95vw !important;
+    border-radius: 14px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
   .modal-body {
-    padding: 14px !important;
+    padding: 12px !important;
   }
 }
 
 @media (max-width: 480px) {
   .topbar {
-    padding: 0 10px;
+    padding: 0 8px;
   }
   .search-container {
-    width: 130px;
+    width: 110px;
   }
   .primary-btn, .action-btn {
-    padding: 8px 12px;
-    font-size: 0.8rem;
+    padding: 8px 10px;
+    font-size: 0.78rem;
   }
 }
 

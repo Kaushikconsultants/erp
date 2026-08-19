@@ -1,0 +1,64 @@
+/* Native Android Bottom Navigation Bar Styles */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+    z-index: 9999;
+    justify-content: space-around;
+    align-items: center;
+    padding: 4px 8px env(safe-area-inset-bottom, 4px) 8px;
+    user-select: none;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-decoration: none;
+    color: #64748b;
+    padding: 6px 0;
+    gap: 3px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 12px;
+  }
+
+  .bottom-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 26px;
+    border-radius: 16px;
+    transition: all 0.2s ease;
+  }
+
+  .bottom-nav-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+  }
+
+  .bottom-nav-item.active {
+    color: var(--accent-primary, #ef4444);
+  }
+
+  .bottom-nav-item.active .bottom-nav-icon {
+    background-color: var(--accent-light, rgba(239, 68, 68, 0.12));
+    color: var(--accent-primary, #ef4444);
+  }
+}

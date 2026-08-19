@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import MobileBottomNav from './MobileBottomNav';
 import { usePathname } from 'next/navigation';
 
 interface DashboardShellProps {
@@ -56,6 +57,9 @@ export default function DashboardShell({
           {children}
         </main>
       </div>
+
+      {/* Native Android Bottom Navigation Bar */}
+      <MobileBottomNav userRole={userRole} allowedSections={allowedSections} />
     </div>
   );
 }
