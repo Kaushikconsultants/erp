@@ -27,6 +27,7 @@ model User {
   employee Employee?
   auditLogs AuditLog[]
   notifications Notification[]
+  customerProfile Customer? @relation("CustomerUser")
 }
 
 model Role {
@@ -134,6 +135,10 @@ model Customer {
   tags            String?
 
   healthScore          Float?
+  leadScore            Int?
+  temperature          String?  // HOT, WARM, COLD
+  portalUserId         String?  @unique
+  portalUser           User?    @relation("CustomerUser", fields: [portalUserId], references: [id])
   expectedValue        Float? @default(0)
   averageOrderCycleDays Int?
   preferences          String? // JSON string
