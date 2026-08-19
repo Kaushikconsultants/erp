@@ -47,16 +47,6 @@ export default function BrandLogo({
             80% { transform: scale(1.4); opacity: 0; }
             100% { transform: scale(0.8); opacity: 0; }
           }
-          @keyframes gradientShift1 {
-            0% { stop-color: var(--accent-primary); }
-            50% { stop-color: var(--accent-secondary); }
-            100% { stop-color: var(--accent-primary); }
-          }
-          @keyframes gradientShift2 {
-            0% { stop-color: var(--accent-secondary); }
-            50% { stop-color: var(--accent-primary); }
-            100% { stop-color: var(--accent-secondary); }
-          }
           @keyframes gradientFlow {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -72,7 +62,7 @@ export default function BrandLogo({
           }
           .brand-identity:hover .subtitle-line {
             width: 32px !important;
-            background: var(--accent-secondary) !important;
+            background: #ef4444 !important;
           }
           .heart-icon {
             animation: heartbeat 2.5s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
@@ -82,12 +72,10 @@ export default function BrandLogo({
             transform-origin: center;
             opacity: 0;
           }
-          .grad-stop-1 { animation: gradientShift1 4s infinite alternate; }
-          .grad-stop-2 { animation: gradientShift2 4s infinite alternate; }
         `}
       </style>
 
-      {/* Animated Brand Icon */}
+      {/* Animated Red Heart Brand Icon */}
       <div
         className="brand-icon-wrapper"
         style={{
@@ -105,20 +93,21 @@ export default function BrandLogo({
           style={{ 
             width: "100%", 
             height: "100%", 
-            filter: "drop-shadow(0 4px 8px rgba(79, 70, 229, 0.35))",
+            filter: "drop-shadow(0 4px 8px rgba(239, 68, 68, 0.45))",
             overflow: "visible"
           }}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" className="grad-stop-1" />
-              <stop offset="100%" className="grad-stop-2" />
+            <linearGradient id="redHeartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#f87171" />
+              <stop offset="50%" stopColor="#ef4444" />
+              <stop offset="100%" stopColor="#dc2626" />
             </linearGradient>
-            <linearGradient id="ringGrad" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" className="grad-stop-2" />
-              <stop offset="100%" className="grad-stop-1" />
+            <linearGradient id="redRingGrad" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#fca5a5" />
+              <stop offset="100%" stopColor="#ef4444" />
             </linearGradient>
           </defs>
 
@@ -126,27 +115,17 @@ export default function BrandLogo({
           <circle 
             cx="50" cy="50" r="35" 
             fill="none" 
-            stroke="url(#ringGrad)" 
+            stroke="url(#redRingGrad)" 
             strokeWidth="3" 
             className="pulse-ring-circle" 
           />
 
-          {/* Elegant Modern Heart Path */}
+          {/* Clean Red Heart Path (NO Checkmark) */}
           <g className="heart-icon">
             <path
               d="M 50 85 C 50 85, 15 55, 18 28 C 20 12, 42 12, 50 32 C 58 12, 80 12, 82 28 C 85 55, 50 85, 50 85 Z"
-              fill="url(#heartGrad)"
-              opacity="0.95"
-            />
-            {/* Inner dynamic swoosh/chart line */}
-            <path
-              d="M 32 46 L 46 62 L 70 30"
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              style={{ filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.2))" }}
+              fill="url(#redHeartGrad)"
+              opacity="1"
             />
           </g>
         </svg>
@@ -162,7 +141,7 @@ export default function BrandLogo({
             gap: "2px"
           }}
         >
-          {/* Main Title: Creative & Stylish */}
+          {/* Main Title: Heart of Business */}
           <div
             style={{
               display: "flex",
@@ -176,7 +155,7 @@ export default function BrandLogo({
               style={{
                 fontSize: titleSize,
                 fontWeight: 800,
-                color: "var(--text-primary)",
+                color: "#0f172a",
                 letterSpacing: "-0.5px",
                 fontFamily: "var(--font-family, -apple-system, sans-serif)",
                 transition: "color 0.3s ease"
@@ -188,7 +167,7 @@ export default function BrandLogo({
               style={{
                 fontSize: `calc(${titleSize} * 0.75)`,
                 fontWeight: 500,
-                color: "var(--text-secondary)",
+                color: "#64748b",
                 fontStyle: "italic",
                 fontFamily: "var(--font-family, -apple-system, sans-serif)",
                 opacity: 0.8
@@ -201,7 +180,7 @@ export default function BrandLogo({
                 fontSize: titleSize,
                 fontWeight: 900,
                 letterSpacing: "-0.5px",
-                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)",
+                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary, #0ea5e9) 100%)",
                 backgroundSize: "200% auto",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
@@ -213,7 +192,7 @@ export default function BrandLogo({
             </span>
           </div>
 
-          {/* Minimalist Subtitle */}
+          {/* Subtitle */}
           {showSubtitle && (
             <div
               style={{
@@ -228,7 +207,7 @@ export default function BrandLogo({
                 style={{
                   width: "16px",
                   height: "2px",
-                  background: "var(--accent-primary)",
+                  background: "#ef4444",
                   borderRadius: "2px",
                   transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
                 }}
@@ -237,14 +216,14 @@ export default function BrandLogo({
                 style={{
                   fontSize: subtitleSize,
                   fontWeight: 700,
-                  color: "var(--text-secondary)",
+                  color: "#64748b",
                   letterSpacing: "1.5px",
                   textTransform: "uppercase",
                   fontFamily: "var(--font-family, sans-serif)",
                   opacity: 0.85
                 }}
               >
-                Made by Ashish Aggarwal
+                MADE BY ASHISH AGGARWAL
               </span>
             </div>
           )}
