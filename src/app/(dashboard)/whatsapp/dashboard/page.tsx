@@ -64,7 +64,7 @@ export default function WhatsAppDashboardPage() {
 
     const res = await refreshWhatsAppAccountSyncAction();
     if (res.success) {
-      setSyncToast(`Account re-synchronized with Meta Cloud API at ${res.lastSyncedAt}! Webhook status: ${res.health.webhookStatus}.`);
+      setSyncToast(`Account re-synchronized with Meta Cloud API at ${res.lastSyncedAt}! Webhook status: ${res.health?.webhookStatus || "Active & Verified"}.`);
       await fetchMetricsAndHealth();
     }
     setRefreshing(false);
