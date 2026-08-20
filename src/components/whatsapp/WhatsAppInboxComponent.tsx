@@ -86,6 +86,22 @@ export default function WhatsAppInboxComponent() {
   const [showAssignModal, setShowAssignModal] = useState<boolean>(false);
   const [assigningLead, setAssigningLead] = useState<boolean>(false);
 
+  // Quote Form State
+  const [quoteItems, setQuoteItems] = useState([
+    { name: "Cotton Polo T-Shirt (ESP-902)", quantity: 200, rate: 290 },
+    { name: "Slim Fit Chino Pants (ESP-404)", quantity: 100, rate: 450 }
+  ]);
+
+  // Payment Form State
+  const [paymentAmount, setPaymentAmount] = useState<number>(45000);
+  const [paymentDesc, setPaymentDesc] = useState<string>("Advance Payment for Order #ORD-1092");
+
+  // CRM Inline Edit States
+  const [isEditingCRM, setIsEditingCRM] = useState<boolean>(false);
+  const [crmEditData, setCrmEditData] = useState<any>({});
+
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
   // Fetch Employees List for Filtering & Assignment
   useEffect(() => {
     getAllEmployeesAndTeams().then((res) => {
