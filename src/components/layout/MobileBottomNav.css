@@ -1,9 +1,16 @@
-/* Native Android Bottom Navigation Bar Styles */
+/* ----------------------------------------------------------------- */
+/* NATIVE MOBILE APP SHELL NAVIGATION & ACTION SHEET STYLES */
+/* ----------------------------------------------------------------- */
 .mobile-bottom-nav {
   display: none;
 }
 
+.mobile-action-sheet-backdrop {
+  display: none;
+}
+
 @media (max-width: 768px) {
+  /* Native App Bottom Bar */
   .mobile-bottom-nav {
     display: flex;
     position: fixed;
@@ -11,16 +18,23 @@
     left: 0;
     right: 0;
     height: 64px;
-    background-color: #ffffff;
-    border-top: 1px solid #e2e8f0;
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
-    z-index: 9999;
+    background-color: rgba(255, 255, 255, 0.92);
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    z-index: 99999;
     justify-content: space-around;
     align-items: center;
-    padding: 4px 8px env(safe-area-inset-bottom, 4px) 8px;
+    padding: 2px 4px env(safe-area-inset-bottom, 6px) 4px;
     user-select: none;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* Body Content Safe Area Bottom Offset */
+  body {
+    padding-bottom: 70px !important;
   }
 
   .bottom-nav-item {
@@ -31,34 +45,207 @@
     flex: 1;
     text-decoration: none;
     color: #64748b;
-    padding: 6px 0;
-    gap: 3px;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 4px 0;
+    gap: 2px;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 12px;
+  }
+
+  .bottom-nav-item:active {
+    transform: scale(0.92);
   }
 
   .bottom-nav-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
+    width: 40px;
     height: 26px;
     border-radius: 16px;
+    position: relative;
     transition: all 0.2s ease;
   }
 
+  .wa-icon-badge {
+    position: relative;
+  }
+
+  .wa-dot-indicator {
+    position: absolute;
+    top: 2px;
+    right: 6px;
+    width: 7px;
+    height: 7px;
+    background-color: #10b981;
+    border-radius: 50%;
+    border: 1px solid #ffffff;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3);
+  }
+
   .bottom-nav-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: -0.2px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
 
   .bottom-nav-item.active {
-    color: var(--accent-primary, #ef4444);
+    color: var(--accent-primary, #4f46e5);
   }
 
   .bottom-nav-item.active .bottom-nav-icon {
-    background-color: var(--accent-light, rgba(239, 68, 68, 0.12));
-    color: var(--accent-primary, #ef4444);
+    background-color: var(--accent-light, rgba(79, 70, 229, 0.12));
+    color: var(--accent-primary, #4f46e5);
   }
+
+  /* Central Elevated Floating Action Button (FAB) */
+  .bottom-nav-fab-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 52px;
+    height: 52px;
+    margin-top: -24px;
+    z-index: 100000;
+  }
+
+  .native-fab-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: 3px solid #ffffff;
+    box-shadow: 0 8px 18px rgba(16, 185, 129, 0.38);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .native-fab-btn:active {
+    transform: scale(0.9);
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+  }
+
+  .native-fab-btn.active {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 8px 18px rgba(239, 68, 68, 0.38);
+    transform: rotate(90deg);
+  }
+
+  /* Native iOS / Android Action Sheet Slide-Up Modal */
+  .mobile-action-sheet-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 99990;
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .mobile-action-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    padding: 12px 18px calc(env(safe-area-inset-bottom, 12px) + 72px) 18px;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 99995;
+    animation: slideUpSheet 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .action-sheet-handle-bar {
+    width: 38px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 3px;
+    margin: 0 auto 12px auto;
+  }
+
+  .action-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+
+  .action-sheet-close-btn {
+    background: #f1f5f9;
+    border: none;
+    color: #64748b;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .action-sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px 8px;
+  }
+
+  .action-sheet-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-decoration: none;
+    gap: 6px;
+    transition: transform 0.15s ease;
+  }
+
+  .action-sheet-tile:active {
+    transform: scale(0.92);
+  }
+
+  .action-sheet-tile span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #334155;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .tile-icon-box {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  }
+
+  .tile-icon-box.green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+  .tile-icon-box.blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
+  .tile-icon-box.purple { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
+  .tile-icon-box.orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
+  .tile-icon-box.indigo { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); }
+  .tile-icon-box.pink { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); }
+  .tile-icon-box.gray { background: linear-gradient(135deg, #64748b 0%, #475569 100%); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUpSheet {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
