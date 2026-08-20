@@ -44,8 +44,27 @@ const subNavItems = [
   { name: "Settings", path: "/whatsapp/settings", icon: Settings },
 ];
 
+import { getWhatsAppDashboardMetrics } from "@/app/actions/whatsAppPlatformActions";
+
 export default function WhatsAppHeaderNav() {
   const pathname = usePathname();
+  const [accountInfo, setAccountInfo] = React.useState<any>({
+    status: "VERIFIED & CONNECTED",
+    phoneNumber: "+91 7206066678",
+    used: "1,250 / 10,000 used today"
+  });
+
+  React.useEffect(() => {
+    getWhatsAppDashboardMetrics().then((res) => {
+      if (res.success && res.account) {
+        setAccountInfo({
+          status: res.account.status || "VERIFIED & CONNECTED",
+          phoneNumber: res.account.phoneNumber || "+91 7206066678",
+          used: "1,250 / 10,000 used today"
+        });
+      }
+    });
+  }, []);
 
   const isItemActive = (path: string) => {
     if (path === "/whatsapp/inbox" && (pathname === "/whatsapp" || pathname === "/whatsapp/inbox")) {
@@ -69,7 +88,7 @@ export default function WhatsAppHeaderNav() {
 
         <div className="wa-header-status-badge">
           <span className="wa-pulse-indicator"></span>
-          <span className="wa-status-text">Meta API: Connected (+91 7206066678)</span>
+          <span className="wa-status-text">Meta API: {accountInfo.status} ({accountInfo.phoneNumber})</span>
           <span className="wa-limit-pill">10K / Day (12.5% used)</span>
         </div>
       </div>
