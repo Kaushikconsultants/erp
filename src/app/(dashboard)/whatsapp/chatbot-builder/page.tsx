@@ -1751,7 +1751,7 @@ export default function WhatsAppChatbotBuilderPage() {
                 {selectedNode.type.startsWith("CRM_") && (
                   <>
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>CRM Lead Stage</label>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>CRM Lead Stage</label>
                       <select
                         value={selectedNode.leadStage || "New Lead"}
                         onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, leadStage: e.target.value } : n)))}
@@ -1766,7 +1766,7 @@ export default function WhatsAppChatbotBuilderPage() {
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Priority</label>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Priority</label>
                       <select
                         value={selectedNode.priority || "MEDIUM"}
                         onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, priority: e.target.value } : n)))}
@@ -1784,7 +1784,7 @@ export default function WhatsAppChatbotBuilderPage() {
                 {selectedNode.type === "CONDITION" && (
                   <>
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Variable to Test</label>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Variable to Test</label>
                       <input
                         type="text"
                         value={selectedNode.variableName || "customer_type"}
@@ -1793,7 +1793,7 @@ export default function WhatsAppChatbotBuilderPage() {
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Operator</label>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Operator</label>
                       <select
                         value={selectedNode.operator || "EQUALS"}
                         onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, operator: e.target.value } : n)))}
@@ -1806,7 +1806,7 @@ export default function WhatsAppChatbotBuilderPage() {
                       </select>
                     </div>
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Comparison Value</label>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Comparison Value</label>
                       <input
                         type="text"
                         value={selectedNode.compareValue || "Wholesaler"}
@@ -1819,7 +1819,7 @@ export default function WhatsAppChatbotBuilderPage() {
 
                 {selectedNode.type === "DELAY" && (
                   <div>
-                    <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Delay Duration (Minutes)</label>
+                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Delay Duration (Minutes)</label>
                     <input
                       type="number"
                       value={selectedNode.delayValue || 5}
@@ -1832,7 +1832,7 @@ export default function WhatsAppChatbotBuilderPage() {
                 {selectedNode.type === "WEBHOOK" && (
                   <>
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Webhook API URL</label>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Webhook API URL</label>
                       <input
                         type="text"
                         value={selectedNode.webhookUrl || ""}
@@ -1841,7 +1841,7 @@ export default function WhatsAppChatbotBuilderPage() {
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>HTTP Method</label>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>HTTP Method</label>
                       <select
                         value={selectedNode.method || "POST"}
                         onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, method: e.target.value } : n)))}
@@ -1856,7 +1856,7 @@ export default function WhatsAppChatbotBuilderPage() {
 
                 {selectedNode.type !== "END" && (
                   <div>
-                    <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Direct Next Node Link</label>
+                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Direct Next Node Link</label>
                     <select
                       value={selectedNode.outputPort || ""}
                       onChange={(e) => {

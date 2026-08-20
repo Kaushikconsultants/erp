@@ -6,9 +6,13 @@ import { revalidatePath } from "next/cache";
 
 // Ensure seed data is initialized automatically if database is fresh
 async function ensureSeeded() {
-  const count = await prisma.whatsAppConversation.count();
-  if (count === 0) {
-    await seedWhatsAppPlatformData();
+  try {
+    const count = await prisma.whatsAppConversation.count();
+    if (count === 0) {
+      await seedWhatsAppPlatformData();
+    }
+  } catch (e) {
+    console.error("ensureSeeded warning:", e);
   }
 }
 
@@ -784,9 +788,13 @@ export async function saveWhatsAppApiCredentialsAction(data: {
 // ---------------------------------------------------------
 
 export async function getWhatsAppTemplates() {
-  await ensureSeeded();
-  const templates = await prisma.whatsAppTemplate.findMany({ orderBy: { createdAt: 'desc' } });
-  return { success: true, templates };
+  try {
+    await ensureSeeded();
+    const templates = await prisma.whatsAppTemplate.findMany({ orderBy: { createdAt: 'desc' } });
+    return { success: true, templates };
+  } catch (e: any) {
+    return { success: false, error: e.message, templates: [] };
+  }
 }
 
 export async function saveWhatsAppTemplateAction(data: any) {
@@ -812,9 +820,13 @@ export async function saveWhatsAppTemplateAction(data: any) {
 }
 
 export async function getWhatsAppReplyLibrary() {
-  await ensureSeeded();
-  const replies = await prisma.whatsAppReplyItem.findMany({ orderBy: { createdAt: 'desc' } });
-  return { success: true, replies };
+  try {
+    await ensureSeeded();
+    const replies = await prisma.whatsAppReplyItem.findMany({ orderBy: { createdAt: 'desc' } });
+    return { success: true, replies };
+  } catch (e: any) {
+    return { success: false, error: e.message, replies: [] };
+  }
 }
 
 export async function saveWhatsAppReplyItemAction(data: any) {
@@ -835,15 +847,23 @@ export async function saveWhatsAppReplyItemAction(data: any) {
 }
 
 export async function getWhatsAppAutomationRules() {
-  await ensureSeeded();
-  const rules = await prisma.whatsAppAutomationRule.findMany({ orderBy: { createdAt: 'desc' } });
-  return { success: true, rules };
+  try {
+    await ensureSeeded();
+    const rules = await prisma.whatsAppAutomationRule.findMany({ orderBy: { createdAt: 'desc' } });
+    return { success: true, rules };
+  } catch (e: any) {
+    return { success: false, error: e.message, rules: [] };
+  }
 }
 
 export async function getWhatsAppChatbotFlows() {
-  await ensureSeeded();
-  const flows = await prisma.whatsAppChatbotFlow.findMany({ orderBy: { updatedAt: 'desc' } });
-  return { success: true, flows };
+  try {
+    await ensureSeeded();
+    const flows = await prisma.whatsAppChatbotFlow.findMany({ orderBy: { updatedAt: 'desc' } });
+    return { success: true, flows };
+  } catch (e: any) {
+    return { success: false, error: e.message, flows: [] };
+  }
 }
 
 export async function saveWhatsAppChatbotFlowAction(data: {
@@ -937,16 +957,24 @@ export async function toggleWhatsAppChatbotFlowStatusAction(id: string, isActive
 }
 
 export async function getWhatsAppForms() {
-  await ensureSeeded();
-  const forms = await prisma.whatsAppForm.findMany({ orderBy: { createdAt: 'desc' } });
-  return { success: true, forms };
+  try {
+    await ensureSeeded();
+    const forms = await prisma.whatsAppForm.findMany({ orderBy: { createdAt: 'desc' } });
+    return { success: true, forms };
+  } catch (e: any) {
+    return { success: false, error: e.message, forms: [] };
+  }
 }
 
 export async function getWhatsAppCampaigns() {
-  await ensureSeeded();
-  const campaigns = await prisma.whatsAppCampaign.findMany({ orderBy: { createdAt: 'desc' } });
-  const segments = await prisma.whatsAppSegment.findMany({ orderBy: { createdAt: 'desc' } });
-  return { success: true, campaigns, segments };
+  try {
+    await ensureSeeded();
+    const campaigns = await prisma.whatsAppCampaign.findMany({ orderBy: { createdAt: 'desc' } });
+    const segments = await prisma.whatsAppSegment.findMany({ orderBy: { createdAt: 'desc' } });
+    return { success: true, campaigns, segments };
+  } catch (e: any) {
+    return { success: false, error: e.message, campaigns: [], segments: [] };
+  }
 }
 
 export async function createWhatsAppBroadcastCampaign(data: {
