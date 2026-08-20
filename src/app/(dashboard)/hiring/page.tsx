@@ -64,6 +64,7 @@ export default function HiringPage() {
     if (statusFilter === "ROUND_1") return c.status.includes("ROUND_1");
     if (statusFilter === "ROUND_2") return c.status.includes("ROUND_2");
     if (statusFilter === "ROUND_3") return c.status.includes("ROUND_3");
+    if (statusFilter === "ON_HOLD") return c.status === "ON_HOLD" || c.status === "HOLD";
     if (statusFilter === "HIRED") return c.status === "HIRED";
     if (statusFilter === "REJECTED") return c.status === "REJECTED";
     return true;
@@ -73,6 +74,7 @@ export default function HiringPage() {
   const round1Count = candidates.filter(c => c.status.includes("ROUND_1") || c.status === "NEW").length;
   const round2Count = candidates.filter(c => c.status.includes("ROUND_2")).length;
   const round3Count = candidates.filter(c => c.status.includes("ROUND_3")).length;
+  const holdCount = candidates.filter(c => c.status === "ON_HOLD" || c.status === "HOLD").length;
   const hiredCount = candidates.filter(c => c.status === "HIRED").length;
 
   const renderStatusBadge = (status: string) => {
@@ -87,6 +89,9 @@ export default function HiringPage() {
       case 'ROUND_2_PASSED':
       case 'ROUND_3_PENDING':
         return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#fae8ff', color: '#86198f', fontSize: '0.75rem', fontWeight: 600 }}>ROUND 3 (FINAL)</span>;
+      case 'ON_HOLD':
+      case 'HOLD':
+        return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#fffbe5', color: '#b45309', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #fde047' }}>⏸️ HOLD / WAITLIST</span>;
       case 'HIRED':
         return <span style={{ padding: '3px 8px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#dcfce7', color: '#15803d', fontSize: '0.75rem', fontWeight: 700 }}>🏆 HIRED</span>;
       case 'REJECTED':
@@ -218,6 +223,7 @@ export default function HiringPage() {
                 { id: 'ROUND_1', label: 'Round 1 (Basic)' },
                 { id: 'ROUND_2', label: 'Round 2 (Tech)' },
                 { id: 'ROUND_3', label: 'Round 3 (Final)' },
+                { id: 'ON_HOLD', label: 'Hold / Waitlist' },
                 { id: 'HIRED', label: 'Hired' },
                 { id: 'REJECTED', label: 'Rejected' }
               ].map((f) => (

@@ -39,7 +39,9 @@ export default function InterviewEvaluationModal({
   const [selectedInterviewerId, setSelectedInterviewerId] = useState<string>("");
 
   // Final Conclusion State
-  const [finalDecision, setFinalDecision] = useState<'HIRED' | 'REJECTED'>('HIRED');
+  const [finalDecision, setFinalDecision] = useState<'HIRED' | 'REJECTED' | 'ON_HOLD'>(
+    candidate?.status === 'ON_HOLD' || candidate?.status === 'HOLD' ? 'ON_HOLD' : candidate?.status === 'REJECTED' ? 'REJECTED' : 'HIRED'
+  );
   const [finalConclusionText, setFinalConclusionText] = useState(candidate?.finalConclusion || "");
 
   useEffect(() => {
@@ -64,6 +66,18 @@ export default function InterviewEvaluationModal({
       });
       setRatings(initRatings);
       setNotes(initNotes);
+    }
+
+    const existingSummary = candidate.roundSummaries?.find((s: any) => s.roundNumber === roundNum);
+    if (existingSummary) {
+      setRecommendation(existingSummary.recommendation || 'ADVANCE');
+      setFeedbackNotes(existingSummary.feedbackNotes || "");
+    } else if (candidate.status === 'ON_HOLD' || candidate.status === 'HOLD') {
+      setRecommendation('HOLD');
+      setFeedbackNotes(candidate.finalConclusion || "");
+    } else {
+      setRecommendation('ADVANCE');
+      setFeedbackNotes("");
     }
 
     if (roundNum === 1) setSelectedInterviewerId(candidate.round1InterviewerId || "");
@@ -436,7 +450,7 @@ export default function InterviewEvaluationModal({
               </h3>
             </div>
 
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '16px', marginBottom: '10px', flexWrap: 'wrap' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#16a34a', cursor: 'pointer', fontSize: '0.85rem' }}>
                 <input
                   type="radio"
@@ -446,6 +460,17 @@ export default function InterviewEvaluationModal({
                   style={{ accentColor: '#16a34a' }}
                 />
                 🏆 HIRE CANDIDATE
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#d97706', cursor: 'pointer', fontSize: '0.85rem' }}>
+                <input
+                  type="radio"
+                  name="finalDecision"
+                  checked={finalDecision === 'ON_HOLD'}
+                  onChange={() => setFinalDecision('ON_HOLD')}
+                  style={{ accentColor: '#d97706' }}
+                />
+                ⏸️ HOLD / WAITLIST CANDIDATE
               </label>
 
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#dc2626', cursor: 'pointer', fontSize: '0.85rem' }}>
@@ -475,7 +500,7 @@ export default function InterviewEvaluationModal({
                 marginTop: '10px',
                 padding: '9px 20px',
                 borderRadius: 'var(--radius-md, 6px)',
-                backgroundColor: finalDecision === 'HIRED' ? '#16a34a' : '#dc2626',
+                backgroundColor: finalDecision === 'HIRED' ? '#16a34a' : finalDecision === 'ON_HOLD' ? '#d97706' : '#dc2626',
                 color: '#ffffff',
                 border: 'none',
                 fontWeight: 600,

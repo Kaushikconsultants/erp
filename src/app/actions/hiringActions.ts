@@ -230,12 +230,18 @@ export async function submitRoundEvaluation(
 
     // Update candidate progress status
     let nextStatus = "NEW";
-    if (roundNumber === 1) {
-      nextStatus = recommendation === 'ADVANCE' ? 'ROUND_1_PASSED' : 'REJECTED';
-    } else if (roundNumber === 2) {
-      nextStatus = recommendation === 'ADVANCE' ? 'ROUND_2_PASSED' : 'REJECTED';
-    } else if (roundNumber === 3) {
-      nextStatus = recommendation === 'ADVANCE' ? 'ROUND_3_PENDING' : 'REJECTED';
+    if (recommendation === 'HOLD') {
+      nextStatus = 'ON_HOLD';
+    } else if (recommendation === 'REJECT') {
+      nextStatus = 'REJECTED';
+    } else {
+      if (roundNumber === 1) {
+        nextStatus = 'ROUND_1_PASSED';
+      } else if (roundNumber === 2) {
+        nextStatus = 'ROUND_2_PASSED';
+      } else if (roundNumber === 3) {
+        nextStatus = 'ROUND_3_PENDING';
+      }
     }
 
     // Recalculate candidate overall average rating across all rounds
@@ -262,10 +268,10 @@ export async function submitRoundEvaluation(
   }
 }
 
-// Admin records Final Conclusion & Hired/Rejected Decision
+// Admin records Final Conclusion & Hired/Rejected/On-Hold Decision
 export async function finalizeCandidateDecision(
   candidateId: string,
-  status: 'HIRED' | 'REJECTED',
+  status: 'HIRED' | 'REJECTED' | 'ON_HOLD',
   finalConclusion: string,
   finalDecisionBy: string = "Admin"
 ) {
