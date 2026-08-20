@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MessageSquare,
   Image as ImageIcon,
@@ -22,20 +22,17 @@ import {
   Clock,
   Shuffle,
   CornerDownRight,
-  CheckSquare,
   CreditCard,
   QrCode,
   DollarSign,
   ShoppingBag,
   ShoppingCart,
   Globe,
-  Database,
   UserPlus,
   UserCheck,
   Bot,
   Sparkles,
   Zap,
-  Plus,
   Play,
   CheckCircle2,
   Settings,
@@ -45,7 +42,6 @@ import {
   ZoomIn,
   ZoomOut,
   X,
-  Send,
   Save,
   ChevronDown,
   ChevronRight,
@@ -148,7 +144,7 @@ const blockCategories = [
   }
 ];
 
-// Initial Nodes matching Reference Images 2 & 3
+// Initial Nodes Graph
 const initialNodes = [
   {
     id: "node_trigger",
@@ -166,7 +162,7 @@ const initialNodes = [
     type: "START",
     category: "start",
     title: "Start / Auto Assign",
-    x: 320,
+    x: 340,
     y: 120,
     text: "Assign via Round-Robin distribution",
     outputPort: "node_group4"
@@ -176,7 +172,7 @@ const initialNodes = [
     type: "CHOICE",
     category: "choice",
     title: "Group 4 (Inquiry Menu)",
-    x: 580,
+    x: 640,
     y: 120,
     imageUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500",
     text: "Hi! Welcome to Espon Clothing. We are direct manufacturers of premium activewear & wholesale apparel. Please select your inquiry category below:",
@@ -191,9 +187,9 @@ const initialNodes = [
     type: "CRM",
     category: "crm",
     title: "Group 9 (Update Contact)",
-    x: 940,
+    x: 1000,
     y: 60,
-    text: "Update CRM Contact:\n• Lead Stage: Qualified Retailer\n• Assign Sales Rep: Ikra (Sales)",
+    text: "Update CRM Contact:\n• Lead Stage: Qualified Retailer\n• Assigned Salesperson: Ikra (Sales)",
     outputPort: "node_group12"
   },
   {
@@ -201,7 +197,7 @@ const initialNodes = [
     type: "CRM",
     category: "crm",
     title: "Group 10 (Update Contact)",
-    x: 940,
+    x: 1000,
     y: 220,
     text: "Update CRM Contact:\n• Lead Stage: Wholesale Inquiry\n• Priority: HIGH",
     outputPort: "node_group12"
@@ -211,7 +207,7 @@ const initialNodes = [
     type: "CRM",
     category: "crm",
     title: "Group 11 (Update Contact)",
-    x: 940,
+    x: 1000,
     y: 380,
     text: "Update CRM Contact:\n• Lead Stage: Personal Enquiry",
     outputPort: "node_group13"
@@ -221,7 +217,7 @@ const initialNodes = [
     type: "END",
     category: "end",
     title: "Group 12 (Confirmation)",
-    x: 1240,
+    x: 1340,
     y: 100,
     text: "OUR SENIOR EXPERT WILL BE CALLING YOU SHORTLY TO DISCUSS YOUR SPECIFIC REQUIREMENTS.\n\nWhile you wait, visit our website:",
     buttonText: "Visit Website 🌐",
@@ -232,7 +228,7 @@ const initialNodes = [
     type: "END",
     category: "end",
     title: "Group 13 (Confirmation)",
-    x: 1240,
+    x: 1340,
     y: 380,
     text: "SEE IT IS EASY FOR SHARING YOUR DETAILS. For personal use visit our online store by clicking below:",
     buttonText: "Visit Store 🛍️",
@@ -243,17 +239,19 @@ const initialNodes = [
 export default function WhatsAppChatbotBuilderPage() {
   const [nodes, setNodes] = useState<any[]>(initialNodes);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>("node_group4");
-  const [activeCategory, setActiveCategory] = useState<string>("Messages");
-  const [openCategories, setOpenCategories] = useState<{ [key: string]: boolean }>({ Messages: true, Choices: true });
+  const [openCategories, setOpenCategories] = useState<{ [key: string]: boolean }>({ Messages: true });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const [blockSearch, setBlockSearch] = useState<string>("");
 
-  // Flow State
+  // Flow State & History Stack for Undo / Redo
   const [flowName, setFlowName] = useState<string>("espon new");
   const [version, setVersion] = useState<string>("LIVE V21");
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [historyStack, setHistoryStack] = useState<any[]>([initialNodes]);
+  const [historyIndex, setHistoryIndex] = useState<number>(0);
 
-  // Zoom & Pan State
+  // Zoom State
   const [zoom, setZoom] = useState<number>(1.0);
 
   // Phone Simulator Modal State
@@ -264,9 +262,33 @@ export default function WhatsAppChatbotBuilderPage() {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Toggle Category Accordion
+  // Toggle Category Accordion (Accordion logic: single or multi toggle)
   const toggleCategory = (catName: string) => {
-    setOpenCategories((prev) => ({ ...prev, [catName]: !prev[catName] }));
+    setOpenCategories((prev) => ({
+      ...prev,
+      [catName]: !prev[catName]
+    }));
+  };
+
+  // Record Undo State
+  const pushHistory = (newNodes: any[]) => {
+    const updated = historyStack.slice(0, historyIndex + 1);
+    setHistoryStack([...updated, newNodes]);
+    setHistoryIndex(updated.length);
+  };
+
+  const handleUndo = () => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setNodes(historyStack[historyIndex - 1]);
+    }
+  };
+
+  const handleRedo = () => {
+    if (historyIndex < historyStack.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setNodes(historyStack[historyIndex + 1]);
+    }
   };
 
   // Node Drag Handler
@@ -289,29 +311,82 @@ export default function WhatsAppChatbotBuilderPage() {
     const newY = (e.clientY - dragOffset.y) / zoom;
 
     setNodes((prev) =>
-      prev.map((n) => (n.id === draggingNodeId ? { ...n, x: Math.max(0, newX), y: Math.max(0, newY) } : n))
+      prev.map((n) => (n.id === draggingNodeId ? { ...n, x: Math.max(10, newX), y: Math.max(10, newY) } : n))
     );
   };
 
   const handleMouseUpCanvas = () => {
+    if (draggingNodeId) {
+      pushHistory(nodes);
+    }
     setDraggingNodeId(null);
   };
 
-  // Add New Node from Block Library
+  // Add New Node from Block Library without Overlapping
   const handleAddBlockToCanvas = (block: any) => {
+    const selected = nodes.find((n) => n.id === selectedNodeId) || nodes[nodes.length - 1];
     const newNodeId = `node_${Date.now()}`;
     const newNode = {
       id: newNodeId,
       type: block.id.toUpperCase(),
       category: "choice",
       title: `New ${block.name} Node`,
-      x: 400 + Math.random() * 80,
-      y: 200 + Math.random() * 80,
+      x: selected ? selected.x + 290 : 400,
+      y: selected ? selected.y + 40 : 200,
       text: `Enter message for ${block.name}...`,
       choices: block.id === "buttons" ? [{ id: `c_${Date.now()}`, text: "Option 1", targetNode: null }] : []
     };
-    setNodes((prev) => [...prev, newNode]);
+    const updated = [...nodes, newNode];
+    setNodes(updated);
+    pushHistory(updated);
     setSelectedNodeId(newNodeId);
+  };
+
+  // Delete Node
+  const handleDeleteNode = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = nodes.filter((n) => n.id !== id);
+    setNodes(updated);
+    pushHistory(updated);
+    if (selectedNodeId === id) setSelectedNodeId(null);
+  };
+
+  // Duplicate Node
+  const handleDuplicateNode = (node: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newNodeId = `node_${Date.now()}`;
+    const newNode = {
+      ...node,
+      id: newNodeId,
+      title: `${node.title} (Copy)`,
+      x: node.x + 40,
+      y: node.y + 40
+    };
+    const updated = [...nodes, newNode];
+    setNodes(updated);
+    pushHistory(updated);
+    setSelectedNodeId(newNodeId);
+  };
+
+  // Dynamic SVG Bezier Path Generator for Connections
+  const getBezierPath = (sourceNode: any, targetNode: any, optionIndex?: number) => {
+    if (!sourceNode || !targetNode) return "";
+    const nodeWidth = 260;
+    const startX = sourceNode.x + nodeWidth;
+    let startY = sourceNode.y + 40;
+
+    if (typeof optionIndex === "number" && sourceNode.choices && sourceNode.choices[optionIndex]) {
+      startY = sourceNode.y + 140 + optionIndex * 30;
+    }
+
+    const endX = targetNode.x;
+    const endY = targetNode.y + 40;
+
+    const controlDist = Math.max(60, Math.abs(endX - startX) * 0.5);
+    const cx1 = startX + controlDist;
+    const cx2 = endX - controlDist;
+
+    return `M ${startX} ${startY} C ${cx1} ${startY}, ${cx2} ${endY}, ${endX} ${endY}`;
   };
 
   // Publish / Save Flow Action
@@ -351,7 +426,6 @@ export default function WhatsAppChatbotBuilderPage() {
 
     let botReplyMsg = null;
     if (targetNode) {
-      // Find subsequent node if target is CRM
       if (targetNode.type === "CRM" && targetNode.outputPort) {
         const nextEndNode = nodes.find((n) => n.id === targetNode.outputPort);
         botReplyMsg = {
@@ -380,9 +454,7 @@ export default function WhatsAppChatbotBuilderPage() {
 
   return (
     <div className="studio-container">
-      {/* ----------------------------------------------------------------- */}
-      {/* TOP STUDIO CONTROL BAR */}
-      {/* ----------------------------------------------------------------- */}
+      {/* TOP CONTROL BAR */}
       <div className="studio-top-bar">
         <div className="studio-title-block">
           <h2 className="flow-title-text">{flowName}</h2>
@@ -399,8 +471,8 @@ export default function WhatsAppChatbotBuilderPage() {
         </div>
 
         <div className="studio-actions-group">
-          <button className="circular-history-btn" title="Undo"><RotateCcw size={15} /></button>
-          <button className="circular-history-btn" title="Redo"><RotateCw size={15} /></button>
+          <button className="circular-history-btn" onClick={handleUndo} title="Undo"><RotateCcw size={15} /></button>
+          <button className="circular-history-btn" onClick={handleRedo} title="Redo"><RotateCw size={15} /></button>
           <button className="studio-btn test-btn" onClick={handleStartSimTest}>
             <Play size={14} /> Preview & Test
           </button>
@@ -420,9 +492,7 @@ export default function WhatsAppChatbotBuilderPage() {
         </div>
       )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* MAIN STUDIO BODY (LIBRARY + CANVAS) */}
-      {/* ----------------------------------------------------------------- */}
+      {/* STUDIO MAIN BODY */}
       <div className="studio-body">
         {/* LEFT SIDEBAR: BLOCK LIBRARY */}
         <div className={`block-library-sidebar ${isSidebarCollapsed ? "collapsed" : ""}`}>
@@ -436,7 +506,12 @@ export default function WhatsAppChatbotBuilderPage() {
 
             {!isSidebarCollapsed && (
               <div className="library-search-box" style={{ marginTop: "6px" }}>
-                <input type="text" placeholder="Search blocks..." />
+                <input
+                  type="text"
+                  placeholder="Search blocks..."
+                  value={blockSearch}
+                  onChange={(e) => setBlockSearch(e.target.value)}
+                />
               </div>
             )}
           </div>
@@ -445,6 +520,11 @@ export default function WhatsAppChatbotBuilderPage() {
             <div className="library-scroll-area">
               {blockCategories.map((cat) => {
                 const isOpen = openCategories[cat.name] ?? false;
+                const filteredBlocks = cat.blocks.filter((b) =>
+                  b.name.toLowerCase().includes(blockSearch.toLowerCase())
+                );
+                if (blockSearch && filteredBlocks.length === 0) return null;
+
                 return (
                   <div key={cat.name} className="category-accordion">
                     <div className="category-header-row" onClick={() => toggleCategory(cat.name)}>
@@ -457,7 +537,7 @@ export default function WhatsAppChatbotBuilderPage() {
 
                     {isOpen && (
                       <div className="category-blocks-grid">
-                        {cat.blocks.map((b) => {
+                        {filteredBlocks.map((b) => {
                           const Icon = b.icon;
                           return (
                             <div key={b.id} className="block-tile" onClick={() => handleAddBlockToCanvas(b)}>
@@ -481,21 +561,30 @@ export default function WhatsAppChatbotBuilderPage() {
           onMouseMove={handleMouseMoveCanvas}
           onMouseUp={handleMouseUpCanvas}
         >
-          {/* SVG Connector Wires Layer */}
+          {/* DYNAMIC SVG CONNECTOR WIRES */}
           <svg className="canvas-svg-layer">
-            {/* Draw SVG Bezier Curves connecting nodes */}
-            <path d={`M ${40 + 260} ${120 + 40} C ${40 + 260 + 60} ${120 + 40}, ${320 - 60} ${120 + 40}, ${320} ${120 + 40}`} />
-            <path d={`M ${320 + 260} ${120 + 40} C ${320 + 260 + 60} ${120 + 40}, ${580 - 60} ${120 + 40}, ${580} ${120 + 40}`} />
+            {/* Draw SVG Bezier Curves dynamically based on node positions */}
+            <path d={getBezierPath(nodes.find(n => n.id === "node_trigger"), nodes.find(n => n.id === "node_start"))} />
+            <path d={getBezierPath(nodes.find(n => n.id === "node_start"), nodes.find(n => n.id === "node_group4"))} />
 
-            {/* Connections from Choice Options in Group 4 to Groups 9, 10, 11 */}
-            <path d={`M ${580 + 260} ${120 + 175} C ${580 + 260 + 80} ${120 + 175}, ${940 - 80} ${60 + 40}, ${940} ${60 + 40}`} className="active-path" />
-            <path d={`M ${580 + 260} ${120 + 205} C ${580 + 260 + 80} ${120 + 205}, ${940 - 80} ${220 + 40}, ${940} ${220 + 40}`} />
-            <path d={`M ${580 + 260} ${120 + 235} C ${580 + 260 + 80} ${120 + 235}, ${940 - 80} ${380 + 40}, ${940} ${380 + 40}`} />
+            {/* Dynamic Choice Port Curves */}
+            <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group9"), 0)} className="active-path" />
+            <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group10"), 1)} />
+            <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group11"), 2)} />
 
-            {/* Connections from Groups 9 & 10 to Group 12 */}
-            <path d={`M ${940 + 260} ${60 + 40} C ${940 + 260 + 80} ${60 + 40}, ${1240 - 80} ${100 + 40}, ${1240} ${100 + 40}`} />
-            <path d={`M ${940 + 260} ${220 + 40} C ${940 + 260 + 80} ${220 + 40}, ${1240 - 80} ${100 + 40}, ${1240} ${100 + 40}`} />
-            <path d={`M ${940 + 260} ${380 + 40} C ${940 + 260 + 80} ${380 + 40}, ${1240 - 80} ${380 + 40}, ${1240} ${380 + 40}`} />
+            {/* CRM to End Node Connections */}
+            <path d={getBezierPath(nodes.find(n => n.id === "node_group9"), nodes.find(n => n.id === "node_group12"))} />
+            <path d={getBezierPath(nodes.find(n => n.id === "node_group10"), nodes.find(n => n.id === "node_group12"))} />
+            <path d={getBezierPath(nodes.find(n => n.id === "node_group11"), nodes.find(n => n.id === "node_group13"))} />
+
+            {/* Dynamic Connections for Custom Added Nodes */}
+            {nodes.map((node) => {
+              if (node.outputPort) {
+                const target = nodes.find((n) => n.id === node.outputPort);
+                if (target) return <path key={`${node.id}_${target.id}`} d={getBezierPath(node, target)} />;
+              }
+              return null;
+            })}
           </svg>
 
           {/* Node Cards */}
@@ -515,8 +604,13 @@ export default function WhatsAppChatbotBuilderPage() {
               >
                 <div className={`node-card-header ${node.category}`}>
                   <span>{node.title}</span>
-                  <div style={{ display: "flex", gap: "4px" }}>
-                    <Edit3 size={12} style={{ cursor: "pointer" }} onClick={() => setSelectedNodeId(node.id)} />
+                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                    <span title="Duplicate Node" onClick={(e) => handleDuplicateNode(node, e)} style={{ cursor: "pointer", display: "inline-flex" }}>
+                      <Copy size={12} />
+                    </span>
+                    <span title="Delete Node" onClick={(e) => handleDeleteNode(node.id, e)} style={{ cursor: "pointer", display: "inline-flex" }}>
+                      <Trash2 size={12} />
+                    </span>
                   </div>
                 </div>
 
@@ -526,7 +620,7 @@ export default function WhatsAppChatbotBuilderPage() {
                   )}
                   {node.text && <p className="node-text-preview">{node.text}</p>}
 
-                  {/* Render Choices with explicit Output Dots */}
+                  {/* Render Choices with Output Dots */}
                   {node.choices && node.choices.length > 0 && (
                     <div className="node-choices-list">
                       {node.choices.map((c: any) => (
@@ -546,21 +640,21 @@ export default function WhatsAppChatbotBuilderPage() {
             );
           })}
 
-          {/* Floating Zoom Controls */}
+          {/* Zoom Controls */}
           <div className="canvas-zoom-controls">
             <button className="zoom-btn" onClick={() => setZoom(Math.min(1.5, zoom + 0.1))} title="Zoom In"><ZoomIn size={16} /></button>
             <button className="zoom-btn" onClick={() => setZoom(Math.max(0.6, zoom - 0.1))} title="Zoom Out"><ZoomOut size={16} /></button>
             <button className="zoom-btn" onClick={() => setZoom(1.0)} title="Fit Screen"><Maximize2 size={15} /></button>
           </div>
 
-          {/* Bottom Right Minimap */}
+          {/* Minimap Box */}
           <div className="canvas-minimap-box">
             <div className="minimap-mini-nodes">
               {nodes.map((n) => (
                 <div
                   key={n.id}
                   className="minimap-dot"
-                  style={{ left: `${(n.x / 1400) * 100}%`, top: `${(n.y / 600) * 100}%` }}
+                  style={{ left: `${(n.x / 1600) * 100}%`, top: `${(n.y / 600) * 100}%` }}
                 />
               ))}
             </div>
@@ -604,23 +698,46 @@ export default function WhatsAppChatbotBuilderPage() {
                 <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Interactive Choice Buttons</label>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
                   {selectedNode.choices.map((c: any, index: number) => (
-                    <input
-                      key={c.id}
-                      type="text"
-                      value={c.text}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setNodes((prev) =>
-                          prev.map((n) => {
-                            if (n.id !== selectedNode.id) return n;
-                            const updatedChoices = [...n.choices];
-                            updatedChoices[index].text = val;
-                            return { ...n, choices: updatedChoices };
-                          })
-                        );
-                      }}
-                      style={{ padding: "6px", fontSize: "12px", border: "1px solid #e2e8f0", borderRadius: "4px" }}
-                    />
+                    <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: "4px", background: "#f8fafc", padding: "8px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                      <input
+                        type="text"
+                        value={c.text}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNodes((prev) =>
+                            prev.map((n) => {
+                              if (n.id !== selectedNode.id) return n;
+                              const updatedChoices = [...n.choices];
+                              updatedChoices[index].text = val;
+                              return { ...n, choices: updatedChoices };
+                            })
+                          );
+                        }}
+                        style={{ padding: "5px", fontSize: "12px", border: "1px solid #e2e8f0", borderRadius: "4px" }}
+                      />
+                      <select
+                        value={c.targetNode || ""}
+                        onChange={(e) => {
+                          const target = e.target.value;
+                          setNodes((prev) =>
+                            prev.map((n) => {
+                              if (n.id !== selectedNode.id) return n;
+                              const updatedChoices = [...n.choices];
+                              updatedChoices[index].targetNode = target;
+                              return { ...n, choices: updatedChoices };
+                            })
+                          );
+                        }}
+                        style={{ padding: "4px", fontSize: "11px", border: "1px solid #d1d5db", borderRadius: "4px", background: "#fff" }}
+                      >
+                        <option value="">Connect to Node...</option>
+                        {nodes.map((targetCandidate) => (
+                          <option key={targetCandidate.id} value={targetCandidate.id}>
+                            {targetCandidate.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -629,26 +746,22 @@ export default function WhatsAppChatbotBuilderPage() {
         )}
       </div>
 
-      {/* ----------------------------------------------------------------- */}
       {/* MODAL: LIVE WHATSAPP PHONE SIMULATOR */}
-      {/* ----------------------------------------------------------------- */}
       {showSimModal && (
         <div className="phone-sim-backdrop" onClick={() => setShowSimModal(false)}>
           <div className="phone-mockup-frame" onClick={(e) => e.stopPropagation()}>
             <div className="phone-screen">
-              {/* WhatsApp Header */}
               <div className="sim-wa-header">
                 <div className="sim-wa-avatar">
                   <Bot size={18} color="#fff" />
                 </div>
                 <div>
                   <strong style={{ fontSize: "13px", display: "block" }}>Espon AI Bot</strong>
-                  <span style={{ fontSize: "10.5px", opacity: 0.9 }}>Online · Visual Flow Test</span>
+                  <span style={{ fontSize: "10.5px", opacity: 0.9 }}>Online · Live Flow Test</span>
                 </div>
                 <button onClick={() => setShowSimModal(false)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#fff", fontSize: "18px", cursor: "pointer" }}>×</button>
               </div>
 
-              {/* Chat Stream */}
               <div className="sim-chat-body">
                 {simMessages.map((msg, idx) => (
                   <div key={idx} className={`sim-msg-row ${msg.sender}`}>

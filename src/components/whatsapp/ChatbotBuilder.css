@@ -149,12 +149,14 @@
 /* LEFT SIDEBAR: BLOCK LIBRARY ACCORDION */
 /* ----------------------------------------------------------------- */
 .block-library-sidebar {
-  width: 240px;
-  min-width: 240px;
+  width: 270px;
+  min-width: 270px;
   background: #ffffff;
   border-right: 1px solid #eaecf0;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
   transition: all 0.2s ease-in-out;
   z-index: 5;
 }
@@ -167,6 +169,8 @@
 .library-header {
   padding: 12px 14px;
   border-bottom: 1px solid #f1f5f9;
+  background: #ffffff;
+  flex-shrink: 0;
 }
 
 .library-title {
@@ -180,7 +184,7 @@
 
 .library-search-box input {
   width: 100%;
-  padding: 6px 10px;
+  padding: 6.5px 10px;
   font-size: 12px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -194,7 +198,7 @@
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .category-accordion {
@@ -202,6 +206,7 @@
   border-radius: 8px;
   overflow: hidden;
   background: #ffffff;
+  flex-shrink: 0;
 }
 
 .category-header-row {
@@ -247,7 +252,7 @@
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   background: #ffffff;
-  cursor: grab;
+  cursor: pointer;
   transition: all 0.15s;
   text-align: center;
 }
