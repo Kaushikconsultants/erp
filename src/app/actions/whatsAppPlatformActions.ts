@@ -21,7 +21,7 @@ import { authOptions } from "@/lib/auth";
 
 export interface ConversationFilterOptions {
   search?: string;
-  tab?: 'all' | 'assigned_to_me' | 'unassigned' | 'mentions' | 'dms' | 'groups';
+  tab?: 'all' | 'assigned_to_me' | 'unassigned' | 'assigned' | 'mentions' | 'dms' | 'groups';
   unreadOnly?: boolean;
   leadStatus?: string;
   priority?: string;
@@ -72,9 +72,10 @@ export async function getWhatsAppConversations(filters: ConversationFilterOption
       where.customerType = filters.customerType;
     }
 
-    // Role-Based Access Scoping:
-    // Salespersons can ONLY view their own assigned leads!
-    if (!isAdmin) {
+    // Role-Based Access Scoping & Folder Tab Filtering:
+    if (filters.tab === 'unassigned') {
+      where.assignedEmployeeId = null;
+    } else if (!isAdmin) {
       if (currentEmployee) {
         where.assignedEmployeeId = currentEmployee.id;
       } else {
@@ -84,10 +85,10 @@ export async function getWhatsAppConversations(filters: ConversationFilterOption
       // Admin / Manager View: Can see all leads, or filter by specific team member
       if (filters.filterEmployeeId) {
         where.assignedEmployeeId = filters.filterEmployeeId;
-      } else if (filters.tab === 'unassigned') {
-        where.assignedEmployeeId = null;
       } else if (filters.tab === 'assigned_to_me' && currentEmployee) {
         where.assignedEmployeeId = currentEmployee.id;
+      } else if (filters.tab === 'assigned') {
+        where.assignedEmployeeId = { not: null };
       } else if (filters.assignedEmployeeId) {
         where.assignedEmployeeId = filters.assignedEmployeeId;
       }

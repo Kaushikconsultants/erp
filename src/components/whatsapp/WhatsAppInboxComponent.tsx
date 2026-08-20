@@ -123,9 +123,19 @@ export default function WhatsAppInboxComponent() {
     });
     if (res.success && res.conversations) {
       setConversations(res.conversations);
-      if (res.conversations.length > 0 && !selectedConvId) {
-        setSelectedConvId(res.conversations[0].id);
+      if (res.conversations.length > 0) {
+        const isCurrentInList = res.conversations.some((c: any) => c.id === selectedConvId);
+        if (!selectedConvId || !isCurrentInList) {
+          setSelectedConvId(res.conversations[0].id);
+        }
+      } else {
+        setSelectedConvId(null);
+        setActiveConvDetail(null);
       }
+    } else {
+      setConversations([]);
+      setSelectedConvId(null);
+      setActiveConvDetail(null);
     }
     setLoadingConvs(false);
   };
