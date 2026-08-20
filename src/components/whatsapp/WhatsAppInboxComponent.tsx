@@ -49,7 +49,9 @@ import {
   sendWhatsAppMessageAction,
   updateCRMProfileFromWhatsApp,
   createWhatsAppQuotation,
-  generateWhatsAppPaymentLinkAction
+  generateWhatsAppPaymentLinkAction,
+  assignWhatsAppLeadAction,
+  getAllEmployeesAndTeams
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
@@ -69,32 +71,29 @@ export default function WhatsAppInboxComponent() {
   const [activeNavTab, setActiveNavTab] = useState<string>("all");
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("");
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
+  const [filterEmployeeId, setFilterEmployeeId] = useState<string>("");
+  const [employeesList, setEmployeesList] = useState<any[]>([]);
 
   // Messaging Input State
   const [messageInput, setMessageInput] = useState<string>("");
   const [isInternalNote, setIsInternalNote] = useState<boolean>(false);
   const [sendingMsg, setSendingMsg] = useState<boolean>(false);
 
-  // Quick Reply Command Modal State
+  // Modals
   const [showReplyLibraryModal, setShowReplyLibraryModal] = useState<boolean>(false);
   const [showQuoteModal, setShowQuoteModal] = useState<boolean>(false);
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+  const [showAssignModal, setShowAssignModal] = useState<boolean>(false);
+  const [assigningLead, setAssigningLead] = useState<boolean>(false);
 
-  // Quote Form State
-  const [quoteItems, setQuoteItems] = useState([
-    { name: "Cotton Polo T-Shirt (ESP-902)", quantity: 200, rate: 290 },
-    { name: "Slim Fit Chino Pants (ESP-404)", quantity: 100, rate: 450 }
-  ]);
-
-  // Payment Form State
-  const [paymentAmount, setPaymentAmount] = useState<number>(45000);
-  const [paymentDesc, setPaymentDesc] = useState<string>("Advance Payment for Order #ORD-1092");
-
-  // CRM Inline Edit States
-  const [isEditingCRM, setIsEditingCRM] = useState<boolean>(false);
-  const [crmEditData, setCrmEditData] = useState<any>({});
-
-  const chatBottomRef = useRef<HTMLDivElement>(null);
+  // Fetch Employees List for Filtering & Assignment
+  useEffect(() => {
+    getAllEmployeesAndTeams().then((res) => {
+      if (res.success && res.employees) {
+        setEmployeesList(res.employees);
+      }
+    });
+  }, []);
 
   // Fetch Conversation List
   const fetchConversationsList = async () => {
@@ -103,7 +102,8 @@ export default function WhatsAppInboxComponent() {
       search: searchQuery,
       tab: activeNavTab as any,
       unreadOnly,
-      leadStatus: leadStatusFilter || undefined
+      leadStatus: leadStatusFilter || undefined,
+      filterEmployeeId: filterEmployeeId || undefined
     });
     if (res.success && res.conversations) {
       setConversations(res.conversations);
@@ -116,7 +116,7 @@ export default function WhatsAppInboxComponent() {
 
   useEffect(() => {
     fetchConversationsList();
-  }, [searchQuery, activeNavTab, unreadOnly, leadStatusFilter]);
+  }, [searchQuery, activeNavTab, unreadOnly, leadStatusFilter, filterEmployeeId]);
 
   // Fetch Selected Conversation Detail
   const fetchConversationDetail = async (id: string) => {
@@ -226,6 +226,23 @@ export default function WhatsAppInboxComponent() {
     }
   };
 
+  // Handle Lead Assignment (Manual or Round-Robin)
+  const handleAssignLead = async (employeeId?: string, method: 'MANUAL' | 'ROUND_ROBIN' = 'MANUAL') => {
+    if (!selectedConvId) return;
+    setAssigningLead(true);
+    const res = await assignWhatsAppLeadAction({
+      conversationId: selectedConvId,
+      employeeId,
+      method
+    });
+    if (res.success) {
+      setShowAssignModal(false);
+      await fetchConversationDetail(selectedConvId);
+      await fetchConversationsList();
+    }
+    setAssigningLead(false);
+  };
+
   return (
     <div className="inbox-container">
       {/* ----------------------------------------------------------------- */}
@@ -304,6 +321,18 @@ export default function WhatsAppInboxComponent() {
                   <option value="Quotation Shared">Quotation Shared</option>
                   <option value="Negotiation">Negotiation</option>
                   <option value="Order Confirmed">Order Confirmed</option>
+                </select>
+                <select
+                  className="filter-select"
+                  value={filterEmployeeId}
+                  onChange={(e) => setFilterEmployeeId(e.target.value)}
+                >
+                  <option value="">All Reps</option>
+                  {employeesList.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.user?.name || emp.employeeId}
+                    </option>
+                  ))}
                 </select>
               </div>
             </>
@@ -425,6 +454,10 @@ export default function WhatsAppInboxComponent() {
               </div>
 
               <div className="chat-header-actions">
+                <button className="chat-action-btn highlight-assign" onClick={() => setShowAssignModal(true)} title="Assign Lead Manually or via Round-Robin">
+                  <UserCheck size={16} />
+                  <span>Assign Lead</span>
+                </button>
                 <button className="chat-action-btn" onClick={() => setShowQuoteModal(true)} title="Create Quotation">
                   <FileText size={16} />
                   <span>Quotation</span>
@@ -906,6 +939,108 @@ export default function WhatsAppInboxComponent() {
           </div>
         </div>
       )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* MODAL 4: ASSIGN LEAD (MANUAL & ROUND ROBIN) */}
+      {/* ----------------------------------------------------------------- */}
+      {showAssignModal && (
+        <div className="inbox-modal-backdrop" onClick={() => setShowAssignModal(false)}>
+          <div className="inbox-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-row">
+              <h3>Assign WhatsApp Lead</h3>
+              <button onClick={() => setShowAssignModal(false)}>×</button>
+            </div>
+            <div className="modal-form-body">
+              {/* Round-Robin Auto Assignment Tile */}
+              <div
+                style={{
+                  background: "#f0fdf4",
+                  border: "2px dashed #10b981",
+                  borderRadius: "8px",
+                  padding: "14px",
+                  marginBottom: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between"
+                }}
+              >
+                <div>
+                  <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#065f46", margin: 0 }}>
+                    Auto-Assign via Round-Robin
+                  </h4>
+                  <p style={{ fontSize: "12px", color: "#047857", margin: "2px 0 0 0" }}>
+                    Automatically assigns to the active sales executive with the lowest open workload.
+                  </p>
+                </div>
+                <button
+                  disabled={assigningLead}
+                  onClick={() => handleAssignLead(undefined, "ROUND_ROBIN")}
+                  style={{
+                    background: "#10b981",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "8px 14px",
+                    borderRadius: "6px",
+                    fontSize: "12.5px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  {assigningLead ? "Assigning..." : "Run Round-Robin"}
+                </button>
+              </div>
+
+              <span style={{ fontSize: "12px", fontWeight: 700, color: "#6b7280", textTransform: "uppercase" }}>
+                Or Assign Manually to Team Member
+              </span>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "6px", maxHeight: "250px", overflowY: "auto" }}>
+                {employeesList.map((emp) => (
+                  <div
+                    key={emp.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "8px 12px",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      background: "#ffffff"
+                    }}
+                  >
+                    <div>
+                      <strong style={{ fontSize: "13px", color: "#111827", display: "block" }}>
+                        {emp.user?.name || emp.employeeId}
+                      </strong>
+                      <span style={{ fontSize: "11px", color: "#6b7280" }}>
+                        Open Chats: {emp.assignedWhatsAppConversations?.length || 0}
+                      </span>
+                    </div>
+
+                    <button
+                      disabled={assigningLead}
+                      onClick={() => handleAssignLead(emp.id, "MANUAL")}
+                      style={{
+                        background: "#f3f4f6",
+                        border: "1px solid #d1d5db",
+                        color: "#374151",
+                        padding: "6px 12px",
+                        borderRadius: "4px",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      Assign Rep
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -913,3 +1048,4 @@ export default function WhatsAppInboxComponent() {
 function LockIcon({ size }: { size: number }) {
   return <ShieldCheck size={size} color="#f59e0b" />;
 }
+

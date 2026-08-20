@@ -16,6 +16,9 @@ async function ensureSeeded() {
 // 1. INBOX & CONVERSATIONS
 // ---------------------------------------------------------
 
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
 export interface ConversationFilterOptions {
   search?: string;
   tab?: 'all' | 'assigned_to_me' | 'unassigned' | 'mentions' | 'dms' | 'groups';
@@ -24,12 +27,23 @@ export interface ConversationFilterOptions {
   priority?: string;
   customerType?: string;
   assignedEmployeeId?: string;
+  filterEmployeeId?: string; // Team member filter for Admins
   sortBy?: 'newest' | 'oldest';
 }
 
 export async function getWhatsAppConversations(filters: ConversationFilterOptions = {}) {
   await ensureSeeded();
   try {
+    const session = await getServerSession(authOptions);
+    const userRole = (session?.user as any)?.role || 'SALES';
+    const userId = (session?.user as any)?.id;
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'MANAGER';
+
+    let currentEmployee = null;
+    if (userId) {
+      currentEmployee = await prisma.employee.findUnique({ where: { userId } });
+    }
+
     const where: any = {};
 
     if (filters.search && filters.search.trim()) {
@@ -58,10 +72,25 @@ export async function getWhatsAppConversations(filters: ConversationFilterOption
       where.customerType = filters.customerType;
     }
 
-    if (filters.tab === 'unassigned') {
-      where.assignedEmployeeId = null;
-    } else if (filters.tab === 'assigned_to_me' && filters.assignedEmployeeId) {
-      where.assignedEmployeeId = filters.assignedEmployeeId;
+    // Role-Based Access Scoping:
+    // Salespersons can ONLY view their own assigned leads!
+    if (!isAdmin) {
+      if (currentEmployee) {
+        where.assignedEmployeeId = currentEmployee.id;
+      } else {
+        where.id = '00000000-0000-0000-0000-000000000000'; // Return empty if sales user has no employee
+      }
+    } else {
+      // Admin / Manager View: Can see all leads, or filter by specific team member
+      if (filters.filterEmployeeId) {
+        where.assignedEmployeeId = filters.filterEmployeeId;
+      } else if (filters.tab === 'unassigned') {
+        where.assignedEmployeeId = null;
+      } else if (filters.tab === 'assigned_to_me' && currentEmployee) {
+        where.assignedEmployeeId = currentEmployee.id;
+      } else if (filters.assignedEmployeeId) {
+        where.assignedEmployeeId = filters.assignedEmployeeId;
+      }
     }
 
     const conversations = await prisma.whatsAppConversation.findMany({
@@ -612,3 +641,166 @@ export async function createWhatsAppBroadcastCampaign(data: {
     return { success: false, error: e.message };
   }
 }
+
+// ---------------------------------------------------------
+// 7. TEAM MANAGEMENT & MANUAL / ROUND ROBIN ASSIGNMENT
+// ---------------------------------------------------------
+
+export async function assignWhatsAppLeadAction(data: {
+  conversationId: string;
+  employeeId?: string;
+  method?: 'MANUAL' | 'ROUND_ROBIN';
+}) {
+  try {
+    const conversation = await prisma.whatsAppConversation.findUnique({
+      where: { id: data.conversationId },
+      include: { customer: true }
+    });
+
+    if (!conversation) {
+      return { success: false, error: "Conversation not found" };
+    }
+
+    let targetEmployeeId = data.employeeId;
+    let assignmentNote = "";
+
+    if (data.method === 'ROUND_ROBIN') {
+      // Fetch all employees and count their active assigned WhatsApp conversations
+      const activeEmployees = await prisma.employee.findMany({
+        select: {
+          id: true,
+          employeeId: true,
+          user: { select: { name: true, email: true } },
+          assignedWhatsAppConversations: {
+            where: { status: 'OPEN' },
+            select: { id: true }
+          }
+        }
+      });
+
+      if (activeEmployees.length === 0) {
+        return { success: false, error: "No active sales employees available for Round Robin assignment" };
+      }
+
+      // Sort by fewest active conversations
+      activeEmployees.sort((a, b) => a.assignedWhatsAppConversations.length - b.assignedWhatsAppConversations.length);
+      const leastAssigned = activeEmployees[0];
+      targetEmployeeId = leastAssigned.id;
+      const empName = leastAssigned.user?.name || leastAssigned.employeeId;
+      assignmentNote = `Internal Note: Conversation auto-assigned to ${empName} via Round-Robin distribution.`;
+    } else {
+      if (!targetEmployeeId) {
+        return { success: false, error: "Employee ID is required for manual assignment" };
+      }
+      const targetEmp = await prisma.employee.findUnique({
+        where: { id: targetEmployeeId },
+        include: { user: true }
+      });
+      const empName = targetEmp?.user?.name || "Sales Executive";
+      assignmentNote = `Internal Note: Conversation manually assigned to ${empName}.`;
+    }
+
+    // Update Conversation & Customer Salesperson
+    await prisma.whatsAppConversation.update({
+      where: { id: data.conversationId },
+      data: { assignedEmployeeId: targetEmployeeId }
+    });
+
+    await prisma.customer.update({
+      where: { id: conversation.customerId },
+      data: { assignedSalespersonId: targetEmployeeId }
+    });
+
+    // Add Internal Team Note
+    await prisma.whatsAppMessage.create({
+      data: {
+        conversationId: data.conversationId,
+        senderType: 'SYSTEM',
+        senderName: 'System Assignment',
+        messageType: 'TEXT',
+        content: assignmentNote,
+        isInternalNote: true,
+        status: 'SENT',
+        sentAt: new Date()
+      }
+    });
+
+    revalidatePath('/whatsapp/inbox');
+    revalidatePath('/whatsapp/team-inbox');
+    return { success: true, assignedEmployeeId: targetEmployeeId };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function getAllEmployeesAndTeams() {
+  await ensureSeeded();
+  try {
+    const [teams, employees] = await Promise.all([
+      prisma.team.findMany({
+        include: {
+          members: {
+            include: {
+              user: true,
+              assignedWhatsAppConversations: {
+                where: { status: 'OPEN' }
+              }
+            }
+          }
+        }
+      }),
+      prisma.employee.findMany({
+        include: {
+          user: true,
+          team: true,
+          assignedWhatsAppConversations: {
+            where: { status: 'OPEN' }
+          }
+        }
+      })
+    ]);
+
+    return { success: true, teams, employees };
+  } catch (e: any) {
+    return { success: false, error: e.message, teams: [], employees: [] };
+  }
+}
+
+export async function addEmployeeToTeamAction(teamId: string, employeeId: string) {
+  try {
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: { teamId }
+    });
+    revalidatePath('/whatsapp/team-inbox');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function removeEmployeeFromTeamAction(employeeId: string) {
+  try {
+    await prisma.employee.update({
+      where: { id: employeeId },
+      data: { teamId: null }
+    });
+    revalidatePath('/whatsapp/team-inbox');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function createNewTeamAction(name: string, description?: string) {
+  try {
+    const team = await prisma.team.create({
+      data: { name, description }
+    });
+    revalidatePath('/whatsapp/team-inbox');
+    return { success: true, team };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
