@@ -54,7 +54,10 @@ import {
   Settings,
   FolderOpen,
   Power,
-  GripVertical
+  GripVertical,
+  ExternalLink,
+  ShieldCheck,
+  Tag
 } from "lucide-react";
 import {
   getWhatsAppChatbotFlows,
@@ -75,7 +78,7 @@ const blockCategories = [
       { id: "image", name: "Image", icon: ImageIcon },
       { id: "video", name: "Video", icon: Video },
       { id: "youtube", name: "YouTube", icon: Video },
-      { id: "file", name: "File", icon: FileText },
+      { id: "file", name: "File / PDF", icon: FileText },
       { id: "audio", name: "Audio", icon: Music },
       { id: "location", name: "Location", icon: MapPin },
       { id: "contact", name: "Contact", icon: User },
@@ -96,11 +99,11 @@ const blockCategories = [
     name: "Inputs",
     count: 5,
     blocks: [
-      { id: "input_name", name: "Name", icon: User },
-      { id: "input_email", name: "Email", icon: Mail },
-      { id: "input_phone", name: "Phone", icon: Phone },
-      { id: "input_date", name: "Date", icon: Calendar },
-      { id: "input_rating", name: "Rating", icon: Star }
+      { id: "input_name", name: "Name Input", icon: User },
+      { id: "input_email", name: "Email Input", icon: Mail },
+      { id: "input_phone", name: "Phone Input", icon: Phone },
+      { id: "input_date", name: "Date Input", icon: Calendar },
+      { id: "input_rating", name: "Rating Input", icon: Star }
     ]
   },
   {
@@ -203,21 +206,29 @@ const BOT_TEMPLATES = [
       },
       {
         id: "node_crm_retail",
-        type: "CRM",
+        type: "CRM_CONTACT",
         category: "crm",
         title: "Update CRM Contact (Retailer)",
         x: 970,
         y: 40,
+        leadStage: "Qualified Retailer",
+        priority: "MEDIUM",
+        temperature: "WARM",
+        tags: "Retailer, Qualified",
         text: "Update CRM Contact:\n• Lead Stage: Qualified Retailer\n• Priority: MEDIUM",
         outputPort: "node_end_b2b"
       },
       {
         id: "node_crm_wholesale",
-        type: "CRM",
+        type: "CRM_CONTACT",
         category: "crm",
         title: "Update CRM Contact (Wholesale)",
         x: 970,
         y: 200,
+        leadStage: "Wholesale Inquiry",
+        priority: "HIGH",
+        temperature: "HOT",
+        tags: "Wholesale, Hot Lead",
         text: "Update CRM Contact:\n• Lead Stage: Wholesale Inquiry\n• Priority: HIGH",
         outputPort: "node_end_b2b"
       },
@@ -278,31 +289,37 @@ const BOT_TEMPLATES = [
       },
       {
         id: "node_catalog",
-        type: "E-COMMERCE",
+        type: "CATALOG",
         category: "choice",
         title: "Product Catalog Carousel",
         x: 680,
         y: 40,
+        categoryName: "Wholesale Activewear",
         text: "Here are our top trending wholesale categories for 2026. Select item to request quotation.",
         outputPort: "node_catalog_end"
       },
       {
         id: "node_track_input",
-        type: "INPUT",
+        type: "INPUT_PHONE",
         category: "input",
         title: "Order ID / Mobile Input",
         x: 680,
         y: 200,
+        variableName: "customer_mobile",
+        retryMessage: "Invalid mobile number. Enter 10 digits.",
         text: "Please reply with your 10-digit registered mobile number or Order ID (e.g. ORD-1092).",
         outputPort: "node_track_result"
       },
       {
         id: "node_payment_qr",
-        type: "PAYMENT",
+        type: "PAY_QR",
         category: "payment",
         title: "Instant UPI QR Code",
         x: 680,
         y: 360,
+        amount: 2500,
+        upiId: "7206066678@OKBIZAXIS",
+        payeeName: "Espon Clothing Pvt Ltd",
         text: "Scan QR code or click payment link below to complete payment instantly via GooglePay / PhonePe:",
         outputPort: "node_pay_end"
       },
@@ -425,7 +442,7 @@ export default function WhatsAppChatbotBuilderPage() {
   const [simMessages, setSimMessages] = useState<any[]>([]);
   const [drawerTab, setDrawerTab] = useState<"basic" | "advanced">("basic");
 
-  // Fetch Saved Chatbot Flows from DB (Does NOT auto-recreate deleted bots)
+  // Fetch Saved Chatbot Flows from DB
   const fetchFlows = async () => {
     setIsLoadingFlows(true);
     const res = await getWhatsAppChatbotFlows();
@@ -448,7 +465,6 @@ export default function WhatsAppChatbotBuilderPage() {
           console.error("Failed to parse nodesJson:", e);
         }
       } else {
-        // No flows in DB (e.g. user deleted all flows)
         setCurrentFlowId(null);
         setFlowName("No Active Chatbot");
         setTriggerKeyword("");
@@ -511,7 +527,6 @@ export default function WhatsAppChatbotBuilderPage() {
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  // Universal Delete Flow Function (Fixes deletion issue permanently)
   const handleDeleteFlowById = async (flowIdToDelete: string) => {
     setIsSaving(true);
     const targetFlow = savedFlows.find((f) => f.id === flowIdToDelete);
@@ -675,6 +690,164 @@ export default function WhatsAppChatbotBuilderPage() {
       setHistoryIndex(historyIndex + 1);
       setNodes(historyStack[historyIndex + 1]);
     }
+  };
+
+  // ---------------------------------------------------------
+  // RICH BLOCK INITIALIZATION FOR ALL 25+ BLOCK TYPES
+  // ---------------------------------------------------------
+  const handleAddBlockToCanvas = (block: any) => {
+    const selected = nodes.find((n) => n.id === selectedNodeId) || nodes[nodes.length - 1];
+    const newNodeId = `node_${Date.now()}`;
+    const basePos = {
+      x: selected ? selected.x + 290 : 400,
+      y: selected ? selected.y + 40 : 200
+    };
+
+    let newNode: any = {
+      id: newNodeId,
+      type: block.id.toUpperCase(),
+      title: block.name,
+      x: basePos.x,
+      y: basePos.y
+    };
+
+    switch (block.id) {
+      case "text":
+        newNode = { ...newNode, category: "choice", text: "Hi {{customer_name}}, thank you for reaching out to Espon Apparel!" };
+        break;
+      case "image":
+        newNode = { ...newNode, category: "choice", imageUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500", caption: "Check out our latest 2026 Wholesale Activewear Collection!" };
+        break;
+      case "video":
+        newNode = { ...newNode, category: "choice", videoUrl: "https://www.w3schools.com/html/mov_bbb.mp4", caption: "Watch our apparel production demo video." };
+        break;
+      case "youtube":
+        newNode = { ...newNode, category: "choice", youtubeUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", caption: "Espon Factory Tour & Manufacturing Demo" };
+        break;
+      case "file":
+        newNode = { ...newNode, category: "choice", fileUrl: "https://espon.in/catalog.pdf", filename: "Espon_Apparel_Catalog_2026.pdf" };
+        break;
+      case "audio":
+        newNode = { ...newNode, category: "choice", audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", isVoiceNote: true, text: "Audio Note: Welcome message from Ikra Sales Manager" };
+        break;
+      case "location":
+        newNode = { ...newNode, category: "choice", locationName: "Espon Apparel HQ Factory", address: "SCO 71A, Ashoka Plaza, Rohtak, Haryana 124001", lat: 28.8955, lng: 76.6066 };
+        break;
+      case "contact":
+        newNode = { ...newNode, category: "choice", contactName: "Ikra Sales Manager", contactPhone: "+91 7206066678", contactOrg: "Espon Apparel Direct" };
+        break;
+      case "link":
+        newNode = { ...newNode, category: "choice", text: "Click below to visit our B2B wholesale store:", buttonText: "Visit Portal 🌐", url: "https://espon.in" };
+        break;
+      case "carousel":
+        newNode = {
+          ...newNode,
+          category: "choice",
+          text: "Featured Categories Carousel:",
+          items: [
+            { id: "item_1", title: "Polo T-Shirts", subtitle: "₹290/pc · Min 100 pcs", imageUrl: "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=400", buttonText: "Inquire Now" },
+            { id: "item_2", title: "Track Pants", subtitle: "₹340/pc · Min 50 pcs", imageUrl: "https://images.unsplash.com/photo-1552902865-b72c031ac5ea?w=400", buttonText: "Inquire Now" }
+          ]
+        };
+        break;
+      case "request":
+        newNode = { ...newNode, category: "input", text: "Please enter your requirement quantity (pcs):", variableName: "req_qty" };
+        break;
+      case "buttons":
+        newNode = {
+          ...newNode,
+          category: "choice",
+          text: "Select your inquiry topic below:",
+          choices: [
+            { id: `c_${Date.now()}_1`, text: "1. Wholesale Catalog", targetNode: null },
+            { id: `c_${Date.now()}_2`, text: "2. Custom Manufacturing", targetNode: null }
+          ]
+        };
+        break;
+      case "list_menu":
+        newNode = {
+          ...newNode,
+          category: "choice",
+          text: "Select from our service options menu:",
+          menuTitle: "Main Menu Options",
+          choices: [
+            { id: `c_${Date.now()}_1`, text: "1. View Bulk Pricing", description: "Tiered wholesale slabs", targetNode: null },
+            { id: `c_${Date.now()}_2`, text: "2. Track Order Status", description: "Live AWB status", targetNode: null }
+          ]
+        };
+        break;
+      case "input_name":
+        newNode = { ...newNode, category: "input", text: "What is your full name?", variableName: "customer_name", retryMessage: "Please enter a valid name." };
+        break;
+      case "input_email":
+        newNode = { ...newNode, category: "input", text: "Please enter your business email address:", variableName: "customer_email", retryMessage: "Invalid email format. Try again." };
+        break;
+      case "input_phone":
+        newNode = { ...newNode, category: "input", text: "Please enter your 10-digit mobile number:", variableName: "customer_mobile", retryMessage: "Invalid mobile number. Enter 10 digits." };
+        break;
+      case "input_date":
+        newNode = { ...newNode, category: "input", text: "Select your preferred delivery date (YYYY-MM-DD):", variableName: "delivery_date" };
+        break;
+      case "input_rating":
+        newNode = { ...newNode, category: "input", text: "Rate your experience from 1 to 5 Stars ⭐:", variableName: "rating_score" };
+        break;
+      case "set_var":
+        newNode = { ...newNode, category: "logic", title: "Set Variable", variableName: "lead_status", variableValue: "Qualified" };
+        break;
+      case "condition":
+        newNode = { ...newNode, category: "logic", title: "Condition (If / Else)", variableName: "customer_type", operator: "EQUALS", compareValue: "Wholesaler", truePort: null, falsePort: null };
+        break;
+      case "delay":
+        newNode = { ...newNode, category: "logic", title: "Wait / Delay", delayValue: 5, delayUnit: "MINUTES", text: "Wait 5 minutes before continuing..." };
+        break;
+      case "split_test":
+        newNode = { ...newNode, category: "logic", title: "Split Test (A/B)", splitRatio: "50/50", branchAPort: null, branchBPort: null };
+        break;
+      case "jump":
+        newNode = { ...newNode, category: "logic", title: "Jump to Block", targetNodeId: null };
+        break;
+      case "pay_link":
+        newNode = { ...newNode, category: "payment", title: "Send Payment Link", amount: 1500, currency: "INR", paymentDescription: "Order Deposit Payment", paymentUrl: "https://pay.espon.in/dep1092" };
+        break;
+      case "pay_qr":
+        newNode = { ...newNode, category: "payment", title: "UPI QR Code", amount: 2500, upiId: "7206066678@OKBIZAXIS", payeeName: "Espon Clothing Pvt Ltd", text: "Scan QR via GPay / PhonePe / Paytm:" };
+        break;
+      case "pay_collect":
+        newNode = { ...newNode, category: "payment", title: "Collect Payment", amount: 5000, paymentModes: ["UPI", "Cards", "NetBanking"] };
+        break;
+      case "catalog":
+        newNode = { ...newNode, category: "choice", title: "Product Catalog Carousel", categoryName: "Wholesale Activewear", text: "Browse ready stock catalog below:" };
+        break;
+      case "order":
+        newNode = { ...newNode, category: "choice", title: "Multi-Item Order", text: "Order Summary: 100 pcs Polo T-Shirts (₹29,000)" };
+        break;
+      case "webhook":
+        newNode = { ...newNode, category: "api", title: "Webhook Fetch (API)", webhookUrl: "https://api.espon.in/v1/inventory", method: "POST", headers: "Content-Type: application/json", requestBody: '{"sku": "ESP-902"}' };
+        break;
+      case "crm_contact":
+        newNode = { ...newNode, category: "crm", title: "Update CRM Contact", leadStage: "Qualified Lead", priority: "HIGH", temperature: "HOT", tags: "Hot Lead, Wholesale" };
+        break;
+      case "crm_lead":
+        newNode = { ...newNode, category: "crm", title: "Create Lead", leadSource: "WhatsApp Bot", customerType: "Wholesaler" };
+        break;
+      case "crm_roundrobin":
+        newNode = { ...newNode, category: "crm", title: "Assign Sales Rep", assignmentMode: "ROUND_ROBIN", department: "Wholesale Sales" };
+        break;
+      case "ai_bot":
+        newNode = { ...newNode, category: "ai", title: "AI GPT Intent Auto-Answer", systemPrompt: "You are Espon AI Assistant. Answer product catalog and pricing inquiries politely.", confidenceThreshold: 85 };
+        break;
+      case "meta_template":
+        newNode = { ...newNode, category: "ai", title: "Send Meta Template", templateName: "order_confirmation_v2", language: "en_US" };
+        break;
+      default:
+        newNode = { ...newNode, category: "choice", text: `Configure ${block.name}...` };
+    }
+
+    const updated = [...nodes, newNode];
+    setNodes(updated);
+    pushHistory(updated);
+    setSelectedNodeId(newNodeId);
+    setIsDrawerOpen(true);
   };
 
   const handleMouseDownCanvas = (e: React.MouseEvent) => {
@@ -844,25 +1017,6 @@ export default function WhatsAppChatbotBuilderPage() {
     }
   };
 
-  const handleAddBlockToCanvas = (block: any) => {
-    const selected = nodes.find((n) => n.id === selectedNodeId) || nodes[nodes.length - 1];
-    const newNodeId = `node_${Date.now()}`;
-    const newNode = {
-      id: newNodeId,
-      type: block.id.toUpperCase(),
-      category: "choice",
-      title: `New ${block.name} Node`,
-      x: selected ? selected.x + 290 : 400,
-      y: selected ? selected.y + 40 : 200,
-      text: `Enter message for ${block.name}...`,
-      choices: block.id === "buttons" ? [{ id: `c_${Date.now()}`, text: "Option 1", targetNode: null }] : []
-    };
-    const updated = [...nodes, newNode];
-    setNodes(updated);
-    pushHistory(updated);
-    setSelectedNodeId(newNodeId);
-  };
-
   const handleDeleteNode = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = nodes.filter((n) => n.id !== id);
@@ -941,7 +1095,7 @@ export default function WhatsAppChatbotBuilderPage() {
 
     let botReplyMsg = null;
     if (targetNode) {
-      if (targetNode.type === "CRM" && targetNode.outputPort) {
+      if (targetNode.type.startsWith("CRM") && targetNode.outputPort) {
         const nextEndNode = nodes.find((n) => n.id === targetNode.outputPort);
         botReplyMsg = {
           sender: "bot",
@@ -951,7 +1105,7 @@ export default function WhatsAppChatbotBuilderPage() {
       } else {
         botReplyMsg = {
           sender: "bot",
-          text: targetNode.text,
+          text: targetNode.text || targetNode.title,
           buttonText: targetNode.buttonText
         };
       }
@@ -1172,7 +1326,7 @@ export default function WhatsAppChatbotBuilderPage() {
               )}
             </svg>
 
-            {/* NODE CARDS ON CANVAS */}
+            {/* RICH NODE CARDS ON CANVAS */}
             {nodes.map((node) => {
               const isSelected = node.id === selectedNodeId;
               const isConnectingHover = hoveredTargetNodeId === node.id;
@@ -1220,11 +1374,87 @@ export default function WhatsAppChatbotBuilderPage() {
                   </div>
 
                   <div className="node-card-body">
+                    {/* TYPE-SPECIFIC VISUAL CONTENT BADGES & PREVIEWS */}
                     {node.imageUrl && (
                       <img src={node.imageUrl} alt="Banner" className="node-banner-img" />
                     )}
+
+                    {node.type === "VIDEO" && (
+                      <div style={{ background: "#0f172a", color: "#fff", padding: "8px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                        <Video size={14} color="#10b981" />
+                        <span>Video: {node.videoUrl || 'Video media'}</span>
+                      </div>
+                    )}
+
+                    {node.type === "FILE" && (
+                      <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                        <FileText size={14} color="#3b82f6" />
+                        <strong>{node.filename || 'Document.pdf'}</strong>
+                      </div>
+                    )}
+
+                    {node.type === "LOCATION" && (
+                      <div style={{ background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                        <MapPin size={14} color="#d97706" />
+                        <span>{node.locationName || 'Send Location'}</span>
+                      </div>
+                    )}
+
+                    {node.type === "CONTACT" && (
+                      <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                        <User size={14} color="#16a34a" />
+                        <span>{node.contactName} ({node.contactPhone})</span>
+                      </div>
+                    )}
+
+                    {node.type.startsWith("PAY_") && (
+                      <div style={{ background: "#ecfdf5", border: "1px solid #a7f3d0", color: "#047857", padding: "6px 10px", borderRadius: "6px", fontSize: "11.5px", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                        <CreditCard size={14} />
+                        <span>Amount: ₹{node.amount || 0}</span>
+                      </div>
+                    )}
+
+                    {node.type.startsWith("CRM_") && (
+                      <div style={{ background: "#e0e7ff", border: "1px solid #c7d2fe", color: "#3730a3", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, marginBottom: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                          <UserCheck size={13} />
+                          <span>Stage: {node.leadStage || 'Qualified'}</span>
+                        </div>
+                        {node.priority && <span style={{ fontSize: "10px", opacity: 0.8 }}>Priority: {node.priority}</span>}
+                      </div>
+                    )}
+
+                    {node.type === "CONDITION" && (
+                      <div style={{ background: "#fff7ed", border: "1px solid #ffedd5", color: "#9a3412", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", marginBottom: "6px" }}>
+                        <GitBranch size={13} style={{ marginBottom: "2px" }} />
+                        <div>If <strong>{node.variableName || 'var'}</strong> {node.operator || 'EQUALS'} "{node.compareValue || ''}"</div>
+                      </div>
+                    )}
+
+                    {node.type === "DELAY" && (
+                      <div style={{ background: "#f1f5f9", border: "1px solid #cbd5e1", color: "#334155", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
+                        <Clock size={14} color="#64748b" />
+                        <span>Delay: {node.delayValue || 5} {node.delayUnit || 'MINUTES'}</span>
+                      </div>
+                    )}
+
+                    {node.type === "WEBHOOK" && (
+                      <div style={{ background: "#fdf4ff", border: "1px solid #f5d0fe", color: "#86198f", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", marginBottom: "6px" }}>
+                        <Globe size={13} />
+                        <div><strong>{node.method || 'POST'}</strong> {node.webhookUrl || 'API URL'}</div>
+                      </div>
+                    )}
+
+                    {node.type === "AI_BOT" && (
+                      <div style={{ background: "#f0fdf4", border: "1px solid #86efac", color: "#166534", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", marginBottom: "6px" }}>
+                        <Bot size={13} />
+                        <div>AI Confidence Threshold: {node.confidenceThreshold || 85}%</div>
+                      </div>
+                    )}
+
                     {node.text && <p className="node-text-preview">{node.text}</p>}
 
+                    {/* CHOICES LIST */}
                     {node.choices && (
                       <div className="node-choices-list" onMouseDown={(e) => e.stopPropagation()}>
                         {node.choices.map((c: any, cIdx: number) => (
@@ -1314,7 +1544,7 @@ export default function WhatsAppChatbotBuilderPage() {
           </div>
         </div>
 
-        {/* RIGHT PROPERTY EDITOR DRAWER */}
+        {/* RICH TYPE-SPECIFIC PROPERTY EDITOR DRAWER */}
         {selectedNode && isDrawerOpen && (
           <div className="node-editor-drawer">
             <div className="drawer-header-row">
@@ -1327,7 +1557,7 @@ export default function WhatsAppChatbotBuilderPage() {
                     {selectedNode.title}
                   </h3>
                   <span style={{ fontSize: "11.5px", color: "#64748b" }}>
-                    Configure node content, choice options and CRM parameters.
+                    Configure block parameters & logic connections.
                   </span>
                 </div>
               </div>
@@ -1352,10 +1582,10 @@ export default function WhatsAppChatbotBuilderPage() {
             </div>
 
             <div className="drawer-section-block">
-              <span className="drawer-section-title">NODE PROPERTIES</span>
-              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
+              <span className="drawer-section-title">BLOCK CONFIGURATION</span>
+              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div>
-                  <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Node Title</label>
+                  <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Block Title</label>
                   <input
                     type="text"
                     value={selectedNode.title}
@@ -1367,9 +1597,9 @@ export default function WhatsAppChatbotBuilderPage() {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Message Content</label>
+                  <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Message / Description</label>
                   <textarea
-                    rows={4}
+                    rows={3}
                     value={selectedNode.text || ""}
                     onChange={(e) =>
                       setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, text: e.target.value } : n)))
@@ -1378,9 +1608,255 @@ export default function WhatsAppChatbotBuilderPage() {
                   />
                 </div>
 
+                {/* TYPE-SPECIFIC CONFIGURATION FIELDS */}
+                {selectedNode.type === "IMAGE" && (
+                  <div>
+                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Image URL</label>
+                    <input
+                      type="text"
+                      value={selectedNode.imageUrl || ""}
+                      onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, imageUrl: e.target.value } : n)))}
+                      style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                    />
+                  </div>
+                )}
+
+                {(selectedNode.type === "VIDEO" || selectedNode.type === "YOUTUBE") && (
+                  <div>
+                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Video URL</label>
+                    <input
+                      type="text"
+                      value={selectedNode.videoUrl || selectedNode.youtubeUrl || ""}
+                      onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, videoUrl: e.target.value, youtubeUrl: e.target.value } : n)))}
+                      style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                    />
+                  </div>
+                )}
+
+                {selectedNode.type === "FILE" && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Document File Name</label>
+                      <input
+                        type="text"
+                        value={selectedNode.filename || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, filename: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Document URL</label>
+                      <input
+                        type="text"
+                        value={selectedNode.fileUrl || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, fileUrl: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type === "LOCATION" && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Location Name</label>
+                      <input
+                        type="text"
+                        value={selectedNode.locationName || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, locationName: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Address</label>
+                      <input
+                        type="text"
+                        value={selectedNode.address || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, address: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type === "LINK" && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Button Text</label>
+                      <input
+                        type="text"
+                        value={selectedNode.buttonText || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, buttonText: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Target Website URL</label>
+                      <input
+                        type="text"
+                        value={selectedNode.url || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, url: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type.startsWith("INPUT_") && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Save Variable Name</label>
+                      <input
+                        type="text"
+                        value={selectedNode.variableName || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, variableName: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Retry Error Message</label>
+                      <input
+                        type="text"
+                        value={selectedNode.retryMessage || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, retryMessage: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type.startsWith("PAY_") && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Payment Amount (₹)</label>
+                      <input
+                        type="number"
+                        value={selectedNode.amount || 0}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, amount: parseFloat(e.target.value) || 0 } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>UPI ID</label>
+                      <input
+                        type="text"
+                        value={selectedNode.upiId || "7206066678@OKBIZAXIS"}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, upiId: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type.startsWith("CRM_") && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>CRM Lead Stage</label>
+                      <select
+                        value={selectedNode.leadStage || "New Lead"}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, leadStage: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px", background: "#fff" }}
+                      >
+                        <option value="New Lead">New Lead</option>
+                        <option value="Contacted">Contacted</option>
+                        <option value="Qualified Lead">Qualified Lead</option>
+                        <option value="Wholesale Inquiry">Wholesale Inquiry</option>
+                        <option value="Negotiation">Negotiation</option>
+                        <option value="Won">Won / Customer</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Priority</label>
+                      <select
+                        value={selectedNode.priority || "MEDIUM"}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, priority: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px", background: "#fff" }}
+                      >
+                        <option value="LOW">LOW</option>
+                        <option value="MEDIUM">MEDIUM</option>
+                        <option value="HIGH">HIGH</option>
+                        <option value="URGENT">URGENT</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type === "CONDITION" && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Variable to Test</label>
+                      <input
+                        type="text"
+                        value={selectedNode.variableName || "customer_type"}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, variableName: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Operator</label>
+                      <select
+                        value={selectedNode.operator || "EQUALS"}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, operator: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px", background: "#fff" }}
+                      >
+                        <option value="EQUALS">EQUALS</option>
+                        <option value="CONTAINS">CONTAINS</option>
+                        <option value="GREATER_THAN">GREATER_THAN</option>
+                        <option value="LESS_THAN">LESS_THAN</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Comparison Value</label>
+                      <input
+                        type="text"
+                        value={selectedNode.compareValue || "Wholesaler"}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, compareValue: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {selectedNode.type === "DELAY" && (
+                  <div>
+                    <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Delay Duration (Minutes)</label>
+                    <input
+                      type="number"
+                      value={selectedNode.delayValue || 5}
+                      onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, delayValue: parseInt(e.target.value) || 1 } : n)))}
+                      style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                    />
+                  </div>
+                )}
+
+                {selectedNode.type === "WEBHOOK" && (
+                  <>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Webhook API URL</label>
+                      <input
+                        type="text"
+                        value={selectedNode.webhookUrl || ""}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, webhookUrl: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>HTTP Method</label>
+                      <select
+                        value={selectedNode.method || "POST"}
+                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, method: e.target.value } : n)))}
+                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px", background: "#fff" }}
+                      >
+                        <option value="POST">POST</option>
+                        <option value="GET">GET</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+
                 {selectedNode.type !== "END" && (
                   <div>
-                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Direct Next Node Link</label>
+                    <label style={{ fontSize: "11.5px", fontWeight 700, color: "#475569" }}>Direct Next Node Link</label>
                     <select
                       value={selectedNode.outputPort || ""}
                       onChange={(e) => {
@@ -1401,6 +1877,7 @@ export default function WhatsAppChatbotBuilderPage() {
                   </div>
                 )}
 
+                {/* Choice Option List */}
                 {selectedNode.choices && (
                   <div>
                     <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Option Links</label>
@@ -1462,7 +1939,7 @@ export default function WhatsAppChatbotBuilderPage() {
         )}
       </div>
 
-      {/* MODAL 1: CREATE NEW CHATBOT */}
+      {/* MODALS 1, 2, 3, 4 */}
       {showCreateModal && (
         <div className="bot-modal-backdrop" onClick={() => setShowCreateModal(false)}>
           <div className="bot-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -1538,7 +2015,6 @@ export default function WhatsAppChatbotBuilderPage() {
         </div>
       )}
 
-      {/* MODAL 2: DELETE CONFIRMATION */}
       {showDeleteModal && (
         <div className="bot-modal-backdrop" onClick={() => setShowDeleteModal(false)}>
           <div className="bot-modal-card" style={{ maxWidth: "420px" }} onClick={(e) => e.stopPropagation()}>
@@ -1568,7 +2044,6 @@ export default function WhatsAppChatbotBuilderPage() {
         </div>
       )}
 
-      {/* MODAL 3: MANAGE ALL CHATBOTS DRAWER / TABLE */}
       {showManageModal && (
         <div className="bot-modal-backdrop" onClick={() => setShowManageModal(false)}>
           <div className="bot-modal-card" style={{ maxWidth: "750px" }} onClick={(e) => e.stopPropagation()}>
@@ -1659,7 +2134,6 @@ export default function WhatsAppChatbotBuilderPage() {
         </div>
       )}
 
-      {/* MODAL 4: LIVE WHATSAPP PHONE SIMULATOR */}
       {showSimModal && (
         <div className="phone-sim-backdrop" onClick={() => setShowSimModal(false)}>
           <div className="phone-mockup-frame" onClick={(e) => e.stopPropagation()}>
