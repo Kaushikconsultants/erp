@@ -821,6 +821,44 @@ export async function getWhatsAppChatbotFlows() {
   return { success: true, flows };
 }
 
+export async function saveWhatsAppChatbotFlowAction(data: {
+  id?: string;
+  name: string;
+  triggerKeyword?: string;
+  nodesJson: string;
+  isActive?: boolean;
+}) {
+  try {
+    let flow;
+    if (data.id) {
+      flow = await prisma.whatsAppChatbotFlow.update({
+        where: { id: data.id },
+        data: {
+          name: data.name,
+          triggerKeyword: data.triggerKeyword || "HI, HELLO, CATALOG",
+          nodesJson: data.nodesJson,
+          isActive: data.isActive ?? true,
+          updatedAt: new Date()
+        }
+      });
+    } else {
+      flow = await prisma.whatsAppChatbotFlow.create({
+        data: {
+          name: data.name,
+          triggerKeyword: data.triggerKeyword || "HI, HELLO, CATALOG",
+          nodesJson: data.nodesJson,
+          isActive: data.isActive ?? true,
+          executionCount: 0
+        }
+      });
+    }
+    revalidatePath('/whatsapp/chatbot-builder');
+    return { success: true, flow };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
 export async function getWhatsAppForms() {
   await ensureSeeded();
   const forms = await prisma.whatsAppForm.findMany({ orderBy: { createdAt: 'desc' } });
