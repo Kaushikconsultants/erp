@@ -48,7 +48,12 @@ import {
   Copy,
   Focus,
   Hand,
-  Move
+  Move,
+  Edit2,
+  GripVertical,
+  Check,
+  Plus,
+  Radio
 } from "lucide-react";
 import { saveWhatsAppChatbotFlowAction } from "@/app/actions/whatsAppPlatformActions";
 import "@/components/whatsapp/ChatbotBuilder.css";
@@ -264,6 +269,49 @@ export default function WhatsAppChatbotBuilderPage() {
   // Phone Simulator Modal State
   const [showSimModal, setShowSimModal] = useState<boolean>(false);
   const [simMessages, setSimMessages] = useState<any[]>([]);
+
+  // Drawer Tab State
+  const [drawerTab, setDrawerTab] = useState<"basic" | "advanced">("basic");
+
+  // Add option button to a node
+  const handleAddOptionToNode = (nodeId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setNodes((prev) =>
+      prev.map((n) => {
+        if (n.id !== nodeId) return n;
+        const currentChoices = n.choices || [];
+        const newChoiceNum = currentChoices.length + 1;
+        const newChoice = {
+          id: `c_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          text: `Option ${newChoiceNum}`,
+          targetNode: null
+        };
+        return { ...n, choices: [...currentChoices, newChoice] };
+      })
+    );
+  };
+
+  // Delete choice option from a node
+  const handleDeleteOptionFromNode = (nodeId: string, choiceId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setNodes((prev) =>
+      prev.map((n) => {
+        if (n.id !== nodeId) return n;
+        return { ...n, choices: (n.choices || []).filter((c: any) => c.id !== choiceId) };
+      })
+    );
+  };
+
+  // Update choice text directly
+  const handleUpdateOptionText = (nodeId: string, choiceId: string, newText: string) => {
+    setNodes((prev) =>
+      prev.map((n) => {
+        if (n.id !== nodeId) return n;
+        const updated = (n.choices || []).map((c: any) => (c.id === choiceId ? { ...c, text: newText } : c));
+        return { ...n, choices: updated };
+      })
+    );
+  };
 
   // Dragging State
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
@@ -691,14 +739,58 @@ export default function WhatsAppChatbotBuilderPage() {
                     )}
                     {node.text && <p className="node-text-preview">{node.text}</p>}
 
-                    {node.choices && node.choices.length > 0 && (
-                      <div className="node-choices-list">
-                        {node.choices.map((c: any) => (
-                          <div key={c.id} className="node-choice-item">
-                            <span>{c.text}</span>
+                    {node.choices && (
+                      <div className="node-choices-list" onMouseDown={(e) => e.stopPropagation()}>
+                        {node.choices.map((c: any, cIdx: number) => (
+                          <div
+                            key={c.id}
+                            className="node-choice-item"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedNodeId(node.id);
+                            }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1 }}>
+                              <span className="choice-drag-dots">::</span>
+                              <span className="choice-num-badge">{cIdx + 1}</span>
+                              <input
+                                type="text"
+                                value={c.text}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                                onChange={(e) => handleUpdateOptionText(node.id, c.id, e.target.value)}
+                                style={{
+                                  border: "none",
+                                  background: "transparent",
+                                  fontSize: "11.5px",
+                                  fontWeight: 600,
+                                  color: "#334155",
+                                  width: "100%",
+                                  outline: "none"
+                                }}
+                              />
+                            </div>
+
+                            <span
+                              title="Delete Option"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onClick={(e) => handleDeleteOptionFromNode(node.id, c.id, e)}
+                              style={{ cursor: "pointer", color: "#94a3b8", display: "inline-flex", padding: "2px" }}
+                            >
+                              <Trash2 size={11} />
+                            </span>
                             <span className="choice-option-port" title="Connect Choice to Node" />
                           </div>
                         ))}
+
+                        <button
+                          className="add-card-option-btn"
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onClick={(e) => handleAddOptionToNode(node.id, e)}
+                        >
+                          <span>+ + Add option</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -737,89 +829,195 @@ export default function WhatsAppChatbotBuilderPage() {
           </div>
         </div>
 
-        {/* NODE PROPERTY EDITOR SIDE DRAWER (DOCKED DYNAMIC FLEX PANEL) */}
+        {/* NODE PROPERTY EDITOR SIDE DRAWER (MATCHING SCREENSHOT) */}
         {selectedNode && (
           <div className="node-editor-drawer">
-            <div className="drawer-header">
-              <h3>Edit Block: {selectedNode.title}</h3>
+            {/* Drawer Header Row */}
+            <div className="drawer-header-row">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ecfdf5", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Play size={16} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
+                    {selectedNode.type === "TRIGGER" ? "Flow Start" : selectedNode.title}
+                  </h3>
+                  <span style={{ fontSize: "11.5px", color: "#64748b" }}>
+                    Choose how people enter this automation. Edit trigger & block parameters.
+                  </span>
+                </div>
+              </div>
               <button onClick={() => setSelectedNodeId(null)} style={{ background: "none", border: "none", cursor: "pointer" }}>
                 <X size={18} color="#64748b" />
               </button>
             </div>
 
+            {/* Category Pill Badge */}
             <div>
-              <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Block Title</label>
+              <span className="drawer-cat-pill">Message based</span>
+            </div>
+
+            {/* Basic / Advanced Tabs Bar */}
+            <div className="drawer-tabs-bar">
+              <button
+                className={`drawer-tab-btn ${drawerTab === "basic" ? "active" : ""}`}
+                onClick={() => setDrawerTab("basic")}
+              >
+                Basic
+              </button>
+              <button
+                className={`drawer-tab-btn ${drawerTab === "advanced" ? "active" : ""}`}
+                onClick={() => setDrawerTab("advanced")}
+              >
+                Advanced
+              </button>
+            </div>
+
+            {/* SECTION 1: ENTRY POINT / HOW THIS FLOW STARTS */}
+            <div className="drawer-section-block">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                <span className="drawer-section-title">ENTRY POINT</span>
+                <span style={{ fontSize: "12px", color: "#94a3b8", cursor: "pointer" }}>ⓘ</span>
+              </div>
+              <h4 style={{ fontSize: "13.5px", fontWeight: 800, color: "#0f172a", margin: "0 0 2px 0" }}>
+                How this flow starts
+              </h4>
+              <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 12px 0" }}>
+                Pick the trigger that should bring people into this flow.
+              </p>
+
+              {/* 2x2 Trigger Type Cards Grid Matching Screenshot */}
+              <div className="trigger-cards-grid">
+                {[
+                  { id: "msg", title: "Message based", desc: "Start when someone sends a message.", icon: MessageSquare, active: true },
+                  { id: "cart", title: "Cart / Order", desc: "Start after an order event.", icon: ShoppingBag, active: false },
+                  { id: "form", title: "WhatsApp Form", desc: "Start from form submissions.", icon: FileText, active: false },
+                  { id: "ad", title: "CTWA Ad", desc: "Start from ad conversations.", icon: Radio, active: false },
+                  { id: "template", title: "Template Button", desc: "Start from template quick replies.", icon: List, active: false }
+                ].map((tc) => {
+                  const Icon = tc.icon;
+                  return (
+                    <div key={tc.id} className={`trigger-card-tile ${tc.active ? "selected" : ""}`}>
+                      {tc.active && (
+                        <div className="card-check-badge">
+                          <Check size={10} color="#fff" />
+                        </div>
+                      )}
+                      <div className="trigger-card-icon">
+                        <Icon size={16} color="#10b981" />
+                      </div>
+                      <strong style={{ fontSize: "12.5px", color: "#0f172a", display: "block", marginTop: "6px" }}>{tc.title}</strong>
+                      <span style={{ fontSize: "11px", color: "#64748b", display: "block", marginTop: "2px", lineHeight: 1.3 }}>{tc.desc}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* SECTION 2: MESSAGES / TRIGGER PHRASES */}
+            <div className="drawer-section-block" style={{ borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
+              <span className="drawer-section-title">MESSAGES</span>
+              <h4 style={{ fontSize: "13.5px", fontWeight: 800, color: "#0f172a", margin: "4px 0 2px 0" }}>
+                Start from messages
+              </h4>
+              <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 10px 0" }}>
+                Use any incoming message or match specific keywords (comma separated).
+              </p>
               <input
                 type="text"
-                value={selectedNode.title}
-                onChange={(e) =>
-                  setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, title: e.target.value } : n)))
-                }
-                style={{ width: "100%", padding: "6px", fontSize: "12px", border: "1px solid #e2e8f0", borderRadius: "4px", marginTop: "4px" }}
+                value="HI, HELLO, CATALOG, APPLY, JOB"
+                readOnly
+                style={{ width: "100%", padding: "7px 10px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", outline: "none", color: "#0f172a", fontWeight: 600, background: "#f8fafc" }}
               />
             </div>
 
-            <div>
-              <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Message Body / Content</label>
-              <textarea
-                rows={4}
-                value={selectedNode.text || ""}
-                onChange={(e) =>
-                  setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, text: e.target.value } : n)))
-                }
-                style={{ width: "100%", padding: "6px", fontSize: "12px", border: "1px solid #e2e8f0", borderRadius: "4px", marginTop: "4px", resize: "none" }}
-              />
-            </div>
-
-            {selectedNode.choices && (
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Interactive Choice Buttons</label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
-                  {selectedNode.choices.map((c: any, index: number) => (
-                    <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: "4px", background: "#f8fafc", padding: "8px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
-                      <input
-                        type="text"
-                        value={c.text}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setNodes((prev) =>
-                            prev.map((n) => {
-                              if (n.id !== selectedNode.id) return n;
-                              const updatedChoices = [...n.choices];
-                              updatedChoices[index].text = val;
-                              return { ...n, choices: updatedChoices };
-                            })
-                          );
-                        }}
-                        style={{ padding: "5px", fontSize: "12px", border: "1px solid #e2e8f0", borderRadius: "4px" }}
-                      />
-                      <select
-                        value={c.targetNode || ""}
-                        onChange={(e) => {
-                          const target = e.target.value;
-                          setNodes((prev) =>
-                            prev.map((n) => {
-                              if (n.id !== selectedNode.id) return n;
-                              const updatedChoices = [...n.choices];
-                              updatedChoices[index].targetNode = target;
-                              return { ...n, choices: updatedChoices };
-                            })
-                          );
-                        }}
-                        style={{ padding: "4px", fontSize: "11px", border: "1px solid #d1d5db", borderRadius: "4px", background: "#fff" }}
-                      >
-                        <option value="">Connect to Node...</option>
-                        {nodes.map((targetCandidate) => (
-                          <option key={targetCandidate.id} value={targetCandidate.id}>
-                            {targetCandidate.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
+            {/* SECTION 3: BLOCK CONTENT & INTERACTIVE CHOICE BUTTONS MANAGER */}
+            <div className="drawer-section-block" style={{ borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
+              <span className="drawer-section-title">BLOCK OPTIONS</span>
+              <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div>
+                  <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Block Title</label>
+                  <input
+                    type="text"
+                    value={selectedNode.title}
+                    onChange={(e) =>
+                      setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, title: e.target.value } : n)))
+                    }
+                    style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                  />
                 </div>
+
+                <div>
+                  <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Message Content</label>
+                  <textarea
+                    rows={3}
+                    value={selectedNode.text || ""}
+                    onChange={(e) =>
+                      setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, text: e.target.value } : n)))
+                    }
+                    style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px", resize: "none" }}
+                  />
+                </div>
+
+                {/* Interactive Choice Buttons List */}
+                {selectedNode.choices && (
+                  <div>
+                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Interactive Option Buttons</label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
+                      {selectedNode.choices.map((c: any, index: number) => (
+                        <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f8fafc", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                          <span className="choice-drag-dots">::</span>
+                          <span className="choice-num-badge">{index + 1}</span>
+                          <input
+                            type="text"
+                            value={c.text}
+                            onChange={(e) => handleUpdateOptionText(selectedNode.id, c.id, e.target.value)}
+                            style={{ flex: 1, padding: "5px 7px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "4px", background: "#ffffff" }}
+                          />
+                          <select
+                            value={c.targetNode || ""}
+                            onChange={(e) => {
+                              const target = e.target.value;
+                              setNodes((prev) =>
+                                prev.map((n) => {
+                                  if (n.id !== selectedNode.id) return n;
+                                  const updatedChoices = [...n.choices];
+                                  updatedChoices[index].targetNode = target;
+                                  return { ...n, choices: updatedChoices };
+                                })
+                              );
+                            }}
+                            style={{ width: "110px", padding: "5px", fontSize: "11px", border: "1px solid #cbd5e1", borderRadius: "4px", background: "#fff" }}
+                          >
+                            <option value="">Connect...</option>
+                            {nodes.map((targetCandidate) => (
+                              <option key={targetCandidate.id} value={targetCandidate.id}>
+                                {targetCandidate.title}
+                              </option>
+                            ))}
+                          </select>
+                          <span
+                            title="Delete Option"
+                            onClick={(e) => handleDeleteOptionFromNode(selectedNode.id, c.id, e)}
+                            style={{ cursor: "pointer", color: "#ef4444", padding: "3px" }}
+                          >
+                            <Trash2 size={13} />
+                          </span>
+                        </div>
+                      ))}
+
+                      <button
+                        className="add-card-option-btn"
+                        onClick={(e) => handleAddOptionToNode(selectedNode.id, e)}
+                        style={{ marginTop: "4px" }}
+                      >
+                        <span>+ + Add option</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>

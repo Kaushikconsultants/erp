@@ -577,14 +577,14 @@
 
 /* Node Editor Drawer (Docked/Collapsible, non-overlapping) */
 .node-editor-drawer {
-  width: 320px;
-  min-width: 320px;
+  width: 350px;
+  min-width: 350px;
   height: 100%;
   background: #ffffff;
   border-left: 1px solid #eaecf0;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
   z-index: 8;
-  padding: 16px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -593,19 +593,144 @@
   flex-shrink: 0;
 }
 
-.drawer-header {
+.drawer-header-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 10px;
+  gap: 10px;
 }
 
-.drawer-header h3 {
-  font-size: 14px;
+.drawer-cat-pill {
+  font-size: 11px;
   font-weight: 700;
-  color: #0f172a;
-  margin: 0;
+  background: #dcfce7;
+  color: #15803d;
+  padding: 3px 10px;
+  border-radius: 12px;
+  display: inline-block;
+}
+
+.drawer-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 20px;
+  width: 100%;
+}
+
+.drawer-tab-btn {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #64748b;
+  border: none;
+  background: transparent;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.drawer-tab-btn.active {
+  background: #10b981;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
+.drawer-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.trigger-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.trigger-card-tile {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trigger-card-tile:hover {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.trigger-card-tile.selected {
+  border: 2px solid #10b981;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+}
+
+.card-check-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.choice-drag-dots {
+  color: #cbd5e1;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -1px;
+  user-select: none;
+}
+
+.choice-num-badge {
+  font-size: 10px;
+  font-weight: 700;
+  background: #3b82f6;
+  color: #ffffff;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.add-card-option-btn {
+  width: 100%;
+  padding: 6px;
+  margin-top: 6px;
+  border: 1.5px dashed #10b981;
+  border-radius: 6px;
+  background: #f0fdf4;
+  color: #059669;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-card-option-btn:hover {
+  background: #10b981;
+  color: #ffffff;
 }
 
 /* WhatsApp Phone Simulator Modal */
