@@ -263,6 +263,58 @@ export async function seedWhatsAppPlatformData() {
     await prisma.whatsAppTemplate.createMany({
       data: [
         {
+          name: "esponsports_otp",
+          category: "AUTHENTICATION",
+          language: "en_US",
+          status: "APPROVED",
+          headerType: "NONE",
+          bodyText: "{{1}} is your verification code. For security, do not share this code with anyone.",
+          footerText: "Espon Security",
+          variables: JSON.stringify(["verification_code"])
+        },
+        {
+          name: "tanu",
+          category: "UTILITY",
+          language: "en_US",
+          status: "APPROVED",
+          headerType: "NONE",
+          bodyText: "Account Update: Your B2B inquiry has been received. I am Tanu, your assigned Team Leader. To assist you further with your onboarding request and share the requested details, I will be handling your account...",
+          footerText: "Espon Sales Team",
+          variables: JSON.stringify([])
+        },
+        {
+          name: "chandni",
+          category: "UTILITY",
+          language: "en_US",
+          status: "APPROVED",
+          headerType: "NONE",
+          bodyText: "Account Update: Your B2B inquiry has been received. I am Chandni, your assigned Relationship Manager. To assist you further with your onboarding request and share the requested details, I will be handling your account...",
+          footerText: "Espon RM Team",
+          variables: JSON.stringify([])
+        },
+        {
+          name: "varsha",
+          category: "UTILITY",
+          language: "en_US",
+          status: "APPROVED",
+          headerType: "NONE",
+          bodyText: "Account Update: Your B2B inquiry has been received. I am Varsha, your assigned Executive. To assist you further with your onboarding request and share the requested details...",
+          footerText: "Espon Executive Team",
+          variables: JSON.stringify([])
+        },
+        {
+          name: "ikra_khan",
+          category: "MARKETING",
+          language: "en_US",
+          status: "APPROVED",
+          headerType: "IMAGE",
+          headerContent: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=800",
+          bodyText: "Exclusive Wholesale Special Offer for {{1}}! Get 12% extra off on all bulk apparel orders above ₹1,00,000.",
+          footerText: "Espon Bulk Offer",
+          buttons: JSON.stringify([{ type: "QUICK_REPLY", text: "Claim Offer" }]),
+          variables: JSON.stringify(["customer_name"])
+        },
+        {
           name: "order_confirmation_v2",
           category: "UTILITY",
           language: "en_US",
@@ -389,7 +441,7 @@ export async function seedWhatsAppPlatformData() {
       }
     });
 
-    // 11. Create Customer Segment & Broadcast Campaign
+    // 11. Create Customer Segment & Broadcast Campaigns matching Screenshots
     const segment = await prisma.whatsAppSegment.create({
       data: {
         name: "High Value Wholesalers (Surat & Gujarat)",
@@ -398,24 +450,111 @@ export async function seedWhatsAppPlatformData() {
       }
     });
 
-    await prisma.whatsAppCampaign.create({
-      data: {
-        name: "Diwali Wholesale Pre-order Blast 2026",
-        templateId: "festive_wholesale_launch",
-        segmentId: segment.id,
-        scheduledAt: new Date(Date.now() - 864000000),
-        status: "COMPLETED",
-        totalAudience: 420,
-        sentCount: 420,
-        deliveredCount: 412,
-        readCount: 380,
-        repliedCount: 94,
-        failedCount: 8,
-        leadsGenerated: 45,
-        ordersGenerated: 28,
-        revenueGenerated: 1840000,
-        cost: 420.0
-      }
+    await prisma.whatsAppCampaign.createMany({
+      data: [
+        {
+          name: "ikra july 11",
+          templateId: "ikra_khan",
+          segmentId: segment.id,
+          scheduledAt: new Date(Date.now() - 2592000000),
+          status: "COMPLETED",
+          totalAudience: 380,
+          sentCount: 380,
+          deliveredCount: 375,
+          readCount: 310,
+          repliedCount: 82,
+          failedCount: 5,
+          leadsGenerated: 34,
+          ordersGenerated: 21,
+          revenueGenerated: 1420000,
+          cost: 380.0
+        },
+        {
+          name: "ikra 11 july",
+          templateId: "ikra_khan",
+          segmentId: segment.id,
+          scheduledAt: new Date(Date.now() - 2592000000),
+          status: "COMPLETED",
+          totalAudience: 420,
+          sentCount: 420,
+          deliveredCount: 410,
+          readCount: 360,
+          repliedCount: 90,
+          failedCount: 10,
+          leadsGenerated: 40,
+          ordersGenerated: 25,
+          revenueGenerated: 1650000,
+          cost: 420.0
+        },
+        {
+          name: "3/07",
+          templateId: "new5",
+          segmentId: segment.id,
+          scheduledAt: new Date(Date.now() - 5184000000),
+          status: "COMPLETED",
+          totalAudience: 500,
+          sentCount: 500,
+          deliveredCount: 490,
+          readCount: 410,
+          repliedCount: 110,
+          failedCount: 10,
+          leadsGenerated: 52,
+          ordersGenerated: 30,
+          revenueGenerated: 1980000,
+          cost: 500.0
+        },
+        {
+          name: "NEW 6",
+          templateId: "2new_6",
+          segmentId: segment.id,
+          scheduledAt: new Date(Date.now() - 7776000000),
+          status: "COMPLETED",
+          totalAudience: 620,
+          sentCount: 620,
+          deliveredCount: 605,
+          readCount: 510,
+          repliedCount: 135,
+          failedCount: 15,
+          leadsGenerated: 60,
+          ordersGenerated: 38,
+          revenueGenerated: 2450000,
+          cost: 620.0
+        },
+        {
+          name: "new 6",
+          templateId: "new_6",
+          segmentId: segment.id,
+          scheduledAt: new Date(Date.now() - 7776000000),
+          status: "COMPLETED",
+          totalAudience: 450,
+          sentCount: 450,
+          deliveredCount: 440,
+          readCount: 375,
+          repliedCount: 95,
+          failedCount: 10,
+          leadsGenerated: 42,
+          ordersGenerated: 26,
+          revenueGenerated: 1720000,
+          cost: 450.0
+        },
+        {
+          name: "ioffer",
+          templateId: "ioffer_v1",
+          segmentId: segment.id,
+          scheduledAt: new Date(Date.now() - 7776000000),
+          status: "COMPLETED",
+          totalAudience: 310,
+          sentCount: 310,
+          deliveredCount: 305,
+          readCount: 260,
+          repliedCount: 68,
+          failedCount: 5,
+          leadsGenerated: 28,
+          ordersGenerated: 18,
+          revenueGenerated: 1150000,
+          cost: 310.0
+        }
+      ]
     });
 
     console.log("WhatsApp Platform seed data successfully initialized!");
