@@ -89,10 +89,11 @@ export async function getWhatsAppConversations(filters: ConversationFilterOption
       }
     } else {
       // Admin / Super Admin / Manager View: Can see all chats, or filter by team member or tab
-      if (filters.filterEmployeeId) {
-        where.assignedEmployeeId = filters.filterEmployeeId;
-      } else if (filters.tab === 'unassigned') {
+      if (filters.tab === 'unassigned') {
+        // UNASSIGNED TAB MUST ALWAYS RETURN ONLY UNASSIGNED CHATS (assignedEmployeeId IS NULL)
         where.assignedEmployeeId = null;
+      } else if (filters.filterEmployeeId) {
+        where.assignedEmployeeId = filters.filterEmployeeId;
       } else if (filters.tab === 'assigned_to_me' && currentEmployee) {
         where.assignedEmployeeId = currentEmployee.id;
       } else if (filters.tab === 'assigned') {

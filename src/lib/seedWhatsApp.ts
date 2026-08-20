@@ -166,7 +166,7 @@ export async function seedWhatsAppPlatformData() {
       data: {
         accountId: mainAccount.id,
         customerId: customer2.id,
-        assignedEmployeeId: employee.id,
+        assignedEmployeeId: null, // UNASSIGNED CHAT
         status: "OPEN",
         priority: "HIGH",
         leadStatus: "Negotiation",
@@ -186,7 +186,7 @@ export async function seedWhatsAppPlatformData() {
       data: {
         accountId: mainAccount.id,
         customerId: customer3.id,
-        assignedEmployeeId: employee.id,
+        assignedEmployeeId: null, // UNASSIGNED CHAT
         status: "OPEN",
         priority: "MEDIUM",
         leadStatus: "New Enquiry",

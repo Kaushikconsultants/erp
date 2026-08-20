@@ -294,21 +294,29 @@ export default function WhatsAppInboxComponent() {
               <div className="left-folder-tabs">
                 <button
                   className={`folder-tab ${activeNavTab === "all" ? "active" : ""}`}
-                  onClick={() => setActiveNavTab("all")}
+                  onClick={() => {
+                    setActiveNavTab("all");
+                    setFilterEmployeeId("");
+                  }}
                 >
                   <MessageSquare size={14} />
                   <span>All</span>
                 </button>
                 <button
                   className={`folder-tab ${activeNavTab === "assigned_to_me" ? "active" : ""}`}
-                  onClick={() => setActiveNavTab("assigned_to_me")}
+                  onClick={() => {
+                    setActiveNavTab("assigned_to_me");
+                  }}
                 >
                   <UserCheck size={14} />
                   <span>Assigned</span>
                 </button>
                 <button
                   className={`folder-tab ${activeNavTab === "unassigned" ? "active" : ""}`}
-                  onClick={() => setActiveNavTab("unassigned")}
+                  onClick={() => {
+                    setActiveNavTab("unassigned");
+                    setFilterEmployeeId("");
+                  }}
                 >
                   <UserX size={14} />
                   <span>Unassigned</span>
