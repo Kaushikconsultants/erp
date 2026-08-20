@@ -1608,52 +1608,279 @@ export default function WhatsAppChatbotBuilderPage() {
                   />
                 </div>
 
-                {/* TYPE-SPECIFIC CONFIGURATION FIELDS */}
+                {/* TYPE-SPECIFIC CONFIGURATION FIELDS WITH DIRECT FILE UPLOADER */}
                 {selectedNode.type === "IMAGE" && (
-                  <div>
-                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Image URL</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>
+                      Upload Image File or Enter Image URL
+                    </label>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <label
+                        className="studio-btn primary"
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}
+                      >
+                        <ImageIcon size={14} /> Upload Image File
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (evt) => {
+                                const result = evt.target?.result as string;
+                                setNodes((prev) =>
+                                  prev.map((n) => (n.id === selectedNode.id ? { ...n, imageUrl: result } : n))
+                                );
+                                setToastMsg(`✓ Image "${file.name}" uploaded successfully!`);
+                                setTimeout(() => setToastMsg(null), 3000);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+
+                      {selectedNode.imageUrl && (
+                        <button
+                          className="studio-btn danger"
+                          style={{ padding: "6px 10px", fontSize: "11.5px" }}
+                          onClick={() =>
+                            setNodes((prev) =>
+                              prev.map((n) => (n.id === selectedNode.id ? { ...n, imageUrl: "" } : n))
+                            )
+                          }
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
                     <input
                       type="text"
+                      placeholder="Or paste image URL (https://...)"
                       value={selectedNode.imageUrl || ""}
-                      onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, imageUrl: e.target.value } : n)))}
-                      style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      onChange={(e) =>
+                        setNodes((prev) =>
+                          prev.map((n) => (n.id === selectedNode.id ? { ...n, imageUrl: e.target.value } : n))
+                        )
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "6px 8px",
+                        fontSize: "12px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px"
+                      }}
                     />
+
+                    <div>
+                      <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                        Or Select Sample Product Banner:
+                      </span>
+                      <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "4px" }}>
+                        {[
+                          { title: "Apparel Banner", url: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500" },
+                          { title: "Activewear", url: "https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=500" },
+                          { title: "Wholesale Polo", url: "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=500" },
+                          { title: "QR Deposit", url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500" }
+                        ].map((samp, idx) => (
+                          <img
+                            key={idx}
+                            src={samp.url}
+                            alt={samp.title}
+                            title={samp.title}
+                            onClick={() =>
+                              setNodes((prev) =>
+                                prev.map((n) => (n.id === selectedNode.id ? { ...n, imageUrl: samp.url } : n))
+                              )
+                            }
+                            style={{
+                              width: "48px",
+                              height: "36px",
+                              objectFit: "cover",
+                              borderRadius: "4px",
+                              cursor: "pointer",
+                              border: selectedNode.imageUrl === samp.url ? "2px solid #10b981" : "1px solid #cbd5e1"
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {selectedNode.imageUrl && (
+                      <div style={{ marginTop: "4px", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "6px", background: "#f8fafc" }}>
+                        <span style={{ fontSize: "10.5px", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "4px" }}>
+                          Live Uploaded Image Preview:
+                        </span>
+                        <img
+                          src={selectedNode.imageUrl}
+                          alt="Uploaded Preview"
+                          style={{ width: "100%", maxHeight: "140px", objectFit: "cover", borderRadius: "6px" }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {(selectedNode.type === "VIDEO" || selectedNode.type === "YOUTUBE") && (
-                  <div>
-                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Video URL</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>
+                      Upload Video File or Enter Video URL
+                    </label>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <label
+                        className="studio-btn primary"
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}
+                      >
+                        <Video size={14} /> Upload Video File
+                        <input
+                          type="file"
+                          accept="video/*"
+                          style={{ display: "none" }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (evt) => {
+                                const result = evt.target?.result as string;
+                                setNodes((prev) =>
+                                  prev.map((n) => (n.id === selectedNode.id ? { ...n, videoUrl: result } : n))
+                                );
+                                setToastMsg(`✓ Video "${file.name}" uploaded successfully!`);
+                                setTimeout(() => setToastMsg(null), 3000);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+
                     <input
                       type="text"
+                      placeholder="Or paste video URL (https://...)"
                       value={selectedNode.videoUrl || selectedNode.youtubeUrl || ""}
-                      onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, videoUrl: e.target.value, youtubeUrl: e.target.value } : n)))}
-                      style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                      onChange={(e) =>
+                        setNodes((prev) =>
+                          prev.map((n) =>
+                            n.id === selectedNode.id ? { ...n, videoUrl: e.target.value, youtubeUrl: e.target.value } : n
+                          )
+                        )
+                      }
+                      style={{
+                        width: "100%",
+                        padding: "6px 8px",
+                        fontSize: "12px",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px"
+                      }}
                     />
                   </div>
                 )}
 
                 {selectedNode.type === "FILE" && (
-                  <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     <div>
                       <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Document File Name</label>
                       <input
                         type="text"
                         value={selectedNode.filename || ""}
-                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, filename: e.target.value } : n)))}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                        onChange={(e) =>
+                          setNodes((prev) =>
+                            prev.map((n) => (n.id === selectedNode.id ? { ...n, filename: e.target.value } : n))
+                          )
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "6px 8px",
+                          fontSize: "12px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "6px",
+                          marginTop: "4px"
+                        }}
                       />
                     </div>
+
                     <div>
-                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Document URL</label>
+                      <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>
+                        Upload Document File / PDF
+                      </label>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "4px" }}>
+                        <label
+                          className="studio-btn primary"
+                          style={{
+                            padding: "6px 12px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "6px"
+                          }}
+                        >
+                          <FileText size={14} /> Upload File / PDF
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.xlsx,.zip"
+                            style={{ display: "none" }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (evt) => {
+                                  const result = evt.target?.result as string;
+                                  setNodes((prev) =>
+                                    prev.map((n) =>
+                                      n.id === selectedNode.id
+                                        ? { ...n, fileUrl: result, filename: file.name }
+                                        : n
+                                    )
+                                  );
+                                  setToastMsg(`✓ Document "${file.name}" uploaded successfully!`);
+                                  setTimeout(() => setToastMsg(null), 3000);
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+
                       <input
                         type="text"
+                        placeholder="Or paste document URL (https://...)"
                         value={selectedNode.fileUrl || ""}
-                        onChange={(e) => setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, fileUrl: e.target.value } : n)))}
-                        style={{ width: "100%", padding: "6px 8px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                        onChange={(e) =>
+                          setNodes((prev) =>
+                            prev.map((n) => (n.id === selectedNode.id ? { ...n, fileUrl: e.target.value } : n))
+                          )
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "6px 8px",
+                          fontSize: "12px",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "6px",
+                          marginTop: "6px"
+                        }}
                       />
                     </div>
-                  </>
+                  </div>
                 )}
 
                 {selectedNode.type === "LOCATION" && (
