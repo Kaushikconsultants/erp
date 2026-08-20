@@ -54,7 +54,6 @@ import {
   Settings,
   FolderOpen,
   Power,
-  Edit3,
   GripVertical
 } from "lucide-react";
 import {
@@ -426,44 +425,35 @@ export default function WhatsAppChatbotBuilderPage() {
   const [simMessages, setSimMessages] = useState<any[]>([]);
   const [drawerTab, setDrawerTab] = useState<"basic" | "advanced">("basic");
 
-  // Fetch Saved Chatbot Flows from DB
+  // Fetch Saved Chatbot Flows from DB (Does NOT auto-recreate deleted bots)
   const fetchFlows = async () => {
     setIsLoadingFlows(true);
     const res = await getWhatsAppChatbotFlows();
-    if (res.success && res.flows && res.flows.length > 0) {
+    if (res.success && res.flows) {
       setSavedFlows(res.flows);
-      const firstFlow = res.flows[0];
-      setCurrentFlowId(firstFlow.id);
-      setFlowName(firstFlow.name);
-      setTriggerKeyword(firstFlow.triggerKeyword || "HI, HELLO, CATALOG");
-      setIsBotActive(firstFlow.isActive);
-      try {
-        const parsedNodes = JSON.parse(firstFlow.nodesJson);
-        if (Array.isArray(parsedNodes) && parsedNodes.length > 0) {
-          setNodes(parsedNodes);
-          setHistoryStack([parsedNodes]);
-          setHistoryIndex(0);
+      if (res.flows.length > 0) {
+        const target = res.flows.find((f: any) => f.id === currentFlowId) || res.flows[0];
+        setCurrentFlowId(target.id);
+        setFlowName(target.name);
+        setTriggerKeyword(target.triggerKeyword || "HI, HELLO, CATALOG");
+        setIsBotActive(target.isActive);
+        try {
+          const parsedNodes = JSON.parse(target.nodesJson);
+          if (Array.isArray(parsedNodes)) {
+            setNodes(parsedNodes);
+            setHistoryStack([parsedNodes]);
+            setHistoryIndex(0);
+          }
+        } catch (e) {
+          console.error("Failed to parse nodesJson:", e);
         }
-      } catch (e) {
-        console.error("Failed to parse nodesJson:", e);
-      }
-    } else {
-      const defaultTemplate = BOT_TEMPLATES[0];
-      const saveRes = await saveWhatsAppChatbotFlowAction({
-        name: defaultTemplate.name,
-        triggerKeyword: defaultTemplate.triggerKeyword,
-        nodesJson: JSON.stringify(defaultTemplate.nodes),
-        isActive: true
-      });
-      if (saveRes.success && saveRes.flow) {
-        setSavedFlows([saveRes.flow]);
-        setCurrentFlowId(saveRes.flow.id);
-        setFlowName(saveRes.flow.name);
-        setTriggerKeyword(saveRes.flow.triggerKeyword || defaultTemplate.triggerKeyword);
-        setIsBotActive(true);
-        setNodes(defaultTemplate.nodes);
-        setHistoryStack([defaultTemplate.nodes]);
-        setHistoryIndex(0);
+      } else {
+        // No flows in DB (e.g. user deleted all flows)
+        setCurrentFlowId(null);
+        setFlowName("No Active Chatbot");
+        setTriggerKeyword("");
+        setIsBotActive(false);
+        setNodes([]);
       }
     }
     setIsLoadingFlows(false);
@@ -521,19 +511,57 @@ export default function WhatsAppChatbotBuilderPage() {
     setTimeout(() => setToastMsg(null), 4000);
   };
 
-  const handleConfirmDeleteBot = async () => {
-    if (!currentFlowId) return;
+  // Universal Delete Flow Function (Fixes deletion issue permanently)
+  const handleDeleteFlowById = async (flowIdToDelete: string) => {
     setIsSaving(true);
-    const res = await deleteWhatsAppChatbotFlowAction(currentFlowId);
+    const targetFlow = savedFlows.find((f) => f.id === flowIdToDelete);
+    const flowTitle = targetFlow ? targetFlow.name : "Chatbot";
+
+    const res = await deleteWhatsAppChatbotFlowAction(flowIdToDelete);
     if (res.success) {
-      setToastMsg(`✓ Chatbot "${flowName}" permanently deleted.`);
+      setToastMsg(`✓ Chatbot "${flowTitle}" permanently deleted.`);
       setShowDeleteModal(false);
-      await fetchFlows();
+
+      const remaining = savedFlows.filter((f) => f.id !== flowIdToDelete);
+      setSavedFlows(remaining);
+
+      if (flowIdToDelete === currentFlowId) {
+        if (remaining.length > 0) {
+          const next = remaining[0];
+          setCurrentFlowId(next.id);
+          setFlowName(next.name);
+          setTriggerKeyword(next.triggerKeyword || "HI, HELLO, CATALOG");
+          setIsBotActive(next.isActive);
+          try {
+            const parsed = JSON.parse(next.nodesJson);
+            if (Array.isArray(parsed)) {
+              setNodes(parsed);
+              setHistoryStack([parsed]);
+              setHistoryIndex(0);
+            }
+          } catch (e) {
+            console.error(e);
+          }
+        } else {
+          setCurrentFlowId(null);
+          setFlowName("No Active Chatbot");
+          setTriggerKeyword("");
+          setIsBotActive(false);
+          setNodes([]);
+          setSelectedNodeId(null);
+          setIsDrawerOpen(false);
+        }
+      }
     } else {
       setToastMsg(`Error deleting bot: ${res.error}`);
     }
     setIsSaving(false);
     setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  const handleConfirmDeleteBot = async () => {
+    if (!currentFlowId) return;
+    await handleDeleteFlowById(currentFlowId);
   };
 
   const handleDuplicateCurrentBot = async () => {
@@ -649,9 +677,6 @@ export default function WhatsAppChatbotBuilderPage() {
     }
   };
 
-  // ---------------------------------------------------------
-  // MOUSE & CANVAS HANDLERS: SEPARATED DRAGGING FROM DRAWER SELECTION
-  // ---------------------------------------------------------
   const handleMouseDownCanvas = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (
@@ -676,7 +701,6 @@ export default function WhatsAppChatbotBuilderPage() {
     });
   };
 
-  // Mouse Down on Node Card (Prepares dragging without forcing side window open)
   const handleMouseDownNode = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setDragStartPos({ x: e.clientX, y: e.clientY });
@@ -690,14 +714,12 @@ export default function WhatsAppChatbotBuilderPage() {
     }
   };
 
-  // Explicit Edit Settings Button Click (Opens Drawer cleanly)
   const handleOpenNodeSettings = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedNodeId(id);
     setIsDrawerOpen(true);
   };
 
-  // Interactive Drag-to-Connect: Start Dragging Wire from Output Port
   const handleStartConnectWire = (
     e: React.MouseEvent,
     sourceNodeId: string,
@@ -729,7 +751,6 @@ export default function WhatsAppChatbotBuilderPage() {
     setConnectingMousePos({ x: currentCanvasMouseX, y: currentCanvasMouseY });
   };
 
-  // Complete Connection onto Target Node Input Port / Card
   const handleDropConnection = (targetNodeId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!connectingFrom) return;
@@ -767,9 +788,7 @@ export default function WhatsAppChatbotBuilderPage() {
     setHoveredTargetNodeId(null);
   };
 
-  // Canvas Mouse Move Handler (Handles Smooth Node Dragging & Wire Drawing)
   const handleMouseMoveCanvas = (e: React.MouseEvent) => {
-    // 1. Handling Panning
     if (isPanning) {
       setPan({
         x: e.clientX - panStart.x,
@@ -778,7 +797,6 @@ export default function WhatsAppChatbotBuilderPage() {
       return;
     }
 
-    // 2. Handling Live Connecting Wire Drawing
     if (connectingFrom) {
       const mx = (e.clientX - pan.x) / zoom;
       const my = (e.clientY - pan.y) / zoom;
@@ -786,7 +804,6 @@ export default function WhatsAppChatbotBuilderPage() {
       return;
     }
 
-    // 3. Handling Node Card Moving
     if (!draggingNodeId) return;
     const newX = (e.clientX - dragOffset.x - pan.x) / zoom;
     const newY = (e.clientY - dragOffset.y - pan.y) / zoom;
@@ -796,7 +813,6 @@ export default function WhatsAppChatbotBuilderPage() {
     );
   };
 
-  // Mouse Up Canvas (Finishes drag without opening drawer if moved)
   const handleMouseUpCanvas = (e: React.MouseEvent) => {
     setIsPanning(false);
 
@@ -809,7 +825,6 @@ export default function WhatsAppChatbotBuilderPage() {
     if (draggingNodeId) {
       const dist = Math.hypot(e.clientX - dragStartPos.x, e.clientY - dragStartPos.y);
       if (dist < 4) {
-        // Simple click without drag movement -> Select node visually
         setSelectedNodeId(draggingNodeId);
       }
       pushHistory(nodes);
@@ -962,12 +977,17 @@ export default function WhatsAppChatbotBuilderPage() {
             className="bot-selector-dropdown"
             value={currentFlowId || ""}
             onChange={(e) => handleSelectFlow(e.target.value)}
+            disabled={savedFlows.length === 0}
           >
-            {savedFlows.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name} {f.isActive ? "🟢 (Live)" : "⚪ (Draft)"}
-              </option>
-            ))}
+            {savedFlows.length > 0 ? (
+              savedFlows.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} {f.isActive ? "🟢 (Live)" : "⚪ (Draft)"}
+                </option>
+              ))
+            ) : (
+              <option value="">No Active Chatbot</option>
+            )}
           </select>
 
           <span className={`flow-status-pill ${isBotActive ? "" : "draft"}`} style={{ background: isBotActive ? "#dcfce7" : "#f1f5f9", color: isBotActive ? "#15803d" : "#64748b" }}>
@@ -984,7 +1004,7 @@ export default function WhatsAppChatbotBuilderPage() {
             <Plus size={15} /> ＋ New Chatbot
           </button>
 
-          <button className="studio-btn" onClick={handleDuplicateCurrentBot} title="Duplicate Current Chatbot">
+          <button className="studio-btn" onClick={handleDuplicateCurrentBot} disabled={!currentFlowId} title="Duplicate Current Chatbot">
             <Copy size={14} /> Duplicate
           </button>
 
@@ -992,7 +1012,7 @@ export default function WhatsAppChatbotBuilderPage() {
             <FolderOpen size={14} /> All Bots ({savedFlows.length})
           </button>
 
-          <button className="studio-btn danger" onClick={() => setShowDeleteModal(true)} title="Delete Current Chatbot">
+          <button className="studio-btn danger" onClick={() => setShowDeleteModal(true)} disabled={!currentFlowId} title="Delete Current Chatbot">
             <Trash2 size={14} /> Delete Bot
           </button>
 
@@ -1009,11 +1029,11 @@ export default function WhatsAppChatbotBuilderPage() {
             {isFullScreenStudio ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
 
-          <button className="studio-btn test-btn" onClick={handleStartSimTest}>
+          <button className="studio-btn test-btn" onClick={handleStartSimTest} disabled={nodes.length === 0}>
             <Play size={14} /> Preview & Test
           </button>
 
-          <button className="studio-btn primary" onClick={handlePublishFlow} disabled={isSaving}>
+          <button className="studio-btn primary" onClick={handlePublishFlow} disabled={isSaving || nodes.length === 0}>
             <CheckCircle2 size={14} /> {isSaving ? "Saving..." : "Save Bot Flow"}
           </button>
         </div>
@@ -1097,8 +1117,24 @@ export default function WhatsAppChatbotBuilderPage() {
           onMouseUp={handleMouseUpCanvas}
           onMouseLeave={handleMouseUpCanvas}
           onWheel={handleWheelCanvas}
-          style={{ cursor: isPanning ? "grabbing" : "grab" }}
+          style={{ cursor: isPanning ? "grabbing" : "grab", position: "relative" }}
         >
+          {/* EMPTY STATE BANNER WHEN ALL BOTS ARE DELETED */}
+          {nodes.length === 0 && !isLoadingFlows && (
+            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", zIndex: 10, background: "#ffffff", padding: "36px 44px", borderRadius: "16px", boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)", border: "1px solid #e2e8f0", maxWidth: "420px" }}>
+              <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "#ecfdf5", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px auto" }}>
+                <Bot size={28} />
+              </div>
+              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>No Chatbots Created</h3>
+              <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 24px 0", lineHeight: 1.5 }}>
+                You currently have no chatbot flows. Create your first chatbot from scratch or select a pre-built WATI / Galabox template!
+              </p>
+              <button className="studio-btn primary" style={{ padding: "10px 20px", fontSize: "13.5px", margin: "0 auto" }} onClick={() => setShowCreateModal(true)}>
+                <Plus size={16} /> ＋ Create First Chatbot
+              </button>
+            </div>
+          )}
+
           {/* PAN-ZOOM INNER CONTAINER */}
           <div
             className="canvas-pan-zoom-container"
@@ -1109,7 +1145,6 @@ export default function WhatsAppChatbotBuilderPage() {
           >
             {/* SVG CONNECTOR WIRES LAYER */}
             <svg className="canvas-svg-layer">
-              {/* Existing Connected Wires */}
               {nodes.map((node) => {
                 if (node.outputPort) {
                   const target = nodes.find((n) => n.id === node.outputPort);
@@ -1129,7 +1164,6 @@ export default function WhatsAppChatbotBuilderPage() {
                 return null;
               })}
 
-              {/* Dynamic Live Connecting Drag Wire */}
               {connectingFrom && connectingMousePos && (
                 <path
                   d={getBezierFromTo(connectingFrom.startX, connectingFrom.startY, connectingMousePos.x, connectingMousePos.y)}
@@ -1163,7 +1197,6 @@ export default function WhatsAppChatbotBuilderPage() {
                   }}
                   onMouseLeave={() => setHoveredTargetNodeId(null)}
                 >
-                  {/* NODE CARD HEADER / DRAG BAR */}
                   <div className={`node-card-header ${node.category || 'choice'}`}>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <GripVertical size={13} style={{ opacity: 0.7 }} />
@@ -1231,7 +1264,6 @@ export default function WhatsAppChatbotBuilderPage() {
                               <Trash2 size={11} />
                             </span>
 
-                            {/* Choice Output Port Handle Dot */}
                             <span
                               className="choice-option-port"
                               title="Click & Drag to connect this option to a node"
@@ -1251,7 +1283,6 @@ export default function WhatsAppChatbotBuilderPage() {
                     )}
                   </div>
 
-                  {/* Input Port Handle (Left Side) */}
                   {node.type !== "TRIGGER" && (
                     <span
                       className="node-input-port"
@@ -1260,7 +1291,6 @@ export default function WhatsAppChatbotBuilderPage() {
                     />
                   )}
 
-                  {/* Output Port Handle (Right Side) */}
                   {node.type !== "END" && (
                     <span
                       className="node-output-port"
@@ -1284,7 +1314,7 @@ export default function WhatsAppChatbotBuilderPage() {
           </div>
         </div>
 
-        {/* RIGHT PROPERTY EDITOR DRAWER (Opened when user clicks Settings icon or explicitly selects node) */}
+        {/* RIGHT PROPERTY EDITOR DRAWER */}
         {selectedNode && isDrawerOpen && (
           <div className="node-editor-drawer">
             <div className="drawer-header-row">
@@ -1348,7 +1378,6 @@ export default function WhatsAppChatbotBuilderPage() {
                   />
                 </div>
 
-                {/* Direct Connection Selector inside Drawer */}
                 {selectedNode.type !== "END" && (
                   <div>
                     <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Direct Next Node Link</label>
@@ -1372,7 +1401,6 @@ export default function WhatsAppChatbotBuilderPage() {
                   </div>
                 )}
 
-                {/* Option Linking Selector */}
                 {selectedNode.choices && (
                   <div>
                     <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Option Links</label>
@@ -1570,7 +1598,7 @@ export default function WhatsAppChatbotBuilderPage() {
                     <tr key={f.id} style={{ background: f.id === currentFlowId ? "#f0fdf4" : "transparent" }}>
                       <td>
                         <strong style={{ fontSize: "13px", display: "block" }}>{f.name}</strong>
-                        {f.id === currentFlowId && <span style={{ fontSize: "10px", color: "#10b981", fontWeight: 700 }}>Currently Editing</span>}
+                        {f.id === currentFlowId && <span style={{ fontSize: "10px", color="#10b981", fontWeight: 700 }}>Currently Editing</span>}
                       </td>
                       <td style={{ fontSize: "11.5px", color: "#64748b" }}>{f.triggerKeyword || "HI, HELLO"}</td>
                       <td>
@@ -1609,10 +1637,7 @@ export default function WhatsAppChatbotBuilderPage() {
                           <button
                             className="studio-btn danger"
                             style={{ padding: "3px 8px", fontSize: "11px" }}
-                            onClick={async () => {
-                              await deleteWhatsAppChatbotFlowAction(f.id);
-                              await fetchFlows();
-                            }}
+                            onClick={() => handleDeleteFlowById(f.id)}
                           >
                             Delete
                           </button>
