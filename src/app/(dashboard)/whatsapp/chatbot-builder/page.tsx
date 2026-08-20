@@ -1598,7 +1598,7 @@ export default function WhatsAppChatbotBuilderPage() {
                     <tr key={f.id} style={{ background: f.id === currentFlowId ? "#f0fdf4" : "transparent" }}>
                       <td>
                         <strong style={{ fontSize: "13px", display: "block" }}>{f.name}</strong>
-                        {f.id === currentFlowId && <span style={{ fontSize: "10px", color="#10b981", fontWeight: 700 }}>Currently Editing</span>}
+                        {f.id === currentFlowId && <span style={{ fontSize: "10px", color: "#10b981", fontWeight: 700 }}>Currently Editing</span>}
                       </td>
                       <td style={{ fontSize: "11.5px", color: "#64748b" }}>{f.triggerKeyword || "HI, HELLO"}</td>
                       <td>
