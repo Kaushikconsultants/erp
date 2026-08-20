@@ -475,6 +475,18 @@ export async function generateWhatsAppPaymentLinkAction(data: {
 // 5. DASHBOARD & METRICS
 // ---------------------------------------------------------
 
+// Helper to check if real Meta WhatsApp API credentials are set up
+export async function isWhatsAppApiConfigured(account: any) {
+  const envToken = process.env.META_WHATSAPP_TOKEN;
+  const dbToken = account?.accessToken;
+  const phoneId = account?.phoneId || process.env.META_PHONE_NUMBER_ID;
+
+  if (!phoneId || phoneId.startsWith("ph_1092837465")) return false;
+  if (!dbToken && !envToken) return false;
+  if (dbToken && dbToken.startsWith("EAAG...meta_token_secured")) return false;
+  return true;
+}
+
 export async function getWhatsAppDashboardMetrics() {
   await ensureSeeded();
   try {
@@ -502,15 +514,27 @@ export async function getWhatsAppDashboardMetrics() {
       prisma.whatsAppCampaign.count({ where: { status: 'COMPLETED' } })
     ]);
 
+    const isConnected = isWhatsAppApiConfigured(account);
+    const accountStatus = isConnected
+      ? (account?.status || "CONNECTED")
+      : "NOT CONNECTED (Setup Required)";
+
     return {
       success: true,
-      account: account || {
-        name: "Espon Main Sales",
-        phoneNumber: "+91 7206066678",
-        status: "CONNECTED",
-        dailyLimit: "10K per day",
-        usedToday: 1250,
-        qualityRating: "GREEN"
+      isConnected,
+      account: {
+        id: account?.id,
+        name: account?.name || "Primary WABA Account",
+        phoneNumber: account?.phoneNumber || "Not Configured",
+        phoneId: account?.phoneId || "",
+        businessAccountId: account?.businessAccountId || "",
+        businessManagerId: account?.businessManagerId || "",
+        accessToken: account?.accessToken ? "••••••••••••••••" : "",
+        webhookVerifyToken: account?.webhookVerifyToken || "espon_whatsapp_secure_webhook_token_2026",
+        status: accountStatus,
+        dailyLimit: account?.dailyLimit || "10K per day",
+        usedToday: isConnected ? (account?.usedToday || 0) : 0,
+        qualityRating: isConnected ? (account?.qualityRating || "GREEN") : "PENDING_SETUP"
       },
       metrics: {
         totalConvs,
@@ -518,7 +542,7 @@ export async function getWhatsAppDashboardMetrics() {
         closedConvs,
         highPriority,
         totalMessages,
-        sentToday: sentToday || 125,
+        sentToday: isConnected ? (sentToday || 0) : 0,
         activeAutomations,
         activeTemplates,
         activeCampaigns
@@ -600,36 +624,130 @@ export async function checkIntegrationHealthAction() {
   await ensureSeeded();
   try {
     const account = await prisma.whatsAppAccount.findFirst();
+    const isConnected = isWhatsAppApiConfigured(account);
     const totalMsgs = await prisma.whatsAppMessage.count();
     const deliveredMsgs = await prisma.whatsAppMessage.count({
       where: { status: { in: ['DELIVERED', 'READ', 'SENT'] } }
     });
 
-    const rate = totalMsgs > 0 ? ((deliveredMsgs / totalMsgs) * 100).toFixed(1) : "99.2";
+    const rate = isConnected && totalMsgs > 0 ? ((deliveredMsgs / totalMsgs) * 100).toFixed(1) : "0.0";
 
     return {
       success: true,
+      isConnected,
       webhook: {
-        status: "Active & Verified",
+        status: isConnected ? "Active & Verified" : "Pending Setup (Missing Token)",
         endpoint: "/api/whatsapp/webhook",
-        latency: "18ms",
-        isHealthy: true
+        latency: isConnected ? "18ms" : "N/A",
+        isHealthy: isConnected
       },
       metaApi: {
-        status: "Operational (100%)",
+        status: isConnected ? "Operational (100%)" : "Not Configured (Enter Credentials)",
         version: "v18.0 Cloud API",
-        latency: "42ms",
-        isHealthy: true
+        latency: isConnected ? "42ms" : "N/A",
+        isHealthy: isConnected
       },
       delivery: {
-        rate: `${rate}% Delivered`,
-        totalSent: totalMsgs || 142,
-        isHealthy: true
+        rate: isConnected ? `${rate}% Delivered` : "N/A (No Live API)",
+        totalSent: isConnected ? totalMsgs : 0,
+        isHealthy: isConnected
       },
       quality: {
-        rating: `${account?.qualityRating || "GREEN"} (High Quality)`,
-        isHealthy: true
+        rating: isConnected ? `${account?.qualityRating || "GREEN"} (High Quality)` : "PENDING SETUP",
+        isHealthy: isConnected
       }
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getWhatsAppApiCredentialsAction() {
+  await ensureSeeded();
+  try {
+    const account = await prisma.whatsAppAccount.findFirst();
+    const isConnected = isWhatsAppApiConfigured(account);
+
+    return {
+      success: true,
+      isConnected,
+      credentials: {
+        id: account?.id,
+        name: account?.name || "Espon Main Sales",
+        phoneNumber: account?.phoneNumber || "",
+        phoneId: account?.phoneId || "",
+        businessAccountId: account?.businessAccountId || "",
+        businessManagerId: account?.businessManagerId || "",
+        accessToken: account?.accessToken || "",
+        webhookVerifyToken: account?.webhookVerifyToken || "espon_whatsapp_secure_webhook_token_2026",
+        status: isConnected ? (account?.status || "CONNECTED") : "NOT CONNECTED (Setup Required)"
+      }
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function saveWhatsAppApiCredentialsAction(data: {
+  wabaId: string;
+  phoneId: string;
+  managerId?: string;
+  accessToken: string;
+  phoneNumber: string;
+  webhookVerifyToken?: string;
+}) {
+  try {
+    let account = await prisma.whatsAppAccount.findFirst();
+
+    const isConnected = data.accessToken && data.phoneId && data.wabaId && !data.accessToken.startsWith("EAAG...meta");
+    const status = isConnected ? "CONNECTED" : "NOT CONNECTED (Setup Required)";
+
+    if (account) {
+      account = await prisma.whatsAppAccount.update({
+        where: { id: account.id },
+        data: {
+          businessAccountId: data.wabaId,
+          phoneId: data.phoneId,
+          businessManagerId: data.managerId || null,
+          accessToken: data.accessToken,
+          phoneNumber: data.phoneNumber,
+          webhookVerifyToken: data.webhookVerifyToken || "espon_whatsapp_secure_webhook_token_2026",
+          status,
+          qualityRating: isConnected ? "GREEN" : "PENDING_SETUP",
+          updatedAt: new Date()
+        }
+      });
+    } else {
+      account = await prisma.whatsAppAccount.create({
+        data: {
+          name: "Espon Main Sales",
+          phoneNumber: data.phoneNumber,
+          phoneId: data.phoneId,
+          businessAccountId: data.wabaId,
+          businessManagerId: data.managerId || null,
+          accessToken: data.accessToken,
+          webhookVerifyToken: data.webhookVerifyToken || "espon_whatsapp_secure_webhook_token_2026",
+          status,
+          dailyLimit: "10K per day",
+          usedToday: 0,
+          qualityRating: isConnected ? "GREEN" : "PENDING_SETUP",
+          isDefault: true
+        }
+      });
+    }
+
+    revalidatePath('/whatsapp/dashboard');
+    revalidatePath('/whatsapp/api-settings');
+    revalidatePath('/whatsapp');
+
+    return {
+      success: true,
+      isConnected,
+      status,
+      message: isConnected
+        ? "Meta WhatsApp Business API credentials successfully connected and verified!"
+        : "Credentials saved. Please enter valid Meta Phone ID & Permanent Access Token to establish connection.",
+      account
     };
   } catch (error: any) {
     return { success: false, error: error.message };

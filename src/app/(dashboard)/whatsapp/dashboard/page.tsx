@@ -28,6 +28,8 @@ import {
   checkIntegrationHealthAction
 } from "@/app/actions/whatsAppPlatformActions";
 
+import Link from "next/link";
+
 export default function WhatsAppDashboardPage() {
   const [data, setData] = useState<any | null>(null);
   const [health, setHealth] = useState<any | null>(null);
@@ -83,6 +85,8 @@ export default function WhatsAppDashboardPage() {
     setVerifying(false);
   };
 
+  const isConnected = data?.isConnected || false;
+
   return (
     <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* Toast Alert Banner */}
@@ -96,18 +100,41 @@ export default function WhatsAppDashboardPage() {
         </div>
       )}
 
+      {/* Warning Banner if API Credentials are missing */}
+      {!isConnected && (
+        <div style={{ background: "#fffbe5", border: "1px solid #fde047", borderRadius: "10px", padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <AlertTriangle size={24} color="#ca8a04" />
+            <div>
+              <h4 style={{ fontSize: "15px", fontWeight: 700, margin: 0, color: "#854d0e" }}>
+                WhatsApp Business API Not Connected
+              </h4>
+              <p style={{ fontSize: "13px", color: "#a16207", margin: "2px 0 0 0" }}>
+                Your Meta WhatsApp WABA credentials have not been configured yet. Enter your WABA ID and Permanent Access Token in API Settings.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/whatsapp/api-settings"
+            style={{ background: "#ca8a04", color: "#ffffff", padding: "8px 16px", borderRadius: "6px", fontSize: "13px", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}
+          >
+            Configure API Credentials →
+          </Link>
+        </div>
+      )}
+
       {/* Top Banner: Business Account & Connection Health */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
         {/* Business Account Card */}
         <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.03)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
             <div>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "#10b981", textTransform: "uppercase" }}>Primary WABA Account</span>
+              <span style={{ fontSize: "12px", fontWeight: 700, color: isConnected ? "#10b981" : "#ef4444", textTransform: "uppercase" }}>Primary WABA Account</span>
               <h2 style={{ fontSize: "20px", fontWeight: 700, color: "#111827", margin: "4px 0 0 0" }}>{data?.account?.name || "Espon Main Sales"}</h2>
-              <p style={{ fontSize: "13px", color: "#6b7280", margin: "2px 0 0 0" }}>Phone Number: {data?.account?.phoneNumber || "+91 7206066678"}</p>
+              <p style={{ fontSize: "13px", color: "#6b7280", margin: "2px 0 0 0" }}>Phone Number: {data?.account?.phoneNumber || "Not Configured"}</p>
             </div>
-            <span style={{ background: "#d1fae5", color: "#065f46", fontSize: "12px", fontWeight: 700, padding: "4px 10px", borderRadius: "14px" }}>
-              ● {data?.account?.status || "VERIFIED & CONNECTED"}
+            <span style={{ background: isConnected ? "#d1fae5" : "#fee2e2", color: isConnected ? "#065f46" : "#991b1b", fontSize: "12px", fontWeight: 700, padding: "4px 10px", borderRadius: "14px" }}>
+              ● {data?.account?.status || "NOT CONNECTED (Setup Required)"}
             </span>
           </div>
 

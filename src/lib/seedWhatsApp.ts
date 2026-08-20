@@ -18,15 +18,15 @@ export async function seedWhatsAppPlatformData() {
       data: {
         name: "Espon Main Sales",
         phoneNumber: "+91 7206066678",
-        phoneId: "ph_10928374659201",
-        businessAccountId: "waba_991827364501",
-        businessManagerId: "bm_5544332211",
-        accessToken: "EAAG...meta_token_secured",
+        phoneId: null,
+        businessAccountId: null,
+        businessManagerId: null,
+        accessToken: null,
         webhookVerifyToken: "espon_whatsapp_secure_webhook_token_2026",
-        status: "CONNECTED",
+        status: "NOT CONNECTED (Setup Required)",
         dailyLimit: "10K per day",
-        usedToday: 1250,
-        qualityRating: "GREEN",
+        usedToday: 0,
+        qualityRating: "PENDING_SETUP",
         isDefault: true
       }
     });
@@ -35,15 +35,15 @@ export async function seedWhatsAppPlatformData() {
       data: {
         name: "Espon Customer Support",
         phoneNumber: "+91 7206066679",
-        phoneId: "ph_10928374659202",
-        businessAccountId: "waba_991827364501",
-        businessManagerId: "bm_5544332211",
-        accessToken: "EAAG...meta_token_secured_support",
+        phoneId: null,
+        businessAccountId: null,
+        businessManagerId: null,
+        accessToken: null,
         webhookVerifyToken: "espon_whatsapp_secure_webhook_token_2026",
-        status: "CONNECTED",
+        status: "NOT CONNECTED (Setup Required)",
         dailyLimit: "10K per day",
-        usedToday: 340,
-        qualityRating: "GREEN",
+        usedToday: 0,
+        qualityRating: "PENDING_SETUP",
         isDefault: false
       }
     });

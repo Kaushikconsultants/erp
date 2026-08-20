@@ -49,18 +49,18 @@ import { getWhatsAppDashboardMetrics } from "@/app/actions/whatsAppPlatformActio
 export default function WhatsAppHeaderNav() {
   const pathname = usePathname();
   const [accountInfo, setAccountInfo] = React.useState<any>({
-    status: "VERIFIED & CONNECTED",
-    phoneNumber: "+91 7206066678",
-    used: "1,250 / 10,000 used today"
+    status: "NOT CONNECTED (Setup Required)",
+    phoneNumber: "Not Configured",
+    isConnected: false
   });
 
   React.useEffect(() => {
     getWhatsAppDashboardMetrics().then((res) => {
       if (res.success && res.account) {
         setAccountInfo({
-          status: res.account.status || "VERIFIED & CONNECTED",
-          phoneNumber: res.account.phoneNumber || "+91 7206066678",
-          used: "1,250 / 10,000 used today"
+          status: res.account.status || "NOT CONNECTED (Setup Required)",
+          phoneNumber: res.account.phoneNumber || "Not Configured",
+          isConnected: res.isConnected || false
         });
       }
     });
@@ -86,11 +86,31 @@ export default function WhatsAppHeaderNav() {
           </div>
         </div>
 
-        <div className="wa-header-status-badge">
-          <span className="wa-pulse-indicator"></span>
-          <span className="wa-status-text">Meta API: {accountInfo.status} ({accountInfo.phoneNumber})</span>
-          <span className="wa-limit-pill">10K / Day (12.5% used)</span>
-        </div>
+        <Link
+          href="/whatsapp/api-settings"
+          className={`wa-header-status-badge ${accountInfo.isConnected ? "connected" : "disconnected"}`}
+          style={{
+            textDecoration: "none",
+            background: accountInfo.isConnected ? "#f0fdf4" : "#fef2f2",
+            borderColor: accountInfo.isConnected ? "#bbf7d0" : "#fca5a5"
+          }}
+        >
+          <span
+            className="wa-pulse-indicator"
+            style={{ backgroundColor: accountInfo.isConnected ? "#10b981" : "#ef4444" }}
+          ></span>
+          <span
+            className="wa-status-text"
+            style={{ color: accountInfo.isConnected ? "#065f46" : "#991b1b" }}
+          >
+            Meta API: {accountInfo.status} {accountInfo.phoneNumber && accountInfo.phoneNumber !== "Not Configured" ? `(${accountInfo.phoneNumber})` : ""}
+          </span>
+          {!accountInfo.isConnected && (
+            <span style={{ fontSize: "11px", fontWeight: 700, background: "#ef4444", color: "#fff", padding: "2px 8px", borderRadius: "10px" }}>
+              Configure Credentials →
+            </span>
+          )}
+        </Link>
       </div>
 
       <div className="wa-subnav-scroll-wrapper">
