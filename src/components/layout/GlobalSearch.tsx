@@ -159,10 +159,10 @@ export default function GlobalSearch() {
         <button
           type="button"
           onClick={() => executeSearch(query)}
-          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, marginRight: '10px' }}
           title="Click to Search"
         >
-          <Search size={18} className="search-icon" style={{ cursor: 'pointer' }} />
+          <Search size={18} style={{ color: '#64748b', cursor: 'pointer' }} />
         </button>
 
         <input 
@@ -178,7 +178,7 @@ export default function GlobalSearch() {
               executeSearch(query);
             }
           }}
-          style={{ width: '100%' }}
+          style={{ width: '100%', paddingLeft: 0, color: '#0f172a', fontWeight: 500 }}
         />
 
         {query && (
