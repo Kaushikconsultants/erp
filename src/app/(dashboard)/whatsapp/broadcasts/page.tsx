@@ -527,7 +527,7 @@ export default function WhatsAppBroadcastsPage() {
                 <h2 style={{ fontSize: "20px", fontWeight: 800, margin: "2px 0 0 0", color: "#15803d" }}>96.2%</h2>
               </div>
               <div style={{ background: "#e0e7ff", padding: "12px", borderRadius: "8px", border: "1px solid #c7d2fe" }}>
-                <span style={{ fontSize: "11px", color: "#3730a3", textTransform: "uppercase", fontWeight 700 }}>CRM Leads Generated</span>
+                <span style={{ fontSize: "11px", color: "#3730a3", textTransform: "uppercase", fontWeight: 700 }}>CRM Leads Generated</span>
                 <h2 style={{ fontSize: "20px", fontWeight: 800, margin: "2px 0 0 0", color: "#4338ca" }}>{selectedCampaignForAnalytics.leadsGenerated || 40} Leads</h2>
               </div>
               <div style={{ background: "#fef3c7", padding: "12px", borderRadius: "8px", border: "1px solid #fde68a" }}>
