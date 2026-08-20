@@ -41,7 +41,9 @@ import {
   Sparkles,
   RefreshCw,
   X,
-  BookOpen
+  BookOpen,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import {
   getWhatsAppConversations,
@@ -62,9 +64,35 @@ export default function WhatsAppInboxComponent() {
   const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
 
-  // Sidebar & Panel Collapse States
+  // Full Screen & Sidebar Collapse States
+  const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const [isLeftCollapsed, setIsLeftCollapsed] = useState<boolean>(false);
   const [isRightCollapsed, setIsRightCollapsed] = useState<boolean>(false);
+
+  // Toggle Full Screen Mode (Overlay + Native Fullscreen API)
+  const toggleFullScreenMode = () => {
+    if (!isFullScreen) {
+      setIsFullScreen(true);
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      setIsFullScreen(false);
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && isFullScreen) {
+        setIsFullScreen(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, [isFullScreen]);
 
   // Filtering & Search States
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -270,7 +298,7 @@ export default function WhatsAppInboxComponent() {
   };
 
   return (
-    <div className="inbox-container">
+    <div className={`inbox-container ${isFullScreen ? "fullscreen-mode" : ""}`}>
       {/* ----------------------------------------------------------------- */}
       {/* LEFT COLUMN: INBOX NAVIGATION & CONVERSATION LIST */}
       {/* ----------------------------------------------------------------- */}
@@ -279,13 +307,23 @@ export default function WhatsAppInboxComponent() {
         <div className="left-panel-header">
           <div className="left-panel-title-row">
             <span className="left-panel-title">WhatsApp Inbox</span>
-            <button
-              className="panel-toggle-btn"
-              onClick={() => setIsLeftCollapsed(!isLeftCollapsed)}
-              title={isLeftCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            >
-              {isLeftCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <button
+                className="panel-toggle-btn"
+                onClick={toggleFullScreenMode}
+                title={isFullScreen ? "Exit Full Screen Mode (Esc)" : "Full Screen Mode"}
+                style={{ color: isFullScreen ? "#10b981" : "#64748b" }}
+              >
+                {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              <button
+                className="panel-toggle-btn"
+                onClick={() => setIsLeftCollapsed(!isLeftCollapsed)}
+                title={isLeftCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              >
+                {isLeftCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+              </button>
+            </div>
           </div>
 
           {!isLeftCollapsed && (
@@ -499,6 +537,14 @@ export default function WhatsAppInboxComponent() {
                 <button className="chat-action-btn" onClick={() => setShowPaymentModal(true)} title="Send Payment Link">
                   <CreditCard size={14} />
                   <span>Payment</span>
+                </button>
+                <button
+                  className={`chat-action-btn ${isFullScreen ? "active-fullscreen" : ""}`}
+                  onClick={toggleFullScreenMode}
+                  title={isFullScreen ? "Exit Full Screen Mode (Esc)" : "Full Screen WhatsApp Inbox"}
+                >
+                  {isFullScreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  <span>{isFullScreen ? "Exit Full Screen" : "Full Screen"}</span>
                 </button>
                 <button
                   className="panel-toggle-btn"

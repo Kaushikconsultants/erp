@@ -7,6 +7,26 @@
   border: 1px solid #eaecf0;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease-in-out;
+}
+
+.inbox-container.fullscreen-mode {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  min-height: 100vh !important;
+  z-index: 999999 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.chat-action-btn.active-fullscreen {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
 }
 
 /* Custom Thin Modern Scrollbars */
