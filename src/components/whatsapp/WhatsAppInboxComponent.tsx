@@ -460,9 +460,9 @@ export default function WhatsAppInboxComponent() {
                     </span>
                   </div>
                   <div className="chat-sub-line">
-                    <span>Phone: +91 {activeConvDetail.customer?.mobile}</span>
+                    <span>+91 {activeConvDetail.customer?.mobile}</span>
                     <span>•</span>
-                    <span>Assigned: {activeConvDetail.assignedEmployee?.user?.name || "Ikra (Sales)"}</span>
+                    <span>Assigned: {activeConvDetail.assignedEmployee?.user?.name || "Ashish Goyal"}</span>
                     <span>•</span>
                     <span>Type: {activeConvDetail.customerType}</span>
                   </div>
@@ -470,24 +470,24 @@ export default function WhatsAppInboxComponent() {
               </div>
 
               <div className="chat-header-actions">
-                <button className="chat-action-btn highlight-assign" onClick={() => setShowAssignModal(true)} title="Assign Lead Manually or via Round-Robin">
-                  <UserCheck size={16} />
-                  <span>Assign Lead</span>
+                <button className="chat-action-btn highlight-assign" onClick={() => setShowAssignModal(true)} title="Assign WhatsApp Lead">
+                  <UserCheck size={14} />
+                  <span>Assign</span>
                 </button>
                 <button className="chat-action-btn" onClick={() => setShowQuoteModal(true)} title="Create Quotation">
-                  <FileText size={16} />
+                  <FileText size={14} />
                   <span>Quotation</span>
                 </button>
                 <button className="chat-action-btn" onClick={() => setShowPaymentModal(true)} title="Send Payment Link">
-                  <CreditCard size={16} />
-                  <span>Payment Link</span>
+                  <CreditCard size={14} />
+                  <span>Payment</span>
                 </button>
                 <button
                   className="panel-toggle-btn"
                   onClick={() => setIsRightCollapsed(!isRightCollapsed)}
-                  title="Toggle CRM 360 Profile"
+                  title="Toggle CRM 360° Profile Panel"
                 >
-                  <User size={18} />
+                  <User size={16} />
                 </button>
               </div>
             </div>
