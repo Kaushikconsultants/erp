@@ -842,7 +842,7 @@ export async function getWhatsAppAutomationRules() {
 
 export async function getWhatsAppChatbotFlows() {
   await ensureSeeded();
-  const flows = await prisma.whatsAppChatbotFlow.findMany({ orderBy: { createdAt: 'desc' } });
+  const flows = await prisma.whatsAppChatbotFlow.findMany({ orderBy: { updatedAt: 'desc' } });
   return { success: true, flows };
 }
 
@@ -877,6 +877,58 @@ export async function saveWhatsAppChatbotFlowAction(data: {
         }
       });
     }
+    revalidatePath('/whatsapp/chatbot-builder');
+    return { success: true, flow };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function deleteWhatsAppChatbotFlowAction(id: string) {
+  try {
+    await prisma.whatsAppChatbotFlow.delete({
+      where: { id }
+    });
+    revalidatePath('/whatsapp/chatbot-builder');
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function duplicateWhatsAppChatbotFlowAction(id: string) {
+  try {
+    const existing = await prisma.whatsAppChatbotFlow.findUnique({
+      where: { id }
+    });
+
+    if (!existing) {
+      return { success: false, error: "Chatbot flow not found" };
+    }
+
+    const cloned = await prisma.whatsAppChatbotFlow.create({
+      data: {
+        name: `${existing.name} (Copy)`,
+        triggerKeyword: existing.triggerKeyword,
+        nodesJson: existing.nodesJson,
+        isActive: false,
+        executionCount: 0
+      }
+    });
+
+    revalidatePath('/whatsapp/chatbot-builder');
+    return { success: true, flow: cloned };
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function toggleWhatsAppChatbotFlowStatusAction(id: string, isActive: boolean) {
+  try {
+    const flow = await prisma.whatsAppChatbotFlow.update({
+      where: { id },
+      data: { isActive, updatedAt: new Date() }
+    });
     revalidatePath('/whatsapp/chatbot-builder');
     return { success: true, flow };
   } catch (e: any) {

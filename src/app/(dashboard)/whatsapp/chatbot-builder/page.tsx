@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MessageSquare,
   Image as ImageIcon,
@@ -48,14 +48,20 @@ import {
   Copy,
   Focus,
   Hand,
-  Move,
-  Edit2,
-  GripVertical,
   Check,
   Plus,
-  Radio
+  Radio,
+  Settings,
+  FolderOpen,
+  Power
 } from "lucide-react";
-import { saveWhatsAppChatbotFlowAction } from "@/app/actions/whatsAppPlatformActions";
+import {
+  getWhatsAppChatbotFlows,
+  saveWhatsAppChatbotFlowAction,
+  deleteWhatsAppChatbotFlowAction,
+  duplicateWhatsAppChatbotFlowAction,
+  toggleWhatsAppChatbotFlowStatusAction
+} from "@/app/actions/whatsAppPlatformActions";
 import "@/components/whatsapp/ChatbotBuilder.css";
 
 // Block Library Categories
@@ -87,7 +93,7 @@ const blockCategories = [
   },
   {
     name: "Inputs",
-    count: 12,
+    count: 5,
     blocks: [
       { id: "input_name", name: "Name", icon: User },
       { id: "input_email", name: "Email", icon: Mail },
@@ -98,7 +104,7 @@ const blockCategories = [
   },
   {
     name: "Logic",
-    count: 6,
+    count: 5,
     blocks: [
       { id: "set_var", name: "Set Variable", icon: Sliders },
       { id: "condition", name: "Condition (If/Else)", icon: GitBranch },
@@ -109,7 +115,7 @@ const blockCategories = [
   },
   {
     name: "Payments",
-    count: 4,
+    count: 3,
     blocks: [
       { id: "pay_link", name: "Payment Link", icon: CreditCard },
       { id: "pay_qr", name: "UPI QR Code", icon: QrCode },
@@ -118,7 +124,7 @@ const blockCategories = [
   },
   {
     name: "E-Commerce",
-    count: 3,
+    count: 2,
     blocks: [
       { id: "catalog", name: "Product Catalog", icon: ShoppingBag },
       { id: "order", name: "Multi-Item Order", icon: ShoppingCart }
@@ -133,7 +139,7 @@ const blockCategories = [
   },
   {
     name: "Connect (CRM)",
-    count: 4,
+    count: 3,
     blocks: [
       { id: "crm_contact", name: "Update CRM Contact", icon: UserCheck },
       { id: "crm_lead", name: "Create Lead", icon: UserPlus },
@@ -142,7 +148,7 @@ const blockCategories = [
   },
   {
     name: "AI & Meta",
-    count: 3,
+    count: 2,
     blocks: [
       { id: "ai_bot", name: "AI GPT Intent", icon: Bot },
       { id: "meta_template", name: "Send Meta Template", icon: Sparkles }
@@ -150,130 +156,561 @@ const blockCategories = [
   }
 ];
 
-// Initial Nodes Graph
-const initialNodes = [
+// Pre-built WATI & Galabox Templates
+const BOT_TEMPLATES = [
   {
-    id: "node_trigger",
-    type: "TRIGGER",
-    category: "trigger",
-    title: "FLOW TRIGGER",
-    x: 30,
-    y: 100,
-    triggerKeywords: "HI, HELLO, CATALOG, PRICING",
-    text: "Incoming Message matches: HI, HELLO, CATALOG",
-    outputPort: "node_start"
-  },
-  {
-    id: "node_start",
-    type: "START",
-    category: "start",
-    title: "Start / Auto Assign",
-    x: 330,
-    y: 100,
-    text: "Assign via Round-Robin distribution",
-    outputPort: "node_group4"
-  },
-  {
-    id: "node_group4",
-    type: "CHOICE",
-    category: "choice",
-    title: "Group 4 (Inquiry Menu)",
-    x: 630,
-    y: 100,
-    imageUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500",
-    text: "Hi! Welcome to Espon Clothing. We are direct manufacturers of premium activewear & wholesale apparel. Please select your inquiry category below:",
-    choices: [
-      { id: "c1", text: "Retailer / Shop Owner", targetNode: "node_group9" },
-      { id: "c2", text: "Wholesaler / Reseller", targetNode: "node_group10" },
-      { id: "c3", text: "Personal Use", targetNode: "node_group11" }
+    id: "wati_lead_gen",
+    name: "WATI Style Lead Qualification & Menu Bot",
+    platform: "WATI",
+    description: "Inquiry router that auto-categorizes incoming messages into Retailer/Wholesaler, tags contacts in CRM, and assigns agents via Round-Robin.",
+    triggerKeyword: "HI, HELLO, INQUIRY, PRICING",
+    nodes: [
+      {
+        id: "node_trigger",
+        type: "TRIGGER",
+        category: "trigger",
+        title: "FLOW TRIGGER",
+        x: 30,
+        y: 100,
+        text: "Incoming Message matches: HI, HELLO, INQUIRY",
+        outputPort: "node_start"
+      },
+      {
+        id: "node_start",
+        type: "START",
+        category: "start",
+        title: "Start / Auto Assign",
+        x: 330,
+        y: 100,
+        text: "Assign via Round-Robin distribution to Sales Team",
+        outputPort: "node_menu"
+      },
+      {
+        id: "node_menu",
+        type: "CHOICE",
+        category: "choice",
+        title: "Inquiry Menu",
+        x: 630,
+        y: 100,
+        imageUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500",
+        text: "Welcome to Espon Clothing Wholesale! Please select your inquiry category below:",
+        choices: [
+          { id: "c1", text: "1. Retailer / Shop Owner", targetNode: "node_crm_retail" },
+          { id: "c2", text: "2. Wholesaler / Bulk Buyer", targetNode: "node_crm_wholesale" },
+          { id: "c3", text: "3. Personal Inquiry", targetNode: "node_end_personal" }
+        ]
+      },
+      {
+        id: "node_crm_retail",
+        type: "CRM",
+        category: "crm",
+        title: "Update CRM Contact (Retailer)",
+        x: 970,
+        y: 40,
+        text: "Update CRM Contact:\n• Lead Stage: Qualified Retailer\n• Priority: MEDIUM",
+        outputPort: "node_end_b2b"
+      },
+      {
+        id: "node_crm_wholesale",
+        type: "CRM",
+        category: "crm",
+        title: "Update CRM Contact (Wholesale)",
+        x: 970,
+        y: 200,
+        text: "Update CRM Contact:\n• Lead Stage: Wholesale Inquiry\n• Priority: HIGH",
+        outputPort: "node_end_b2b"
+      },
+      {
+        id: "node_end_personal",
+        type: "END",
+        category: "end",
+        title: "Personal Store Link",
+        x: 970,
+        y: 360,
+        text: "For personal use, visit our online retail store directly:",
+        buttonText: "Visit Online Store 🛍️",
+        url: "https://espon.in/shop"
+      },
+      {
+        id: "node_end_b2b",
+        type: "END",
+        category: "end",
+        title: "Confirmation & Callback",
+        x: 1300,
+        y: 120,
+        text: "Thank you! Our wholesale specialist will call you shortly with catalog & pricing details.",
+        buttonText: "View Catalog 📄",
+        url: "https://espon.in/catalog.pdf"
+      }
     ]
   },
   {
-    id: "node_group9",
-    type: "CRM",
-    category: "crm",
-    title: "Group 9 (Update Contact)",
-    x: 970,
-    y: 40,
-    text: "Update CRM Contact:\n• Lead Stage: Qualified Retailer\n• Assigned Salesperson: Ikra (Sales)",
-    outputPort: "node_group12"
+    id: "galabox_ecom",
+    name: "Galabox E-Commerce & Order Tracking Bot",
+    platform: "Galabox",
+    description: "Multi-option e-commerce bot supporting product catalog browsing, live order tracking by AWB, and quick UPI payment collection.",
+    triggerKeyword: "CATALOG, ORDER, TRACK, PAYMENT",
+    nodes: [
+      {
+        id: "node_trigger",
+        type: "TRIGGER",
+        category: "trigger",
+        title: "FLOW TRIGGER",
+        x: 30,
+        y: 100,
+        text: "Incoming Message matches: CATALOG, ORDER, TRACK",
+        outputPort: "node_welcome"
+      },
+      {
+        id: "node_welcome",
+        type: "CHOICE",
+        category: "choice",
+        title: "E-Commerce Main Menu",
+        x: 330,
+        y: 100,
+        text: "Welcome to Espon Apparel Direct! How can we assist your order today?",
+        choices: [
+          { id: "g1", text: "🛍️ Browse Apparel Catalog", targetNode: "node_catalog" },
+          { id: "g2", text: "🚚 Track Existing Order", targetNode: "node_track_input" },
+          { id: "g3", text: "💳 Pay Pending Invoice", targetNode: "node_payment_qr" }
+        ]
+      },
+      {
+        id: "node_catalog",
+        type: "E-COMMERCE",
+        category: "choice",
+        title: "Product Catalog Carousel",
+        x: 680,
+        y: 40,
+        text: "Here are our top trending wholesale categories for 2026. Select item to request quotation.",
+        outputPort: "node_catalog_end"
+      },
+      {
+        id: "node_track_input",
+        type: "INPUT",
+        category: "input",
+        title: "Order ID / Mobile Input",
+        x: 680,
+        y: 200,
+        text: "Please reply with your 10-digit registered mobile number or Order ID (e.g. ORD-1092).",
+        outputPort: "node_track_result"
+      },
+      {
+        id: "node_payment_qr",
+        type: "PAYMENT",
+        category: "payment",
+        title: "Instant UPI QR Code",
+        x: 680,
+        y: 360,
+        text: "Scan QR code or click payment link below to complete payment instantly via GooglePay / PhonePe:",
+        outputPort: "node_pay_end"
+      },
+      {
+        id: "node_catalog_end",
+        type: "END",
+        category: "end",
+        title: "Catalog Request Shared",
+        x: 1000,
+        y: 40,
+        text: "Catalog PDF downloaded. Our representative will contact you for custom manufacturing orders."
+      },
+      {
+        id: "node_track_result",
+        type: "END",
+        category: "end",
+        title: "Tracking Details",
+        x: 1000,
+        y: 200,
+        text: "Your order status: IN TRANSIT (Delhivery Courier AWB #7890123). Expected Delivery: Tomorrow 5 PM."
+      },
+      {
+        id: "node_pay_end",
+        type: "END",
+        category: "end",
+        title: "Payment Receipt Sent",
+        x: 1000,
+        y: 360,
+        text: "Once payment is completed, your invoice receipt will be sent here automatically."
+      }
+    ]
   },
   {
-    id: "node_group10",
-    type: "CRM",
-    category: "crm",
-    title: "Group 10 (Update Contact)",
-    x: 970,
-    y: 200,
-    text: "Update CRM Contact:\n• Lead Stage: Wholesale Inquiry\n• Priority: HIGH",
-    outputPort: "node_group12"
+    id: "support_faq",
+    name: "Customer Support & Live Desk Escalation Bot",
+    platform: "Galabox",
+    description: "Automated support assistant resolving common queries, operating hours, return policy, and escalating complex queries to live desk agents.",
+    triggerKeyword: "SUPPORT, HELP, AGENT, COMPLAINT",
+    nodes: [
+      {
+        id: "node_trigger",
+        type: "TRIGGER",
+        category: "trigger",
+        title: "FLOW TRIGGER",
+        x: 30,
+        y: 100,
+        text: "Incoming Message matches: SUPPORT, HELP, COMPLAINT",
+        outputPort: "node_faq_menu"
+      },
+      {
+        id: "node_faq_menu",
+        type: "CHOICE",
+        category: "choice",
+        title: "Support Help Desk Menu",
+        x: 330,
+        y: 100,
+        text: "Welcome to Customer Support. What topic would you like help with?",
+        choices: [
+          { id: "s1", text: "📦 Return / Replacement Policy", targetNode: "node_returns" },
+          { id: "s2", text: "⏰ Business Working Hours", targetNode: "node_hours" },
+          { id: "s3", text: "👤 Connect to Live Desk Agent", targetNode: "node_live_agent" }
+        ]
+      },
+      {
+        id: "node_returns",
+        type: "END",
+        category: "end",
+        title: "Return Policy Info",
+        x: 680,
+        y: 40,
+        text: "We offer 7-day hassle-free replacements for manufacturing defects. Please keep tag & bill intact."
+      },
+      {
+        id: "node_hours",
+        type: "END",
+        category: "end",
+        title: "Working Hours Info",
+        x: 680,
+        y: 200,
+        text: "Our office hours: Monday to Saturday (9:30 AM to 7:00 PM IST). Closed on Sundays."
+      },
+      {
+        id: "node_live_agent",
+        type: "CRM",
+        category: "crm",
+        title: "Escalate to Human Desk Agent",
+        x: 680,
+        y: 360,
+        text: "Transferring chat to Live Desk Agent. AI handling paused.\nAssigned Team: Customer Care",
+        outputPort: "node_agent_assigned"
+      },
+      {
+        id: "node_agent_assigned",
+        type: "END",
+        category: "end",
+        title: "Agent Connected",
+        x: 1000,
+        y: 360,
+        text: "An agent has joined this conversation and will respond shortly."
+      }
+    ]
   },
   {
-    id: "node_group11",
-    type: "CRM",
-    category: "crm",
-    title: "Group 11 (Update Contact)",
-    x: 970,
-    y: 360,
-    text: "Update CRM Contact:\n• Lead Stage: Personal Enquiry",
-    outputPort: "node_group13"
+    id: "b2b_form",
+    name: "B2B Wholesale Onboarding & GST Form Bot",
+    platform: "WATI",
+    description: "Collects verified B2B customer information (Company Name, GSTIN, Pincode) directly via chat before unlocking wholesale pricing.",
+    triggerKeyword: "ONBOARD, DEALER, GST, WHOLESALE",
+    nodes: [
+      {
+        id: "node_trigger",
+        type: "TRIGGER",
+        category: "trigger",
+        title: "FLOW TRIGGER",
+        x: 30,
+        y: 100,
+        text: "Incoming Message matches: ONBOARD, DEALER, GST",
+        outputPort: "node_b2b_intro"
+      },
+      {
+        id: "node_b2b_intro",
+        type: "TEXT",
+        category: "choice",
+        title: "B2B Onboarding Intro",
+        x: 330,
+        y: 100,
+        text: "Welcome to Espon B2B Onboarding! Let's get your GST verified to unlock wholesale pricing slabs.",
+        outputPort: "node_form_input"
+      },
+      {
+        id: "node_form_input",
+        type: "INPUT",
+        category: "input",
+        title: "WhatsApp B2B Interactive Form",
+        x: 630,
+        y: 100,
+        text: "Please fill in: 1. Business Name 2. GST Number 3. City/State 4. Monthly Requirement",
+        outputPort: "node_crm_create"
+      },
+      {
+        id: "node_crm_create",
+        type: "CRM",
+        category: "crm",
+        title: "Create CRM B2B Lead",
+        x: 930,
+        y: 100,
+        text: "CRM Action:\n• Create New Lead\n• Customer Type: Wholesaler\n• Stage: Verified GST Lead",
+        outputPort: "node_b2b_done"
+      },
+      {
+        id: "node_b2b_done",
+        type: "END",
+        category: "end",
+        title: "Wholesale Unlocked",
+        x: 1230,
+        y: 100,
+        text: "GST Details verified! Wholesale pricing unlocked. Download your dealer catalog below:",
+        buttonText: "Dealer Catalog PDF 📥",
+        url: "https://espon.in/dealer-catalog.pdf"
+      }
+    ]
   },
   {
-    id: "node_group12",
-    type: "END",
-    category: "end",
-    title: "Group 12 (Confirmation)",
-    x: 1300,
-    y: 80,
-    text: "OUR SENIOR EXPERT WILL BE CALLING YOU SHORTLY TO DISCUSS YOUR SPECIFIC REQUIREMENTS.\n\nWhile you wait, visit our website:",
-    buttonText: "Visit Website 🌐",
-    url: "https://espon.in"
-  },
-  {
-    id: "node_group13",
-    type: "END",
-    category: "end",
-    title: "Group 13 (Confirmation)",
-    x: 1300,
-    y: 360,
-    text: "SEE IT IS EASY FOR SHARING YOUR DETAILS. For personal use visit our online store by clicking below:",
-    buttonText: "Visit Store 🛍️",
-    url: "https://espon.in/shop"
+    id: "blank",
+    name: "Blank Canvas Bot Flow",
+    platform: "Custom",
+    description: "Start with a clean canvas containing only standard Flow Trigger and Start nodes.",
+    triggerKeyword: "HI, START",
+    nodes: [
+      {
+        id: "node_trigger",
+        type: "TRIGGER",
+        category: "trigger",
+        title: "FLOW TRIGGER",
+        x: 30,
+        y: 100,
+        triggerKeywords: "HI, HELLO",
+        text: "Incoming Message matches: HI, HELLO",
+        outputPort: "node_start"
+      },
+      {
+        id: "node_start",
+        type: "START",
+        category: "start",
+        title: "Start Node",
+        x: 330,
+        y: 100,
+        text: "Start building your customized chatbot flow..."
+      }
+    ]
   }
 ];
 
 export default function WhatsAppChatbotBuilderPage() {
-  const [nodes, setNodes] = useState<any[]>(initialNodes);
+  // DB Saved Flow State
+  const [savedFlows, setSavedFlows] = useState<any[]>([]);
+  const [currentFlowId, setCurrentFlowId] = useState<string | null>(null);
+  const [flowName, setFlowName] = useState<string>("Default Chatbot Flow");
+  const [triggerKeyword, setTriggerKeyword] = useState<string>("HI, HELLO, CATALOG");
+  const [isBotActive, setIsBotActive] = useState<boolean>(true);
+  const [isLoadingFlows, setIsLoadingFlows] = useState<boolean>(true);
+
+  // Modals state
+  const [showCreateModal, setShowCreateModal] = useState<boolean>(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
+  const [showManageModal, setShowManageModal] = useState<boolean>(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("wati_lead_gen");
+  const [newBotNameInput, setNewBotNameInput] = useState<string>("");
+  const [newBotKeywordInput, setNewBotKeywordInput] = useState<string>("");
+
+  // Canvas Node State
+  const [nodes, setNodes] = useState<any[]>(BOT_TEMPLATES[0].nodes);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [openCategories, setOpenCategories] = useState<{ [key: string]: boolean }>({ Messages: true });
+  const [openCategories, setOpenCategories] = useState<{ [key: string]: boolean }>({ Messages: true, Choices: true });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [blockSearch, setBlockSearch] = useState<string>("");
 
   // Full Screen Studio State
   const [isFullScreenStudio, setIsFullScreenStudio] = useState<boolean>(false);
-
-  // Flow State & History Stack for Undo / Redo
-  const [flowName, setFlowName] = useState<string>("espon new");
-  const [version, setVersion] = useState<string>("LIVE V21");
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [historyStack, setHistoryStack] = useState<any[]>([initialNodes]);
+  const [historyStack, setHistoryStack] = useState<any[]>([BOT_TEMPLATES[0].nodes]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
 
   // Zoom & Pan State
-  const [zoom, setZoom] = useState<number>(0.75); // Default zoom 75%
+  const [zoom, setZoom] = useState<number>(0.75);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState<boolean>(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
-  // Phone Simulator Modal State
+  // Simulator Modal State
   const [showSimModal, setShowSimModal] = useState<boolean>(false);
   const [simMessages, setSimMessages] = useState<any[]>([]);
 
   // Drawer Tab State
   const [drawerTab, setDrawerTab] = useState<"basic" | "advanced">("basic");
 
-  // Add option button to a node
+  // Dragging State
+  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+  // ---------------------------------------------------------
+  // Fetch Saved Chatbot Flows from Database on Mount
+  // ---------------------------------------------------------
+  const fetchFlows = async () => {
+    setIsLoadingFlows(true);
+    const res = await getWhatsAppChatbotFlows();
+    if (res.success && res.flows && res.flows.length > 0) {
+      setSavedFlows(res.flows);
+      // Select first flow
+      const firstFlow = res.flows[0];
+      setCurrentFlowId(firstFlow.id);
+      setFlowName(firstFlow.name);
+      setTriggerKeyword(firstFlow.triggerKeyword || "HI, HELLO, CATALOG");
+      setIsBotActive(firstFlow.isActive);
+      try {
+        const parsedNodes = JSON.parse(firstFlow.nodesJson);
+        if (Array.isArray(parsedNodes) && parsedNodes.length > 0) {
+          setNodes(parsedNodes);
+          setHistoryStack([parsedNodes]);
+          setHistoryIndex(0);
+        }
+      } catch (e) {
+        console.error("Failed to parse nodesJson:", e);
+      }
+    } else {
+      // Auto save seed default flow to DB if empty
+      const defaultTemplate = BOT_TEMPLATES[0];
+      const saveRes = await saveWhatsAppChatbotFlowAction({
+        name: defaultTemplate.name,
+        triggerKeyword: defaultTemplate.triggerKeyword,
+        nodesJson: JSON.stringify(defaultTemplate.nodes),
+        isActive: true
+      });
+      if (saveRes.success && saveRes.flow) {
+        setSavedFlows([saveRes.flow]);
+        setCurrentFlowId(saveRes.flow.id);
+        setFlowName(saveRes.flow.name);
+        setTriggerKeyword(saveRes.flow.triggerKeyword || defaultTemplate.triggerKeyword);
+        setIsBotActive(true);
+        setNodes(defaultTemplate.nodes);
+        setHistoryStack([defaultTemplate.nodes]);
+        setHistoryIndex(0);
+      }
+    }
+    setIsLoadingFlows(false);
+  };
+
+  useEffect(() => {
+    fetchFlows();
+  }, []);
+
+  // Switch Active Flow Canvas
+  const handleSelectFlow = (flowId: string) => {
+    const target = savedFlows.find((f) => f.id === flowId);
+    if (!target) return;
+    setCurrentFlowId(target.id);
+    setFlowName(target.name);
+    setTriggerKeyword(target.triggerKeyword || "HI, HELLO, CATALOG");
+    setIsBotActive(target.isActive);
+    try {
+      const parsedNodes = JSON.parse(target.nodesJson);
+      if (Array.isArray(parsedNodes)) {
+        setNodes(parsedNodes);
+        setHistoryStack([parsedNodes]);
+        setHistoryIndex(0);
+        setSelectedNodeId(null);
+      }
+    } catch (e) {
+      console.error("Error loading selected flow nodes:", e);
+    }
+  };
+
+  // Create New Bot Handler
+  const handleConfirmCreateNewBot = async () => {
+    const template = BOT_TEMPLATES.find((t) => t.id === selectedTemplateId) || BOT_TEMPLATES[0];
+    const botName = newBotNameInput.trim() || template.name;
+    const botKeyword = newBotKeywordInput.trim() || template.triggerKeyword;
+
+    setIsSaving(true);
+    const res = await saveWhatsAppChatbotFlowAction({
+      name: botName,
+      triggerKeyword: botKeyword,
+      nodesJson: JSON.stringify(template.nodes),
+      isActive: true
+    });
+
+    if (res.success && res.flow) {
+      setToastMsg(`✓ New Chatbot "${botName}" created successfully!`);
+      setShowCreateModal(false);
+      setNewBotNameInput("");
+      setNewBotKeywordInput("");
+      await fetchFlows();
+      handleSelectFlow(res.flow.id);
+    } else {
+      setToastMsg(`Error creating chatbot: ${res.error}`);
+    }
+    setIsSaving(false);
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  // Delete Current Bot Handler
+  const handleConfirmDeleteBot = async () => {
+    if (!currentFlowId) return;
+    setIsSaving(true);
+    const res = await deleteWhatsAppChatbotFlowAction(currentFlowId);
+    if (res.success) {
+      setToastMsg(`✓ Chatbot "${flowName}" permanently deleted.`);
+      setShowDeleteModal(false);
+      await fetchFlows();
+    } else {
+      setToastMsg(`Error deleting bot: ${res.error}`);
+    }
+    setIsSaving(false);
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  // Duplicate Current Bot Handler
+  const handleDuplicateCurrentBot = async () => {
+    if (!currentFlowId) return;
+    setIsSaving(true);
+    const res = await duplicateWhatsAppChatbotFlowAction(currentFlowId);
+    if (res.success && res.flow) {
+      setToastMsg(`✓ Cloned bot "${res.flow.name}" created!`);
+      await fetchFlows();
+      handleSelectFlow(res.flow.id);
+    } else {
+      setToastMsg(`Error cloning bot: ${res.error}`);
+    }
+    setIsSaving(false);
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  // Toggle Bot Active Status Handler
+  const handleToggleActiveStatus = async (flowId: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
+    const res = await toggleWhatsAppChatbotFlowStatusAction(flowId, newStatus);
+    if (res.success) {
+      if (flowId === currentFlowId) {
+        setIsBotActive(newStatus);
+      }
+      setSavedFlows((prev) => prev.map((f) => (f.id === flowId ? { ...f, isActive: newStatus } : f)));
+      setToastMsg(`Chatbot status changed to ${newStatus ? 'ACTIVE' : 'DRAFT'}`);
+      setTimeout(() => setToastMsg(null), 3000);
+    }
+  };
+
+  // Save / Publish Current Flow
+  const handlePublishFlow = async () => {
+    setIsSaving(true);
+    const res = await saveWhatsAppChatbotFlowAction({
+      id: currentFlowId || undefined,
+      name: flowName,
+      triggerKeyword: triggerKeyword,
+      nodesJson: JSON.stringify(nodes),
+      isActive: isBotActive
+    });
+    if (res.success && res.flow) {
+      setCurrentFlowId(res.flow.id);
+      setToastMsg("✓ Chatbot Flow successfully saved & published to WhatsApp database!");
+      await fetchFlows();
+    } else {
+      setToastMsg(`Error saving flow: ${res.error}`);
+    }
+    setIsSaving(false);
+    setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  // Option / Choice Node Actions
   const handleAddOptionToNode = (nodeId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setNodes((prev) =>
@@ -291,7 +728,6 @@ export default function WhatsAppChatbotBuilderPage() {
     );
   };
 
-  // Delete choice option from a node
   const handleDeleteOptionFromNode = (nodeId: string, choiceId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setNodes((prev) =>
@@ -302,7 +738,6 @@ export default function WhatsAppChatbotBuilderPage() {
     );
   };
 
-  // Update choice text directly
   const handleUpdateOptionText = (nodeId: string, choiceId: string, newText: string) => {
     setNodes((prev) =>
       prev.map((n) => {
@@ -313,11 +748,6 @@ export default function WhatsAppChatbotBuilderPage() {
     );
   };
 
-  // Dragging State
-  const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
-  // Toggle Category Accordion
   const toggleCategory = (catName: string) => {
     setOpenCategories((prev) => ({
       ...prev,
@@ -325,7 +755,6 @@ export default function WhatsAppChatbotBuilderPage() {
     }));
   };
 
-  // Record Undo State
   const pushHistory = (newNodes: any[]) => {
     const updated = historyStack.slice(0, historyIndex + 1);
     setHistoryStack([...updated, newNodes]);
@@ -346,7 +775,7 @@ export default function WhatsAppChatbotBuilderPage() {
     }
   };
 
-  // Canvas Hand Cursor Panning (Keep pressing left click on background to slide page)
+  // Canvas Hand Panning
   const handleMouseDownCanvas = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (
@@ -355,7 +784,8 @@ export default function WhatsAppChatbotBuilderPage() {
       target.closest('.block-tile') ||
       target.closest('button') ||
       target.closest('input') ||
-      target.closest('textarea')
+      target.closest('textarea') ||
+      target.closest('select')
     ) {
       return;
     }
@@ -367,7 +797,6 @@ export default function WhatsAppChatbotBuilderPage() {
     });
   };
 
-  // Node Drag Handler
   const handleMouseDownNode = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setSelectedNodeId(id);
@@ -419,7 +848,6 @@ export default function WhatsAppChatbotBuilderPage() {
     }
   };
 
-  // Add New Node from Block Library without Overlapping
   const handleAddBlockToCanvas = (block: any) => {
     const selected = nodes.find((n) => n.id === selectedNodeId) || nodes[nodes.length - 1];
     const newNodeId = `node_${Date.now()}`;
@@ -439,7 +867,6 @@ export default function WhatsAppChatbotBuilderPage() {
     setSelectedNodeId(newNodeId);
   };
 
-  // Delete Node
   const handleDeleteNode = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = nodes.filter((n) => n.id !== id);
@@ -448,7 +875,6 @@ export default function WhatsAppChatbotBuilderPage() {
     if (selectedNodeId === id) setSelectedNodeId(null);
   };
 
-  // Duplicate Node
   const handleDuplicateNode = (node: any, e: React.MouseEvent) => {
     e.stopPropagation();
     const newNodeId = `node_${Date.now()}`;
@@ -465,13 +891,11 @@ export default function WhatsAppChatbotBuilderPage() {
     setSelectedNodeId(newNodeId);
   };
 
-  // Auto-Fit All Blocks on Single Screen
   const handleFitAllNodesToScreen = () => {
-    setZoom(0.60); // Auto scale down so all 8+ nodes fit on 1 screen seamlessly
+    setZoom(0.65);
     setPan({ x: 0, y: 0 });
   };
 
-  // Dynamic SVG Bezier Path Generator for Connections
   const getBezierPath = (sourceNode: any, targetNode: any, optionIndex?: number) => {
     if (!sourceNode || !targetNode) return "";
     const nodeWidth = 260;
@@ -492,29 +916,12 @@ export default function WhatsAppChatbotBuilderPage() {
     return `M ${startX} ${startY} C ${cx1} ${startY}, ${cx2} ${endY}, ${endX} ${endY}`;
   };
 
-  // Publish / Save Flow Action
-  const handlePublishFlow = async () => {
-    setIsSaving(true);
-    const res = await saveWhatsAppChatbotFlowAction({
-      name: flowName,
-      triggerKeyword: "HI, HELLO, CATALOG, PRICING",
-      nodesJson: JSON.stringify(nodes),
-      isActive: true
-    });
-    if (res.success) {
-      setToastMsg("✓ Chatbot Flow successfully published and active on WhatsApp!");
-      setTimeout(() => setToastMsg(null), 4000);
-    }
-    setIsSaving(false);
-  };
-
-  // Start Simulator Flow Test
   const handleStartSimTest = () => {
-    const startNode = nodes.find((n) => n.id === "node_group4") || nodes[0];
+    const startNode = nodes.find((n) => n.type === "CHOICE" || n.type === "START") || nodes[0];
     setSimMessages([
       {
         sender: "bot",
-        text: startNode?.text || "Welcome to Espon Clothing!",
+        text: startNode?.text || "Welcome to WhatsApp Assistant!",
         imageUrl: startNode?.imageUrl,
         choices: startNode?.choices || []
       }
@@ -522,7 +929,6 @@ export default function WhatsAppChatbotBuilderPage() {
     setShowSimModal(true);
   };
 
-  // User Choice Select in Simulator
   const handleSimChoiceSelect = (choice: any) => {
     const userMsg = { sender: "user", text: choice.text };
     const targetNode = nodes.find((n) => n.id === choice.targetNode);
@@ -533,7 +939,7 @@ export default function WhatsAppChatbotBuilderPage() {
         const nextEndNode = nodes.find((n) => n.id === targetNode.outputPort);
         botReplyMsg = {
           sender: "bot",
-          text: (targetNode.text ? `[CRM Lead Intake]: ${targetNode.text}\n\n` : "") + (nextEndNode?.text || "Thank you for reaching out!"),
+          text: (targetNode.text ? `[CRM Log]: ${targetNode.text}\n\n` : "") + (nextEndNode?.text || "Thank you for reaching out!"),
           buttonText: nextEndNode?.buttonText
         };
       } else {
@@ -546,7 +952,7 @@ export default function WhatsAppChatbotBuilderPage() {
     } else {
       botReplyMsg = {
         sender: "bot",
-        text: "Thank you! Our sales executive has been assigned to your request and will contact you in 5 minutes."
+        text: "Thank you! Our executive will contact you shortly regarding your request."
       };
     }
 
@@ -557,23 +963,52 @@ export default function WhatsAppChatbotBuilderPage() {
 
   return (
     <div className={`studio-container ${isFullScreenStudio ? "fullscreen-studio" : ""}`}>
-      {/* TOP CONTROL BAR */}
+      {/* TOP CONTROL BAR WITH BOT SELECTOR & MANAGEMENT ACTIONS */}
       <div className="studio-top-bar">
         <div className="studio-title-block">
-          <h2 className="flow-title-text">{flowName}</h2>
-          <span className="flow-status-pill">{version}</span>
+          <Bot size={22} color="#10b981" />
+          {/* Chatbot Selector Dropdown */}
+          <select
+            className="bot-selector-dropdown"
+            value={currentFlowId || ""}
+            onChange={(e) => handleSelectFlow(e.target.value)}
+          >
+            {savedFlows.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name} {f.isActive ? "🟢 (Live)" : "⚪ (Draft)"}
+              </option>
+            ))}
+          </select>
+
+          <span className={`flow-status-pill ${isBotActive ? "" : "draft"}`} style={{ background: isBotActive ? "#dcfce7" : "#f1f5f9", color: isBotActive ? "#15803d" : "#64748b" }}>
+            {isBotActive ? "ACTIVE LIVE" : "DRAFT"}
+          </span>
+
           <span className="flow-meta-sub">
-            {nodes.length} steps · {nodes.length} blocks · Live DB Synced
+            {nodes.length} steps · DB Synced
           </span>
         </div>
 
-        <div className="studio-shortcuts-row">
-          <span className="shortcut-pill">Save Ctrl+S</span>
-          <span className="shortcut-pill">Undo Ctrl+Z</span>
-          <span className="shortcut-pill">Preview Shift+P</span>
-        </div>
-
+        {/* BOT MANAGEMENT ACTIONS */}
         <div className="studio-actions-group">
+          <button className="studio-btn primary" onClick={() => setShowCreateModal(true)} title="Create New Chatbot">
+            <Plus size={15} /> ＋ New Chatbot
+          </button>
+
+          <button className="studio-btn" onClick={handleDuplicateCurrentBot} title="Duplicate Current Chatbot">
+            <Copy size={14} /> Duplicate
+          </button>
+
+          <button className="studio-btn" onClick={() => setShowManageModal(true)} title="Manage All Chatbots">
+            <FolderOpen size={14} /> All Bots ({savedFlows.length})
+          </button>
+
+          <button className="studio-btn danger" onClick={() => setShowDeleteModal(true)} title="Delete Current Chatbot">
+            <Trash2 size={14} /> Delete Bot
+          </button>
+
+          <div style={{ width: "1px", height: "24px", background: "#e2e8f0", margin: "0 4px" }} />
+
           <button className="circular-history-btn" onClick={handleUndo} title="Undo"><RotateCcw size={15} /></button>
           <button className="circular-history-btn" onClick={handleRedo} title="Redo"><RotateCw size={15} /></button>
 
@@ -583,25 +1018,22 @@ export default function WhatsAppChatbotBuilderPage() {
             title="Toggle Full Screen Studio Mode"
           >
             {isFullScreenStudio ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            <span>{isFullScreenStudio ? "Exit Full Screen" : "Full Screen Studio"}</span>
           </button>
 
           <button className="studio-btn test-btn" onClick={handleStartSimTest}>
             <Play size={14} /> Preview & Test
           </button>
-          <button className="studio-btn" onClick={handlePublishFlow}>
-            <Save size={14} /> Save Draft
-          </button>
+
           <button className="studio-btn primary" onClick={handlePublishFlow} disabled={isSaving}>
-            <CheckCircle2 size={14} /> {isSaving ? "Publishing..." : "Publish Bot Flow"}
+            <CheckCircle2 size={14} /> {isSaving ? "Saving..." : "Save Bot Flow"}
           </button>
         </div>
       </div>
 
       {toastMsg && (
-        <div style={{ background: "#dcfce7", borderBottom: "1px solid #86efac", color: "#166534", padding: "8px 16px", fontSize: "12.5px", fontWeight: 600, display: "flex", justifyContent: "space-between" }}>
+        <div style={{ background: "#dcfce7", borderBottom: "1px solid #86efac", color: "#166534", padding: "8px 16px", fontSize: "12.5px", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>{toastMsg}</span>
-          <button onClick={() => setToastMsg(null)} style={{ background: "none", border: "none", color: "#166534", cursor: "pointer" }}>×</button>
+          <button onClick={() => setToastMsg(null)} style={{ background: "none", border: "none", color: "#166534", cursor: "pointer", fontSize: "16px" }}>×</button>
         </div>
       )}
 
@@ -668,7 +1100,7 @@ export default function WhatsAppChatbotBuilderPage() {
           )}
         </div>
 
-        {/* CENTER INFINITE GRID CANVAS */}
+        {/* CENTER INFINITE CANVAS */}
         <div
           className={`infinite-canvas-wrapper ${isPanning ? "panning" : ""}`}
           onMouseDown={handleMouseDownCanvas}
@@ -686,29 +1118,29 @@ export default function WhatsAppChatbotBuilderPage() {
               transformOrigin: "0 0"
             }}
           >
-            {/* DYNAMIC SVG CONNECTOR WIRES */}
+            {/* SVG CONNECTOR WIRES */}
             <svg className="canvas-svg-layer">
-              <path d={getBezierPath(nodes.find(n => n.id === "node_trigger"), nodes.find(n => n.id === "node_start"))} />
-              <path d={getBezierPath(nodes.find(n => n.id === "node_start"), nodes.find(n => n.id === "node_group4"))} />
-
-              <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group9"), 0)} className="active-path" />
-              <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group10"), 1)} />
-              <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group11"), 2)} />
-
-              <path d={getBezierPath(nodes.find(n => n.id === "node_group9"), nodes.find(n => n.id === "node_group12"))} />
-              <path d={getBezierPath(nodes.find(n => n.id === "node_group10"), nodes.find(n => n.id === "node_group12"))} />
-              <path d={getBezierPath(nodes.find(n => n.id === "node_group11"), nodes.find(n => n.id === "node_group13"))} />
-
               {nodes.map((node) => {
                 if (node.outputPort) {
                   const target = nodes.find((n) => n.id === node.outputPort);
                   if (target) return <path key={`${node.id}_${target.id}`} d={getBezierPath(node, target)} />;
                 }
+                if (node.choices && Array.isArray(node.choices)) {
+                  return node.choices.map((c: any, idx: number) => {
+                    if (c.targetNode) {
+                      const targetChoiceNode = nodes.find((n) => n.id === c.targetNode);
+                      if (targetChoiceNode) {
+                        return <path key={`${node.id}_${c.id}`} d={getBezierPath(node, targetChoiceNode, idx)} className="active-path" />;
+                      }
+                    }
+                    return null;
+                  });
+                }
                 return null;
               })}
             </svg>
 
-            {/* Node Cards */}
+            {/* NODE CARDS ON CANVAS */}
             {nodes.map((node) => {
               const isSelected = node.id === selectedNodeId;
               return (
@@ -721,7 +1153,7 @@ export default function WhatsAppChatbotBuilderPage() {
                   }}
                   onMouseDown={(e) => handleMouseDownNode(e, node.id)}
                 >
-                  <div className={`node-card-header ${node.category}`}>
+                  <div className={`node-card-header ${node.category || 'choice'}`}>
                     <span>{node.title}</span>
                     <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                       <span title="Duplicate Node" onClick={(e) => handleDuplicateNode(node, e)} style={{ cursor: "pointer", display: "inline-flex" }}>
@@ -780,7 +1212,6 @@ export default function WhatsAppChatbotBuilderPage() {
                             >
                               <Trash2 size={11} />
                             </span>
-                            <span className="choice-option-port" title="Connect Choice to Node" />
                           </div>
                         ))}
 
@@ -802,48 +1233,31 @@ export default function WhatsAppChatbotBuilderPage() {
             })}
           </div>
 
-          {/* Floating Zoom & Hand Pan Controls & Fit All Button */}
+          {/* CANVAS CONTROLS */}
           <div className="canvas-zoom-controls">
-            <button className="zoom-btn" onClick={() => setZoom(Math.min(1.4, zoom + 0.1))} title="Zoom In (+)"><ZoomIn size={16} /></button>
-            <button className="zoom-btn" onClick={() => setZoom(Math.max(0.4, zoom - 0.1))} title="Zoom Out (-)"><ZoomOut size={16} /></button>
-            <button className="zoom-btn" onClick={() => setPan({ x: 0, y: 0 })} title="Pan / Center Canvas (Reset 0,0)">
+            <button className="zoom-btn" onClick={() => setZoom(Math.min(1.4, zoom + 0.1))} title="Zoom In"><ZoomIn size={16} /></button>
+            <button className="zoom-btn" onClick={() => setZoom(Math.max(0.4, zoom - 0.1))} title="Zoom Out"><ZoomOut size={16} /></button>
+            <button className="zoom-btn" onClick={() => setPan({ x: 0, y: 0 })} title="Reset Center Pan">
               <Hand size={16} color={pan.x !== 0 || pan.y !== 0 ? "#10b981" : "#475569"} />
             </button>
-            <button className="zoom-btn" onClick={handleFitAllNodesToScreen} title="Fit All Blocks to Single Screen"><Focus size={16} color="#3b82f6" /></button>
-            <button className="zoom-btn" onClick={() => setIsFullScreenStudio(!isFullScreenStudio)} title="Toggle Full Screen Mode">
-              {isFullScreenStudio ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button>
-          </div>
-
-          {/* Minimap Box */}
-          <div className="canvas-minimap-box">
-            <div className="minimap-mini-nodes">
-              {nodes.map((n) => (
-                <div
-                  key={n.id}
-                  className="minimap-dot"
-                  style={{ left: `${(n.x / 1600) * 100}%`, top: `${(n.y / 600) * 100}%` }}
-                />
-              ))}
-            </div>
+            <button className="zoom-btn" onClick={handleFitAllNodesToScreen} title="Fit All Blocks"><Focus size={16} color="#3b82f6" /></button>
           </div>
         </div>
 
-        {/* NODE PROPERTY EDITOR SIDE DRAWER (MATCHING SCREENSHOT) */}
+        {/* RIGHT PROPERTY EDITOR DRAWER */}
         {selectedNode && (
           <div className="node-editor-drawer">
-            {/* Drawer Header Row */}
             <div className="drawer-header-row">
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#ecfdf5", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Play size={16} />
+                  <Settings size={16} />
                 </div>
                 <div>
                   <h3 style={{ fontSize: "15px", fontWeight: 800, color: "#0f172a", margin: 0 }}>
-                    {selectedNode.type === "TRIGGER" ? "Flow Start" : selectedNode.title}
+                    {selectedNode.title}
                   </h3>
                   <span style={{ fontSize: "11.5px", color: "#64748b" }}>
-                    Choose how people enter this automation. Edit trigger & block parameters.
+                    Configure node content, choices and CRM connection parameters.
                   </span>
                 </div>
               </div>
@@ -852,91 +1266,26 @@ export default function WhatsAppChatbotBuilderPage() {
               </button>
             </div>
 
-            {/* Category Pill Badge */}
-            <div>
-              <span className="drawer-cat-pill">Message based</span>
-            </div>
-
-            {/* Basic / Advanced Tabs Bar */}
             <div className="drawer-tabs-bar">
               <button
                 className={`drawer-tab-btn ${drawerTab === "basic" ? "active" : ""}`}
                 onClick={() => setDrawerTab("basic")}
               >
-                Basic
+                Basic Settings
               </button>
               <button
                 className={`drawer-tab-btn ${drawerTab === "advanced" ? "active" : ""}`}
                 onClick={() => setDrawerTab("advanced")}
               >
-                Advanced
+                Advanced Logic
               </button>
             </div>
 
-            {/* SECTION 1: ENTRY POINT / HOW THIS FLOW STARTS */}
             <div className="drawer-section-block">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                <span className="drawer-section-title">ENTRY POINT</span>
-                <span style={{ fontSize: "12px", color: "#94a3b8", cursor: "pointer" }}>ⓘ</span>
-              </div>
-              <h4 style={{ fontSize: "13.5px", fontWeight: 800, color: "#0f172a", margin: "0 0 2px 0" }}>
-                How this flow starts
-              </h4>
-              <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 12px 0" }}>
-                Pick the trigger that should bring people into this flow.
-              </p>
-
-              {/* 2x2 Trigger Type Cards Grid Matching Screenshot */}
-              <div className="trigger-cards-grid">
-                {[
-                  { id: "msg", title: "Message based", desc: "Start when someone sends a message.", icon: MessageSquare, active: true },
-                  { id: "cart", title: "Cart / Order", desc: "Start after an order event.", icon: ShoppingBag, active: false },
-                  { id: "form", title: "WhatsApp Form", desc: "Start from form submissions.", icon: FileText, active: false },
-                  { id: "ad", title: "CTWA Ad", desc: "Start from ad conversations.", icon: Radio, active: false },
-                  { id: "template", title: "Template Button", desc: "Start from template quick replies.", icon: List, active: false }
-                ].map((tc) => {
-                  const Icon = tc.icon;
-                  return (
-                    <div key={tc.id} className={`trigger-card-tile ${tc.active ? "selected" : ""}`}>
-                      {tc.active && (
-                        <div className="card-check-badge">
-                          <Check size={10} color="#fff" />
-                        </div>
-                      )}
-                      <div className="trigger-card-icon">
-                        <Icon size={16} color="#10b981" />
-                      </div>
-                      <strong style={{ fontSize: "12.5px", color: "#0f172a", display: "block", marginTop: "6px" }}>{tc.title}</strong>
-                      <span style={{ fontSize: "11px", color: "#64748b", display: "block", marginTop: "2px", lineHeight: 1.3 }}>{tc.desc}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* SECTION 2: MESSAGES / TRIGGER PHRASES */}
-            <div className="drawer-section-block" style={{ borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
-              <span className="drawer-section-title">MESSAGES</span>
-              <h4 style={{ fontSize: "13.5px", fontWeight: 800, color: "#0f172a", margin: "4px 0 2px 0" }}>
-                Start from messages
-              </h4>
-              <p style={{ fontSize: "12px", color: "#64748b", margin: "0 0 10px 0" }}>
-                Use any incoming message or match specific keywords (comma separated).
-              </p>
-              <input
-                type="text"
-                value="HI, HELLO, CATALOG, APPLY, JOB"
-                readOnly
-                style={{ width: "100%", padding: "7px 10px", fontSize: "12px", border: "1px solid #cbd5e1", borderRadius: "6px", outline: "none", color: "#0f172a", fontWeight: 600, background: "#f8fafc" }}
-              />
-            </div>
-
-            {/* SECTION 3: BLOCK CONTENT & INTERACTIVE CHOICE BUTTONS MANAGER */}
-            <div className="drawer-section-block" style={{ borderTop: "1px solid #f1f5f9", paddingTop: "14px" }}>
-              <span className="drawer-section-title">BLOCK OPTIONS</span>
+              <span className="drawer-section-title">NODE PROPERTIES</span>
               <div style={{ marginTop: "8px", display: "flex", flexDirection: "column", gap: "10px" }}>
                 <div>
-                  <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Block Title</label>
+                  <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Node Title</label>
                   <input
                     type="text"
                     value={selectedNode.title}
@@ -950,7 +1299,7 @@ export default function WhatsAppChatbotBuilderPage() {
                 <div>
                   <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Message Content</label>
                   <textarea
-                    rows={3}
+                    rows={4}
                     value={selectedNode.text || ""}
                     onChange={(e) =>
                       setNodes((prev) => prev.map((n) => (n.id === selectedNode.id ? { ...n, text: e.target.value } : n)))
@@ -959,14 +1308,13 @@ export default function WhatsAppChatbotBuilderPage() {
                   />
                 </div>
 
-                {/* Interactive Choice Buttons List */}
+                {/* Option Linking Selector */}
                 {selectedNode.choices && (
                   <div>
-                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Interactive Option Buttons</label>
+                    <label style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>Option Links</label>
                     <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "6px" }}>
                       {selectedNode.choices.map((c: any, index: number) => (
                         <div key={c.id} style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f8fafc", padding: "6px 8px", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
-                          <span className="choice-drag-dots">::</span>
                           <span className="choice-num-badge">{index + 1}</span>
                           <input
                             type="text"
@@ -989,7 +1337,7 @@ export default function WhatsAppChatbotBuilderPage() {
                             }}
                             style={{ width: "110px", padding: "5px", fontSize: "11px", border: "1px solid #cbd5e1", borderRadius: "4px", background: "#fff" }}
                           >
-                            <option value="">Connect...</option>
+                            <option value="">Connect to...</option>
                             {nodes.map((targetCandidate) => (
                               <option key={targetCandidate.id} value={targetCandidate.id}>
                                 {targetCandidate.title}
@@ -1011,7 +1359,7 @@ export default function WhatsAppChatbotBuilderPage() {
                         onClick={(e) => handleAddOptionToNode(selectedNode.id, e)}
                         style={{ marginTop: "4px" }}
                       >
-                        <span>+ + Add option</span>
+                        <span>+ Add option</span>
                       </button>
                     </div>
                   </div>
@@ -1022,7 +1370,215 @@ export default function WhatsAppChatbotBuilderPage() {
         )}
       </div>
 
-      {/* MODAL: LIVE WHATSAPP PHONE SIMULATOR */}
+      {/* --------------------------------------------------------- */}
+      {/* MODAL 1: CREATE NEW CHATBOT (WATI & GALABOX TEMPLATE CHOOSER) */}
+      {/* --------------------------------------------------------- */}
+      {showCreateModal && (
+        <div className="bot-modal-backdrop" onClick={() => setShowCreateModal(false)}>
+          <div className="bot-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="bot-modal-header">
+              <div>
+                <h3 className="bot-modal-title">Create New Chatbot</h3>
+                <span style={{ fontSize: "12px", color: "#64748b" }}>
+                  Select a pre-built template from WATI or Galabox, or start from scratch.
+                </span>
+              </div>
+              <button onClick={() => setShowCreateModal(false)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <div className="bot-modal-body">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>Chatbot Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Summer Sales Inquiry Bot"
+                    value={newBotNameInput}
+                    onChange={(e) => setNewBotNameInput(e.target.value)}
+                    style={{ width: "100%", padding: "8px 10px", fontSize: "12.5px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: "12px", fontWeight: 700, color: "#334155" }}>Trigger Keywords</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. HI, HELLO, CATALOG, OFFERS"
+                    value={newBotKeywordInput}
+                    onChange={(e) => setNewBotKeywordInput(e.target.value)}
+                    style={{ width: "100%", padding: "8px 10px", fontSize: "12.5px", border: "1px solid #cbd5e1", borderRadius: "6px", marginTop: "4px" }}
+                  />
+                </div>
+              </div>
+
+              <strong style={{ fontSize: "13px", color: "#0f172a" }}>Select Popular Chatbot Template:</strong>
+
+              <div className="templates-grid">
+                {BOT_TEMPLATES.map((tmpl) => (
+                  <div
+                    key={tmpl.id}
+                    className={`template-card-tile ${selectedTemplateId === tmpl.id ? "selected" : ""}`}
+                    onClick={() => {
+                      setSelectedTemplateId(tmpl.id);
+                      if (!newBotNameInput) setNewBotNameInput(tmpl.name);
+                      if (!newBotKeywordInput) setNewBotKeywordInput(tmpl.triggerKeyword);
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                        <span className={`template-tag ${tmpl.platform.toLowerCase()}`}>{tmpl.platform}</span>
+                        {selectedTemplateId === tmpl.id && <Check size={16} color="#10b981" />}
+                      </div>
+                      <strong style={{ fontSize: "13px", color: "#0f172a", display: "block" }}>{tmpl.name}</strong>
+                      <p style={{ fontSize: "11.5px", color: "#64748b", margin: "4px 0 0 0", lineHeight: 1.3 }}>{tmpl.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bot-modal-footer">
+              <button className="studio-btn" onClick={() => setShowCreateModal(false)}>Cancel</button>
+              <button className="studio-btn primary" onClick={handleConfirmCreateNewBot} disabled={isSaving}>
+                {isSaving ? "Creating..." : "Create Chatbot Flow"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --------------------------------------------------------- */}
+      {/* MODAL 2: DELETE CONFIRMATION */}
+      {/* --------------------------------------------------------- */}
+      {showDeleteModal && (
+        <div className="bot-modal-backdrop" onClick={() => setShowDeleteModal(false)}>
+          <div className="bot-modal-card" style={{ maxWidth: "420px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="bot-modal-header" style={{ background: "#fef2f2" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Trash2 size={18} color="#dc2626" />
+                <h3 className="bot-modal-title" style={{ color: "#991b1b" }}>Delete Chatbot Flow?</h3>
+              </div>
+              <button onClick={() => setShowDeleteModal(false)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <div className="bot-modal-body">
+              <p style={{ fontSize: "13px", color: "#334155", margin: 0 }}>
+                Are you sure you want to permanently delete <strong>"{flowName}"</strong>? This will remove all triggers, node graphs and automation rules associated with this chatbot flow.
+              </p>
+            </div>
+
+            <div className="bot-modal-footer">
+              <button className="studio-btn" onClick={() => setShowDeleteModal(false)}>Cancel</button>
+              <button className="studio-btn danger" onClick={handleConfirmDeleteBot} disabled={isSaving}>
+                {isSaving ? "Deleting..." : "Permanently Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --------------------------------------------------------- */}
+      {/* MODAL 3: MANAGE ALL CHATBOTS DRAWER / TABLE */}
+      {/* --------------------------------------------------------- */}
+      {showManageModal && (
+        <div className="bot-modal-backdrop" onClick={() => setShowManageModal(false)}>
+          <div className="bot-modal-card" style={{ maxWidth: "750px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="bot-modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <FolderOpen size={18} color="#10b981" />
+                <h3 className="bot-modal-title">All Chatbot Flows ({savedFlows.length})</h3>
+              </div>
+              <button onClick={() => setShowManageModal(false)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <div className="bot-modal-body" style={{ padding: 0 }}>
+              <table className="bot-manage-table">
+                <thead>
+                  <tr>
+                    <th>Flow Name</th>
+                    <th>Triggers</th>
+                    <th>Status</th>
+                    <th>Executions</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {savedFlows.map((f) => (
+                    <tr key={f.id} style={{ background: f.id === currentFlowId ? "#f0fdf4" : "transparent" }}>
+                      <td>
+                        <strong style={{ fontSize: "13px", display: "block" }}>{f.name}</strong>
+                        {f.id === currentFlowId && <span style={{ fontSize: "10px", color: "#10b981", fontWeight: 700 }}>Currently Editing</span>}
+                      </td>
+                      <td style={{ fontSize: "11.5px", color: "#64748b" }}>{f.triggerKeyword || "HI, HELLO"}</td>
+                      <td>
+                        <button
+                          onClick={() => handleToggleActiveStatus(f.id, f.isActive)}
+                          style={{
+                            border: "none",
+                            background: f.isActive ? "#dcfce7" : "#f1f5f9",
+                            color: f.isActive ? "#166534" : "#475569",
+                            padding: "4px 8px",
+                            borderRadius: "12px",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <Power size={11} /> {f.isActive ? "ACTIVE" : "DRAFT"}
+                        </button>
+                      </td>
+                      <td>{f.executionCount || 0} runs</td>
+                      <td>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          <button
+                            className="studio-btn"
+                            style={{ padding: "3px 8px", fontSize: "11px" }}
+                            onClick={() => {
+                              handleSelectFlow(f.id);
+                              setShowManageModal(false);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="studio-btn danger"
+                            style={{ padding: "3px 8px", fontSize: "11px" }}
+                            onClick={async () => {
+                              await deleteWhatsAppChatbotFlowAction(f.id);
+                              await fetchFlows();
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="bot-modal-footer">
+              <button className="studio-btn" onClick={() => setShowManageModal(false)}>Close</button>
+              <button className="studio-btn primary" onClick={() => { setShowManageModal(false); setShowCreateModal(true); }}>
+                ＋ Create Another Bot
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --------------------------------------------------------- */}
+      {/* MODAL 4: LIVE WHATSAPP PHONE SIMULATOR */}
+      {/* --------------------------------------------------------- */}
       {showSimModal && (
         <div className="phone-sim-backdrop" onClick={() => setShowSimModal(false)}>
           <div className="phone-mockup-frame" onClick={(e) => e.stopPropagation()}>
@@ -1032,8 +1588,8 @@ export default function WhatsAppChatbotBuilderPage() {
                   <Bot size={18} color="#fff" />
                 </div>
                 <div>
-                  <strong style={{ fontSize: "13px", display: "block" }}>Espon AI Bot</strong>
-                  <span style={{ fontSize: "10.5px", opacity: 0.9 }}>Online · Live Flow Test</span>
+                  <strong style={{ fontSize: "13px", display: "block" }}>Espon AI Assistant</strong>
+                  <span style={{ fontSize: "10.5px", opacity: 0.9 }}>Online · Live Flow Simulator</span>
                 </div>
                 <button onClick={() => setShowSimModal(false)} style={{ marginLeft: "auto", background: "none", border: "none", color: "#fff", fontSize: "18px", cursor: "pointer" }}>×</button>
               </div>
