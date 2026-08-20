@@ -46,7 +46,9 @@ import {
   ChevronRight,
   Trash2,
   Copy,
-  Focus
+  Focus,
+  Hand,
+  Move
 } from "lucide-react";
 import { saveWhatsAppChatbotFlowAction } from "@/app/actions/whatsAppPlatformActions";
 import "@/components/whatsapp/ChatbotBuilder.css";
@@ -254,8 +256,10 @@ export default function WhatsAppChatbotBuilderPage() {
   const [historyIndex, setHistoryIndex] = useState<number>(0);
 
   // Zoom & Pan State
-  const [zoom, setZoom] = useState<number>(0.75); // Default zoom 75% to show all blocks cleanly on single screen
+  const [zoom, setZoom] = useState<number>(0.75); // Default zoom 75%
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState<boolean>(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
   // Phone Simulator Modal State
   const [showSimModal, setShowSimModal] = useState<boolean>(false);
@@ -294,6 +298,27 @@ export default function WhatsAppChatbotBuilderPage() {
     }
   };
 
+  // Canvas Hand Cursor Panning (Keep pressing left click on background to slide page)
+  const handleMouseDownCanvas = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('.canvas-node-card') ||
+      target.closest('.node-card-header') ||
+      target.closest('.block-tile') ||
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('textarea')
+    ) {
+      return;
+    }
+
+    setIsPanning(true);
+    setPanStart({
+      x: e.clientX - pan.x,
+      y: e.clientY - pan.y
+    });
+  };
+
   // Node Drag Handler
   const handleMouseDownNode = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -302,16 +327,24 @@ export default function WhatsAppChatbotBuilderPage() {
     const targetNode = nodes.find((n) => n.id === id);
     if (targetNode) {
       setDragOffset({
-        x: e.clientX - targetNode.x * zoom,
-        y: e.clientY - targetNode.y * zoom
+        x: e.clientX - (targetNode.x * zoom + pan.x),
+        y: e.clientY - (targetNode.y * zoom + pan.y)
       });
     }
   };
 
   const handleMouseMoveCanvas = (e: React.MouseEvent) => {
+    if (isPanning) {
+      setPan({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y
+      });
+      return;
+    }
+
     if (!draggingNodeId) return;
-    const newX = (e.clientX - dragOffset.x) / zoom;
-    const newY = (e.clientY - dragOffset.y) / zoom;
+    const newX = (e.clientX - dragOffset.x - pan.x) / zoom;
+    const newY = (e.clientY - dragOffset.y - pan.y) / zoom;
 
     setNodes((prev) =>
       prev.map((n) => (n.id === draggingNodeId ? { ...n, x: Math.max(10, newX), y: Math.max(10, newY) } : n))
@@ -319,10 +352,23 @@ export default function WhatsAppChatbotBuilderPage() {
   };
 
   const handleMouseUpCanvas = () => {
+    setIsPanning(false);
     if (draggingNodeId) {
       pushHistory(nodes);
     }
     setDraggingNodeId(null);
+  };
+
+  const handleWheelCanvas = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      const zoomDelta = e.deltaY < 0 ? 0.05 : -0.05;
+      setZoom((prev) => Math.min(1.5, Math.max(0.3, prev + zoomDelta)));
+    } else {
+      setPan((prev) => ({
+        x: prev.x - e.deltaX * 0.8,
+        y: prev.y - e.deltaY * 0.8
+      }));
+    }
   };
 
   // Add New Node from Block Library without Overlapping
@@ -576,15 +622,20 @@ export default function WhatsAppChatbotBuilderPage() {
 
         {/* CENTER INFINITE GRID CANVAS */}
         <div
-          className="infinite-canvas-wrapper"
+          className={`infinite-canvas-wrapper ${isPanning ? "panning" : ""}`}
+          onMouseDown={handleMouseDownCanvas}
           onMouseMove={handleMouseMoveCanvas}
           onMouseUp={handleMouseUpCanvas}
+          onMouseLeave={handleMouseUpCanvas}
+          onWheel={handleWheelCanvas}
+          style={{ cursor: isPanning ? "grabbing" : "grab" }}
         >
           {/* PAN-ZOOM INNER CONTAINER */}
           <div
             className="canvas-pan-zoom-container"
             style={{
-              transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`
+              transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+              transformOrigin: "0 0"
             }}
           >
             {/* DYNAMIC SVG CONNECTOR WIRES */}
@@ -659,10 +710,13 @@ export default function WhatsAppChatbotBuilderPage() {
             })}
           </div>
 
-          {/* Floating Zoom Controls & Fit All Button */}
+          {/* Floating Zoom & Hand Pan Controls & Fit All Button */}
           <div className="canvas-zoom-controls">
             <button className="zoom-btn" onClick={() => setZoom(Math.min(1.4, zoom + 0.1))} title="Zoom In (+)"><ZoomIn size={16} /></button>
             <button className="zoom-btn" onClick={() => setZoom(Math.max(0.4, zoom - 0.1))} title="Zoom Out (-)"><ZoomOut size={16} /></button>
+            <button className="zoom-btn" onClick={() => setPan({ x: 0, y: 0 })} title="Pan / Center Canvas (Reset 0,0)">
+              <Hand size={16} color={pan.x !== 0 || pan.y !== 0 ? "#10b981" : "#475569"} />
+            </button>
             <button className="zoom-btn" onClick={handleFitAllNodesToScreen} title="Fit All Blocks to Single Screen"><Focus size={16} color="#3b82f6" /></button>
             <button className="zoom-btn" onClick={() => setIsFullScreenStudio(!isFullScreenStudio)} title="Toggle Full Screen Mode">
               {isFullScreenStudio ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
