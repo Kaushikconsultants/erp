@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   Search,
   Filter,
@@ -43,7 +44,11 @@ import {
   X,
   BookOpen,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ExternalLink,
+  ImageIcon,
+  PlayCircle,
+  Volume2
 } from "lucide-react";
 import {
   getWhatsAppConversations,
@@ -57,6 +62,8 @@ import {
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
+const EMOJI_LIST = ["👍", "🙏", "✅", "📦", "📄", "💰", "📞", "❤️", "🔥", "💯", "🏷️", "🚚"];
+
 export default function WhatsAppInboxComponent() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
@@ -68,6 +75,11 @@ export default function WhatsAppInboxComponent() {
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
   const [isLeftCollapsed, setIsLeftCollapsed] = useState<boolean>(false);
   const [isRightCollapsed, setIsRightCollapsed] = useState<boolean>(false);
+
+  // Attachment File Upload Ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Toggle Full Screen Mode (Overlay + Native Fullscreen API)
   const toggleFullScreenMode = () => {
@@ -228,10 +240,53 @@ export default function WhatsAppInboxComponent() {
     setSendingMsg(false);
   };
 
+  // Direct File Attachment Upload Handler
+  const handleDirectFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedConvId) return;
+
+    setSendingMsg(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const fileDataUrl = evt.target?.result as string;
+      const fileType = file.type.startsWith("image/")
+        ? "IMAGE"
+        : file.type.startsWith("video/")
+        ? "VIDEO"
+        : file.type.startsWith("audio/")
+        ? "AUDIO"
+        : "DOCUMENT";
+
+      const res = await sendWhatsAppMessageAction({
+        conversationId: selectedConvId,
+        content: `Attached file: ${file.name}`,
+        mediaUrl: fileDataUrl,
+        mediaFilename: file.name,
+        messageType: fileType,
+        senderType: "AGENT",
+        senderName: "Sales Rep"
+      });
+
+      if (res.success) {
+        setToastMsg(`✓ Direct attachment "${file.name}" sent to customer!`);
+        setTimeout(() => setToastMsg(null), 3000);
+        await fetchConversationDetail(selectedConvId);
+        await fetchConversationsList();
+      }
+      setSendingMsg(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Handle Quick Command Shortcut Insert
   const applyQuickShortcut = (text: string) => {
-    setMessageInput(text);
+    setMessageInput((prev) => (prev ? `${prev} ${text}` : text));
     setShowReplyLibraryModal(false);
+  };
+
+  const handleInsertEmoji = (emoji: string) => {
+    setMessageInput((prev) => prev + emoji);
+    setShowEmojiPicker(false);
   };
 
   // Save CRM Inline Profile Edits
@@ -297,8 +352,22 @@ export default function WhatsAppInboxComponent() {
     setAssigningLead(false);
   };
 
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setActiveNavTab("all");
+    setLeadStatusFilter("");
+    setUnreadOnly(false);
+    setFilterEmployeeId("");
+  };
+
   return (
     <div className={`inbox-container ${isFullScreen ? "fullscreen-mode" : ""}`}>
+      {toastMsg && (
+        <div style={{ position: "absolute", top: "12px", right: "20px", background: "#dcfce7", border: "1px solid #86efac", color: "#166534", padding: "8px 16px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 700, zIndex: 9999, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          {toastMsg}
+        </div>
+      )}
+
       {/* ----------------------------------------------------------------- */}
       {/* LEFT COLUMN: INBOX NAVIGATION & CONVERSATION LIST */}
       {/* ----------------------------------------------------------------- */}
@@ -419,9 +488,16 @@ export default function WhatsAppInboxComponent() {
               <span>Loading conversations...</span>
             </div>
           ) : conversations.length === 0 ? (
-            <div className="inbox-empty-state">
-              <MessageSquare size={32} color="#9ca3af" />
-              <p>No conversations found</p>
+            <div className="inbox-empty-state" style={{ textAlign: "center", padding: "30px 16px" }}>
+              <MessageSquare size={32} color="#9ca3af" style={{ marginBottom: "8px" }} />
+              <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 12px 0" }}>No conversations found matching filters.</p>
+              <button
+                className="filter-pill active"
+                onClick={handleResetFilters}
+                style={{ padding: "6px 14px", fontSize: "12px", margin: "0 auto" }}
+              >
+                Reset Search & Filters
+              </button>
             </div>
           ) : (
             conversations.map((conv) => {
@@ -518,7 +594,7 @@ export default function WhatsAppInboxComponent() {
                   <div className="chat-sub-line">
                     <span>+91 {activeConvDetail.customer?.mobile}</span>
                     <span>•</span>
-                    <span>Assigned: {activeConvDetail.assignedEmployee?.user?.name || "Ashish Goyal"}</span>
+                    <span>Assigned: {activeConvDetail.assignedEmployee?.user?.name || "Ikra (Sales)"}</span>
                     <span>•</span>
                     <span>Type: {activeConvDetail.customerType}</span>
                   </div>
@@ -526,6 +602,15 @@ export default function WhatsAppInboxComponent() {
               </div>
 
               <div className="chat-header-actions">
+                <a
+                  href={`tel:+91${activeConvDetail.customer?.mobile}`}
+                  className="chat-action-btn"
+                  title="Call Customer via Phone"
+                  style={{ textDecoration: "none" }}
+                >
+                  <Phone size={14} color="#10b981" />
+                  <span>Call</span>
+                </a>
                 <button className="chat-action-btn highlight-assign" onClick={() => setShowAssignModal(true)} title="Assign WhatsApp Lead">
                   <UserCheck size={14} />
                   <span>Assign</span>
@@ -587,12 +672,35 @@ export default function WhatsAppInboxComponent() {
                         <div className="message-doc-box">
                           <FileText size={24} color="#ef4444" />
                           <div className="doc-info">
-                            <span className="doc-filename">{msg.mediaFilename || "Quotation.pdf"}</span>
-                            <span className="doc-filesize">PDF Document</span>
+                            <span className="doc-filename">{msg.mediaFilename || "Document.pdf"}</span>
+                            <span className="doc-filesize">Attachment Document</span>
                           </div>
-                          <a href={msg.mediaUrl || "#"} target="_blank" rel="noreferrer" className="doc-download-btn">
-                            Download
-                          </a>
+                          {msg.mediaUrl && (
+                            <a href={msg.mediaUrl} target="_blank" rel="noreferrer" className="doc-download-btn">
+                              Download
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Image Message Renderer */}
+                      {msg.messageType === "IMAGE" && (
+                        <div style={{ marginTop: "4px" }}>
+                          <img
+                            src={msg.mediaUrl || "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500"}
+                            alt="Media Image"
+                            style={{ width: "100%", maxHeight: "220px", objectFit: "cover", borderRadius: "8px", cursor: "pointer" }}
+                            onClick={() => window.open(msg.mediaUrl, "_blank")}
+                          />
+                          {msg.content && <p className="message-text-content" style={{ marginTop: "4px" }}>{msg.content}</p>}
+                        </div>
+                      )}
+
+                      {/* Video Message Renderer */}
+                      {msg.messageType === "VIDEO" && (
+                        <div style={{ marginTop: "4px" }}>
+                          <video src={msg.mediaUrl} controls style={{ width: "100%", maxHeight: "220px", borderRadius: "8px" }} />
+                          {msg.content && <p className="message-text-content" style={{ marginTop: "4px" }}>{msg.content}</p>}
                         </div>
                       )}
 
@@ -611,7 +719,7 @@ export default function WhatsAppInboxComponent() {
                       )}
 
                       {/* Standard Text Renderer */}
-                      {msg.messageType !== "DOCUMENT" && msg.messageType !== "PAYMENT_LINK" && (
+                      {msg.messageType !== "DOCUMENT" && msg.messageType !== "IMAGE" && msg.messageType !== "VIDEO" && msg.messageType !== "PAYMENT_LINK" && (
                         <p className="message-text-content">{msg.content}</p>
                       )}
 
@@ -655,10 +763,47 @@ export default function WhatsAppInboxComponent() {
                 </button>
               </div>
 
+              {/* Hidden Direct File Upload Input */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: "none" }}
+                onChange={handleDirectFileUpload}
+              />
+
+              {/* Emoji Picker Popup */}
+              {showEmojiPicker && (
+                <div style={{ display: "flex", gap: "6px", padding: "8px 12px", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: "6px", width: "fit-content" }}>
+                  {EMOJI_LIST.map((emoji) => (
+                    <span
+                      key={emoji}
+                      onClick={() => handleInsertEmoji(emoji)}
+                      style={{ fontSize: "16px", cursor: "pointer", padding: "2px 4px", borderRadius: "4px" }}
+                    >
+                      {emoji}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Text Area Form */}
               <form className={`chat-input-form ${isInternalNote ? "internal-mode" : ""}`} onSubmit={handleSendMessage}>
-                <button type="button" className="input-attachment-btn" title="Attach Document / Media">
+                <button
+                  type="button"
+                  className="input-attachment-btn"
+                  title="Attach File / Image / Document"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   <Paperclip size={18} />
+                </button>
+
+                <button
+                  type="button"
+                  className="input-attachment-btn"
+                  title="Quick Emojis"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                >
+                  <Smile size={18} color={showEmojiPicker ? "#10b981" : "#64748b"} />
                 </button>
 
                 <textarea
@@ -773,6 +918,25 @@ export default function WhatsAppInboxComponent() {
                     <span className="crm-type-badge">{activeConvDetail.customerType || "Wholesaler"}</span>
                     <span className="crm-stage-badge">{activeConvDetail.leadStatus || "New Lead"}</span>
                   </div>
+
+                  {activeConvDetail.customer?.id && (
+                    <div style={{ marginTop: "10px", textAlign: "center" }}>
+                      <Link
+                        href={`/customers/${activeConvDetail.customer.id}`}
+                        style={{
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          color: "#10b981",
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        View Full CRM Profile <ExternalLink size={12} />
+                      </Link>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -882,7 +1046,7 @@ export default function WhatsAppInboxComponent() {
       </div>
 
       {/* ----------------------------------------------------------------- */}
-      {/* MODAL 1: REPLY LIBRARY SEARCH */}
+      {/* MODALS 1, 2, 3, 4 */}
       {/* ----------------------------------------------------------------- */}
       {showReplyLibraryModal && (
         <div className="inbox-modal-backdrop" onClick={() => setShowReplyLibraryModal(false)}>
@@ -925,9 +1089,6 @@ export default function WhatsAppInboxComponent() {
         </div>
       )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* MODAL 2: CREATE QUOTATION */}
-      {/* ----------------------------------------------------------------- */}
       {showQuoteModal && (
         <div className="inbox-modal-backdrop" onClick={() => setShowQuoteModal(false)}>
           <div className="inbox-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -987,9 +1148,6 @@ export default function WhatsAppInboxComponent() {
         </div>
       )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* MODAL 3: SEND PAYMENT LINK */}
-      {/* ----------------------------------------------------------------- */}
       {showPaymentModal && (
         <div className="inbox-modal-backdrop" onClick={() => setShowPaymentModal(false)}>
           <div className="inbox-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -1020,9 +1178,6 @@ export default function WhatsAppInboxComponent() {
         </div>
       )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* MODAL 4: ASSIGN LEAD (MANUAL & ROUND ROBIN) */}
-      {/* ----------------------------------------------------------------- */}
       {showAssignModal && (
         <div className="inbox-modal-backdrop" onClick={() => setShowAssignModal(false)}>
           <div className="inbox-modal-content" onClick={(e) => e.stopPropagation()}>
@@ -1031,7 +1186,6 @@ export default function WhatsAppInboxComponent() {
               <button onClick={() => setShowAssignModal(false)}>×</button>
             </div>
             <div className="modal-form-body">
-              {/* Round-Robin Auto Assignment Tile */}
               <div
                 style={{
                   background: "#f0fdf4",
@@ -1128,4 +1282,3 @@ export default function WhatsAppInboxComponent() {
 function LockIcon({ size }: { size: number }) {
   return <ShieldCheck size={size} color="#f59e0b" />;
 }
-
