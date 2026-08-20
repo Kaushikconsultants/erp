@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   MessageSquare,
   Image as ImageIcon,
@@ -32,13 +32,12 @@ import {
   UserCheck,
   Bot,
   Sparkles,
-  Zap,
   Play,
   CheckCircle2,
-  Settings,
   RotateCcw,
   RotateCw,
   Maximize2,
+  Minimize2,
   ZoomIn,
   ZoomOut,
   X,
@@ -47,9 +46,9 @@ import {
   ChevronRight,
   Trash2,
   Copy,
-  Edit3
+  Focus
 } from "lucide-react";
-import { saveWhatsAppChatbotFlowAction, getWhatsAppChatbotFlows } from "@/app/actions/whatsAppPlatformActions";
+import { saveWhatsAppChatbotFlowAction } from "@/app/actions/whatsAppPlatformActions";
 import "@/components/whatsapp/ChatbotBuilder.css";
 
 // Block Library Categories
@@ -151,8 +150,8 @@ const initialNodes = [
     type: "TRIGGER",
     category: "trigger",
     title: "FLOW TRIGGER",
-    x: 40,
-    y: 120,
+    x: 30,
+    y: 100,
     triggerKeywords: "HI, HELLO, CATALOG, PRICING",
     text: "Incoming Message matches: HI, HELLO, CATALOG",
     outputPort: "node_start"
@@ -162,8 +161,8 @@ const initialNodes = [
     type: "START",
     category: "start",
     title: "Start / Auto Assign",
-    x: 340,
-    y: 120,
+    x: 330,
+    y: 100,
     text: "Assign via Round-Robin distribution",
     outputPort: "node_group4"
   },
@@ -172,8 +171,8 @@ const initialNodes = [
     type: "CHOICE",
     category: "choice",
     title: "Group 4 (Inquiry Menu)",
-    x: 640,
-    y: 120,
+    x: 630,
+    y: 100,
     imageUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=500",
     text: "Hi! Welcome to Espon Clothing. We are direct manufacturers of premium activewear & wholesale apparel. Please select your inquiry category below:",
     choices: [
@@ -187,8 +186,8 @@ const initialNodes = [
     type: "CRM",
     category: "crm",
     title: "Group 9 (Update Contact)",
-    x: 1000,
-    y: 60,
+    x: 970,
+    y: 40,
     text: "Update CRM Contact:\n• Lead Stage: Qualified Retailer\n• Assigned Salesperson: Ikra (Sales)",
     outputPort: "node_group12"
   },
@@ -197,8 +196,8 @@ const initialNodes = [
     type: "CRM",
     category: "crm",
     title: "Group 10 (Update Contact)",
-    x: 1000,
-    y: 220,
+    x: 970,
+    y: 200,
     text: "Update CRM Contact:\n• Lead Stage: Wholesale Inquiry\n• Priority: HIGH",
     outputPort: "node_group12"
   },
@@ -207,8 +206,8 @@ const initialNodes = [
     type: "CRM",
     category: "crm",
     title: "Group 11 (Update Contact)",
-    x: 1000,
-    y: 380,
+    x: 970,
+    y: 360,
     text: "Update CRM Contact:\n• Lead Stage: Personal Enquiry",
     outputPort: "node_group13"
   },
@@ -217,8 +216,8 @@ const initialNodes = [
     type: "END",
     category: "end",
     title: "Group 12 (Confirmation)",
-    x: 1340,
-    y: 100,
+    x: 1300,
+    y: 80,
     text: "OUR SENIOR EXPERT WILL BE CALLING YOU SHORTLY TO DISCUSS YOUR SPECIFIC REQUIREMENTS.\n\nWhile you wait, visit our website:",
     buttonText: "Visit Website 🌐",
     url: "https://espon.in"
@@ -228,8 +227,8 @@ const initialNodes = [
     type: "END",
     category: "end",
     title: "Group 13 (Confirmation)",
-    x: 1340,
-    y: 380,
+    x: 1300,
+    y: 360,
     text: "SEE IT IS EASY FOR SHARING YOUR DETAILS. For personal use visit our online store by clicking below:",
     buttonText: "Visit Store 🛍️",
     url: "https://espon.in/shop"
@@ -238,10 +237,13 @@ const initialNodes = [
 
 export default function WhatsAppChatbotBuilderPage() {
   const [nodes, setNodes] = useState<any[]>(initialNodes);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>("node_group4");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [openCategories, setOpenCategories] = useState<{ [key: string]: boolean }>({ Messages: true });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [blockSearch, setBlockSearch] = useState<string>("");
+
+  // Full Screen Studio State
+  const [isFullScreenStudio, setIsFullScreenStudio] = useState<boolean>(false);
 
   // Flow State & History Stack for Undo / Redo
   const [flowName, setFlowName] = useState<string>("espon new");
@@ -251,8 +253,9 @@ export default function WhatsAppChatbotBuilderPage() {
   const [historyStack, setHistoryStack] = useState<any[]>([initialNodes]);
   const [historyIndex, setHistoryIndex] = useState<number>(0);
 
-  // Zoom State
-  const [zoom, setZoom] = useState<number>(1.0);
+  // Zoom & Pan State
+  const [zoom, setZoom] = useState<number>(0.75); // Default zoom 75% to show all blocks cleanly on single screen
+  const [pan, setPan] = useState({ x: 0, y: 0 });
 
   // Phone Simulator Modal State
   const [showSimModal, setShowSimModal] = useState<boolean>(false);
@@ -262,7 +265,7 @@ export default function WhatsAppChatbotBuilderPage() {
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-  // Toggle Category Accordion (Accordion logic: single or multi toggle)
+  // Toggle Category Accordion
   const toggleCategory = (catName: string) => {
     setOpenCategories((prev) => ({
       ...prev,
@@ -368,6 +371,12 @@ export default function WhatsAppChatbotBuilderPage() {
     setSelectedNodeId(newNodeId);
   };
 
+  // Auto-Fit All Blocks on Single Screen
+  const handleFitAllNodesToScreen = () => {
+    setZoom(0.60); // Auto scale down so all 8+ nodes fit on 1 screen seamlessly
+    setPan({ x: 0, y: 0 });
+  };
+
   // Dynamic SVG Bezier Path Generator for Connections
   const getBezierPath = (sourceNode: any, targetNode: any, optionIndex?: number) => {
     if (!sourceNode || !targetNode) return "";
@@ -453,7 +462,7 @@ export default function WhatsAppChatbotBuilderPage() {
   const selectedNode = nodes.find((n) => n.id === selectedNodeId);
 
   return (
-    <div className="studio-container">
+    <div className={`studio-container ${isFullScreenStudio ? "fullscreen-studio" : ""}`}>
       {/* TOP CONTROL BAR */}
       <div className="studio-top-bar">
         <div className="studio-title-block">
@@ -473,6 +482,16 @@ export default function WhatsAppChatbotBuilderPage() {
         <div className="studio-actions-group">
           <button className="circular-history-btn" onClick={handleUndo} title="Undo"><RotateCcw size={15} /></button>
           <button className="circular-history-btn" onClick={handleRedo} title="Redo"><RotateCw size={15} /></button>
+
+          <button
+            className="studio-btn fullscreen-btn"
+            onClick={() => setIsFullScreenStudio(!isFullScreenStudio)}
+            title="Toggle Full Screen Studio Mode"
+          >
+            {isFullScreenStudio ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <span>{isFullScreenStudio ? "Exit Full Screen" : "Full Screen Studio"}</span>
+          </button>
+
           <button className="studio-btn test-btn" onClick={handleStartSimTest}>
             <Play size={14} /> Preview & Test
           </button>
@@ -561,90 +580,93 @@ export default function WhatsAppChatbotBuilderPage() {
           onMouseMove={handleMouseMoveCanvas}
           onMouseUp={handleMouseUpCanvas}
         >
-          {/* DYNAMIC SVG CONNECTOR WIRES */}
-          <svg className="canvas-svg-layer">
-            {/* Draw SVG Bezier Curves dynamically based on node positions */}
-            <path d={getBezierPath(nodes.find(n => n.id === "node_trigger"), nodes.find(n => n.id === "node_start"))} />
-            <path d={getBezierPath(nodes.find(n => n.id === "node_start"), nodes.find(n => n.id === "node_group4"))} />
+          {/* PAN-ZOOM INNER CONTAINER */}
+          <div
+            className="canvas-pan-zoom-container"
+            style={{
+              transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`
+            }}
+          >
+            {/* DYNAMIC SVG CONNECTOR WIRES */}
+            <svg className="canvas-svg-layer">
+              <path d={getBezierPath(nodes.find(n => n.id === "node_trigger"), nodes.find(n => n.id === "node_start"))} />
+              <path d={getBezierPath(nodes.find(n => n.id === "node_start"), nodes.find(n => n.id === "node_group4"))} />
 
-            {/* Dynamic Choice Port Curves */}
-            <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group9"), 0)} className="active-path" />
-            <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group10"), 1)} />
-            <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group11"), 2)} />
+              <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group9"), 0)} className="active-path" />
+              <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group10"), 1)} />
+              <path d={getBezierPath(nodes.find(n => n.id === "node_group4"), nodes.find(n => n.id === "node_group11"), 2)} />
 
-            {/* CRM to End Node Connections */}
-            <path d={getBezierPath(nodes.find(n => n.id === "node_group9"), nodes.find(n => n.id === "node_group12"))} />
-            <path d={getBezierPath(nodes.find(n => n.id === "node_group10"), nodes.find(n => n.id === "node_group12"))} />
-            <path d={getBezierPath(nodes.find(n => n.id === "node_group11"), nodes.find(n => n.id === "node_group13"))} />
+              <path d={getBezierPath(nodes.find(n => n.id === "node_group9"), nodes.find(n => n.id === "node_group12"))} />
+              <path d={getBezierPath(nodes.find(n => n.id === "node_group10"), nodes.find(n => n.id === "node_group12"))} />
+              <path d={getBezierPath(nodes.find(n => n.id === "node_group11"), nodes.find(n => n.id === "node_group13"))} />
 
-            {/* Dynamic Connections for Custom Added Nodes */}
+              {nodes.map((node) => {
+                if (node.outputPort) {
+                  const target = nodes.find((n) => n.id === node.outputPort);
+                  if (target) return <path key={`${node.id}_${target.id}`} d={getBezierPath(node, target)} />;
+                }
+                return null;
+              })}
+            </svg>
+
+            {/* Node Cards */}
             {nodes.map((node) => {
-              if (node.outputPort) {
-                const target = nodes.find((n) => n.id === node.outputPort);
-                if (target) return <path key={`${node.id}_${target.id}`} d={getBezierPath(node, target)} />;
-              }
-              return null;
-            })}
-          </svg>
-
-          {/* Node Cards */}
-          {nodes.map((node) => {
-            const isSelected = node.id === selectedNodeId;
-            return (
-              <div
-                key={node.id}
-                className={`canvas-node-card ${isSelected ? "selected" : ""}`}
-                style={{
-                  left: `${node.x * zoom}px`,
-                  top: `${node.y * zoom}px`,
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "top left"
-                }}
-                onMouseDown={(e) => handleMouseDownNode(e, node.id)}
-              >
-                <div className={`node-card-header ${node.category}`}>
-                  <span>{node.title}</span>
-                  <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                    <span title="Duplicate Node" onClick={(e) => handleDuplicateNode(node, e)} style={{ cursor: "pointer", display: "inline-flex" }}>
-                      <Copy size={12} />
-                    </span>
-                    <span title="Delete Node" onClick={(e) => handleDeleteNode(node.id, e)} style={{ cursor: "pointer", display: "inline-flex" }}>
-                      <Trash2 size={12} />
-                    </span>
-                  </div>
-                </div>
-
-                <div className="node-card-body">
-                  {node.imageUrl && (
-                    <img src={node.imageUrl} alt="Banner" className="node-banner-img" />
-                  )}
-                  {node.text && <p className="node-text-preview">{node.text}</p>}
-
-                  {/* Render Choices with Output Dots */}
-                  {node.choices && node.choices.length > 0 && (
-                    <div className="node-choices-list">
-                      {node.choices.map((c: any) => (
-                        <div key={c.id} className="node-choice-item">
-                          <span>{c.text}</span>
-                          <span className="choice-option-port" title="Connect Choice to Node" />
-                        </div>
-                      ))}
+              const isSelected = node.id === selectedNodeId;
+              return (
+                <div
+                  key={node.id}
+                  className={`canvas-node-card ${isSelected ? "selected" : ""}`}
+                  style={{
+                    left: `${node.x}px`,
+                    top: `${node.y}px`
+                  }}
+                  onMouseDown={(e) => handleMouseDownNode(e, node.id)}
+                >
+                  <div className={`node-card-header ${node.category}`}>
+                    <span>{node.title}</span>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <span title="Duplicate Node" onClick={(e) => handleDuplicateNode(node, e)} style={{ cursor: "pointer", display: "inline-flex" }}>
+                        <Copy size={12} />
+                      </span>
+                      <span title="Delete Node" onClick={(e) => handleDeleteNode(node.id, e)} style={{ cursor: "pointer", display: "inline-flex" }}>
+                        <Trash2 size={12} />
+                      </span>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="node-card-body">
+                    {node.imageUrl && (
+                      <img src={node.imageUrl} alt="Banner" className="node-banner-img" />
+                    )}
+                    {node.text && <p className="node-text-preview">{node.text}</p>}
+
+                    {node.choices && node.choices.length > 0 && (
+                      <div className="node-choices-list">
+                        {node.choices.map((c: any) => (
+                          <div key={c.id} className="node-choice-item">
+                            <span>{c.text}</span>
+                            <span className="choice-option-port" title="Connect Choice to Node" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {node.type !== "TRIGGER" && <span className="node-input-port" />}
+                  {node.type !== "END" && <span className="node-output-port" />}
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Input & Output Ports */}
-                {node.type !== "TRIGGER" && <span className="node-input-port" />}
-                {node.type !== "END" && <span className="node-output-port" />}
-              </div>
-            );
-          })}
-
-          {/* Zoom Controls */}
+          {/* Floating Zoom Controls & Fit All Button */}
           <div className="canvas-zoom-controls">
-            <button className="zoom-btn" onClick={() => setZoom(Math.min(1.5, zoom + 0.1))} title="Zoom In"><ZoomIn size={16} /></button>
-            <button className="zoom-btn" onClick={() => setZoom(Math.max(0.6, zoom - 0.1))} title="Zoom Out"><ZoomOut size={16} /></button>
-            <button className="zoom-btn" onClick={() => setZoom(1.0)} title="Fit Screen"><Maximize2 size={15} /></button>
+            <button className="zoom-btn" onClick={() => setZoom(Math.min(1.4, zoom + 0.1))} title="Zoom In (+)"><ZoomIn size={16} /></button>
+            <button className="zoom-btn" onClick={() => setZoom(Math.max(0.4, zoom - 0.1))} title="Zoom Out (-)"><ZoomOut size={16} /></button>
+            <button className="zoom-btn" onClick={handleFitAllNodesToScreen} title="Fit All Blocks to Single Screen"><Focus size={16} color="#3b82f6" /></button>
+            <button className="zoom-btn" onClick={() => setIsFullScreenStudio(!isFullScreenStudio)} title="Toggle Full Screen Mode">
+              {isFullScreenStudio ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
           </div>
 
           {/* Minimap Box */}
@@ -661,12 +683,14 @@ export default function WhatsAppChatbotBuilderPage() {
           </div>
         </div>
 
-        {/* NODE PROPERTY EDITOR SIDE DRAWER */}
+        {/* NODE PROPERTY EDITOR SIDE DRAWER (DOCKED DYNAMIC FLEX PANEL) */}
         {selectedNode && (
           <div className="node-editor-drawer">
             <div className="drawer-header">
               <h3>Edit Block: {selectedNode.title}</h3>
-              <button onClick={() => setSelectedNodeId(null)} style={{ background: "none", border: "none", cursor: "pointer" }}>×</button>
+              <button onClick={() => setSelectedNodeId(null)} style={{ background: "none", border: "none", cursor: "pointer" }}>
+                <X size={18} color="#64748b" />
+              </button>
             </div>
 
             <div>

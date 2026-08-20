@@ -11,6 +11,19 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   position: relative;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Fullscreen Studio Mode */
+.studio-container.fullscreen-studio {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  border-radius: 0 !important;
+  border: none !important;
 }
 
 /* ----------------------------------------------------------------- */
@@ -116,6 +129,18 @@
   border-color: #a7f3d0;
 }
 
+.studio-btn.fullscreen-btn {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.studio-btn.fullscreen-btn:hover {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
 .circular-history-btn {
   width: 32px;
   height: 32px;
@@ -136,7 +161,7 @@
 }
 
 /* ----------------------------------------------------------------- */
-/* MAIN STUDIO BODY (LIBRARY + CANVAS) */
+/* MAIN STUDIO BODY (LIBRARY + CANVAS + EDIT DRAWER) */
 /* ----------------------------------------------------------------- */
 .studio-body {
   display: flex;
@@ -149,8 +174,8 @@
 /* LEFT SIDEBAR: BLOCK LIBRARY ACCORDION */
 /* ----------------------------------------------------------------- */
 .block-library-sidebar {
-  width: 270px;
-  min-width: 270px;
+  width: 260px;
+  min-width: 260px;
   background: #ffffff;
   border-right: 1px solid #eaecf0;
   display: flex;
@@ -162,8 +187,8 @@
 }
 
 .block-library-sidebar.collapsed {
-  width: 50px;
-  min-width: 50px;
+  width: 48px;
+  min-width: 48px;
 }
 
 .library-header {
@@ -288,13 +313,24 @@
   cursor: grabbing;
 }
 
+/* Inner Pan-Zoom Container */
+.canvas-pan-zoom-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  transition: transform 0.1s ease-out;
+}
+
 /* SVG Connection Overlay Layer */
 .canvas-svg-layer {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 2500px;
+  height: 2500px;
   pointer-events: none;
   z-index: 1;
 }
@@ -340,8 +376,7 @@
 
 .canvas-node-card.selected {
   border-color: #10b981;
-  ring: 2px #10b981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
 }
 
 .node-card-header {
@@ -482,22 +517,23 @@
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   z-index: 5;
 }
 
 .zoom-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border: none;
   background: transparent;
   color: #475569;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
+  transition: all 0.15s;
 }
 
 .zoom-btn:hover {
@@ -510,12 +546,12 @@
   position: absolute;
   bottom: 20px;
   right: 20px;
-  width: 140px;
-  height: 90px;
-  background: rgba(255, 255, 255, 0.9);
+  width: 150px;
+  height: 95px;
+  background: rgba(255, 255, 255, 0.95);
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   z-index: 5;
   padding: 6px;
   display: flex;
@@ -539,22 +575,22 @@
   border-radius: 2px;
 }
 
-/* Node Editor Drawer */
+/* Node Editor Drawer (Docked/Collapsible, non-overlapping) */
 .node-editor-drawer {
-  position: absolute;
-  right: 0;
-  top: 0;
   width: 320px;
+  min-width: 320px;
   height: 100%;
   background: #ffffff;
   border-left: 1px solid #eaecf0;
   box-shadow: -4px 0 20px rgba(0, 0, 0, 0.05);
-  z-index: 9;
+  z-index: 8;
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
   overflow-y: auto;
+  transition: all 0.2s ease-in-out;
+  flex-shrink: 0;
 }
 
 .drawer-header {
@@ -584,7 +620,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 999999;
 }
 
 .phone-mockup-frame {

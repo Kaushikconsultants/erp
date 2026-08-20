@@ -20,7 +20,8 @@ import {
   PieChart,
   CreditCard,
   ShoppingBag,
-  Settings
+  Settings,
+  Maximize2
 } from "lucide-react";
 import "./WhatsAppHeaderNav.css";
 
@@ -130,6 +131,22 @@ export default function WhatsAppHeaderNav() {
               </Link>
             );
           })}
+
+          <button
+            onClick={() => {
+              if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+              } else {
+                document.exitFullscreen().catch(() => {});
+              }
+            }}
+            className="wa-subnav-item"
+            style={{ marginLeft: "auto", background: "#f8fafc", border: "1px solid #e2e8f0", cursor: "pointer", color: "#3b82f6", fontWeight: 700 }}
+            title="Toggle Browser Full Screen Mode"
+          >
+            <Maximize2 size={15} />
+            <span>Full Screen Mode</span>
+          </button>
         </nav>
       </div>
     </div>
