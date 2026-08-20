@@ -72,19 +72,27 @@ export async function getWhatsAppConversations(filters: ConversationFilterOption
       where.customerType = filters.customerType;
     }
 
-    // Role-Based Access Scoping & Folder Tab Filtering:
-    if (filters.tab === 'unassigned') {
-      where.assignedEmployeeId = null;
-    } else if (!isAdmin) {
-      if (currentEmployee) {
-        where.assignedEmployeeId = currentEmployee.id;
+    // Strict Role-Based Access Scoping:
+    // Only Admin/SuperAdmin/Manager can see all chats. Salespersons can ONLY see their assigned chats!
+    if (!isAdmin) {
+      let empId = currentEmployee?.id;
+      if (!empId && session?.user?.email) {
+        const empByEmail = await prisma.employee.findFirst({ where: { user: { email: session.user.email } } });
+        if (empByEmail) empId = empByEmail.id;
+      }
+
+      if (empId) {
+        where.assignedEmployeeId = empId;
       } else {
-        where.id = '00000000-0000-0000-0000-000000000000'; // Return empty if sales user has no employee
+        // Fallback: If no employee record found for sales user, return empty list
+        where.assignedEmployeeId = "00000000-0000-0000-0000-000000000000";
       }
     } else {
-      // Admin / Manager View: Can see all leads, or filter by specific team member
+      // Admin / Super Admin / Manager View: Can see all chats, or filter by team member or tab
       if (filters.filterEmployeeId) {
         where.assignedEmployeeId = filters.filterEmployeeId;
+      } else if (filters.tab === 'unassigned') {
+        where.assignedEmployeeId = null;
       } else if (filters.tab === 'assigned_to_me' && currentEmployee) {
         where.assignedEmployeeId = currentEmployee.id;
       } else if (filters.tab === 'assigned') {
@@ -190,6 +198,21 @@ export async function getWhatsAppConversationById(id: string) {
 
     if (!conversation) {
       return { success: false, error: "Conversation not found" };
+    }
+
+    const session = await getServerSession(authOptions);
+    const userRole = (session?.user as any)?.role || 'SALES';
+    const userId = (session?.user as any)?.id;
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'MANAGER';
+
+    if (!isAdmin) {
+      let currentEmp = userId ? await prisma.employee.findUnique({ where: { userId } }) : null;
+      if (!currentEmp && session?.user?.email) {
+        currentEmp = await prisma.employee.findFirst({ where: { user: { email: session.user.email } } });
+      }
+      if (currentEmp && conversation.assignedEmployeeId !== currentEmp.id) {
+        return { success: false, error: "Access Denied: Salespersons can only view their assigned chats." };
+      }
     }
 
     // Reset unread count when viewed
