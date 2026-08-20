@@ -21,7 +21,9 @@ import {
   CreditCard,
   ShoppingBag,
   Settings,
-  Maximize2
+  Maximize2,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import "./WhatsAppHeaderNav.css";
 
@@ -49,6 +51,11 @@ import { getWhatsAppDashboardMetrics } from "@/app/actions/whatsAppPlatformActio
 
 export default function WhatsAppHeaderNav() {
   const pathname = usePathname();
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const [isMouseDown, setIsMouseDown] = React.useState(false);
+  const [startX, setStartX] = React.useState(0);
+  const [scrollLeftState, setScrollLeftState] = React.useState(0);
+
   const [accountInfo, setAccountInfo] = React.useState<any>({
     status: "NOT CONNECTED (Setup Required)",
     phoneNumber: "Not Configured",
@@ -72,6 +79,47 @@ export default function WhatsAppHeaderNav() {
       return true;
     }
     return pathname.startsWith(path);
+  };
+
+  const handleScrollLeft = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: -240, behavior: "smooth" });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: 240, behavior: "smooth" });
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft += e.deltaY;
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsMouseDown(true);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeftState(scrollRef.current.scrollLeft);
+  };
+
+  const handleMouseLeave = () => {
+    setIsMouseDown(false);
+  };
+
+  const handleMouseUp = () => {
+    setIsMouseDown(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isMouseDown || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    scrollRef.current.scrollLeft = scrollLeftState - walk;
   };
 
   return (
@@ -114,40 +162,58 @@ export default function WhatsAppHeaderNav() {
         </Link>
       </div>
 
-      <div className="wa-subnav-scroll-wrapper">
-        <nav className="wa-subnav-bar">
-          {subNavItems.map((item) => {
-            const Icon = item.icon;
-            const active = isItemActive(item.path);
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                className={`wa-subnav-item ${active ? "active" : ""} ${item.highlight ? "highlight" : ""}`}
-              >
-                <Icon size={16} className="wa-nav-icon" />
-                <span>{item.name}</span>
-                {item.badge && <span className="wa-nav-badge">{item.badge}</span>}
-              </Link>
-            );
-          })}
+      <div className="wa-subnav-outer-container">
+        <button className="wa-nav-arrow-btn left" onClick={handleScrollLeft} title="Scroll Left">
+          <ChevronLeft size={16} />
+        </button>
 
-          <button
-            onClick={() => {
-              if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(() => {});
-              } else {
-                document.exitFullscreen().catch(() => {});
-              }
-            }}
-            className="wa-subnav-item"
-            style={{ marginLeft: "auto", background: "#f8fafc", border: "1px solid #e2e8f0", cursor: "pointer", color: "#3b82f6", fontWeight: 700 }}
-            title="Toggle Browser Full Screen Mode"
-          >
-            <Maximize2 size={15} />
-            <span>Full Screen Mode</span>
-          </button>
-        </nav>
+        <div
+          className="wa-subnav-scroll-wrapper"
+          ref={scrollRef}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseLeave={handleMouseLeave}
+          onMouseUp={handleMouseUp}
+          onMouseMove={handleMouseMove}
+        >
+          <nav className="wa-subnav-bar">
+            {subNavItems.map((item) => {
+              const Icon = item.icon;
+              const active = isItemActive(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  className={`wa-subnav-item ${active ? "active" : ""} ${item.highlight ? "highlight" : ""}`}
+                >
+                  <Icon size={16} className="wa-nav-icon" />
+                  <span>{item.name}</span>
+                  {item.badge && <span className="wa-nav-badge">{item.badge}</span>}
+                </Link>
+              );
+            })}
+
+            <button
+              onClick={() => {
+                if (!document.fullscreenElement) {
+                  document.documentElement.requestFullscreen().catch(() => {});
+                } else {
+                  document.exitFullscreen().catch(() => {});
+                }
+              }}
+              className="wa-subnav-item"
+              style={{ marginLeft: "auto", background: "#f8fafc", border: "1px solid #e2e8f0", cursor: "pointer", color: "#3b82f6", fontWeight: 700 }}
+              title="Toggle Browser Full Screen Mode"
+            >
+              <Maximize2 size={15} />
+              <span>Full Screen Mode</span>
+            </button>
+          </nav>
+        </div>
+
+        <button className="wa-nav-arrow-btn right" onClick={handleScrollRight} title="Scroll Right">
+          <ChevronRight size={16} />
+        </button>
       </div>
     </div>
   );

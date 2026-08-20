@@ -94,14 +94,68 @@
   border-radius: 10px;
 }
 
+.wa-subnav-outer-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.wa-nav-arrow-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  z-index: 2;
+}
+
+.wa-nav-arrow-btn:hover {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+}
+
 .wa-subnav-scroll-wrapper {
+  flex: 1;
   overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  scroll-behavior: smooth;
+  cursor: grab;
+  padding-bottom: 4px;
+}
+
+.wa-subnav-scroll-wrapper:active {
+  cursor: grabbing;
 }
 
 .wa-subnav-scroll-wrapper::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+  display: block;
+}
+
+.wa-subnav-scroll-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.wa-subnav-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.wa-subnav-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
 }
 
 .wa-subnav-bar {
