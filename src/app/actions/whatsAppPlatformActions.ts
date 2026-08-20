@@ -476,7 +476,7 @@ export async function generateWhatsAppPaymentLinkAction(data: {
 // ---------------------------------------------------------
 
 // Helper to check if real Meta WhatsApp API credentials are set up
-export async function isWhatsAppApiConfigured(account: any) {
+function isWhatsAppApiConfigured(account: any) {
   const envToken = process.env.META_WHATSAPP_TOKEN;
   const dbToken = account?.accessToken;
   const phoneId = account?.phoneId || process.env.META_PHONE_NUMBER_ID;

@@ -49,10 +49,10 @@ export default function WhatsAppAPISettingsPage() {
     });
 
     if (res.success) {
-      setIsConnected(res.isConnected || false);
+      setIsConnected(Boolean(res.isConnected));
       setResultMsg({
-        success: res.isConnected || false,
-        text: res.message
+        success: Boolean(res.isConnected),
+        text: res.message || "Credentials updated."
       });
     } else {
       setResultMsg({
