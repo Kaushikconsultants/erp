@@ -22,7 +22,8 @@ import {
   ClipboardList,
   CalendarDays,
   ShieldCheck,
-  Zap
+  Zap,
+  MessageSquare
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -89,6 +90,16 @@ const Sidebar = ({
             </Link>
           </div>
         )}
+
+        {/* WHATSAPP PLATFORM SECTION */}
+        <div className="nav-section">
+          <p className="nav-section-title">WHATSAPP AUTOMATION</p>
+          <Link href="/whatsapp/inbox" className={`nav-item ${isActive('/whatsapp') ? 'active' : ''}`}>
+            <MessageSquare size={20} style={{ color: '#10b981' }} />
+            <span>WhatsApp Inbox</span>
+            <span style={{ marginLeft: 'auto', background: '#10b981', color: '#fff', fontSize: '11px', fontWeight: 600, padding: '2px 6px', borderRadius: '10px' }}>CRM</span>
+          </Link>
+        </div>
 
         {/* CRM SECTION */}
         {(canAccess('customers') || canAccess('calls_tasks')) && (

@@ -93,7 +93,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
   }
 
   try {
-    const [customers, quotations, orders, products] = await Promise.all([
+    const [customers, quotations, orders, products, whatsappConvs] = await Promise.all([
       prisma.customer.findMany({
         where: customerWhere,
         take: 5,
@@ -119,10 +119,32 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
         },
         take: 4,
         select: { id: true, name: true, articleNumber: true, sellingPrice: true }
+      }),
+      prisma.whatsAppConversation.findMany({
+        where: {
+          OR: [
+            { customer: { businessName: { contains: cleanQuery, mode: 'insensitive' } } },
+            { customer: { contactPerson: { contains: cleanQuery, mode: 'insensitive' } } },
+            { lastMessageText: { contains: cleanQuery, mode: 'insensitive' } }
+          ]
+        },
+        take: 4,
+        select: { id: true, lastMessageText: true, customer: { select: { businessName: true, contactPerson: true } } }
       })
     ]);
 
     const results: SearchResultItem[] = [];
+
+    whatsappConvs.forEach(wa => {
+      results.push({
+        id: wa.id,
+        title: `WhatsApp Chat: ${wa.customer?.businessName || wa.customer?.contactPerson}`,
+        subtitle: `Last msg: ${wa.lastMessageText?.slice(0, 50) || '-'}`,
+        type: 'Lead',
+        url: `/whatsapp/inbox`,
+        badgeColor: '#10b981'
+      });
+    });
 
     customers.forEach(c => {
       results.push({

@@ -88,6 +88,7 @@ model Employee {
   round1Candidates Candidate[] @relation("CandidateRound1Interviewer")
   round2Candidates Candidate[] @relation("CandidateRound2Interviewer")
   round3Candidates Candidate[] @relation("CandidateRound3Interviewer")
+  assignedWhatsAppConversations WhatsAppConversation[] @relation("AssignedAgent")
 }
 
 model Team {
@@ -96,6 +97,7 @@ model Team {
   description String?
   leaderId    String?  @unique
   members     Employee[]
+  whatsAppConversations WhatsAppConversation[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -165,6 +167,10 @@ model Customer {
   orders          Order[]
   quotations      Quotation[]
   invoices        Invoice[]
+
+  whatsAppConversations WhatsAppConversation[]
+  whatsAppPaymentLinks  WhatsAppPaymentLink[]
+  whatsAppFormSubmissions WhatsAppFormSubmission[]
 }
 
 // ---------------------------------------------------------
@@ -870,6 +876,229 @@ model CandidateRoundSummary {
   feedbackNotes       String?
   completedAt         DateTime  @default(now())
 }
+
+// ---------------------------------------------------------
+// WhatsApp Business Automation & CRM Platform Models
+// ---------------------------------------------------------
+
+model WhatsAppAccount {
+  id                 String   @id @default(uuid())
+  name               String   // e.g., "Main Sales", "Customer Support"
+  phoneNumber        String   // e.g., "+91 9876543210"
+  phoneId            String?  // Meta WhatsApp Phone ID
+  businessAccountId  String?  // Meta WABA ID
+  businessManagerId  String?  // Meta Business Manager ID
+  accessToken        String?  // Masked or encrypted token
+  webhookVerifyToken String?
+  status             String   @default("CONNECTED") // CONNECTED, DISCONNECTED, VERIFICATION_REQUIRED, RESTRICTED
+  dailyLimit         String   @default("10K per day")
+  usedToday          Int      @default(1250)
+  qualityRating      String   @default("GREEN") // GREEN, YELLOW, RED
+  isDefault          Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  conversations      WhatsAppConversation[]
+}
+
+model WhatsAppConversation {
+  id                 String   @id @default(uuid())
+  accountId          String
+  account            WhatsAppAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  
+  customerId         String
+  customer           Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  assignedEmployeeId String?
+  assignedEmployee   Employee? @relation("AssignedAgent", fields: [assignedEmployeeId], references: [id])
+
+  teamId             String?
+  team               Team?    @relation(fields: [teamId], references: [id])
+
+  status             String   @default("OPEN") // OPEN, CLOSED, SNOOZED, PENDING
+  priority           String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  leadStatus         String   @default("New Lead") // New Lead, Contacted, Qualified, Negotiation, Won, Lost
+  orderStatus        String?  // Processing, Packed, Dispatched, Delivered, Payment Pending
+  customerType       String   @default("Wholesale") // Retailer, Wholesaler, Distributor, VIP
+  
+  aiHandled          Boolean  @default(true)
+  aiConfidence       Float    @default(0.92)
+  unreadCount        Int      @default(0)
+  
+  lastMessageText    String?
+  lastMessageAt      DateTime @default(now())
+  tags               String?  // Comma separated tags e.g. "Hot Lead, Follow-up"
+  
+  snoozedUntil       DateTime?
+  followUpDueAt      DateTime?
+  slaStatus          String   @default("GREEN") // GREEN, ORANGE, RED
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  messages           WhatsAppMessage[]
+  paymentLinks       WhatsAppPaymentLink[]
+  formSubmissions    WhatsAppFormSubmission[]
+}
+
+model WhatsAppMessage {
+  id               String   @id @default(uuid())
+  conversationId   String
+  conversation     WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderType       String   // "CUSTOMER", "AGENT", "SYSTEM", "BOT", "AI"
+  senderId         String?  // Agent User/Employee ID if applicable
+  senderName       String?  
+  
+  messageType      String   @default("TEXT") // TEXT, IMAGE, VIDEO, DOCUMENT, AUDIO, LOCATION, CONTACT, TEMPLATE, QUICK_REPLY, CATALOG, PAYMENT_LINK, BUTTONS, LIST
+  content          String   // Message text or caption
+  mediaUrl         String?
+  mediaType        String?  // image/png, application/pdf, audio/ogg
+  mediaFilename    String?
+
+  templateId       String?
+  metadata         String?  // JSON string storing interactive data (buttons, product IDs, payment IDs)
+  
+  status           String   @default("SENT") // SENT, DELIVERED, READ, FAILED, RECEIVED
+  isInternalNote   Boolean  @default(false)
+  replyToMessageId String?
+  
+  sentAt           DateTime @default(now())
+  deliveredAt      DateTime?
+  readAt           DateTime?
+}
+
+model WhatsAppTemplate {
+  id               String   @id @default(uuid())
+  name             String   // e.g., "order_confirmation_v2"
+  category         String   @default("MARKETING") // MARKETING, UTILITY, AUTHENTICATION
+  language         String   @default("en_US")
+  status           String   @default("APPROVED") // APPROVED, PENDING, REJECTED, PAUSED
+  headerType       String   @default("NONE") // NONE, TEXT, IMAGE, VIDEO, DOCUMENT
+  headerContent    String?
+  bodyText         String   // Standard body text with {{customer_name}}, {{order_number}}, etc.
+  footerText       String?
+  buttons          String?  // JSON array of buttons (CTA, QUICK_REPLY)
+  variables        String?  // JSON array of dynamic CRM fields
+  rejectionReason  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model WhatsAppReplyItem {
+  id          String   @id @default(uuid())
+  title       String
+  category    String   @default("Quick Reply") // Quick Reply, Pitch, Catalog, Payment, Support, Dispatch
+  shortcut    String   // e.g. "/catalog", "/price", "/payment", "/followup"
+  content     String
+  variables   String?  // JSON string
+  isPersonal  Boolean  @default(false)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WhatsAppAutomationRule {
+  id           String   @id @default(uuid())
+  name         String
+  trigger      String   // NEW_MESSAGE, NEW_LEAD, KEYWORD_RECEIVED, PAYMENT_RECEIVED, ORDER_CREATED, NO_RESPONSE_24H
+  conditions   String?  // JSON string (customerType, stage, tag, orderValue, location)
+  actions      String   // JSON string (sendMessage, assignAgent, addTag, changeStage, createFollowUp, createOrder, sendPaymentLink)
+  delayMinutes Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model WhatsAppChatbotFlow {
+  id             String   @id @default(uuid())
+  name           String
+  triggerKeyword String?
+  nodesJson      String   // Detailed node tree (Start, Message, Question, Buttons, Catalog, Payment, CRM action, Transfer)
+  isActive       Boolean  @default(true)
+  executionCount Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model WhatsAppForm {
+  id             String   @id @default(uuid())
+  title          String
+  description    String?
+  fieldsJson     String   // Dynamic CRM field mapping (Name, Phone, Email, Company, Requirement, Quantity, Budget, GST)
+  submitMessage  String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  submissions    WhatsAppFormSubmission[]
+}
+
+model WhatsAppFormSubmission {
+  id             String   @id @default(uuid())
+  formId         String
+  form           WhatsAppForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  
+  conversationId String?
+  conversation   WhatsAppConversation? @relation(fields: [conversationId], references: [id])
+
+  customerId     String?
+  customer       Customer? @relation(fields: [customerId], references: [id])
+
+  dataJson       String
+  createdAt      DateTime @default(now())
+}
+
+model WhatsAppCampaign {
+  id              String   @id @default(uuid())
+  name            String
+  templateId      String
+  segmentId       String?
+  scheduledAt     DateTime?
+  status          String   @default("COMPLETED") // DRAFT, SCHEDULED, RUNNING, COMPLETED, CANCELLED
+  totalAudience   Int      @default(0)
+  sentCount       Int      @default(0)
+  deliveredCount  Int      @default(0)
+  readCount       Int      @default(0)
+  repliedCount    Int      @default(0)
+  failedCount     Int      @default(0)
+  leadsGenerated  Int      @default(0)
+  ordersGenerated Int      @default(0)
+  revenueGenerated Float   @default(0)
+  cost            Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model WhatsAppSegment {
+  id           String   @id @default(uuid())
+  name         String   // High Value, Inactive 90 Days, New Leads, Repeat Buyers, Wholesale
+  criteriaJson String
+  contactCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model WhatsAppPaymentLink {
+  id             String   @id @default(uuid())
+  conversationId String
+  conversation   WhatsAppConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  orderId        String?
+  invoiceId      String?
+  amount         Float
+  currency       String   @default("INR")
+  paymentUrl     String
+  status         String   @default("PENDING") // PENDING, PAID, FAILED, EXPIRED
+  transactionId  String?
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 
 
 

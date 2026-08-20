@@ -1,0 +1,915 @@
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Search,
+  Filter,
+  MessageSquare,
+  UserCheck,
+  UserX,
+  Users,
+  Star,
+  CheckCheck,
+  Send,
+  Paperclip,
+  Smile,
+  Phone,
+  Video,
+  ChevronRight,
+  ChevronLeft,
+  Tag,
+  Clock,
+  DollarSign,
+  FileText,
+  ShoppingBag,
+  Calendar,
+  AlertCircle,
+  ShieldCheck,
+  Bot,
+  Zap,
+  MoreVertical,
+  PlusCircle,
+  FileCode,
+  CreditCard,
+  Edit3,
+  Check,
+  ArrowRight,
+  Building,
+  MapPin,
+  Mail,
+  User,
+  Sparkles,
+  RefreshCw,
+  X,
+  BookOpen
+} from "lucide-react";
+import {
+  getWhatsAppConversations,
+  getWhatsAppConversationById,
+  sendWhatsAppMessageAction,
+  updateCRMProfileFromWhatsApp,
+  createWhatsAppQuotation,
+  generateWhatsAppPaymentLinkAction
+} from "@/app/actions/whatsAppPlatformActions";
+import "./WhatsAppInbox.css";
+
+export default function WhatsAppInboxComponent() {
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+  const [activeConvDetail, setActiveConvDetail] = useState<any | null>(null);
+  const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
+
+  // Sidebar & Panel Collapse States
+  const [isLeftCollapsed, setIsLeftCollapsed] = useState<boolean>(false);
+  const [isRightCollapsed, setIsRightCollapsed] = useState<boolean>(false);
+
+  // Filtering & Search States
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [activeNavTab, setActiveNavTab] = useState<string>("all");
+  const [leadStatusFilter, setLeadStatusFilter] = useState<string>("");
+  const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
+
+  // Messaging Input State
+  const [messageInput, setMessageInput] = useState<string>("");
+  const [isInternalNote, setIsInternalNote] = useState<boolean>(false);
+  const [sendingMsg, setSendingMsg] = useState<boolean>(false);
+
+  // Quick Reply Command Modal State
+  const [showReplyLibraryModal, setShowReplyLibraryModal] = useState<boolean>(false);
+  const [showQuoteModal, setShowQuoteModal] = useState<boolean>(false);
+  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+
+  // Quote Form State
+  const [quoteItems, setQuoteItems] = useState([
+    { name: "Cotton Polo T-Shirt (ESP-902)", quantity: 200, rate: 290 },
+    { name: "Slim Fit Chino Pants (ESP-404)", quantity: 100, rate: 450 }
+  ]);
+
+  // Payment Form State
+  const [paymentAmount, setPaymentAmount] = useState<number>(45000);
+  const [paymentDesc, setPaymentDesc] = useState<string>("Advance Payment for Order #ORD-1092");
+
+  // CRM Inline Edit States
+  const [isEditingCRM, setIsEditingCRM] = useState<boolean>(false);
+  const [crmEditData, setCrmEditData] = useState<any>({});
+
+  const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  // Fetch Conversation List
+  const fetchConversationsList = async () => {
+    setLoadingConvs(true);
+    const res = await getWhatsAppConversations({
+      search: searchQuery,
+      tab: activeNavTab as any,
+      unreadOnly,
+      leadStatus: leadStatusFilter || undefined
+    });
+    if (res.success && res.conversations) {
+      setConversations(res.conversations);
+      if (res.conversations.length > 0 && !selectedConvId) {
+        setSelectedConvId(res.conversations[0].id);
+      }
+    }
+    setLoadingConvs(false);
+  };
+
+  useEffect(() => {
+    fetchConversationsList();
+  }, [searchQuery, activeNavTab, unreadOnly, leadStatusFilter]);
+
+  // Fetch Selected Conversation Detail
+  const fetchConversationDetail = async (id: string) => {
+    setLoadingDetail(true);
+    const res = await getWhatsAppConversationById(id);
+    if (res.success && res.conversation) {
+      setActiveConvDetail(res.conversation);
+      setCrmEditData({
+        businessName: res.conversation.customer?.businessName || "",
+        contactPerson: res.conversation.customer?.contactPerson || "",
+        mobile: res.conversation.customer?.mobile || "",
+        email: res.conversation.customer?.email || "",
+        city: res.conversation.customer?.city || "",
+        state: res.conversation.customer?.state || "",
+        customerType: res.conversation.customerType || "Wholesaler",
+        leadStage: res.conversation.leadStatus || "New Lead",
+        priority: res.conversation.priority || "MEDIUM",
+        tags: res.conversation.tags || ""
+      });
+    }
+    setLoadingDetail(false);
+  };
+
+  useEffect(() => {
+    if (selectedConvId) {
+      fetchConversationDetail(selectedConvId);
+    }
+  }, [selectedConvId]);
+
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [activeConvDetail?.messages]);
+
+  // Handle Send Message
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!messageInput.trim() || !selectedConvId) return;
+
+    setSendingMsg(true);
+    const textToSend = messageInput;
+    setMessageInput("");
+
+    const res = await sendWhatsAppMessageAction({
+      conversationId: selectedConvId,
+      content: textToSend,
+      isInternalNote,
+      senderType: "AGENT",
+      senderName: "Sales Rep"
+    });
+
+    if (res.success) {
+      await fetchConversationDetail(selectedConvId);
+      await fetchConversationsList();
+    }
+    setSendingMsg(false);
+  };
+
+  // Handle Quick Command Shortcut Insert
+  const applyQuickShortcut = (text: string) => {
+    setMessageInput(text);
+    setShowReplyLibraryModal(false);
+  };
+
+  // Save CRM Inline Profile Edits
+  const handleSaveCRMProfile = async () => {
+    if (!selectedConvId || !activeConvDetail?.customer?.id) return;
+    const res = await updateCRMProfileFromWhatsApp({
+      conversationId: selectedConvId,
+      customerId: activeConvDetail.customer.id,
+      ...crmEditData
+    });
+    if (res.success) {
+      setIsEditingCRM(false);
+      await fetchConversationDetail(selectedConvId);
+      await fetchConversationsList();
+    }
+  };
+
+  // Handle Create Quotation Submit
+  const handleCreateQuoteSubmit = async () => {
+    if (!selectedConvId || !activeConvDetail?.customer?.id) return;
+    const res = await createWhatsAppQuotation({
+      conversationId: selectedConvId,
+      customerId: activeConvDetail.customer.id,
+      items: quoteItems
+    });
+    if (res.success) {
+      setShowQuoteModal(false);
+      await fetchConversationDetail(selectedConvId);
+      await fetchConversationsList();
+    }
+  };
+
+  // Handle Send Payment Link Submit
+  const handleSendPaymentSubmit = async () => {
+    if (!selectedConvId || !activeConvDetail?.customer?.id) return;
+    const res = await generateWhatsAppPaymentLinkAction({
+      conversationId: selectedConvId,
+      customerId: activeConvDetail.customer.id,
+      amount: paymentAmount,
+      description: paymentDesc
+    });
+    if (res.success) {
+      setShowPaymentModal(false);
+      await fetchConversationDetail(selectedConvId);
+      await fetchConversationsList();
+    }
+  };
+
+  return (
+    <div className="inbox-container">
+      {/* ----------------------------------------------------------------- */}
+      {/* LEFT COLUMN: INBOX NAVIGATION & CONVERSATION LIST */}
+      {/* ----------------------------------------------------------------- */}
+      <div className={`inbox-left-panel ${isLeftCollapsed ? "collapsed" : ""}`}>
+        {/* Navigation Sidebar Header */}
+        <div className="left-panel-header">
+          <div className="left-panel-title-row">
+            <span className="left-panel-title">WhatsApp Inbox</span>
+            <button
+              className="panel-toggle-btn"
+              onClick={() => setIsLeftCollapsed(!isLeftCollapsed)}
+              title={isLeftCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isLeftCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+            </button>
+          </div>
+
+          {!isLeftCollapsed && (
+            <>
+              {/* Folder Tabs */}
+              <div className="left-folder-tabs">
+                <button
+                  className={`folder-tab ${activeNavTab === "all" ? "active" : ""}`}
+                  onClick={() => setActiveNavTab("all")}
+                >
+                  <MessageSquare size={14} />
+                  <span>All</span>
+                </button>
+                <button
+                  className={`folder-tab ${activeNavTab === "assigned_to_me" ? "active" : ""}`}
+                  onClick={() => setActiveNavTab("assigned_to_me")}
+                >
+                  <UserCheck size={14} />
+                  <span>Assigned</span>
+                </button>
+                <button
+                  className={`folder-tab ${activeNavTab === "unassigned" ? "active" : ""}`}
+                  onClick={() => setActiveNavTab("unassigned")}
+                >
+                  <UserX size={14} />
+                  <span>Unassigned</span>
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="inbox-search-box">
+                <Search size={16} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Search chats, phone, company..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searchQuery && (
+                  <button className="clear-search-btn" onClick={() => setSearchQuery("")}>×</button>
+                )}
+              </div>
+
+              {/* Filter Pills */}
+              <div className="inbox-filters-row">
+                <button
+                  className={`filter-pill ${unreadOnly ? "active" : ""}`}
+                  onClick={() => setUnreadOnly(!unreadOnly)}
+                >
+                  Unread Only
+                </button>
+                <select
+                  className="filter-select"
+                  value={leadStatusFilter}
+                  onChange={(e) => setLeadStatusFilter(e.target.value)}
+                >
+                  <option value="">All Stages</option>
+                  <option value="New Lead">New Lead</option>
+                  <option value="Quotation Shared">Quotation Shared</option>
+                  <option value="Negotiation">Negotiation</option>
+                  <option value="Order Confirmed">Order Confirmed</option>
+                </select>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Conversations List */}
+        <div className="conversations-scroll-list">
+          {loadingConvs ? (
+            <div className="inbox-loading-spinner">
+              <RefreshCw size={22} className="spin-icon" />
+              <span>Loading conversations...</span>
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="inbox-empty-state">
+              <MessageSquare size={32} color="#9ca3af" />
+              <p>No conversations found</p>
+            </div>
+          ) : (
+            conversations.map((conv) => {
+              const isSelected = conv.id === selectedConvId;
+              const cust = conv.customer;
+              const isUnread = conv.unreadCount > 0;
+
+              return (
+                <div
+                  key={conv.id}
+                  className={`conversation-card ${isSelected ? "selected" : ""} ${isUnread ? "unread" : ""}`}
+                  onClick={() => setSelectedConvId(conv.id)}
+                >
+                  <div className="conv-avatar">
+                    <span>{(cust?.contactPerson || cust?.businessName || "C").slice(0, 2).toUpperCase()}</span>
+                    <span className="conv-wa-badge">
+                      <MessageSquare size={10} color="#fff" />
+                    </span>
+                  </div>
+
+                  {!isLeftCollapsed && (
+                    <div className="conv-content-box">
+                      <div className="conv-top-line">
+                        <span className="conv-name">{cust?.businessName || cust?.contactPerson}</span>
+                        <span className="conv-time">
+                          {new Date(conv.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+
+                      <div className="conv-contact-sub">
+                        <span>{cust?.contactPerson} ({cust?.mobile})</span>
+                      </div>
+
+                      <div className="conv-snippet-line">
+                        <span className="conv-last-msg">{conv.lastMessageText || "No messages yet"}</span>
+                        {isUnread && <span className="unread-counter-badge">{conv.unreadCount}</span>}
+                      </div>
+
+                      <div className="conv-tags-line">
+                        <span className={`stage-tag ${conv.leadStatus?.toLowerCase().replace(/\s+/g, '-')}`}>
+                          {conv.leadStatus || "New Lead"}
+                        </span>
+                        {conv.aiHandled ? (
+                          <span className="badge-ai-pill">
+                            <Bot size={10} /> AI
+                          </span>
+                        ) : (
+                          <span className="badge-human-pill">Human</span>
+                        )}
+                        {conv.priority === "HIGH" && <span className="badge-priority-high">HIGH</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* CENTER COLUMN: LIVE CHAT WINDOW */}
+      {/* ----------------------------------------------------------------- */}
+      <div className="inbox-center-panel">
+        {loadingDetail ? (
+          <div className="chat-loading-state">
+            <RefreshCw size={28} className="spin-icon" />
+            <p>Loading WhatsApp Chat & CRM Data...</p>
+          </div>
+        ) : !activeConvDetail ? (
+          <div className="chat-empty-selection">
+            <MessageSquare size={48} color="#d1d5db" />
+            <h3>Select a Conversation to Start Chatting</h3>
+            <p>Every WhatsApp chat connects seamlessly to CRM profiles, orders, and quotes.</p>
+          </div>
+        ) : (
+          <>
+            {/* Chat Header */}
+            <div className="chat-header">
+              <div className="chat-header-user-info">
+                <div className="chat-avatar-large">
+                  <span>{(activeConvDetail.customer?.contactPerson || "C").slice(0, 2).toUpperCase()}</span>
+                </div>
+                <div>
+                  <div className="chat-title-line">
+                    <h2 className="chat-customer-name">
+                      {activeConvDetail.customer?.businessName || activeConvDetail.customer?.contactPerson}
+                    </h2>
+                    <span className="chat-wa-connected-badge">Connected</span>
+                    <span className={`chat-sla-badge sla-${activeConvDetail.slaStatus.toLowerCase()}`}>
+                      SLA: {activeConvDetail.slaStatus}
+                    </span>
+                  </div>
+                  <div className="chat-sub-line">
+                    <span>Phone: +91 {activeConvDetail.customer?.mobile}</span>
+                    <span>•</span>
+                    <span>Assigned: {activeConvDetail.assignedEmployee?.user?.name || "Ikra (Sales)"}</span>
+                    <span>•</span>
+                    <span>Type: {activeConvDetail.customerType}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="chat-header-actions">
+                <button className="chat-action-btn" onClick={() => setShowQuoteModal(true)} title="Create Quotation">
+                  <FileText size={16} />
+                  <span>Quotation</span>
+                </button>
+                <button className="chat-action-btn" onClick={() => setShowPaymentModal(true)} title="Send Payment Link">
+                  <CreditCard size={16} />
+                  <span>Payment Link</span>
+                </button>
+                <button
+                  className="panel-toggle-btn"
+                  onClick={() => setIsRightCollapsed(!isRightCollapsed)}
+                  title="Toggle CRM 360 Profile"
+                >
+                  <User size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Messages Scroll Area */}
+            <div className="chat-messages-container">
+              {activeConvDetail.messages?.map((msg: any) => {
+                const isAgent = msg.senderType === "AGENT" || msg.senderType === "BOT" || msg.senderType === "AI";
+                const isInternal = msg.isInternalNote;
+
+                if (isInternal) {
+                  return (
+                    <div key={msg.id} className="internal-note-card">
+                      <div className="internal-note-header">
+                        <LockIcon size={12} />
+                        <span>Internal Team Note by {msg.senderName}</span>
+                        <span className="note-time">
+                          {new Date(msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <div className="internal-note-body">{msg.content}</div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={msg.id} className={`message-row ${isAgent ? "outgoing" : "incoming"}`}>
+                    <div className="message-bubble">
+                      <div className="message-sender-name">{msg.senderName}</div>
+
+                      {/* PDF Document Renderer */}
+                      {msg.messageType === "DOCUMENT" && (
+                        <div className="message-doc-box">
+                          <FileText size={24} color="#ef4444" />
+                          <div className="doc-info">
+                            <span className="doc-filename">{msg.mediaFilename || "Quotation.pdf"}</span>
+                            <span className="doc-filesize">PDF Document</span>
+                          </div>
+                          <a href={msg.mediaUrl || "#"} target="_blank" rel="noreferrer" className="doc-download-btn">
+                            Download
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Payment Link Card Renderer */}
+                      {msg.messageType === "PAYMENT_LINK" && (
+                        <div className="message-payment-card">
+                          <div className="payment-card-header">
+                            <CreditCard size={18} />
+                            <span>WhatsApp Payment Link</span>
+                          </div>
+                          <div className="payment-card-body">
+                            <p>{msg.content}</p>
+                            <div className="payment-status-pill">Status: PENDING</div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Standard Text Renderer */}
+                      {msg.messageType !== "DOCUMENT" && msg.messageType !== "PAYMENT_LINK" && (
+                        <p className="message-text-content">{msg.content}</p>
+                      )}
+
+                      <div className="message-meta-line">
+                        <span className="message-timestamp">
+                          {new Date(msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        {isAgent && <CheckCheck size={14} className="msg-check-icon" />}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={chatBottomRef} />
+            </div>
+
+            {/* Chat Input & Action Bar */}
+            <div className="chat-input-wrapper">
+              {/* Quick Action Shortcut Buttons */}
+              <div className="chat-quick-actions-bar">
+                <button className="quick-chip" onClick={() => applyQuickShortcut("/catalog")}>
+                  <BookOpen size={12} /> /catalog
+                </button>
+                <button className="quick-chip" onClick={() => applyQuickShortcut("/price")}>
+                  <DollarSign size={12} /> /price
+                </button>
+                <button className="quick-chip" onClick={() => applyQuickShortcut("/payment")}>
+                  <CreditCard size={12} /> /payment
+                </button>
+                <button className="quick-chip" onClick={() => applyQuickShortcut("/followup")}>
+                  <Clock size={12} /> /followup
+                </button>
+                <button className="quick-chip highlight" onClick={() => setShowReplyLibraryModal(true)}>
+                  <Zap size={12} /> Reply Library
+                </button>
+                <button
+                  className={`quick-chip internal-toggle ${isInternalNote ? "active" : ""}`}
+                  onClick={() => setIsInternalNote(!isInternalNote)}
+                >
+                  <LockIcon size={12} /> {isInternalNote ? "Internal Note ON" : "Internal Note"}
+                </button>
+              </div>
+
+              {/* Text Area Form */}
+              <form className={`chat-input-form ${isInternalNote ? "internal-mode" : ""}`} onSubmit={handleSendMessage}>
+                <button type="button" className="input-attachment-btn" title="Attach Document / Media">
+                  <Paperclip size={18} />
+                </button>
+
+                <textarea
+                  rows={2}
+                  className="chat-textarea"
+                  placeholder={
+                    isInternalNote
+                      ? "Add an internal note visible only to your team..."
+                      : "Type a WhatsApp message or use shortcuts like /catalog, /price..."
+                  }
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                />
+
+                <button type="submit" className="send-msg-btn" disabled={sendingMsg || !messageInput.trim()}>
+                  {sendingMsg ? <RefreshCw size={16} className="spin-icon" /> : <Send size={16} />}
+                  <span>{isInternalNote ? "Save Note" : "Send"}</span>
+                </button>
+              </form>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* RIGHT COLUMN: CRM 360° CUSTOMER PROFILE PANEL */}
+      {/* ----------------------------------------------------------------- */}
+      <div className={`inbox-right-panel ${isRightCollapsed ? "collapsed" : ""}`}>
+        {!isRightCollapsed && activeConvDetail && (
+          <div className="crm-panel-container">
+            {/* Panel Header */}
+            <div className="crm-panel-header">
+              <h3>CRM 360° Profile</h3>
+              <div className="crm-header-btns">
+                {isEditingCRM ? (
+                  <button className="crm-save-btn" onClick={handleSaveCRMProfile}>
+                    <Check size={14} /> Save
+                  </button>
+                ) : (
+                  <button className="crm-edit-btn" onClick={() => setIsEditingCRM(true)}>
+                    <Edit3 size={14} /> Edit
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Profile Overview Card */}
+            <div className="crm-profile-card">
+              <div className="crm-card-avatar">
+                <span>{(activeConvDetail.customer?.contactPerson || "C").slice(0, 2).toUpperCase()}</span>
+              </div>
+
+              {isEditingCRM ? (
+                <div className="crm-edit-form">
+                  <label>Business Name</label>
+                  <input
+                    type="text"
+                    value={crmEditData.businessName}
+                    onChange={(e) => setCrmEditData({ ...crmEditData, businessName: e.target.value })}
+                  />
+
+                  <label>Contact Person</label>
+                  <input
+                    type="text"
+                    value={crmEditData.contactPerson}
+                    onChange={(e) => setCrmEditData({ ...crmEditData, contactPerson: e.target.value })}
+                  />
+
+                  <label>Mobile Number</label>
+                  <input
+                    type="text"
+                    value={crmEditData.mobile}
+                    onChange={(e) => setCrmEditData({ ...crmEditData, mobile: e.target.value })}
+                  />
+
+                  <label>Customer Type</label>
+                  <select
+                    value={crmEditData.customerType}
+                    onChange={(e) => setCrmEditData({ ...crmEditData, customerType: e.target.value })}
+                  >
+                    <option value="Wholesaler">Wholesaler</option>
+                    <option value="Retailer">Retailer</option>
+                    <option value="Distributor">Distributor</option>
+                  </select>
+
+                  <label>Pipeline Stage</label>
+                  <select
+                    value={crmEditData.leadStage}
+                    onChange={(e) => setCrmEditData({ ...crmEditData, leadStage: e.target.value })}
+                  >
+                    <option value="New Lead">New Lead</option>
+                    <option value="Quotation Shared">Quotation Shared</option>
+                    <option value="Negotiation">Negotiation</option>
+                    <option value="Order Confirmed">Order Confirmed</option>
+                    <option value="Won">Won</option>
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <h4 className="crm-business-title">
+                    {activeConvDetail.customer?.businessName || "Unnamed Customer"}
+                  </h4>
+                  <p className="crm-contact-name">{activeConvDetail.customer?.contactPerson}</p>
+
+                  <div className="crm-badges-row">
+                    <span className="crm-type-badge">{activeConvDetail.customerType || "Wholesaler"}</span>
+                    <span className="crm-stage-badge">{activeConvDetail.leadStatus || "New Lead"}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Financial Metrics Cards */}
+            <div className="crm-metrics-grid">
+              <div className="crm-metric-box">
+                <span className="metric-label">Total Purchases</span>
+                <span className="metric-value">
+                  ₹{(activeConvDetail.customer?.totalPurchaseValue || 345000).toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="crm-metric-box">
+                <span className="metric-label">Total Orders</span>
+                <span className="metric-value">{activeConvDetail.customer?.totalOrders || 6} Orders</span>
+              </div>
+            </div>
+
+            {/* Quick Actions Panel */}
+            <div className="crm-section-box">
+              <h5 className="crm-section-title">Quick Actions</h5>
+              <div className="crm-quick-btns">
+                <button className="crm-action-tile" onClick={() => setShowQuoteModal(true)}>
+                  <FileText size={14} /> Create Quotation
+                </button>
+                <button className="crm-action-tile" onClick={() => setShowPaymentModal(true)}>
+                  <CreditCard size={14} /> Send Payment Link
+                </button>
+              </div>
+            </div>
+
+            {/* CRM Contact Information */}
+            <div className="crm-section-box">
+              <h5 className="crm-section-title">Contact Information</h5>
+              <div className="crm-info-list">
+                <div className="info-item">
+                  <Phone size={14} />
+                  <span>+91 {activeConvDetail.customer?.mobile}</span>
+                </div>
+                <div className="info-item">
+                  <Mail size={14} />
+                  <span>{activeConvDetail.customer?.email || "No email added"}</span>
+                </div>
+                <div className="info-item">
+                  <MapPin size={14} />
+                  <span>
+                    {activeConvDetail.customer?.city || "Surat"},{" "}
+                    {activeConvDetail.customer?.state || "Gujarat"}
+                  </span>
+                </div>
+                <div className="info-item">
+                  <UserCheck size={14} />
+                  <span>Assigned Rep: {activeConvDetail.assignedEmployee?.user?.name || "Ikra (Sales)"}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Orders & Quotes History */}
+            <div className="crm-section-box">
+              <h5 className="crm-section-title">Recent Quotations</h5>
+              {activeConvDetail.customer?.quotations?.length === 0 ? (
+                <p className="no-records-text">No quotations created yet</p>
+              ) : (
+                <div className="records-mini-list">
+                  {activeConvDetail.customer?.quotations?.map((q: any) => (
+                    <div key={q.id} className="record-mini-card">
+                      <div>
+                        <span className="record-title">{q.quotationNumber}</span>
+                        <span className="record-date">{new Date(q.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <span className="record-amount">₹{(q.totalValue || 0).toLocaleString("en-IN")}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Activity Timeline */}
+            <div className="crm-section-box">
+              <h5 className="crm-section-title">WhatsApp & CRM Timeline</h5>
+              <div className="timeline-list">
+                <div className="timeline-item">
+                  <div className="timeline-dot green" />
+                  <div className="timeline-content">
+                    <span className="timeline-time">Just now</span>
+                    <p className="timeline-text">WhatsApp Message received from customer</p>
+                  </div>
+                </div>
+                <div className="timeline-item">
+                  <div className="timeline-dot blue" />
+                  <div className="timeline-content">
+                    <span className="timeline-time">10:30 AM</span>
+                    <p className="timeline-text">Quotation #QT-1098 sent via WhatsApp</p>
+                  </div>
+                </div>
+                <div className="timeline-item">
+                  <div className="timeline-dot purple" />
+                  <div className="timeline-content">
+                    <span className="timeline-time">Yesterday</span>
+                    <p className="timeline-text">Assigned to Ikra (Sales Executive)</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* MODAL 1: REPLY LIBRARY SEARCH */}
+      {/* ----------------------------------------------------------------- */}
+      {showReplyLibraryModal && (
+        <div className="inbox-modal-backdrop" onClick={() => setShowReplyLibraryModal(false)}>
+          <div className="inbox-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-row">
+              <h3>WhatsApp Reply Library & Shortcuts</h3>
+              <button onClick={() => setShowReplyLibraryModal(false)}>×</button>
+            </div>
+            <div className="reply-shortcuts-list">
+              <div className="shortcut-item-card" onClick={() => applyQuickShortcut("Here is our latest 2026 Wholesale Apparel Catalog with bulk slab pricing: https://espon.in/catalog-2026.pdf. Let us know your size requirement!")}>
+                <div className="shortcut-badge">/catalog</div>
+                <div>
+                  <strong>Send Wholesale Catalog</strong>
+                  <p>Sends summer 2026 wholesale apparel catalog PDF link</p>
+                </div>
+              </div>
+              <div className="shortcut-item-card" onClick={() => applyQuickShortcut("Our Wholesale Pricing Slabs:\n• 100 - 250 pcs: ₹290/pc\n• 251 - 500 pcs: ₹270/pc\n• 500+ pcs: ₹250/pc + Free Freight Shipping.")}>
+                <div className="shortcut-badge">/price</div>
+                <div>
+                  <strong>Standard Wholesale Tiered Price List</strong>
+                  <p>Sends 100, 250, 500+ piece wholesale slab pricing</p>
+                </div>
+              </div>
+              <div className="shortcut-item-card" onClick={() => applyQuickShortcut("Bank Details:\nAccount Name: ESPON CLOTHING PRIVATE LIMITED\nAccount No: 016805006415\nIFSC: ICIC0000168\nUPI ID: 7206066678@OKBIZAXIS")}>
+                <div className="shortcut-badge">/payment</div>
+                <div>
+                  <strong>Bank & UPI Payment Details</strong>
+                  <p>Sends Espon Clothing official bank account & UPI ID</p>
+                </div>
+              </div>
+              <div className="shortcut-item-card" onClick={() => applyQuickShortcut("Hi, following up on our previous conversation regarding your inquiry. Please let us know if you have any questions or need samples!")}>
+                <div className="shortcut-badge">/followup</div>
+                <div>
+                  <strong>Friendly 24-Hour Followup</strong>
+                  <p>Standard follow-up inquiry message</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* MODAL 2: CREATE QUOTATION */}
+      {/* ----------------------------------------------------------------- */}
+      {showQuoteModal && (
+        <div className="inbox-modal-backdrop" onClick={() => setShowQuoteModal(false)}>
+          <div className="inbox-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-row">
+              <h3>Create & Send WhatsApp Quotation</h3>
+              <button onClick={() => setShowQuoteModal(false)}>×</button>
+            </div>
+            <div className="modal-form-body">
+              {quoteItems.map((item, idx) => (
+                <div key={idx} className="item-row-edit">
+                  <input
+                    type="text"
+                    value={item.name}
+                    placeholder="Product Item Name"
+                    onChange={(e) => {
+                      const updated = [...quoteItems];
+                      updated[idx].name = e.target.value;
+                      setQuoteItems(updated);
+                    }}
+                  />
+                  <input
+                    type="number"
+                    value={item.quantity}
+                    placeholder="Qty"
+                    onChange={(e) => {
+                      const updated = [...quoteItems];
+                      updated[idx].quantity = parseInt(e.target.value) || 0;
+                      setQuoteItems(updated);
+                    }}
+                  />
+                  <input
+                    type="number"
+                    value={item.rate}
+                    placeholder="Rate"
+                    onChange={(e) => {
+                      const updated = [...quoteItems];
+                      updated[idx].rate = parseFloat(e.target.value) || 0;
+                      setQuoteItems(updated);
+                    }}
+                  />
+                </div>
+              ))}
+              <div className="modal-total-summary">
+                <span>Total Quotation Value (incl 12% GST):</span>
+                <strong>
+                  ₹
+                  {quoteItems
+                    .reduce((s, i) => s + i.quantity * i.rate * 1.12, 0)
+                    .toLocaleString("en-IN")}
+                </strong>
+              </div>
+              <button className="modal-submit-btn" onClick={handleCreateQuoteSubmit}>
+                Generate & Send PDF Quotation in Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ----------------------------------------------------------------- */}
+      {/* MODAL 3: SEND PAYMENT LINK */}
+      {/* ----------------------------------------------------------------- */}
+      {showPaymentModal && (
+        <div className="inbox-modal-backdrop" onClick={() => setShowPaymentModal(false)}>
+          <div className="inbox-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-row">
+              <h3>Generate WhatsApp Payment Link</h3>
+              <button onClick={() => setShowPaymentModal(false)}>×</button>
+            </div>
+            <div className="modal-form-body">
+              <label>Amount (₹)</label>
+              <input
+                type="number"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
+              />
+
+              <label>Payment Description</label>
+              <input
+                type="text"
+                value={paymentDesc}
+                onChange={(e) => setPaymentDesc(e.target.value)}
+              />
+
+              <button className="modal-submit-btn" onClick={handleSendPaymentSubmit}>
+                Send UPI / Card Payment Link in Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LockIcon({ size }: { size: number }) {
+  return <ShieldCheck size={size} color="#f59e0b" />;
+}
