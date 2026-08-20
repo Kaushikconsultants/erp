@@ -98,100 +98,105 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
   width: 100%;
+  padding: 0 4px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
+/* Elegant Floating Arrow Buttons */
 .wa-nav-arrow-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #e2e8f0;
   background: #ffffff;
-  color: #475569;
+  color: #334155;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-  transition: all 0.15s ease;
-  flex-shrink: 0;
-  z-index: 2;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  opacity: 0.9;
+}
+
+.wa-nav-arrow-btn.left {
+  left: 0;
+}
+
+.wa-nav-arrow-btn.right {
+  right: 0;
 }
 
 .wa-nav-arrow-btn:hover {
   background: #10b981;
   color: #ffffff;
   border-color: #10b981;
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  opacity: 1;
 }
 
+/* Hide Raw Scrollbars for Ultra Clean Look */
 .wa-subnav-scroll-wrapper {
   flex: 1;
   overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   scroll-behavior: smooth;
   cursor: grab;
-  padding-bottom: 4px;
+  padding: 4px 36px; /* Spacing so arrows don't cover text */
+}
+
+.wa-subnav-scroll-wrapper::-webkit-scrollbar {
+  display: none;
 }
 
 .wa-subnav-scroll-wrapper:active {
   cursor: grabbing;
 }
 
-.wa-subnav-scroll-wrapper::-webkit-scrollbar {
-  height: 4px;
-  display: block;
-}
-
-.wa-subnav-scroll-wrapper::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 4px;
-}
-
-.wa-subnav-scroll-wrapper::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
-}
-
-.wa-subnav-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #10b981;
-}
-
 .wa-subnav-bar {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding-bottom: 0;
+  gap: 6px;
+  padding-bottom: 2px;
   min-width: max-content;
 }
 
 .wa-subnav-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  font-size: 12.5px;
+  gap: 7px;
+  padding: 7px 14px;
+  font-size: 13px;
   font-weight: 500;
   color: #475569;
   text-decoration: none;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s ease-in-out;
+  border-radius: 20px;
+  transition: all 0.18s ease-in-out;
   white-space: nowrap;
-  border-top-left-radius: 6px;
-  border-top-right-radius: 6px;
+  border: 1px solid transparent;
+  user-select: none;
 }
 
 .wa-subnav-item:hover {
   color: #0f172a;
-  background-color: #f8fafc;
+  background-color: #f1f5f9;
+  transform: translateY(-1px);
 }
 
 .wa-subnav-item.active {
-  color: #059669;
-  font-weight: 600;
-  border-bottom-color: #10b981;
-  background-color: #ecfdf5;
+  color: #047857;
+  font-weight: 700;
+  background-color: #dcfce7;
+  border-color: #86efac;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.12);
 }
 
 .wa-nav-icon {
@@ -206,16 +211,34 @@
 .wa-nav-badge {
   background-color: #ef4444;
   color: #ffffff;
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 10px;
 }
 
 .wa-subnav-item.highlight {
-  background-color: #f5f3ff;
-  color: #6d28d9;
-  border-bottom-color: transparent;
+  background-color: #f3e8ff;
+  color: #6b21a8;
+  border-color: #e9d5ff;
+}
+
+.wa-subnav-item.highlight:hover {
+  background-color: #e9d5ff;
+}
+
+.wa-subnav-item.fs-btn {
+  margin-left: 8px;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.wa-subnav-item.fs-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
 }
 
 .wa-subnav-item.highlight:hover {

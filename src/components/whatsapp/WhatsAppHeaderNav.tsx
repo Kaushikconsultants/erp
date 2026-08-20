@@ -184,9 +184,10 @@ export default function WhatsAppHeaderNav() {
                 <Link
                   key={item.path}
                   href={item.path}
+                  draggable={false}
                   className={`wa-subnav-item ${active ? "active" : ""} ${item.highlight ? "highlight" : ""}`}
                 >
-                  <Icon size={16} className="wa-nav-icon" />
+                  <Icon size={15} className="wa-nav-icon" />
                   <span>{item.name}</span>
                   {item.badge && <span className="wa-nav-badge">{item.badge}</span>}
                 </Link>
@@ -201,12 +202,11 @@ export default function WhatsAppHeaderNav() {
                   document.exitFullscreen().catch(() => {});
                 }
               }}
-              className="wa-subnav-item"
-              style={{ marginLeft: "auto", background: "#f8fafc", border: "1px solid #e2e8f0", cursor: "pointer", color: "#3b82f6", fontWeight: 700 }}
+              className="wa-subnav-item fs-btn"
               title="Toggle Browser Full Screen Mode"
             >
-              <Maximize2 size={15} />
-              <span>Full Screen Mode</span>
+              <Maximize2 size={14} />
+              <span>Full Screen</span>
             </button>
           </nav>
         </div>
