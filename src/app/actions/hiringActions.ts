@@ -96,6 +96,31 @@ export async function createCandidate(formData: FormData) {
   }
 }
 
+// Fetch all team members / employees for interviewer assignment
+export async function getEmployeesForHiring() {
+  try {
+    const employees = await prisma.employee.findMany({
+      include: { user: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (employees.length > 0) {
+      return { success: true, employees };
+    }
+
+    const users = await prisma.user.findMany({ orderBy: { name: 'asc' } });
+    const userAsEmployees = users.map((u: any) => ({
+      id: u.id,
+      designation: u.role || "Team Member",
+      department: "Management",
+      user: { name: u.name || u.email, email: u.email }
+    }));
+    return { success: true, employees: userAsEmployees };
+  } catch (error: any) {
+    return { success: false, employees: [] };
+  }
+}
+
 // Admin assigns interviewers for Round 1, Round 2, or Round 3
 export async function assignInterviewerToRound(candidateId: string, roundNumber: number, interviewerId: string) {
   try {

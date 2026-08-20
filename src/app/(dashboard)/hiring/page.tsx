@@ -13,7 +13,7 @@ import {
   Award,
   FileText
 } from 'lucide-react';
-import { getCandidates } from '@/app/actions/hiringActions';
+import { getCandidates, getEmployeesForHiring } from '@/app/actions/hiringActions';
 import ManageQuestionsModal from '@/components/hiring/ManageQuestionsModal';
 import AddCandidateModal from '@/components/hiring/AddCandidateModal';
 import InterviewEvaluationModal from '@/components/hiring/InterviewEvaluationModal';
@@ -36,18 +36,16 @@ export default function HiringPage() {
 
   const loadData = async () => {
     setLoading(true);
-    const res = await getCandidates();
-    if (res.success && res.candidates) {
-      setCandidates(res.candidates);
-    }
+    const [cRes, empRes] = await Promise.all([
+      getCandidates(),
+      getEmployeesForHiring()
+    ]);
 
-    try {
-      const empData = await fetch('/api/employees').then(r => r.json()).catch(() => ({ employees: [] }));
-      if (empData.employees) {
-        setEmployees(empData.employees);
-      }
-    } catch (err) {
-      console.log("Employees fetch err:", err);
+    if (cRes.success && cRes.candidates) {
+      setCandidates(cRes.candidates);
+    }
+    if (empRes.success && empRes.employees) {
+      setEmployees(empRes.employees);
     }
     setLoading(false);
   };

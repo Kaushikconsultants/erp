@@ -11,7 +11,8 @@ import {
   getQuestionsByRound, 
   submitRoundEvaluation, 
   assignInterviewerToRound, 
-  finalizeCandidateDecision 
+  finalizeCandidateDecision,
+  getEmployeesForHiring
 } from '@/app/actions/hiringActions';
 
 interface InterviewEvaluationModalProps {
@@ -37,12 +38,36 @@ export default function InterviewEvaluationModal({
   const [feedbackNotes, setFeedbackNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedInterviewerId, setSelectedInterviewerId] = useState<string>("");
+  const [customInterviewerName, setCustomInterviewerName] = useState<string>("");
+  const [teamList, setTeamList] = useState<any[]>(employees || []);
 
   // Final Conclusion State
   const [finalDecision, setFinalDecision] = useState<'HIRED' | 'REJECTED' | 'ON_HOLD'>(
     candidate?.status === 'ON_HOLD' || candidate?.status === 'HOLD' ? 'ON_HOLD' : candidate?.status === 'REJECTED' ? 'REJECTED' : 'HIRED'
   );
   const [finalConclusionText, setFinalConclusionText] = useState(candidate?.finalConclusion || "");
+
+  useEffect(() => {
+    if (isOpen) {
+      if (employees && employees.length > 0) {
+        setTeamList(employees);
+      } else {
+        getEmployeesForHiring().then((res) => {
+          if (res.success && res.employees && res.employees.length > 0) {
+            setTeamList(res.employees);
+          } else {
+            // Default team list if DB has no employees yet
+            setTeamList([
+              { id: "emp_admin", designation: "Super Admin", user: { name: "Super Admin" } },
+              { id: "emp_sales", designation: "Sales Manager", user: { name: "Sales Executive / Manager" } },
+              { id: "emp_tech", designation: "Tech Lead", user: { name: "Senior Technical Interviewer" } },
+              { id: "emp_hr", designation: "HR Lead", user: { name: "HR Manager" } }
+            ]);
+          }
+        });
+      }
+    }
+  }, [isOpen, employees]);
 
   useEffect(() => {
     if (candidate && isOpen) {
@@ -94,9 +119,10 @@ export default function InterviewEvaluationModal({
   };
 
   const handleAssignInterviewer = async () => {
-    if (!selectedInterviewerId) return alert("Select an interviewer from the list.");
+    const interviewerToAssign = selectedInterviewerId === "CUSTOM" ? customInterviewerName : selectedInterviewerId;
+    if (!interviewerToAssign) return alert("Select or type an interviewer name.");
     setLoading(true);
-    const res = await assignInterviewerToRound(candidate.id, activeRound, selectedInterviewerId);
+    const res = await assignInterviewerToRound(candidate.id, activeRound, interviewerToAssign);
     setLoading(false);
     if (res.success) {
       alert(`Assigned interviewer for Round ${activeRound}!`);
@@ -116,8 +142,10 @@ export default function InterviewEvaluationModal({
     if (ratingsArray.length === 0) return alert("Please rate the candidate on questions.");
 
     setLoading(true);
-    const assignedInterviewer = employees.find(e => e.id === selectedInterviewerId);
-    const interviewerName = assignedInterviewer ? assignedInterviewer.user?.name : "Admin";
+    const assignedInterviewer = teamList.find(e => e.id === selectedInterviewerId);
+    const interviewerName = selectedInterviewerId === "CUSTOM"
+      ? customInterviewerName
+      : assignedInterviewer ? assignedInterviewer.user?.name : "Admin";
 
     const res = await submitRoundEvaluation(
       candidate.id,
@@ -277,19 +305,31 @@ export default function InterviewEvaluationModal({
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <select
                 value={selectedInterviewerId}
                 onChange={(e) => setSelectedInterviewerId(e.target.value)}
                 style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm, 6px)', border: '1px solid #86efac', fontSize: '0.82rem', fontWeight: 600, backgroundColor: '#ffffff', outline: 'none' }}
               >
                 <option value="">-- Select Interviewer --</option>
-                {employees.map((emp) => (
+                {teamList.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.user?.name} ({emp.designation || emp.department || 'Staff'})
+                    {emp.user?.name || emp.name} ({emp.designation || emp.department || 'Staff'})
                   </option>
                 ))}
+                <option value="CUSTOM">+ Type Custom Interviewer Name...</option>
               </select>
+
+              {selectedInterviewerId === "CUSTOM" && (
+                <input
+                  type="text"
+                  placeholder="Enter custom interviewer name..."
+                  value={customInterviewerName}
+                  onChange={(e) => setCustomInterviewerName(e.target.value)}
+                  style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm, 6px)', border: '1px solid #86efac', fontSize: '0.82rem', outline: 'none' }}
+                />
+              )}
+
               <button
                 onClick={handleAssignInterviewer}
                 style={{ padding: '6px 12px', borderRadius: 'var(--radius-sm, 6px)', backgroundColor: '#16a34a', color: '#ffffff', border: 'none', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer' }}
