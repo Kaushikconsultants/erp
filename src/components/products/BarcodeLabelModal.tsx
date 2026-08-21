@@ -967,6 +967,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                   barcodeDataUrl={barcodeDataUrl}
                   qrDataUrl={qrDataUrl}
                   customizer={customizerConfig}
+                  printer={printer}
                 />
               ))}
             </div>
@@ -975,7 +976,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
         )}
 
       {/* 3. ROCK-SOLID PRINT MEDIA STYLES */}
-      <style jsx global>{`
+      <style type="text/css">{`
         ${pageMediaCss}
 
         @media screen {
@@ -1323,7 +1324,8 @@ function LabelCardPrint({
   barcodeCfg,
   barcodeDataUrl,
   qrDataUrl,
-  customizer
+  customizer,
+  printer
 }: {
   product: ProductLabelData;
   activeCode: string;
@@ -1333,6 +1335,7 @@ function LabelCardPrint({
   barcodeDataUrl: string;
   qrDataUrl: string;
   customizer: CustomizerConfig;
+  printer: string;
 }) {
   const getTitleFontSizePrint = () => {
     switch (customizer.titleFontSize) {
@@ -1365,7 +1368,8 @@ function LabelCardPrint({
         textAlign: customizer.textAlign,
         fontFamily: customizer.fontFamily,
         boxSizing: "border-box",
-        overflow: "hidden"
+        overflow: "hidden",
+        pageBreakAfter: printer === "thermal_roll" ? "always" : "auto"
       }}
     >
       <div style={{ width: "100%", flexShrink: 0 }}>
