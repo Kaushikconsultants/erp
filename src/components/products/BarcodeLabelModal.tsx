@@ -111,7 +111,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const [headerText, setHeaderText] = useState<string>("HEART OF BUSINESS");
   const [showHeader, setShowHeader] = useState<boolean>(true);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [logoSize, setLogoSize] = useState<number>(24);
+  const [logoSize, setLogoSize] = useState<number>(20);
   const [showLogo, setShowLogo] = useState<boolean>(false);
   const [logoAlign, setLogoAlign] = useState<"left" | "center" | "right">("center");
   const [logoPosition, setLogoPosition] = useState<"above" | "inline_left" | "inline_right" | "below">("above");
@@ -135,7 +135,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
 
   const [titleFontSize, setTitleFontSize] = useState<"small" | "medium" | "large">("medium");
   const [headerFontSize, setHeaderFontSize] = useState<"small" | "medium" | "large">("medium");
-  const [cardPadding, setCardPadding] = useState<"compact" | "normal" | "spacious">("normal");
+  const [cardPadding, setCardPadding] = useState<"compact" | "normal" | "spacious">("compact");
   const [borderStyle, setBorderStyle] = useState<"dashed" | "solid" | "none">("dashed");
 
   // High Resolution Symbology Image Data URLs
@@ -178,15 +178,15 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
 
   const layout = getLayoutConfig();
 
-  // Calculate barcode rendering dimensions
+  // Calculate barcode rendering dimensions (prevent flex shrink distortion)
   const getBarcodeConfig = () => {
     const h = layout.heightMm;
     if (h <= 25) {
-      return { width: 1.3, height: 26, fontSize: 10, qrSize: 42 };
+      return { width: 1.2, height: 20, fontSize: 9, qrSize: 36 };
     } else if (h <= 40) {
-      return { width: 1.5, height: 38, fontSize: 11, qrSize: 54 };
+      return { width: 1.4, height: 32, fontSize: 10, qrSize: 46 };
     } else {
-      return { width: 2.0, height: 54, fontSize: 12, qrSize: 72 };
+      return { width: 1.8, height: 44, fontSize: 11, qrSize: 62 };
     }
   };
 
@@ -202,12 +202,12 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
         format: "CODE128",
         lineColor: "#000000",
         background: "#ffffff",
-        width: barcodeCfg.width * 1.6,
+        width: barcodeCfg.width * 1.5,
         height: barcodeCfg.height * 1.3,
         displayValue: true,
-        fontSize: barcodeCfg.fontSize * 1.2,
+        fontSize: barcodeCfg.fontSize * 1.1,
         font: "monospace",
-        margin: 4
+        margin: 3
       });
       setBarcodeDataUrl(canvas.toDataURL("image/png"));
     } catch (e) {
@@ -604,8 +604,8 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                           <span style={{ fontSize: "0.7rem", color: "#475569" }}>Height:</span>
                           <input
                             type="range"
-                            min="14"
-                            max="60"
+                            min="12"
+                            max="50"
                             value={logoSize}
                             onChange={e => setLogoSize(parseInt(e.target.value))}
                             style={{ flex: 1 }}
@@ -1245,7 +1245,7 @@ function LabelCardPreview({
         boxSizing: "border-box"
       }}
     >
-      <div style={{ width: "100%" }}>
+      <div style={{ width: "100%", flexShrink: 0 }}>
         {/* Custom Logo & Header Renderer */}
         <RenderLogoAndHeader customizer={customizer} />
 
@@ -1267,27 +1267,38 @@ function LabelCardPreview({
       </div>
 
       {/* Symbology PNG Image */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "6px", margin: "2px 0", maxWidth: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "6px", margin: "2px 0", maxWidth: "100%", flexShrink: 0 }}>
         {(codeType === "BARCODE" || codeType === "BOTH") && barcodeDataUrl && (
           <img
             src={barcodeDataUrl}
             alt="Barcode"
             style={{
-              height: `${barcodeCfg.height + 14}px`,
+              height: `${barcodeCfg.height}px`,
+              maxHeight: `${barcodeCfg.height}px`,
               maxWidth: "100%",
               objectFit: "contain",
               display: "block",
-              margin: "0 auto"
+              margin: "0 auto",
+              flexShrink: 0
             }}
           />
         )}
         {(codeType === "QR" || codeType === "BOTH") && qrDataUrl && (
-          <img src={qrDataUrl} alt="QR Code" style={{ width: `${barcodeCfg.qrSize}px`, height: `${barcodeCfg.qrSize}px` }} />
+          <img
+            src={qrDataUrl}
+            alt="QR Code"
+            style={{
+              width: `${barcodeCfg.qrSize}px`,
+              height: `${barcodeCfg.qrSize}px`,
+              objectFit: "contain",
+              flexShrink: 0
+            }}
+          />
         )}
       </div>
 
       {/* Footer Details */}
-      <div style={{ width: "100%", textAlign: customizer.footerAlign }}>
+      <div style={{ width: "100%", textAlign: customizer.footerAlign, flexShrink: 0 }}>
         {customizer.showSku && (
           <div style={{ fontSize: "0.65rem", color: "#555", fontFamily: "monospace" }}>
             SKU: <strong>{activeCode}</strong>
@@ -1345,6 +1356,7 @@ function LabelCardPrint({
       style={{
         width: "100%",
         height: `${layout.heightMm}mm`,
+        maxHeight: `${layout.heightMm}mm`,
         padding: getPaddingPrint(),
         display: "flex",
         flexDirection: "column",
@@ -1352,10 +1364,11 @@ function LabelCardPrint({
         justifyContent: "space-between",
         textAlign: customizer.textAlign,
         fontFamily: customizer.fontFamily,
-        boxSizing: "border-box"
+        boxSizing: "border-box",
+        overflow: "hidden"
       }}
     >
-      <div style={{ width: "100%" }}>
+      <div style={{ width: "100%", flexShrink: 0 }}>
         {/* Custom Logo & Header Renderer */}
         <RenderLogoAndHeaderPrint customizer={customizer} />
 
@@ -1377,33 +1390,44 @@ function LabelCardPrint({
       </div>
 
       {/* Symbology PNG Image */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "4px", margin: "1px 0", width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "4px", margin: "1px 0", width: "100%", flexShrink: 0 }}>
         {(codeType === "BARCODE" || codeType === "BOTH") && barcodeDataUrl && (
           <img
             src={barcodeDataUrl}
             alt="Barcode"
             style={{
-              height: `${barcodeCfg.height + 12}px`,
+              height: `${barcodeCfg.height}px`,
+              maxHeight: `${barcodeCfg.height}px`,
               maxWidth: "100%",
               objectFit: "contain",
               display: "block",
-              margin: "0 auto"
+              margin: "0 auto",
+              flexShrink: 0
             }}
           />
         )}
         {(codeType === "QR" || codeType === "BOTH") && qrDataUrl && (
-          <img src={qrDataUrl} alt="QR Code" style={{ width: `${barcodeCfg.qrSize * 0.8}px`, height: `${barcodeCfg.qrSize * 0.8}px` }} />
+          <img
+            src={qrDataUrl}
+            alt="QR Code"
+            style={{
+              width: `${barcodeCfg.qrSize * 0.75}px`,
+              height: `${barcodeCfg.qrSize * 0.75}px`,
+              objectFit: "contain",
+              flexShrink: 0
+            }}
+          />
         )}
       </div>
 
-      <div style={{ width: "100%", textAlign: customizer.footerAlign }}>
+      <div style={{ width: "100%", textAlign: customizer.footerAlign, flexShrink: 0 }}>
         {customizer.showSku && (
-          <div style={{ fontSize: "6.5pt", color: "#000", fontFamily: "monospace" }}>
+          <div style={{ fontSize: "6.5pt", color: "#000", fontFamily: "monospace", lineHeight: "1" }}>
             SKU: <strong>{activeCode}</strong>
           </div>
         )}
         {customizer.showFooter && customizer.customFooter && (
-          <div style={{ fontSize: "5.5pt", color: "#000", marginTop: "1px", fontWeight: 600 }}>
+          <div style={{ fontSize: "5.5pt", color: "#000", marginTop: "1px", fontWeight: 600, lineHeight: "1" }}>
             {customizer.customFooter}
           </div>
         )}
