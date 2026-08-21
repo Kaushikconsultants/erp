@@ -319,37 +319,51 @@ export default async function Home() {
       }
     }
 
-    // Fetch Employee's current month orders for incentive calculation
-    const currentMonthOrders = employee ? await prisma.order.findMany({
+    // Fetch all employee orders (for Daily / Weekly / Monthly interactive filtering)
+    const allEmployeeOrders = employee ? await prisma.order.findMany({
       where: {
-        salespersonId: employee.id,
-        orderDate: { gte: startOfMonth }
+        salespersonId: employee.id
       },
-      select: { id: true, subtotal: true, totalValue: true, discount: true, customer: { select: { status: true, preferredPaymentMethod: true } } }
+      select: { 
+        id: true, 
+        orderNumber: true,
+        orderDate: true,
+        subtotal: true, 
+        totalValue: true, 
+        discount: true, 
+        status: true,
+        customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } } 
+      },
+      orderBy: { orderDate: 'desc' }
     }) : [];
 
-    const formattedOrders: OrderData[] = currentMonthOrders.map(order => ({
-      id: order.id,
-      taxableValue: order.subtotal || order.totalValue, // Use subtotal (taxable amount), fallback to totalValue if legacy
-      discount: order.discount || 0,
-      isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
-    }));
+    const formattedOrders: OrderData[] = allEmployeeOrders
+      .filter(o => o.orderDate && new Date(o.orderDate) >= startOfMonth)
+      .map(order => ({
+        id: order.id,
+        taxableValue: order.subtotal || order.totalValue, // Use subtotal (taxable amount), fallback to totalValue if legacy
+        discount: order.discount || 0,
+        isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
+      }));
 
     const targetGoal = employee?.target || 500000;
     const incentiveData = calculateIncentives(formattedOrders, targetGoal);
 
-    // Fetch follow-ups scheduled for today
-    const todayFollowUps = employee ? await prisma.call.findMany({
+    // Fetch all follow-ups for employee
+    const allFollowUps = employee ? await prisma.call.findMany({
       where: {
         employeeId: employee.id,
-        followUpDate: {
-          gte: todayStart,
-          lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
-        }
+        followUpDate: { not: null }
       },
       include: { customer: true },
       orderBy: { followUpDate: 'asc' }
     }) : [];
+
+    const todayFollowUps = allFollowUps.filter(c => {
+      if (!c.followUpDate) return false;
+      const d = new Date(c.followUpDate);
+      return d >= todayStart && d < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    });
 
     return (
       <>
@@ -362,6 +376,8 @@ export default async function Home() {
           isCheckedOut={isCheckedOut}
           incentiveData={incentiveData}
           todayFollowUps={todayFollowUps}
+          allOrders={allEmployeeOrders}
+          allFollowUps={allFollowUps}
         />
       </>
     );

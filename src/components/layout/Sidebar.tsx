@@ -75,7 +75,7 @@ const Sidebar = ({
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <Link href="/" style={{ textDecoration: 'none' }}>
+        <Link href="/" onClick={onClose} style={{ textDecoration: 'none' }}>
           <BrandLogo size="md" showSubtitle={true} />
         </Link>
         <button className="mobile-close-btn" onClick={onClose}>×</button>
@@ -86,16 +86,16 @@ const Sidebar = ({
         {canAccess('dashboard') && (
           <div className="nav-section">
             <p className="nav-section-title">MAIN</p>
-            <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
+            <Link href="/" onClick={onClose} className={`nav-item ${isActive('/') ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
             </Link>
-            <Link href="/chat" className={`nav-item ${isActive('/chat') ? 'active' : ''}`}>
+            <Link href="/chat" onClick={onClose} className={`nav-item ${isActive('/chat') ? 'active' : ''}`}>
               <MessageCircle size={20} style={{ color: '#06b6d4' }} />
               <span>Team Chat</span>
               <span style={{ marginLeft: 'auto', background: '#06b6d4', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>LIVE</span>
             </Link>
-            <Link href="/broadcasts" className={`nav-item ${isActive('/broadcasts') ? 'active' : ''}`}>
+            <Link href="/broadcasts" onClick={onClose} className={`nav-item ${isActive('/broadcasts') ? 'active' : ''}`}>
               <Megaphone size={20} style={{ color: '#4f46e5' }} />
               <span>Team Notices</span>
               <span style={{ marginLeft: 'auto', background: '#4f46e5', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>NEW</span>
@@ -106,7 +106,7 @@ const Sidebar = ({
         {/* WHATSAPP PLATFORM SECTION */}
         <div className="nav-section">
           <p className="nav-section-title">WHATSAPP AUTOMATION</p>
-          <Link href="/whatsapp/inbox" className={`nav-item ${isActive('/whatsapp') ? 'active' : ''}`}>
+          <Link href="/whatsapp/inbox" onClick={onClose} className={`nav-item ${isActive('/whatsapp') ? 'active' : ''}`}>
             <MessageSquare size={20} style={{ color: '#10b981' }} />
             <span>WhatsApp Inbox</span>
             <span style={{ marginLeft: 'auto', background: '#10b981', color: '#fff', fontSize: '11px', fontWeight: 600, padding: '2px 6px', borderRadius: '10px' }}>CRM</span>
@@ -118,18 +118,18 @@ const Sidebar = ({
           <div className="nav-section">
             <p className="nav-section-title">CRM & CLIENTS</p>
             {canAccess('customers') && (
-              <Link href="/customers" className={`nav-item ${isActive('/customers') ? 'active' : ''}`}>
+              <Link href="/customers" onClick={onClose} className={`nav-item ${isActive('/customers') ? 'active' : ''}`}>
                 <Users size={20} />
                 <span>Customers</span>
               </Link>
             )}
             {canAccess('calls_tasks') && (
               <>
-                <Link href="/calls" className={`nav-item ${isActive('/calls') ? 'active' : ''}`}>
+                <Link href="/calls" onClick={onClose} className={`nav-item ${isActive('/calls') ? 'active' : ''}`}>
                   <PhoneCall size={20} />
                   <span>Calls & Follow-ups</span>
                 </Link>
-                <Link href="/tasks" className={`nav-item ${isActive('/tasks') ? 'active' : ''}`}>
+                <Link href="/tasks" onClick={onClose} className={`nav-item ${isActive('/tasks') ? 'active' : ''}`}>
                   <CheckSquare size={20} />
                   <span>Tasks</span>
                 </Link>
@@ -143,37 +143,37 @@ const Sidebar = ({
           <div className="nav-section">
             <p className="nav-section-title">SALES & DISPATCH</p>
             {canAccess('orders') && (
-              <Link href="/orders" className={`nav-item ${isActive('/orders') ? 'active' : ''}`}>
+              <Link href="/orders" onClick={onClose} className={`nav-item ${isActive('/orders') ? 'active' : ''}`}>
                 <ShoppingCart size={20} />
                 <span>Orders</span>
               </Link>
             )}
             {canAccess('quotations') && (
-              <Link href="/quotations" className={`nav-item ${isActive('/quotations') ? 'active' : ''}`}>
+              <Link href="/quotations" onClick={onClose} className={`nav-item ${isActive('/quotations') ? 'active' : ''}`}>
                 <FileSpreadsheet size={20} />
                 <span>Quotations</span>
               </Link>
             )}
             {canAccess('invoices') && (
-              <Link href="/invoices" className={`nav-item ${isActive('/invoices') ? 'active' : ''}`}>
+              <Link href="/invoices" onClick={onClose} className={`nav-item ${isActive('/invoices') ? 'active' : ''}`}>
                 <Receipt size={20} />
                 <span>Invoices</span>
               </Link>
             )}
             {canAccess('payments') && (
-              <Link href="/payments" className={`nav-item ${isActive('/payments') ? 'active' : ''}`}>
+              <Link href="/payments" onClick={onClose} className={`nav-item ${isActive('/payments') ? 'active' : ''}`}>
                 <Wallet size={20} />
                 <span>Payments</span>
               </Link>
             )}
             {canAccess('products') && (
-              <Link href="/products" className={`nav-item ${isActive('/products') ? 'active' : ''}`}>
+              <Link href="/products" onClick={onClose} className={`nav-item ${isActive('/products') ? 'active' : ''}`}>
                 <Package size={20} />
                 <span>Products</span>
               </Link>
             )}
             {canAccess('dispatches') && (
-              <Link href="/dispatches" className={`nav-item ${isActive('/dispatches') ? 'active' : ''}`}>
+              <Link href="/dispatches" onClick={onClose} className={`nav-item ${isActive('/dispatches') ? 'active' : ''}`}>
                 <Truck size={20} />
                 <span>Dispatches</span>
               </Link>
@@ -185,15 +185,15 @@ const Sidebar = ({
         {(showProcurement || canAccess('procurement')) && canAccess('procurement') && (
           <div className="nav-section">
             <p className="nav-section-title">PROCUREMENT</p>
-            <Link href="/vendors" className={`nav-item ${isActive('/vendors') ? 'active' : ''}`}>
+            <Link href="/vendors" onClick={onClose} className={`nav-item ${isActive('/vendors') ? 'active' : ''}`}>
               <Building2 size={20} />
               <span>Vendors</span>
             </Link>
-            <Link href="/purchases" className={`nav-item ${isActive('/purchases') ? 'active' : ''}`}>
+            <Link href="/purchases" onClick={onClose} className={`nav-item ${isActive('/purchases') ? 'active' : ''}`}>
               <ShoppingBag size={20} />
               <span>Purchase Orders</span>
             </Link>
-            <Link href="/warehouses" className={`nav-item ${isActive('/warehouses') ? 'active' : ''}`}>
+            <Link href="/warehouses" onClick={onClose} className={`nav-item ${isActive('/warehouses') ? 'active' : ''}`}>
               <Warehouse size={20} />
               <span>Warehouses</span>
             </Link>
@@ -204,23 +204,23 @@ const Sidebar = ({
         {canAccess('hrms') && (
           <div className="nav-section">
             <p className="nav-section-title">HRMS</p>
-            <Link href="/payroll" className={`nav-item ${isActive('/payroll') ? 'active' : ''}`}>
+            <Link href="/payroll" onClick={onClose} className={`nav-item ${isActive('/payroll') ? 'active' : ''}`}>
               <Banknote size={20} />
               <span>Payroll</span>
             </Link>
-            <Link href="/attendance" className={`nav-item ${isActive('/attendance') ? 'active' : ''}`}>
+            <Link href="/attendance" onClick={onClose} className={`nav-item ${isActive('/attendance') ? 'active' : ''}`}>
               <CalendarDays size={20} />
               <span>Attendance</span>
             </Link>
-            <Link href="/expenses" className={`nav-item ${isActive('/expenses') ? 'active' : ''}`}>
+            <Link href="/expenses" onClick={onClose} className={`nav-item ${isActive('/expenses') ? 'active' : ''}`}>
               <ClipboardList size={20} />
               <span>Expenses</span>
             </Link>
-            <Link href="/leaves" className={`nav-item ${isActive('/leaves') ? 'active' : ''}`}>
+            <Link href="/leaves" onClick={onClose} className={`nav-item ${isActive('/leaves') ? 'active' : ''}`}>
               <CheckSquare size={20} />
               <span>Leaves</span>
             </Link>
-            <Link href="/hiring" className={`nav-item ${isActive('/hiring') ? 'active' : ''}`}>
+            <Link href="/hiring" onClick={onClose} className={`nav-item ${isActive('/hiring') ? 'active' : ''}`}>
               <Users size={20} />
               <span>Hiring & Interviews</span>
             </Link>
@@ -232,20 +232,20 @@ const Sidebar = ({
           <div className="nav-section">
             <p className="nav-section-title">REPORTS & INTELLIGENCE</p>
             {showAnalytics && (
-              <Link href="/analytics" className={`nav-item ${isActive('/analytics') ? 'active' : ''}`}>
+              <Link href="/analytics" onClick={onClose} className={`nav-item ${isActive('/analytics') ? 'active' : ''}`}>
                 <BarChart3 size={20} />
                 <span>Analytics</span>
               </Link>
             )}
-            <Link href="/reports" className={`nav-item ${isActive('/reports') ? 'active' : ''}`}>
+            <Link href="/reports" onClick={onClose} className={`nav-item ${isActive('/reports') ? 'active' : ''}`}>
               <FileSpreadsheet size={20} />
               <span>Reports Center</span>
             </Link>
-            <Link href="/settings/workflows" className={`nav-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
+            <Link href="/settings/workflows" onClick={onClose} className={`nav-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
               <Zap size={20} />
               <span>AI Workflows</span>
             </Link>
-            <Link href="/settings/audit-logs" className={`nav-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
+            <Link href="/settings/audit-logs" onClick={onClose} className={`nav-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
               <ShieldCheck size={20} />
               <span>Audit Logs</span>
             </Link>
@@ -256,7 +256,7 @@ const Sidebar = ({
       {/* SETTINGS FOOTER */}
       {(showSettings || canAccess('settings')) && canAccess('settings') && (
         <div className="sidebar-footer">
-          <Link href="/settings" className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
+          <Link href="/settings" onClick={onClose} className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
             <Settings size={20} />
             <span>Settings & Admin</span>
           </Link>

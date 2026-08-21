@@ -1,7 +1,8 @@
 "use client";
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import CheckInButton from '@/components/ui/CheckInButton';
-import { IncentiveResult } from '@/lib/incentiveEngine';
+import { IncentiveResult, calculateIncentives, OrderData } from '@/lib/incentiveEngine';
 import { 
   Users, 
   PhoneCall, 
@@ -12,14 +13,22 @@ import {
   CheckCircle2, 
   MessageSquare,
   TrendingUp,
+  TrendingDown,
   Clock,
   Target,
   ArrowUpRight,
   PhoneForwarded,
-  Award
+  Award,
+  Calendar,
+  ChevronRight,
+  Filter,
+  X,
+  ExternalLink,
+  DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
 import { removeFollowUp, rescheduleFollowUp } from '@/app/actions/callActions';
+import "@/components/ui/modal.css";
 
 function FollowUpCard({ call }: { call: any }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -132,18 +141,152 @@ interface EmployeeDashboardProps {
   isCheckedOut: boolean;
   incentiveData: IncentiveResult;
   todayFollowUps?: any[];
+  allOrders?: any[];
+  allFollowUps?: any[];
 }
+
+type TimeFilterType = "TODAY" | "WEEKLY" | "MONTHLY" | "ALL";
 
 export default function EmployeeDashboard({ 
   employee, 
   isCheckedIn, 
   isCheckedOut, 
-  incentiveData,
-  todayFollowUps = []
+  incentiveData: initialIncentiveData,
+  todayFollowUps = [],
+  allOrders = [],
+  allFollowUps = []
 }: EmployeeDashboardProps) {
+  const [timeFilter, setTimeFilter] = useState<TimeFilterType>("MONTHLY");
+  const [activeModal, setActiveModal] = useState<"SALES" | "FOLLOWUPS" | "TARGET" | "PAYOUT" | null>(null);
 
-  const totalPayout = (employee?.salary || 0) + incentiveData.totalIncentive;
   const todayDateStr = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  const targetMonthlyGoal = employee?.target || 500000;
+
+  // Compute date ranges
+  const { filteredOrders, previousOrders, filteredFollowUps, periodLabel, targetPeriodGoal } = useMemo(() => {
+    const now = new Date();
+    
+    // Today
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+
+    // This Week (Monday to Sunday)
+    const dayOfWeek = now.getDay();
+    const diffToMonday = (dayOfWeek + 6) % 7;
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday);
+    const prevWeekStart = new Date(weekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // This Month
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+
+    let orders: any[] = [];
+    let prevOrders: any[] = [];
+    let followUps: any[] = [];
+    let label = "This Month";
+    let periodGoal = targetMonthlyGoal;
+
+    if (timeFilter === "TODAY") {
+      label = "Today";
+      periodGoal = Math.round(targetMonthlyGoal / 25);
+      orders = allOrders.filter(o => {
+        if (!o.orderDate) return false;
+        const d = new Date(o.orderDate);
+        return d >= todayStart && d < todayEnd;
+      });
+      prevOrders = allOrders.filter(o => {
+        if (!o.orderDate) return false;
+        const d = new Date(o.orderDate);
+        return d >= yesterdayStart && d < todayStart;
+      });
+      followUps = allFollowUps.filter(f => {
+        if (!f.followUpDate) return false;
+        const d = new Date(f.followUpDate);
+        return d >= todayStart && d < todayEnd;
+      });
+    } else if (timeFilter === "WEEKLY") {
+      label = "This Week";
+      periodGoal = Math.round(targetMonthlyGoal / 4);
+      orders = allOrders.filter(o => {
+        if (!o.orderDate) return false;
+        const d = new Date(o.orderDate);
+        return d >= weekStart;
+      });
+      prevOrders = allOrders.filter(o => {
+        if (!o.orderDate) return false;
+        const d = new Date(o.orderDate);
+        return d >= prevWeekStart && d < weekStart;
+      });
+      followUps = allFollowUps.filter(f => {
+        if (!f.followUpDate) return false;
+        const d = new Date(f.followUpDate);
+        return d >= weekStart;
+      });
+    } else if (timeFilter === "MONTHLY") {
+      label = "This Month";
+      periodGoal = targetMonthlyGoal;
+      orders = allOrders.filter(o => {
+        if (!o.orderDate) return false;
+        const d = new Date(o.orderDate);
+        return d >= monthStart;
+      });
+      prevOrders = allOrders.filter(o => {
+        if (!o.orderDate) return false;
+        const d = new Date(o.orderDate);
+        return d >= prevMonthStart && d <= prevMonthEnd;
+      });
+      followUps = allFollowUps.filter(f => {
+        if (!f.followUpDate) return false;
+        const d = new Date(f.followUpDate);
+        return d >= monthStart;
+      });
+    } else {
+      label = "All Time";
+      periodGoal = targetMonthlyGoal * 6;
+      orders = allOrders;
+      prevOrders = [];
+      followUps = allFollowUps;
+    }
+
+    return {
+      filteredOrders: orders,
+      previousOrders: prevOrders,
+      filteredFollowUps: followUps,
+      periodLabel: label,
+      targetPeriodGoal: periodGoal
+    };
+  }, [allOrders, allFollowUps, timeFilter, targetMonthlyGoal]);
+
+  // Calculate Sales Amount
+  const totalSales = filteredOrders.reduce((sum, o) => sum + (o.subtotal || o.totalValue || 0), 0);
+  const prevTotalSales = previousOrders.reduce((sum, o) => sum + (o.subtotal || o.totalValue || 0), 0);
+
+  // Calculate Real Growth %
+  let growthPercent = 0;
+  let growthIsPositive = true;
+  if (totalSales > 0 && prevTotalSales === 0) {
+    growthPercent = 100;
+    growthIsPositive = true;
+  } else if (prevTotalSales > 0) {
+    growthPercent = Math.round(((totalSales - prevTotalSales) / prevTotalSales) * 100);
+    growthIsPositive = growthPercent >= 0;
+  }
+
+  // Calculate Target Progress
+  const targetPercent = targetPeriodGoal > 0 ? Math.min(100, Math.round((totalSales / targetPeriodGoal) * 100)) : 0;
+  const remainingGap = Math.max(0, targetPeriodGoal - totalSales);
+
+  // Calculate Incentive & Payout
+  const formattedOrderData: OrderData[] = filteredOrders.map(order => ({
+    id: order.id,
+    taxableValue: order.subtotal || order.totalValue,
+    discount: order.discount || 0,
+    isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
+  }));
+  const calculatedIncentive = calculateIncentives(formattedOrderData, targetPeriodGoal);
+  const totalPayout = (employee?.salary || 0) + calculatedIncentive.totalIncentive;
 
   return (
     <div className="dashboard-container employee-dashboard">
@@ -163,54 +306,209 @@ export default function EmployeeDashboard({
         </div>
       </div>
 
-      {/* ─── HORIZONTALLY SCROLLABLE KPI RAIL ─── */}
+      {/* ─── PERFORMANCE FILTER TABS ─── */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Today's Performance
-          </span>
-          <span style={{ fontSize: '0.75rem', color: '#ef4444', fontWeight: 600 }}>Swipe →</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              My Performance
+            </span>
+            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>({periodLabel})</span>
+          </div>
+
+          {/* Time Filter Pills */}
+          <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px' }}>
+            {[
+              { key: "TODAY", label: "Daily (Today)" },
+              { key: "WEEKLY", label: "This Week" },
+              { key: "MONTHLY", label: "This Month" },
+              { key: "ALL", label: "All Time" }
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setTimeFilter(tab.key as TimeFilterType)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '0.75rem',
+                  fontWeight: timeFilter === tab.key ? 700 : 500,
+                  backgroundColor: timeFilter === tab.key ? '#4f46e5' : 'transparent',
+                  color: timeFilter === tab.key ? '#ffffff' : '#64748b',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '6px', scrollSnapType: 'x mandatory' }}>
+        {/* ─── 4 INTERACTIVE CLICKABLE KPI BLOCKS ─── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
           
-          <div style={{ minWidth: '135px', padding: '12px', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', scrollSnapAlign: 'start' }}>
-            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Monthly Sales</span>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a', margin: '4px 0' }}>
-              ₹{(Math.round(incentiveData.eligibleSales + incentiveData.flatSales) / 1000).toFixed(1)}k
+          {/* BLOCK 1: Sales Metric (Clickable) */}
+          <div 
+            onClick={() => setActiveModal("SALES")}
+            style={{ 
+              padding: '14px', 
+              borderRadius: '12px', 
+              backgroundColor: '#ffffff', 
+              border: '1px solid #cbd5e1', 
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              position: 'relative'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#818cf8';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(79, 70, 229, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+            }}
+            title="Click to view sales breakdown"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{periodLabel} Sales</span>
+              <span style={{ fontSize: '0.65rem', color: '#4f46e5', fontWeight: 700 }}>View 🔍</span>
             </div>
-            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-              <TrendingUp size={11} /> ↑ 18.4%
-            </span>
+
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '4px 0' }}>
+              ₹{(totalSales / 1000).toFixed(1)}k
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              {totalSales === 0 ? (
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>
+                  0 orders
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.7rem', color: growthIsPositive ? '#10b981' : '#ef4444', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                  {growthIsPositive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                  {growthIsPositive ? `+${growthPercent}%` : `${growthPercent}%`}
+                </span>
+              )}
+              <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{filteredOrders.length} orders</span>
+            </div>
           </div>
 
-          <div style={{ minWidth: '135px', padding: '12px', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', scrollSnapAlign: 'start' }}>
-            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Follow-ups Due</span>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#d97706', margin: '4px 0' }}>
-              {todayFollowUps.length}
+          {/* BLOCK 2: Follow-ups Due (Clickable) */}
+          <div 
+            onClick={() => setActiveModal("FOLLOWUPS")}
+            style={{ 
+              padding: '14px', 
+              borderRadius: '12px', 
+              backgroundColor: '#ffffff', 
+              border: '1px solid #cbd5e1', 
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#f59e0b';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(245, 158, 11, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+            }}
+            title="Click to view follow-ups"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Follow-ups Due</span>
+              <span style={{ fontSize: '0.65rem', color: '#d97706', fontWeight: 700 }}>View 🔍</span>
             </div>
+
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#d97706', margin: '4px 0' }}>
+              {filteredFollowUps.length}
+            </div>
+
             <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>
-              {todayFollowUps.length > 0 ? 'Pending Today' : 'All Cleared 🎉'}
+              {filteredFollowUps.length > 0 ? `${filteredFollowUps.length} Pending` : 'All Cleared 🎉'}
             </span>
           </div>
 
-          <div style={{ minWidth: '135px', padding: '12px', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', scrollSnapAlign: 'start' }}>
-            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Target Progress</span>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#6366f1', margin: '4px 0' }}>
-              {incentiveData.targetAchievementPercentage}%
+          {/* BLOCK 3: Target Progress (Clickable) */}
+          <div 
+            onClick={() => setActiveModal("TARGET")}
+            style={{ 
+              padding: '14px', 
+              borderRadius: '12px', 
+              backgroundColor: '#ffffff', 
+              border: '1px solid #cbd5e1', 
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#818cf8';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(99, 102, 241, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+            }}
+            title="Click to view target progress details"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Target Progress</span>
+              <span style={{ fontSize: '0.65rem', color: '#6366f1', fontWeight: 700 }}>View 🔍</span>
             </div>
+
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#6366f1', margin: '4px 0' }}>
+              {targetPercent}%
+            </div>
+
             <span style={{ fontSize: '0.7rem', color: '#6366f1', fontWeight: 700 }}>
-              Goal: ₹{(employee?.target / 100000 || 5).toFixed(1)}L
+              Goal: ₹{(targetPeriodGoal / 100000).toFixed(1)}L
             </span>
           </div>
 
-          <div style={{ minWidth: '135px', padding: '12px', borderRadius: '12px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 2px 6px rgba(0,0,0,0.03)', scrollSnapAlign: 'start' }}>
-            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600, display: 'block' }}>Est. Total Payout</span>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981', margin: '4px 0' }}>
+          {/* BLOCK 4: Est. Total Payout (Clickable) */}
+          <div 
+            onClick={() => setActiveModal("PAYOUT")}
+            style={{ 
+              padding: '14px', 
+              borderRadius: '12px', 
+              backgroundColor: '#ffffff', 
+              border: '1px solid #cbd5e1', 
+              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#34d399';
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(16, 185, 129, 0.08)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.transform = 'none';
+              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+            }}
+            title="Click to view earnings and slab breakdown"
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Est. Total Payout</span>
+              <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: 700 }}>View 🔍</span>
+            </div>
+
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', margin: '4px 0' }}>
               ₹{(totalPayout / 1000).toFixed(1)}k
             </div>
+
             <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 700 }}>
-              Slab: {incentiveData.currentSlab}
+              Slab: {calculatedIncentive.currentSlab}
             </span>
           </div>
 
@@ -231,7 +529,7 @@ export default function EmployeeDashboard({
               <p className="zoho-subtitle" style={{ fontSize: '0.75rem' }}>Priority calls scheduled for today</p>
             </div>
           </div>
-          <Link href="/follow-ups" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
+          <Link href="/calls" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
             View All →
           </Link>
         </div>
@@ -253,57 +551,214 @@ export default function EmployeeDashboard({
         </div>
       </div>
 
-      {/* ─── INCENTIVE & EARNINGS BREAKDOWN ─── */}
-      <div className="zoho-card" style={{ marginBottom: '20px' }}>
-        <div className="zoho-header">
-          <div className="zoho-title-group">
-            <div className="zoho-title-icon">
-              <Award size={18} />
-            </div>
-            <div>
-              <h2 className="zoho-title" style={{ fontSize: '1rem' }}>Incentive & Monthly Earnings</h2>
-              <p className="zoho-subtitle" style={{ fontSize: '0.75rem' }}>Live performance & commission calculator</p>
-            </div>
-          </div>
-          <div className="zoho-payout-box">
-            <span className="zoho-payout-label">Est. Incentive</span>
-            <span className="zoho-payout-amount">₹{Math.round(incentiveData.totalIncentive).toLocaleString('en-IN')}</span>
-          </div>
-        </div>
+      {/* ─── DRILL-DOWN POPUP MODALS ─── */}
 
-        <div style={{ padding: '14px' }}>
-          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Qualifying Sales:</span>
-              <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>₹{Math.round(incentiveData.eligibleSales).toLocaleString('en-IN')}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Current Slab:</span>
-              <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 700 }}>
-                {incentiveData.currentSlab} ({incentiveData.slabRate}%)
-              </span>
+      {/* 1. SALES DRILLDOWN MODAL */}
+      {activeModal === "SALES" && (
+        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
+          <div className="modal-content glass-panel animate-in" style={{ maxWidth: '640px', width: '95%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShoppingCart size={18} color="#4f46e5" /> {periodLabel} Sales Breakdown
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Showing {filteredOrders.length} orders total</span>
+              </div>
+              <button onClick={() => setActiveModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }}>×</button>
             </div>
 
-            {/* Target Progress Bar */}
-            <div style={{ marginTop: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                <span>Target Progress</span>
-                <span>{incentiveData.targetAchievementPercentage}%</span>
+            <div style={{ padding: '14px 20px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ backgroundColor: '#ffffff', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Total Sales</span>
+                <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>₹{totalSales.toLocaleString('en-IN')}</strong>
               </div>
-              <div style={{ height: '8px', width: '100%', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
-                <div 
-                  style={{ 
-                    height: '100%', 
-                    backgroundColor: '#ef4444', 
-                    width: `${Math.min(100, incentiveData.targetAchievementPercentage)}%`,
-                    transition: 'width 0.4s ease' 
-                  }} 
-                />
+              <div style={{ backgroundColor: '#ffffff', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Orders Count</span>
+                <strong style={{ fontSize: '1.1rem', color: '#4f46e5' }}>{filteredOrders.length}</strong>
               </div>
+              <div style={{ backgroundColor: '#ffffff', padding: '10px', borderRadius: '8px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Avg Order Value</span>
+                <strong style={{ fontSize: '1.1rem', color: '#059669' }}>
+                  ₹{filteredOrders.length > 0 ? Math.round(totalSales / filteredOrders.length).toLocaleString('en-IN') : 0}
+                </strong>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px' }}>
+              {filteredOrders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8' }}>
+                  <ShoppingCart size={36} style={{ margin: '0 auto 8px auto', opacity: 0.5 }} />
+                  <p style={{ margin: 0, fontSize: '0.85rem' }}>No orders found in this time period.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {filteredOrders.map((o: any) => (
+                    <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: '#ffffff' }}>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>#{o.orderNumber || o.id.slice(0, 8)}</span>
+                          <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', backgroundColor: o.status === 'DELIVERED' ? '#ecfdf5' : '#eff6ff', color: o.status === 'DELIVERED' ? '#059669' : '#2563eb', fontWeight: 600 }}>
+                            {o.status || 'CONFIRMED'}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{o.customer?.businessName || 'Customer'}</span>
+                        <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                          {o.orderDate ? new Date(o.orderDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>
+                          ₹{(o.subtotal || o.totalValue || 0).toLocaleString('en-IN')}
+                        </div>
+                        <Link href={`/orders/${o.id}`} style={{ fontSize: '0.72rem', color: '#4f46e5', textDecoration: 'none', fontWeight: 600 }}>
+                          View Order →
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f8fafc', borderRadius: '0 0 12px 12px' }}>
+              <button onClick={() => setActiveModal(null)} className="secondary-btn" style={{ padding: '6px 14px' }}>Close</button>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* 2. FOLLOW-UPS DRILLDOWN MODAL */}
+      {activeModal === "FOLLOWUPS" && (
+        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
+          <div className="modal-content glass-panel animate-in" style={{ maxWidth: '640px', width: '95%', maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <PhoneCall size={18} color="#d97706" /> {periodLabel} Follow-ups
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{filteredFollowUps.length} follow-ups scheduled</span>
+              </div>
+              <button onClick={() => setActiveModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }}>×</button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {filteredFollowUps.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                  <CheckCircle2 size={36} style={{ color: '#10b981', margin: '0 auto 8px auto' }} />
+                  <p style={{ margin: 0, fontWeight: 700, color: '#0f172a' }}>All caught up!</p>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem' }}>No pending follow-ups for {periodLabel.toLowerCase()}.</p>
+                </div>
+              ) : (
+                filteredFollowUps.map((call: any) => (
+                  <FollowUpCard key={call.id} call={call} />
+                ))
+              )}
+            </div>
+
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: '0 0 12px 12px' }}>
+              <Link href="/calls" style={{ fontSize: '0.8rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+                Open Full Calls Page →
+              </Link>
+              <button onClick={() => setActiveModal(null)} className="secondary-btn" style={{ padding: '6px 14px' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. TARGET PROGRESS MODAL */}
+      {activeModal === "TARGET" && (
+        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
+          <div className="modal-content glass-panel animate-in" style={{ maxWidth: '520px', width: '95%', padding: 0 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Target size={18} color="#6366f1" /> Target & Achievement Details
+              </h3>
+              <button onClick={() => setActiveModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }}>×</button>
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                <span style={{ fontSize: '2rem', fontWeight: 800, color: '#6366f1' }}>{targetPercent}%</span>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', display: 'block' }}>Target Achieved for {periodLabel}</span>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ width: '100%', height: '10px', backgroundColor: '#e2e8f0', borderRadius: '5px', overflow: 'hidden', marginBottom: '20px' }}>
+                <div style={{ width: `${Math.min(100, targetPercent)}%`, height: '100%', backgroundColor: '#6366f1', borderRadius: '5px', transition: 'width 0.5s ease' }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Target Goal ({periodLabel})</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>₹{targetPeriodGoal.toLocaleString('en-IN')}</div>
+                </div>
+                <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Current Sales</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10b981' }}>₹{totalSales.toLocaleString('en-IN')}</div>
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: '0.82rem', color: '#1e40af' }}>
+                💡 Remaining to hit target: <strong>₹{remainingGap.toLocaleString('en-IN')}</strong>
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f8fafc', borderRadius: '0 0 12px 12px' }}>
+              <button onClick={() => setActiveModal(null)} className="secondary-btn" style={{ padding: '6px 14px' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. PAYOUT & INCENTIVE MODAL */}
+      {activeModal === "PAYOUT" && (
+        <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
+          <div className="modal-content glass-panel animate-in" style={{ maxWidth: '540px', width: '95%', padding: 0 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Award size={18} color="#10b981" /> Estimated Payout & Incentive Breakdown
+              </h3>
+              <button onClick={() => setActiveModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }}>×</button>
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
+                <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Base Salary</span>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>₹{(employee?.salary || 0).toLocaleString('en-IN')}</div>
+                </div>
+                <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#047857' }}>Incentive Earned</span>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#059669' }}>₹{calculatedIncentive.totalIncentive.toLocaleString('en-IN')}</div>
+                </div>
+                <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#1d4ed8' }}>Total Est. Payout</span>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#2563eb' }}>₹{totalPayout.toLocaleString('en-IN')}</div>
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '6px' }}>
+                  <span style={{ color: '#64748b' }}>Active Incentive Slab:</span>
+                  <strong style={{ color: '#059669' }}>{calculatedIncentive.currentSlab}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+                  <span style={{ color: '#64748b' }}>Eligible Incentive Sales:</span>
+                  <strong>₹{calculatedIncentive.eligibleSales.toLocaleString('en-IN')}</strong>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                * Note: Payout calculations reflect sales recorded for {periodLabel.toLowerCase()}. Final payroll disbursements are approved by accounts at month end.
+              </div>
+            </div>
+
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f8fafc', borderRadius: '0 0 12px 12px' }}>
+              <button onClick={() => setActiveModal(null)} className="secondary-btn" style={{ padding: '6px 14px' }}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
