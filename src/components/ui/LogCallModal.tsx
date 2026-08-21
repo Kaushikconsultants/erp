@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { logCall } from "@/app/actions/callActions";
 import { getCompanySettings, updateCallOutcomes, updateCallTypes } from "@/app/actions/companyActions";
 import AddCustomerModal from "./AddCustomerModal";
@@ -10,9 +11,14 @@ import "@/components/ui/modal.css";
 interface LogCallModalProps {
   onClose: () => void;
   customers: { id: string; companyName: string; contactPerson: string }[];
+  isAdmin?: boolean;
 }
 
-export default function LogCallModal({ onClose, customers: initialCustomers }: LogCallModalProps) {
+export default function LogCallModal({ onClose, customers: initialCustomers, isAdmin: propIsAdmin }: LogCallModalProps) {
+  const { data: session } = useSession();
+  const sessionRole = (session?.user as any)?.role;
+  const userIsAdmin = propIsAdmin !== undefined ? propIsAdmin : (sessionRole === "ADMIN" || sessionRole === "SUPER_ADMIN");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [outcomes, setOutcomes] = useState<string[]>([
@@ -440,33 +446,35 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
               </div>
             </div>
 
-            {/* Call Type with Edit/Manage Button */}
+            {/* Call Type with Edit/Manage Button (Admin only) */}
             <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%" }}>
               <div style={{ width: "140px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "4px", paddingTop: "4px" }}>
                 <label style={{ width: "auto", padding: 0, fontWeight: 500, fontSize: "0.875rem", color: "#475569" }}>
                   Call Type
                 </label>
-                <button
-                  type="button"
-                  onClick={() => openManager("callType")}
-                  title="Add, edit, or remove Call Types"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "3px",
-                    fontSize: "0.72rem",
-                    color: "#4f46e5",
-                    background: "#eef2ff",
-                    border: "1px solid #c7d2fe",
-                    borderRadius: "4px",
-                    padding: "2px 6px",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    width: "fit-content"
-                  }}
-                >
-                  <Settings2 size={12} /> Edit Options
-                </button>
+                {userIsAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => openManager("callType")}
+                    title="Add, edit, or remove Call Types"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      fontSize: "0.72rem",
+                      color: "#4f46e5",
+                      background: "#eef2ff",
+                      border: "1px solid #c7d2fe",
+                      borderRadius: "4px",
+                      padding: "2px 6px",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      width: "fit-content"
+                    }}
+                  >
+                    <Settings2 size={12} /> Edit Options
+                  </button>
+                )}
               </div>
               <select
                 name="type"
@@ -474,7 +482,7 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
                 value={selectedCallType}
                 onChange={(e) => {
                   if (e.target.value === "__MANAGE_TYPES__") {
-                    openManager("callType");
+                    if (userIsAdmin) openManager("callType");
                   } else {
                     setSelectedCallType(e.target.value);
                   }
@@ -484,39 +492,43 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
                 {callTypes.map((type, idx) => (
                   <option key={idx} value={type}>{type}</option>
                 ))}
-                <option value="__MANAGE_TYPES__" style={{ fontWeight: "bold", color: "#4f46e5" }}>
-                  ⚙️ + Edit / Remove Call Types...
-                </option>
+                {userIsAdmin && (
+                  <option value="__MANAGE_TYPES__" style={{ fontWeight: "bold", color: "#4f46e5" }}>
+                    ⚙️ + Edit / Remove Call Types...
+                  </option>
+                )}
               </select>
             </div>
 
-            {/* Outcome with Edit/Manage Button */}
+            {/* Outcome with Edit/Manage Button (Admin only) */}
             <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%" }}>
               <div style={{ width: "140px", flexShrink: 0, display: "flex", flexDirection: "column", gap: "4px", paddingTop: "4px" }}>
                 <label style={{ width: "auto", padding: 0, fontWeight: 500, fontSize: "0.875rem", color: "#475569" }}>
                   Outcome
                 </label>
-                <button
-                  type="button"
-                  onClick={() => openManager("outcome")}
-                  title="Add, edit, or remove Outcomes"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "3px",
-                    fontSize: "0.72rem",
-                    color: "#4f46e5",
-                    background: "#eef2ff",
-                    border: "1px solid #c7d2fe",
-                    borderRadius: "4px",
-                    padding: "2px 6px",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    width: "fit-content"
-                  }}
-                >
-                  <Settings2 size={12} /> Edit Options
-                </button>
+                {userIsAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => openManager("outcome")}
+                    title="Add, edit, or remove Outcomes"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      fontSize: "0.72rem",
+                      color: "#4f46e5",
+                      background: "#eef2ff",
+                      border: "1px solid #c7d2fe",
+                      borderRadius: "4px",
+                      padding: "2px 6px",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                      width: "fit-content"
+                    }}
+                  >
+                    <Settings2 size={12} /> Edit Options
+                  </button>
+                )}
               </div>
               <select
                 name="outcome"
@@ -524,7 +536,7 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
                 value={selectedOutcome}
                 onChange={(e) => {
                   if (e.target.value === "__MANAGE_OUTCOMES__") {
-                    openManager("outcome");
+                    if (userIsAdmin) openManager("outcome");
                   } else {
                     setSelectedOutcome(e.target.value);
                   }
@@ -534,9 +546,11 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
                 {outcomes.map((outcome, idx) => (
                   <option key={idx} value={outcome}>{outcome}</option>
                 ))}
-                <option value="__MANAGE_OUTCOMES__" style={{ fontWeight: "bold", color: "#4f46e5" }}>
-                  ⚙️ + Edit / Remove Outcomes...
-                </option>
+                {userIsAdmin && (
+                  <option value="__MANAGE_OUTCOMES__" style={{ fontWeight: "bold", color: "#4f46e5" }}>
+                    ⚙️ + Edit / Remove Outcomes...
+                  </option>
+                )}
               </select>
             </div>
 
@@ -778,7 +792,7 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
       </div>
 
       {/* ADMIN OPTIONS MANAGEMENT MODAL */}
-      {manageModal && (
+      {manageModal && userIsAdmin && (
         <div className="modal-backdrop" style={{ zIndex: 1050 }}>
           <div className="modal-content glass-panel animate-in" style={{ maxWidth: "480px", width: "95%", backgroundColor: "#ffffff" }}>
             <div className="modal-header" style={{ backgroundColor: "#4f46e5", color: "#ffffff", padding: "14px 20px" }}>

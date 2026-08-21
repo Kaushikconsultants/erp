@@ -7,9 +7,10 @@ import { useSearchParams } from "next/navigation";
 
 interface LogCallButtonProps {
   customers: { id: string; companyName: string; contactPerson: string }[];
+  isAdmin?: boolean;
 }
 
-export default function LogCallButton({ customers }: LogCallButtonProps) {
+export default function LogCallButton({ customers, isAdmin }: LogCallButtonProps) {
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -30,7 +31,7 @@ export default function LogCallButton({ customers }: LogCallButtonProps) {
       </button>
 
       {isModalOpen && (
-        <LogCallModal onClose={() => setIsModalOpen(false)} customers={customers} />
+        <LogCallModal onClose={() => setIsModalOpen(false)} customers={customers} isAdmin={isAdmin} />
       )}
     </>
   );

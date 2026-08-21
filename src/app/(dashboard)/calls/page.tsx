@@ -70,7 +70,7 @@ export default async function CallsPage() {
           <h1 className="page-title">Calls & Follow-ups</h1>
           <p className="page-subtitle">Log calls, schedule follow-ups, and manage tasks.</p>
         </div>
-        <LogCallButton customers={mappedCustomers} />
+        <LogCallButton customers={mappedCustomers} isAdmin={isAdmin} />
       </div>
 
       <div className="glass-panel" style={{ padding: '24px' }}>

@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath, unstable_cache } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const FALLBACK_SETTINGS = {
   id: "default",
@@ -109,6 +111,12 @@ export async function updateMonthlyTarget(target: number) {
 
 export async function updateCallOutcomes(outcomes: string[]) {
   try {
+    const session = await getServerSession(authOptions);
+    const userRole = (session?.user as any)?.role;
+    if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+      return { error: "Unauthorized: Admin privileges required." };
+    }
+
     const cleanOutcomes = outcomes.map(o => o.trim()).filter(Boolean);
     const updated = await prisma.companySettings.upsert({
       where: { id: "default" },
@@ -127,6 +135,12 @@ export async function updateCallOutcomes(outcomes: string[]) {
 
 export async function updateCallTypes(callTypes: string[]) {
   try {
+    const session = await getServerSession(authOptions);
+    const userRole = (session?.user as any)?.role;
+    if (userRole !== "ADMIN" && userRole !== "SUPER_ADMIN") {
+      return { error: "Unauthorized: Admin privileges required." };
+    }
+
     const cleanTypes = callTypes.map(t => t.trim()).filter(Boolean);
     const updated = await prisma.companySettings.upsert({
       where: { id: "default" },
