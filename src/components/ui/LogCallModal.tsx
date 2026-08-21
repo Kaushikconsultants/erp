@@ -33,7 +33,18 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
   const [selectedOutcome, setSelectedOutcome] = useState<string>("");
 
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [customers] = useState(initialCustomers);
+  const [customers, setCustomers] = useState(initialCustomers);
+
+  // Keep customers in sync if parent props change
+  useEffect(() => {
+    if (initialCustomers && initialCustomers.length > 0) {
+      setCustomers(prev => {
+        const existingIds = new Set(initialCustomers.map(c => c.id));
+        const newlyAdded = prev.filter(c => !existingIds.has(c.id));
+        return [...newlyAdded, ...initialCustomers];
+      });
+    }
+  }, [initialCustomers]);
 
   // Searchable customer picker state
   const [customerSearch, setCustomerSearch] = useState("");
@@ -467,7 +478,24 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
 
         {showAddCustomer && (
           <AddCustomerModal
-            onClose={() => setShowAddCustomer(false)}
+            onClose={(newCustomer) => {
+              setShowAddCustomer(false);
+              if (newCustomer && newCustomer.id) {
+                const cName = newCustomer.businessName || newCustomer.companyName || "New Customer";
+                const cPerson = newCustomer.contactPerson && newCustomer.contactPerson !== cName ? newCustomer.contactPerson : "";
+                const formattedCustomer = {
+                  id: newCustomer.id,
+                  companyName: cName,
+                  contactPerson: cPerson || cName
+                };
+                setCustomers((prev) => [formattedCustomer, ...prev.filter(c => c.id !== newCustomer.id)]);
+                const label = cPerson ? `${cName} (${cPerson})` : cName;
+                setSelectedCustomerId(formattedCustomer.id);
+                setSelectedCustomerLabel(label);
+                setCustomerSearch("");
+                setDropdownOpen(false);
+              }
+            }}
             employees={[]}
           />
         )}

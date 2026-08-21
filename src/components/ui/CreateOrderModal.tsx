@@ -4,6 +4,8 @@ import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { createOrder } from "@/app/actions/orderActions";
 import { lookupBarcode } from "@/app/actions/scannerActions";
+import AddCustomerModal from "./AddCustomerModal";
+import { Plus } from "lucide-react";
 import ShippingRateCalculator from "./ShippingRateCalculator";
 import QuickBarcodeScannerBar from "@/components/scanner/QuickBarcodeScannerBar";
 import "@/components/ui/modal.css";
@@ -15,12 +17,25 @@ interface CreateOrderModalProps {
   employees?: { id: string; name: string }[];
 }
 
-export default function CreateOrderModal({ onClose, customers, products, employees = [] }: CreateOrderModalProps) {
+export default function CreateOrderModal({ onClose, customers: initialCustomers, products, employees = [] }: CreateOrderModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [shippingCharge, setShippingCharge] = useState(0);
+  const [customerList, setCustomerList] = useState(initialCustomers);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+
+  // Keep in sync with initialCustomers
+  useEffect(() => {
+    if (initialCustomers && initialCustomers.length > 0) {
+      setCustomerList(prev => {
+        const existingIds = new Set(initialCustomers.map(c => c.id));
+        const newlyAdded = prev.filter(c => !existingIds.has(c.id));
+        return [...newlyAdded, ...initialCustomers];
+      });
+    }
+  }, [initialCustomers]);
 
   // Searchable customer picker
   const [customerSearch, setCustomerSearch] = useState("");
@@ -39,7 +54,7 @@ export default function CreateOrderModal({ onClose, customers, products, employe
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredCustomers = customers.filter((c) => c.companyName.toLowerCase().includes(customerSearch.toLowerCase()));
+  const filteredCustomers = customerList.filter((c) => c.companyName.toLowerCase().includes(customerSearch.toLowerCase()));
 
   const handleBarcodeScan = async (code: string) => {
     if (!code || !code.trim()) return;
@@ -162,6 +177,12 @@ export default function CreateOrderModal({ onClose, customers, products, employe
               </div>
               {customerDropdownOpen && (
                 <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "8px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15)", zIndex: 9999, maxHeight: "200px", overflowY: "auto" }}>
+                  <div
+                    onClick={() => { setShowAddCustomer(true); setCustomerDropdownOpen(false); }}
+                    style={{ padding: "10px 14px", cursor: "pointer", fontWeight: 700, color: "#10b981", borderBottom: "1px solid #f1f5f9", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "6px" }}
+                  >
+                    <Plus size={15} /> + Add New Customer...
+                  </div>
                   {filteredCustomers.length === 0 ? (
                     <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem", textAlign: "center" }}>No customers found</div>
                   ) : (
@@ -259,6 +280,24 @@ export default function CreateOrderModal({ onClose, customers, products, employe
           </div>
         </form>
       </div>
+
+      {showAddCustomer && (
+        <AddCustomerModal
+          onClose={(newCust) => {
+            setShowAddCustomer(false);
+            if (newCust && newCust.id) {
+              const cName = newCust.businessName || newCust.companyName || "New Customer";
+              const formatted = { id: newCust.id, companyName: cName };
+              setCustomerList((prev) => [formatted, ...prev.filter(c => c.id !== newCust.id)]);
+              setSelectedCustomerId(formatted.id);
+              setSelectedCustomerLabel(formatted.companyName);
+              setCustomerSearch("");
+              setCustomerDropdownOpen(false);
+            }
+          }}
+          employees={employees}
+        />
+      )}
     </div>
   );
 }
