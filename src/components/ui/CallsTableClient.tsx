@@ -7,9 +7,14 @@ import { updateCall, deleteCall } from '@/app/actions/callActions';
 interface CallsTableClientProps {
   calls: any[];
   availableOutcomes?: string[];
+  availableCallTypes?: string[];
 }
 
-export default function CallsTableClient({ calls, availableOutcomes = ["INTERESTED", "NOT_INTERESTED", "NO_ANSWER", "ORDER_PLACED", "COMPLAINT", "FOLLOW_UP_NEEDED"] }: CallsTableClientProps) {
+export default function CallsTableClient({ 
+  calls, 
+  availableOutcomes = ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support", "Call Back Later"],
+  availableCallTypes = ["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"]
+}: CallsTableClientProps) {
   const [editingCall, setEditingCall] = useState<any | null>(null);
   const [viewingNotesCall, setViewingNotesCall] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -178,10 +183,9 @@ export default function CallsTableClient({ calls, availableOutcomes = ["INTEREST
                     onChange={e => setEditCallType(e.target.value)}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
                   >
-                    <option value="OUTBOUND">Outbound Call</option>
-                    <option value="INBOUND">Inbound Call</option>
-                    <option value="MEETING">In-Person Meeting</option>
-                    <option value="WHATSAPP">WhatsApp Message</option>
+                    {availableCallTypes.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
                   </select>
                 </div>
 

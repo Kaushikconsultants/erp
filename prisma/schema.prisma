@@ -516,7 +516,8 @@ model CompanySettings {
   useBoldText     Boolean @default(false)
   monthlyTarget   Float   @default(2000000)
 
-  callOutcomes    String[] @default(["INTERESTED", "NOT_INTERESTED", "NO_ANSWER", "ORDER_PLACED", "COMPLAINT"])
+  callOutcomes    String[] @default(["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support", "Call Back Later"])
+  callTypes       String[] @default(["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"])
 
   nextQuotationNumber String? @default("QT-1001")
   nextInvoiceNumber   String? @default("INV-1001")

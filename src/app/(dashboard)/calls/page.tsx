@@ -60,7 +60,8 @@ export default async function CallsPage() {
     contactPerson: c.contactPerson
   }));
 
-  const callOutcomes = companyRes?.settings?.callOutcomes || ["INTERESTED", "NOT_INTERESTED", "NO_ANSWER", "ORDER_PLACED", "COMPLAINT", "FOLLOW_UP_NEEDED"];
+  const callOutcomes = companyRes?.settings?.callOutcomes || ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support", "Call Back Later"];
+  const callTypes = companyRes?.settings?.callTypes || ["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"];
 
   return (
     <div className="page-container">
@@ -73,7 +74,7 @@ export default async function CallsPage() {
       </div>
 
       <div className="glass-panel" style={{ padding: '24px' }}>
-        <CallsTableClient calls={calls} availableOutcomes={callOutcomes} />
+        <CallsTableClient calls={calls} availableOutcomes={callOutcomes} availableCallTypes={callTypes} />
       </div>
     </div>
   );

@@ -76,16 +76,32 @@ export default function CreateTaskModal({ onClose, employees, customers }: Creat
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Related Customer (Optional)</label>
+          <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%" }}>
+            <label style={{ width: "150px", paddingTop: "10px", flexShrink: 0, fontWeight: 500, fontSize: "0.875rem", color: "#475569" }}>Related Customer <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block" }}>(Optional)</span></label>
             <input type="hidden" name="customerId" value={selectedCustomerId} />
-            <div ref={dropdownRef} style={{ position: "relative" }}>
+            <div ref={dropdownRef} style={{ position: "relative", flex: 1, width: "100%" }}>
               <div
-                style={{ display: "flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "rgba(255,255,255,0.8)", padding: "0 10px", cursor: "text", minHeight: "40px", gap: "8px" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  border: dropdownOpen ? "1px solid var(--accent-primary, #4f46e5)" : "1px solid #e2e8f0",
+                  borderRadius: "8px",
+                  backgroundColor: dropdownOpen ? "#ffffff" : "#f8fafc",
+                  boxShadow: dropdownOpen ? "0 0 0 3px rgba(79, 70, 229, 0.15)" : "inset 0 1px 2px rgba(0,0,0,0.02)",
+                  padding: "0 12px",
+                  cursor: "text",
+                  minHeight: "42px",
+                  height: "42px",
+                  gap: "8px",
+                  width: "100%",
+                  boxSizing: "border-box",
+                  transition: "all 0.2s ease"
+                }}
                 onClick={() => setDropdownOpen(true)}
               >
+                <span style={{ color: "#94a3b8", fontSize: "0.85rem", display: "flex", alignItems: "center" }}>🔍</span>
                 {selectedCustomerId && !dropdownOpen ? (
-                  <span style={{ flex: 1, fontSize: "0.875rem", color: "var(--text-primary)", padding: "8px 0" }}>{selectedCustomerLabel}</span>
+                  <span style={{ flex: 1, fontSize: "0.875rem", color: "#1e293b", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{selectedCustomerLabel}</span>
                 ) : (
                   <input
                     type="text"
@@ -93,18 +109,18 @@ export default function CreateTaskModal({ onClose, employees, customers }: Creat
                     value={customerSearch}
                     onChange={(e) => { setCustomerSearch(e.target.value); setDropdownOpen(true); }}
                     onFocus={() => setDropdownOpen(true)}
-                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", color: "var(--text-primary)", padding: "8px 0" }}
+                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", color: "#1e293b", padding: "0", height: "100%", width: "100%", boxShadow: "none" }}
                   />
                 )}
                 {selectedCustomerId && (
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(""); setSelectedCustomerLabel(""); setDropdownOpen(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "1.1rem" }}>×</button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(""); setSelectedCustomerLabel(""); setDropdownOpen(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "1.2rem", padding: "0 4px" }}>×</button>
                 )}
               </div>
               {dropdownOpen && (
-                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 9999, maxHeight: "200px", overflowY: "auto" }}>
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "8px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15)", zIndex: 9999, maxHeight: "200px", overflowY: "auto" }}>
                   <div onClick={() => { setSelectedCustomerId(""); setSelectedCustomerLabel(""); setDropdownOpen(false); }} style={{ padding: "10px 14px", cursor: "pointer", color: "#94a3b8", fontSize: "0.85rem", borderBottom: "1px solid #f1f5f9" }}>None</div>
                   {filteredCustomers.length === 0 ? (
-                    <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem" }}>No customers found</div>
+                    <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem", textAlign: "center" }}>No customers found</div>
                   ) : (
                     filteredCustomers.map((c) => (
                       <div key={c.id} onClick={() => { setSelectedCustomerId(c.id); setSelectedCustomerLabel(c.name); setCustomerSearch(""); setDropdownOpen(false); }}

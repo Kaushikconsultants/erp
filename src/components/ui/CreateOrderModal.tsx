@@ -120,16 +120,32 @@ export default function CreateOrderModal({ onClose, customers, products, employe
         <form onSubmit={handleSubmit} className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
           {error && <div className="error-message">{error}</div>}
           
-          <div className="form-group">
-            <label>Customer</label>
+          <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%" }}>
+            <label style={{ width: "150px", paddingTop: "10px", flexShrink: 0, fontWeight: 500, fontSize: "0.875rem", color: "#475569" }}>Customer</label>
             <input type="hidden" name="customerId" value={selectedCustomerId} />
-            <div ref={customerDropdownRef} style={{ position: "relative" }}>
+            <div ref={customerDropdownRef} style={{ position: "relative", flex: 1, width: "100%" }}>
               <div
-                style={{ display: "flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "rgba(255,255,255,0.8)", padding: "0 10px", cursor: "text", minHeight: "40px", gap: "8px" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  border: customerDropdownOpen ? "1px solid var(--accent-primary, #4f46e5)" : "1px solid #e2e8f0",
+                  borderRadius: "8px",
+                  backgroundColor: customerDropdownOpen ? "#ffffff" : "#f8fafc",
+                  boxShadow: customerDropdownOpen ? "0 0 0 3px rgba(79, 70, 229, 0.15)" : "inset 0 1px 2px rgba(0,0,0,0.02)",
+                  padding: "0 12px",
+                  cursor: "text",
+                  minHeight: "42px",
+                  height: "42px",
+                  gap: "8px",
+                  width: "100%",
+                  boxSizing: "border-box",
+                  transition: "all 0.2s ease"
+                }}
                 onClick={() => setCustomerDropdownOpen(true)}
               >
+                <span style={{ color: "#94a3b8", fontSize: "0.85rem", display: "flex", alignItems: "center" }}>🔍</span>
                 {selectedCustomerId && !customerDropdownOpen ? (
-                  <span style={{ flex: 1, fontSize: "0.875rem", color: "var(--text-primary)", padding: "8px 0" }}>{selectedCustomerLabel}</span>
+                  <span style={{ flex: 1, fontSize: "0.875rem", color: "#1e293b", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{selectedCustomerLabel}</span>
                 ) : (
                   <input
                     type="text"
@@ -137,17 +153,17 @@ export default function CreateOrderModal({ onClose, customers, products, employe
                     value={customerSearch}
                     onChange={(e) => { setCustomerSearch(e.target.value); setCustomerDropdownOpen(true); }}
                     onFocus={() => setCustomerDropdownOpen(true)}
-                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", color: "var(--text-primary)", padding: "8px 0" }}
+                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", color: "#1e293b", padding: "0", height: "100%", width: "100%", boxShadow: "none" }}
                   />
                 )}
                 {selectedCustomerId && (
-                  <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(""); setSelectedCustomerLabel(""); setCustomerDropdownOpen(true); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "1.1rem" }}>×</button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(""); setSelectedCustomerLabel(""); setCustomerDropdownOpen(true); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "1.2rem", padding: "0 4px" }}>×</button>
                 )}
               </div>
               {customerDropdownOpen && (
-                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 9999, maxHeight: "200px", overflowY: "auto" }}>
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "8px", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15)", zIndex: 9999, maxHeight: "200px", overflowY: "auto" }}>
                   {filteredCustomers.length === 0 ? (
-                    <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem" }}>No customers found</div>
+                    <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem", textAlign: "center" }}>No customers found</div>
                   ) : (
                     filteredCustomers.map((c) => (
                       <div key={c.id} onClick={() => { setSelectedCustomerId(c.id); setSelectedCustomerLabel(c.companyName); setCustomerSearch(""); setCustomerDropdownOpen(false); }}

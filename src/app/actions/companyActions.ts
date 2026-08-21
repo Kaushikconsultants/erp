@@ -32,7 +32,8 @@ const FALLBACK_SETTINGS = {
   monthlyTarget: 2000000,
   nextQuotationNumber: "QT-1001",
   nextInvoiceNumber: "INV-1001",
-  callOutcomes: ["INTERESTED", "NOT_INTERESTED", "NO_ANSWER", "ORDER_PLACED", "COMPLAINT"],
+  callOutcomes: ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support", "Call Back Later"],
+  callTypes: ["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"],
   updatedAt: new Date()
 };
 
@@ -106,6 +107,42 @@ export async function updateMonthlyTarget(target: number) {
   }
 }
 
+export async function updateCallOutcomes(outcomes: string[]) {
+  try {
+    const cleanOutcomes = outcomes.map(o => o.trim()).filter(Boolean);
+    const updated = await prisma.companySettings.upsert({
+      where: { id: "default" },
+      update: { callOutcomes: cleanOutcomes },
+      create: { id: "default", companyName: "Espon Clothing Private Limited", callOutcomes: cleanOutcomes }
+    });
+    revalidatePath("/calls");
+    revalidatePath("/settings");
+    revalidatePath("/settings/organization");
+    return { success: true, callOutcomes: updated.callOutcomes };
+  } catch (error) {
+    console.error("Failed to update call outcomes:", error);
+    return { error: "Failed to update call outcomes" };
+  }
+}
+
+export async function updateCallTypes(callTypes: string[]) {
+  try {
+    const cleanTypes = callTypes.map(t => t.trim()).filter(Boolean);
+    const updated = await prisma.companySettings.upsert({
+      where: { id: "default" },
+      update: { callTypes: cleanTypes },
+      create: { id: "default", companyName: "Espon Clothing Private Limited", callTypes: cleanTypes }
+    });
+    revalidatePath("/calls");
+    revalidatePath("/settings");
+    revalidatePath("/settings/organization");
+    return { success: true, callTypes: updated.callTypes };
+  } catch (error) {
+    console.error("Failed to update call types:", error);
+    return { error: "Failed to update call types" };
+  }
+}
+
 export async function updateCompanySettings(formData: FormData) {
   try {
     const companyName = formData.get("companyName") as string;
@@ -143,6 +180,14 @@ export async function updateCompanySettings(formData: FormData) {
       } catch (e) {}
     }
 
+    const callTypesStr = formData.get("callTypes") as string;
+    let callTypes: string[] | undefined = undefined;
+    if (callTypesStr) {
+      try {
+        callTypes = JSON.parse(callTypesStr);
+      } catch (e) {}
+    }
+
     const nextQuotationNumber = formData.get("nextQuotationNumber") as string;
     const nextInvoiceNumber = formData.get("nextInvoiceNumber") as string;
 
@@ -160,6 +205,7 @@ export async function updateCompanySettings(formData: FormData) {
         ...(fontFamily ? { fontFamily } : {}),
         ...(buttonRadius ? { buttonRadius } : {}),
         ...(callOutcomes ? { callOutcomes } : {}),
+        ...(callTypes ? { callTypes } : {}),
         useBoldText
       },
       create: {
@@ -175,12 +221,14 @@ export async function updateCompanySettings(formData: FormData) {
         fontFamily: fontFamily || "Inter",
         buttonRadius: buttonRadius || "8px",
         useBoldText,
-        ...(callOutcomes ? { callOutcomes } : {})
+        ...(callOutcomes ? { callOutcomes } : {}),
+        ...(callTypes ? { callTypes } : {})
       }
     });
 
     revalidatePath("/settings");
     revalidatePath("/settings/organization");
+    revalidatePath("/calls");
     revalidatePath("/quotations");
     revalidatePath("/orders");
     revalidatePath("/", "layout");

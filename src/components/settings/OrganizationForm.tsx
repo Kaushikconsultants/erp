@@ -19,6 +19,9 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
   const [callOutcomes, setCallOutcomes] = useState<string[]>(initialData?.callOutcomes || ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support"]);
   const [newOutcome, setNewOutcome] = useState('');
 
+  const [callTypes, setCallTypes] = useState<string[]>(initialData?.callTypes || ["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"]);
+  const [newCallType, setNewCallType] = useState('');
+
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -52,6 +55,7 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
     formData.set('signatoryName', signatoryName);
     formData.set('signatoryDesignation', signatoryDesignation);
     formData.set('callOutcomes', JSON.stringify(callOutcomes));
+    formData.set('callTypes', JSON.stringify(callTypes));
 
     const res = await updateCompanySettings(formData);
     setLoading(false);
@@ -344,7 +348,8 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
       {/* CRM Settings */}
       <div className="zoho-section-box">
         <h3 className="zoho-section-title">CRM Settings</h3>
-        <div className="zoho-field-group">
+        {/* Call Outcomes */}
+        <div className="zoho-field-group" style={{ marginBottom: '24px' }}>
           <label className="zoho-field-label">Call Outcomes</label>
           <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>Customize the list of outcomes available when logging a call.</p>
           
@@ -352,7 +357,7 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
             {callOutcomes.map((outcome, idx) => (
               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f1f5f9', padding: '6px 12px', borderRadius: '20px', fontSize: '13px', border: '1px solid #cbd5e1' }}>
                 <span>{outcome}</span>
-                <button type="button" onClick={() => setCallOutcomes(callOutcomes.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px' }}>×</button>
+                <button type="button" onClick={() => setCallOutcomes(callOutcomes.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontWeight: 'bold' }}>×</button>
               </div>
             ))}
           </div>
@@ -381,6 +386,52 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
                 if (newOutcome.trim()) {
                   setCallOutcomes([...callOutcomes, newOutcome.trim()]);
                   setNewOutcome('');
+                }
+              }}
+            >
+              Add
+            </button>
+          </div>
+        </div>
+
+        {/* Call Types */}
+        <div className="zoho-field-group">
+          <label className="zoho-field-label">Call Types</label>
+          <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>Customize the interaction types (e.g. Outbound, Inbound, WhatsApp, In-Person Meeting).</p>
+          
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+            {callTypes.map((type, idx) => (
+              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f1f5f9', padding: '6px 12px', borderRadius: '20px', fontSize: '13px', border: '1px solid #cbd5e1' }}>
+                <span>{type}</span>
+                <button type="button" onClick={() => setCallTypes(callTypes.filter((_, i) => i !== idx))} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontWeight: 'bold' }}>×</button>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', maxWidth: '400px' }}>
+            <input 
+              type="text" 
+              value={newCallType} 
+              onChange={e => setNewCallType(e.target.value)} 
+              placeholder="E.g. Video Call" 
+              className="zoho-input-field" 
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (newCallType.trim()) {
+                    setCallTypes([...callTypes, newCallType.trim()]);
+                    setNewCallType('');
+                  }
+                }
+              }}
+            />
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              onClick={() => {
+                if (newCallType.trim()) {
+                  setCallTypes([...callTypes, newCallType.trim()]);
+                  setNewCallType('');
                 }
               }}
             >
