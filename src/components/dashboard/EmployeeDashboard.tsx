@@ -279,14 +279,14 @@ export default function EmployeeDashboard({
   const remainingGap = Math.max(0, targetPeriodGoal - totalSales);
 
   // Calculate Incentive & Payout
-  const formattedOrderData: OrderData[] = filteredOrders.map(order => ({
+  const formattedOrderData: OrderData[] = (filteredOrders || []).map(order => ({
     id: order.id,
-    taxableValue: order.subtotal || order.totalValue,
-    discount: order.discount || 0,
+    taxableValue: Number(order.subtotal !== null && order.subtotal !== undefined ? order.subtotal : order.totalValue !== null && order.totalValue !== undefined ? order.totalValue : 0),
+    discount: Number(order.discount || 0),
     isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
   }));
   const calculatedIncentive = calculateIncentives(formattedOrderData, targetPeriodGoal);
-  const totalPayout = (employee?.salary || 0) + calculatedIncentive.totalIncentive;
+  const totalPayout = (Number(employee?.salary) || 0) + (Number(calculatedIncentive?.totalIncentive) || 0);
 
   return (
     <div className="dashboard-container employee-dashboard">

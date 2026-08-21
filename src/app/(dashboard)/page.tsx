@@ -366,6 +366,24 @@ export default async function Home() {
       return d >= todayStart && d < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
     });
 
+    // Serialize cleanly for client component props
+    const serializedOrders = allEmployeeOrders.map(o => ({
+      ...o,
+      orderDate: o.orderDate ? o.orderDate.toISOString() : null
+    }));
+
+    const serializedFollowUps = allFollowUps.map(f => ({
+      ...f,
+      followUpDate: f.followUpDate ? f.followUpDate.toISOString() : null,
+      createdAt: f.createdAt ? f.createdAt.toISOString() : null
+    }));
+
+    const serializedTodayFollowUps = todayFollowUps.map(c => ({
+      ...c,
+      followUpDate: c.followUpDate ? c.followUpDate.toISOString() : null,
+      createdAt: c.createdAt ? c.createdAt.toISOString() : null
+    }));
+
     return (
       <>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
@@ -376,9 +394,9 @@ export default async function Home() {
           isCheckedIn={isCheckedIn}
           isCheckedOut={isCheckedOut}
           incentiveData={incentiveData}
-          todayFollowUps={todayFollowUps}
-          allOrders={allEmployeeOrders}
-          allFollowUps={allFollowUps}
+          todayFollowUps={serializedTodayFollowUps}
+          allOrders={serializedOrders}
+          allFollowUps={serializedFollowUps}
         />
       </>
     );
