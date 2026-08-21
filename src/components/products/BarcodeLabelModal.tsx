@@ -21,7 +21,8 @@ import {
   LayoutGrid,
   Trash2,
   Eye,
-  EyeOff
+  EyeOff,
+  Info
 } from "lucide-react";
 
 interface ProductLabelData {
@@ -93,7 +94,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const [headerText, setHeaderText] = useState<string>("HEART OF BUSINESS");
   const [showHeader, setShowHeader] = useState<boolean>(true);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [logoSize, setLogoSize] = useState<number>(26);
+  const [logoSize, setLogoSize] = useState<number>(24);
   const [showLogo, setShowLogo] = useState<boolean>(false);
 
   const [customTitle, setCustomTitle] = useState<string>(product.name);
@@ -109,6 +110,8 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const [textAlign, setTextAlign] = useState<"center" | "left" | "right">("center");
   const [borderStyle, setBorderStyle] = useState<"dashed" | "solid" | "none">("dashed");
 
+  // High Resolution Symbology Image Data URLs
+  const [barcodeDataUrl, setBarcodeDataUrl] = useState<string>("");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
 
   useEffect(() => {
@@ -151,31 +154,51 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const getBarcodeConfig = () => {
     const h = layout.heightMm;
     if (h <= 25) {
-      return { width: 1.2, height: 24, fontSize: 9, qrSize: 42 };
+      return { width: 1.3, height: 26, fontSize: 10, qrSize: 42 };
     } else if (h <= 40) {
-      return { width: 1.4, height: 36, fontSize: 10, qrSize: 54 };
+      return { width: 1.5, height: 38, fontSize: 11, qrSize: 54 };
     } else {
-      return { width: 1.8, height: 50, fontSize: 11, qrSize: 72 };
+      return { width: 2.0, height: 54, fontSize: 12, qrSize: 72 };
     }
   };
 
   const barcodeCfg = getBarcodeConfig();
 
+  // Generate PNG Data URL for Barcode & QR (Guarantees zero collapse in physical printing)
   useEffect(() => {
-    // Generate QR Code once for activeCode
-    if (activeCode) {
-      QRCode.toDataURL(activeCode, {
-        width: 150,
-        margin: 1,
-        color: {
-          dark: "#000000",
-          light: "#ffffff"
-        }
-      })
-        .then(url => setQrDataUrl(url))
-        .catch(err => console.error("QR Code error:", err));
+    if (!activeCode) return;
+
+    // Generate High-Res Barcode PNG
+    try {
+      const canvas = document.createElement("canvas");
+      JsBarcode(canvas, activeCode, {
+        format: "CODE128",
+        lineColor: "#000000",
+        background: "#ffffff",
+        width: barcodeCfg.width * 1.6,
+        height: barcodeCfg.height * 1.3,
+        displayValue: true,
+        fontSize: barcodeCfg.fontSize * 1.2,
+        font: "monospace",
+        margin: 4
+      });
+      setBarcodeDataUrl(canvas.toDataURL("image/png"));
+    } catch (e) {
+      console.error("Barcode generation failed:", e);
     }
-  }, [activeCode]);
+
+    // Generate High-Res QR Code PNG
+    QRCode.toDataURL(activeCode, {
+      width: 180,
+      margin: 1,
+      color: {
+        dark: "#000000",
+        light: "#ffffff"
+      }
+    })
+      .then(url => setQrDataUrl(url))
+      .catch(err => console.error("QR Code error:", err));
+  }, [activeCode, barcodeCfg.width, barcodeCfg.height, barcodeCfg.fontSize]);
 
   // Handle Logo Upload
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -226,7 +249,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   // Page Media CSS for print
   const rollWidthMm = layout.widthMm * layout.columns + (layout.columns > 1 ? (layout.columns - 1) * 3 : 0);
   const pageMediaCss = printer === "laser_a4" || format === "sheet_a4_24"
-    ? `@page { size: A4 portrait; margin: 8mm; }`
+    ? `@page { size: A4 portrait; margin: 6mm; }`
     : printer === "pos_80mm"
     ? `@page { size: 80mm auto; margin: 2mm; }`
     : `@page { size: ${rollWidthMm}mm ${layout.heightMm}mm; margin: 0; }`;
@@ -303,145 +326,155 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
           <div style={{ padding: "16px 20px", background: "rgba(248, 250, 252, 0.95)", borderBottom: "1px solid var(--border-color)" }}>
             {activeTab === "format" ? (
               /* TAB 1: FORMAT & PRINTER SETTINGS */
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px", alignItems: "end" }}>
-                {/* Label Size / Format */}
-                <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
-                    Label Size / Format
-                  </label>
-                  <select
-                    value={format}
-                    onChange={e => setFormat(e.target.value as LabelFormat)}
-                    style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", background: "#fff", fontWeight: 500, color: "#1e293b" }}
-                  >
-                    <option value="thermal_50x38_2">Thermal 50x38mm (2-Up Roll / 50*38*2)</option>
-                    <option value="thermal_50x25">Thermal 50x25mm (Standard 1-Up Tag)</option>
-                    <option value="thermal_50x38_1">Thermal 50x38mm (Single 1-Up Roll)</option>
-                    <option value="thermal_38x25">Thermal 38x25mm (Jewelry / Small Tag)</option>
-                    <option value="thermal_100x50">Thermal 100x50mm (Box / Shipping Sticker)</option>
-                    <option value="sheet_a4_24">A4 Sticker Sheet (3x8 - 24 Labels Grid)</option>
-                    <option value="custom">✨ Custom Size Label...</option>
-                  </select>
-                </div>
-
-                {/* Target Printer Selection */}
-                <div>
-                  <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
-                    <Printer size={13} className="text-indigo-600" /> Target Printer
-                  </label>
-                  <select
-                    value={printer}
-                    onChange={e => setPrinter(e.target.value as PrinterType)}
-                    style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", background: "#fff", fontWeight: 500, color: "#1e293b" }}
-                  >
-                    <option value="thermal_roll">Thermal Sticker Printer (TSC, Zebra, TVS, Xprinter)</option>
-                    <option value="laser_a4">Standard Laser / Inkjet (A4 / Letter Paper)</option>
-                    <option value="pos_80mm">POS Thermal Receipt Printer (80mm)</option>
-                    <option value="pdf">Save as Vector PDF / Virtual Printer</option>
-                  </select>
-                </div>
-
-                {/* Symbol Type Selector */}
-                <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
-                    Symbol Type
-                  </label>
-                  <div style={{ display: "flex", gap: "4px" }}>
-                    <button
-                      type="button"
-                      onClick={() => setCodeType("BARCODE")}
-                      style={{
-                        flex: 1,
-                        padding: "6px 8px",
-                        borderRadius: "6px",
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        border: "1px solid #cbd5e1",
-                        background: codeType === "BARCODE" ? "#4f46e5" : "#fff",
-                        color: codeType === "BARCODE" ? "#fff" : "#334155"
-                      }}
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px", alignItems: "end" }}>
+                  {/* Label Size / Format */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                      Label Size / Format
+                    </label>
+                    <select
+                      value={format}
+                      onChange={e => setFormat(e.target.value as LabelFormat)}
+                      style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", background: "#fff", fontWeight: 500, color: "#1e293b" }}
                     >
-                      1D Barcode
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCodeType("QR")}
-                      style={{
-                        flex: 1,
-                        padding: "6px 8px",
-                        borderRadius: "6px",
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        border: "1px solid #cbd5e1",
-                        background: codeType === "QR" ? "#4f46e5" : "#fff",
-                        color: codeType === "QR" ? "#fff" : "#334155"
-                      }}
-                    >
-                      2D QR
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCodeType("BOTH")}
-                      style={{
-                        flex: 1,
-                        padding: "6px 8px",
-                        borderRadius: "6px",
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        border: "1px solid #cbd5e1",
-                        background: codeType === "BOTH" ? "#4f46e5" : "#fff",
-                        color: codeType === "BOTH" ? "#fff" : "#334155"
-                      }}
-                    >
-                      Both
-                    </button>
+                      <option value="thermal_50x38_2">Thermal 50x38mm (2-Up Roll / 50*38*2)</option>
+                      <option value="thermal_50x25">Thermal 50x25mm (Standard 1-Up Tag)</option>
+                      <option value="thermal_50x38_1">Thermal 50x38mm (Single 1-Up Roll)</option>
+                      <option value="thermal_38x25">Thermal 38x25mm (Jewelry / Small Tag)</option>
+                      <option value="thermal_100x50">Thermal 100x50mm (Box / Shipping Sticker)</option>
+                      <option value="sheet_a4_24">A4 Sticker Sheet (3x8 - 24 Labels Grid)</option>
+                      <option value="custom">✨ Custom Size Label...</option>
+                    </select>
                   </div>
-                </div>
 
-                {/* Quantity Picker */}
-                <div style={{ minWidth: "180px" }}>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
-                    Quantity (Stickers)
-                  </label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={quantityInput}
-                      onChange={e => setQuantityInput(e.target.value)}
-                      onBlur={() => {
-                        if (!quantityInput || parseInt(quantityInput) < 1) setQuantityInput("1");
-                      }}
-                      placeholder="Enter quantity"
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", fontWeight: 600 }}
-                    />
-                    <div style={{ display: "flex", gap: "3px" }}>
-                      {[1, 2, 4, 10, 20, 50].map(q => (
-                        <button
-                          key={q}
-                          type="button"
-                          onClick={() => setQuantityInput(String(q))}
-                          style={{
-                            flex: 1,
-                            padding: "2px 0",
-                            borderRadius: "4px",
-                            fontSize: "0.7rem",
-                            fontWeight: 600,
-                            border: "1px solid #cbd5e1",
-                            background: printCount === q ? "#4f46e5" : "#f1f5f9",
-                            color: printCount === q ? "#fff" : "#475569",
-                            cursor: "pointer"
-                          }}
-                        >
-                          {q}
-                        </button>
-                      ))}
+                  {/* Target Printer Selection */}
+                  <div>
+                    <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                      <Printer size={13} className="text-indigo-600" /> Target Printer
+                    </label>
+                    <select
+                      value={printer}
+                      onChange={e => setPrinter(e.target.value as PrinterType)}
+                      style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", background: "#fff", fontWeight: 500, color: "#1e293b" }}
+                    >
+                      <option value="thermal_roll">Thermal Sticker Printer (TSC, Zebra, TVS, Xprinter)</option>
+                      <option value="laser_a4">Standard Laser / Inkjet (A4 / Letter Paper)</option>
+                      <option value="pos_80mm">POS Thermal Receipt Printer (80mm)</option>
+                      <option value="pdf">Save as Vector PDF / Virtual Printer</option>
+                    </select>
+                  </div>
+
+                  {/* Symbol Type Selector */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                      Symbol Type
+                    </label>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setCodeType("BARCODE")}
+                        style={{
+                          flex: 1,
+                          padding: "6px 8px",
+                          borderRadius: "6px",
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          border: "1px solid #cbd5e1",
+                          background: codeType === "BARCODE" ? "#4f46e5" : "#fff",
+                          color: codeType === "BARCODE" ? "#fff" : "#334155"
+                        }}
+                      >
+                        1D Barcode
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCodeType("QR")}
+                        style={{
+                          flex: 1,
+                          padding: "6px 8px",
+                          borderRadius: "6px",
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          border: "1px solid #cbd5e1",
+                          background: codeType === "QR" ? "#4f46e5" : "#fff",
+                          color: codeType === "QR" ? "#fff" : "#334155"
+                        }}
+                      >
+                        2D QR
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCodeType("BOTH")}
+                        style={{
+                          flex: 1,
+                          padding: "6px 8px",
+                          borderRadius: "6px",
+                          fontSize: "0.78rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          border: "1px solid #cbd5e1",
+                          background: codeType === "BOTH" ? "#4f46e5" : "#fff",
+                          color: codeType === "BOTH" ? "#fff" : "#334155"
+                        }}
+                      >
+                        Both
+                      </button>
                     </div>
                   </div>
+
+                  {/* Quantity Picker */}
+                  <div style={{ minWidth: "180px" }}>
+                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                      Quantity (Stickers)
+                    </label>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={quantityInput}
+                        onChange={e => setQuantityInput(e.target.value)}
+                        onBlur={() => {
+                          if (!quantityInput || parseInt(quantityInput) < 1) setQuantityInput("1");
+                        }}
+                        placeholder="Enter quantity"
+                        style={{ width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", fontWeight: 600 }}
+                      />
+                      <div style={{ display: "flex", gap: "3px" }}>
+                        {[1, 2, 4, 10, 20, 50].map(q => (
+                          <button
+                            key={q}
+                            type="button"
+                            onClick={() => setQuantityInput(String(q))}
+                            style={{
+                              flex: 1,
+                              padding: "2px 0",
+                              borderRadius: "4px",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              border: "1px solid #cbd5e1",
+                              background: printCount === q ? "#4f46e5" : "#f1f5f9",
+                              color: printCount === q ? "#fff" : "#475569",
+                              cursor: "pointer"
+                            }}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Printer Type Advice Banner */}
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#e0f2fe", padding: "6px 12px", borderRadius: "6px", border: "1px solid #bae6fd", fontSize: "0.75rem", color: "#0369a1" }}>
+                  <Info size={14} className="shrink-0 text-sky-600" />
+                  <span>
+                    <strong>Printing on standard Inkjet / Laser (HP, Epson, Canon)?</strong> Set Target Printer to <strong>"Standard Laser / Inkjet (A4)"</strong> for full A4 page sticker layout.
+                  </span>
                 </div>
               </div>
             ) : (
@@ -740,6 +773,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                 layout={layout}
                 codeType={codeType}
                 barcodeCfg={barcodeCfg}
+                barcodeDataUrl={barcodeDataUrl}
                 qrDataUrl={qrDataUrl}
                 customizer={customizerConfig}
               />
@@ -753,7 +787,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                 Printing {printCount} {printCount === 1 ? "Label" : "Labels"} ({layout.name})
               </span>
               <span style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>
-                Optimized for {printer === "thermal_roll" ? "Thermal Roll Printer" : printer === "laser_a4" ? "Standard A4 Paper Sheet" : printer === "pos_80mm" ? "POS 80mm Receipt Printer" : "PDF Document"}
+                Target: {printer === "thermal_roll" ? "Thermal Roll Printer" : printer === "laser_a4" ? "Standard A4 Paper Sheet" : printer === "pos_80mm" ? "POS 80mm Receipt Printer" : "PDF Document"}
               </span>
             </div>
 
@@ -788,8 +822,10 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: `repeat(${layout.columns}, 1fr)`,
-                gap: "2mm",
+                gridTemplateColumns: printer === "laser_a4" || format === "sheet_a4_24"
+                  ? "repeat(auto-fill, minmax(55mm, 1fr))"
+                  : `repeat(${layout.columns}, 1fr)`,
+                gap: "3mm",
                 width: "100%"
               }}
             >
@@ -801,6 +837,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                   layout={layout}
                   codeType={codeType}
                   barcodeCfg={barcodeCfg}
+                  barcodeDataUrl={barcodeDataUrl}
                   qrDataUrl={qrDataUrl}
                   customizer={customizerConfig}
                 />
@@ -862,6 +899,7 @@ function LabelCardPreview({
   layout,
   codeType,
   barcodeCfg,
+  barcodeDataUrl,
   qrDataUrl,
   customizer
 }: {
@@ -870,10 +908,10 @@ function LabelCardPreview({
   layout: { widthMm: number; heightMm: number };
   codeType: "BARCODE" | "QR" | "BOTH";
   barcodeCfg: { width: number; height: number; fontSize: number; qrSize: number };
+  barcodeDataUrl: string;
   qrDataUrl: string;
   customizer: CustomizerConfig;
 }) {
-  // Proportional preview size
   const cardWidthPx = Math.min(Math.max(layout.widthMm * 4.2, 180), 300);
   const cardHeightPx = Math.min(Math.max(layout.heightMm * 3.8, 125), 220);
 
@@ -929,12 +967,20 @@ function LabelCardPreview({
         </div>
       </div>
 
-      {/* Symbology */}
+      {/* Symbology PNG Image */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "6px", margin: "2px 0", maxWidth: "100%" }}>
-        {(codeType === "BARCODE" || codeType === "BOTH") && (
-          <div style={{ maxWidth: "100%", overflow: "hidden" }}>
-            <BarcodeSvgRenderer code={activeCode} config={barcodeCfg} />
-          </div>
+        {(codeType === "BARCODE" || codeType === "BOTH") && barcodeDataUrl && (
+          <img
+            src={barcodeDataUrl}
+            alt="Barcode"
+            style={{
+              height: `${barcodeCfg.height + 14}px`,
+              maxWidth: "100%",
+              objectFit: "contain",
+              display: "block",
+              margin: "0 auto"
+            }}
+          />
         )}
         {(codeType === "QR" || codeType === "BOTH") && qrDataUrl && (
           <img src={qrDataUrl} alt="QR Code" style={{ width: `${barcodeCfg.qrSize}px`, height: `${barcodeCfg.qrSize}px` }} />
@@ -965,6 +1011,7 @@ function LabelCardPrint({
   layout,
   codeType,
   barcodeCfg,
+  barcodeDataUrl,
   qrDataUrl,
   customizer
 }: {
@@ -973,6 +1020,7 @@ function LabelCardPrint({
   layout: { widthMm: number; heightMm: number };
   codeType: "BARCODE" | "QR" | "BOTH";
   barcodeCfg: { width: number; height: number; fontSize: number; qrSize: number };
+  barcodeDataUrl: string;
   qrDataUrl: string;
   customizer: CustomizerConfig;
 }) {
@@ -1002,31 +1050,42 @@ function LabelCardPrint({
 
         {/* Custom Header */}
         {customizer.showHeader && customizer.headerText && (
-          <div style={{ fontSize: "6pt", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "#000", marginBottom: "1px" }}>
+          <div style={{ fontSize: "6.5pt", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "#000", marginBottom: "1px" }}>
             {customizer.headerText}
           </div>
         )}
 
         {/* Custom Title */}
-        <div style={{ fontSize: "8pt", fontWeight: 700, color: "#000", lineHeight: "1.1", maxHeight: "2.2em", overflow: "hidden" }}>
+        <div style={{ fontSize: "8.5pt", fontWeight: 700, color: "#000", lineHeight: "1.1", maxHeight: "2.2em", overflow: "hidden" }}>
           {customizer.customTitle || product.name}
         </div>
 
         {/* Subtext & Price */}
-        <div style={{ fontSize: "7pt", color: "#000", marginTop: "1px" }}>
+        <div style={{ fontSize: "7.5pt", color: "#000", marginTop: "1px" }}>
           {customizer.customSubtext && <span style={{ marginRight: "3px" }}>{customizer.customSubtext}</span>}
           {customizer.showPrice && product.sellingPrice && <span style={{ fontWeight: 700 }}>₹{product.sellingPrice}</span>}
           {customizer.showMrp && product.mrp && product.mrp > (product.sellingPrice || 0) && (
-            <span style={{ textDecoration: "line-through", marginLeft: "3px", fontSize: "6pt" }}>
+            <span style={{ textDecoration: "line-through", marginLeft: "3px", fontSize: "6.5pt" }}>
               MRP: ₹{product.mrp}
             </span>
           )}
         </div>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "4px", margin: "1px 0" }}>
-        {(codeType === "BARCODE" || codeType === "BOTH") && (
-          <BarcodeSvgRenderer code={activeCode} config={barcodeCfg} />
+      {/* Symbology PNG Image */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "4px", margin: "1px 0", width: "100%" }}>
+        {(codeType === "BARCODE" || codeType === "BOTH") && barcodeDataUrl && (
+          <img
+            src={barcodeDataUrl}
+            alt="Barcode"
+            style={{
+              height: `${barcodeCfg.height + 12}px`,
+              maxWidth: "100%",
+              objectFit: "contain",
+              display: "block",
+              margin: "0 auto"
+            }}
+          />
         )}
         {(codeType === "QR" || codeType === "BOTH") && qrDataUrl && (
           <img src={qrDataUrl} alt="QR Code" style={{ width: `${barcodeCfg.qrSize * 0.8}px`, height: `${barcodeCfg.qrSize * 0.8}px` }} />
@@ -1047,34 +1106,4 @@ function LabelCardPrint({
       </div>
     </div>
   );
-}
-
-{/* Pure SVG Barcode Renderer */}
-function BarcodeSvgRenderer({
-  code,
-  config
-}: {
-  code: string;
-  config: { width: number; height: number; fontSize: number };
-}) {
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  useEffect(() => {
-    if (svgRef.current && code) {
-      try {
-        JsBarcode(svgRef.current, code, {
-          format: "CODE128",
-          lineColor: "#000",
-          width: config.width,
-          height: config.height,
-          displayValue: true,
-          fontSize: config.fontSize,
-          font: "monospace",
-          margin: 2
-        });
-      } catch (e) {}
-    }
-  }, [code, config]);
-
-  return <svg ref={svgRef} style={{ maxWidth: "100%", display: "block", margin: "0 auto" }}></svg>;
 }
