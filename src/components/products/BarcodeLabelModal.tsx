@@ -247,12 +247,14 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
     const cols = layout.columns;
 
     // Determine @page size
+    // For thermal rolls: use 'auto' height so ALL labels flow on ONE continuous page
+    // For A4: standard portrait sheet
     const rollTotalWidth = w * cols + (cols - 1) * 2;
     const pageRule = printer === "laser_a4" || format === "sheet_a4_24"
       ? `@page { size: A4 portrait; margin: 8mm; }`
       : printer === "pos_80mm"
-      ? `@page { size: 80mm auto; margin: 2mm; }`
-      : `@page { size: ${rollTotalWidth}mm ${h}mm; margin: 0; }`;
+      ? `@page { size: 80mm auto; margin: 0; }`
+      : `@page { size: ${rollTotalWidth}mm auto; margin: 0; }`;
 
     // Barcode image src already generated as PNG data URL
     const barcodeImg = barcodeDataUrl
