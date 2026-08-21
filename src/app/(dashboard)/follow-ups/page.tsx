@@ -81,7 +81,7 @@ export default async function FollowUpsDashboard() {
                     {c.followUpDate ? new Date(c.followUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}
                   </span>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.type || 'Call'} - {c.notes || 'Follow-up'}</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.callType || 'Call'} - {c.notes || 'Follow-up'}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
                   <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
@@ -111,7 +111,7 @@ export default async function FollowUpsDashboard() {
                     Today
                   </span>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.type || 'Call'} - {c.notes || 'Follow-up'}</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.callType || 'Call'} - {c.notes || 'Follow-up'}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
                   <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
@@ -141,7 +141,7 @@ export default async function FollowUpsDashboard() {
                     {c.followUpDate ? new Date(c.followUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}
                   </span>
                 </div>
-                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.type || 'Call'} - {c.notes || 'Follow-up'}</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.callType || 'Call'} - {c.notes || 'Follow-up'}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
                   <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>

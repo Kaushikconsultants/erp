@@ -332,7 +332,7 @@ export default async function Home() {
         subtotal: true, 
         totalValue: true, 
         discount: true, 
-        status: true,
+        orderStatus: true,
         customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } } 
       },
       orderBy: { orderDate: 'desc' }
@@ -342,8 +342,8 @@ export default async function Home() {
       .filter(o => o.orderDate && new Date(o.orderDate) >= startOfMonth)
       .map(order => ({
         id: order.id,
-        taxableValue: order.subtotal || order.totalValue, // Use subtotal (taxable amount), fallback to totalValue if legacy
-        discount: order.discount || 0,
+        taxableValue: Number(order.subtotal ?? order.totalValue ?? 0),
+        discount: Number(order.discount || 0),
         isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
       }));
 
