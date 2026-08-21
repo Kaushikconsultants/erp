@@ -24,7 +24,8 @@ import {
   ShieldCheck,
   Zap,
   MessageSquare,
-  Megaphone
+  Megaphone,
+  MessageCircle
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -88,6 +89,11 @@ const Sidebar = ({
             <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
+            </Link>
+            <Link href="/chat" className={`nav-item ${isActive('/chat') ? 'active' : ''}`}>
+              <MessageCircle size={20} style={{ color: '#06b6d4' }} />
+              <span>Team Chat</span>
+              <span style={{ marginLeft: 'auto', background: '#06b6d4', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>LIVE</span>
             </Link>
             <Link href="/broadcasts" className={`nav-item ${isActive('/broadcasts') ? 'active' : ''}`}>
               <Megaphone size={20} style={{ color: '#4f46e5' }} />
