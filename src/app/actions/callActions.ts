@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function logCall(formData: FormData) {
   const customerId = formData.get("customerId") as string;
@@ -17,17 +19,32 @@ export async function logCall(formData: FormData) {
   }
 
   try {
+    // Get the logged-in user's session to find THEIR employee record
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+
+    let employee = null;
+    if (userId) {
+      employee = await prisma.employee.findUnique({ where: { userId } });
+    }
+    // Fallback only if no employee record found for this user
+    if (!employee) {
+      employee = await prisma.employee.findFirst();
+    }
+
+    if (!employee) {
+      return { error: "No employee record found. Please set up your profile first." };
+    }
+
     let followUpDate = null;
     if (followUpDateStr) {
       followUpDate = new Date(followUpDateStr);
     }
 
-    const employee = await prisma.employee.findFirst();
-
     const callRecord = await prisma.call.create({
       data: {
         customerId,
-        employeeId: employee?.id || "",
+        employeeId: employee.id,
         callType: type,
         status: "Completed",
         outcome,
@@ -65,6 +82,7 @@ export async function logCall(formData: FormData) {
     return { error: "Failed to log call. Please try again." };
   }
 }
+
 
 export async function updateCall(callId: string, data: { outcome?: string; callType?: string; notes?: string; followUpDate?: string | null }) {
   try {

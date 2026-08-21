@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createTask } from "@/app/actions/taskActions";
 import "@/components/ui/modal.css";
 
@@ -14,12 +14,32 @@ export default function CreateTaskModal({ onClose, employees, customers }: Creat
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Searchable customer picker
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedCustomerLabel, setSelectedCustomerLabel] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredCustomers = customers.filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase()));
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     const formData = new FormData(e.currentTarget);
+    if (selectedCustomerId) formData.set("customerId", selectedCustomerId);
     const result = await createTask(formData);
 
     if (result?.error) {
@@ -58,12 +78,47 @@ export default function CreateTaskModal({ onClose, employees, customers }: Creat
 
           <div className="form-group">
             <label>Related Customer (Optional)</label>
-            <select name="customerId">
-              <option value="">None</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <input type="hidden" name="customerId" value={selectedCustomerId} />
+            <div ref={dropdownRef} style={{ position: "relative" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "rgba(255,255,255,0.8)", padding: "0 10px", cursor: "text", minHeight: "40px", gap: "8px" }}
+                onClick={() => setDropdownOpen(true)}
+              >
+                {selectedCustomerId && !dropdownOpen ? (
+                  <span style={{ flex: 1, fontSize: "0.875rem", color: "var(--text-primary)", padding: "8px 0" }}>{selectedCustomerLabel}</span>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder={selectedCustomerId ? selectedCustomerLabel : "Search customer (optional)..."}
+                    value={customerSearch}
+                    onChange={(e) => { setCustomerSearch(e.target.value); setDropdownOpen(true); }}
+                    onFocus={() => setDropdownOpen(true)}
+                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", color: "var(--text-primary)", padding: "8px 0" }}
+                  />
+                )}
+                {selectedCustomerId && (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(""); setSelectedCustomerLabel(""); setDropdownOpen(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "1.1rem" }}>×</button>
+                )}
+              </div>
+              {dropdownOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 9999, maxHeight: "200px", overflowY: "auto" }}>
+                  <div onClick={() => { setSelectedCustomerId(""); setSelectedCustomerLabel(""); setDropdownOpen(false); }} style={{ padding: "10px 14px", cursor: "pointer", color: "#94a3b8", fontSize: "0.85rem", borderBottom: "1px solid #f1f5f9" }}>None</div>
+                  {filteredCustomers.length === 0 ? (
+                    <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem" }}>No customers found</div>
+                  ) : (
+                    filteredCustomers.map((c) => (
+                      <div key={c.id} onClick={() => { setSelectedCustomerId(c.id); setSelectedCustomerLabel(c.name); setCustomerSearch(""); setDropdownOpen(false); }}
+                        style={{ padding: "10px 14px", cursor: "pointer", fontSize: "0.875rem", background: selectedCustomerId === c.id ? "#eff6ff" : "transparent" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = selectedCustomerId === c.id ? "#eff6ff" : "transparent")}
+                      >
+                        {c.name}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="form-group">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { createOrder } from "@/app/actions/orderActions";
 import { lookupBarcode } from "@/app/actions/scannerActions";
@@ -21,6 +21,25 @@ export default function CreateOrderModal({ onClose, customers, products, employe
   const [selectedProductId, setSelectedProductId] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [shippingCharge, setShippingCharge] = useState(0);
+
+  // Searchable customer picker
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [selectedCustomerLabel, setSelectedCustomerLabel] = useState("");
+  const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target as Node)) {
+        setCustomerDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredCustomers = customers.filter((c) => c.companyName.toLowerCase().includes(customerSearch.toLowerCase()));
 
   const handleBarcodeScan = async (code: string) => {
     if (!code || !code.trim()) return;
@@ -79,6 +98,7 @@ export default function CreateOrderModal({ onClose, customers, products, employe
     setError("");
 
     const formData = new FormData(e.currentTarget);
+    if (selectedCustomerId) formData.set("customerId", selectedCustomerId);
     const result = await createOrder(formData);
 
     if (result?.error) {
@@ -102,12 +122,46 @@ export default function CreateOrderModal({ onClose, customers, products, employe
           
           <div className="form-group">
             <label>Customer</label>
-            <select name="customerId" required>
-              <option value="">Select a customer...</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>{c.companyName}</option>
-              ))}
-            </select>
+            <input type="hidden" name="customerId" value={selectedCustomerId} />
+            <div ref={customerDropdownRef} style={{ position: "relative" }}>
+              <div
+                style={{ display: "flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", background: "rgba(255,255,255,0.8)", padding: "0 10px", cursor: "text", minHeight: "40px", gap: "8px" }}
+                onClick={() => setCustomerDropdownOpen(true)}
+              >
+                {selectedCustomerId && !customerDropdownOpen ? (
+                  <span style={{ flex: 1, fontSize: "0.875rem", color: "var(--text-primary)", padding: "8px 0" }}>{selectedCustomerLabel}</span>
+                ) : (
+                  <input
+                    type="text"
+                    placeholder="Search customer by name..."
+                    value={customerSearch}
+                    onChange={(e) => { setCustomerSearch(e.target.value); setCustomerDropdownOpen(true); }}
+                    onFocus={() => setCustomerDropdownOpen(true)}
+                    style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontSize: "0.875rem", color: "var(--text-primary)", padding: "8px 0" }}
+                  />
+                )}
+                {selectedCustomerId && (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(""); setSelectedCustomerLabel(""); setCustomerDropdownOpen(true); }} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "1.1rem" }}>×</button>
+                )}
+              </div>
+              {customerDropdownOpen && (
+                <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 9999, maxHeight: "200px", overflowY: "auto" }}>
+                  {filteredCustomers.length === 0 ? (
+                    <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem" }}>No customers found</div>
+                  ) : (
+                    filteredCustomers.map((c) => (
+                      <div key={c.id} onClick={() => { setSelectedCustomerId(c.id); setSelectedCustomerLabel(c.companyName); setCustomerSearch(""); setCustomerDropdownOpen(false); }}
+                        style={{ padding: "10px 14px", cursor: "pointer", fontSize: "0.875rem", background: selectedCustomerId === c.id ? "#eff6ff" : "transparent" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = selectedCustomerId === c.id ? "#eff6ff" : "transparent")}
+                      >
+                        <span style={{ fontWeight: 600 }}>{c.companyName}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Quick Barcode Scanner */}
