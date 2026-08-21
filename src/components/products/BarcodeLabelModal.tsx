@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import JsBarcode from "jsbarcode";
 import QRCode from "qrcode";
 import { Printer, X, Tag, QrCode, Sliders, Copy, Check, Settings2, Sparkles } from "lucide-react";
@@ -36,6 +37,7 @@ export type PrinterType =
   | "pdf";
 
 export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [format, setFormat] = useState<LabelFormat>("thermal_50x38_2");
   const [printer, setPrinter] = useState<PrinterType>("thermal_roll");
   const [quantityInput, setQuantityInput] = useState<string>("2");
@@ -48,6 +50,10 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const [customColumns, setCustomColumns] = useState<number>(2);
 
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const activeCode = product.sku || product.articleNumber || product.id;
   const printCount = Math.min(100, Math.max(1, parseInt(quantityInput) || 1));
@@ -133,7 +139,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
 
   return (
     <>
-      {/* 1. ON-SCREEN MODAL (Hidden during physical print via .no-print class) */}
+      {/* 1. ON-SCREEN MODAL (Hidden during print via CSS) */}
       <div className="modal-backdrop no-print">
         <div className="modal-content glass-panel animate-in" style={{ maxWidth: "780px", width: "95%" }}>
           {/* Header */}
@@ -252,7 +258,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                 </div>
               </div>
 
-              {/* Quantity Picker with Quick Presets */}
+              {/* Quantity Picker */}
               <div style={{ minWidth: "180px" }}>
                 <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
                   Quantity (Stickers)
@@ -270,7 +276,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                     placeholder="Enter quantity"
                     style={{ width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", fontWeight: 600 }}
                   />
-                  {/* Preset Buttons for Quick Selection */}
+                  {/* Preset Buttons */}
                   <div style={{ display: "flex", gap: "3px" }}>
                     {[1, 2, 4, 10, 20, 50].map(q => (
                       <button
@@ -442,53 +448,53 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
         </div>
       </div>
 
-      {/* 2. DEDICATED PRINT CONTAINER (Hidden on screen, ONLY visible when printing) */}
-      <div className="only-for-printer" id="printable-barcode-root">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${layout.columns}, 1fr)`,
-            gap: "2mm",
-            width: "100%"
-          }}
-        >
-          {items.map((_, idx) => (
-            <LabelCardPrint
-              key={idx}
-              product={product}
-              activeCode={activeCode}
-              layout={layout}
-              codeType={codeType}
-              barcodeCfg={barcodeCfg}
-              qrDataUrl={qrDataUrl}
-            />
-          ))}
-        </div>
-      </div>
+      {/* 2. DEDICATED PRINT CONTAINER PORTAL (Rendered directly in document.body) */}
+      {mounted &&
+        createPortal(
+          <div className="only-for-printer" id="printable-barcode-root">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: `repeat(${layout.columns}, 1fr)`,
+                gap: "2mm",
+                width: "100%"
+              }}
+            >
+              {items.map((_, idx) => (
+                <LabelCardPrint
+                  key={idx}
+                  product={product}
+                  activeCode={activeCode}
+                  layout={layout}
+                  codeType={codeType}
+                  barcodeCfg={barcodeCfg}
+                  qrDataUrl={qrDataUrl}
+                />
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* 3. ROCK-SOLID PRINT MEDIA STYLES */}
       <style jsx global>{`
         ${pageMediaCss}
 
         @media screen {
-          .only-for-printer {
+          .only-for-printer,
+          #printable-barcode-root {
             display: none !important;
           }
         }
 
         @media print {
-          /* Hide EVERYTHING on the screen UI, modal overlay, sidebars, dashboard headers */
-          body > *:not(.only-for-printer),
-          .no-print,
-          .modal-backdrop,
-          .modal-content,
-          header,
-          nav,
-          sidebar {
+          /* Hide EVERYTHING under body except the portal root #printable-barcode-root */
+          body > *:not(#printable-barcode-root) {
             display: none !important;
           }
 
-          /* Show ONLY the dedicated print container */
+          /* Show ONLY the portal root #printable-barcode-root */
+          #printable-barcode-root,
           .only-for-printer {
             display: block !important;
             position: absolute !important;
