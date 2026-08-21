@@ -7,6 +7,7 @@ import EmployeeDashboard from '@/components/dashboard/EmployeeDashboard';
 import AdminDashboard from '@/components/dashboard/AdminDashboard';
 import TelecallerDashboard from '@/components/dashboard/TelecallerDashboard';
 import TeamLeaderDashboard from '@/components/dashboard/TeamLeaderDashboard';
+import BroadcastBanner from '@/components/dashboard/BroadcastBanner';
 import { calculateIncentives, OrderData } from '@/lib/incentiveEngine';
 import { getFollowUpRecommendations } from '@/app/actions/customerActions';
 import './dashboard.css';
@@ -176,21 +177,26 @@ export default async function Home() {
     }));
 
     return (
-      <AdminDashboard 
-        totalRevenue={totalRevenue}
-        totalCustomers={totalCustomers}
-        totalOrders={totalOrders}
-        pendingCalls={pendingCalls}
-        salesData={salesData}
-        topProductsData={topProductsData}
-        teamPerformance={teamPerformance}
-        hotCustomers={hotCustomers}
-        liveAttendance={liveAttendance}
-        todayOrdersCount={todayOrdersCount}
-        liveLeaderboard={liveLeaderboard}
-        isCheckedIn={adminCheckedIn}
-        isCheckedOut={adminCheckedOut}
-      />
+      <>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
+          <BroadcastBanner userId={userId} userRole={userRole} />
+        </div>
+        <AdminDashboard 
+          totalRevenue={totalRevenue}
+          totalCustomers={totalCustomers}
+          totalOrders={totalOrders}
+          pendingCalls={pendingCalls}
+          salesData={salesData}
+          topProductsData={topProductsData}
+          teamPerformance={teamPerformance}
+          hotCustomers={hotCustomers}
+          liveAttendance={liveAttendance}
+          todayOrdersCount={todayOrdersCount}
+          liveLeaderboard={liveLeaderboard}
+          isCheckedIn={adminCheckedIn}
+          isCheckedOut={adminCheckedOut}
+        />
+      </>
     );
   } else if (userRole === 'TEAM_LEADER') {
     const todayStart = new Date();
@@ -206,10 +212,15 @@ export default async function Home() {
     });
 
     return (
-      <TeamLeaderDashboard 
-        teamMembers={teamMembers}
-        teamCallsToday={teamCallsToday}
-      />
+      <>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
+          <BroadcastBanner userId={userId} userRole={userRole} />
+        </div>
+        <TeamLeaderDashboard 
+          teamMembers={teamMembers}
+          teamCallsToday={teamCallsToday}
+        />
+      </>
     );
   } else if (userRole === 'TELECALLER') {
     let isCheckedIn = false;
@@ -263,15 +274,20 @@ export default async function Home() {
     const recommendations = await getFollowUpRecommendations();
 
     return (
-      <TelecallerDashboard 
-        employee={employee}
-        isCheckedIn={isCheckedIn}
-        isCheckedOut={isCheckedOut}
-        todayTasks={todayTasks}
-        missedCalls={missedCalls}
-        todayCallsCount={todayCallsCount}
-        recommendations={recommendations.success ? recommendations : { overdue: [], reorderDue: [] }}
-      />
+      <>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
+          <BroadcastBanner userId={userId} userRole={userRole} />
+        </div>
+        <TelecallerDashboard 
+          employee={employee}
+          isCheckedIn={isCheckedIn}
+          isCheckedOut={isCheckedOut}
+          todayTasks={todayTasks}
+          missedCalls={missedCalls}
+          todayCallsCount={todayCallsCount}
+          recommendations={recommendations.success ? recommendations : { overdue: [], reorderDue: [] }}
+        />
+      </>
     );
   } else {
     // ---------------------------------------------------------
@@ -336,13 +352,18 @@ export default async function Home() {
     }) : [];
 
     return (
-      <EmployeeDashboard 
-        employee={employee}
-        isCheckedIn={isCheckedIn}
-        isCheckedOut={isCheckedOut}
-        incentiveData={incentiveData}
-        todayFollowUps={todayFollowUps}
-      />
+      <>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
+          <BroadcastBanner userId={userId} userRole={userRole} />
+        </div>
+        <EmployeeDashboard 
+          employee={employee}
+          isCheckedIn={isCheckedIn}
+          isCheckedOut={isCheckedOut}
+          incentiveData={incentiveData}
+          todayFollowUps={todayFollowUps}
+        />
+      </>
     );
   }
 }

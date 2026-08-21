@@ -23,7 +23,8 @@ import {
   CalendarDays,
   ShieldCheck,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Megaphone
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -87,6 +88,11 @@ const Sidebar = ({
             <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
+            </Link>
+            <Link href="/broadcasts" className={`nav-item ${isActive('/broadcasts') ? 'active' : ''}`}>
+              <Megaphone size={20} style={{ color: '#4f46e5' }} />
+              <span>Team Notices</span>
+              <span style={{ marginLeft: 'auto', background: '#4f46e5', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>NEW</span>
             </Link>
           </div>
         )}
