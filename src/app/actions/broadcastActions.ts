@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { formatPresence } from "@/app/actions/presenceActions";
 
 export interface AttachmentItem {
   name: string;
@@ -375,5 +376,173 @@ export async function getEmployeesForBroadcastTargeting() {
   } catch (error) {
     console.error("Failed to get employees for broadcast:", error);
     return { error: "Failed to load team list" };
+  }
+}
+
+export async function getBroadcastAudienceReadStatus(broadcastId: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { error: "Unauthorized" };
+
+    const broadcast = await prisma.teamBroadcast.findUnique({
+      where: { id: broadcastId },
+      include: {
+        reads: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+                lastActiveAt: true,
+                presenceStatus: true,
+                employee: {
+                  select: { department: true, designation: true }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!broadcast) return { error: "Broadcast not found" };
+
+    // Get all targeted users
+    let targetUsers: any[] = [];
+    if (broadcast.targetAudience === "ALL") {
+      targetUsers = await prisma.user.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          lastActiveAt: true,
+          presenceStatus: true,
+          employee: {
+            select: { department: true, designation: true }
+          }
+        },
+        orderBy: { name: "asc" }
+      });
+    } else {
+      const userIds = broadcast.targetUserIds || [];
+      const roles = broadcast.targetRoles || [];
+      targetUsers = await prisma.user.findMany({
+        where: {
+          isActive: true,
+          OR: [
+            { id: { in: userIds } },
+            { role: { in: roles } }
+          ]
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          lastActiveAt: true,
+          presenceStatus: true,
+          employee: {
+            select: { department: true, designation: true }
+          }
+        },
+        orderBy: { name: "asc" }
+      });
+    }
+
+    const readMap = new Map<string, Date>();
+    broadcast.reads.forEach((r) => {
+      readMap.set(r.userId, r.readAt);
+    });
+
+    const detailedList = targetUsers.map((u) => {
+      const isRead = readMap.has(u.id);
+      const readAt = isRead ? readMap.get(u.id) : null;
+      const presence = formatPresence(u.lastActiveAt, u.presenceStatus);
+
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        department: u.employee?.department || u.role,
+        designation: u.employee?.designation || "",
+        isRead,
+        readAt,
+        presence
+      };
+    });
+
+    // Count stats
+    const totalTargeted = detailedList.length;
+    const readCount = detailedList.filter((d) => d.isRead).length;
+    const unreadCount = totalTargeted - readCount;
+    const onlineCount = detailedList.filter((d) => d.presence.status === "ONLINE").length;
+    const idleCount = detailedList.filter((d) => d.presence.status === "IDLE").length;
+
+    return {
+      success: true,
+      stats: { totalTargeted, readCount, unreadCount, onlineCount, idleCount },
+      audience: detailedList
+    };
+  } catch (error) {
+    console.error("Failed to get broadcast read status:", error);
+    return { error: "Failed to load audience read status" };
+  }
+}
+
+export async function getLatestActiveBannerNotice() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: true, notice: null };
+
+    const userId = (session.user as any).id;
+    const userRole = (session.user as any).role || "SALES";
+    const isAdmin = userRole === "ADMIN" || userRole === "SUPER_ADMIN";
+
+    let audienceWhere: any = {};
+    if (!isAdmin) {
+      audienceWhere = {
+        OR: [
+          { targetAudience: "ALL" },
+          { targetUserIds: { has: userId } },
+          { targetRoles: { has: userRole } },
+          { authorId: userId }
+        ]
+      };
+    }
+
+    const latestNotice = await prisma.teamBroadcast.findFirst({
+      where: {
+        AND: [
+          audienceWhere,
+          {
+            OR: [
+              { isPinned: true },
+              { category: { in: ["OFFER", "HOLIDAY", "URGENT"] } }
+            ]
+          }
+        ]
+      },
+      orderBy: [
+        { isPinned: "desc" },
+        { createdAt: "desc" }
+      ],
+      include: {
+        author: { select: { name: true } },
+        replies: {
+          take: 1,
+          orderBy: { createdAt: "desc" },
+          select: { content: true, user: { select: { name: true } } }
+        }
+      }
+    });
+
+    return { success: true, notice: latestNotice };
+  } catch (err) {
+    return { success: true, notice: null };
   }
 }

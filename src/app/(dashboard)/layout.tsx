@@ -1,5 +1,6 @@
 import React from 'react';
 import DashboardShell from '@/components/layout/DashboardShell';
+import PresenceHeartbeat from '@/components/presence/PresenceHeartbeat';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -49,6 +50,7 @@ export default async function DashboardLayout({
       userRole={userRole}
       allowedSections={allowedSectionsList}
     >
+      <PresenceHeartbeat />
       {children}
     </DashboardShell>
   );

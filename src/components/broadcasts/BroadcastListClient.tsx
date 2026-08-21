@@ -25,6 +25,7 @@ import {
   X
 } from "lucide-react";
 import { 
+  getBroadcasts,
   addBroadcastReply, 
   deleteBroadcast, 
   togglePinBroadcast, 
@@ -32,6 +33,7 @@ import {
   AttachmentItem 
 } from "@/app/actions/broadcastActions";
 import CreateBroadcastModal from "./CreateBroadcastModal";
+import BroadcastReadStatusModal from "./BroadcastReadStatusModal";
 
 interface BroadcastListClientProps {
   initialBroadcasts: any[];
@@ -60,6 +62,7 @@ export default function BroadcastListClient({
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+  const [selectedReadStatusBroadcast, setSelectedReadStatusBroadcast] = useState<{ id: string; title: string } | null>(null);
 
   // Per-broadcast reply input state
   const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
@@ -71,6 +74,25 @@ export default function BroadcastListClient({
   useEffect(() => {
     setBroadcasts(initialBroadcasts);
   }, [initialBroadcasts]);
+
+  // Live Auto-sync polling every 5 seconds (zero page refresh needed)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLatest = async () => {
+      try {
+        const res = await getBroadcasts();
+        if (isMounted && res.success && res.broadcasts) {
+          setBroadcasts(res.broadcasts);
+        }
+      } catch (e) {}
+    };
+
+    const interval = setInterval(fetchLatest, 5000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Mark visible broadcasts as read
   useEffect(() => {
@@ -169,33 +191,40 @@ export default function BroadcastListClient({
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* Top Action Bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-        {/* Search Bar */}
-        <div style={{ position: "relative", width: "100%", maxWidth: "360px" }}>
-          <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-          <input
-            type="text"
-            placeholder="Search notices, daily offers, holidays..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 12px 10px 36px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.875rem",
-              backgroundColor: "#ffffff",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
-              outline: "none",
-            }}
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm("")}
-              style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "14px" }}
-            >
-              ×
-            </button>
-          )}
+        {/* Search Bar & Live Sync Status */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flex: 1 }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: "360px" }}>
+            <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+            <input
+              type="text"
+              placeholder="Search notices, daily offers, holidays..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "10px 12px 10px 36px",
+                borderRadius: "8px",
+                border: "1px solid #cbd5e1",
+                fontSize: "0.875rem",
+                backgroundColor: "#ffffff",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                outline: "none",
+              }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: "14px" }}
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", color: "#059669", backgroundColor: "#ecfdf5", padding: "4px 10px", borderRadius: "12px", border: "1px solid #a7f3d0", fontWeight: 600 }}>
+            <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#10b981", display: "inline-block" }} />
+            Live Sync Active (Auto-updating)
+          </div>
         </div>
 
         {/* Admin Compose Button */}
@@ -456,11 +485,45 @@ export default function BroadcastListClient({
                     </div>
                   )}
 
-                  {/* Read Receipts Badge */}
+                  {/* Read Receipts Badge - Clickable for Admin to inspect live presence & read status */}
                   <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", marginTop: "12px", fontSize: "0.75rem", color: "#94a3b8" }}>
-                    <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      <Eye size={13} /> {readCount} team {readCount === 1 ? "member" : "members"} viewed
-                    </span>
+                    {isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedReadStatusBroadcast({ id: b.id, title: b.title })}
+                        title="Click to view detailed read receipts & live presence status"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          background: "#f1f5f9",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "16px",
+                          padding: "3px 10px",
+                          color: "#475569",
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.15s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "#e0e7ff";
+                          e.currentTarget.style.borderColor = "#818cf8";
+                          e.currentTarget.style.color = "#3730a3";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "#f1f5f9";
+                          e.currentTarget.style.borderColor = "#cbd5e1";
+                          e.currentTarget.style.color = "#475569";
+                        }}
+                      >
+                        <Eye size={13} color="#4f46e5" /> <strong>{readCount} viewed</strong> • Check Read Status 📊
+                      </button>
+                    ) : (
+                      <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                        <Eye size={13} /> {readCount} team {readCount === 1 ? "member" : "members"} viewed
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -665,6 +728,15 @@ export default function BroadcastListClient({
         <CreateBroadcastModal
           onClose={() => setIsCreateOpen(false)}
           employees={employees}
+        />
+      )}
+
+      {/* Admin Read & Presence Status Inspection Modal */}
+      {selectedReadStatusBroadcast && (
+        <BroadcastReadStatusModal
+          broadcastId={selectedReadStatusBroadcast.id}
+          broadcastTitle={selectedReadStatusBroadcast.title}
+          onClose={() => setSelectedReadStatusBroadcast(null)}
         />
       )}
 
