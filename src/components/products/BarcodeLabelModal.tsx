@@ -182,11 +182,11 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const getBarcodeConfig = () => {
     const h = layout.heightMm;
     if (h <= 25) {
-      return { width: 1.2, height: 20, fontSize: 9, qrSize: 36 };
+      return { width: 1.4, height: 22, fontSize: 10, qrSize: 36 };
     } else if (h <= 40) {
-      return { width: 1.4, height: 32, fontSize: 10, qrSize: 46 };
+      return { width: 1.6, height: 34, fontSize: 11, qrSize: 46 };
     } else {
-      return { width: 1.8, height: 44, fontSize: 11, qrSize: 62 };
+      return { width: 2.0, height: 46, fontSize: 12, qrSize: 62 };
     }
   };
 
@@ -202,12 +202,12 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
         format: "CODE128",
         lineColor: "#000000",
         background: "#ffffff",
-        width: barcodeCfg.width * 1.5,
-        height: barcodeCfg.height * 1.3,
+        width: 2,
+        height: 80, // Generate VERY tall lines to prevent squishing
         displayValue: true,
-        fontSize: barcodeCfg.fontSize * 1.1,
+        fontSize: 14,
         font: "monospace",
-        margin: 3
+        margin: 4
       });
       setBarcodeDataUrl(canvas.toDataURL("image/png"));
     } catch (e) {
@@ -1390,14 +1390,14 @@ function LabelCardPrint({
       </div>
 
       {/* Symbology PNG Image */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "4px", margin: "1px 0", width: "100%", flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center", gap: "4px", margin: "1px 0", width: "100%", height: `${barcodeCfg.height}px`, flexShrink: 0 }}>
         {(codeType === "BARCODE" || codeType === "BOTH") && barcodeDataUrl && (
           <img
             src={barcodeDataUrl}
             alt="Barcode"
             style={{
-              height: `${barcodeCfg.height}px`,
-              maxHeight: `${barcodeCfg.height}px`,
+              height: "100%",
+              width: "auto",
               maxWidth: "100%",
               objectFit: "contain",
               display: "block",
