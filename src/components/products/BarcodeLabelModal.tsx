@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import JsBarcode from "jsbarcode";
 import QRCode from "qrcode";
 import {
@@ -242,7 +241,102 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   };
 
   const handlePrint = () => {
-    window.print();
+    // Build self-contained HTML for a new print window — guaranteed cross-browser
+    const w = layout.widthMm;
+    const h = layout.heightMm;
+    const cols = layout.columns;
+
+    // Determine @page size
+    const rollTotalWidth = w * cols + (cols - 1) * 2;
+    const pageRule = printer === "laser_a4" || format === "sheet_a4_24"
+      ? `@page { size: A4 portrait; margin: 8mm; }`
+      : printer === "pos_80mm"
+      ? `@page { size: 80mm auto; margin: 2mm; }`
+      : `@page { size: ${rollTotalWidth}mm ${h}mm; margin: 0; }`;
+
+    // Barcode image src already generated as PNG data URL
+    const barcodeImg = barcodeDataUrl
+      ? `<img src="${barcodeDataUrl}" alt="barcode" style="display:block;width:100%;height:auto;max-height:${h <= 25 ? 18 : h <= 40 ? 28 : 36}mm;object-fit:contain;" />`
+      : "";
+    const qrImg = qrDataUrl
+      ? `<img src="${qrDataUrl}" alt="qr" style="display:block;width:${h <= 25 ? 16 : h <= 40 ? 22 : 28}mm;height:auto;" />`
+      : "";
+
+    const symbolRow = codeType === "BARCODE"
+      ? `<div style="width:100%;text-align:center;">${barcodeImg}</div>`
+      : codeType === "QR"
+      ? `<div style="width:100%;text-align:center;">${qrImg}</div>`
+      : `<div style="width:100%;display:flex;gap:2mm;align-items:center;justify-content:center;">${barcodeImg}${qrImg}</div>`;
+
+    const logoSection = customizerConfig.showLogo && customizerConfig.logoUrl
+      ? `<div style="text-align:${customizerConfig.logoAlign};margin-bottom:1mm;"><img src="${customizerConfig.logoUrl}" style="height:${customizerConfig.logoSize * 0.6}mm;width:auto;" /></div>`
+      : "";
+
+    const headerSection = customizerConfig.showHeader && customizerConfig.headerText
+      ? `<div style="font-size:${h <= 25 ? '5.5pt' : '6.5pt'};font-weight:800;letter-spacing:0.5px;text-align:${customizerConfig.headerAlign};color:#000;">${customizerConfig.headerText}</div>`
+      : "";
+
+    const titleFontSize = customizerConfig.titleFontSize === "small" ? (h <= 25 ? "6.5pt" : "7pt") : customizerConfig.titleFontSize === "large" ? (h <= 25 ? "8.5pt" : "9.5pt") : (h <= 25 ? "7.5pt" : "8.5pt");
+    const titleSection = `<div style="font-size:${titleFontSize};font-weight:700;text-align:${customizerConfig.titleAlign};color:#000;overflow:hidden;max-height:2.4em;line-height:1.2;">${customizerConfig.customTitle || product.name}</div>`;
+
+    const priceText = [
+      customizerConfig.customSubtext ? `<span>${customizerConfig.customSubtext}</span>` : "",
+      customizerConfig.showPrice && product.sellingPrice ? `<span style="font-weight:700;">&#8377;${product.sellingPrice}</span>` : "",
+      customizerConfig.showMrp && product.mrp && product.mrp > (product.sellingPrice || 0) ? `<span style="text-decoration:line-through;font-size:5.5pt;margin-left:2px;">MRP: &#8377;${product.mrp}</span>` : ""
+    ].filter(Boolean).join(" ");
+    const priceSection = priceText ? `<div style="font-size:${h <= 25 ? '5.5pt' : '6.5pt'};text-align:${customizerConfig.detailsAlign};color:#000;margin-top:0.5mm;">${priceText}</div>` : "";
+
+    const skuSection = customizerConfig.showSku
+      ? `<div style="font-size:${h <= 25 ? '5pt' : '6pt'};font-family:monospace;text-align:${customizerConfig.footerAlign};color:#000;margin-top:0.5mm;">SKU: <strong>${activeCode}</strong></div>`
+      : "";
+
+    const footerSection = customizerConfig.showFooter && customizerConfig.customFooter
+      ? `<div style="font-size:${h <= 25 ? '4.5pt' : '5.5pt'};font-weight:600;text-align:${customizerConfig.footerAlign};color:#000;margin-top:0.3mm;">${customizerConfig.customFooter}</div>`
+      : "";
+
+    const borderCss = customizerConfig.borderStyle === "none" ? "none" : `1px ${customizerConfig.borderStyle} #000`;
+    const paddingCss = customizerConfig.cardPadding === "compact" ? "1mm 1.5mm" : customizerConfig.cardPadding === "spacious" ? "3mm 4mm" : "1.5mm 2mm";
+
+    const oneLabel = `
+      <div style="width:${w}mm;height:${h}mm;box-sizing:border-box;padding:${paddingCss};border:${borderCss};display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:#fff;font-family:${customizerConfig.fontFamily || 'Arial, sans-serif'};">
+        <div style="width:100%;">
+          ${headerSection}
+          ${logoSection}
+          ${titleSection}
+          ${priceSection}
+        </div>
+        <div style="width:100%;flex-shrink:0;">
+          ${symbolRow}
+        </div>
+        <div style="width:100%;">
+          ${skuSection}
+          ${footerSection}
+        </div>
+      </div>`;
+
+    const gridStyle = printer === "laser_a4" || format === "sheet_a4_24"
+      ? `display:grid;grid-template-columns:repeat(${cols},${w}mm);gap:2mm;`
+      : `display:grid;grid-template-columns:repeat(${cols},${w}mm);gap:1mm;`;
+
+    const allLabels = Array.from({ length: printCount }).map(() => oneLabel).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Labels</title><style>
+      *{box-sizing:border-box;margin:0;padding:0;}
+      body{background:#fff;}
+      ${pageRule}
+      @media print{
+        body{margin:0;padding:0;}
+      }
+    </style></head><body>
+      <div style="${gridStyle}">${allLabels}</div>
+    </body></html>`;
+
+    const win = window.open("", "_blank", "width=800,height=600");
+    if (!win) { alert("Please allow pop-ups for this site to print labels."); return; }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.onload = () => { win.focus(); win.print(); };
   };
 
   const handleCopyCode = () => {
@@ -290,14 +384,6 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   };
 
   const items = Array.from({ length: printCount });
-
-  // Page Media CSS for print
-  const rollWidthMm = layout.widthMm * layout.columns + (layout.columns > 1 ? (layout.columns - 1) * 3 : 0);
-  const pageMediaCss = printer === "laser_a4" || format === "sheet_a4_24"
-    ? `@page { size: A4 portrait; margin: 6mm; }`
-    : printer === "pos_80mm"
-    ? `@page { size: 80mm auto; margin: 2mm; }`
-    : `@page { size: ${rollWidthMm}mm ${layout.heightMm}mm; margin: 0; }`;
 
   return (
     <>
@@ -941,81 +1027,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
           </div>
         </div>
       </div>
-
-      {/* 2. DEDICATED PRINT CONTAINER PORTAL */}
-      {mounted &&
-        createPortal(
-          <div className="only-for-printer" id="printable-barcode-root">
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: printer === "laser_a4" || format === "sheet_a4_24"
-                  ? "repeat(auto-fill, minmax(55mm, 1fr))"
-                  : `repeat(${layout.columns}, 1fr)`,
-                gap: "3mm",
-                width: "100%"
-              }}
-            >
-              {items.map((_, idx) => (
-                <LabelCardPrint
-                  key={idx}
-                  product={product}
-                  activeCode={activeCode}
-                  layout={layout}
-                  codeType={codeType}
-                  barcodeCfg={barcodeCfg}
-                  barcodeDataUrl={barcodeDataUrl}
-                  qrDataUrl={qrDataUrl}
-                  customizer={customizerConfig}
-                  printer={printer}
-                />
-              ))}
-            </div>
-          </div>,
-          document.body
-        )}
-
-      {/* 3. ROCK-SOLID PRINT MEDIA STYLES */}
-      <style type="text/css">{`
-        ${pageMediaCss}
-
-        @media screen {
-          .only-for-printer,
-          #printable-barcode-root {
-            display: none !important;
-          }
-        }
-
-        @media print {
-          /* Hide EVERYTHING under body except the portal root #printable-barcode-root */
-          body > *:not(#printable-barcode-root) {
-            display: none !important;
-          }
-
-          /* Show ONLY the portal root #printable-barcode-root */
-          #printable-barcode-root,
-          .only-for-printer {
-            display: block !important;
-            position: absolute !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-            z-index: 9999999 !important;
-          }
-
-          .label-card-print-box {
-            border: 1px solid #000000 !important;
-            box-shadow: none !important;
-            page-break-inside: avoid !important;
-            break-inside: avoid !important;
-            background: #ffffff !important;
-            box-sizing: border-box !important;
-          }
-        }
-      `}</style>
+      {/* No portal needed — print is handled by new window */}
     </>
   );
 }
