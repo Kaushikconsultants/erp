@@ -8,31 +8,37 @@ export default function PresenceHeartbeat() {
   const currentStatusRef = useRef<"ONLINE" | "IDLE" | "OFFLINE">("ONLINE");
 
   useEffect(() => {
+    const safeUpdate = (status: "ONLINE" | "IDLE" | "OFFLINE") => {
+      try {
+        updatePresenceHeartbeat(status).catch(() => {});
+      } catch (e) {}
+    };
+
     // Initial online ping
-    updatePresenceHeartbeat("ONLINE");
+    safeUpdate("ONLINE");
 
     const onUserActivity = () => {
       lastActivityRef.current = Date.now();
       if (currentStatusRef.current !== "ONLINE" && !document.hidden) {
         currentStatusRef.current = "ONLINE";
-        updatePresenceHeartbeat("ONLINE");
+        safeUpdate("ONLINE");
       }
     };
 
     const onVisibilityChange = () => {
       if (document.hidden) {
         currentStatusRef.current = "IDLE";
-        updatePresenceHeartbeat("IDLE");
+        safeUpdate("IDLE");
       } else {
         lastActivityRef.current = Date.now();
         currentStatusRef.current = "ONLINE";
-        updatePresenceHeartbeat("ONLINE");
+        safeUpdate("ONLINE");
       }
     };
 
     const onBeforeUnload = () => {
       // Best-effort offline notification
-      updatePresenceHeartbeat("OFFLINE");
+      safeUpdate("OFFLINE");
     };
 
     // User activity listeners
@@ -53,7 +59,7 @@ export default function PresenceHeartbeat() {
       }
 
       currentStatusRef.current = nextStatus;
-      updatePresenceHeartbeat(nextStatus);
+      safeUpdate(nextStatus);
     }, 25000);
 
     return () => {

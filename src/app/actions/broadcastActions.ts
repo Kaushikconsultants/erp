@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { formatPresence } from "@/app/actions/presenceActions";
+import { formatPresence } from "@/lib/presenceUtils";
 
 export interface AttachmentItem {
   name: string;
