@@ -34,10 +34,6 @@ model User {
   broadcastsCreated TeamBroadcast[] @relation("BroadcastAuthor")
   broadcastReplies BroadcastReply[]
   broadcastReads BroadcastRead[]
-  conversationsAsUser1 DirectConversation[] @relation("DirectChatUser1")
-  conversationsAsUser2 DirectConversation[] @relation("DirectChatUser2")
-  messagesSent         DirectMessage[]      @relation("DirectMessageSender")
-  messagesReceived     DirectMessage[]      @relation("DirectMessageReceiver")
 }
 
 model Role {
@@ -1169,44 +1165,3 @@ model BroadcastRead {
   @@unique([broadcastId, userId])
 }
 
-// ---------------------------------------------------------
-// Internal Direct Team Chat System
-// --------------------------------------------------------
-model DirectConversation {
-  id              String   @id @default(uuid())
-  user1Id         String
-  user1           User     @relation("DirectChatUser1", fields: [user1Id], references: [id], onDelete: Cascade)
-  user2Id         String
-  user2           User     @relation("DirectChatUser2", fields: [user2Id], references: [id], onDelete: Cascade)
-  
-  lastMessageText String?
-  lastMessageAt   DateTime @default(now())
-  
-  messages        DirectMessage[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  @@unique([user1Id, user2Id])
-}
-
-model DirectMessage {
-  id              String   @id @default(uuid())
-  conversationId  String
-  conversation    DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
-  senderId        String
-  sender          User     @relation("DirectMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  
-  receiverId      String
-  receiver        User     @relation("DirectMessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
-  
-  content         String
-  attachments     String?  // JSON string of AttachmentItem[]
-  
-  isRead          Boolean  @default(false)
-  readAt          DateTime?
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
