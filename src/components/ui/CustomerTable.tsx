@@ -53,9 +53,9 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
 
   const filteredCustomers = initialCustomers.filter(customer => {
     const matchesSearch = 
-      customer.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.contactPerson.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.mobile.includes(searchTerm);
+      (customer.businessName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.contactPerson || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.mobile || "").includes(searchTerm);
     
     const matchesStatus = statusFilter === "All Statuses" || customer.status === statusFilter;
     const matchesState = stateFilter === "All States" || (customer.state && customer.state.toLowerCase() === stateFilter.toLowerCase());
@@ -150,7 +150,7 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
                   <td style={{ padding: '16px' }}><input type="checkbox" /></td>
                   <td style={{ padding: '16px' }}>
                     <Link href={`/customers/${customer.id}`} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-                      {customer.contactPerson}
+                      {customer.contactPerson || customer.businessName}
                     </Link>
                   </td>
                   <td style={{ padding: '16px', color: '#475569' }}>{customer.mobile}</td>

@@ -110,12 +110,12 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
 
           <div className="grid-row">
             <div className="vertical-group">
-              <label>Company Name</label>
+              <label>Company Name <span style={{ color: '#ef4444' }}>*</span></label>
               <input type="text" name="companyName" defaultValue={customer.businessName} required />
             </div>
             <div className="vertical-group">
-              <label>Contact Person</label>
-              <input type="text" name="contactPerson" defaultValue={customer.contactPerson} required />
+              <label>Contact Person <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span></label>
+              <input type="text" name="contactPerson" defaultValue={customer.contactPerson || ""} placeholder="Contact Person (Optional)" />
             </div>
           </div>
 
@@ -125,8 +125,13 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
               <input type="email" name="email" defaultValue={customer.email || ""} />
             </div>
             <div className="vertical-group">
-              <label>Phone Number</label>
-              <input type="tel" name="phone" defaultValue={customer.mobile} />
+              <label>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
+              <input 
+                type="tel" 
+                name="phone" 
+                defaultValue={customer.mobile ? (customer.mobile.startsWith("+") ? customer.mobile : "+91 " + customer.mobile) : "+91 "} 
+                required 
+              />
             </div>
           </div>
 

@@ -19,11 +19,20 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
   const [fetchingPin, setFetchingPin] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("None");
   
+  const [phone, setPhone] = useState("+91 ");
   const [addressData, setAddressData] = useState({
     pincode: "",
     city: "",
     state: ""
   });
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    if (!val.startsWith("+91")) {
+      val = "+91 " + val.replace(/^\+?91\s*/, '');
+    }
+    setPhone(val);
+  };
 
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const pin = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -56,6 +65,7 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
     setError("");
 
     const formData = new FormData(e.currentTarget);
+    formData.set("phone", phone);
     formData.append("preferredPaymentMethod", paymentMethod);
     const result = await createCustomer(formData);
 
@@ -103,15 +113,15 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
                 <input type="text" name="companyName" required placeholder="Acme Corp" defaultValue={initialName} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Contact Person <span style={{ color: '#ef4444' }}>*</span></label>
-                <input type="text" name="contactPerson" required placeholder="Jane Doe" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} />
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Contact Person <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>(Optional)</span></label>
+                <input type="text" name="contactPerson" placeholder="Jane Doe (Optional)" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Phone Number</label>
-                <input type="tel" name="phone" placeholder="+91 98765 43210" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} />
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
+                <input type="tel" name="phone" required value={phone} onChange={handlePhoneChange} placeholder="+91 98765 43210" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Email</label>

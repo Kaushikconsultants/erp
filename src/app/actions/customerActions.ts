@@ -6,24 +6,34 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
 export async function createCustomer(formData: FormData) {
-  const companyName = formData.get("companyName") as string;
-  const contactPerson = formData.get("contactPerson") as string;
-  const email = formData.get("email") as string;
-  const phone = formData.get("phone") as string;
-  const address = formData.get("address") as string;
-  const pincode = formData.get("pincode") as string;
-  const city = formData.get("city") as string;
-  const state = formData.get("state") as string;
-  const status = formData.get("status") as string || "New Lead";
+  const companyName = (formData.get("companyName") as string)?.trim();
+  const contactPerson = (formData.get("contactPerson") as string)?.trim();
+  const email = (formData.get("email") as string)?.trim() || null;
+  let phone = (formData.get("phone") as string)?.trim() || "";
+  const address = (formData.get("address") as string)?.trim() || null;
+  const pincode = (formData.get("pincode") as string)?.trim() || null;
+  const city = (formData.get("city") as string)?.trim() || null;
+  const state = (formData.get("state") as string)?.trim() || null;
+  const status = (formData.get("status") as string)?.trim() || "New Lead";
   const providedSalespersonId = formData.get("salespersonId") as string;
   
-  const gstNumber = formData.get("gstNumber") as string;
-  const landmark = formData.get("landmark") as string;
-  const regularDiscount = formData.get("regularDiscount") as string;
-  const preferredPaymentMethod = formData.get("preferredPaymentMethod") as string;
+  const gstNumber = (formData.get("gstNumber") as string)?.trim() || null;
+  const landmark = (formData.get("landmark") as string)?.trim() || null;
+  const regularDiscount = (formData.get("regularDiscount") as string)?.trim() || null;
+  const preferredPaymentMethod = (formData.get("preferredPaymentMethod") as string)?.trim() || null;
 
-  if (!companyName || !contactPerson) {
-    return { error: "Company Name and Contact Person are required" };
+  if (!companyName || !phone || phone === "+91" || phone === "+91 ") {
+    return { error: "Company Name and Phone Number are required" };
+  }
+
+  // Format phone to have +91 prefix if not present
+  if (phone && !phone.startsWith("+")) {
+    const cleanDigits = phone.replace(/\D/g, "");
+    if (cleanDigits.startsWith("91") && cleanDigits.length === 12) {
+      phone = "+" + cleanDigits;
+    } else if (cleanDigits.length === 10) {
+      phone = "+91 " + cleanDigits;
+    }
   }
 
   try {
@@ -43,9 +53,9 @@ export async function createCustomer(formData: FormData) {
     const customer = await prisma.customer.create({
       data: {
         businessName: companyName,
-        contactPerson,
+        contactPerson: contactPerson || companyName,
         email,
-        mobile: phone || "",
+        mobile: phone,
         billingAddress: address,
         pincode: pincode || null,
         city: city || null,
@@ -248,24 +258,34 @@ export async function bulkImportCustomers(customers: any[]) {
 }
 
 export async function updateCustomer(id: string, formData: FormData) {
-  const companyName = formData.get("companyName") as string;
-  const contactPerson = formData.get("contactPerson") as string;
-  const email = formData.get("email") as string;
-  const phone = formData.get("phone") as string;
-  const address = formData.get("address") as string;
-  const pincode = formData.get("pincode") as string;
-  const city = formData.get("city") as string;
-  const state = formData.get("state") as string;
-  const status = formData.get("status") as string;
+  const companyName = (formData.get("companyName") as string)?.trim();
+  const contactPerson = (formData.get("contactPerson") as string)?.trim();
+  const email = (formData.get("email") as string)?.trim() || null;
+  let phone = (formData.get("phone") as string)?.trim() || "";
+  const address = (formData.get("address") as string)?.trim() || null;
+  const pincode = (formData.get("pincode") as string)?.trim() || null;
+  const city = (formData.get("city") as string)?.trim() || null;
+  const state = (formData.get("state") as string)?.trim() || null;
+  const status = (formData.get("status") as string)?.trim() || null;
   const assignedSalespersonId = formData.get("assignedSalespersonId") as string;
   
-  const gstNumber = formData.get("gstNumber") as string;
-  const landmark = formData.get("landmark") as string;
-  const regularDiscount = formData.get("regularDiscount") as string;
-  const preferredPaymentMethod = formData.get("preferredPaymentMethod") as string;
+  const gstNumber = (formData.get("gstNumber") as string)?.trim() || null;
+  const landmark = (formData.get("landmark") as string)?.trim() || null;
+  const regularDiscount = (formData.get("regularDiscount") as string)?.trim() || null;
+  const preferredPaymentMethod = (formData.get("preferredPaymentMethod") as string)?.trim() || null;
 
-  if (!companyName || !contactPerson) {
-    return { error: "Company Name and Contact Person are required" };
+  if (!companyName || !phone || phone === "+91" || phone === "+91 ") {
+    return { error: "Company Name and Phone Number are required" };
+  }
+
+  // Format phone to have +91 prefix if not present
+  if (phone && !phone.startsWith("+")) {
+    const cleanDigits = phone.replace(/\D/g, "");
+    if (cleanDigits.startsWith("91") && cleanDigits.length === 12) {
+      phone = "+" + cleanDigits;
+    } else if (cleanDigits.length === 10) {
+      phone = "+91 " + cleanDigits;
+    }
   }
 
   try {
@@ -273,9 +293,9 @@ export async function updateCustomer(id: string, formData: FormData) {
       where: { id },
       data: {
         businessName: companyName,
-        contactPerson,
+        contactPerson: contactPerson || companyName,
         email,
-        mobile: phone || "",
+        mobile: phone,
         billingAddress: address,
         pincode: pincode || null,
         city: city || null,
