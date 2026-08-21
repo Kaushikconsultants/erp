@@ -58,6 +58,43 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
   const [followUpHour, setFollowUpHour] = useState("10");
   const [followUpMinute, setFollowUpMinute] = useState("00");
   const [followUpPeriod, setFollowUpPeriod] = useState<"AM" | "PM">("AM");
+  const [notes, setNotes] = useState("");
+
+  // Restore draft from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const savedDraft = sessionStorage.getItem("antigravity_log_call_draft");
+      if (savedDraft) {
+        const d = JSON.parse(savedDraft);
+        if (d.selectedCustomerId) setSelectedCustomerId(d.selectedCustomerId);
+        if (d.selectedCustomerLabel) setSelectedCustomerLabel(d.selectedCustomerLabel);
+        if (d.notes) setNotes(d.notes);
+        if (d.followUpDate) setFollowUpDate(d.followUpDate);
+        if (d.followUpHour) setFollowUpHour(d.followUpHour);
+        if (d.followUpMinute) setFollowUpMinute(d.followUpMinute);
+        if (d.followUpPeriod) setFollowUpPeriod(d.followUpPeriod);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Save draft on change
+  useEffect(() => {
+    if (selectedCustomerId || notes || followUpDate) {
+      try {
+        sessionStorage.setItem("antigravity_log_call_draft", JSON.stringify({
+          selectedCustomerId,
+          selectedCustomerLabel,
+          notes,
+          followUpDate,
+          followUpHour,
+          followUpMinute,
+          followUpPeriod
+        }));
+      } catch (e) {}
+    }
+  }, [selectedCustomerId, selectedCustomerLabel, notes, followUpDate, followUpHour, followUpMinute, followUpPeriod]);
 
   const getCompiledFollowUpDate = () => {
     if (!followUpDate) return "";
@@ -208,20 +245,50 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
       setError(result.error);
       setLoading(false);
     } else {
+      try {
+        sessionStorage.removeItem("antigravity_log_call_draft");
+      } catch (e) {}
       onClose();
+    }
+  };
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    // Prevent pressing Enter inside inputs from prematurely submitting the form
+    if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") {
+      e.preventDefault();
     }
   };
 
   return (
     <>
       <div className="modal-backdrop">
-        <div className="modal-content glass-panel animate-in" style={{ width: "100%", maxWidth: "560px" }}>
+        <div
+          className="modal-content glass-panel animate-in"
+          style={{ width: "100%", maxWidth: "560px" }}
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="modal-header">
             <h2>Log a Call</h2>
-            <button className="close-btn" onClick={onClose}>×</button>
+            <button
+              type="button"
+              className="close-btn"
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem("antigravity_log_call_draft");
+                } catch (e) {}
+                onClose();
+              }}
+            >
+              ×
+            </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="modal-body" style={{ maxHeight: "75vh", overflowY: "auto" }}>
+          <form
+            onSubmit={handleSubmit}
+            onKeyDown={handleFormKeyDown}
+            className="modal-body"
+            style={{ maxHeight: "75vh", overflowY: "auto" }}
+          >
             {error && <div className="error-message">{error}</div>}
 
             {/* Hidden field carries the real customer ID */}
@@ -648,6 +715,8 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
               <textarea
                 name="notes"
                 rows={4}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
                 placeholder="Summarize the conversation..."
                 style={{
                   flex: 1,
@@ -664,7 +733,18 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
             </div>
 
             <div className="modal-footer" style={{ margin: "8px -24px -24px -24px" }}>
-              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  try {
+                    sessionStorage.removeItem("antigravity_log_call_draft");
+                  } catch (e) {}
+                  onClose();
+                }}
+              >
+                Cancel
+              </button>
               <button type="submit" className="primary-btn" disabled={loading} style={{ padding: "10px 24px" }}>
                 {loading ? "Saving..." : "Log Call"}
               </button>
