@@ -17,7 +17,9 @@ export default async function FollowUpsDashboard() {
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
 
-  let whereClause: any = {};
+  let whereClause: any = {
+    followUpDate: { not: null }
+  };
 
   if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
     const employee = await prisma.employee.findUnique({
@@ -25,15 +27,15 @@ export default async function FollowUpsDashboard() {
     });
 
     if (employee) {
-      whereClause = { employeeId: employee.id };
+      whereClause.employeeId = employee.id;
     } else {
-      whereClause = { id: '00000000-0000-0000-0000-000000000000' };
+      whereClause.id = '00000000-0000-0000-0000-000000000000';
     }
   }
 
-  const followUps = await prisma.followUp.findMany({
+  const calls = await prisma.call.findMany({
     where: whereClause,
-    orderBy: { date: 'asc' },
+    orderBy: { followUpDate: 'asc' },
     include: {
       customer: true,
       employee: { include: { user: true } }
@@ -45,92 +47,110 @@ export default async function FollowUpsDashboard() {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const overdue = followUps.filter(f => new Date(f.date) < today && f.status === 'Pending');
-  const dueToday = followUps.filter(f => new Date(f.date) >= today && new Date(f.date) < tomorrow && f.status === 'Pending');
-  const upcoming = followUps.filter(f => new Date(f.date) >= tomorrow && f.status === 'Pending');
+  const overdue = calls.filter(c => c.followUpDate && new Date(c.followUpDate) < today);
+  const dueToday = calls.filter(c => c.followUpDate && new Date(c.followUpDate) >= today && new Date(c.followUpDate) < tomorrow);
+  const upcoming = calls.filter(c => c.followUpDate && new Date(c.followUpDate) >= tomorrow);
 
   return (
     <div className="page-container" style={{ padding: '24px' }}>
-      <div className="dashboard-header mb-6">
+      <div className="dashboard-header mb-6" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 className="page-title">Follow-up Dashboard</h1>
           <p className="page-subtitle">Centralized view of all sales follow-ups.</p>
         </div>
+        <Link href="/calls" className="primary-btn" style={{ textDecoration: 'none', padding: '8px 16px', borderRadius: '8px', fontSize: '0.85rem' }}>
+          Open Calls & Tasks →
+        </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
         {/* Overdue */}
-        <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
-          <div className="bg-red-50 px-4 py-3 border-b border-red-200 flex justify-between items-center">
-            <h3 className="font-bold text-red-800">Overdue</h3>
-            <span className="bg-red-200 text-red-800 text-xs font-bold px-2 py-1 rounded-full">{overdue.length}</span>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #fecaca', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ backgroundColor: '#fef2f2', padding: '12px 16px', borderBottom: '1px solid #fecaca', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontWeight: 700, color: '#991b1b', fontSize: '0.95rem' }}>Overdue</h3>
+            <span style={{ backgroundColor: '#fee2e2', color: '#991b1b', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>{overdue.length}</span>
           </div>
-          <div className="p-4 space-y-4">
-            {overdue.map(f => (
-              <div key={f.id} className="border border-gray-100 p-3 rounded-lg hover:shadow-md transition">
-                <div className="flex justify-between items-start mb-1">
-                  <Link href={`/customers/${f.customerId}`} className="font-semibold text-gray-800 hover:text-blue-600">
-                    {f.customer?.businessName}
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {overdue.map(c => (
+              <div key={c.id} style={{ border: '1px solid #f1f5f9', padding: '12px', borderRadius: '8px', backgroundColor: '#ffffff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                  <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                    {c.customer?.businessName}
                   </Link>
-                  <span className="text-xs text-red-600 font-medium">
-                    {new Date(f.date).toLocaleDateString()}
+                  <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>
+                    {c.followUpDate ? new Date(c.followUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}
                   </span>
                 </div>
-                <div className="text-sm text-gray-600 mb-2">{f.followUpType} - {f.notes}</div>
-                <div className="text-xs text-gray-500">Rep: {f.employee?.user?.name}</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.type || 'Call'} - {c.notes || 'Follow-up'}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
+                  <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+                    Log Call →
+                  </Link>
+                </div>
               </div>
             ))}
-            {overdue.length === 0 && <p className="text-gray-400 text-sm text-center py-4">No overdue follow-ups!</p>}
+            {overdue.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '16px' }}>No overdue follow-ups!</p>}
           </div>
         </div>
 
         {/* Due Today */}
-        <div className="bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden">
-          <div className="bg-orange-50 px-4 py-3 border-b border-orange-200 flex justify-between items-center">
-            <h3 className="font-bold text-orange-800">Due Today</h3>
-            <span className="bg-orange-200 text-orange-800 text-xs font-bold px-2 py-1 rounded-full">{dueToday.length}</span>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #fed7aa', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ backgroundColor: '#fff7ed', padding: '12px 16px', borderBottom: '1px solid #fed7aa', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontWeight: 700, color: '#9a3412', fontSize: '0.95rem' }}>Due Today</h3>
+            <span style={{ backgroundColor: '#ffedd5', color: '#9a3412', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>{dueToday.length}</span>
           </div>
-          <div className="p-4 space-y-4">
-            {dueToday.map(f => (
-              <div key={f.id} className="border border-gray-100 p-3 rounded-lg hover:shadow-md transition">
-                <div className="flex justify-between items-start mb-1">
-                  <Link href={`/customers/${f.customerId}`} className="font-semibold text-gray-800 hover:text-blue-600">
-                    {f.customer?.businessName}
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {dueToday.map(c => (
+              <div key={c.id} style={{ border: '1px solid #f1f5f9', padding: '12px', borderRadius: '8px', backgroundColor: '#ffffff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                  <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                    {c.customer?.businessName}
                   </Link>
-                  <span className="text-xs text-orange-600 font-medium">
+                  <span style={{ fontSize: '0.75rem', color: '#ea580c', fontWeight: 600 }}>
                     Today
                   </span>
                 </div>
-                <div className="text-sm text-gray-600 mb-2">{f.followUpType} - {f.notes}</div>
-                <div className="text-xs text-gray-500">Rep: {f.employee?.user?.name}</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.type || 'Call'} - {c.notes || 'Follow-up'}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
+                  <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+                    Log Call →
+                  </Link>
+                </div>
               </div>
             ))}
-            {dueToday.length === 0 && <p className="text-gray-400 text-sm text-center py-4">No follow-ups due today.</p>}
+            {dueToday.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '16px' }}>No follow-ups due today.</p>}
           </div>
         </div>
 
         {/* Upcoming */}
-        <div className="bg-white rounded-xl shadow-sm border border-blue-200 overflow-hidden">
-          <div className="bg-blue-50 px-4 py-3 border-b border-blue-200 flex justify-between items-center">
-            <h3 className="font-bold text-blue-800">Upcoming</h3>
-            <span className="bg-blue-200 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">{upcoming.length}</span>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #bfdbfe', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ backgroundColor: '#eff6ff', padding: '12px 16px', borderBottom: '1px solid #bfdbfe', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ margin: 0, fontWeight: 700, color: '#1e40af', fontSize: '0.95rem' }}>Upcoming</h3>
+            <span style={{ backgroundColor: '#dbeafe', color: '#1e40af', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>{upcoming.length}</span>
           </div>
-          <div className="p-4 space-y-4">
-            {upcoming.map(f => (
-              <div key={f.id} className="border border-gray-100 p-3 rounded-lg hover:shadow-md transition">
-                <div className="flex justify-between items-start mb-1">
-                  <Link href={`/customers/${f.customerId}`} className="font-semibold text-gray-800 hover:text-blue-600">
-                    {f.customer?.businessName}
+          <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {upcoming.map(c => (
+              <div key={c.id} style={{ border: '1px solid #f1f5f9', padding: '12px', borderRadius: '8px', backgroundColor: '#ffffff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                  <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                    {c.customer?.businessName}
                   </Link>
-                  <span className="text-xs text-blue-600 font-medium">
-                    {new Date(f.date).toLocaleDateString()}
+                  <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
+                    {c.followUpDate ? new Date(c.followUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}
                   </span>
                 </div>
-                <div className="text-sm text-gray-600 mb-2">{f.followUpType} - {f.notes}</div>
-                <div className="text-xs text-gray-500">Rep: {f.employee?.user?.name}</div>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.type || 'Call'} - {c.notes || 'Follow-up'}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
+                  <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+                    Log Call →
+                  </Link>
+                </div>
               </div>
             ))}
-            {upcoming.length === 0 && <p className="text-gray-400 text-sm text-center py-4">No upcoming follow-ups.</p>}
+            {upcoming.length === 0 && <p style={{ color: '#94a3b8', fontSize: '0.85rem', textAlign: 'center', padding: '16px' }}>No upcoming follow-ups.</p>}
           </div>
         </div>
 
