@@ -53,6 +53,34 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // 12-Hour Follow-up Date & Time state
+  const [followUpDate, setFollowUpDate] = useState("");
+  const [followUpHour, setFollowUpHour] = useState("10");
+  const [followUpMinute, setFollowUpMinute] = useState("00");
+  const [followUpPeriod, setFollowUpPeriod] = useState<"AM" | "PM">("AM");
+
+  const getCompiledFollowUpDate = () => {
+    if (!followUpDate) return "";
+    let h = parseInt(followUpHour || "10", 10);
+    if (followUpPeriod === "PM" && h < 12) h += 12;
+    if (followUpPeriod === "AM" && h === 12) h = 0;
+    const hStr = h.toString().padStart(2, "0");
+    const mStr = (followUpMinute || "00").padStart(2, "0");
+    return `${followUpDate}T${hStr}:${mStr}:00`;
+  };
+
+  const setQuickFollowUp = (daysFromNow: number, hour12: number, minute: number, period: "AM" | "PM") => {
+    const d = new Date();
+    d.setDate(d.getDate() + daysFromNow);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    setFollowUpDate(`${yyyy}-${mm}-${dd}`);
+    setFollowUpHour(String(hour12).padStart(2, '0'));
+    setFollowUpMinute(String(minute).padStart(2, '0'));
+    setFollowUpPeriod(period);
+  };
+
   // Admin options manager modal state
   const [manageModal, setManageModal] = useState<"outcome" | "callType" | null>(null);
   const [editableList, setEditableList] = useState<string[]>([]);
@@ -166,6 +194,13 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
     formData.set("customerId", selectedCustomerId);
     formData.set("type", selectedCallType);
     formData.set("outcome", selectedOutcome);
+
+    const compiledFollowUp = getCompiledFollowUpDate();
+    if (compiledFollowUp) {
+      formData.set("followUpDate", compiledFollowUp);
+    } else {
+      formData.delete("followUpDate");
+    }
 
     const result = await logCall(formData);
 
@@ -438,11 +473,172 @@ export default function LogCallModal({ onClose, customers: initialCustomers }: L
               </select>
             </div>
 
-            <div className="form-group" style={{ display: "flex", alignItems: "center", width: "100%" }}>
-              <label style={{ width: "140px", flexShrink: 0, fontWeight: 500, fontSize: "0.875rem", color: "#475569" }}>
-                Follow-up Date <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block" }}>(Optional)</span>
-              </label>
-              <input type="datetime-local" name="followUpDate" style={{ flex: 1, minHeight: "42px", height: "42px" }} />
+            <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%", marginTop: "4px" }}>
+              <div style={{ width: "140px", flexShrink: 0, paddingTop: "8px" }}>
+                <label style={{ width: "auto", padding: 0, fontWeight: 500, fontSize: "0.875rem", color: "#475569" }}>
+                  Follow-up Date
+                </label>
+                <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block" }}>(12-Hour Clock)</span>
+              </div>
+
+              <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", gap: "8px" }}>
+                {/* Date and 12-Hour Time Inputs Row */}
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", width: "100%" }}>
+                  {/* Date input */}
+                  <input
+                    type="date"
+                    value={followUpDate}
+                    onChange={(e) => setFollowUpDate(e.target.value)}
+                    style={{
+                      flex: "1 1 140px",
+                      minHeight: "40px",
+                      height: "40px",
+                      padding: "8px 10px",
+                      borderRadius: "6px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.85rem",
+                      backgroundColor: "#f8fafc",
+                      outline: "none"
+                    }}
+                  />
+
+                  {/* 12-Hour Time: Hour : Minute AM/PM */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", flex: "1 1 auto" }}>
+                    {/* Hour (1-12) */}
+                    <select
+                      value={followUpHour}
+                      onChange={(e) => setFollowUpHour(e.target.value)}
+                      title="Hour"
+                      style={{
+                        minHeight: "40px",
+                        height: "40px",
+                        padding: "8px 4px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "0.85rem",
+                        backgroundColor: "#f8fafc",
+                        width: "56px",
+                        fontWeight: 600
+                      }}
+                    >
+                      {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                    <span style={{ fontWeight: "bold", color: "#64748b" }}>:</span>
+                    {/* Minute */}
+                    <select
+                      value={followUpMinute}
+                      onChange={(e) => setFollowUpMinute(e.target.value)}
+                      title="Minute"
+                      style={{
+                        minHeight: "40px",
+                        height: "40px",
+                        padding: "8px 4px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "0.85rem",
+                        backgroundColor: "#f8fafc",
+                        width: "56px",
+                        fontWeight: 600
+                      }}
+                    >
+                      {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+
+                    {/* AM / PM Toggle */}
+                    <div style={{ display: "flex", borderRadius: "6px", border: "1px solid #cbd5e1", overflow: "hidden" }}>
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpPeriod("AM")}
+                        style={{
+                          padding: "8px 10px",
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          border: "none",
+                          cursor: "pointer",
+                          backgroundColor: followUpPeriod === "AM" ? "#4f46e5" : "#f1f5f9",
+                          color: followUpPeriod === "AM" ? "#ffffff" : "#475569",
+                          transition: "all 0.15s ease"
+                        }}
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpPeriod("PM")}
+                        style={{
+                          padding: "8px 10px",
+                          fontSize: "0.8rem",
+                          fontWeight: 700,
+                          border: "none",
+                          cursor: "pointer",
+                          backgroundColor: followUpPeriod === "PM" ? "#4f46e5" : "#f1f5f9",
+                          color: followUpPeriod === "PM" ? "#ffffff" : "#475569",
+                          transition: "all 0.15s ease"
+                        }}
+                      >
+                        PM
+                      </button>
+                    </div>
+
+                    {/* Clear Button */}
+                    {followUpDate && (
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpDate("")}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          color: "#ef4444",
+                          cursor: "pointer",
+                          padding: "0 6px",
+                          fontSize: "1.2rem",
+                          lineHeight: 1
+                        }}
+                        title="Clear Follow-up"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Presets */}
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                  <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Quick:</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUp(0, 5, 0, "PM")}
+                    style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: "12px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer" }}
+                  >
+                    Today 5:00 PM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
+                    style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: "12px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer" }}
+                  >
+                    Tomorrow 11:00 AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUp(1, 4, 30, "PM")}
+                    style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: "12px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer" }}
+                  >
+                    Tomorrow 4:30 PM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUp(2, 10, 0, "AM")}
+                    style={{ fontSize: "0.75rem", padding: "3px 8px", borderRadius: "12px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer" }}
+                  >
+                    In 2 Days 10:00 AM
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%" }}>

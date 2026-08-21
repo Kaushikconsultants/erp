@@ -24,14 +24,46 @@ export default function CallsTableClient({
   const [editOutcome, setEditOutcome] = useState("");
   const [editCallType, setEditCallType] = useState("");
   const [editFollowUpDate, setEditFollowUpDate] = useState("");
+  const [editFollowUpHour, setEditFollowUpHour] = useState("10");
+  const [editFollowUpMinute, setEditFollowUpMinute] = useState("00");
+  const [editFollowUpPeriod, setEditFollowUpPeriod] = useState<"AM" | "PM">("AM");
   const [editNotes, setEditNotes] = useState("");
 
   const handleOpenEdit = (call: any) => {
     setEditingCall(call);
     setEditOutcome(call.outcome || "INTERESTED");
     setEditCallType(call.callType || "OUTBOUND");
-    setEditFollowUpDate(call.followUpDate ? new Date(call.followUpDate).toISOString().split('T')[0] : "");
+    if (call.followUpDate) {
+      const d = new Date(call.followUpDate);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      setEditFollowUpDate(`${yyyy}-${mm}-${dd}`);
+      let h = d.getHours();
+      const m = d.getMinutes();
+      const period = h >= 12 ? "PM" : "AM";
+      let h12 = h % 12;
+      if (h12 === 0) h12 = 12;
+      setEditFollowUpHour(String(h12).padStart(2, '0'));
+      setEditFollowUpMinute(String(Math.floor(m / 5) * 5).padStart(2, '0'));
+      setEditFollowUpPeriod(period);
+    } else {
+      setEditFollowUpDate("");
+      setEditFollowUpHour("10");
+      setEditFollowUpMinute("00");
+      setEditFollowUpPeriod("AM");
+    }
     setEditNotes(call.notes || "");
+  };
+
+  const getCompiledEditFollowUp = () => {
+    if (!editFollowUpDate) return null;
+    let h = parseInt(editFollowUpHour || "10", 10);
+    if (editFollowUpPeriod === "PM" && h < 12) h += 12;
+    if (editFollowUpPeriod === "AM" && h === 12) h = 0;
+    const hStr = h.toString().padStart(2, "0");
+    const mStr = (editFollowUpMinute || "00").padStart(2, "0");
+    return `${editFollowUpDate}T${hStr}:${mStr}:00`;
   };
 
   const handleSaveEdit = async () => {
@@ -40,7 +72,7 @@ export default function CallsTableClient({
     await updateCall(editingCall.id, {
       outcome: editOutcome,
       callType: editCallType,
-      followUpDate: editFollowUpDate || null,
+      followUpDate: getCompiledEditFollowUp(),
       notes: editNotes
     });
     setLoading(false);
@@ -100,9 +132,9 @@ export default function CallsTableClient({
                   </td>
                   <td>
                     {call.followUpDate ? (
-                      <span style={{ color: isOverdue ? '#dc2626' : '#16a34a', fontWeight: isOverdue ? 700 : 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                        <Calendar size={13} /> {new Date(call.followUpDate).toLocaleDateString('en-GB')}
-                        {isOverdue && <span style={{ fontSize: '0.68rem', backgroundColor: '#fee2e2', padding: '1px 5px', borderRadius: '4px' }}>Overdue</span>}
+                      <span style={{ color: isOverdue ? '#dc2626' : '#16a34a', fontWeight: isOverdue ? 700 : 500, display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem' }}>
+                        <Calendar size={13} /> {new Date(call.followUpDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} at {new Date(call.followUpDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                        {isOverdue && <span style={{ fontSize: '0.68rem', backgroundColor: '#fee2e2', padding: '1px 5px', borderRadius: '4px', marginLeft: '4px' }}>Overdue</span>}
                       </span>
                     ) : (
                       <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>No Follow-up</span>
@@ -205,14 +237,79 @@ export default function CallsTableClient({
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                  Next Follow-up Date (Optional)
+                  Next Follow-up Date (12-Hour Clock)
                 </label>
-                <input 
-                  type="date" 
-                  value={editFollowUpDate}
-                  onChange={e => setEditFollowUpDate(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
-                />
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input 
+                    type="date" 
+                    value={editFollowUpDate}
+                    onChange={e => setEditFollowUpDate(e.target.value)}
+                    style={{ flex: '1 1 130px', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <select
+                      value={editFollowUpHour}
+                      onChange={e => setEditFollowUpHour(e.target.value)}
+                      style={{ padding: '8px 4px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600 }}
+                    >
+                      {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                    <span style={{ fontWeight: 'bold', color: '#64748b' }}>:</span>
+                    <select
+                      value={editFollowUpMinute}
+                      onChange={e => setEditFollowUpMinute(e.target.value)}
+                      style={{ padding: '8px 4px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600 }}
+                    >
+                      {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <div style={{ display: 'flex', borderRadius: '6px', border: '1px solid #cbd5e1', overflow: 'hidden' }}>
+                      <button
+                        type="button"
+                        onClick={() => setEditFollowUpPeriod("AM")}
+                        style={{
+                          padding: '6px 8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          border: 'none',
+                          cursor: 'pointer',
+                          backgroundColor: editFollowUpPeriod === "AM" ? "#4f46e5" : "#f1f5f9",
+                          color: editFollowUpPeriod === "AM" ? "#ffffff" : "#475569"
+                        }}
+                      >
+                        AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditFollowUpPeriod("PM")}
+                        style={{
+                          padding: '6px 8px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          border: 'none',
+                          cursor: 'pointer',
+                          backgroundColor: editFollowUpPeriod === "PM" ? "#4f46e5" : "#f1f5f9",
+                          color: editFollowUpPeriod === "PM" ? "#ffffff" : "#475569"
+                        }}
+                      >
+                        PM
+                      </button>
+                    </div>
+                    {editFollowUpDate && (
+                      <button
+                        type="button"
+                        onClick={() => setEditFollowUpDate("")}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0 4px' }}
+                        title="Clear Follow-up"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -277,11 +374,11 @@ export default function CallsTableClient({
               </div>
 
               {viewingNotesCall.followUpDate && (
-                <div>
-                  <strong style={{ fontSize: '0.85rem', color: '#64748b' }}>Scheduled Follow-up:</strong>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#16a34a', marginTop: '2px' }}>
-                    {new Date(viewingNotesCall.followUpDate).toLocaleDateString('en-GB')}
-                  </div>
+                <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '8px', color: '#166534', fontSize: '0.85rem' }}>
+                  <Calendar size={16} />
+                  <span>
+                    <strong>Next Follow-up:</strong> {new Date(viewingNotesCall.followUpDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} at {new Date(viewingNotesCall.followUpDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                  </span>
                 </div>
               )}
 
