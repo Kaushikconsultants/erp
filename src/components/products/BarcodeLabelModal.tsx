@@ -22,7 +22,12 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  Info
+  Info,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  MoveVertical,
+  Maximize2
 } from "lucide-react";
 
 interface ProductLabelData {
@@ -61,6 +66,9 @@ export interface CustomizerConfig {
   logoUrl: string | null;
   logoSize: number;
   showLogo: boolean;
+  logoAlign: "left" | "center" | "right";
+  logoPosition: "above" | "inline_left" | "inline_right" | "below";
+
   customTitle: string;
   customSubtext: string;
   customFooter: string;
@@ -69,8 +77,17 @@ export interface CustomizerConfig {
   showSku: boolean;
   showCategory: boolean;
   showFooter: boolean;
+
   fontFamily: string;
   textAlign: "center" | "left" | "right";
+  headerAlign: "center" | "left" | "right";
+  titleAlign: "center" | "left" | "right";
+  detailsAlign: "center" | "left" | "right";
+  footerAlign: "center" | "left" | "right";
+
+  titleFontSize: "small" | "medium" | "large";
+  headerFontSize: "small" | "medium" | "large";
+  cardPadding: "compact" | "normal" | "spacious";
   borderStyle: "dashed" | "solid" | "none";
 }
 
@@ -96,6 +113,8 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoSize, setLogoSize] = useState<number>(24);
   const [showLogo, setShowLogo] = useState<boolean>(false);
+  const [logoAlign, setLogoAlign] = useState<"left" | "center" | "right">("center");
+  const [logoPosition, setLogoPosition] = useState<"above" | "inline_left" | "inline_right" | "below">("above");
 
   const [customTitle, setCustomTitle] = useState<string>(product.name);
   const [customSubtext, setCustomSubtext] = useState<string>(product.category || "");
@@ -106,8 +125,17 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const [showCategory, setShowCategory] = useState<boolean>(true);
   const [showFooter, setShowFooter] = useState<boolean>(false);
 
+  // Manual Section Alignments & Sizes
   const [fontFamily, setFontFamily] = useState<string>("'Inter', sans-serif");
   const [textAlign, setTextAlign] = useState<"center" | "left" | "right">("center");
+  const [headerAlign, setHeaderAlign] = useState<"center" | "left" | "right">("center");
+  const [titleAlign, setTitleAlign] = useState<"center" | "left" | "right">("center");
+  const [detailsAlign, setDetailsAlign] = useState<"center" | "left" | "right">("center");
+  const [footerAlign, setFooterAlign] = useState<"center" | "left" | "right">("center");
+
+  const [titleFontSize, setTitleFontSize] = useState<"small" | "medium" | "large">("medium");
+  const [headerFontSize, setHeaderFontSize] = useState<"small" | "medium" | "large">("medium");
+  const [cardPadding, setCardPadding] = useState<"compact" | "normal" | "spacious">("normal");
   const [borderStyle, setBorderStyle] = useState<"dashed" | "solid" | "none">("dashed");
 
   // High Resolution Symbology Image Data URLs
@@ -164,11 +192,10 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
 
   const barcodeCfg = getBarcodeConfig();
 
-  // Generate PNG Data URL for Barcode & QR (Guarantees zero collapse in physical printing)
+  // Generate PNG Data URL for Barcode & QR
   useEffect(() => {
     if (!activeCode) return;
 
-    // Generate High-Res Barcode PNG
     try {
       const canvas = document.createElement("canvas");
       JsBarcode(canvas, activeCode, {
@@ -187,7 +214,6 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
       console.error("Barcode generation failed:", e);
     }
 
-    // Generate High-Res QR Code PNG
     QRCode.toDataURL(activeCode, {
       width: 180,
       margin: 1,
@@ -225,12 +251,24 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Synchronize overall alignment shortcut
+  const applyOverallAlignment = (align: "left" | "center" | "right") => {
+    setTextAlign(align);
+    setLogoAlign(align);
+    setHeaderAlign(align);
+    setTitleAlign(align);
+    setDetailsAlign(align);
+    setFooterAlign(align);
+  };
+
   const customizerConfig: CustomizerConfig = {
     headerText,
     showHeader,
     logoUrl,
     logoSize,
     showLogo,
+    logoAlign,
+    logoPosition,
     customTitle,
     customSubtext,
     customFooter,
@@ -241,6 +279,13 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
     showFooter,
     fontFamily,
     textAlign,
+    headerAlign,
+    titleAlign,
+    detailsAlign,
+    footerAlign,
+    titleFontSize,
+    headerFontSize,
+    cardPadding,
     borderStyle
   };
 
@@ -258,7 +303,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
     <>
       {/* 1. ON-SCREEN MODAL */}
       <div className="modal-backdrop no-print">
-        <div className="modal-content glass-panel animate-in" style={{ maxWidth: "820px", width: "95%" }}>
+        <div className="modal-content glass-panel animate-in" style={{ maxWidth: "860px", width: "95%" }}>
           {/* Header */}
           <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -267,7 +312,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
               </div>
               <div>
                 <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "var(--text-primary)" }}>Barcode & QR Label Generator Studio</h2>
-                <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "var(--text-secondary)" }}>Design, customize branding, size, and print barcode stickers</p>
+                <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "var(--text-secondary)" }}>Design, size, align logos & text manually, and print barcode stickers</p>
               </div>
             </div>
             <button className="close-btn" onClick={onClose} style={{ border: "none", background: "rgba(226, 232, 240, 0.6)", borderRadius: "50%", padding: "6px", cursor: "pointer" }}>
@@ -318,7 +363,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                 color: activeTab === "designer" ? "#4f46e5" : "#64748b"
               }}
             >
-              <Palette size={15} /> 2. Customize Branding & Layout ✨
+              <Palette size={15} /> 2. Manual Alignment & Branding ✨
             </button>
           </div>
 
@@ -468,24 +513,46 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                     </div>
                   </div>
                 </div>
-
-                {/* Printer Type Advice Banner */}
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#e0f2fe", padding: "6px 12px", borderRadius: "6px", border: "1px solid #bae6fd", fontSize: "0.75rem", color: "#0369a1" }}>
-                  <Info size={14} className="shrink-0 text-sky-600" />
-                  <span>
-                    <strong>Printing on standard Inkjet / Laser (HP, Epson, Canon)?</strong> Set Target Printer to <strong>"Standard Laser / Inkjet (A4)"</strong> for full A4 page sticker layout.
-                  </span>
-                </div>
               </div>
             ) : (
-              /* TAB 2: FULL LABEL DESIGNER & CUSTOMIZER */
+              /* TAB 2: FULL MANUAL ALIGNMENT & BRANDING STUDIO */
               <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
-                  {/* Logo Upload Section */}
+                {/* Global Alignment Quick Switcher */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#e0e7ff", padding: "8px 12px", borderRadius: "8px", border: "1px solid #c7d2fe" }}>
+                  <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#3730a3", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Sliders size={15} /> Quick Preset Alignment:
+                  </span>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button
+                      type="button"
+                      onClick={() => applyOverallAlignment("left")}
+                      style={{ padding: "4px 10px", borderRadius: "5px", border: "1px solid #a5b4fc", background: textAlign === "left" ? "#4f46e5" : "#fff", color: textAlign === "left" ? "#fff" : "#3730a3", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                    >
+                      <AlignLeft size={13} /> Left Align
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyOverallAlignment("center")}
+                      style={{ padding: "4px 10px", borderRadius: "5px", border: "1px solid #a5b4fc", background: textAlign === "center" ? "#4f46e5" : "#fff", color: textAlign === "center" ? "#fff" : "#3730a3", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                    >
+                      <AlignCenter size={13} /> Center Align
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyOverallAlignment("right")}
+                      style={{ padding: "4px 10px", borderRadius: "5px", border: "1px solid #a5b4fc", background: textAlign === "right" ? "#4f46e5" : "#fff", color: textAlign === "right" ? "#fff" : "#3730a3", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                    >
+                      <AlignRight size={13} /> Right Align
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "14px" }}>
+                  {/* Manual Logo Customization & Positioning */}
                   <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
                       <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#334155", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <ImageIcon size={14} className="text-indigo-600" /> Custom Logo / Image
+                        <ImageIcon size={14} className="text-indigo-600" /> Logo Upload & Positioning
                       </label>
                       <button
                         type="button"
@@ -496,23 +563,23 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                       </button>
                     </div>
 
-                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center", marginBottom: "8px" }}>
                       <label
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: "6px",
-                          padding: "6px 12px",
+                          padding: "5px 10px",
                           borderRadius: "6px",
                           background: "#e0e7ff",
                           color: "#3730a3",
-                          fontSize: "0.78rem",
+                          fontSize: "0.76rem",
                           fontWeight: 600,
                           cursor: "pointer",
                           border: "1px dashed #6366f1"
                         }}
                       >
-                        <Upload size={14} /> Upload Logo
+                        <Upload size={13} /> Upload Image
                         <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: "none" }} />
                       </label>
 
@@ -523,54 +590,99 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                             setLogoUrl(null);
                             setShowLogo(false);
                           }}
-                          style={{ border: "none", background: "#fee2e2", color: "#991b1b", padding: "6px", borderRadius: "6px", cursor: "pointer" }}
+                          style={{ border: "none", background: "#fee2e2", color: "#991b1b", padding: "5px 8px", borderRadius: "6px", cursor: "pointer" }}
                           title="Remove logo"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </button>
                       )}
                     </div>
 
                     {showLogo && (
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "8px" }}>
-                        <span style={{ fontSize: "0.7rem", color: "#64748b" }}>Logo Height:</span>
-                        <input
-                          type="range"
-                          min="14"
-                          max="60"
-                          value={logoSize}
-                          onChange={e => setLogoSize(parseInt(e.target.value))}
-                          style={{ flex: 1 }}
-                        />
-                        <span style={{ fontSize: "0.7rem", fontWeight: 700 }}>{logoSize}px</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ fontSize: "0.7rem", color: "#475569" }}>Height:</span>
+                          <input
+                            type="range"
+                            min="14"
+                            max="60"
+                            value={logoSize}
+                            onChange={e => setLogoSize(parseInt(e.target.value))}
+                            style={{ flex: 1 }}
+                          />
+                          <span style={{ fontSize: "0.7rem", fontWeight: 700 }}>{logoSize}px</span>
+                        </div>
+
+                        {/* Manual Logo Alignment */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ fontSize: "0.7rem", color: "#475569", minWidth: "50px" }}>Logo Align:</span>
+                          <div style={{ display: "flex", gap: "3px", flex: 1 }}>
+                            {(["left", "center", "right"] as const).map(a => (
+                              <button
+                                key={a}
+                                type="button"
+                                onClick={() => setLogoAlign(a)}
+                                style={{ flex: 1, padding: "2px 4px", fontSize: "0.68rem", fontWeight: 600, borderRadius: "4px", border: "1px solid #cbd5e1", background: logoAlign === a ? "#4f46e5" : "#fff", color: logoAlign === a ? "#fff" : "#334155", cursor: "pointer", textTransform: "capitalize" }}
+                              >
+                                {a}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Manual Logo Position Relative to Header */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ fontSize: "0.7rem", color: "#475569", minWidth: "50px" }}>Position:</span>
+                          <select
+                            value={logoPosition}
+                            onChange={e => setLogoPosition(e.target.value as any)}
+                            style={{ flex: 1, padding: "3px 6px", fontSize: "0.72rem", borderRadius: "4px", border: "1px solid #cbd5e1" }}
+                          >
+                            <option value="above">Top (Above Header)</option>
+                            <option value="inline_left">Inline Left of Header</option>
+                            <option value="inline_right">Inline Right of Header</option>
+                            <option value="below">Bottom (Below Header)</option>
+                          </select>
+                        </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Header / Brand Text */}
+                  {/* Manual Header & Title Alignment & Sizing */}
                   <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                      <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#334155" }}>
-                        Header / Company Text
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowHeader(!showHeader)}
-                        style={{ border: "none", background: "none", color: showHeader ? "#4f46e5" : "#94a3b8", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "3px" }}
-                      >
-                        {showHeader ? <Eye size={13} /> : <EyeOff size={13} />} {showHeader ? "Shown" : "Hidden"}
-                      </button>
-                    </div>
+                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>
+                      Header Text & Alignment
+                    </label>
                     <input
                       type="text"
                       value={headerText}
                       onChange={e => setHeaderText(e.target.value)}
                       placeholder="e.g. HEART OF BUSINESS"
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.82rem", fontWeight: 600 }}
+                      style={{ width: "100%", padding: "5px 8px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.8rem", marginBottom: "4px" }}
                     />
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <select
+                        value={headerAlign}
+                        onChange={e => setHeaderAlign(e.target.value as any)}
+                        style={{ flex: 1, padding: "3px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.72rem" }}
+                      >
+                        <option value="left">Align Left</option>
+                        <option value="center">Align Center</option>
+                        <option value="right">Align Right</option>
+                      </select>
+                      <select
+                        value={headerFontSize}
+                        onChange={e => setHeaderFontSize(e.target.value as any)}
+                        style={{ flex: 1, padding: "3px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.72rem" }}
+                      >
+                        <option value="small">Small Header</option>
+                        <option value="medium">Medium Header</option>
+                        <option value="large">Large Header</option>
+                      </select>
+                    </div>
                   </div>
 
-                  {/* Editable Product Title & Subtext */}
+                  {/* Product Title Customization */}
                   <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                     <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>
                       Product Title & Subtext
@@ -579,90 +691,105 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                       type="text"
                       value={customTitle}
                       onChange={e => setCustomTitle(e.target.value)}
-                      placeholder="Product Name"
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.8rem", marginBottom: "4px" }}
+                      placeholder="Product Title"
+                      style={{ width: "100%", padding: "4px 8px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.8rem", marginBottom: "4px" }}
                     />
                     <input
                       type="text"
                       value={customSubtext}
                       onChange={e => setCustomSubtext(e.target.value)}
-                      placeholder="Subtext / Category / Size (Optional)"
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.78rem" }}
+                      placeholder="Subtext / Category / Article No."
+                      style={{ width: "100%", padding: "4px 8px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.76rem", marginBottom: "4px" }}
                     />
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <select
+                        value={titleAlign}
+                        onChange={e => setTitleAlign(e.target.value as any)}
+                        style={{ flex: 1, padding: "3px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.72rem" }}
+                      >
+                        <option value="left">Title Align Left</option>
+                        <option value="center">Title Align Center</option>
+                        <option value="right">Title Align Right</option>
+                      </select>
+                      <select
+                        value={titleFontSize}
+                        onChange={e => setTitleFontSize(e.target.value as any)}
+                        style={{ flex: 1, padding: "3px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.72rem" }}
+                      >
+                        <option value="small">Small Title</option>
+                        <option value="medium">Medium Title</option>
+                        <option value="large">Large Title</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {/* Additional Custom Line & Styling Controls */}
+                {/* Additional Manual Section Alignments & Formatting */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", background: "#edf2f7", padding: "10px 12px", borderRadius: "8px" }}>
-                  {/* Custom Footer Line */}
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                      <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#334155" }}>
-                        Custom Extra Line / Footer Note
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowFooter(!showFooter)}
-                        style={{ border: "none", background: "none", color: showFooter ? "#4f46e5" : "#94a3b8", cursor: "pointer", fontSize: "0.72rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "3px" }}
-                      >
-                        {showFooter ? <Eye size={12} /> : <EyeOff size={12} />} {showFooter ? "Shown" : "Hidden"}
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      value={customFooter}
-                      onChange={e => setCustomFooter(e.target.value)}
-                      placeholder="e.g. Made in India, Non-Returnable"
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.8rem" }}
-                    />
-                  </div>
-
-                  {/* Element Display Toggles */}
-                  <div>
-                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                      Visible Elements
-                    </label>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                      <label style={{ fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={showPrice} onChange={e => setShowPrice(e.target.checked)} /> Price
-                      </label>
-                      <label style={{ fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={showMrp} onChange={e => setShowMrp(e.target.checked)} /> MRP
-                      </label>
-                      <label style={{ fontSize: "0.75rem", display: "flex", alignItems: "center", gap: "4px", cursor: "pointer" }}>
-                        <input type="checkbox" checked={showSku} onChange={e => setShowSku(e.target.checked)} /> SKU Code
-                      </label>
-                    </div>
-                  </div>
-
-                  {/* Typography & Alignment */}
+                  {/* Price & Details Align */}
                   <div>
                     <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>
-                      Font & Alignment
+                      Price & Details Align
                     </label>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <select
-                        value={fontFamily}
-                        onChange={e => setFontFamily(e.target.value)}
-                        style={{ flex: 1, padding: "5px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.78rem" }}
-                      >
-                        <option value="'Inter', sans-serif">Sans-Serif (Standard)</option>
-                        <option value="'Roboto', sans-serif">Roboto Clean</option>
-                        <option value="monospace">Monospace Code</option>
-                        <option value="'Georgia', serif">Serif Classic</option>
-                        <option value="'Impact', sans-serif">Bold Industrial</option>
-                      </select>
+                    <select
+                      value={detailsAlign}
+                      onChange={e => setDetailsAlign(e.target.value as any)}
+                      style={{ width: "100%", padding: "4px 6px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.76rem" }}
+                    >
+                      <option value="left">Left Align Price & Subtext</option>
+                      <option value="center">Center Align Price & Subtext</option>
+                      <option value="right">Right Align Price & Subtext</option>
+                    </select>
+                  </div>
 
-                      <select
-                        value={textAlign}
-                        onChange={e => setTextAlign(e.target.value as any)}
-                        style={{ padding: "5px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.78rem" }}
-                      >
-                        <option value="center">Center</option>
-                        <option value="left">Left</option>
-                        <option value="right">Right</option>
-                      </select>
-                    </div>
+                  {/* Footer Note & SKU Align */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>
+                      SKU & Footer Align
+                    </label>
+                    <select
+                      value={footerAlign}
+                      onChange={e => setFooterAlign(e.target.value as any)}
+                      style={{ width: "100%", padding: "4px 6px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.76rem" }}
+                    >
+                      <option value="left">Left Align SKU & Footer</option>
+                      <option value="center">Center Align SKU & Footer</option>
+                      <option value="right">Right Align SKU & Footer</option>
+                    </select>
+                  </div>
+
+                  {/* Padding & Spacing */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>
+                      Sticker Inner Padding
+                    </label>
+                    <select
+                      value={cardPadding}
+                      onChange={e => setCardPadding(e.target.value as any)}
+                      style={{ width: "100%", padding: "4px 6px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.76rem" }}
+                    >
+                      <option value="compact">Compact (Tight Margins)</option>
+                      <option value="normal">Normal Margins</option>
+                      <option value="spacious">Spacious Padding</option>
+                    </select>
+                  </div>
+
+                  {/* Font Family */}
+                  <div>
+                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>
+                      Font Style
+                    </label>
+                    <select
+                      value={fontFamily}
+                      onChange={e => setFontFamily(e.target.value)}
+                      style={{ width: "100%", padding: "4px 6px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.76rem" }}
+                    >
+                      <option value="'Inter', sans-serif">Sans-Serif (Standard)</option>
+                      <option value="'Roboto', sans-serif">Roboto Clean</option>
+                      <option value="monospace">Monospace Code</option>
+                      <option value="'Georgia', serif">Serif Classic</option>
+                      <option value="'Impact', sans-serif">Bold Industrial</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -815,7 +942,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
         </div>
       </div>
 
-      {/* 2. DEDICATED PRINT CONTAINER PORTAL (Rendered directly in document.body) */}
+      {/* 2. DEDICATED PRINT CONTAINER PORTAL */}
       {mounted &&
         createPortal(
           <div className="only-for-printer" id="printable-barcode-root">
@@ -892,6 +1019,173 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   );
 }
 
+{/* Helper to Render Logo & Header with Manual Positioning & Alignment */}
+function RenderLogoAndHeader({ customizer }: { customizer: CustomizerConfig }) {
+  const { showLogo, logoUrl, logoSize, logoAlign, logoPosition, showHeader, headerText, headerAlign, headerFontSize } = customizer;
+
+  const getHeaderFontSize = () => {
+    switch (headerFontSize) {
+      case "small": return "0.58rem";
+      case "large": return "0.78rem";
+      default: return "0.66rem";
+    }
+  };
+
+  const getLogoJustify = (align: "left" | "center" | "right") => {
+    switch (align) {
+      case "left": return "flex-start";
+      case "right": return "flex-end";
+      default: return "center";
+    }
+  };
+
+  const logoImg = showLogo && logoUrl ? (
+    <img
+      src={logoUrl}
+      alt="Logo"
+      style={{
+        height: `${logoSize}px`,
+        objectFit: "contain",
+        display: "block"
+      }}
+    />
+  ) : null;
+
+  const headerSpan = showHeader && headerText ? (
+    <div
+      style={{
+        fontSize: getHeaderFontSize(),
+        fontWeight: 800,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+        color: "#333",
+        textAlign: headerAlign,
+        width: "100%"
+      }}
+    >
+      {headerText}
+    </div>
+  ) : null;
+
+  if (logoPosition === "inline_left" && logoImg) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: getLogoJustify(headerAlign), gap: "6px", width: "100%", marginBottom: "2px" }}>
+        {logoImg}
+        {headerSpan}
+      </div>
+    );
+  }
+
+  if (logoPosition === "inline_right" && logoImg) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: getLogoJustify(headerAlign), gap: "6px", width: "100%", marginBottom: "2px" }}>
+        {headerSpan}
+        {logoImg}
+      </div>
+    );
+  }
+
+  if (logoPosition === "below") {
+    return (
+      <div style={{ width: "100%", marginBottom: "2px" }}>
+        {headerSpan}
+        {logoImg && <div style={{ display: "flex", justifyContent: getLogoJustify(logoAlign), marginTop: "2px" }}>{logoImg}</div>}
+      </div>
+    );
+  }
+
+  // Default: Above / Top
+  return (
+    <div style={{ width: "100%", marginBottom: "2px" }}>
+      {logoImg && <div style={{ display: "flex", justifyContent: getLogoJustify(logoAlign), marginBottom: "2px" }}>{logoImg}</div>}
+      {headerSpan}
+    </div>
+  );
+}
+
+{/* Helper for Print Version Logo & Header */}
+function RenderLogoAndHeaderPrint({ customizer }: { customizer: CustomizerConfig }) {
+  const { showLogo, logoUrl, logoSize, logoAlign, logoPosition, showHeader, headerText, headerAlign, headerFontSize } = customizer;
+
+  const getHeaderFontSizePrint = () => {
+    switch (headerFontSize) {
+      case "small": return "5.5pt";
+      case "large": return "7.5pt";
+      default: return "6.5pt";
+    }
+  };
+
+  const getLogoJustify = (align: "left" | "center" | "right") => {
+    switch (align) {
+      case "left": return "flex-start";
+      case "right": return "flex-end";
+      default: return "center";
+    }
+  };
+
+  const logoImg = showLogo && logoUrl ? (
+    <img
+      src={logoUrl}
+      alt="Logo"
+      style={{
+        height: `${logoSize * 0.75}px`,
+        objectFit: "contain",
+        display: "block"
+      }}
+    />
+  ) : null;
+
+  const headerSpan = showHeader && headerText ? (
+    <div
+      style={{
+        fontSize: getHeaderFontSizePrint(),
+        fontWeight: 800,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+        color: "#000",
+        textAlign: headerAlign,
+        width: "100%"
+      }}
+    >
+      {headerText}
+    </div>
+  ) : null;
+
+  if (logoPosition === "inline_left" && logoImg) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: getLogoJustify(headerAlign), gap: "4px", width: "100%", marginBottom: "1px" }}>
+        {logoImg}
+        {headerSpan}
+      </div>
+    );
+  }
+
+  if (logoPosition === "inline_right" && logoImg) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: getLogoJustify(headerAlign), gap: "4px", width: "100%", marginBottom: "1px" }}>
+        {headerSpan}
+        {logoImg}
+      </div>
+    );
+  }
+
+  if (logoPosition === "below") {
+    return (
+      <div style={{ width: "100%", marginBottom: "1px" }}>
+        {headerSpan}
+        {logoImg && <div style={{ display: "flex", justifyContent: getLogoJustify(logoAlign), marginTop: "1px" }}>{logoImg}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: "100%", marginBottom: "1px" }}>
+      {logoImg && <div style={{ display: "flex", justifyContent: getLogoJustify(logoAlign), marginBottom: "1px" }}>{logoImg}</div>}
+      {headerSpan}
+    </div>
+  );
+}
+
 {/* Uniform Card Renderer for On-Screen Preview */}
 function LabelCardPreview({
   product,
@@ -915,12 +1209,28 @@ function LabelCardPreview({
   const cardWidthPx = Math.min(Math.max(layout.widthMm * 4.2, 180), 300);
   const cardHeightPx = Math.min(Math.max(layout.heightMm * 3.8, 125), 220);
 
+  const getTitleFontSize = () => {
+    switch (customizer.titleFontSize) {
+      case "small": return "0.72rem";
+      case "large": return "0.95rem";
+      default: return "0.82rem";
+    }
+  };
+
+  const getPadding = () => {
+    switch (customizer.cardPadding) {
+      case "compact": return "4px 6px";
+      case "spacious": return "12px 14px";
+      default: return "8px 10px";
+    }
+  };
+
   return (
     <div
       style={{
         background: "#ffffff",
         color: "#000000",
-        padding: "8px 10px",
+        padding: getPadding(),
         borderRadius: "4px",
         border: customizer.borderStyle === "none" ? "none" : `1px ${customizer.borderStyle} #64748b`,
         boxShadow: "0 3px 8px rgba(0,0,0,0.1)",
@@ -928,7 +1238,7 @@ function LabelCardPreview({
         height: `${cardHeightPx}px`,
         display: "flex",
         flexDirection: "column",
-        alignItems: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center",
+        alignItems: "center",
         justifyContent: "space-between",
         textAlign: customizer.textAlign,
         fontFamily: customizer.fontFamily,
@@ -936,27 +1246,16 @@ function LabelCardPreview({
       }}
     >
       <div style={{ width: "100%" }}>
-        {/* Custom Logo */}
-        {customizer.showLogo && customizer.logoUrl && (
-          <div style={{ marginBottom: "2px" }}>
-            <img src={customizer.logoUrl} alt="Logo" style={{ height: `${customizer.logoSize}px`, objectFit: "contain", margin: customizer.textAlign === "center" ? "0 auto" : "0" }} />
-          </div>
-        )}
-
-        {/* Custom Header / Brand */}
-        {customizer.showHeader && customizer.headerText && (
-          <div style={{ fontSize: "0.65rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "#333", marginBottom: "1px" }}>
-            {customizer.headerText}
-          </div>
-        )}
+        {/* Custom Logo & Header Renderer */}
+        <RenderLogoAndHeader customizer={customizer} />
 
         {/* Custom Product Title */}
-        <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#000", lineHeight: "1.1", maxHeight: "2.2em", overflow: "hidden" }}>
+        <div style={{ fontSize: getTitleFontSize(), fontWeight: 700, color: "#000", lineHeight: "1.1", maxHeight: "2.2em", overflow: "hidden", textAlign: customizer.titleAlign }}>
           {customizer.customTitle || product.name}
         </div>
 
         {/* Subtext & Price */}
-        <div style={{ fontSize: "0.7rem", color: "#444", marginTop: "2px" }}>
+        <div style={{ fontSize: "0.7rem", color: "#444", marginTop: "2px", textAlign: customizer.detailsAlign }}>
           {customizer.customSubtext && <span style={{ marginRight: "4px" }}>{customizer.customSubtext}</span>}
           {customizer.showPrice && product.sellingPrice && <span style={{ fontWeight: 700, color: "#000" }}>₹{product.sellingPrice}</span>}
           {customizer.showMrp && product.mrp && product.mrp > (product.sellingPrice || 0) && (
@@ -988,7 +1287,7 @@ function LabelCardPreview({
       </div>
 
       {/* Footer Details */}
-      <div style={{ width: "100%" }}>
+      <div style={{ width: "100%", textAlign: customizer.footerAlign }}>
         {customizer.showSku && (
           <div style={{ fontSize: "0.65rem", color: "#555", fontFamily: "monospace" }}>
             SKU: <strong>{activeCode}</strong>
@@ -1024,16 +1323,32 @@ function LabelCardPrint({
   qrDataUrl: string;
   customizer: CustomizerConfig;
 }) {
+  const getTitleFontSizePrint = () => {
+    switch (customizer.titleFontSize) {
+      case "small": return "7.5pt";
+      case "large": return "9.5pt";
+      default: return "8.5pt";
+    }
+  };
+
+  const getPaddingPrint = () => {
+    switch (customizer.cardPadding) {
+      case "compact": return "1mm 2mm";
+      case "spacious": return "3mm 4mm";
+      default: return "2mm 3mm";
+    }
+  };
+
   return (
     <div
       className="label-card-print-box"
       style={{
         width: "100%",
         height: `${layout.heightMm}mm`,
-        padding: "2mm 3mm",
+        padding: getPaddingPrint(),
         display: "flex",
         flexDirection: "column",
-        alignItems: customizer.textAlign === "left" ? "flex-start" : customizer.textAlign === "right" ? "flex-end" : "center",
+        alignItems: "center",
         justifyContent: "space-between",
         textAlign: customizer.textAlign,
         fontFamily: customizer.fontFamily,
@@ -1041,27 +1356,16 @@ function LabelCardPrint({
       }}
     >
       <div style={{ width: "100%" }}>
-        {/* Custom Logo */}
-        {customizer.showLogo && customizer.logoUrl && (
-          <div style={{ marginBottom: "1px" }}>
-            <img src={customizer.logoUrl} alt="Logo" style={{ height: `${customizer.logoSize * 0.75}px`, objectFit: "contain", margin: customizer.textAlign === "center" ? "0 auto" : "0" }} />
-          </div>
-        )}
-
-        {/* Custom Header */}
-        {customizer.showHeader && customizer.headerText && (
-          <div style={{ fontSize: "6.5pt", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "#000", marginBottom: "1px" }}>
-            {customizer.headerText}
-          </div>
-        )}
+        {/* Custom Logo & Header Renderer */}
+        <RenderLogoAndHeaderPrint customizer={customizer} />
 
         {/* Custom Title */}
-        <div style={{ fontSize: "8.5pt", fontWeight: 700, color: "#000", lineHeight: "1.1", maxHeight: "2.2em", overflow: "hidden" }}>
+        <div style={{ fontSize: getTitleFontSizePrint(), fontWeight: 700, color: "#000", lineHeight: "1.1", maxHeight: "2.2em", overflow: "hidden", textAlign: customizer.titleAlign }}>
           {customizer.customTitle || product.name}
         </div>
 
         {/* Subtext & Price */}
-        <div style={{ fontSize: "7.5pt", color: "#000", marginTop: "1px" }}>
+        <div style={{ fontSize: "7.5pt", color: "#000", marginTop: "1px", textAlign: customizer.detailsAlign }}>
           {customizer.customSubtext && <span style={{ marginRight: "3px" }}>{customizer.customSubtext}</span>}
           {customizer.showPrice && product.sellingPrice && <span style={{ fontWeight: 700 }}>₹{product.sellingPrice}</span>}
           {customizer.showMrp && product.mrp && product.mrp > (product.sellingPrice || 0) && (
@@ -1092,7 +1396,7 @@ function LabelCardPrint({
         )}
       </div>
 
-      <div style={{ width: "100%" }}>
+      <div style={{ width: "100%", textAlign: customizer.footerAlign }}>
         {customizer.showSku && (
           <div style={{ fontSize: "6.5pt", color: "#000", fontFamily: "monospace" }}>
             SKU: <strong>{activeCode}</strong>
