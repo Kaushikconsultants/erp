@@ -296,8 +296,9 @@ export default async function Home() {
     let isCheckedIn = false;
     let isCheckedOut = false;
     
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     if (employee) {
 
