@@ -4,70 +4,50 @@ import { useEffect, useRef } from "react";
 import { updatePresenceHeartbeat } from "@/app/actions/presenceActions";
 
 export default function PresenceHeartbeat() {
-  const lastActivityRef = useRef<number>(Date.now());
+  const lastPingRef = useRef<number>(0);
   const currentStatusRef = useRef<"ONLINE" | "IDLE" | "OFFLINE">("ONLINE");
 
   useEffect(() => {
-    const safeUpdate = (status: "ONLINE" | "IDLE" | "OFFLINE") => {
+    const safeUpdate = (status: "ONLINE" | "IDLE" | "OFFLINE", force = false) => {
+      const now = Date.now();
+      // Throttle: don't ping more than once every 45s unless forced (e.g. tab visibility changed)
+      if (!force && now - lastPingRef.current < 45000) return;
+      
+      lastPingRef.current = now;
       try {
         updatePresenceHeartbeat(status).catch(() => {});
       } catch (e) {}
     };
 
-    // Initial online ping
-    safeUpdate("ONLINE");
-
-    const onUserActivity = () => {
-      lastActivityRef.current = Date.now();
-      if (currentStatusRef.current !== "ONLINE" && !document.hidden) {
-        currentStatusRef.current = "ONLINE";
-        safeUpdate("ONLINE");
-      }
-    };
+    // Initial online ping on mount
+    safeUpdate("ONLINE", true);
 
     const onVisibilityChange = () => {
       if (document.hidden) {
         currentStatusRef.current = "IDLE";
-        safeUpdate("IDLE");
+        safeUpdate("IDLE", true);
       } else {
-        lastActivityRef.current = Date.now();
         currentStatusRef.current = "ONLINE";
-        safeUpdate("ONLINE");
+        safeUpdate("ONLINE", true);
       }
     };
 
     const onBeforeUnload = () => {
-      // Best-effort offline notification
-      safeUpdate("OFFLINE");
+      safeUpdate("OFFLINE", true);
     };
 
-    // User activity listeners
-    window.addEventListener("mousemove", onUserActivity, { passive: true });
-    window.addEventListener("keydown", onUserActivity, { passive: true });
-    window.addEventListener("touchstart", onUserActivity, { passive: true });
-    window.addEventListener("scroll", onUserActivity, { passive: true });
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("beforeunload", onBeforeUnload);
 
-    // Heartbeat interval every 25 seconds
+    // Heartbeat every 60 seconds (only if tab is visible)
     const interval = setInterval(() => {
-      const inactiveSeconds = (Date.now() - lastActivityRef.current) / 1000;
-      let nextStatus: "ONLINE" | "IDLE" = "ONLINE";
-
-      if (document.hidden || inactiveSeconds > 90) {
-        nextStatus = "IDLE";
+      if (!document.hidden) {
+        safeUpdate("ONLINE");
       }
-
-      currentStatusRef.current = nextStatus;
-      safeUpdate(nextStatus);
-    }, 25000);
+    }, 60000);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener("mousemove", onUserActivity);
-      window.removeEventListener("keydown", onUserActivity);
-      window.removeEventListener("touchstart", onUserActivity);
-      window.removeEventListener("scroll", onUserActivity);
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("beforeunload", onBeforeUnload);
     };

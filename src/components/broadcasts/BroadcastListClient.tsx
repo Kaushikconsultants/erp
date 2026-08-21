@@ -75,10 +75,11 @@ export default function BroadcastListClient({
     setBroadcasts(initialBroadcasts);
   }, [initialBroadcasts]);
 
-  // Live Auto-sync polling every 5 seconds (zero page refresh needed)
+  // Live Auto-sync polling every 15 seconds (only when tab is active)
   useEffect(() => {
     let isMounted = true;
     const fetchLatest = async () => {
+      if (document.hidden) return;
       try {
         const res = await getBroadcasts();
         if (isMounted && res.success && res.broadcasts) {
@@ -87,7 +88,7 @@ export default function BroadcastListClient({
       } catch (e) {}
     };
 
-    const interval = setInterval(fetchLatest, 5000);
+    const interval = setInterval(fetchLatest, 15000);
     return () => {
       isMounted = false;
       clearInterval(interval);

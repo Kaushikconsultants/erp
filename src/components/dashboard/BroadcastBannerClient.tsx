@@ -16,10 +16,11 @@ export default function BroadcastBannerClient({ initialNotice }: BroadcastBanner
     setNotice(initialNotice);
   }, [initialNotice]);
 
-  // Live polling every 5s so banner pops up instantly when admin publishes
+  // Live polling every 20s when tab is visible
   useEffect(() => {
     let isMounted = true;
     const fetchLatest = async () => {
+      if (document.hidden) return;
       try {
         const res = await getLatestActiveBannerNotice();
         if (isMounted && res.success) {
@@ -28,7 +29,7 @@ export default function BroadcastBannerClient({ initialNotice }: BroadcastBanner
       } catch (e) {}
     };
 
-    const interval = setInterval(fetchLatest, 5000);
+    const interval = setInterval(fetchLatest, 20000);
     return () => {
       isMounted = false;
       clearInterval(interval);

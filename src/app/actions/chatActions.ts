@@ -77,7 +77,7 @@ export async function getDirectConversations() {
   }
 }
 
-export async function getConversationMessages(conversationId: string) {
+export async function getConversationMessages(conversationId: string, markRead: boolean = false) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
@@ -117,18 +117,20 @@ export async function getConversationMessages(conversationId: string) {
       return { error: "Conversation not found or access denied." };
     }
 
-    // Auto mark unread messages as read
-    await prisma.directMessage.updateMany({
-      where: {
-        conversationId,
-        receiverId: userId,
-        isRead: false
-      },
-      data: {
-        isRead: true,
-        readAt: new Date()
-      }
-    });
+    // Only mark unread messages as read when requested (e.g. on chat open, not on background poll)
+    if (markRead) {
+      await prisma.directMessage.updateMany({
+        where: {
+          conversationId,
+          receiverId: userId,
+          isRead: false
+        },
+        data: {
+          isRead: true,
+          readAt: new Date()
+        }
+      });
+    }
 
     const messages = await prisma.directMessage.findMany({
       where: { conversationId },

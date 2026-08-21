@@ -53,60 +53,86 @@ export default function TeamChatComponent({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeConvRef = useRef<string | null>(activeConversationId);
+
+  useEffect(() => {
+    activeConvRef.current = activeConversationId;
+  }, [activeConversationId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // 1. Fetch conversations list
+  // 1. Initial Load of Conversations
   const loadConversations = async () => {
-    const res = await getDirectConversations();
-    if (res.success && res.conversations) {
-      setConversations(res.conversations);
-      if (!activeConversationId && res.conversations.length > 0) {
-        setActiveConversationId(res.conversations[0].id);
+    try {
+      const res = await getDirectConversations();
+      if (res.success && res.conversations) {
+        setConversations(res.conversations);
+        if (!activeConvRef.current && res.conversations.length > 0) {
+          // On desktop (window width > 768), select first conversation by default
+          if (typeof window !== "undefined" && window.innerWidth >= 768) {
+            setActiveConversationId(res.conversations[0].id);
+            setActivePartner(res.conversations[0].partner);
+          }
+        }
       }
-    }
+    } catch (e) {}
   };
 
   useEffect(() => {
     loadConversations();
   }, []);
 
-  // 2. Fetch messages for active conversation
+  // 2. Fetch messages for active conversation (with explicit markRead on user open)
   const loadMessages = async (convId: string, isBackground = false) => {
     if (!isBackground) setLoadingMessages(true);
-    const res = await getConversationMessages(convId);
-    if (res.success) {
-      setMessages(res.messages || []);
-      if (res.partner) setActivePartner(res.partner);
-      if (!isBackground) scrollToBottom();
-    }
+    try {
+      const res = await getConversationMessages(convId, !isBackground);
+      if (res.success) {
+        setMessages(res.messages || []);
+        if (res.partner) setActivePartner(res.partner);
+        if (!isBackground) setTimeout(scrollToBottom, 50);
+      }
+    } catch (e) {}
     if (!isBackground) setLoadingMessages(false);
   };
 
   useEffect(() => {
     if (activeConversationId) {
-      loadMessages(activeConversationId);
+      loadMessages(activeConversationId, false);
     }
   }, [activeConversationId]);
 
-  // 3. Live 3-second auto-sync polling in background
+  // 3. Lightweight Background Sync: Every 8s, only if tab is visible
   useEffect(() => {
     let isMounted = true;
     const interval = setInterval(() => {
-      if (!isMounted) return;
-      loadConversations();
-      if (activeConversationId) {
-        loadMessages(activeConversationId, true);
+      if (!isMounted || document.hidden) return;
+      
+      // Background conversation sync
+      getDirectConversations().then((res) => {
+        if (isMounted && res.success && res.conversations) {
+          setConversations(res.conversations);
+        }
+      }).catch(() => {});
+
+      // Background active chat message sync (readOnly without write lock)
+      if (activeConvRef.current) {
+        getConversationMessages(activeConvRef.current, false).then((res) => {
+          if (isMounted && res.success) {
+            setMessages(res.messages || []);
+            if (res.partner) setActivePartner(res.partner);
+          }
+        }).catch(() => {});
       }
-    }, 3000);
+    }, 8000);
 
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [activeConversationId]);
+  }, []);
 
   // Handle file uploads
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,31 +216,36 @@ export default function TeamChatComponent({
 
   return (
     <div
+      className="team-chat-wrapper"
       style={{
-        display: "grid",
-        gridTemplateColumns: "320px 1fr",
-        height: "calc(100vh - 140px)",
-        minHeight: "550px",
+        display: "flex",
+        height: "calc(100vh - 150px)",
+        minHeight: "520px",
         backgroundColor: "#ffffff",
         borderRadius: "12px",
         border: "1px solid #e2e8f0",
         boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
         overflow: "hidden",
+        position: "relative",
       }}
     >
       {/* LEFT PANE: Conversations list & Search */}
       <div
+        className={`team-chat-sidebar ${activePartner ? "chat-active" : ""}`}
         style={{
+          width: "320px",
+          minWidth: "280px",
           borderRight: "1px solid #e2e8f0",
           display: "flex",
           flexDirection: "column",
           backgroundColor: "#f8fafc",
+          flexShrink: 0,
         }}
       >
         {/* Header with + New Chat */}
-        <div style={{ padding: "16px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <h2 style={{ fontSize: "1.05rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
+            <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a", margin: 0, display: "flex", alignItems: "center", gap: "6px" }}>
               <MessageSquare size={18} color="#4f46e5" /> Team Chat
             </h2>
             <span style={{ fontSize: "0.72rem", color: "#10b981", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
@@ -358,12 +389,34 @@ export default function TeamChatComponent({
 
       {/* RIGHT PANE: Active Chat Window */}
       {activePartner ? (
-        <div style={{ display: "flex", flexDirection: "column", backgroundColor: "#ffffff" }}>
+        <div style={{ display: "flex", flexDirection: "column", backgroundColor: "#ffffff", flex: 1, minWidth: 0 }}>
           {/* Active Partner Top Bar */}
           <div style={{ padding: "12px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f8fafc" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {/* Back button on mobile */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActivePartner(null);
+                  setActiveConversationId(null);
+                }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: "4px",
+                  cursor: "pointer",
+                  color: "#4f46e5",
+                  display: "flex",
+                  alignItems: "center",
+                  borderRadius: "6px",
+                }}
+                title="Back to conversations"
+              >
+                <ArrowLeft size={20} />
+              </button>
+
               <div style={{ position: "relative" }}>
-                <div style={{ width: "40px", height: "40px", borderRadius: "50%", backgroundColor: "#4f46e5", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.95rem" }}>
+                <div style={{ width: "38px", height: "38px", borderRadius: "50%", backgroundColor: "#4f46e5", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "0.95rem" }}>
                   {activePartner.name.charAt(0).toUpperCase()}
                 </div>
                 <div
@@ -436,7 +489,7 @@ export default function TeamChatComponent({
                   >
                     <div
                       style={{
-                        maxWidth: "70%",
+                        maxWidth: "75%",
                         padding: "10px 14px",
                         borderRadius: isMe ? "14px 14px 2px 14px" : "14px 14px 14px 2px",
                         backgroundColor: isMe ? "#4f46e5" : "#f1f5f9",
@@ -648,7 +701,7 @@ export default function TeamChatComponent({
           </form>
         </div>
       ) : (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f8fafc", color: "#94a3b8" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#f8fafc", color: "#94a3b8", flex: 1 }}>
           <div style={{ textAlign: "center" }}>
             <MessageSquare size={48} color="#cbd5e1" style={{ margin: "0 auto 12px auto" }} />
             <h3 style={{ fontSize: "1.1rem", fontWeight: 600, color: "#475569", margin: 0 }}>Select a Conversation</h3>
