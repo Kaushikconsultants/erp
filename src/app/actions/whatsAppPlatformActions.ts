@@ -972,6 +972,48 @@ export async function getWhatsAppTemplates() {
   }
 }
 
+export async function sendWhatsAppTemplateAction(toPhone: string, templateName: string, languageCode = "en_US", components: any[] = []) {
+  try {
+    const creds = await getMetaApiCredentials();
+    const cleanPhone = toPhone.replace(/\D/g, "");
+
+    if (creds && creds.isConnected) {
+      const url = `https://graph.facebook.com/v20.0/${creds.phoneId}/messages`;
+      
+      const payload = {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: cleanPhone,
+        type: "template",
+        template: {
+          name: templateName,
+          language: { code: languageCode },
+          components: components
+        }
+      };
+
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${creds.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      
+      return { success: true, messageId: data.messages?.[0]?.id };
+    }
+    
+    return { success: false, error: "Meta API credentials not connected." };
+  } catch (e: any) {
+    console.error("Failed to send template message:", e);
+    return { success: false, error: e.message };
+  }
+}
+
 export async function saveWhatsAppTemplateAction(data: any) {
   try {
     const template = await prisma.whatsAppTemplate.create({

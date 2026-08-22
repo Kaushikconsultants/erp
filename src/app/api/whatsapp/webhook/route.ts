@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { handleIncomingAILogic } from "@/lib/whatsappAI";
 
 // GET Endpoint - Webhook Verification Challenge from Meta WhatsApp API
 export async function GET(req: NextRequest) {
@@ -125,6 +126,33 @@ export async function POST(req: NextRequest) {
       });
 
       console.log(`[WhatsApp Webhook] Incoming message from +91 ${cleanPhone} saved to CRM!`);
+
+      // Execute AI Logic if enabled
+      if (conversation.aiHandled) {
+        // Fetch chat history for context
+        const recentMessages = await prisma.whatsAppMessage.findMany({
+          where: { conversationId: conversation.id, senderType: { in: ["CUSTOMER", "AGENT", "AI"] } },
+          orderBy: { sentAt: 'desc' },
+          take: 6
+        });
+        const historyLines = recentMessages.reverse().map(m => `${m.senderType}: ${m.content}`);
+        
+        const aiResponse = await handleIncomingAILogic(msg.from, textContent, historyLines);
+        if (aiResponse) {
+          // Log AI message to DB
+          await prisma.whatsAppMessage.create({
+            data: {
+              conversationId: conversation.id,
+              senderType: "AI",
+              senderName: "AI Assistant",
+              messageType: "TEXT",
+              content: aiResponse,
+              status: "SENT",
+              sentAt: new Date()
+            }
+          });
+        }
+      }
     }
 
     // 2. Process Message Status Updates (Delivered, Read, Failed)
