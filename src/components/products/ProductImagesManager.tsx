@@ -212,8 +212,7 @@ export default function ProductImagesManager({
                 border: idx === 0 ? '2px solid #4f46e5' : '1px solid #e2e8f0',
                 overflow: 'hidden',
                 backgroundColor: '#ffffff',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                group: 'true'
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
               }}
             >
               <img

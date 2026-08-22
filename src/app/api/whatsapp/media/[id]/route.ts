@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const mediaId = params.id;
+    const { id: mediaId } = await params;
     if (!mediaId) return NextResponse.json({ error: "Missing media ID" }, { status: 400 });
 
     const account = await prisma.whatsAppAccount.findFirst();

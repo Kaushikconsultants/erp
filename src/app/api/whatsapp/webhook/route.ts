@@ -234,7 +234,7 @@ export async function POST(req: NextRequest) {
       if (status === 'READ') updateData.readAt = new Date(parseInt(statusUpdate.timestamp) * 1000 || Date.now());
 
       try {
-        await prisma.whatsAppMessage.update({
+        await prisma.whatsAppMessage.updateMany({
           where: { metaMessageId },
           data: updateData
         });

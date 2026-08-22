@@ -51,7 +51,6 @@ import {
   Volume2,
   VideoIcon,
   Mic,
-  LockIcon,
   Download
 } from "lucide-react";
 import {
@@ -140,8 +139,6 @@ export default function WhatsAppInboxComponent() {
   const [showQuoteModal, setShowQuoteModal] = useState<boolean>(false);
   const [followUpDays, setFollowUpDays] = useState<number>(3);
   const [followUpNotes, setFollowUpNotes] = useState<string>("");
-
-  const [paymentAmount, setPaymentAmount] = useState<number>(1000);
 
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showAssignModal, setShowAssignModal] = useState<boolean>(false);

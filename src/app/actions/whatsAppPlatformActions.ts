@@ -16,6 +16,21 @@ async function ensureSeeded() {
   }
 }
 
+export async function getMetaApiCredentials() {
+  try {
+    const account = await prisma.whatsAppAccount.findFirst();
+    return {
+      phoneId: account?.phoneId || '',
+      token: account?.accessToken || '',
+      accessToken: account?.accessToken || '',
+      wabaId: account?.businessAccountId || '',
+      isConnected: Boolean(account?.accessToken && account?.phoneId)
+    };
+  } catch (e) {
+    return { phoneId: '', token: '', accessToken: '', wabaId: '', isConnected: false };
+  }
+}
+
 // ---------------------------------------------------------
 // 1. INBOX & CONVERSATIONS
 // ---------------------------------------------------------
@@ -436,21 +451,23 @@ export async function sendWhatsAppMessageAction(data: {
 
     // Handle Team Mentions in Internal Notes
     if (data.isInternalNote && data.content.includes('@')) {
-      const allEmployees = await prisma.employee.findMany();
+      const allEmployees = await prisma.employee.findMany({
+        include: { user: true }
+      });
       // Look for a match like "@Ashish" or "@John Doe"
-      const mentionedEmp = allEmployees.find(emp => data.content.includes(`@${emp.firstName}`) || data.content.includes(`@${emp.name}`));
+      const mentionedEmp = allEmployees.find(emp => emp.user?.name && data.content.toLowerCase().includes(`@${emp.user.name.toLowerCase()}`));
       
       if (mentionedEmp) {
         // Assign the conversation to the mentioned employee
         await prisma.whatsAppConversation.update({
           where: { id: conversation.id },
-          data: { assignedSalespersonId: mentionedEmp.id }
+          data: { assignedEmployeeId: mentionedEmp.id }
         });
         
-        // Target Push Notification specifically to the mentioned user's portal ID
-        if (mentionedEmp.portalUserId) {
+        // Target Push Notification specifically to the mentioned user's ID
+        if (mentionedEmp.userId) {
           const subs = await prisma.whatsAppPushSubscription.findMany({
-            where: { userId: mentionedEmp.portalUserId }
+            where: { userId: mentionedEmp.userId }
           });
           
           if (subs.length > 0) {
@@ -1615,11 +1632,11 @@ export async function launchWhatsAppBroadcastAction(data: {
 export async function getWhatsAppAudienceSegments() {
   try {
     const [all, hot, warm, cold, leads] = await Promise.all([
-      prisma.customer.count({ where: { mobile: { not: null } } }),
-      prisma.customer.count({ where: { temperature: 'HOT', mobile: { not: null } } }),
-      prisma.customer.count({ where: { temperature: 'WARM', mobile: { not: null } } }),
-      prisma.customer.count({ where: { temperature: 'COLD', mobile: { not: null } } }),
-      prisma.customer.count({ where: { status: 'New Lead', mobile: { not: null } } })
+      prisma.customer.count({ where: { mobile: { not: '' } } }),
+      prisma.customer.count({ where: { temperature: 'HOT', mobile: { not: '' } } }),
+      prisma.customer.count({ where: { temperature: 'WARM', mobile: { not: '' } } }),
+      prisma.customer.count({ where: { temperature: 'COLD', mobile: { not: '' } } }),
+      prisma.customer.count({ where: { status: 'New Lead', mobile: { not: '' } } })
     ]);
     return {
       success: true,
