@@ -1218,6 +1218,7 @@ model WhatsAppSettings {
   slaBreadMinutes      Int      @default(30)
   autoAssignStrategy   String   @default("ROUND_ROBIN") // ROUND_ROBIN, LEAST_ASSIGNED, MANUAL
   aiConfidenceThreshold Int     @default(85)
+  aiModel              String   @default("gpt-4o") // gpt-4o, claude-3-5-sonnet, gemini-1.5-pro
   welcomeMessage       String   @default("Welcome! How can we help you today?")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt

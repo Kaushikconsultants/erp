@@ -1730,6 +1730,7 @@ export async function saveWhatsAppSettingsAction(data: {
   workingHoursEnd: string;
   slaWarningMinutes: number;
   autoAssignStrategy: string;
+  aiModel?: string;
 }) {
   try {
     let settings = await prisma.whatsAppSettings.findFirst();

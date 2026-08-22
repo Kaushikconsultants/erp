@@ -9,6 +9,7 @@ export default function WhatsAppSettingsPage() {
   const [workingHoursEnd, setWorkingHoursEnd] = useState("19:00");
   const [slaMinutes, setSlaMinutes] = useState(15);
   const [autoAssignStrategy, setAutoAssignStrategy] = useState("ROUND_ROBIN");
+  const [aiModel, setAiModel] = useState("gpt-4o");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +21,7 @@ export default function WhatsAppSettingsPage() {
         setWorkingHoursEnd(res.settings.workingHoursEnd || "19:00");
         setSlaMinutes(res.settings.slaWarningMinutes || 15);
         setAutoAssignStrategy(res.settings.autoAssignStrategy || "ROUND_ROBIN");
+        setAiModel(res.settings.aiModel || "gpt-4o");
       }
       setLoading(false);
     };
@@ -32,7 +34,8 @@ export default function WhatsAppSettingsPage() {
       workingHoursStart,
       workingHoursEnd,
       slaWarningMinutes: slaMinutes,
-      autoAssignStrategy
+      autoAssignStrategy,
+      aiModel
     });
     
     if (res.success) {
@@ -80,6 +83,16 @@ export default function WhatsAppSettingsPage() {
               <option value="LEAST_ASSIGNED">Least Assigned (Assign to agent with fewest open chats)</option>
               <option value="LOCATION_BASED">Territory & State Based Routing</option>
             </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: "12.5px", fontWeight: 700, display: "block", marginBottom: "6px" }}>AI Engine / LLM Router</label>
+            <select value={aiModel} onChange={(e) => setAiModel(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }}>
+              <option value="gpt-4o">OpenAI (GPT-4o) - Recommended</option>
+              <option value="claude-3-5-sonnet">Anthropic (Claude 3.5 Sonnet)</option>
+              <option value="gemini-1.5-pro">Google (Gemini 1.5 Pro)</option>
+            </select>
+            <p style={{ fontSize: "11.5px", color: "#6b7280", margin: "4px 0 0 0" }}>Select the active AI Model to use for the WhatsApp Chatbot. Requires correct API Keys configured in your environment.</p>
           </div>
 
           <button type="submit" style={{ background: "#10b981", color: "#ffffff", border: "none", padding: "12px", borderRadius: "8px", fontSize: "14px", fontWeight: 700, cursor: "pointer", marginTop: "10px" }}>

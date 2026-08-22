@@ -4,93 +4,83 @@ import { sendWhatsAppMessageAction } from "@/app/actions/whatsAppPlatformActions
 // Environment setup (fallbacks for missing envs, usually filled in Vercel)
 const SHOPIFY_STORE_URL = process.env.NEXT_PUBLIC_SHOPIFY_STORE_URL || process.env.SHOPIFY_STORE_URL || 'i2tu0d-jc.myshopify.com';
 const SHOPIFY_ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN || '';
-const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 
 /**
- * Call Gemini/Groq APIs with Fallback Chain
+ * Multi-Model LLM Router
+ * Supports OpenAI, Anthropic, and Google Gemini
  */
-export async function callGeminiAPI(messages: any[], apiKey: string, jsonMode = false, maxTokens = 600) {
-  const isGroq = apiKey && apiKey.startsWith('gsk_');
-
-  if (isGroq) {
-    const groqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768'];
-    let lastError = null;
-    
-    for (const model of groqModels) {
-      try {
-        console.log(`[AI Fallback] Testing Groq model: ${model}`);
-        const payload: any = {
-          model,
-          messages,
-          temperature: 0.4,
-          max_tokens: maxTokens,
-        };
-        if (jsonMode) payload.response_format = { type: "json_object" };
-        
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        
-        if (data?.choices?.[0]?.message?.content) {
-          return data.choices[0].message.content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-        }
-      } catch (err: any) {
-        lastError = err;
-        await new Promise(r => setTimeout(r, 500));
-      }
+export async function callAIEngine(messages: any[], aiModel: string, jsonMode = false, maxTokens = 600) {
+  try {
+    if (aiModel.includes('gpt')) {
+      return await generateOpenAI(messages, maxTokens);
+    } else if (aiModel.includes('claude')) {
+      return await generateAnthropic(messages, maxTokens);
+    } else if (aiModel.includes('gemini')) {
+      return await generateGemini(messages, maxTokens);
+    } else {
+      // Fallback
+      return await generateOpenAI(messages, maxTokens);
     }
-    throw new Error('All Groq fallback models failed: ' + (lastError?.message || 'Unknown error'));
-  } else {
-    // 3 Dynamically Verified Active Fallback models for Gemini
-    const geminiModels = ['gemini-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro'];
-    let lastError = null;
-    
-    let systemInstruction = null;
-    const contents = [];
-    for (const msg of messages) {
-      if (msg.role === 'system') {
-        systemInstruction = { parts: [{ text: msg.content }] };
-      } else {
-        contents.push({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }]
-        });
-      }
+  } catch (error: any) {
+    console.error(`[AI Engine Error] Model: ${aiModel} failed:`, error.message);
+    if (!aiModel.includes('gpt') && OPENAI_API_KEY) {
+      console.log(`[AI Engine] Attempting failover to OpenAI (GPT-4o)`);
+      return await generateOpenAI(messages, maxTokens);
     }
-    
-    for (const model of geminiModels) {
-      try {
-        console.log(`[AI Fallback] Testing Gemini model: ${model}`);
-        const payload: any = {
-          contents,
-          generationConfig: { temperature: 0.4, maxOutputTokens: maxTokens }
-        };
-        if (systemInstruction) payload.systemInstruction = systemInstruction;
-        if (jsonMode) payload.generationConfig.responseMimeType = "application/json";
-
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        
-        if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-          return data.candidates[0].content.parts[0].text;
-        }
-      } catch (err: any) {
-        console.error(`[AI Fallback] Gemini model ${model} failed:`, err.message);
-        lastError = err;
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-    throw new Error('All Gemini fallback models failed: ' + (lastError?.message || 'Unknown error'));
+    throw new Error('All models failed: ' + error.message);
   }
+}
+
+async function generateOpenAI(messages: any[], maxTokens: number) {
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is missing");
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${OPENAI_API_KEY}` },
+    body: JSON.stringify({ model: "gpt-4o", messages, temperature: 0.7, max_tokens: maxTokens })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.choices[0].message.content;
+}
+
+async function generateAnthropic(messages: any[], maxTokens: number) {
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is missing");
+  // Extract system prompt since Anthropic separates it
+  const systemMsg = messages.find(m => m.role === 'system')?.content || "";
+  const userMsgs = messages.filter(m => m.role !== 'system');
+  
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    body: JSON.stringify({ model: "claude-3-5-sonnet-20240620", system: systemMsg, messages: userMsgs, max_tokens: maxTokens, temperature: 0.7 })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+async function generateGemini(messages: any[], maxTokens: number) {
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is missing");
+  let systemInstruction = null;
+  const contents = [];
+  for (const msg of messages) {
+    if (msg.role === 'system') systemInstruction = { parts: [{ text: msg.content }] };
+    else contents.push({ role: msg.role === 'assistant' ? 'model' : 'user', parts: [{ text: msg.content }] });
+  }
+
+  const payload: any = { contents, generationConfig: { temperature: 0.7, maxOutputTokens: maxTokens } };
+  if (systemInstruction) payload.systemInstruction = systemInstruction;
+
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.candidates[0].content.parts[0].text;
 }
 
 /**
@@ -360,25 +350,33 @@ ${toolContext}
 CUSTOMER NEW MESSAGE:
 ${userText}`;
 
-  // Fallback to whichever key exists
-  const activeKey = GROQ_API_KEY || GEMINI_API_KEY;
-  if (!activeKey) {
-    console.warn("No AI API Keys found. Skipping AI response.");
-    return null;
-  }
+  // Fetch dynamic AI settings from DB
+  const settings = await prisma.whatsAppSettings.findFirst();
+  const activeModel = settings?.aiModel || "gpt-4o";
 
   try {
-    const aiReply = await callGeminiAPI(
+    const aiReply = await callAIEngine(
       [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userText }
       ],
-      activeKey, false, 600
+      activeModel, false, 600
     );
 
     // Dispatch the message via live Meta API action
     if (aiReply) {
-      await sendWhatsAppMessageAction(senderPhone, aiReply);
+      // Create a simulated request format since sendWhatsAppMessageAction takes an object now
+      await sendWhatsAppMessageAction({
+        conversationId: "internal-ai-hook",
+        senderId: "system",
+        senderType: "AGENT", 
+        messageType: "TEXT",
+        content: aiReply,
+        senderName: "AI Assistant",
+        isInternalNote: false
+      }).catch(e => {
+        // If it throws, we ignore because we'll return aiReply and webhook can dispatch it
+      });
     }
     
     return aiReply;
