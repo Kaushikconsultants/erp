@@ -207,12 +207,14 @@ export default function WhatsAppDashboardPage() {
             <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>Daily Messaging Tier Capacity</h3>
             <p style={{ fontSize: "12.5px", color: "#6b7280", margin: "2px 0 0 0" }}>Tier 2 Meta WhatsApp Business Messaging Tier</p>
           </div>
-          <span style={{ fontSize: "18px", fontWeight: 800, color: "#10b981" }}>1,250 / 10,000 used today</span>
+          <span style={{ fontSize: "18px", fontWeight: 800, color: "#10b981" }}>
+            {`${(data?.metrics?.sentToday || 0).toLocaleString()} / 10,000 used today`}
+          </span>
         </div>
 
         {/* Progress Bar */}
         <div style={{ width: "100%", height: "10px", background: "#e5e7eb", borderRadius: "5px", overflow: "hidden", marginBottom: "14px" }}>
-          <div style={{ width: "12.5%", height: "100%", background: "linear-gradient(90deg, #10b981 0%, #059669 100%)", borderRadius: "5px" }}></div>
+          <div style={{ width: `${Math.min(100, ((data?.metrics?.sentToday || 0) / 10000) * 100)}%`, height: "100%", background: "linear-gradient(90deg, #10b981 0%, #059669 100%)", borderRadius: "5px" }}></div>
         </div>
       </div>
 
