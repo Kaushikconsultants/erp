@@ -65,7 +65,8 @@ import {
   getAllEmployeesAndTeams,
   toggleConversationAIAction,
   createFollowUpTaskAction,
-  uploadMediaToMetaAction
+  uploadMediaToMetaAction,
+  getWhatsAppCannedResponsesAction
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
@@ -88,6 +89,8 @@ export default function WhatsAppInboxComponent() {
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [aiToggleLoading, setAiToggleLoading] = useState<boolean>(false);
+  const [cannedResponses, setCannedResponses] = useState<any[]>([]);
+  const [showCannedResponses, setShowCannedResponses] = useState<boolean>(false);
 
   // Toggle Full Screen Mode (Overlay + Native Fullscreen API)
   const toggleFullScreenMode = () => {
@@ -158,11 +161,22 @@ export default function WhatsAppInboxComponent() {
 
   // Fetch Employees List for Filtering & Assignment
   useEffect(() => {
-    getAllEmployeesAndTeams().then((res) => {
+    const fetchEmps = async () => {
+      const res = await getAllEmployeesAndTeams();
       if (res.success && res.employees) {
         setEmployeesList(res.employees);
       }
-    });
+    };
+    fetchEmps();
+    
+    // Fetch Canned Responses
+    const fetchCanned = async () => {
+      const res = await getWhatsAppCannedResponsesAction();
+      if (res.success && res.responses) {
+        setCannedResponses(res.responses);
+      }
+    };
+    fetchCanned();
   }, []);
 
   // Fetch Conversation List
@@ -907,6 +921,49 @@ export default function WhatsAppInboxComponent() {
                   <Paperclip size={18} />
                 </button>
 
+                <div style={{ position: "relative" }}>
+                  <button
+                    type="button"
+                    className="input-attachment-btn"
+                    title="Quick Replies / Canned Responses"
+                    onClick={() => setShowCannedResponses(!showCannedResponses)}
+                  >
+                    <Zap size={18} color={showCannedResponses ? "#f59e0b" : "#64748b"} />
+                  </button>
+
+                  {/* Canned Responses Popup Menu */}
+                  {showCannedResponses && (
+                    <div style={{ position: "absolute", bottom: "100%", left: "0", marginBottom: "8px", width: "300px", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)", zIndex: 10 }}>
+                      <div style={{ padding: "8px 12px", borderBottom: "1px solid #e2e8f0", fontSize: "12px", fontWeight: 700, color: "#64748b", background: "#f8fafc", borderRadius: "8px 8px 0 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>Quick Replies</span>
+                        <button type="button" onClick={() => setShowCannedResponses(false)} style={{ background: "none", border: "none", cursor: "pointer" }}><X size={14} /></button>
+                      </div>
+                      <div style={{ maxHeight: "250px", overflowY: "auto", padding: "4px" }}>
+                        {cannedResponses.length > 0 ? (
+                          cannedResponses.map(cr => (
+                            <button
+                              key={cr.id}
+                              type="button"
+                              onClick={() => {
+                                setMessageInput(prev => prev ? `${prev} ${cr.content}` : cr.content);
+                                setShowCannedResponses(false);
+                              }}
+                              style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 10px", background: "none", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12.5px" }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                            >
+                              <strong style={{ color: "#0f172a", display: "block", marginBottom: "2px" }}>{cr.title} <span style={{ color: "#3b82f6", fontSize: "11px", fontWeight: "normal" }}>{cr.shortcut}</span></strong>
+                              <span style={{ color: "#64748b", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{cr.content}</span>
+                            </button>
+                          ))
+                        ) : (
+                          <div style={{ padding: "12px", textAlign: "center", fontSize: "12px", color: "#64748b" }}>No quick replies found.</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   className="input-attachment-btn"
@@ -925,7 +982,15 @@ export default function WhatsAppInboxComponent() {
                       : "Type a WhatsApp message or use shortcuts like /catalog, /price..."
                   }
                   value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setMessageInput(val);
+                    // Check if they typed a shortcut exactly
+                    const match = cannedResponses.find(cr => val.endsWith(cr.shortcut + " "));
+                    if (match) {
+                      setMessageInput(val.replace(match.shortcut + " ", match.content + " "));
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();

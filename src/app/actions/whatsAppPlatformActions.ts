@@ -1739,3 +1739,33 @@ export async function uploadMediaToMetaAction(base64DataUrl: string, filename: s
     return { success: false, error: error.message };
   }
 }
+
+// ---------------------------------------------------------
+// 16. CANNED RESPONSES (QUICK REPLIES)
+// ---------------------------------------------------------
+export async function getWhatsAppCannedResponsesAction() {
+  try {
+    let responses = await prisma.whatsAppCannedResponse.findMany({
+      orderBy: { title: 'asc' }
+    });
+
+    // Seed defaults if empty
+    if (responses.length === 0) {
+      await prisma.whatsAppCannedResponse.createMany({
+        data: [
+          { title: "Return Policy", shortcut: "/return", content: "Our return policy is 7 days from the date of delivery. Items must be unwashed and unworn. Can I help you initiate a return?" },
+          { title: "Shipping Time", shortcut: "/shipping", content: "Standard shipping takes 3-5 business days. You will receive a tracking link as soon as your order is dispatched." },
+          { title: "Greeting", shortcut: "/hi", content: "Hi there! 👋 How can I help you today?" },
+          { title: "Discount Code", shortcut: "/discount", content: "Use code ESPON10 at checkout for 10% off your next purchase!" },
+        ]
+      });
+      responses = await prisma.whatsAppCannedResponse.findMany({
+        orderBy: { title: 'asc' }
+      });
+    }
+    return { success: true, responses };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+

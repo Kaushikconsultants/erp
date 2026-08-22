@@ -1222,3 +1222,16 @@ model WhatsAppSettings {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 }
+
+// ---------------------------------------------------------
+// WhatsApp Canned Responses (Quick Replies)
+// ---------------------------------------------------------
+model WhatsAppCannedResponse {
+  id        String   @id @default(uuid())
+  title     String
+  shortcut  String?  @unique
+  content   String
+  category  String?  @default("General")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
