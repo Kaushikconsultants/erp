@@ -8,23 +8,25 @@ import {
   TrendingUp,
   CreditCard,
   Search,
-  Filter,
   Plus,
   FileSpreadsheet,
   Printer,
-  Calendar,
+  Calendar as CalendarIcon,
   Wallet,
   CheckCircle2,
-  Clock,
-  XCircle,
   Building2,
   QrCode,
   ArrowUpRight,
-  RefreshCcw,
   Receipt,
-  Eye,
   FileText,
-  Ban
+  Ban,
+  X,
+  User,
+  Hash,
+  Landmark,
+  FileCheck,
+  Check,
+  ChevronDown
 } from 'lucide-react';
 import { recordCustomerPayment, getCustomerUnpaidInvoices, cancelPayment } from '@/app/actions/paymentActions';
 
@@ -104,9 +106,9 @@ const PAYMENT_MODES = [
 const RECEIVING_ACCOUNTS = [
   'HDFC Bank Current A/c - 016805006415',
   'ICICI Bank Current A/c',
-  'State Bank of India (SBI)',
+  'State Bank of India (SBI Current A/c)',
   'Main Axis UPI QR (7206066678@OKBIZAXIS)',
-  'Store Cash Counter (Rohtak)',
+  'Store Cash Counter (Rohtak Branch)',
   'Petty Cash Wallet'
 ];
 
@@ -123,15 +125,13 @@ const MODE_COLORS: Record<string, { bg: string; text: string; border: string }> 
 
 export default function PaymentsClient({ initialPayments, summary, customers }: Props) {
   const [payments, setPayments] = useState<PaymentRecord[]>(initialPayments);
-  const [loading, setLoading] = useState(false);
 
   // Filters State
   const [search, setSearch] = useState('');
   const [selectedMode, setSelectedMode] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
-  const [selectedAccount, setSelectedAccount] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
   const [selectedCustomer, setSelectedCustomer] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
   const [datePreset, setDatePreset] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -181,6 +181,15 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
       setStartDate('');
       setEndDate('');
     }
+  };
+
+  // Quick set modal date (Today / Yesterday)
+  const setQuickModalDate = (type: 'today' | 'yesterday') => {
+    const d = new Date();
+    if (type === 'yesterday') {
+      d.setDate(d.getDate() - 1);
+    }
+    setPayDate(d.toISOString().split('T')[0]);
   };
 
   // When customer is selected in Record Payment Modal, load unpaid invoices
@@ -291,11 +300,6 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         return false;
       }
 
-      // Account
-      if (selectedAccount !== 'All' && p.receivingAccount !== selectedAccount) {
-        return false;
-      }
-
       // Status
       if (selectedStatus !== 'All' && p.status !== selectedStatus) {
         return false;
@@ -318,7 +322,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
 
       return true;
     });
-  }, [payments, search, selectedMode, selectedType, selectedAccount, selectedStatus, selectedCustomer, startDate, endDate]);
+  }, [payments, search, selectedMode, selectedType, selectedStatus, selectedCustomer, startDate, endDate]);
 
   // Export to Excel
   const exportToExcel = () => {
@@ -352,7 +356,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
     const style = MODE_COLORS[matched] || MODE_COLORS.Other;
     return (
       <span style={{
-        padding: '3px 9px',
+        padding: '3px 10px',
         borderRadius: '12px',
         fontSize: '0.75rem',
         fontWeight: 700,
@@ -371,15 +375,29 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
   return (
     <div className="page-container" style={{ padding: '24px', maxWidth: '1440px', margin: '0 auto' }}>
       
-      {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.75rem', fontWeight: 800, color: '#0f172a' }}>
-            <Wallet className="text-indigo-600" size={28} /> Payment Collection & Ledger
-          </h1>
-          <p className="page-subtitle" style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '4px' }}>
-            Record customer settlements, advance deposits, bank credits, and generate collection reports.
-          </p>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
+          }}>
+            <Wallet size={22} color="#ffffff" />
+          </div>
+          <div>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+              Payment Collection & Ledger
+            </h1>
+            <p style={{ color: '#64748b', fontSize: '0.85rem', margin: '2px 0 0 0' }}>
+              Track receipts, settle customer invoices, record advance deposits, and generate ledgers.
+            </p>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -390,94 +408,106 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              backgroundColor: '#f0fdf4',
-              borderColor: '#86efac',
-              color: '#166534',
+              backgroundColor: '#ecfdf5',
+              borderColor: '#a7f3d0',
+              color: '#047857',
               fontWeight: 700,
-              padding: '9px 15px',
+              padding: '8px 14px',
               borderRadius: '8px',
-              cursor: 'pointer'
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
             }}
           >
-            <FileSpreadsheet size={16} /> Export Excel
+            <FileSpreadsheet size={15} /> Export Excel
           </button>
 
           <Link
             href="/invoices"
             className="action-btn outline-primary"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 600, padding: '9px 15px', borderRadius: '8px', textDecoration: 'none' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontWeight: 700,
+              padding: '8px 14px',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              textDecoration: 'none'
+            }}
           >
-            <FileText size={16} /> View Invoices
+            <FileText size={15} /> View Invoices
           </Link>
 
           <button
             onClick={() => setShowModal(true)}
-            className="action-btn"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
-              backgroundColor: '#4f46e5',
+              background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
               color: '#ffffff',
               fontWeight: 700,
               padding: '9px 18px',
               borderRadius: '8px',
               border: 'none',
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(79, 70, 229, 0.25)'
+              fontSize: '0.875rem',
+              boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)',
+              transition: 'all 0.2s'
             }}
           >
-            <Plus size={18} /> Record Customer Payment
+            <Plus size={16} /> Record Customer Payment
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
       {summary && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', borderLeft: '4px solid #16a34a' }}>
-            <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <IndianRupee size={24} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+          <div className="glass-panel" style={{ padding: '18px', display: 'flex', gap: '14px', alignItems: 'center', borderTop: '3px solid #10b981', borderRadius: '12px' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '10px', background: '#d1fae5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IndianRupee size={22} />
             </div>
             <div>
-              <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Collected</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#16a34a' }}>
+              <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Collected</div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#059669', marginTop: '2px' }}>
                 ₹{summary.totalCollected.toLocaleString('en-IN')}
               </div>
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', borderLeft: '4px solid #4f46e5' }}>
-            <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TrendingUp size={24} />
+          <div className="glass-panel" style={{ padding: '18px', display: 'flex', gap: '14px', alignItems: 'center', borderTop: '3px solid #6366f1', borderRadius: '12px' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '10px', background: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <TrendingUp size={22} />
             </div>
             <div>
-              <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>This Month</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#4f46e5' }}>
+              <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>This Month</div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#4f46e5', marginTop: '2px' }}>
                 ₹{summary.thisMonthCollected.toLocaleString('en-IN')}
               </div>
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', borderLeft: '4px solid #ef4444' }}>
-            <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CreditCard size={24} />
+          <div className="glass-panel" style={{ padding: '18px', display: 'flex', gap: '14px', alignItems: 'center', borderTop: '3px solid #ef4444', borderRadius: '12px' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '10px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CreditCard size={22} />
             </div>
             <div>
-              <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Outstanding</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#ef4444' }}>
+              <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Outstanding</div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#dc2626', marginTop: '2px' }}>
                 ₹{summary.totalOutstanding.toLocaleString('en-IN')}
               </div>
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '20px', display: 'flex', gap: '16px', alignItems: 'center', borderLeft: '4px solid #0d9488' }}>
-            <div style={{ width: 48, height: 48, borderRadius: '12px', background: '#ccfbf1', color: '#0d9488', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Building2 size={24} />
+          <div className="glass-panel" style={{ padding: '18px', display: 'flex', gap: '14px', alignItems: 'center', borderTop: '3px solid #0d9488', borderRadius: '12px' }}>
+            <div style={{ width: 44, height: 44, borderRadius: '10px', background: '#ccfbf1', color: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Building2 size={22} />
             </div>
             <div>
-              <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>Advance Deposits</div>
-              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0d9488' }}>
+              <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Advance Deposits</div>
+              <div style={{ fontSize: '1.45rem', fontWeight: 900, color: '#0f766e', marginTop: '2px' }}>
                 {summary.advanceCount} Recorded
               </div>
             </div>
@@ -485,46 +515,58 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         </div>
       )}
 
-      {/* Mode & Receiving Source Breakdown */}
-      {summary?.byMode && summary.byMode.length > 0 && (
-        <div className="glass-panel" style={{ padding: '16px 20px', marginBottom: '24px', backgroundColor: '#f8fafc' }}>
-          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <QrCode size={16} /> Collections by Payment Mode & Channel
-          </div>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            {summary.byMode.map(m => (
-              <div key={m.paymentMode} style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#ffffff', minWidth: '130px' }}>
-                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{m.paymentMode}</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
-                  ₹{(m._sum.amount || 0).toLocaleString('en-IN')}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Main Filter Toolbar */}
-      <div className="glass-panel" style={{ padding: '18px 20px', marginBottom: '20px' }}>
+      {/* Modern Filter Toolbar */}
+      <div className="glass-panel" style={{ padding: '16px 20px', marginBottom: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
         
-        {/* Row 1: Search, Customer, Mode, Type */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+        {/* Row 1: Search & Filter Dropdowns */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.4fr) repeat(3, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+          
+          {/* Search Input */}
           <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input
               type="text"
               placeholder="Search payment #, customer, UTR, ref..."
-              className="form-input"
-              style={{ paddingLeft: '36px', width: '100%', fontSize: '0.85rem' }}
+              style={{
+                width: '100%',
+                padding: '8px 12px 8px 34px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                fontSize: '0.82rem',
+                color: '#1e293b',
+                outline: 'none',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+              }}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
 
-          <div>
+          {/* Customer Dropdown */}
+          <div style={{ position: 'relative' }}>
             <select
-              className="form-input"
-              style={{ width: '100%', fontSize: '0.85rem' }}
+              style={{
+                width: '100%',
+                padding: '8px 28px 8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                fontSize: '0.82rem',
+                color: '#1e293b',
+                outline: 'none',
+                appearance: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+              }}
               value={selectedCustomer}
               onChange={e => setSelectedCustomer(e.target.value)}
             >
@@ -533,12 +575,25 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 <option key={c.id} value={c.id}>{c.businessName} ({c.contactPerson})</option>
               ))}
             </select>
+            <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
           </div>
 
-          <div>
+          {/* Payment Mode */}
+          <div style={{ position: 'relative' }}>
             <select
-              className="form-input"
-              style={{ width: '100%', fontSize: '0.85rem' }}
+              style={{
+                width: '100%',
+                padding: '8px 28px 8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                fontSize: '0.82rem',
+                color: '#1e293b',
+                outline: 'none',
+                appearance: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+              }}
               value={selectedMode}
               onChange={e => setSelectedMode(e.target.value)}
             >
@@ -550,12 +605,25 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               <option value="Card">Card</option>
               <option value="Advance Adjustment">Advance Adjustment</option>
             </select>
+            <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
           </div>
 
-          <div>
+          {/* Payment Type */}
+          <div style={{ position: 'relative' }}>
             <select
-              className="form-input"
-              style={{ width: '100%', fontSize: '0.85rem' }}
+              style={{
+                width: '100%',
+                padding: '8px 28px 8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                fontSize: '0.82rem',
+                color: '#1e293b',
+                outline: 'none',
+                appearance: 'none',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+              }}
               value={selectedType}
               onChange={e => setSelectedType(e.target.value)}
             >
@@ -564,13 +632,18 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               <option value="Advance Payment">Advance Payment</option>
               <option value="On-Account">On-Account</option>
             </select>
+            <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
           </div>
         </div>
 
-        {/* Row 2: Date Presets & Range */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}>Date:</span>
+        {/* Row 2: Modern Calendar & Date Presets */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
+              <CalendarIcon size={14} /> Period:
+            </span>
+
             {[
               { id: 'all', label: 'All Time' },
               { id: 'today', label: 'Today' },
@@ -579,35 +652,52 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             ].map(p => (
               <button
                 key={p.id}
+                type="button"
                 onClick={() => handleDatePreset(p.id)}
                 style={{
                   padding: '4px 10px',
                   borderRadius: '6px',
-                  fontSize: '0.78rem',
+                  fontSize: '0.75rem',
                   fontWeight: datePreset === p.id ? 700 : 500,
                   backgroundColor: datePreset === p.id ? '#4f46e5' : '#f1f5f9',
                   color: datePreset === p.id ? '#ffffff' : '#475569',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
                 }}
               >
                 {p.label}
               </button>
             ))}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px' }}>
+            {/* Modern Date Input Controls */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px', backgroundColor: '#f8fafc', padding: '2px 6px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
               <input
                 type="date"
-                className="form-input"
-                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                style={{
+                  padding: '3px 6px',
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: '#1e293b',
+                  outline: 'none'
+                }}
                 value={startDate}
                 onChange={e => { setStartDate(e.target.value); setDatePreset('custom'); }}
               />
-              <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>to</span>
+              <span style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: 600 }}>→</span>
               <input
                 type="date"
-                className="form-input"
-                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                style={{
+                  padding: '3px 6px',
+                  border: 'none',
+                  background: 'transparent',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: '#1e293b',
+                  outline: 'none'
+                }}
                 value={endDate}
                 onChange={e => { setEndDate(e.target.value); setDatePreset('custom'); }}
               />
@@ -624,7 +714,17 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 setSelectedStatus('All');
                 handleDatePreset('all');
               }}
-              style={{ fontSize: '0.78rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+              style={{
+                fontSize: '0.75rem',
+                color: '#ef4444',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px'
+              }}
             >
               Reset Filters ✕
             </button>
@@ -633,11 +733,11 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
       </div>
 
       {/* Payment History Table */}
-      <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+      <div className="glass-panel" style={{ padding: '0', overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc' }}>
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Payment Transactions Ledger</h3>
-            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Showing {filteredPayments.length} transaction records</span>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Payment Transactions Ledger</h3>
+            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Showing {filteredPayments.length} transaction entries</span>
           </div>
         </div>
 
@@ -775,303 +875,549 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         </div>
       </div>
 
-      {/* RECORD PAYMENT MODAL */}
+      {/* COMPACT & STYLISH RECORD PAYMENT MODAL (NO SCROLLING NEEDED) */}
       {showModal && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '640px', padding: '28px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{
+            width: '100%',
+            maxWidth: '680px',
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-              <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>Record Customer Payment</h2>
-                <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>Settle open invoice or receive customer advance deposit</p>
-              </div>
-              <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>×</button>
-            </div>
-
-            {/* Tab Selector */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' }}>
-              <button
-                type="button"
-                onClick={() => setModalTab('invoice')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  fontWeight: modalTab === 'invoice' ? 800 : 500,
-                  backgroundColor: modalTab === 'invoice' ? '#4f46e5' : 'transparent',
-                  color: modalTab === 'invoice' ? '#ffffff' : '#64748b',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Settle Unpaid Invoice
-              </button>
-              <button
-                type="button"
-                onClick={() => setModalTab('advance')}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  fontSize: '0.85rem',
-                  fontWeight: modalTab === 'advance' ? 800 : 500,
-                  backgroundColor: modalTab === 'advance' ? '#0d9488' : 'transparent',
-                  color: modalTab === 'advance' ? '#ffffff' : '#64748b',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                Advance Payment / On-Account
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitPayment}>
-              
-              {/* Customer Selector */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>
-                  Select Customer *
-                </label>
-                <select
-                  required
-                  className="form-input"
-                  style={{ width: '100%' }}
-                  value={modalCustomer}
-                  onChange={e => handleCustomerChange(e.target.value)}
-                >
-                  <option value="">-- Choose Customer --</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.businessName} ({c.contactPerson} - {c.mobile}) {c.city ? `• ${c.city}` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* If Settle Invoice Tab, show unpaid invoices */}
-              {modalTab === 'invoice' && modalCustomer && (
-                <div style={{ marginBottom: '16px', backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '8px', color: '#334155' }}>
-                    Select Invoice to Settle *
-                  </label>
-
-                  {loadingInvoices ? (
-                    <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Loading customer invoices...</div>
-                  ) : customerInvoices.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {customerInvoices.map(inv => (
-                        <div
-                          key={inv.id}
-                          onClick={() => handleInvoiceSelect(inv.id)}
-                          style={{
-                            padding: '10px 14px',
-                            borderRadius: '6px',
-                            border: `2px solid ${selectedInvoiceId === inv.id ? '#4f46e5' : '#cbd5e1'}`,
-                            backgroundColor: selectedInvoiceId === inv.id ? '#eef2ff' : '#ffffff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
-                              {inv.invoiceNumber} {inv.order?.orderNumber ? `(${inv.order.orderNumber})` : ''}
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              Date: {new Date(inv.invoiceDate).toLocaleDateString('en-GB')} • Total: ₹{inv.totalAmount.toLocaleString('en-IN')}
-                            </div>
-                          </div>
-
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: 700 }}>Due Balance</div>
-                            <div style={{ fontSize: '1rem', fontWeight: 900, color: '#dc2626' }}>
-                              ₹{inv.amountDue.toLocaleString('en-IN')}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '0.82rem', color: '#16a34a', fontWeight: 600 }}>
-                      ✓ This customer currently has NO outstanding unpaid invoices. You can record an Advance Payment instead.
-                    </div>
-                  )}
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 22px',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'linear-gradient(to right, #f8fafc, #ffffff)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff'
+                }}>
+                  <Plus size={18} />
                 </div>
-              )}
-
-              {/* Amount & Date Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                    Record Customer Payment
+                  </h2>
+                  <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+                    Settle open invoice or receive customer advance deposit
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: '#f1f5f9',
+                  color: '#64748b',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleSubmitPayment} style={{ padding: '18px 22px' }}>
+              
+              {/* Tab Selector Segmented Bar */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '6px',
+                backgroundColor: '#f1f5f9',
+                padding: '4px',
+                borderRadius: '10px',
+                marginBottom: '16px'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('invoice')}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.82rem',
+                    fontWeight: modalTab === 'invoice' ? 800 : 600,
+                    backgroundColor: modalTab === 'invoice' ? '#ffffff' : 'transparent',
+                    color: modalTab === 'invoice' ? '#4f46e5' : '#64748b',
+                    border: 'none',
+                    boxShadow: modalTab === 'invoice' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <FileCheck size={14} /> Settle Unpaid Invoice
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModalTab('advance')}
+                  style={{
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.82rem',
+                    fontWeight: modalTab === 'advance' ? 800 : 600,
+                    backgroundColor: modalTab === 'advance' ? '#ffffff' : 'transparent',
+                    color: modalTab === 'advance' ? '#0d9488' : '#64748b',
+                    border: 'none',
+                    boxShadow: modalTab === 'advance' ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <Building2 size={14} /> Advance / On-Account
+                </button>
+              </div>
+
+              {/* Grid 1: Customer & Invoice in clean 2-column layout */}
+              <div style={{ display: 'grid', gridTemplateColumns: modalTab === 'invoice' && modalCustomer ? '1.1fr 1fr' : '1fr', gap: '12px', marginBottom: '14px' }}>
+                
+                {/* Select Customer */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                    Customer *
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <User size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <select
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 26px 8px 32px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#f8fafc',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: '#0f172a',
+                        outline: 'none',
+                        appearance: 'none',
+                        cursor: 'pointer'
+                      }}
+                      value={modalCustomer}
+                      onChange={e => handleCustomerChange(e.target.value)}
+                    >
+                      <option value="">-- Choose Customer --</option>
+                      {customers.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {c.businessName} ({c.contactPerson}) {c.city ? `• ${c.city}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+                  </div>
+                </div>
+
+                {/* If Invoice Tab & Customer Selected, show compact Invoice Picker */}
+                {modalTab === 'invoice' && modalCustomer && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                      Invoice to Settle *
+                    </label>
+                    {loadingInvoices ? (
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', padding: '8px' }}>Loading invoices...</div>
+                    ) : customerInvoices.length > 0 ? (
+                      <div style={{ position: 'relative' }}>
+                        <select
+                          style={{
+                            width: '100%',
+                            padding: '8px 26px 8px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid #4f46e5',
+                            backgroundColor: '#eff6ff',
+                            fontSize: '0.82rem',
+                            fontWeight: 700,
+                            color: '#1e40af',
+                            outline: 'none',
+                            appearance: 'none',
+                            cursor: 'pointer'
+                          }}
+                          value={selectedInvoiceId}
+                          onChange={e => handleInvoiceSelect(e.target.value)}
+                        >
+                          {customerInvoices.map(inv => (
+                            <option key={inv.id} value={inv.id}>
+                              {inv.invoiceNumber} (Due: ₹{inv.amountDue.toLocaleString('en-IN')})
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#4f46e5', pointerEvents: 'none' }} />
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '0.75rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '7px 10px', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
+                        ✓ No pending invoice. Switch to Advance tab.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Grid 2: Amount & Modern Calendar Date Picker in 2-column layout */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                
+                {/* Amount */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
                     Payment Amount (₹) *
                   </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    required
-                    placeholder="Enter amount"
-                    className="form-input"
-                    style={{ width: '100%', fontWeight: 700, fontSize: '1rem' }}
-                    value={payAmount}
-                    onChange={e => setPayAmount(e.target.value)}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#16a34a', fontWeight: 900, fontSize: '0.95rem' }}>
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="1"
+                      required
+                      placeholder="0.00"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 28px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        fontSize: '0.95rem',
+                        fontWeight: 800,
+                        color: '#0f172a',
+                        outline: 'none'
+                      }}
+                      value={payAmount}
+                      onChange={e => setPayAmount(e.target.value)}
+                    />
+                  </div>
                 </div>
 
+                {/* Modern Date Input with quick Today / Yesterday controls */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>
-                    Payment Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    className="form-input"
-                    style={{ width: '100%' }}
-                    value={payDate}
-                    onChange={e => setPayDate(e.target.value)}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
+                      Payment Date *
+                    </label>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setQuickModalDate('today')}
+                        style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#4f46e5', fontWeight: 700, border: 'none', cursor: 'pointer' }}
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickModalDate('yesterday')}
+                        style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#64748b', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                      >
+                        Yesterday
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ position: 'relative' }}>
+                    <CalendarIcon size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <input
+                      type="date"
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 30px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: '#0f172a',
+                        outline: 'none'
+                      }}
+                      value={payDate}
+                      onChange={e => setPayDate(e.target.value)}
+                    />
+                  </div>
                 </div>
+
               </div>
 
-              {/* Payment Mode & Receiving Account Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+              {/* Grid 3: Payment Mode & Receiving Account in 2-column layout */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                
+                {/* Payment Mode */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
                     Payment Mode *
                   </label>
-                  <select
-                    className="form-input"
-                    style={{ width: '100%' }}
-                    value={payMode}
-                    onChange={e => setPayMode(e.target.value)}
-                  >
-                    {PAYMENT_MODES.map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      style={{
+                        width: '100%',
+                        padding: '8px 26px 8px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: '#0f172a',
+                        outline: 'none',
+                        appearance: 'none',
+                        cursor: 'pointer'
+                      }}
+                      value={payMode}
+                      onChange={e => setPayMode(e.target.value)}
+                    >
+                      {PAYMENT_MODES.map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+                  </div>
                 </div>
 
+                {/* Receiving Account / Bank / QR */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>
-                    Receiving Account / Bank / QR *
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                    Receiving Account / Source *
                   </label>
-                  <select
-                    className="form-input"
-                    style={{ width: '100%' }}
-                    value={payAccount}
-                    onChange={e => setPayAccount(e.target.value)}
-                  >
-                    {RECEIVING_ACCOUNTS.map(a => (
-                      <option key={a} value={a}>{a}</option>
-                    ))}
-                  </select>
+                  <div style={{ position: 'relative' }}>
+                    <Landmark size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <select
+                      style={{
+                        width: '100%',
+                        padding: '8px 26px 8px 30px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        color: '#0f172a',
+                        outline: 'none',
+                        appearance: 'none',
+                        cursor: 'pointer'
+                      }}
+                      value={payAccount}
+                      onChange={e => setPayAccount(e.target.value)}
+                    >
+                      {RECEIVING_ACCOUNTS.map(a => (
+                        <option key={a} value={a}>{a}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+                  </div>
                 </div>
+
               </div>
 
-              {/* Reference # & Payer Name */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '16px' }}>
+              {/* Grid 4: Reference Number & Payer Name */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>
-                    UTR / Cheque / Txn Reference #
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                    UTR / Cheque / Txn Ref #
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. UTR-9876543210 / Cheque #123456"
-                    className="form-input"
-                    style={{ width: '100%' }}
-                    value={refNumber}
-                    onChange={e => setRefNumber(e.target.value)}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <Hash size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <input
+                      type="text"
+                      placeholder="e.g. UTR-9876543210"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px 8px 30px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.82rem',
+                        color: '#0f172a',
+                        outline: 'none'
+                      }}
+                      value={refNumber}
+                      onChange={e => setRefNumber(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>
-                    Payer Name / Bank Account Title
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                    Payer Name / Depositor Title
                   </label>
                   <input
                     type="text"
                     placeholder="Name of payer"
-                    className="form-input"
-                    style={{ width: '100%' }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      color: '#0f172a',
+                      outline: 'none'
+                    }}
                     value={payerName}
                     onChange={e => setPayerName(e.target.value)}
                   />
                 </div>
+
               </div>
 
-              {/* Notes */}
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, marginBottom: '6px', color: '#334155' }}>
+              {/* Remarks / Notes */}
+              <div style={{ marginBottom: '18px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
                   Internal Notes & Remarks
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Received via PhonePe QR, verified by accounts"
-                  className="form-input"
-                  style={{ width: '100%' }}
+                  placeholder="e.g. Received via PhonePe QR, verified in HDFC account"
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.82rem',
+                    color: '#0f172a',
+                    outline: 'none'
+                  }}
                   value={payNotes}
                   onChange={e => setPayNotes(e.target.value)}
                 />
               </div>
 
-              {/* Modal Footer */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              {/* Modal Footer Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="action-btn"
-                  style={{ padding: '8px 16px' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="action-btn"
                   style={{
-                    backgroundColor: '#4f46e5',
-                    color: '#ffffff',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    fontSize: '0.82rem',
                     fontWeight: 700,
-                    padding: '8px 20px',
-                    border: 'none',
-                    borderRadius: '6px',
                     cursor: 'pointer'
                   }}
                 >
-                  {submitting ? 'Recording...' : 'Confirm & Save Payment'}
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 20px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
+                    color: '#ffffff',
+                    fontSize: '0.85rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.35)'
+                  }}
+                >
+                  <Check size={16} /> {submitting ? 'Recording...' : 'Confirm & Save Payment'}
                 </button>
               </div>
 
             </form>
+
           </div>
         </div>
       )}
 
       {/* PRINTABLE RECEIPT VOUCHER MODAL */}
       {viewReceipt && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 110 }}>
-          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '650px', padding: '32px', backgroundColor: '#ffffff', color: '#0f172a' }}>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{
+            width: '100%',
+            maxWidth: '650px',
+            padding: '30px',
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #e2e8f0',
+            color: '#0f172a'
+          }}>
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }} className="no-print">
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#4f46e5' }}>Official Payment Receipt</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#4f46e5' }}>Payment Receipt Voucher</span>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => window.print()}
                   className="action-btn outline-primary"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.8rem' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
                 >
                   <Printer size={14} /> Print Receipt
                 </button>
-                <button onClick={() => setViewReceipt(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#94a3b8' }}>×</button>
+                <button onClick={() => setViewReceipt(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#94a3b8' }}>
+                  <X size={18} />
+                </button>
               </div>
             </div>
 
             {/* Printable Receipt Body */}
-            <div style={{ border: '2px solid #e2e8f0', padding: '24px', borderRadius: '8px' }}>
+            <div style={{ border: '2px solid #e2e8f0', padding: '24px', borderRadius: '12px' }}>
               <div style={{ textAlign: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '12px', marginBottom: '16px' }}>
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', margin: '0 0 2px 0' }}>ESPON CLOTHING PRIVATE LIMITED</h2>
                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Rohtak, Haryana - 124001 • GSTIN: 06AAHCE7721Q1Z4</div>
-                <div style={{ marginTop: '8px', display: 'inline-block', backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '3px 12px', borderRadius: '999px', fontSize: '0.8rem', fontWeight: 800 }}>
+                <div style={{ marginTop: '8px', display: 'inline-block', backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', padding: '3px 14px', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 800 }}>
                   PAYMENT RECEIPT VOUCHER
                 </div>
               </div>
@@ -1087,7 +1433,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 </div>
               </div>
 
-              <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '6px', marginBottom: '16px', fontSize: '0.82rem' }}>
+              <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.82rem' }}>
                 <div><strong>Received From:</strong> {viewReceipt.customer?.businessName || viewReceipt.payerName}</div>
                 <div><strong>Contact:</strong> {viewReceipt.customer?.contactPerson} ({viewReceipt.customer?.mobile})</div>
                 {viewReceipt.customer?.gstNumber && <div><strong>GSTIN:</strong> {viewReceipt.customer.gstNumber}</div>}
@@ -1096,7 +1442,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', marginBottom: '16px' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
-                    <th style={{ padding: '8px', textAlign: 'left' }}>Description / Invoice Reference</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Particulars / Reference</th>
                     <th style={{ padding: '8px', textAlign: 'right' }}>Amount Paid (₹)</th>
                   </tr>
                 </thead>
@@ -1114,7 +1460,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 </tbody>
               </table>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '16px' }}>
                 <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
                   <div>Deposited into: <strong>{viewReceipt.receivingAccount || 'Company Bank A/c'}</strong></div>
                   <div>Recorded by: {viewReceipt.recordedBy || 'Accounts Team'}</div>
@@ -1133,13 +1479,26 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
 
       {/* CANCEL PAYMENT MODAL */}
       {cancelModalPay && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 120 }}>
-          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '440px', padding: '24px' }}>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{ width: '100%', maxWidth: '440px', padding: '24px', backgroundColor: '#ffffff', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#dc2626', marginBottom: '8px' }}>
               Cancel & Reverse Payment
             </h3>
             <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '16px' }}>
-              Are you sure you want to cancel payment <strong>{cancelModalPay.paymentNumber}</strong> of <strong>₹{cancelModalPay.amount.toLocaleString()}</strong>? This will restore the unpaid balance on the invoice.
+              Are you sure you want to cancel payment <strong>{cancelModalPay.paymentNumber}</strong> of <strong>₹{cancelModalPay.amount.toLocaleString('en-IN')}</strong>? This will restore the unpaid balance on the invoice.
             </p>
 
             <div style={{ marginBottom: '20px' }}>
@@ -1147,8 +1506,14 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 Cancellation Reason
               </label>
               <select
-                className="form-input"
-                style={{ width: '100%' }}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.82rem',
+                  outline: 'none'
+                }}
                 value={cancelReason}
                 onChange={e => setCancelReason(e.target.value)}
               >
@@ -1160,11 +1525,11 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               </select>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button
                 type="button"
                 onClick={() => setCancelModalPay(null)}
-                className="action-btn"
+                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}
               >
                 Back
               </button>
@@ -1175,10 +1540,11 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 style={{
                   backgroundColor: '#dc2626',
                   color: '#ffffff',
-                  fontWeight: 700,
+                  fontWeight: 800,
                   padding: '8px 16px',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   border: 'none',
+                  fontSize: '0.82rem',
                   cursor: 'pointer'
                 }}
               >
