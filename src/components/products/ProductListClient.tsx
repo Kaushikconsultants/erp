@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, ChevronDown, Edit, Trash2, Scale, Tag } from 'lucide-react';
+import { Search, ChevronDown, Edit, Trash2, Scale, Tag, History, Image as ImageIcon, Eye, Layers } from 'lucide-react';
 import AddProductButton from '@/components/ui/AddProductButton';
 import ManageCategoriesModal from '@/components/products/ManageCategoriesModal';
 import EditProductModal from '@/components/ui/EditProductModal';
 import BarcodeLabelModal from '@/components/products/BarcodeLabelModal';
+import ArticleHistoryModal from '@/components/products/ArticleHistoryModal';
 import { deleteProduct } from '@/app/actions/productActions';
 
 interface Product {
@@ -20,6 +21,7 @@ interface Product {
   stockQuantity: number;
   weight?: number | null;
   description?: string | null;
+  images?: string[];
 }
 
 interface ProductListClientProps {
@@ -32,20 +34,28 @@ interface ProductListClientProps {
 export default function ProductListClient({ products, categories, categoriesData = [], canManage }: ProductListClientProps) {
   const searchParams = useSearchParams();
   const initialSearch = searchParams?.get('search') || '';
-  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const initialArticle = searchParams?.get('article') || searchParams?.get('history') || null;
 
-  useEffect(() => {
-    const s = searchParams?.get('search');
-    if (s !== null && s !== undefined) {
-      setSearchQuery(s);
-    }
-  }, [searchParams]);
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [selectedHistoryArticle, setSelectedHistoryArticle] = useState<string | null>(initialArticle);
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [printLabelProduct, setPrintLabelProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = searchParams?.get('search');
+    if (s !== null && s !== undefined) {
+      setSearchQuery(s);
+    }
+    const art = searchParams?.get('article') || searchParams?.get('history');
+    if (art) {
+      setSelectedHistoryArticle(art);
+    }
+  }, [searchParams]);
 
   const handleDeleteProduct = async (product: Product) => {
     if (!confirm(`Are you sure you want to delete product "${product.name}"?`)) return;
@@ -100,16 +110,16 @@ export default function ProductListClient({ products, categories, categoriesData
   return (
     <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
       
-      {/* ─── FILTERS HEADER ─── */}
+      {/* ─── FILTERS & HEADER ACTIONS ─── */}
       <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
         
         <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
           {/* Search */}
-          <div style={{ position: 'relative', flex: '1', minWidth: '250px', maxWidth: '400px' }}>
+          <div style={{ position: 'relative', flex: '1', minWidth: '250px', maxWidth: '380px' }}>
             <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
-              placeholder="Search by product name, SKU..."
+              placeholder="Search by product name, SKU, article no..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
@@ -117,7 +127,7 @@ export default function ProductListClient({ products, categories, categoriesData
           </div>
 
           {/* Category Dropdown */}
-          <div style={{ position: 'relative', width: '200px' }}>
+          <div style={{ position: 'relative', width: '190px' }}>
             <select 
               value={selectedCategory} 
               onChange={e => setSelectedCategory(e.target.value)}
@@ -130,7 +140,7 @@ export default function ProductListClient({ products, categories, categoriesData
           </div>
 
           {/* Status Dropdown */}
-          <div style={{ position: 'relative', width: '180px' }}>
+          <div style={{ position: 'relative', width: '170px' }}>
             <select 
               value={selectedStatus} 
               onChange={e => setSelectedStatus(e.target.value)}
@@ -146,36 +156,69 @@ export default function ProductListClient({ products, categories, categoriesData
 
           <button 
             onClick={handleReset}
-            style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 500, color: '#475569' }}
+            style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 500, color: '#475569' }}
           >
             Reset
           </button>
         </div>
 
-        {canManage && (
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <button
-              onClick={() => setShowCategoryModal(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#fff',
-                color: '#334155',
-                fontSize: '0.9rem',
-                fontWeight: 500,
-                cursor: 'pointer'
-              }}
-            >
-              <Scale size={16} color="#4f46e5" />
-              Manage Categories & Weights
-            </button>
-            <AddProductButton categories={categories} />
-          </div>
-        )}
+        {/* Right Toolbar Actions */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Article Transaction History & Usage Button */}
+          <button
+            onClick={() => {
+              if (products.length > 0) {
+                const first = products[0];
+                setSelectedHistoryArticle(first.articleNumber || first.sku || first.id);
+              }
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              border: '1px solid #c7d2fe',
+              backgroundColor: '#eef2ff',
+              color: '#4338ca',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'background-color 0.15s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eef2ff'}
+            title="Open Article Transaction History, Quotations, and Invoice Usage"
+          >
+            <History size={16} color="#4f46e5" />
+            Article History & Usage
+          </button>
+
+          {canManage && (
+            <>
+              <button
+                onClick={() => setShowCategoryModal(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#fff',
+                  color: '#334155',
+                  fontSize: '0.88rem',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                <Scale size={16} color="#4f46e5" />
+                Manage Categories & Weights
+              </button>
+              <AddProductButton categories={categories} />
+            </>
+          )}
+        </div>
       </div>
 
       {showCategoryModal && (
@@ -187,9 +230,10 @@ export default function ProductListClient({ products, categories, categoriesData
 
       {/* ─── TABLE ─── */}
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px' }}>
           <thead>
             <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
+              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', width: '60px' }}>Image</th>
               <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Product Name</th>
               <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>SKU / Article No.</th>
               <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Category</th>
@@ -201,103 +245,225 @@ export default function ProductListClient({ products, categories, categoriesData
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.map((product) => (
-              <tr key={product.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                
-                {/* Product Name */}
-                <td style={{ padding: '20px', fontSize: '0.95rem', fontWeight: 600, color: '#1e293b', verticalAlign: 'middle' }}>
-                  {product.name}
-                </td>
-                
-                {/* SKU */}
-                <td style={{ padding: '20px', verticalAlign: 'middle' }}>
-                  <div style={{ color: '#0f172a', fontWeight: 500 }}>{product.sku || '-'}</div>
-                  <div style={{ color: '#64748b', fontSize: '0.75rem' }}>{product.articleNumber || '-'}</div>
-                </td>
-                
-                {/* Category */}
-                <td style={{ padding: '20px', color: '#475569', verticalAlign: 'middle', fontSize: '0.9rem' }}>
-                  {product.category || '-'}
-                </td>
-                
-                {/* HSN */}
-                <td style={{ padding: '20px', verticalAlign: 'middle' }}>
-                  <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                    {product.hsnCode || '-'}
-                  </span>
-                </td>
-                
-                {/* Price */}
-                <td style={{ padding: '20px', verticalAlign: 'middle', fontWeight: 700, color: '#10b981', fontSize: '1rem' }}>
-                  ₹{product.sellingPrice.toLocaleString()}
-                </td>
-                
-                {/* Stock */}
-                <td style={{ padding: '20px', verticalAlign: 'middle', fontWeight: 600, color: '#0f172a' }}>
-                  {product.stockQuantity}
-                </td>
-                
-                {/* Status */}
-                <td style={{ padding: '20px', verticalAlign: 'middle' }}>
-                  <span style={{ 
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '4px 12px',
-                    borderRadius: '16px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    backgroundColor: product.stockQuantity > 10 ? '#dcfce3' : (product.stockQuantity > 0 ? '#fef9c3' : '#fee2e2'),
-                    color: product.stockQuantity > 10 ? '#166534' : (product.stockQuantity > 0 ? '#854d0e' : '#991b1b')
-                  }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: product.stockQuantity > 10 ? '#10b981' : (product.stockQuantity > 0 ? '#f59e0b' : '#ef4444') }}></span>
-                    {product.stockQuantity > 10 ? 'In Stock' : (product.stockQuantity > 0 ? 'Low Stock' : 'Out of Stock')}
-                  </span>
-                </td>
+            {filteredProducts.map((product) => {
+              const primaryImg = product.images && product.images.length > 0 ? product.images[0] : null;
+              const imageCount = product.images?.length || 0;
+              const articleIdentifier = product.articleNumber || product.sku || product.id;
 
-                {/* Actions */}
-                <td style={{ padding: '20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                  {canManage ? (
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                      <button 
-                        onClick={() => setPrintLabelProduct(product)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#4f46e5', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }} 
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
-                        title="Print Barcode / QR Label"
-                      >
-                        <Tag size={16} />
-                      </button>
-                      <button 
-                        onClick={() => setEditingProduct(product)}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#3b82f6', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }} 
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
-                        title="Edit Product"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteProduct(product)}
-                        disabled={deletingId === product.id}
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#ef4444', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s', opacity: deletingId === product.id ? 0.5 : 1 }} 
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'} 
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
-                        title="Delete Product"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+              return (
+                <tr
+                  key={product.id}
+                  style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s ease' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  {/* Product Image Thumbnail */}
+                  <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
+                    <div
+                      onClick={() => {
+                        if (primaryImg) {
+                          setPreviewImage(primaryImg);
+                        } else if (canManage) {
+                          setEditingProduct(product);
+                        }
+                      }}
+                      style={{
+                        position: 'relative',
+                        width: '46px',
+                        height: '46px',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                        backgroundColor: '#f8fafc',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: primaryImg ? 'pointer' : 'default',
+                        overflow: 'hidden'
+                      }}
+                      title={primaryImg ? `View image (${imageCount} photos)` : 'No images'}
+                    >
+                      {primaryImg ? (
+                        <>
+                          <img
+                            src={primaryImg}
+                            alt={product.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                          {imageCount > 1 && (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              right: 0,
+                              backgroundColor: 'rgba(79, 70, 229, 0.9)',
+                              color: '#fff',
+                              fontSize: '0.6rem',
+                              fontWeight: 800,
+                              padding: '1px 3px',
+                              borderRadius: '4px 0 0 0'
+                            }}>
+                              +{imageCount - 1}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <ImageIcon size={18} color="#cbd5e1" />
+                      )}
                     </div>
-                  ) : (
-                    <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>No access</span>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+
+                  {/* Product Name */}
+                  <td style={{ padding: '16px 20px', fontSize: '0.95rem', fontWeight: 600, color: '#1e293b', verticalAlign: 'middle' }}>
+                    <div>{product.name}</div>
+                    {product.description && (
+                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400, marginTop: '2px', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {product.description}
+                      </div>
+                    )}
+                  </td>
+                  
+                  {/* SKU & Clickable Article Number */}
+                  <td style={{ padding: '16px 20px', verticalAlign: 'middle' }}>
+                    <div
+                      onClick={() => setSelectedHistoryArticle(articleIdentifier)}
+                      style={{
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}
+                      title="Click to view full transaction and usage history"
+                    >
+                      <span style={{
+                        color: '#0f172a',
+                        fontWeight: 600,
+                        fontFamily: 'monospace',
+                        fontSize: '0.9rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        {product.sku || '-'}
+                      </span>
+                      <span style={{
+                        color: '#4f46e5',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        Art: {product.articleNumber || '-'} <History size={11} />
+                      </span>
+                    </div>
+                  </td>
+                  
+                  {/* Category */}
+                  <td style={{ padding: '16px 20px', color: '#475569', verticalAlign: 'middle', fontSize: '0.9rem' }}>
+                    {product.category || '-'}
+                  </td>
+                  
+                  {/* HSN */}
+                  <td style={{ padding: '16px 20px', verticalAlign: 'middle' }}>
+                    <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                      {product.hsnCode || '-'}
+                    </span>
+                  </td>
+                  
+                  {/* Price */}
+                  <td style={{ padding: '16px 20px', verticalAlign: 'middle', fontWeight: 700, color: '#10b981', fontSize: '1rem' }}>
+                    ₹{product.sellingPrice.toLocaleString()}
+                  </td>
+                  
+                  {/* Stock */}
+                  <td style={{ padding: '16px 20px', verticalAlign: 'middle', fontWeight: 600, color: '#0f172a' }}>
+                    {product.stockQuantity}
+                  </td>
+                  
+                  {/* Status */}
+                  <td style={{ padding: '16px 20px', verticalAlign: 'middle' }}>
+                    <span style={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 12px',
+                      borderRadius: '16px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      backgroundColor: product.stockQuantity > 10 ? '#dcfce3' : (product.stockQuantity > 0 ? '#fef9c3' : '#fee2e2'),
+                      color: product.stockQuantity > 10 ? '#166534' : (product.stockQuantity > 0 ? '#854d0e' : '#991b1b')
+                    }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: product.stockQuantity > 10 ? '#10b981' : (product.stockQuantity > 0 ? '#f59e0b' : '#ef4444') }}></span>
+                      {product.stockQuantity > 10 ? 'In Stock' : (product.stockQuantity > 0 ? 'Low Stock' : 'Out of Stock')}
+                    </span>
+                  </td>
+
+                  {/* Actions */}
+                  <td style={{ padding: '16px 20px', verticalAlign: 'middle', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                      {/* View Article Transaction History Button */}
+                      <button 
+                        onClick={() => setSelectedHistoryArticle(articleIdentifier)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '32px',
+                          height: '32px',
+                          backgroundColor: '#eef2ff',
+                          color: '#4f46e5',
+                          borderRadius: '6px',
+                          border: '1px solid #c7d2fe',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s'
+                        }} 
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eef2ff'} 
+                        title="View Article Transaction History, Quotes & Invoices"
+                      >
+                        <History size={16} />
+                      </button>
+
+                      {canManage && (
+                        <>
+                          <button 
+                            onClick={() => setPrintLabelProduct(product)}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#4f46e5', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }} 
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                            title="Print Barcode / QR Label"
+                          >
+                            <Tag size={16} />
+                          </button>
+                          <button 
+                            onClick={() => setEditingProduct(product)}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#3b82f6', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }} 
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                            title="Edit Product & Images"
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteProduct(product)}
+                            disabled={deletingId === product.id}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#ef4444', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s', opacity: deletingId === product.id ? 0.5 : 1 }} 
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'} 
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                            title="Delete Product"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             
             {filteredProducts.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
                   No products found matching your search or filters.
                 </td>
               </tr>
@@ -306,6 +472,18 @@ export default function ProductListClient({ products, categories, categoriesData
         </table>
       </div>
 
+      {/* ─── MODALS ─── */}
+
+      {/* Article Transaction & Usage History Modal */}
+      {selectedHistoryArticle && (
+        <ArticleHistoryModal
+          initialArticleOrId={selectedHistoryArticle}
+          productsList={products}
+          onClose={() => setSelectedHistoryArticle(null)}
+        />
+      )}
+
+      {/* Edit Product Modal */}
       {editingProduct && (
         <EditProductModal
           product={editingProduct}
@@ -314,11 +492,58 @@ export default function ProductListClient({ products, categories, categoriesData
         />
       )}
 
+      {/* Print Label Modal */}
       {printLabelProduct && (
         <BarcodeLabelModal
           product={printLabelProduct}
           onClose={() => setPrintLabelProduct(null)}
         />
+      )}
+
+      {/* Image Lightbox Preview */}
+      {previewImage && (
+        <div
+          onClick={() => setPreviewImage(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            zIndex: 999999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '24px'
+          }}
+        >
+          <div style={{ position: 'relative', maxWidth: '85vw', maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setPreviewImage(null)}
+              style={{
+                position: 'absolute',
+                top: '-16px',
+                right: '-16px',
+                backgroundColor: '#fff',
+                color: '#0f172a',
+                border: 'none',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+              }}
+            >
+              ×
+            </button>
+            <img
+              src={previewImage}
+              alt="Preview"
+              style={{ maxWidth: '85vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px' }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

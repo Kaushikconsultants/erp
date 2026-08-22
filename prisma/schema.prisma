@@ -258,6 +258,7 @@ model Product {
   status          String   @default("Active")
   description     String?
   weight          Float?   @default(0)
+  images          String[] @default([])
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
