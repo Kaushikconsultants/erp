@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { getDispatchPipelineOrders, updateOrderStatus, updateDispatchDetails } from '@/app/actions/orderActions';
-import { Truck, Package, Printer, FileText, CheckCircle2, Eye, PackageCheck, ScanBarcode } from 'lucide-react';
+import { Truck, Package, Printer, FileText, CheckCircle2, Eye, PackageCheck, ScanBarcode, ScrollText } from 'lucide-react';
 import OrderPackingScannerModal from '@/components/scanner/OrderPackingScannerModal';
 
 export default function DispatchesPage() {
@@ -82,11 +82,20 @@ export default function DispatchesPage() {
       <div className="dashboard-header">
         <div>
           <h1 className="page-title"><Truck className="inline-block mr-2" /> Dispatch Pipeline</h1>
-          <p className="page-subtitle">Manage order fulfillment from invoice to dispatch.</p>
+          <p className="page-subtitle">Manage order fulfillment, packaging, E-Way bills, and dispatches.</p>
         </div>
-        <button className="action-btn outline-primary" onClick={loadOrders}>
-          Refresh Board
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <a
+            href="/eway-bills"
+            className="action-btn outline-primary"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none', backgroundColor: '#f0fdfa', borderColor: '#5eead4', color: '#0f766e', fontWeight: 600 }}
+          >
+            <ScrollText size={16} /> E-Way Bills
+          </a>
+          <button className="action-btn outline-primary" onClick={loadOrders}>
+            Refresh Board
+          </button>
+        </div>
       </div>
 
       {loading ? (

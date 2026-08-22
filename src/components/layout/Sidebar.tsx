@@ -24,7 +24,9 @@ import {
   ShieldCheck,
   Zap,
   MessageSquare,
-  Megaphone
+  Megaphone,
+  FileMinus,
+  ScrollText
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -154,6 +156,12 @@ const Sidebar = ({
                 <span>Invoices</span>
               </Link>
             )}
+            {(canAccess('credit_notes') || canAccess('invoices') || canAccess('orders')) && (
+              <Link href="/credit-notes" onClick={onClose} className={`nav-item ${isActive('/credit-notes') ? 'active' : ''}`}>
+                <FileMinus size={20} style={{ color: '#e11d48' }} />
+                <span>Credit Notes</span>
+              </Link>
+            )}
             {canAccess('payments') && (
               <Link href="/payments" onClick={onClose} className={`nav-item ${isActive('/payments') ? 'active' : ''}`}>
                 <Wallet size={20} />
@@ -170,6 +178,12 @@ const Sidebar = ({
               <Link href="/dispatches" onClick={onClose} className={`nav-item ${isActive('/dispatches') ? 'active' : ''}`}>
                 <Truck size={20} />
                 <span>Dispatches</span>
+              </Link>
+            )}
+            {(canAccess('eway_bills') || canAccess('dispatches') || canAccess('orders')) && (
+              <Link href="/eway-bills" onClick={onClose} className={`nav-item ${isActive('/eway-bills') ? 'active' : ''}`}>
+                <ScrollText size={20} style={{ color: '#0d9488' }} />
+                <span>E-Way Bills</span>
               </Link>
             )}
           </div>

@@ -172,6 +172,8 @@ model Customer {
   orders          Order[]
   quotations      Quotation[]
   invoices        Invoice[]
+  creditNotes     CreditNote[]
+  ewayBills       EWayBill[]
 
   whatsAppConversations WhatsAppConversation[]
   whatsAppPaymentLinks  WhatsAppPaymentLink[]
@@ -267,6 +269,7 @@ model Product {
   quotationItems  QuotationItem[]
   inventoryTransactions InventoryTransaction[]
   purchaseOrderItems PurchaseOrderItem[]
+  creditNoteItems CreditNoteItem[]
 }
 
 model ProductCategory {
@@ -335,6 +338,8 @@ model Order {
 
   items           OrderItem[]
   invoices        Invoice[]
+  creditNotes     CreditNote[]
+  ewayBills       EWayBill[]
 }
 
 model OrderItem {
@@ -742,6 +747,127 @@ model Invoice {
   updatedAt       DateTime @updatedAt
 
   payments        Payment[]
+  creditNotes     CreditNote[]
+}
+
+model CreditNote {
+  id               String   @id @default(uuid())
+  creditNoteNumber String   @unique // e.g. CN-1001
+  invoiceId        String?
+  invoice          Invoice? @relation(fields: [invoiceId], references: [id])
+  orderId          String?
+  order            Order?   @relation(fields: [orderId], references: [id])
+  customerId       String
+  customer         Customer @relation(fields: [customerId], references: [id])
+  
+  creditNoteDate   DateTime @default(now())
+  reason           String   // Sales Return, Post-Sale Discount, Defective Goods, Price Correction, Other
+  status           String   @default("OPEN") // OPEN, ADJUSTED, REFUNDED, CANCELLED
+  
+  subtotal         Float    @default(0)
+  taxAmount        Float    @default(0)
+  cgst             Float    @default(0)
+  sgst             Float    @default(0)
+  igst             Float    @default(0)
+  totalAmount      Float    @default(0)
+  allocatedAmount  Float    @default(0)
+  balanceAmount    Float    @default(0)
+
+  restockReturnedGoods Boolean @default(true) // Automatically replenish warehouse stock
+
+  notes            String?
+  termsConditions  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            CreditNoteItem[]
+}
+
+model CreditNoteItem {
+  id            String     @id @default(uuid())
+  creditNoteId  String
+  creditNote    CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product?   @relation(fields: [productId], references: [id])
+  
+  description   String
+  sku           String?
+  hsnCode       String?    @default("6109")
+  quantity      Float      @default(1)
+  unit          String?    @default("pcs")
+  rate          Float      @default(0)
+  taxableAmount Float      @default(0)
+  gstRate       Float      @default(0)
+  taxAmount     Float      @default(0)
+  cgst          Float      @default(0)
+  sgst          Float      @default(0)
+  igst          Float      @default(0)
+  total         Float      @default(0)
+}
+
+model EWayBill {
+  id              String    @id @default(uuid())
+  ewbNumber       String    @unique // 12-digit EWB Number e.g. 141289345678
+  ewbDate         DateTime  @default(now())
+  validUntil      DateTime?
+  
+  // Document Reference
+  docType         String    @default("Tax Invoice") // Tax Invoice, Bill of Supply, Delivery Challan, Credit Note
+  docNumber       String    // e.g. INV-1001, CN-1001, ORD-1001
+  docDate         DateTime  @default(now())
+  
+  // Links
+  orderId         String?
+  order           Order?    @relation(fields: [orderId], references: [id])
+  customerId      String?
+  customer        Customer? @relation(fields: [customerId], references: [id])
+
+  // Supply Type & Transaction
+  supplyType      String    @default("Outward") // Outward, Inward
+  subSupplyType   String    @default("Supply") // Supply, Export, Job Work, For Own Use, Recipient Not Known, Line Sales
+  transactionType String    @default("Regular") // Regular, Bill To - Ship To, Bill From - Dispatch From
+  
+  // Consignor (From) Details
+  fromGstin       String?
+  fromTradeName   String?
+  fromAddress     String?
+  fromPlace       String?
+  fromPincode     String?
+  fromState       String?
+  
+  // Consignee (To) Details
+  toGstin         String?
+  toTradeName     String?
+  toAddress       String?
+  toPlace         String?
+  toPincode       String?
+  toState         String?
+
+  // Goods Summary & Values
+  totalTaxableAmount Float  @default(0)
+  cgstAmount         Float  @default(0)
+  sgstAmount         Float  @default(0)
+  igstAmount         Float  @default(0)
+  cessAmount         Float  @default(0)
+  totalInvoiceValue  Float  @default(0)
+  mainHsnCode        String?
+  
+  // Part B (Transporter & Vehicle Details)
+  transporterId   String?  // Transporter GSTIN or Transporter ID
+  transporterName String?
+  transportMode   String   @default("Road") // Road, Rail, Air, Ship
+  approxDistanceKm Int     @default(100)
+  vehicleType     String   @default("Regular") // Regular, Over Dimensional Cargo
+  vehicleNumber   String?  // e.g. DL-01-AB-1234
+  docNoOrLorryReceipt String? // LR/GR/RR/Airway Bill Number
+  docDatePartB    DateTime?
+  
+  status          String   @default("GENERATED") // GENERATED, ACTIVE, EXTENDED, CANCELLED
+  cancelReason    String?
+  
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
 
 model Payment {

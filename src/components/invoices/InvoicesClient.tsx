@@ -1,5 +1,7 @@
 "use client";
 import React, { useState } from "react";
+import Link from "next/link";
+import { FileMinus } from "lucide-react";
 import { recordPayment } from "@/app/actions/paymentActions";
 import { cancelInvoice } from "@/app/actions/invoiceActions";
 
@@ -73,20 +75,41 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          placeholder="Search invoice or customer..."
-          className="form-input"
-          style={{ maxWidth: 280 }}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
-        <select className="form-input" style={{ maxWidth: 160 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          {["All", "Unpaid", "Partially Paid", "Paid", "Overdue", "Cancelled"].map(s => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            placeholder="Search invoice or customer..."
+            className="form-input"
+            style={{ maxWidth: 280 }}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <select className="form-input" style={{ maxWidth: 160 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            {["All", "Unpaid", "Partially Paid", "Paid", "Overdue", "Cancelled"].map(s => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+
+        <Link
+          href="/credit-notes"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 14px',
+            borderRadius: '8px',
+            border: '1px solid #fecdd3',
+            backgroundColor: '#fff1f2',
+            color: '#e11d48',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            textDecoration: 'none'
+          }}
+        >
+          <FileMinus size={15} /> Credit Notes & Returns
+        </Link>
       </div>
 
       {/* Invoice Table */}
