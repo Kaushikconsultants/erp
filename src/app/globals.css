@@ -602,3 +602,48 @@ button {
 }
 
 
+
+/* Skeleton Loader Animation */
+@keyframes skeletonPulse {
+  0% { background-color: #e2e8f0; }
+  50% { background-color: #f1f5f9; }
+  100% { background-color: #e2e8f0; }
+}
+
+.skeleton-conv-card {
+  display: flex;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.skeleton-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  animation: skeletonPulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-line {
+  height: 12px;
+  border-radius: 4px;
+  animation: skeletonPulse 1.5s infinite ease-in-out;
+}
+
+.skeleton-line.short {
+  width: 40%;
+}
+.skeleton-line.medium {
+  width: 60%;
+}
+.skeleton-line.long {
+  width: 90%;
+}

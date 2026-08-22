@@ -483,9 +483,17 @@ export default function WhatsAppInboxComponent() {
         {/* Conversations List */}
         <div className="conversations-scroll-list">
           {loadingConvs ? (
-            <div className="inbox-loading-spinner">
-              <RefreshCw size={22} className="spin-icon" />
-              <span>Loading conversations...</span>
+            <div className="inbox-loading-skeleton">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="skeleton-conv-card">
+                  <div className="skeleton-avatar"></div>
+                  <div className="skeleton-content">
+                    <div className="skeleton-line medium"></div>
+                    <div className="skeleton-line long"></div>
+                    <div className="skeleton-line short"></div>
+                  </div>
+                </div>
+              ))}
             </div>
           ) : conversations.length === 0 ? (
             <div className="inbox-empty-state" style={{ textAlign: "center", padding: "30px 16px" }}>
