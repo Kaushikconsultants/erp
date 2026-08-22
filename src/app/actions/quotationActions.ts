@@ -668,8 +668,55 @@ export async function convertQuotationToOrder(
       }
     }
 
+    // Automatically generate invoice for this order
+    const invoiceCount = await prisma.invoice.count();
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(5, '0')}`;
+    const invoiceStatus = effectiveReceived >= quotation.totalValue ? 'Paid' : effectiveReceived > 0 ? 'Partially Paid' : 'Unpaid';
+
+    const invoice = await prisma.invoice.create({
+      data: {
+        invoiceNumber,
+        customerId: quotation.customerId,
+        orderId: order.id,
+        invoiceDate: new Date(),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        subtotal: quotation.subtotal,
+        taxAmount: quotation.taxTotal,
+        discountAmount: overrideDiscount,
+        totalAmount: quotation.totalValue,
+        amountPaid: effectiveReceived,
+        amountDue: Math.max(0, quotation.totalValue - effectiveReceived),
+        status: invoiceStatus,
+        paymentTerms: 'Net 30',
+        notes: `Auto-generated on converting Quotation #${quotation.quotationNumber}`
+      }
+    });
+
+    // If advance payment was received, record Payment transaction
+    if (effectiveReceived > 0) {
+      try {
+        const paymentNumber = `PAY-${Date.now().toString().slice(-6)}`;
+        await prisma.payment.create({
+          data: {
+            paymentNumber,
+            invoiceId: invoice.id,
+            amount: effectiveReceived,
+            paymentDate: new Date(),
+            paymentMode: paymentOption || 'Bank Transfer',
+            referenceNumber: orderNumber,
+            status: 'Completed',
+            notes: `Advance payment upon converting Quotation #${quotation.quotationNumber}`
+          }
+        });
+      } catch (payErr) {
+        console.warn("Failed to record advance payment:", payErr);
+      }
+    }
+
     revalidatePath("/quotations");
     revalidatePath("/orders");
+    revalidatePath("/invoices");
+    revalidatePath("/payments");
     revalidatePath("/products");
     revalidatePath("/", "layout");
 

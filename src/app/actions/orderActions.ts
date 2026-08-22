@@ -118,7 +118,31 @@ export async function createOrder(formData: FormData) {
       }
     });
 
+    // Automatically generate invoice for this order
+    const invoiceCount = await prisma.invoice.count();
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(5, '0')}`;
+
+    await prisma.invoice.create({
+      data: {
+        invoiceNumber,
+        customerId,
+        orderId: order.id,
+        invoiceDate: new Date(),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        subtotal: subtotal,
+        taxAmount: totalTax,
+        discountAmount: 0,
+        totalAmount: totalValue,
+        amountPaid: 0,
+        amountDue: totalValue,
+        status: 'Unpaid',
+        paymentTerms: 'Net 30',
+        notes: `Sales Order ${order.orderNumber}`
+      }
+    });
+
     revalidatePath("/orders");
+    revalidatePath("/invoices");
     revalidatePath("/products");
     revalidatePath("/", "layout");
     return { success: true, order };

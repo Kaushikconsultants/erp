@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
-import { FileMinus } from "lucide-react";
+import { FileMinus, Printer, ExternalLink } from "lucide-react";
 import { recordPayment } from "@/app/actions/paymentActions";
 import { cancelInvoice } from "@/app/actions/invoiceActions";
 
@@ -113,60 +113,108 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
       </div>
 
       {/* Invoice Table */}
-      <div className="glass-panel" style={{ padding: '24px' }}>
+      <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
         <div className="table-responsive">
-          <table className="data-table">
+          <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
             <thead>
-              <tr>
-                <th>Invoice #</th>
-                <th>Customer</th>
-                <th>Order</th>
-                <th>Invoice Date</th>
-                <th>Due Date</th>
-                <th>Total</th>
-                <th>Paid</th>
-                <th>Outstanding</th>
-                <th>Status</th>
-                <th>Actions</th>
+              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th style={{ padding: '12px 16px' }}>Invoice #</th>
+                <th style={{ padding: '12px 16px' }}>Customer</th>
+                <th style={{ padding: '12px 16px' }}>Order Ref</th>
+                <th style={{ padding: '12px 16px' }}>Invoice Date</th>
+                <th style={{ padding: '12px 16px' }}>Due Date</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Total</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Paid</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Outstanding</th>
+                <th style={{ padding: '12px 16px' }}>Status</th>
+                <th style={{ padding: '12px 16px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(inv => {
                 const isOverdue = inv.status !== 'Paid' && inv.dueDate && new Date(inv.dueDate) < new Date();
                 return (
-                  <tr key={inv.id}>
-                    <td><strong>{inv.invoiceNumber}</strong></td>
-                    <td>
-                      <div style={{ fontWeight: 500 }}>{inv.customer?.businessName}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{inv.customer?.mobile}</div>
+                  <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#2563eb' }}>
+                      {inv.orderId ? (
+                        <a
+                          href={`/orders/${inv.orderId}/invoice`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          title="View / Print Tax Invoice"
+                        >
+                          {inv.invoiceNumber} <ExternalLink size={12} />
+                        </a>
+                      ) : (
+                        inv.invoiceNumber
+                      )}
                     </td>
-                    <td>{inv.order?.orderNumber || <span style={{ color: 'var(--text-muted)' }}>Manual</span>}</td>
-                    <td>{new Date(inv.invoiceDate).toLocaleDateString()}</td>
-                    <td style={{ color: isOverdue ? 'var(--danger)' : 'inherit', fontWeight: isOverdue ? 600 : 400 }}>
+                    <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
+                      <div>{inv.customer?.businessName}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{inv.customer?.mobile}</div>
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#475569' }}>
+                      {inv.order?.orderNumber ? (
+                        <a href={`/orders/${inv.orderId}`} style={{ color: '#475569', fontWeight: 600, textDecoration: 'none' }}>
+                          {inv.order.orderNumber}
+                        </a>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>Manual</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '12px 16px', color: '#475569' }}>
+                      {new Date(inv.invoiceDate).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: '12px 16px', color: isOverdue ? '#dc2626' : '#475569', fontWeight: isOverdue ? 700 : 400 }}>
                       {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '-'}
-                      {isOverdue && <div style={{ fontSize: '0.7rem' }}>OVERDUE</div>}
+                      {isOverdue && <span style={{ fontSize: '0.68rem', backgroundColor: '#fee2e2', color: '#991b1b', padding: '1px 5px', borderRadius: '4px', marginLeft: '4px', fontWeight: 800 }}>OVERDUE</span>}
                     </td>
-                    <td>₹{inv.totalAmount.toLocaleString()}</td>
-                    <td style={{ color: 'var(--success)' }}>₹{inv.amountPaid.toLocaleString()}</td>
-                    <td style={{ color: inv.amountDue > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 600 }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                      ₹{inv.totalAmount.toLocaleString()}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
+                      ₹{inv.amountPaid.toLocaleString()}
+                    </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: inv.amountDue > 0 ? '#dc2626' : '#16a34a' }}>
                       ₹{inv.amountDue.toLocaleString()}
                     </td>
-                    <td>
-                      <span className={`status-badge ${STATUS_COLORS[inv.status] || ''}`}>{inv.status}</span>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span className={`status-badge ${STATUS_COLORS[inv.status] || ''}`} style={{ fontWeight: 700 }}>
+                        {inv.status}
+                      </span>
                     </td>
-                    <td>
-                      {inv.status !== 'Paid' && inv.status !== 'Cancelled' && (
-                        <button className="action-btn text-blue" onClick={() => setPaymentModal(inv)}>
-                          Record Payment
-                        </button>
-                      )}
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        {inv.orderId && (
+                          <a
+                            href={`/orders/${inv.orderId}/invoice`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="action-btn outline-primary"
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}
+                            title="Print Invoice"
+                          >
+                            <Printer size={13} /> Print
+                          </a>
+                        )}
+                        {inv.status !== 'Paid' && inv.status !== 'Cancelled' && (
+                          <button
+                            className="action-btn"
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontWeight: 600, cursor: 'pointer', borderRadius: '6px' }}
+                            onClick={() => setPaymentModal(inv)}
+                          >
+                            Record Pay
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                  <td colSpan={10} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                     No invoices found.
                   </td>
                 </tr>
