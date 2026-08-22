@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import {
@@ -157,6 +158,12 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
 
   // View Receipt Modal State
   const [viewReceipt, setViewReceipt] = useState<PaymentRecord | null>(null);
+
+  // Portal mount state
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Filter Options for ModernSearchableSelect
   const customerFilterOptions: SelectOption[] = useMemo(() => [
@@ -859,10 +866,44 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         </div>
       </div>
 
-      {/* COMPACT, PERFECTLY ALIGNED & ZERO-SCROLL RECORD PAYMENT MODAL */}
-      {showModal && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
-          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '880px', padding: '18px 24px', borderRadius: '14px', border: '1px solid var(--border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', maxHeight: '92vh', overflow: 'visible' }}>
+      {/* 1. COMPACT, PERFECTLY ALIGNED & ZERO-SCROLL RECORD PAYMENT POPUP MODAL */}
+      {mounted && showModal && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '16px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowModal(false);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '860px',
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              padding: '18px 24px',
+              position: 'relative',
+              margin: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             
             {/* Modal Header */}
             <div style={{
@@ -1203,13 +1244,48 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             </form>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* PRINTABLE RECEIPT VOUCHER MODAL */}
-      {viewReceipt && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '640px', padding: '24px' }}>
+      {/* 2. PRINTABLE RECEIPT VOUCHER POPUP MODAL */}
+      {mounted && viewReceipt && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '16px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setViewReceipt(null);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '640px',
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              padding: '24px',
+              position: 'relative',
+              margin: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }} className="no-print">
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-primary)' }}>Payment Receipt Voucher</span>
@@ -1289,13 +1365,48 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* CANCEL PAYMENT MODAL */}
-      {cancelModalPay && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '420px', padding: '20px' }}>
+      {/* 3. CANCEL PAYMENT POPUP MODAL */}
+      {mounted && cancelModalPay && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '16px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setCancelModalPay(null);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '420px',
+              backgroundColor: '#ffffff',
+              borderRadius: '14px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              padding: '20px',
+              position: 'relative',
+              margin: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--danger)', marginBottom: '6px' }}>
               Cancel & Reverse Payment
             </h3>
@@ -1349,7 +1460,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
     </div>
