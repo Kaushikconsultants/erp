@@ -17,6 +17,6 @@ export const config = {
      * - login (public login page)
      * - scan (mobile wireless scanner page)
      */
-    "/((?!api/auth|_next/static|_next/image|favicon.ico|login|scan).*)",
+    "/((?!api/auth|api/whatsapp/clear-dummy|_next/static|_next/image|favicon.ico|manifest.json|manifest.webmanifest|login|scan).*)",
   ],
 };
