@@ -102,7 +102,25 @@ export async function createOrder(formData: FormData) {
       },
     });
 
+    // Deduct stock and record inventory transaction
+    await prisma.product.update({
+      where: { id: productId },
+      data: { stockQuantity: { decrement: quantity } }
+    });
+
+    await prisma.inventoryTransaction.create({
+      data: {
+        productId,
+        quantity,
+        type: 'OUT',
+        reference: order.orderNumber,
+        notes: `Sales Order ${order.orderNumber} created for ${customer.businessName || customer.contactPerson}`
+      }
+    });
+
     revalidatePath("/orders");
+    revalidatePath("/products");
+    revalidatePath("/", "layout");
     return { success: true, order };
   } catch (error) {
     console.error("Failed to create order:", error);

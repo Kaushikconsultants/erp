@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import {
   X,
   Search,
@@ -25,7 +26,14 @@ import {
   Image as ImageIcon,
   ExternalLink,
   Layers,
-  Sparkles
+  Sparkles,
+  Equal,
+  ShieldCheck,
+  AlertCircle,
+  Eye,
+  CheckCircle2,
+  FileEdit,
+  ShoppingCart
 } from 'lucide-react';
 import { getArticleTransactionHistory, getAllArticlesForSelector } from '@/app/actions/productActions';
 import { adjustInventory } from '@/app/actions/inventoryActions';
@@ -230,7 +238,6 @@ export default function ArticleHistoryModal({
   // Export to Excel
   const handleExportExcel = () => {
     if (!data?.product) return;
-    const productName = data.product.name;
     const article = data.product.articleNumber || data.product.sku || 'Article';
 
     // Sheet 1: Summary KPIs
@@ -239,17 +246,18 @@ export default function ArticleHistoryModal({
       { Metric: "SKU", Value: data.product.sku || '-' },
       { Metric: "Article Number", Value: data.product.articleNumber || '-' },
       { Metric: "Category", Value: data.product.category || '-' },
-      { Metric: "HSN Code", Value: data.product.hsnCode || '-' },
       { Metric: "Selling Price (₹)", Value: data.product.sellingPrice },
-      { Metric: "Current In-Stock", Value: data.kpis.currentStock },
-      { Metric: "Total Invoiced / Sold Qty", Value: data.kpis.totalInvoicedQty },
-      { Metric: "Total Quoted Qty", Value: data.kpis.totalQuotedQty },
-      { Metric: "Active Quoted Qty", Value: data.kpis.activeQuotedQty },
+      { Metric: "Current Available In-Stock (Units)", Value: data.kpis.currentStock },
+      { Metric: "Invoiced / Sold Qty (Units)", Value: data.kpis.totalInvoicedQty },
+      { Metric: "Total Revenue (₹)", Value: data.kpis.totalRevenue },
+      { Metric: "Total Quoted in Quotes (Units)", Value: data.kpis.totalQuotedQty },
       { Metric: "Converted Quoted Qty", Value: data.kpis.convertedQuotedQty },
-      { Metric: "Total Stock In Qty", Value: data.kpis.stockInTransactionsQty },
-      { Metric: "Total Stock Out Qty", Value: data.kpis.stockOutTransactionsQty },
-      { Metric: "Total PO Qty (Ordered)", Value: data.kpis.totalPOQty },
-      { Metric: "Total PO Qty (Received)", Value: data.kpis.totalPOReceivedQty }
+      { Metric: "Active Pipeline Demand", Value: data.kpis.activeQuotedQty },
+      { Metric: "Free Uncommitted Stock", Value: data.kpis.uncommittedStock },
+      { Metric: "Total Stock In (Inflow)", Value: data.kpis.totalStockIn },
+      { Metric: "Total Stock Out (Outflow)", Value: data.kpis.totalStockOut },
+      { Metric: "PO Qty (Ordered)", Value: data.kpis.totalPOQty },
+      { Metric: "PO Qty (Received)", Value: data.kpis.totalPOReceivedQty }
     ];
 
     // Sheet 2: Unified Timeline
@@ -261,6 +269,8 @@ export default function ArticleHistoryModal({
       'Doc / Ref No.': item.docNumber || '-',
       'Customer / Vendor / Employee': item.party || '-',
       Quantity: item.quantity,
+      'Stock Delta': item.delta || 0,
+      'Running Balance': item.runningBalance ?? '-',
       'Unit Rate (₹)': item.rate || '-',
       'Total (₹)': item.total || '-',
       Status: item.status || '-',
@@ -345,7 +355,7 @@ export default function ArticleHistoryModal({
           <div class="header">
             <h1 class="title">${p.name}</h1>
             <div class="meta">
-              <strong>Article No:</strong> ${p.articleNumber || '-'} | <strong>SKU:</strong> ${p.sku || '-'} | <strong>Category:</strong> ${p.category || '-'} | <strong>HSN:</strong> ${p.hsnCode || '-'} | <strong>Price:</strong> ₹${p.sellingPrice}
+              <strong>Article No:</strong> ${p.articleNumber || '-'} | <strong>SKU:</strong> ${p.sku || '-'} | <strong>Category:</strong> ${p.category || '-'} | <strong>Price:</strong> ₹${p.sellingPrice}
             </div>
             <div class="meta">Statement Generated on: ${new Date().toLocaleString()}</div>
           </div>
@@ -353,19 +363,19 @@ export default function ArticleHistoryModal({
           <div class="kpi-grid">
             <div class="kpi-card">
               <div class="kpi-title">Current In-Stock</div>
-              <div class="kpi-value" style="color: #10b981;">${k.currentStock} pcs</div>
+              <div class="kpi-value" style="color: #10b981;">${k.currentStock} units</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Invoiced / Sold Qty</div>
-              <div class="kpi-value" style="color: #3b82f6;">${k.totalInvoicedQty} pcs</div>
+              <div class="kpi-value" style="color: #3b82f6;">${k.totalInvoicedQty} units</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-title">Quoted Qty</div>
-              <div class="kpi-value" style="color: #f59e0b;">${k.totalQuotedQty} pcs</div>
+              <div class="kpi-value" style="color: #f59e0b;">${k.totalQuotedQty} units</div>
             </div>
             <div class="kpi-card">
-              <div class="kpi-title">Total Stock In / Out</div>
-              <div class="kpi-value">+${k.stockInTransactionsQty} / -${k.stockOutTransactionsQty}</div>
+              <div class="kpi-title">Total Inflow / Outflow</div>
+              <div class="kpi-value">+${k.totalStockIn} / -${k.totalStockOut}</div>
             </div>
           </div>
 
@@ -378,6 +388,7 @@ export default function ArticleHistoryModal({
                 <th>Doc / Ref #</th>
                 <th>Customer / Vendor / Employee</th>
                 <th>Qty</th>
+                <th>Stock Balance</th>
                 <th>Status</th>
                 <th>Notes</th>
               </tr>
@@ -390,6 +401,7 @@ export default function ArticleHistoryModal({
                   <td><strong>${item.docNumber || '-'}</strong></td>
                   <td>${item.party || '-'}</td>
                   <td><strong>${item.type === 'IN' ? '+' : (item.type === 'OUT' ? '-' : '')}${item.quantity}</strong></td>
+                  <td><strong>${item.runningBalance ?? '-'}</strong></td>
                   <td>${item.status || '-'}</td>
                   <td>${item.notes || '-'}</td>
                 </tr>
@@ -410,14 +422,16 @@ export default function ArticleHistoryModal({
       <div
         className="modal-content glass-panel animate-in"
         style={{
-          maxWidth: '1200px',
-          width: '95vw',
-          maxHeight: '92vh',
+          maxWidth: '1240px',
+          width: '96vw',
+          maxHeight: '94vh',
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
           overflow: 'hidden',
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          borderRadius: '16px'
         }}
       >
         {/* ─── MODAL TOP HEADER ─── */}
@@ -434,13 +448,23 @@ export default function ArticleHistoryModal({
           
           {/* Article Info & Quick Switcher Dropdown */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', position: 'relative' }}>
-            <div style={{ width: '44px', height: '44px', borderRadius: '10px', backgroundColor: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5' }}>
-              <Layers size={22} />
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              backgroundColor: '#e0e7ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#4f46e5',
+              boxShadow: '0 2px 4px rgba(79, 70, 229, 0.15)'
+            }}>
+              <Layers size={24} />
             </div>
 
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
                   {data?.product?.name || 'Article Transaction & Usage History'}
                 </h2>
                 
@@ -452,55 +476,71 @@ export default function ArticleHistoryModal({
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '4px',
-                    padding: '3px 8px',
-                    borderRadius: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     backgroundColor: '#ffffff',
-                    fontSize: '0.75rem',
+                    color: '#334155',
+                    fontSize: '0.8rem',
                     fontWeight: 600,
-                    color: '#475569',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                   }}
                 >
-                  Switch Article <ChevronDown size={12} />
+                  <span>Switch Article</span>
+                  <ChevronDown size={14} color="#64748b" />
                 </button>
               </div>
 
-              {/* Subtitle / Article Details */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>Article: <strong style={{ color: '#0f172a' }}>{data?.product?.articleNumber || '-'}</strong></span>
-                <span>•</span>
-                <span>SKU: <strong style={{ color: '#0f172a', fontFamily: 'monospace' }}>{data?.product?.sku || '-'}</strong></span>
-                <span>•</span>
-                <span>Category: <strong style={{ color: '#0f172a' }}>{data?.product?.category || '-'}</strong></span>
-                <span>•</span>
-                <span>Price: <strong style={{ color: '#10b981' }}>₹{data?.product?.sellingPrice?.toLocaleString()}</strong></span>
+              {/* Sub-header meta strip */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.82rem', color: '#64748b', marginTop: '3px' }}>
+                {data?.product?.articleNumber && (
+                  <span>Article: <strong style={{ color: '#0f172a' }}>{data.product.articleNumber}</strong></span>
+                )}
+                {data?.product?.sku && (
+                  <>
+                    <span>•</span>
+                    <span>SKU: <strong style={{ color: '#0f172a' }}>{data.product.sku}</strong></span>
+                  </>
+                )}
+                {data?.product?.category && (
+                  <>
+                    <span>•</span>
+                    <span>Category: <strong style={{ color: '#4f46e5' }}>{data.product.category}</strong></span>
+                  </>
+                )}
+                {data?.product?.sellingPrice !== undefined && (
+                  <>
+                    <span>•</span>
+                    <span>Price: <strong style={{ color: '#16a34a' }}>₹{data.product.sellingPrice}</strong></span>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Switcher Dropdown Popover */}
+            {/* Quick Switcher Popover Dropdown */}
             {isSwitcherOpen && (
               <div style={{
                 position: 'absolute',
-                top: '52px',
+                top: '56px',
                 left: 0,
-                width: '340px',
-                maxHeight: '380px',
+                width: '380px',
+                maxHeight: '340px',
                 backgroundColor: '#ffffff',
-                borderRadius: '10px',
-                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                border: '1px solid #e2e8f0',
-                zIndex: 100,
+                border: '1px solid #cbd5e1',
+                borderRadius: '12px',
+                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
+                zIndex: 1000,
                 display: 'flex',
                 flexDirection: 'column',
                 overflow: 'hidden'
               }}>
-                <div style={{ padding: '10px', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ padding: '10px 12px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
                   <div style={{ position: 'relative' }}>
                     <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                     <input
                       type="text"
-                      placeholder="Search article, SKU or name..."
+                      placeholder="Search name, SKU, or Article No..."
                       value={switcherSearch}
                       onChange={(e) => setSwitcherSearch(e.target.value)}
                       autoFocus
@@ -517,52 +557,59 @@ export default function ArticleHistoryModal({
                 </div>
 
                 <div style={{ overflowY: 'auto', flex: 1, padding: '4px' }}>
-                  {switcherList.map((p) => {
-                    const identifier = p.articleNumber || p.sku || p.id;
-                    const isSelected = selectedIdentifier === identifier || selectedIdentifier === p.id;
-                    return (
-                      <div
-                        key={p.id}
-                        onClick={() => {
-                          setSelectedIdentifier(identifier);
-                          setIsSwitcherOpen(false);
-                          setSwitcherSearch('');
-                        }}
-                        style={{
-                          padding: '8px 10px',
-                          borderRadius: '6px',
-                          backgroundColor: isSelected ? '#eff6ff' : 'transparent',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          transition: 'background-color 0.15s'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) e.currentTarget.style.backgroundColor = '#f8fafc';
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>{p.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                            {p.articleNumber ? `Art: ${p.articleNumber}` : ''} {p.sku ? `• SKU: ${p.sku}` : ''}
+                  {switcherList.length === 0 ? (
+                    <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem' }}>
+                      No matching articles found
+                    </div>
+                  ) : (
+                    switcherList.map((p) => {
+                      const identifier = p.articleNumber || p.sku || p.id;
+                      const isSelected = selectedIdentifier === identifier || selectedIdentifier === p.id;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => {
+                            setSelectedIdentifier(identifier);
+                            setIsSwitcherOpen(false);
+                            setSwitcherSearch('');
+                          }}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: isSelected ? '#eff6ff' : 'transparent',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            transition: 'background-color 0.15s',
+                            margin: '2px 0'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) e.currentTarget.style.backgroundColor = '#f8fafc';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>{p.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                              {p.articleNumber ? `Art: ${p.articleNumber}` : ''} {p.sku ? `• SKU: ${p.sku}` : ''}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              color: (p.stockQuantity ?? 0) > 10 ? '#16a34a' : '#dc2626'
+                            }}>
+                              {p.stockQuantity ?? 0} pcs
+                            </span>
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            color: (p.stockQuantity ?? 0) > 10 ? '#16a34a' : '#dc2626'
-                          }}>
-                            {p.stockQuantity ?? 0} pcs
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -576,7 +623,7 @@ export default function ArticleHistoryModal({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 14px',
+                padding: '8px 16px',
                 borderRadius: '8px',
                 border: 'none',
                 backgroundColor: '#4f46e5',
@@ -584,10 +631,13 @@ export default function ArticleHistoryModal({
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(79, 70, 229, 0.2)'
+                boxShadow: '0 2px 4px rgba(79, 70, 229, 0.25)',
+                transition: 'background-color 0.15s'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#4338ca'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4f46e5'}
             >
-              <Plus size={14} /> Quick Stock In / Out
+              <Plus size={15} /> Quick Stock In / Out
             </button>
 
             <button
@@ -597,18 +647,18 @@ export default function ArticleHistoryModal({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 12px',
+                padding: '8px 14px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
-                backgroundColor: '#fff',
+                backgroundColor: '#ffffff',
                 color: '#166534',
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
-              title="Download Excel Report"
+              title="Download Complete Excel Ledger"
             >
-              <FileSpreadsheet size={15} /> Excel
+              <FileSpreadsheet size={16} /> Excel
             </button>
 
             <button
@@ -618,18 +668,18 @@ export default function ArticleHistoryModal({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 12px',
+                padding: '8px 14px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
-                backgroundColor: '#fff',
+                backgroundColor: '#ffffff',
                 color: '#991b1b',
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 cursor: 'pointer'
               }}
-              title="Print PDF Report"
+              title="Print Article Statement"
             >
-              <FileText size={15} /> Print / PDF
+              <FileText size={16} /> Print / PDF
             </button>
 
             <button
@@ -642,10 +692,13 @@ export default function ArticleHistoryModal({
                 height: '36px',
                 borderRadius: '8px',
                 border: '1px solid #e2e8f0',
-                backgroundColor: '#fff',
+                backgroundColor: '#ffffff',
                 color: '#64748b',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'background-color 0.15s'
               }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
             >
               <X size={18} />
             </button>
@@ -657,7 +710,8 @@ export default function ArticleHistoryModal({
           <div style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(4px)',
             zIndex: 10000,
             display: 'flex',
             alignItems: 'center',
@@ -665,32 +719,38 @@ export default function ArticleHistoryModal({
             padding: '16px'
           }}>
             <div style={{
-              backgroundColor: '#fff',
-              borderRadius: '12px',
-              maxWidth: '450px',
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '460px',
               width: '100%',
               padding: '24px',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)'
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #e2e8f0'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
-                  Quick Stock Adjustment
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5' }}>
+                    <Layers size={18} />
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                    Quick Stock Adjustment
+                  </h3>
+                </div>
                 <button onClick={() => setShowAdjustModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
                   <X size={18} />
                 </button>
               </div>
 
               {adjustSuccessMsg && (
-                <div style={{ padding: '10px 14px', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '6px', fontSize: '0.85rem', marginBottom: '14px', fontWeight: 600 }}>
+                <div style={{ padding: '10px 14px', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '14px', fontWeight: 600, border: '1px solid #a7f3d0' }}>
                   {adjustSuccessMsg}
                 </div>
               )}
 
               <form onSubmit={handleQuickAdjust} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
-                    Movement Type
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                    Movement Direction
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                     <button
@@ -700,7 +760,7 @@ export default function ArticleHistoryModal({
                         padding: '10px',
                         borderRadius: '8px',
                         border: adjustType === 'IN' ? '2px solid #16a34a' : '1px solid #cbd5e1',
-                        backgroundColor: adjustType === 'IN' ? '#f0fdf4' : '#fff',
+                        backgroundColor: adjustType === 'IN' ? '#f0fdf4' : '#ffffff',
                         color: adjustType === 'IN' ? '#166534' : '#64748b',
                         fontWeight: 700,
                         fontSize: '0.85rem',
@@ -720,7 +780,7 @@ export default function ArticleHistoryModal({
                         padding: '10px',
                         borderRadius: '8px',
                         border: adjustType === 'OUT' ? '2px solid #dc2626' : '1px solid #cbd5e1',
-                        backgroundColor: adjustType === 'OUT' ? '#fef2f2' : '#fff',
+                        backgroundColor: adjustType === 'OUT' ? '#fef2f2' : '#ffffff',
                         color: adjustType === 'OUT' ? '#991b1b' : '#64748b',
                         fontWeight: 700,
                         fontSize: '0.85rem',
@@ -737,8 +797,8 @@ export default function ArticleHistoryModal({
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                    Quantity
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Quantity (Units)
                   </label>
                   <input
                     type="number"
@@ -752,18 +812,19 @@ export default function ArticleHistoryModal({
                       borderRadius: '8px',
                       border: '1px solid #cbd5e1',
                       fontSize: '1rem',
-                      fontWeight: 600
+                      fontWeight: 700,
+                      outline: 'none'
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
                     Reference / Reason / Notes
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Quotation sample, physical audit count..."
+                    placeholder="e.g. Quotation sample, physical audit count, batch restock..."
                     value={adjustNotes}
                     onChange={(e) => setAdjustNotes(e.target.value)}
                     style={{
@@ -771,12 +832,13 @@ export default function ArticleHistoryModal({
                       padding: '10px 12px',
                       borderRadius: '8px',
                       border: '1px solid #cbd5e1',
-                      fontSize: '0.85rem'
+                      fontSize: '0.85rem',
+                      outline: 'none'
                     }}
                   />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '10px' }}>
                   <button
                     type="button"
                     onClick={() => setShowAdjustModal(false)}
@@ -784,9 +846,10 @@ export default function ArticleHistoryModal({
                       padding: '8px 16px',
                       borderRadius: '8px',
                       border: '1px solid #cbd5e1',
-                      backgroundColor: '#fff',
+                      backgroundColor: '#ffffff',
                       color: '#475569',
                       fontSize: '0.85rem',
+                      fontWeight: 600,
                       cursor: 'pointer'
                     }}
                   >
@@ -800,8 +863,8 @@ export default function ArticleHistoryModal({
                       borderRadius: '8px',
                       border: 'none',
                       backgroundColor: adjustType === 'IN' ? '#16a34a' : '#dc2626',
-                      color: '#fff',
-                      fontWeight: 600,
+                      color: '#ffffff',
+                      fontWeight: 700,
                       fontSize: '0.85rem',
                       cursor: adjustLoading ? 'default' : 'pointer'
                     }}
@@ -815,15 +878,17 @@ export default function ArticleHistoryModal({
         )}
 
         {/* ─── BODY SCROLLABLE CONTAINER ─── */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
           
           {loading ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-              <RefreshCw size={32} className="animate-spin" style={{ margin: '0 auto 12px auto', color: '#4f46e5' }} />
-              <p style={{ margin: 0, fontWeight: 600 }}>Loading article transaction history...</p>
+            <div style={{ padding: '80px', textAlign: 'center', color: '#64748b' }}>
+              <RefreshCw size={36} className="animate-spin" style={{ margin: '0 auto 14px auto', color: '#4f46e5' }} />
+              <p style={{ margin: 0, fontWeight: 700, fontSize: '1rem', color: '#1e293b' }}>Calculating article transaction ledger...</p>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>Syncing quotations, orders, dispatches, and warehouse stock</p>
             </div>
           ) : error ? (
-            <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', color: '#991b1b' }}>
+            <div style={{ padding: '40px', textAlign: 'center', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '12px', color: '#991b1b' }}>
+              <AlertCircle size={32} style={{ margin: '0 auto 10px auto' }} />
               <p style={{ fontWeight: 700, margin: 0 }}>{error}</p>
             </div>
           ) : data ? (
@@ -831,133 +896,194 @@ export default function ArticleHistoryModal({
               {/* ─── KPI METRICS CARDS STRIP ─── */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                 gap: '14px'
               }}>
-                {/* In Stock */}
+                {/* 1. In Stock */}
                 <div style={{
                   backgroundColor: '#ffffff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                  borderLeft: '4px solid #10b981'
+                  borderRadius: '12px',
+                  padding: '16px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                  borderLeft: '5px solid #10b981',
+                  position: 'relative'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Current In-Stock</span>
-                    <Package size={16} color="#10b981" />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Current In-Stock</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                      <Package size={16} />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
-                    {data.kpis.currentStock} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', marginTop: '6px' }}>
+                    {data.kpis.currentStock} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#16a34a', marginTop: '2px', fontWeight: 600 }}>
-                    {data.kpis.currentStock > data.product.minimumStock ? 'Healthy Stock' : 'Low Stock Alert'}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#16a34a', marginTop: '4px', fontWeight: 700 }}>
+                    <CheckCircle2 size={13} />
+                    <span>{data.kpis.currentStock > data.product.minimumStock ? 'Physical Available Stock' : 'Low Stock Alert'}</span>
                   </div>
                 </div>
 
-                {/* Invoiced / Sold */}
+                {/* 2. Invoiced / Sold */}
                 <div style={{
                   backgroundColor: '#ffffff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                  borderLeft: '4px solid #3b82f6'
+                  borderRadius: '12px',
+                  padding: '16px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                  borderLeft: '5px solid #3b82f6'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Invoiced / Sold Qty</span>
-                    <Receipt size={16} color="#3b82f6" />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Invoiced / Sold Qty</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+                      <Receipt size={16} />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e40af', marginTop: '6px' }}>
-                    {data.kpis.totalInvoicedQty} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1d4ed8', marginTop: '6px' }}>
+                    {data.kpis.totalInvoicedQty} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-                    Across {data.kpis.totalOrdersCount} orders / invoices
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                    Across {data.kpis.totalOrdersCount} orders • ₹{data.kpis.totalRevenue?.toLocaleString()}
                   </div>
                 </div>
 
-                {/* Quoted Qty */}
+                {/* 3. Quoted Qty */}
                 <div style={{
                   backgroundColor: '#ffffff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                  borderLeft: '4px solid #f59e0b'
+                  borderRadius: '12px',
+                  padding: '16px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                  borderLeft: '5px solid #f59e0b'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Quoted in Quotes</span>
-                    <FileCheck2 size={16} color="#f59e0b" />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quoted in Quotes</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
+                      <FileCheck2 size={16} />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#b45309', marginTop: '6px' }}>
-                    {data.kpis.totalQuotedQty} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#b45309', marginTop: '6px' }}>
+                    {data.kpis.totalQuotedQty} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
                     {data.kpis.convertedQuotedQty} converted • {data.kpis.activeQuotedQty} active
                   </div>
                 </div>
 
-                {/* Stock In (Purchases/Scans) */}
+                {/* 4. Total Stock In (Inward) */}
                 <div style={{
                   backgroundColor: '#ffffff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                  borderLeft: '4px solid #14b8a6'
+                  borderRadius: '12px',
+                  padding: '16px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                  borderLeft: '5px solid #0d9488'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Stock In</span>
-                    <ArrowDownLeft size={16} color="#14b8a6" />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Stock In</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#f0fdfa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0d9488' }}>
+                      <ArrowDownLeft size={16} />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f766e', marginTop: '6px' }}>
-                    +{data.kpis.stockInTransactionsQty} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f766e', marginTop: '6px' }}>
+                    +{data.kpis.totalStockIn} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-                    Restocks & manual scans
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                    Initial stock, restocks & POs
                   </div>
                 </div>
 
-                {/* Stock Out (Dispatches) */}
+                {/* 5. Total Stock Out (Outward) */}
                 <div style={{
                   backgroundColor: '#ffffff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                  borderLeft: '4px solid #f43f5e'
+                  borderRadius: '12px',
+                  padding: '16px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                  borderLeft: '5px solid #e11d48'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Stock Out</span>
-                    <ArrowUpRight size={16} color="#f43f5e" />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Stock Out</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e11d48' }}>
+                      <ArrowUpRight size={16} />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#be123c', marginTop: '6px' }}>
-                    -{data.kpis.stockOutTransactionsQty} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#be123c', marginTop: '6px' }}>
+                    -{data.kpis.totalStockOut} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
-                    Dispatches & write-offs
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                    {data.kpis.totalInvoicedQty} sold • {data.kpis.manualOutQty} write-offs
                   </div>
                 </div>
 
-                {/* Purchase Orders */}
+                {/* 6. Purchase Orders */}
                 <div style={{
                   backgroundColor: '#ffffff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-                  borderLeft: '4px solid #8b5cf6'
+                  borderRadius: '12px',
+                  padding: '16px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                  borderLeft: '5px solid #8b5cf6'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>PO Received</span>
-                    <Truck size={16} color="#8b5cf6" />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>PO Received</span>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
+                      <Truck size={16} />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#6d28d9', marginTop: '6px' }}>
-                    {data.kpis.totalPOReceivedQty} / {data.kpis.totalPOQty} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#6d28d9', marginTop: '6px' }}>
+                    {data.kpis.totalPOReceivedQty} / {data.kpis.totalPOQty} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
                     From {data.kpis.totalPOsCount} Vendor POs
                   </div>
+                </div>
+              </div>
+
+              {/* ─── INVENTORY RECONCILIATION & MATHEMATICAL BALANCE FORMULA BAR ─── */}
+              <div style={{
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                padding: '12px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.85rem', color: '#334155', fontWeight: 600 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#0f766e', backgroundColor: '#ccfbf1', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>
+                    <ArrowDownLeft size={14} /> Total Sourced In: +{data.kpis.totalStockIn}
+                  </span>
+                  <Minus size={14} color="#94a3b8" />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#1e40af', backgroundColor: '#dbeafe', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>
+                    <ShoppingCart size={14} /> Invoiced / Sold: {data.kpis.totalInvoicedQty}
+                  </span>
+                  {data.kpis.manualOutQty > 0 && (
+                    <>
+                      <Minus size={14} color="#94a3b8" />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#991b1b', backgroundColor: '#fee2e2', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>
+                        <ArrowUpRight size={14} /> Manual Write-Offs: {data.kpis.manualOutQty}
+                      </span>
+                    </>
+                  )}
+                  <Equal size={14} color="#64748b" />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#166534', backgroundColor: '#dcfce7', padding: '4px 12px', borderRadius: '6px', fontWeight: 800, fontSize: '0.9rem' }}>
+                    <Package size={15} /> Physical Available Stock: {data.kpis.currentStock} Units
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                  <span style={{ color: '#64748b' }}>Pipeline Demand:</span>
+                  <span style={{ fontWeight: 700, color: '#b45309', backgroundColor: '#fef3c7', padding: '3px 8px', borderRadius: '6px' }}>
+                    {data.kpis.activeQuotedQty} units in active quotes
+                  </span>
+                  <span style={{ color: '#94a3b8' }}>•</span>
+                  <span style={{ fontWeight: 700, color: '#4338ca', backgroundColor: '#e0e7ff', padding: '3px 8px', borderRadius: '6px' }}>
+                    Uncommitted: {data.kpis.uncommittedStock} units
+                  </span>
                 </div>
               </div>
 
@@ -994,21 +1120,22 @@ export default function ArticleHistoryModal({
                           gap: '6px',
                           padding: '8px 14px',
                           borderRadius: '8px',
-                          border: isActive ? '1px solid #4f46e5' : '1px solid transparent',
-                          backgroundColor: isActive ? '#eff6ff' : 'transparent',
-                          color: isActive ? '#4f46e5' : '#475569',
-                          fontWeight: isActive ? 700 : 500,
+                          border: isActive ? '1px solid #4f46e5' : '1px solid #e2e8f0',
+                          backgroundColor: isActive ? '#4f46e5' : '#ffffff',
+                          color: isActive ? '#ffffff' : '#475569',
+                          fontWeight: isActive ? 700 : 600,
                           fontSize: '0.85rem',
                           cursor: 'pointer',
-                          transition: 'all 0.15s'
+                          boxShadow: isActive ? '0 2px 4px rgba(79, 70, 229, 0.2)' : 'none',
+                          transition: 'all 0.15s ease'
                         }}
                       >
                         <Icon size={15} />
                         {tab.label}
                         <span style={{
-                          backgroundColor: isActive ? '#4f46e5' : '#e2e8f0',
-                          color: isActive ? '#fff' : '#64748b',
-                          fontSize: '0.7rem',
+                          backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                          color: isActive ? '#ffffff' : '#64748b',
+                          fontSize: '0.72rem',
                           fontWeight: 700,
                           padding: '1px 6px',
                           borderRadius: '10px'
@@ -1022,294 +1149,204 @@ export default function ArticleHistoryModal({
 
                 {/* Date Filters & Search */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                     <Calendar size={14} color="#64748b" />
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      style={{ border: 'none', background: 'transparent', fontSize: '0.75rem', outline: 'none' }}
+                      style={{ border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#1e293b' }}
                       title="Start Date"
                     />
-                    <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>to</span>
+                    <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>to</span>
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      style={{ border: 'none', background: 'transparent', fontSize: '0.75rem', outline: 'none' }}
+                      style={{ border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#1e293b' }}
                       title="End Date"
                     />
                   </div>
 
-                  <div style={{ position: 'relative', width: '200px' }}>
-                    <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <div style={{ position: 'relative', width: '220px' }}>
+                    <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                     <input
                       type="text"
-                      placeholder="Search this list..."
+                      placeholder="Search transactions..."
                       value={searchFilter}
                       onChange={(e) => setSearchFilter(e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '6px 8px 6px 28px',
-                        borderRadius: '6px',
+                        padding: '6px 10px 6px 30px',
+                        borderRadius: '8px',
                         border: '1px solid #cbd5e1',
                         fontSize: '0.8rem',
-                        outline: 'none'
+                        outline: 'none',
+                        backgroundColor: '#ffffff'
                       }}
                     />
                   </div>
+
+                  {(startDate || endDate || searchFilter) && (
+                    <button
+                      onClick={() => { setStartDate(''); setEndDate(''); setSearchFilter(''); }}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #e2e8f0',
+                        backgroundColor: '#f1f5f9',
+                        color: '#475569',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* ─── TAB CONTENT PANELS ─── */}
 
-              {/* TAB 1: UNIFIED TIMELINE */}
+              {/* TAB 1: UNIFIED CHRONOLOGICAL TIMELINE */}
               {activeTab === 'timeline' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {filteredTimeline.length === 0 ? (
-                    <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                      No transaction records found matching your filters.
-                    </div>
-                  ) : (
-                    filteredTimeline.map((item: any, idx: number) => {
-                      const isStockIn = item.type === 'IN';
-                      const isStockOut = item.type === 'OUT';
-                      const isQuote = item.source === 'QUOTATION';
-                      const isInvoice = item.source === 'INVOICE_ORDER';
-                      const isPO = item.source === 'PURCHASE_ORDER';
-
-                      return (
-                        <div
-                          key={item.id || idx}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 16px',
-                            borderRadius: '10px',
-                            backgroundColor: '#ffffff',
-                            border: '1px solid #f1f5f9',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
-                        >
-                          {/* Left: Icon, Date, Details */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                            <div style={{
-                              width: '36px',
-                              height: '36px',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              backgroundColor: isStockIn ? '#dcfce7' : (isStockOut ? '#fee2e2' : (isQuote ? '#fef3c7' : (isInvoice ? '#dbeafe' : '#ede9fe'))),
-                              color: isStockIn ? '#166534' : (isStockOut ? '#991b1b' : (isQuote ? '#92400e' : (isInvoice ? '#1e40af' : '#6d28d9')))
-                            }}>
-                              {isStockIn && <ArrowDownLeft size={18} />}
-                              {isStockOut && <ArrowUpRight size={18} />}
-                              {isQuote && <FileCheck2 size={18} />}
-                              {isInvoice && <Receipt size={18} />}
-                              {isPO && <Truck size={18} />}
-                            </div>
-
-                            <div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>
-                                  {item.title}
-                                </span>
-                                <span style={{
-                                  fontSize: '0.7rem',
-                                  fontWeight: 700,
-                                  padding: '2px 8px',
-                                  borderRadius: '12px',
-                                  backgroundColor: isStockIn ? '#dcfce7' : (isStockOut ? '#fee2e2' : (isQuote ? '#fef3c7' : (isInvoice ? '#dbeafe' : '#ede9fe'))),
-                                  color: isStockIn ? '#166534' : (isStockOut ? '#991b1b' : (isQuote ? '#92400e' : (isInvoice ? '#1e40af' : '#6d28d9')))
-                                }}>
-                                  {item.status}
-                                </span>
-                              </div>
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
-                                <span>{new Date(item.date).toLocaleString()}</span>
-                                <span>•</span>
-                                <span>Party: <strong>{item.party}</strong></span>
-                                {item.warehouse && (
-                                  <>
-                                    <span>•</span>
-                                    <span>Warehouse: <strong>{item.warehouse}</strong></span>
-                                  </>
-                                )}
-                                {item.notes && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{item.notes}</span>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right: Quantity impact & Amount */}
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{
-                              fontSize: '1.1rem',
-                              fontWeight: 800,
-                              color: isStockIn ? '#16a34a' : (isStockOut ? '#dc2626' : (isQuote ? '#d97706' : '#2563eb'))
-                            }}>
-                              {isStockIn ? `+${item.quantity}` : (isStockOut ? `-${item.quantity}` : `${item.quantity}`)} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748b' }}>pcs</span>
-                            </div>
-                            {item.total && (
-                              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
-                                ₹{item.total.toLocaleString()}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              )}
-
-              {/* TAB 2: QUOTATIONS */}
-              {activeTab === 'quotations' && (
-                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#ffffff' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Quotation #</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Date</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Customer</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Quoted Qty</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Unit Rate</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Item Total</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Status</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date & Time</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Event Type</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Doc / Ref #</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Customer / Vendor / User</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Qty Change</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Stock Balance</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Details / Notes</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredQuotations.length === 0 ? (
+                      {filteredTimeline.length === 0 ? (
                         <tr>
-                          <td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                            No quotation records found for this article.
+                          <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                            No transaction records found matching your filters.
                           </td>
                         </tr>
                       ) : (
-                        filteredQuotations.map((qi: any) => (
-                          <tr key={qi.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '12px 16px', fontWeight: 700, color: '#4f46e5' }}>
-                              {qi.quotation?.quotationNumber}
-                            </td>
-                            <td style={{ padding: '12px 16px', fontSize: '0.85rem', color: '#475569' }}>
-                              {new Date(qi.quotation?.date).toLocaleDateString()}
-                            </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
-                              {qi.quotation?.customer?.businessName || qi.quotation?.customer?.contactPerson}
-                            </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 700, color: '#d97706' }}>
-                              {qi.quantity} {qi.unit || 'pcs'}
-                            </td>
-                            <td style={{ padding: '12px 16px', color: '#475569' }}>
-                              ₹{qi.rate}
-                            </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>
-                              ₹{qi.total?.toLocaleString()}
-                            </td>
-                            <td style={{ padding: '12px 16px' }}>
-                              <span style={{
-                                padding: '3px 8px',
-                                borderRadius: '12px',
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                backgroundColor: qi.quotation?.status === 'Converted' || qi.quotation?.status === 'Accepted' ? '#dcfce7' : '#fef3c7',
-                                color: qi.quotation?.status === 'Converted' || qi.quotation?.status === 'Accepted' ? '#166534' : '#92400e'
-                              }}>
-                                {qi.quotation?.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                        filteredTimeline.map((item: any, idx: number) => {
+                          const isStockIn = item.type === 'IN';
+                          const isStockOut = item.type === 'OUT' || item.source === 'INVOICE_ORDER';
+                          const isQuote = item.source === 'QUOTATION';
+                          const isInvoice = item.source === 'INVOICE_ORDER';
+                          const isPO = item.source === 'PURCHASE_ORDER';
 
-              {/* TAB 3: INVOICES & ORDERS */}
-              {activeTab === 'invoices' && (
-                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Invoice # / Order #</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Date</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Customer</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Billed Qty</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Unit Rate</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Total</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Invoice Status</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Order Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredOrders.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
-                            No invoice or order records found for this article.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredOrders.map((oi: any) => {
-                          const invoice = oi.order?.invoices?.[0];
                           return (
-                            <tr key={oi.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <tr
+                              key={item.id || idx}
+                              style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                              {/* Date */}
+                              <td style={{ padding: '12px 16px', color: '#475569', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontWeight: 600, color: '#1e293b' }}>
+                                  {new Date(item.date).toLocaleDateString()}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                                  {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              </td>
+
+                              {/* Event Type Badge */}
                               <td style={{ padding: '12px 16px' }}>
-                                <div style={{ fontWeight: 700, color: '#2563eb' }}>
-                                  {invoice?.invoiceNumber || 'Invoice Pending'}
-                                </div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                  Order: {oi.order?.orderNumber}
-                                </div>
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '4px 8px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  backgroundColor: isStockIn ? '#dcfce7' : (isInvoice ? '#dbeafe' : (isQuote ? '#fef3c7' : (isPO ? '#ede9fe' : '#fee2e2'))),
+                                  color: isStockIn ? '#166534' : (isInvoice ? '#1e40af' : (isQuote ? '#92400e' : (isPO ? '#6d28d9' : '#991b1b')))
+                                }}>
+                                  {isStockIn && <ArrowDownLeft size={13} />}
+                                  {isInvoice && <ShoppingCart size={13} />}
+                                  {isQuote && <FileCheck2 size={13} />}
+                                  {isPO && <Truck size={13} />}
+                                  {item.type === 'OUT' && !isInvoice && <ArrowUpRight size={13} />}
+                                  {isQuote ? 'Quotation' : (isInvoice ? 'Sales Order' : (isPO ? 'Vendor PO' : (isStockIn ? 'Stock In' : 'Stock Out')))}
+                                </span>
                               </td>
-                              <td style={{ padding: '12px 16px', fontSize: '0.85rem', color: '#475569' }}>
-                                {new Date(oi.order?.orderDate).toLocaleDateString()}
+
+                              {/* Doc / Reference # */}
+                              <td style={{ padding: '12px 16px', fontWeight: 700, color: isInvoice ? '#2563eb' : (isQuote ? '#b45309' : '#0f172a') }}>
+                                {item.orderId ? (
+                                  <Link href={`/orders/${item.orderId}`} target="_blank" style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    {item.docNumber} <ExternalLink size={12} />
+                                  </Link>
+                                ) : item.quotationId ? (
+                                  <Link href={`/quotations/${item.quotationId}`} target="_blank" style={{ color: '#b45309', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                    {item.docNumber} <ExternalLink size={12} />
+                                  </Link>
+                                ) : (
+                                  item.docNumber || '-'
+                                )}
                               </td>
+
+                              {/* Customer / Vendor / Party */}
                               <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
-                                {oi.order?.customer?.businessName || oi.order?.customer?.contactPerson}
+                                <div>{item.party || '-'}</div>
+                                {item.warehouse && (
+                                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>📍 {item.warehouse}</div>
+                                )}
                               </td>
-                              <td style={{ padding: '12px 16px', fontWeight: 700, color: '#2563eb' }}>
-                                {oi.quantity} pcs
+
+                              {/* Qty Change */}
+                              <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <span style={{
+                                  fontSize: '0.95rem',
+                                  fontWeight: 800,
+                                  color: isStockIn ? '#16a34a' : (isInvoice || (item.type === 'OUT' && !isQuote) ? '#dc2626' : (isQuote ? '#d97706' : '#6d28d9'))
+                                }}>
+                                  {isStockIn ? `+${item.quantity}` : (isInvoice || (item.type === 'OUT' && !isQuote) ? `-${item.quantity}` : `${item.quantity}`)}
+                                </span>
+                                <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '4px' }}>
+                                  {isQuote ? 'pcs (Quote)' : 'pcs'}
+                                </span>
                               </td>
-                              <td style={{ padding: '12px 16px', color: '#475569' }}>
-                                ₹{oi.rate}
+
+                              {/* Running Stock Balance */}
+                              <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <span style={{
+                                  padding: '3px 8px',
+                                  borderRadius: '6px',
+                                  backgroundColor: '#f0fdf4',
+                                  color: '#166534',
+                                  fontWeight: 800,
+                                  fontSize: '0.85rem'
+                                }}>
+                                  {item.runningBalance !== undefined ? `${item.runningBalance} units` : '-'}
+                                </span>
                               </td>
-                              <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a' }}>
-                                ₹{oi.total?.toLocaleString()}
-                              </td>
+
+                              {/* Status Badge */}
                               <td style={{ padding: '12px 16px' }}>
                                 <span style={{
                                   padding: '3px 8px',
                                   borderRadius: '12px',
                                   fontSize: '0.72rem',
                                   fontWeight: 700,
-                                  backgroundColor: invoice?.status === 'Paid' ? '#dcfce7' : '#fee2e2',
-                                  color: invoice?.status === 'Paid' ? '#166534' : '#991b1b'
+                                  backgroundColor: item.status === 'Converted' || item.status === 'Paid' || item.status === 'In Stock' || item.status === 'Received' ? '#dcfce7' : '#fef3c7',
+                                  color: item.status === 'Converted' || item.status === 'Paid' || item.status === 'In Stock' || item.status === 'Received' ? '#166534' : '#92400e'
                                 }}>
-                                  {invoice?.status || 'Unbilled'}
+                                  {item.status || 'Completed'}
                                 </span>
                               </td>
-                              <td style={{ padding: '12px 16px' }}>
-                                <span style={{
-                                  padding: '3px 8px',
-                                  borderRadius: '12px',
-                                  fontSize: '0.72rem',
-                                  fontWeight: 600,
-                                  backgroundColor: '#f1f5f9',
-                                  color: '#334155'
-                                }}>
-                                  {oi.order?.orderStatus}
-                                </span>
+
+                              {/* Notes / Details */}
+                              <td style={{ padding: '12px 16px', color: '#64748b', fontSize: '0.8rem', maxWidth: '240px' }}>
+                                {item.notes || '-'}
                               </td>
                             </tr>
                           );
@@ -1320,19 +1357,226 @@ export default function ArticleHistoryModal({
                 </div>
               )}
 
+              {/* TAB 2: QUOTATIONS */}
+              {activeTab === 'quotations' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', backgroundColor: '#fefce8', borderRadius: '8px', border: '1px solid #fef08a' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#854d0e', fontWeight: 600 }}>
+                      <strong>Quotation Pipeline:</strong> Total <strong>{data.kpis.totalQuotedQty} units</strong> across {data.kpis.totalQuotationsCount} quotes (<strong>{data.kpis.convertedQuotedQty} units converted</strong> • <strong>{data.kpis.activeQuotedQty} active</strong>)
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#ffffff' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Quotation #</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Customer</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Quoted Qty</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Unit Rate</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Item Total</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredQuotations.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                              No quotation records found for this article.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredQuotations.map((qi: any) => (
+                            <tr key={qi.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
+                              <td style={{ padding: '12px 16px', fontWeight: 700, color: '#4f46e5' }}>
+                                <Link href={`/quotations/${qi.quotation?.id}`} target="_blank" style={{ color: '#4f46e5', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                  {qi.quotation?.quotationNumber} <ExternalLink size={12} />
+                                </Link>
+                              </td>
+                              <td style={{ padding: '12px 16px', color: '#475569' }}>
+                                {new Date(qi.quotation?.date).toLocaleDateString()}
+                              </td>
+                              <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
+                                {qi.quotation?.customer?.businessName || qi.quotation?.customer?.contactPerson}
+                              </td>
+                              <td style={{ padding: '12px 16px', fontWeight: 800, color: '#d97706', textAlign: 'right' }}>
+                                {qi.quantity} {qi.unit || 'pcs'}
+                              </td>
+                              <td style={{ padding: '12px 16px', color: '#475569', textAlign: 'right' }}>
+                                ₹{qi.rate}
+                              </td>
+                              <td style={{ padding: '12px 16px', fontWeight: 800, color: '#0f172a', textAlign: 'right' }}>
+                                ₹{qi.total?.toLocaleString()}
+                              </td>
+                              <td style={{ padding: '12px 16px' }}>
+                                <span style={{
+                                  padding: '3px 8px',
+                                  borderRadius: '12px',
+                                  fontSize: '0.72rem',
+                                  fontWeight: 700,
+                                  backgroundColor: qi.quotation?.status === 'Converted' || qi.quotation?.status === 'Accepted' ? '#dcfce7' : '#fef3c7',
+                                  color: qi.quotation?.status === 'Converted' || qi.quotation?.status === 'Accepted' ? '#166534' : '#92400e'
+                                }}>
+                                  {qi.quotation?.status}
+                                </span>
+                              </td>
+                              <td style={{ padding: '12px 16px' }}>
+                                <Link
+                                  href={`/quotations/${qi.quotation?.id}`}
+                                  target="_blank"
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px',
+                                    backgroundColor: '#eff6ff',
+                                    color: '#2563eb',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    textDecoration: 'none'
+                                  }}
+                                >
+                                  View <ExternalLink size={11} />
+                                </Link>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: INVOICES & ORDERS */}
+              {activeTab === 'invoices' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', backgroundColor: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#1e40af', fontWeight: 600 }}>
+                      <strong>Sales & Invoicing Summary:</strong> Total <strong>{data.kpis.totalInvoicedQty} units sold</strong> across {data.kpis.totalOrdersCount} orders (Revenue: <strong>₹{data.kpis.totalRevenue?.toLocaleString()}</strong>)
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#ffffff' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Invoice # / Order #</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Customer</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Billed Qty</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Unit Rate</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Total</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Invoice Status</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Order Status</th>
+                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredOrders.length === 0 ? (
+                          <tr>
+                            <td colSpan={9} style={{ padding: '30px', textAlign: 'center', color: '#94a3b8' }}>
+                              No invoice or order records found for this article.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredOrders.map((oi: any) => {
+                            const invoice = oi.order?.invoices?.[0];
+                            return (
+                              <tr key={oi.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
+                                <td style={{ padding: '12px 16px' }}>
+                                  <div style={{ fontWeight: 700, color: '#2563eb' }}>
+                                    {invoice?.invoiceNumber || 'Invoice Pending'}
+                                  </div>
+                                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                    Order: {oi.order?.orderNumber}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '12px 16px', color: '#475569' }}>
+                                  {new Date(oi.order?.orderDate).toLocaleDateString()}
+                                </td>
+                                <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
+                                  {oi.order?.customer?.businessName || oi.order?.customer?.contactPerson}
+                                </td>
+                                <td style={{ padding: '12px 16px', fontWeight: 800, color: '#2563eb', textAlign: 'right' }}>
+                                  {oi.quantity} pcs
+                                </td>
+                                <td style={{ padding: '12px 16px', color: '#475569', textAlign: 'right' }}>
+                                  ₹{oi.rate}
+                                </td>
+                                <td style={{ padding: '12px 16px', fontWeight: 800, color: '#0f172a', textAlign: 'right' }}>
+                                  ₹{(oi.total || (oi.quantity * oi.rate))?.toLocaleString()}
+                                </td>
+                                <td style={{ padding: '12px 16px' }}>
+                                  <span style={{
+                                    padding: '3px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    backgroundColor: invoice?.status === 'Paid' ? '#dcfce7' : '#fee2e2',
+                                    color: invoice?.status === 'Paid' ? '#166534' : '#991b1b'
+                                  }}>
+                                    {invoice?.status || 'Unbilled'}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '12px 16px' }}>
+                                  <span style={{
+                                    padding: '3px 8px',
+                                    borderRadius: '12px',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    backgroundColor: '#f1f5f9',
+                                    color: '#334155'
+                                  }}>
+                                    {oi.order?.orderStatus}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '12px 16px' }}>
+                                  <Link
+                                    href={`/orders/${oi.order?.id}`}
+                                    target="_blank"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      padding: '4px 8px',
+                                      borderRadius: '6px',
+                                      backgroundColor: '#eff6ff',
+                                      color: '#2563eb',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      textDecoration: 'none'
+                                    }}
+                                  >
+                                    View <ExternalLink size={11} />
+                                  </Link>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
               {/* TAB 4: STOCK ADJUSTMENTS & SCANS */}
               {activeTab === 'adjustments' && (
-                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#ffffff' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Date & Time</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Movement</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Quantity</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Reference</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Warehouse</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Employee / User</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Notes</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date & Time</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Movement</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Quantity</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Reference</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Warehouse</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Employee / User</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Notes</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1344,8 +1588,8 @@ export default function ArticleHistoryModal({
                         </tr>
                       ) : (
                         filteredAdjustments.map((t: any) => (
-                          <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '12px 16px', fontSize: '0.85rem', color: '#475569' }}>
+                          <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
+                            <td style={{ padding: '12px 16px', color: '#475569' }}>
                               {new Date(t.date).toLocaleString()}
                             </td>
                             <td style={{ padding: '12px 16px' }}>
@@ -1361,17 +1605,17 @@ export default function ArticleHistoryModal({
                                 color: t.type === 'IN' ? '#166534' : '#991b1b'
                               }}>
                                 {t.type === 'IN' ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
-                                {t.type === 'IN' ? 'Stock In' : 'Stock Out'}
+                                {t.type === 'IN' ? 'Stock In (Add)' : 'Stock Out (Deduct)'}
                               </span>
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 800, color: t.type === 'IN' ? '#16a34a' : '#dc2626' }}>
+                            <td style={{ padding: '12px 16px', fontWeight: 800, color: t.type === 'IN' ? '#16a34a' : '#dc2626', textAlign: 'right' }}>
                               {t.type === 'IN' ? `+${t.quantity}` : `-${t.quantity}`} pcs
                             </td>
                             <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
                               {t.reference || 'Manual Scan'}
                             </td>
                             <td style={{ padding: '12px 16px', color: '#475569' }}>
-                              {t.warehouse?.name || '-'}
+                              {t.warehouse?.name || 'Main Warehouse'}
                             </td>
                             <td style={{ padding: '12px 16px', color: '#475569' }}>
                               {t.employee?.user?.name || 'System / Admin'}
@@ -1389,17 +1633,17 @@ export default function ArticleHistoryModal({
 
               {/* TAB 5: PURCHASE ORDERS */}
               {activeTab === 'purchases' && (
-                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#ffffff' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>PO #</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Date</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Vendor</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Ordered Qty</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Received Qty</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Rate</th>
-                        <th style={{ padding: '12px 16px', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Status</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>PO #</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Vendor</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Ordered Qty</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Received Qty</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Rate</th>
+                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1411,23 +1655,23 @@ export default function ArticleHistoryModal({
                         </tr>
                       ) : (
                         filteredPOs.map((poi: any) => (
-                          <tr key={poi.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <tr key={poi.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
                             <td style={{ padding: '12px 16px', fontWeight: 700, color: '#7c3aed' }}>
                               {poi.purchaseOrder?.poNumber}
                             </td>
-                            <td style={{ padding: '12px 16px', fontSize: '0.85rem', color: '#475569' }}>
+                            <td style={{ padding: '12px 16px', color: '#475569' }}>
                               {new Date(poi.purchaseOrder?.orderDate).toLocaleDateString()}
                             </td>
                             <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
                               {poi.purchaseOrder?.vendor?.companyName || '-'}
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 700, color: '#7c3aed' }}>
+                            <td style={{ padding: '12px 16px', fontWeight: 800, color: '#7c3aed', textAlign: 'right' }}>
                               {poi.quantity} pcs
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 700, color: '#16a34a' }}>
+                            <td style={{ padding: '12px 16px', fontWeight: 800, color: '#16a34a', textAlign: 'right' }}>
                               {poi.receivedQty} pcs
                             </td>
-                            <td style={{ padding: '12px 16px', color: '#475569' }}>
+                            <td style={{ padding: '12px 16px', color: '#475569', textAlign: 'right' }}>
                               ₹{poi.rate}
                             </td>
                             <td style={{ padding: '12px 16px' }}>
@@ -1450,15 +1694,22 @@ export default function ArticleHistoryModal({
                 </div>
               )}
 
-              {/* TAB 6: PRODUCT GALLERY & MULTI-IMAGE VIEWER */}
+              {/* TAB 6: PRODUCT GALLERY & PHOTOS */}
               {activeTab === 'images' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {(!data.product.images || data.product.images.length === 0) ? (
-                    <div style={{ padding: '60px', textAlign: 'center', backgroundColor: '#f8fafc', borderRadius: '12px', border: '2px dashed #cbd5e1' }}>
+                    <div style={{
+                      padding: '40px',
+                      textAlign: 'center',
+                      backgroundColor: '#f8fafc',
+                      borderRadius: '12px',
+                      border: '2px dashed #cbd5e1',
+                      color: '#64748b'
+                    }}>
                       <ImageIcon size={40} style={{ margin: '0 auto 10px auto', color: '#94a3b8' }} />
-                      <h4 style={{ margin: '0 0 6px 0', color: '#334155' }}>No Product Images Uploaded</h4>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>
-                        You can upload multiple high-resolution photos for this article via the "Edit Product" modal.
+                      <p style={{ margin: 0, fontWeight: 700, color: '#1e293b' }}>No product images uploaded yet</p>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                        You can upload and organize high-resolution product photos via Edit Product.
                       </p>
                     </div>
                   ) : (
@@ -1472,57 +1723,56 @@ export default function ArticleHistoryModal({
                           key={idx}
                           onClick={() => setLightboxImg(imgUrl)}
                           style={{
-                            position: 'relative',
-                            aspectRatio: '1 / 1',
                             borderRadius: '12px',
                             border: idx === 0 ? '2px solid #4f46e5' : '1px solid #e2e8f0',
                             overflow: 'hidden',
-                            backgroundColor: '#fff',
-                            boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            backgroundColor: '#ffffff',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                            position: 'relative',
                             cursor: 'pointer',
-                            transition: 'transform 0.2s, box-shadow 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = '0 6px 12px rgba(0,0,0,0.1)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06)';
+                            aspectRatio: '1 / 1'
                           }}
                         >
                           <img
                             src={imgUrl}
-                            alt={`Photo ${idx + 1}`}
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            alt={`${data.product.name} - ${idx + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover'
+                            }}
                           />
                           {idx === 0 && (
-                            <div style={{
+                            <span style={{
                               position: 'absolute',
                               top: '8px',
                               left: '8px',
                               backgroundColor: '#4f46e5',
-                              color: '#fff',
+                              color: '#ffffff',
                               fontSize: '0.7rem',
                               fontWeight: 700,
-                              padding: '3px 8px',
-                              borderRadius: '6px'
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
                             }}>
                               Primary Cover
-                            </div>
+                            </span>
                           )}
                           <div style={{
                             position: 'absolute',
-                            bottom: '8px',
-                            right: '8px',
-                            backgroundColor: 'rgba(0,0,0,0.6)',
-                            color: '#fff',
-                            fontSize: '0.7rem',
+                            bottom: 0,
+                            insetInline: 0,
+                            padding: '8px 10px',
+                            background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
+                            color: '#ffffff',
+                            fontSize: '0.75rem',
                             fontWeight: 600,
-                            padding: '3px 6px',
-                            borderRadius: '4px'
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
                           }}>
-                            Photo #{idx + 1}
+                            <span>Photo #{idx + 1}</span>
+                            <Eye size={14} />
                           </div>
                         </div>
                       ))}
@@ -1532,55 +1782,60 @@ export default function ArticleHistoryModal({
               )}
             </>
           ) : null}
-
         </div>
 
-        {/* ─── LIGHTBOX PREVIEW MODAL ─── */}
+        {/* ─── FULL-SCREEN LIGHTBOX MODAL ─── */}
         {lightboxImg && (
           <div
             onClick={() => setLightboxImg(null)}
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.85)',
-              zIndex: 999999,
+              backgroundColor: 'rgba(0, 0, 0, 0.85)',
+              zIndex: 11000,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              padding: '24px'
+              padding: '20px',
+              cursor: 'zoom-out'
             }}
           >
-            <div style={{ position: 'relative', maxWidth: '85vw', maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+              <img
+                src={lightboxImg}
+                alt="Product Full Preview"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '90vh',
+                  borderRadius: '12px',
+                  objectFit: 'contain',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                }}
+              />
               <button
-                onClick={() => setLightboxImg(null)}
+                onClick={(e) => { e.stopPropagation(); setLightboxImg(null); }}
                 style={{
                   position: 'absolute',
-                  top: '-16px',
-                  right: '-16px',
-                  backgroundColor: '#fff',
+                  top: '-12px',
+                  right: '-12px',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: '#ffffff',
                   color: '#0f172a',
                   border: 'none',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.2)'
                 }}
               >
-                <X size={18} />
+                <X size={20} />
               </button>
-              <img
-                src={lightboxImg}
-                alt="Product Preview"
-                style={{ maxWidth: '85vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px' }}
-              />
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

@@ -363,8 +363,47 @@ export async function getArticleTransactionHistory(articleOrSkuOrId: string, fil
       orderBy: { purchaseOrder: { orderDate: 'desc' } }
     });
 
-    // 6. Aggregate KPIs
+    // 6. Aggregate KPIs with Precise Mathematics
+    // Check initial stock transaction
+    const initialTx = inventoryTransactions.find(t => t.reference === "Initial Stock");
+    const initialStock = initialTx ? initialTx.quantity : (inventoryTransactions.length === 0 ? product.stockQuantity : 0);
+    
+    const manualInQty = inventoryTransactions
+      .filter(t => t.type === 'IN' && t.reference !== "Initial Stock")
+      .reduce((sum, t) => sum + t.quantity, 0);
+
+    const totalPOReceivedQty = purchaseOrderItems.reduce((sum, poi) => sum + (poi.receivedQty || 0), 0);
+    const totalPOQty = purchaseOrderItems.reduce((sum, poi) => sum + (poi.quantity || 0), 0);
+
+    // Total Stock In (Inflow)
+    const totalStockIn = (initialTx ? 0 : 0) + inventoryTransactions.filter(t => t.type === 'IN').reduce((sum, t) => sum + t.quantity, 0) + totalPOReceivedQty;
+    const effectiveTotalStockIn = totalStockIn > 0 ? totalStockIn : Math.max(initialStock, product.stockQuantity);
+
+    // Total Invoiced & Sold in Orders
     const totalInvoicedQty = orderItems.reduce((sum, oi) => sum + (oi.quantity || 0), 0);
+    const totalRevenue = orderItems.reduce((sum, oi) => sum + (oi.total || (oi.quantity * oi.rate) || 0), 0);
+
+    // Manual Stock Out (Excluding order references if any)
+    const manualOutQty = inventoryTransactions
+      .filter(t => t.type === 'OUT' && !orderItems.some(oi => oi.order?.orderNumber && t.reference === oi.order.orderNumber))
+      .reduce((sum, t) => sum + t.quantity, 0);
+
+    // Total Stock Out (Outflow = Sold in Orders + Manual Write-offs/Damaged)
+    const totalStockOut = totalInvoicedQty + manualOutQty;
+
+    // Real Physical / Available Stock
+    const computedStock = Math.max(0, effectiveTotalStockIn - totalStockOut);
+
+    // Sync database stockQuantity if it differs
+    if (product.stockQuantity !== computedStock) {
+      await prisma.product.update({
+        where: { id: product.id },
+        data: { stockQuantity: computedStock }
+      });
+      product.stockQuantity = computedStock;
+    }
+
+    // Quotations Breakdown
     const totalQuotedQty = quotationItems.reduce((sum, qi) => sum + (qi.quantity || 0), 0);
     const activeQuotedQty = quotationItems
       .filter(qi => ['Draft', 'Sent', 'Viewed'].includes(qi.quotation?.status))
@@ -372,54 +411,56 @@ export async function getArticleTransactionHistory(articleOrSkuOrId: string, fil
     const convertedQuotedQty = quotationItems
       .filter(qi => ['Accepted', 'Converted'].includes(qi.quotation?.status))
       .reduce((sum, qi) => sum + (qi.quantity || 0), 0);
-
-    const stockInTransactionsQty = inventoryTransactions
-      .filter(t => t.type === 'IN')
-      .reduce((sum, t) => sum + t.quantity, 0);
-    const stockOutTransactionsQty = inventoryTransactions
-      .filter(t => t.type === 'OUT')
-      .reduce((sum, t) => sum + t.quantity, 0);
-
-    const totalPOQty = purchaseOrderItems.reduce((sum, poi) => sum + (poi.quantity || 0), 0);
-    const totalPOReceivedQty = purchaseOrderItems.reduce((sum, poi) => sum + (poi.receivedQty || 0), 0);
+    const uncommittedStock = Math.max(0, computedStock - activeQuotedQty);
 
     // 7. Assemble Unified Chronological Timeline
-    const timeline: any[] = [];
+    const rawEvents: any[] = [];
 
     // Add Inventory Transactions
     inventoryTransactions.forEach(t => {
-      timeline.push({
+      // Avoid duplicate display if it's already an order out transaction
+      const isLinkedToOrder = t.type === 'OUT' && orderItems.some(oi => oi.order?.orderNumber && t.reference === oi.order.orderNumber);
+      if (isLinkedToOrder) return;
+
+      rawEvents.push({
         id: `tx_${t.id}`,
-        date: t.date,
+        date: new Date(t.date),
         source: "STOCK_ADJUSTMENT",
         type: t.type, // "IN" or "OUT"
         quantity: t.quantity,
-        title: t.type === 'IN' ? 'Stock Added (IN)' : 'Stock Deducted (OUT)',
+        delta: t.type === 'IN' ? t.quantity : -t.quantity,
+        isStockImpact: true,
+        title: t.reference === 'Initial Stock' 
+          ? '📦 Initial Baseline Stock' 
+          : (t.type === 'IN' ? '📥 Stock Added / Restocked (IN)' : '📤 Stock Deducted / Written-off (OUT)'),
         docNumber: t.reference || (t.type === 'IN' ? 'Stock In Scan' : 'Stock Out Scan'),
         party: t.employee?.user?.name || 'Inventory Manager',
-        warehouse: t.warehouse?.name || null,
+        warehouse: t.warehouse?.name || 'Main Warehouse',
         notes: t.notes || (t.reference ? `Reference: ${t.reference}` : 'Manual Adjustment'),
-        status: t.type === 'IN' ? 'In Stock' : 'Dispatched / Deducted',
+        status: t.type === 'IN' ? 'In Stock' : 'Deducted',
         badgeColor: t.type === 'IN' ? 'emerald' : 'rose'
       });
     });
 
     // Add Quotation Items
     quotationItems.forEach(qi => {
-      timeline.push({
+      rawEvents.push({
         id: `quote_${qi.id}`,
-        date: qi.quotation.date,
+        date: new Date(qi.quotation.date),
         source: "QUOTATION",
         type: "QUOTATION",
         quantity: qi.quantity,
+        delta: 0,
+        isStockImpact: false,
         rate: qi.rate,
         total: qi.total,
-        title: `Quotation (${qi.quotation.quotationNumber})`,
+        title: `📑 Quotation (${qi.quotation.quotationNumber})`,
         docNumber: qi.quotation.quotationNumber,
+        quotationId: qi.quotation.id,
         party: qi.quotation.customer?.businessName || qi.quotation.customer?.contactPerson || 'Customer',
         salesperson: qi.quotation.salesperson?.user?.name || null,
         status: qi.quotation.status,
-        notes: qi.quotation.subject || qi.description || 'Quotation created for customer',
+        notes: qi.quotation.subject || qi.description || (qi.quotation.status === 'Converted' ? 'Converted to confirmed sales order' : 'Active Quotation in pipeline'),
         badgeColor: qi.quotation.status === 'Converted' || qi.quotation.status === 'Accepted' ? 'indigo' : 'amber'
       });
     });
@@ -428,48 +469,69 @@ export async function getArticleTransactionHistory(articleOrSkuOrId: string, fil
     orderItems.forEach(oi => {
       const invoice = oi.order.invoices?.[0];
       const docDisplay = invoice ? `${invoice.invoiceNumber}` : `${oi.order.orderNumber}`;
-      timeline.push({
+      rawEvents.push({
         id: `order_${oi.id}`,
-        date: oi.order.orderDate,
+        date: new Date(oi.order.orderDate),
         source: "INVOICE_ORDER",
         type: "INVOICE_ORDER",
         quantity: oi.quantity,
+        delta: -oi.quantity, // Deducts stock
+        isStockImpact: true,
         rate: oi.rate,
-        total: oi.total,
-        title: invoice ? `Invoice & Order (${docDisplay})` : `Sales Order (${oi.order.orderNumber})`,
+        total: oi.total || (oi.quantity * oi.rate),
+        title: invoice ? `🛒 Invoiced Order (${docDisplay})` : `🛒 Sales Order (${oi.order.orderNumber})`,
         docNumber: docDisplay,
+        orderId: oi.order.id,
         orderNumber: oi.order.orderNumber,
         invoiceNumber: invoice?.invoiceNumber || null,
         party: oi.order.customer?.businessName || oi.order.customer?.contactPerson || 'Customer',
         salesperson: oi.order.salesperson?.user?.name || null,
         status: invoice ? `Invoice: ${invoice.status}` : `Order: ${oi.order.orderStatus}`,
-        notes: oi.order.notes || `Order ${oi.order.orderStatus}`,
+        notes: oi.order.notes || `Dispatched/Sold • Total ₹${(oi.total || (oi.quantity * oi.rate)).toLocaleString()}`,
         badgeColor: 'blue'
       });
     });
 
     // Add Purchase Orders
     purchaseOrderItems.forEach(poi => {
-      timeline.push({
+      const received = poi.receivedQty || 0;
+      rawEvents.push({
         id: `po_${poi.id}`,
-        date: poi.purchaseOrder.orderDate,
+        date: new Date(poi.purchaseOrder.orderDate),
         source: "PURCHASE_ORDER",
         type: "PURCHASE_ORDER",
         quantity: poi.quantity,
-        receivedQty: poi.receivedQty,
+        receivedQty: received,
+        delta: received, // Adds received stock
+        isStockImpact: received > 0,
         rate: poi.rate,
         total: poi.total,
-        title: `Purchase Order (${poi.purchaseOrder.poNumber})`,
+        title: `🚚 Vendor PO (${poi.purchaseOrder.poNumber})`,
         docNumber: poi.purchaseOrder.poNumber,
         party: poi.purchaseOrder.vendor?.companyName || 'Vendor',
         status: poi.purchaseOrder.status,
-        notes: poi.purchaseOrder.notes || `Received: ${poi.receivedQty} / ${poi.quantity} units`,
+        notes: `Vendor Inflow: ${received} / ${poi.quantity} units received`,
         badgeColor: 'purple'
       });
     });
 
-    // Sort timeline by date descending
-    timeline.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // 8. Sort Chronologically (Oldest to Newest) to Compute Running Balances
+    rawEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    let currentRunningBalance = 0;
+    const timelineWithBalance = rawEvents.map(event => {
+      if (event.isStockImpact) {
+        currentRunningBalance = Math.max(0, currentRunningBalance + event.delta);
+      }
+      return {
+        ...event,
+        date: event.date.toISOString(),
+        runningBalance: currentRunningBalance
+      };
+    });
+
+    // Sort final timeline Newest First for display
+    const timeline = timelineWithBalance.slice().reverse();
 
     return {
       success: true,
@@ -482,7 +544,7 @@ export async function getArticleTransactionHistory(articleOrSkuOrId: string, fil
         hsnCode: product.hsnCode,
         sellingPrice: product.sellingPrice,
         purchasePrice: product.purchasePrice,
-        stockQuantity: product.stockQuantity,
+        stockQuantity: computedStock,
         minimumStock: product.minimumStock,
         status: product.status,
         description: product.description,
@@ -491,13 +553,19 @@ export async function getArticleTransactionHistory(articleOrSkuOrId: string, fil
         createdAt: product.createdAt
       },
       kpis: {
-        currentStock: product.stockQuantity,
+        currentStock: computedStock,
+        totalStockIn: effectiveTotalStockIn,
+        totalStockOut,
         totalInvoicedQty,
+        totalRevenue,
         totalQuotedQty,
         activeQuotedQty,
         convertedQuotedQty,
-        stockInTransactionsQty,
-        stockOutTransactionsQty,
+        uncommittedStock,
+        stockInTransactionsQty: effectiveTotalStockIn,
+        stockOutTransactionsQty: totalStockOut,
+        manualInQty,
+        manualOutQty,
         totalPOQty,
         totalPOReceivedQty,
         totalQuotationsCount: quotationItems.length,

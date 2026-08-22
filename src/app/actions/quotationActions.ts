@@ -644,8 +644,34 @@ export async function convertQuotationToOrder(
       }
     });
 
+    // Deduct stock for all line items and record transactions
+    for (const item of quotation.items) {
+      const q = Math.round(item.quantity);
+      if (q > 0) {
+        try {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: { stockQuantity: { decrement: q } }
+          });
+          await prisma.inventoryTransaction.create({
+            data: {
+              productId: item.productId,
+              quantity: q,
+              type: 'OUT',
+              reference: orderNumber,
+              notes: `Quotation #${quotation.quotationNumber} converted to Sales Order ${orderNumber}`
+            }
+          });
+        } catch (err) {
+          console.warn(`Failed to deduct inventory for product ${item.productId}:`, err);
+        }
+      }
+    }
+
     revalidatePath("/quotations");
     revalidatePath("/orders");
+    revalidatePath("/products");
+    revalidatePath("/", "layout");
 
     return { success: true, orderId: order.id, orderNumber: order.orderNumber };
   } catch (error) {
