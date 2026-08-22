@@ -254,11 +254,79 @@ export async function sendWhatsAppMessageAction(data: {
   try {
     const conversation = await prisma.whatsAppConversation.findUnique({
       where: { id: data.conversationId },
-      include: { customer: true }
+      include: { customer: true, account: true }
     });
 
     if (!conversation) {
       return { success: false, error: "Conversation not found" };
+    }
+
+    let metaMessageId = null;
+    let messageStatus = 'SENT';
+
+    // Call Meta API if it's an outbound message and not an internal note
+    if (!data.isInternalNote && data.senderType !== 'CUSTOMER') {
+      const token = conversation.account?.accessToken;
+      const phoneId = conversation.account?.phoneId;
+
+      if (token && phoneId && !token.startsWith("EAAG")) {
+        const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+
+        const recipientPhone = conversation.customer.whatsappNumber 
+          ? conversation.customer.whatsappNumber.replace(/\D/g, '') 
+          : conversation.customer.mobile.replace(/\D/g, '');
+
+        const payload: any = {
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: recipientPhone.startsWith('91') ? recipientPhone : `91${recipientPhone}`,
+        };
+
+        const absoluteMediaUrl = data.mediaUrl?.startsWith('http') 
+          ? data.mediaUrl 
+          : `https://espon.in${data.mediaUrl}`; // Fallback domain for local files
+
+        if (data.messageType === 'DOCUMENT' && data.mediaUrl) {
+           payload.type = 'document';
+           payload.document = {
+             link: absoluteMediaUrl,
+             caption: data.content,
+             filename: data.mediaFilename || 'Document.pdf'
+           };
+        } else if (data.messageType === 'IMAGE' && data.mediaUrl) {
+           payload.type = 'image';
+           payload.image = {
+             link: absoluteMediaUrl,
+             caption: data.content
+           };
+        } else {
+           payload.type = 'text';
+           payload.text = { body: data.content };
+        }
+
+        try {
+           const response = await fetch(url, {
+             method: 'POST',
+             headers,
+             body: JSON.stringify(payload)
+           });
+           const resData = await response.json();
+           
+           if (resData.messages?.[0]?.id) {
+             metaMessageId = resData.messages[0].id;
+           } else if (resData.error) {
+             console.error("Meta API Error:", resData.error);
+             messageStatus = 'FAILED';
+           }
+        } catch (e) {
+           console.error("Failed to send Meta API message:", e);
+           messageStatus = 'FAILED';
+        }
+      }
     }
 
     const message = await prisma.whatsAppMessage.create({
@@ -274,7 +342,8 @@ export async function sendWhatsAppMessageAction(data: {
         mediaFilename: data.mediaFilename,
         metadata: data.metadata,
         isInternalNote: data.isInternalNote || false,
-        status: 'SENT',
+        status: data.isInternalNote ? 'SENT' : messageStatus,
+        metaMessageId: metaMessageId,
         sentAt: new Date()
       }
     });
@@ -790,8 +859,54 @@ export async function saveWhatsAppApiCredentialsAction(data: {
 export async function getWhatsAppTemplates() {
   try {
     await ensureSeeded();
-    const templates = await prisma.whatsAppTemplate.findMany({ orderBy: { createdAt: 'desc' } });
-    return { success: true, templates };
+    
+    const localTemplates = await prisma.whatsAppTemplate.findMany({ orderBy: { createdAt: 'desc' } });
+
+    // Try to fetch from Meta API
+    const account = await prisma.whatsAppAccount.findFirst();
+    if (account?.businessAccountId && account?.accessToken && !account.accessToken.startsWith("EAAG")) {
+      const url = `https://graph.facebook.com/v20.0/${account.businessAccountId}/message_templates?access_token=${account.accessToken}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.data && Array.isArray(data.data)) {
+           const metaTemplates = data.data.map((t: any) => {
+             const bodyComponent = t.components.find((c: any) => c.type === 'BODY');
+             const headerComponent = t.components.find((c: any) => c.type === 'HEADER');
+             const footerComponent = t.components.find((c: any) => c.type === 'FOOTER');
+             const buttonsComponent = t.components.find((c: any) => c.type === 'BUTTONS');
+             
+             let headerType = 'NONE';
+             if (headerComponent?.format) headerType = headerComponent.format;
+             
+             return {
+               id: t.id,
+               name: t.name,
+               category: t.category,
+               language: t.language,
+               status: t.status,
+               headerType: headerType,
+               headerContent: headerComponent?.text || '',
+               bodyText: bodyComponent?.text || '',
+               footerText: footerComponent?.text || '',
+               buttons: buttonsComponent ? JSON.stringify(buttonsComponent.buttons) : '[]',
+               variables: '[]',
+               createdAt: new Date(),
+               updatedAt: new Date()
+             };
+           });
+           
+           if (metaTemplates.length > 0) {
+              return { success: true, templates: metaTemplates };
+           }
+        }
+      } catch (e) {
+        console.error("Failed to fetch templates from Meta API:", e);
+      }
+    }
+
+    return { success: true, templates: localTemplates };
   } catch (e: any) {
     return { success: false, error: e.message, templates: [] };
   }

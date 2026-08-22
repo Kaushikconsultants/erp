@@ -119,7 +119,8 @@ export async function POST(req: NextRequest) {
           messageType: msg.type ? msg.type.toUpperCase() : "TEXT",
           content: textContent,
           status: "RECEIVED",
-          sentAt: new Date()
+          metaMessageId: msg.id,
+          sentAt: new Date(msg.timestamp * 1000 || Date.now())
         }
       });
 
@@ -129,7 +130,23 @@ export async function POST(req: NextRequest) {
     // 2. Process Message Status Updates (Delivered, Read, Failed)
     if (value.statuses && value.statuses.length > 0) {
       const statusUpdate = value.statuses[0];
-      console.log(`[WhatsApp Webhook] Status update: ${statusUpdate.status} for msg ID: ${statusUpdate.id}`);
+      const metaMessageId = statusUpdate.id;
+      const status = statusUpdate.status.toUpperCase();
+      
+      console.log(`[WhatsApp Webhook] Status update: ${status} for msg ID: ${metaMessageId}`);
+
+      const updateData: any = { status };
+      if (status === 'DELIVERED') updateData.deliveredAt = new Date(statusUpdate.timestamp * 1000 || Date.now());
+      if (status === 'READ') updateData.readAt = new Date(statusUpdate.timestamp * 1000 || Date.now());
+
+      try {
+        await prisma.whatsAppMessage.update({
+          where: { metaMessageId },
+          data: updateData
+        });
+      } catch (e) {
+        console.warn(`[WhatsApp Webhook] Could not update status for message ID ${metaMessageId}`);
+      }
     }
 
     return NextResponse.json({ status: "success" });

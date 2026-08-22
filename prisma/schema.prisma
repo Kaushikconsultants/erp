@@ -968,6 +968,7 @@ model WhatsAppMessage {
   status           String   @default("SENT") // SENT, DELIVERED, READ, FAILED, RECEIVED
   isInternalNote   Boolean  @default(false)
   replyToMessageId String?
+  metaMessageId    String?  @unique
   
   sentAt           DateTime @default(now())
   deliveredAt      DateTime?
