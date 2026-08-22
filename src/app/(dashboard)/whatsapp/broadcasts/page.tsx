@@ -24,7 +24,8 @@ import {
 import {
   getWhatsAppCampaigns,
   getWhatsAppTemplates,
-  createWhatsAppBroadcastCampaign
+  getWhatsAppAudienceSegments,
+  launchWhatsAppBroadcastAction
 } from "@/app/actions/whatsAppPlatformActions";
 
 export default function WhatsAppBroadcastsPage() {
@@ -41,7 +42,8 @@ export default function WhatsAppBroadcastsPage() {
   // Wizard Form State
   const [campaignName, setCampaignName] = useState<string>("ikra july 11");
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
-  const [selectedSegment, setSelectedSegment] = useState<string>("High Value Wholesalers (Surat & Gujarat)");
+  const [selectedSegment, setSelectedSegment] = useState<string>("ALL");
+  const [segments, setSegments] = useState<any[]>([]);
   const [scheduleType, setScheduleType] = useState<string>("INSTANT");
   const [templateSearch, setTemplateSearch] = useState<string>("");
   const [templateCategoryFilter, setTemplateCategoryFilter] = useState<string>("ALL");
@@ -51,9 +53,10 @@ export default function WhatsAppBroadcastsPage() {
 
   const fetchCampaignsAndTemplates = async () => {
     setLoading(true);
-    const [campRes, tempRes] = await Promise.all([
+    const [campRes, tempRes, segRes] = await Promise.all([
       getWhatsAppCampaigns(),
-      getWhatsAppTemplates()
+      getWhatsAppTemplates(),
+      getWhatsAppAudienceSegments()
     ]);
 
     if (campRes.success && campRes.campaigns) setCampaigns(campRes.campaigns);
@@ -61,6 +64,7 @@ export default function WhatsAppBroadcastsPage() {
       setTemplates(tempRes.templates);
       if (tempRes.templates.length > 0) setSelectedTemplate(tempRes.templates[0]);
     }
+    if (segRes.success && segRes.segments) setSegments(segRes.segments);
     setLoading(false);
   };
 
@@ -69,19 +73,23 @@ export default function WhatsAppBroadcastsPage() {
   }, []);
 
   const handleLaunchBroadcast = async () => {
+    if (!selectedTemplate) return alert("Please select a template first.");
     setLoading(true);
-    const res = await createWhatsAppBroadcastCampaign({
+    const res = await launchWhatsAppBroadcastAction({
       name: campaignName,
-      templateId: selectedTemplate?.name || "festive_wholesale_launch",
-      totalAudience: 420
+      templateName: selectedTemplate?.name || "",
+      audienceType: selectedSegment as any
     });
 
     if (res.success) {
       setShowWizard(false);
+      alert(`✅ Broadcast launched! Sent to ${res.sentCount} out of ${res.totalAudience} contacts.`);
       await fetchCampaignsAndTemplates();
+    } else {
+      alert("Error: " + (res.error || "Failed to launch broadcast"));
     }
     setLoading(false);
-  };
+  };;
 
   const filteredCampaigns = campaigns.filter((c) => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -448,9 +456,10 @@ export default function WhatsAppBroadcastsPage() {
                       onChange={(e) => setSelectedSegment(e.target.value)}
                       style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }}
                     >
-                      <option value="High Value Wholesalers (Surat & Gujarat)">High Value Wholesalers (420 Contacts)</option>
-                      <option value="Pending Payment Customers">Pending Payment Customers (85 Contacts)</option>
-                      <option value="All Retail Buyers">All Retail Buyers (1,250 Contacts)</option>
+                      {segments.map((s) => (
+                        <option key={s.key} value={s.key}>{s.label} ({s.count.toLocaleString()} Contacts)</option>
+                      ))}
+                      {segments.length === 0 && <option value="ALL">All Customers</option>}
                     </select>
 
                     <div style={{ display: "flex", justifySelf: "flex-end", gap: "10px", marginTop: "20px" }}>
@@ -484,10 +493,11 @@ export default function WhatsAppBroadcastsPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                     <h4 style={{ fontSize: "14px", fontWeight: 700, margin: 0 }}>Step 4: Review & Launch Broadcast</h4>
                     <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "14px", borderRadius: "8px" }}>
-                      <p style={{ fontSize: "13px", margin: 0, color: "#166534" }}>
-                        Ready to broadcast <strong>"{campaignName}"</strong> using template <strong>{selectedTemplate?.name}</strong> to 420 contacts!
-                      </p>
-                    </div>
+                       <p style={{ fontSize: "13px", margin: 0, color: "#166534" }}>
+                         Ready to broadcast <strong>"{campaignName}"</strong> using template <strong>{selectedTemplate?.name}</strong> to <strong>{segments.find(s => s.key === selectedSegment)?.count?.toLocaleString() || '?'} contacts</strong>!
+                       </p>
+                       <p style={{ fontSize: "12px", color: "#166534", margin: "6px 0 0 0" }}>This will make real Meta API calls and send actual WhatsApp template messages.</p>
+                     </div>
 
                     <button
                       onClick={handleLaunchBroadcast}

@@ -58,7 +58,8 @@ import {
   createWhatsAppQuotation,
   generateWhatsAppPaymentLinkAction,
   assignWhatsAppLeadAction,
-  getAllEmployeesAndTeams
+  getAllEmployeesAndTeams,
+  toggleConversationAIAction
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
@@ -80,6 +81,7 @@ export default function WhatsAppInboxComponent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [aiToggleLoading, setAiToggleLoading] = useState<boolean>(false);
 
   // Toggle Full Screen Mode (Overlay + Native Fullscreen API)
   const toggleFullScreenMode = () => {
@@ -630,6 +632,31 @@ export default function WhatsAppInboxComponent() {
                 <button className="chat-action-btn" onClick={() => setShowPaymentModal(true)} title="Send Payment Link">
                   <CreditCard size={14} />
                   <span>Payment</span>
+                </button>
+                <button
+                  className="chat-action-btn"
+                  disabled={aiToggleLoading}
+                  onClick={async () => {
+                    if (!activeConvDetail?.id) return;
+                    setAiToggleLoading(true);
+                    const newVal = !activeConvDetail.aiHandled;
+                    const res = await toggleConversationAIAction(activeConvDetail.id, newVal);
+                    if (res.success) {
+                      setActiveConvDetail((prev: any) => ({ ...prev, aiHandled: newVal }));
+                      setToastMsg(newVal ? "🤖 AI Assistant turned ON for this chat" : "👤 Manual Mode — AI paused for this chat");
+                      setTimeout(() => setToastMsg(null), 3000);
+                    }
+                    setAiToggleLoading(false);
+                  }}
+                  title={activeConvDetail.aiHandled ? "AI is ON — Click to switch to Manual Mode" : "AI is OFF — Click to enable AI auto-replies"}
+                  style={{
+                    background: activeConvDetail.aiHandled ? "#f0fdf4" : "#fef3c7",
+                    border: `1px solid ${activeConvDetail.aiHandled ? "#bbf7d0" : "#fde68a"}`,
+                    color: activeConvDetail.aiHandled ? "#15803d" : "#b45309"
+                  }}
+                >
+                  <Bot size={14} />
+                  <span>{aiToggleLoading ? "..." : activeConvDetail.aiHandled ? "AI: ON" : "AI: OFF"}</span>
                 </button>
                 <button
                   className={`chat-action-btn ${isFullScreen ? "active-fullscreen" : ""}`}
