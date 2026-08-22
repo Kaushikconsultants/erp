@@ -5,113 +5,85 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
-export async function recordPayment(data: {
-  invoiceId: string;
-  amount: number;
-  paymentMode: string;
-  referenceNumber?: string;
-  notes?: string;
-  paymentDate?: string;
+export async function getPayments(filters?: {
+  search?: string;
+  invoiceId?: string;
+  customerId?: string;
+  paymentMode?: string;
+  paymentType?: string;
+  receivingAccount?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { error: "Unauthorized" };
-
-  if (!data.invoiceId || !data.amount || data.amount <= 0) {
-    return { error: "Invoice and valid amount are required" };
-  }
-
-  try {
-    const invoice = await prisma.invoice.findUnique({ where: { id: data.invoiceId } });
-    if (!invoice) return { error: "Invoice not found" };
-    if (invoice.status === 'Paid') return { error: "Invoice is already fully paid" };
-    if (invoice.status === 'Cancelled') return { error: "Cannot record payment on a cancelled invoice" };
-
-    // Cap at amount due
-    const payAmount = Math.min(data.amount, invoice.amountDue);
-
-    // Generate payment number
-    const count = await prisma.payment.count();
-    const paymentNumber = `PAY-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
-
-    const newAmountPaid = invoice.amountPaid + payAmount;
-    const newAmountDue = invoice.totalAmount - newAmountPaid;
-    const newStatus = newAmountDue <= 0 ? 'Paid' : 'Partially Paid';
-
-    await prisma.$transaction([
-      // Create payment record
-      prisma.payment.create({
-        data: {
-          paymentNumber,
-          invoiceId: data.invoiceId,
-          amount: payAmount,
-          paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
-          paymentMode: data.paymentMode,
-          referenceNumber: data.referenceNumber || null,
-          status: 'Completed',
-          notes: data.notes || null,
-        }
-      }),
-      // Update invoice
-      prisma.invoice.update({
-        where: { id: data.invoiceId },
-        data: {
-          amountPaid: newAmountPaid,
-          amountDue: Math.max(0, newAmountDue),
-          status: newStatus,
-        }
-      }),
-      // Log the audit
-      prisma.auditLog.create({
-        data: {
-          userId: (session.user as any).id,
-          action: 'PAYMENT_RECORDED',
-          module: 'Finance',
-          recordId: data.invoiceId,
-          newValue: JSON.stringify({ amount: payAmount, mode: data.paymentMode, status: newStatus })
-        }
-      })
-    ]);
-
-    // Also sync the linked Order if exists
-    if (invoice.orderId) {
-      await prisma.order.update({
-        where: { id: invoice.orderId },
-        data: {
-          paymentReceived: newAmountPaid,
-          outstandingAmount: Math.max(0, newAmountDue),
-          paymentStatus: newStatus === 'Paid' ? 'Paid' : 'Partially Paid',
-        }
-      });
-    }
-
-    revalidatePath("/invoices");
-    revalidatePath("/payments");
-    return { success: true, paymentNumber, newStatus };
-  } catch (error: any) {
-    return { error: "Failed to record payment: " + error.message };
-  }
-}
-
-export async function getPayments(filters?: { invoiceId?: string; paymentMode?: string; startDate?: string; endDate?: string }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
     const where: any = {};
+
     if (filters?.invoiceId) where.invoiceId = filters.invoiceId;
-    if (filters?.paymentMode) where.paymentMode = filters.paymentMode;
+    if (filters?.customerId) where.customerId = filters.customerId;
+    if (filters?.paymentMode && filters.paymentMode !== 'All') where.paymentMode = filters.paymentMode;
+    if (filters?.paymentType && filters.paymentType !== 'All') where.paymentType = filters.paymentType;
+    if (filters?.receivingAccount && filters.receivingAccount !== 'All') where.receivingAccount = filters.receivingAccount;
+    if (filters?.status && filters.status !== 'All') where.status = filters.status;
+
     if (filters?.startDate || filters?.endDate) {
       where.paymentDate = {};
       if (filters.startDate) where.paymentDate.gte = new Date(filters.startDate);
-      if (filters.endDate) where.paymentDate.lte = new Date(filters.endDate);
+      if (filters.endDate) {
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
+        where.paymentDate.lte = end;
+      }
+    }
+
+    if (filters?.search && filters.search.trim()) {
+      const q = filters.search.trim();
+      where.OR = [
+        { paymentNumber: { contains: q, mode: 'insensitive' } },
+        { referenceNumber: { contains: q, mode: 'insensitive' } },
+        { payerName: { contains: q, mode: 'insensitive' } },
+        { receivingAccount: { contains: q, mode: 'insensitive' } },
+        { customer: { businessName: { contains: q, mode: 'insensitive' } } },
+        { customer: { contactPerson: { contains: q, mode: 'insensitive' } } },
+        { customer: { mobile: { contains: q, mode: 'insensitive' } } },
+        { invoice: { invoiceNumber: { contains: q, mode: 'insensitive' } } },
+      ];
     }
 
     const payments = await prisma.payment.findMany({
       where,
       include: {
+        customer: {
+          select: {
+            id: true,
+            businessName: true,
+            contactPerson: true,
+            mobile: true,
+            city: true,
+            state: true,
+            gstNumber: true,
+          }
+        },
         invoice: {
-          include: {
-            customer: { select: { businessName: true } }
+          select: {
+            id: true,
+            invoiceNumber: true,
+            totalAmount: true,
+            amountPaid: true,
+            amountDue: true,
+            status: true,
+            orderId: true,
+            order: { select: { orderNumber: true } }
+          }
+        },
+        order: {
+          select: {
+            id: true,
+            orderNumber: true,
+            totalValue: true,
           }
         }
       },
@@ -120,7 +92,8 @@ export async function getPayments(filters?: { invoiceId?: string; paymentMode?: 
 
     return { success: true, payments };
   } catch (error: any) {
-    return { error: "Failed to fetch payments" };
+    console.error("Failed to fetch payments:", error);
+    return { error: "Failed to fetch payments: " + error.message };
   }
 }
 
@@ -132,25 +105,349 @@ export async function getPaymentSummary() {
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const [totalCollected, thisMonth, byMode] = await Promise.all([
+    const [
+      totalCollected,
+      thisMonth,
+      byMode,
+      byAccount,
+      totalOutstanding,
+      advanceCount
+    ] = await Promise.all([
       prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Completed' } }),
       prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Completed', paymentDate: { gte: startOfMonth } } }),
       prisma.payment.groupBy({ by: ['paymentMode'], _sum: { amount: true }, where: { status: 'Completed' } }),
+      prisma.payment.groupBy({ by: ['receivingAccount'], _sum: { amount: true }, where: { status: 'Completed' } }),
+      prisma.invoice.aggregate({
+        _sum: { amountDue: true },
+        where: { status: { in: ['Unpaid', 'Partially Paid', 'Overdue'] } }
+      }),
+      prisma.payment.count({ where: { paymentType: 'Advance Payment', status: 'Completed' } })
     ]);
-
-    const totalOutstanding = await prisma.invoice.aggregate({
-      _sum: { amountDue: true },
-      where: { status: { in: ['Unpaid', 'Partially Paid', 'Overdue'] } }
-    });
 
     return {
       success: true,
       totalCollected: totalCollected._sum.amount || 0,
       thisMonthCollected: thisMonth._sum.amount || 0,
       totalOutstanding: totalOutstanding._sum.amountDue || 0,
-      byMode,
+      advanceCount: advanceCount || 0,
+      byMode: byMode.filter(m => m.paymentMode),
+      byAccount: byAccount.filter(a => a.receivingAccount),
     };
   } catch (error: any) {
-    return { error: "Failed to fetch payment summary" };
+    return { error: "Failed to fetch payment summary: " + error.message };
+  }
+}
+
+export async function recordCustomerPayment(data: {
+  paymentType: 'Invoice Payment' | 'Advance Payment' | 'On-Account';
+  customerId: string;
+  invoiceId?: string;
+  amount: number;
+  paymentMode: string;
+  receivingAccount?: string;
+  referenceNumber?: string;
+  payerName?: string;
+  paymentDate?: string;
+  notes?: string;
+  status?: string;
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const staffName = (session.user as any).name || 'Staff';
+
+  if (!data.customerId || !data.amount || data.amount <= 0) {
+    return { error: "Customer and valid amount are required" };
+  }
+
+  try {
+    const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
+    if (!customer) return { error: "Customer not found" };
+
+    const count = await prisma.payment.count();
+    const paymentNumber = `PAY-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+    const pDate = data.paymentDate ? new Date(data.paymentDate) : new Date();
+    const paymentStatus = data.status || 'Completed';
+
+    if (data.paymentType === 'Invoice Payment' && data.invoiceId) {
+      // Record payment against specific invoice
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: data.invoiceId },
+        include: { order: true }
+      });
+      if (!invoice) return { error: "Invoice not found" };
+      if (invoice.status === 'Paid') return { error: "Invoice is already fully paid" };
+      if (invoice.status === 'Cancelled') return { error: "Cannot record payment on a cancelled invoice" };
+
+      const payAmount = Math.min(data.amount, invoice.amountDue);
+      const newAmountPaid = invoice.amountPaid + payAmount;
+      const newAmountDue = invoice.totalAmount - newAmountPaid;
+      const newStatus = newAmountDue <= 0 ? 'Paid' : 'Partially Paid';
+
+      const [payment] = await prisma.$transaction([
+        prisma.payment.create({
+          data: {
+            paymentNumber,
+            invoiceId: data.invoiceId,
+            customerId: data.customerId,
+            orderId: invoice.orderId || null,
+            paymentType: 'Invoice Payment',
+            amount: payAmount,
+            paymentDate: pDate,
+            paymentMode: data.paymentMode,
+            receivingAccount: data.receivingAccount || 'HDFC Bank Current A/c',
+            referenceNumber: data.referenceNumber || null,
+            payerName: data.payerName || customer.businessName,
+            status: paymentStatus,
+            notes: data.notes || null,
+            recordedBy: staffName,
+          }
+        }),
+        prisma.invoice.update({
+          where: { id: data.invoiceId },
+          data: {
+            amountPaid: newAmountPaid,
+            amountDue: Math.max(0, newAmountDue),
+            status: newStatus,
+          }
+        }),
+        prisma.auditLog.create({
+          data: {
+            userId: (session.user as any).id,
+            action: 'PAYMENT_RECORDED',
+            module: 'Finance',
+            recordId: data.invoiceId,
+            newValue: JSON.stringify({ paymentNumber, amount: payAmount, mode: data.paymentMode, receivingAccount: data.receivingAccount })
+          }
+        })
+      ]);
+
+      if (invoice.orderId) {
+        await prisma.order.update({
+          where: { id: invoice.orderId },
+          data: {
+            paymentReceived: newAmountPaid,
+            outstandingAmount: Math.max(0, newAmountDue),
+            paymentStatus: newStatus === 'Paid' ? 'Paid' : 'Partially Paid',
+          }
+        });
+      }
+
+      revalidatePath("/invoices");
+      revalidatePath("/payments");
+      revalidatePath("/customers");
+      return { success: true, paymentNumber, paymentId: payment.id };
+
+    } else {
+      // Record Advance Payment or On-Account Customer Balance
+      const payment = await prisma.payment.create({
+        data: {
+          paymentNumber,
+          customerId: data.customerId,
+          paymentType: data.paymentType || 'Advance Payment',
+          amount: data.amount,
+          paymentDate: pDate,
+          paymentMode: data.paymentMode,
+          receivingAccount: data.receivingAccount || 'HDFC Bank Current A/c',
+          referenceNumber: data.referenceNumber || null,
+          payerName: data.payerName || customer.businessName,
+          status: paymentStatus,
+          notes: data.notes || `Advance on account for ${customer.businessName}`,
+          recordedBy: staffName,
+        }
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: (session.user as any).id,
+          action: 'ADVANCE_PAYMENT_RECORDED',
+          module: 'Finance',
+          recordId: payment.id,
+          newValue: JSON.stringify({ paymentNumber, amount: data.amount, mode: data.paymentMode, type: data.paymentType })
+        }
+      });
+
+      revalidatePath("/invoices");
+      revalidatePath("/payments");
+      revalidatePath("/customers");
+      return { success: true, paymentNumber, paymentId: payment.id };
+    }
+  } catch (error: any) {
+    console.error("Failed to record payment:", error);
+    return { error: "Failed to record payment: " + error.message };
+  }
+}
+
+export async function recordPayment(data: {
+  invoiceId: string;
+  amount: number;
+  paymentMode: string;
+  referenceNumber?: string;
+  notes?: string;
+  paymentDate?: string;
+  receivingAccount?: string;
+}) {
+  const inv = await prisma.invoice.findUnique({ where: { id: data.invoiceId } });
+  if (!inv) return { error: "Invoice not found" };
+
+  return recordCustomerPayment({
+    paymentType: 'Invoice Payment',
+    customerId: inv.customerId,
+    invoiceId: data.invoiceId,
+    amount: data.amount,
+    paymentMode: data.paymentMode,
+    receivingAccount: data.receivingAccount || 'HDFC Bank Current A/c',
+    referenceNumber: data.referenceNumber,
+    paymentDate: data.paymentDate,
+    notes: data.notes,
+    status: 'Completed'
+  });
+}
+
+export async function getCustomerUnpaidInvoices(customerId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        customerId,
+        status: { in: ['Unpaid', 'Partially Paid', 'Overdue'] }
+      },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        invoiceDate: true,
+        dueDate: true,
+        totalAmount: true,
+        amountPaid: true,
+        amountDue: true,
+        status: true,
+        order: { select: { orderNumber: true } }
+      },
+      orderBy: { invoiceDate: 'asc' }
+    });
+
+    const advancePayments = await prisma.payment.findMany({
+      where: {
+        customerId,
+        paymentType: 'Advance Payment',
+        status: 'Completed'
+      },
+      select: {
+        id: true,
+        paymentNumber: true,
+        amount: true,
+        paymentDate: true,
+        paymentMode: true,
+        referenceNumber: true
+      },
+      orderBy: { paymentDate: 'desc' }
+    });
+
+    return { success: true, invoices, advancePayments };
+  } catch (error: any) {
+    return { error: "Failed to fetch customer invoices: " + error.message };
+  }
+}
+
+export async function getPaymentById(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    const payment = await prisma.payment.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        invoice: {
+          include: {
+            order: {
+              include: {
+                items: { include: { product: true } }
+              }
+            }
+          }
+        },
+        order: true
+      }
+    });
+
+    if (!payment) return { error: "Payment not found" };
+    return { success: true, payment };
+  } catch (error: any) {
+    return { error: "Failed to fetch payment: " + error.message };
+  }
+}
+
+export async function cancelPayment(paymentId: string, reason: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { invoice: true }
+    });
+
+    if (!payment) return { error: "Payment not found" };
+    if (payment.status === 'Cancelled' || payment.status === 'Refunded') {
+      return { error: `Payment is already ${payment.status}` };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Update payment status
+      await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'Cancelled',
+          notes: `${payment.notes || ''} [Cancelled: ${reason}]`.trim()
+        }
+      });
+
+      // If linked to an invoice, deduct amountPaid and increase amountDue
+      if (payment.invoiceId && payment.invoice) {
+        const inv = payment.invoice;
+        const newPaid = Math.max(0, inv.amountPaid - payment.amount);
+        const newDue = inv.totalAmount - newPaid;
+        const newStatus = newPaid <= 0 ? 'Unpaid' : 'Partially Paid';
+
+        await tx.invoice.update({
+          where: { id: payment.invoiceId },
+          data: {
+            amountPaid: newPaid,
+            amountDue: newDue,
+            status: newStatus
+          }
+        });
+
+        if (inv.orderId) {
+          await tx.order.update({
+            where: { id: inv.orderId },
+            data: {
+              paymentReceived: newPaid,
+              outstandingAmount: newDue,
+              paymentStatus: newStatus
+            }
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: (session.user as any).id,
+          action: 'PAYMENT_CANCELLED',
+          module: 'Finance',
+          recordId: paymentId,
+          newValue: JSON.stringify({ paymentNumber: payment.paymentNumber, reason })
+        }
+      });
+    });
+
+    revalidatePath("/invoices");
+    revalidatePath("/payments");
+    return { success: true };
+  } catch (error: any) {
+    return { error: "Failed to cancel payment: " + error.message };
   }
 }

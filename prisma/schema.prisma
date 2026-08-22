@@ -174,6 +174,7 @@ model Customer {
   invoices        Invoice[]
   creditNotes     CreditNote[]
   ewayBills       EWayBill[]
+  payments        Payment[]
 
   whatsAppConversations WhatsAppConversation[]
   whatsAppPaymentLinks  WhatsAppPaymentLink[]
@@ -340,6 +341,7 @@ model Order {
   invoices        Invoice[]
   creditNotes     CreditNote[]
   ewayBills       EWayBill[]
+  payments        Payment[]
 }
 
 model OrderItem {
@@ -871,18 +873,26 @@ model EWayBill {
 }
 
 model Payment {
-  id              String   @id @default(uuid())
-  paymentNumber   String   @unique
-  invoiceId       String?
-  invoice         Invoice? @relation(fields: [invoiceId], references: [id])
-  amount          Float
-  paymentDate     DateTime @default(now())
-  paymentMode     String   // Cash, Bank Transfer, UPI, Cheque, Card
-  referenceNumber String?
-  status          String   @default("Completed") // Pending, Completed, Failed, Refunded
-  notes           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String    @id @default(uuid())
+  paymentNumber    String    @unique
+  invoiceId        String?
+  invoice          Invoice?  @relation(fields: [invoiceId], references: [id])
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id])
+  orderId          String?
+  order            Order?    @relation(fields: [orderId], references: [id])
+  paymentType      String    @default("Invoice Payment") // Invoice Payment, Advance Payment, On-Account, Quotation Advance
+  amount           Float
+  paymentDate      DateTime  @default(now())
+  paymentMode      String    // Cash, Bank Transfer, UPI, Cheque, Card, Online Gateway, Advance Adjustment, Other
+  receivingAccount String?   // HDFC Bank Current A/c, ICICI Bank, SBI Current A/c, Petty Cash, Store Counter, UPI QR, etc.
+  referenceNumber  String?   // UTR / Cheque / Transaction / IMPS / Slip Number
+  payerName        String?   // Name of person/company paying
+  status           String    @default("Completed") // Completed, Pending Realization, Failed, Refunded, Cancelled
+  notes            String?
+  recordedBy       String?   // Staff name who recorded payment
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model Expense {
