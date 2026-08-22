@@ -434,6 +434,51 @@ export async function sendWhatsAppMessageAction(data: {
       }
     });
 
+    // Handle Team Mentions in Internal Notes
+    if (data.isInternalNote && data.content.includes('@')) {
+      const allEmployees = await prisma.employee.findMany();
+      // Look for a match like "@Ashish" or "@John Doe"
+      const mentionedEmp = allEmployees.find(emp => data.content.includes(`@${emp.firstName}`) || data.content.includes(`@${emp.name}`));
+      
+      if (mentionedEmp) {
+        // Assign the conversation to the mentioned employee
+        await prisma.whatsAppConversation.update({
+          where: { id: conversation.id },
+          data: { assignedSalespersonId: mentionedEmp.id }
+        });
+        
+        // Target Push Notification specifically to the mentioned user's portal ID
+        if (mentionedEmp.portalUserId) {
+          const subs = await prisma.whatsAppPushSubscription.findMany({
+            where: { userId: mentionedEmp.portalUserId }
+          });
+          
+          if (subs.length > 0) {
+            const pushPayload = JSON.stringify({ 
+              title: `🔔 Mentioned by ${data.senderName || 'Team'}`, 
+              body: `You were tagged in a note for ${conversation.customer.contactPerson}: "${data.content.slice(0, 50)}"`, 
+              data: { url: `/whatsapp/inbox` } 
+            });
+            
+            for (const sub of subs) {
+              try {
+                await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/push/send`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.INTERNAL_API_SECRET || 'crm_internal_2026' },
+                  body: JSON.stringify({
+                    subscription: { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+                    payload: pushPayload
+                  })
+                });
+              } catch (e) {
+                console.error("Targeted push failed", e);
+              }
+            }
+          }
+        }
+      }
+    }
+
     // Simulated AI Auto-Response if conversation is marked AI handled and message is from customer
     if (data.senderType === 'CUSTOMER' && conversation.aiHandled) {
       setTimeout(async () => {

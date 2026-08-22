@@ -91,6 +91,10 @@ export default function WhatsAppInboxComponent() {
   const [aiToggleLoading, setAiToggleLoading] = useState<boolean>(false);
   const [cannedResponses, setCannedResponses] = useState<any[]>([]);
   const [showCannedResponses, setShowCannedResponses] = useState<boolean>(false);
+  
+  // Mentions Autocomplete State
+  const [showMentionsMenu, setShowMentionsMenu] = useState<boolean>(false);
+  const [mentionSearch, setMentionSearch] = useState<string>("");
 
   // Toggle Full Screen Mode (Overlay + Native Fullscreen API)
   const toggleFullScreenMode = () => {
@@ -973,6 +977,39 @@ export default function WhatsAppInboxComponent() {
                   <Smile size={18} color={showEmojiPicker ? "#10b981" : "#64748b"} />
                 </button>
 
+                {/* Team Mentions Popup Menu */}
+                {showMentionsMenu && (
+                  <div style={{ position: "absolute", bottom: "100%", left: "40px", marginBottom: "8px", width: "200px", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)", zIndex: 10 }}>
+                    <div style={{ padding: "8px 12px", borderBottom: "1px solid #e2e8f0", fontSize: "12px", fontWeight: 700, color: "#64748b", background: "#f8fafc", borderRadius: "8px 8px 0 0" }}>
+                      Mention Teammate
+                    </div>
+                    <div style={{ maxHeight: "150px", overflowY: "auto", padding: "4px" }}>
+                      {employeesList.filter(emp => emp.firstName?.toLowerCase().includes(mentionSearch) || emp.name?.toLowerCase().includes(mentionSearch)).length > 0 ? (
+                        employeesList.filter(emp => emp.firstName?.toLowerCase().includes(mentionSearch) || emp.name?.toLowerCase().includes(mentionSearch)).map(emp => (
+                          <button
+                            key={emp.id}
+                            type="button"
+                            onClick={() => {
+                              const lastAtSymbol = messageInput.lastIndexOf("@");
+                              const newText = messageInput.slice(0, lastAtSymbol) + `@${emp.firstName || emp.name} `;
+                              setMessageInput(newText);
+                              setShowMentionsMenu(false);
+                            }}
+                            style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", textAlign: "left", padding: "6px 8px", background: "none", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px" }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "transparent"}
+                          >
+                            <User size={14} color="#3b82f6" />
+                            <strong style={{ color: "#0f172a" }}>{emp.firstName || emp.name}</strong>
+                          </button>
+                        ))
+                      ) : (
+                        <div style={{ padding: "12px", textAlign: "center", fontSize: "12px", color: "#64748b" }}>No team members found.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <textarea
                   rows={2}
                   className="chat-textarea"
@@ -985,6 +1022,25 @@ export default function WhatsAppInboxComponent() {
                   onChange={(e) => {
                     const val = e.target.value;
                     setMessageInput(val);
+                    
+                    // Mention Autocomplete logic
+                    if (isInternalNote) {
+                      const lastAtSymbol = val.lastIndexOf("@");
+                      if (lastAtSymbol !== -1 && (lastAtSymbol === 0 || val[lastAtSymbol - 1] === " ")) {
+                        const searchText = val.slice(lastAtSymbol + 1);
+                        if (!searchText.includes(" ")) {
+                          setShowMentionsMenu(true);
+                          setMentionSearch(searchText.toLowerCase());
+                        } else {
+                          setShowMentionsMenu(false);
+                        }
+                      } else {
+                        setShowMentionsMenu(false);
+                      }
+                    } else {
+                      setShowMentionsMenu(false);
+                    }
+
                     // Check if they typed a shortcut exactly
                     const match = cannedResponses.find(cr => val.endsWith(cr.shortcut + " "));
                     if (match) {
