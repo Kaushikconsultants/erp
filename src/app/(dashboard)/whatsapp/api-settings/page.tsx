@@ -97,7 +97,7 @@ export default function WhatsAppAPISettingsPage() {
           </span>
         </div>
 
-        <form onSubmit={handleSaveCredentials} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <form onSubmit={handleSaveCredentials} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
             <div>
               <label style={{ fontSize: "12.5px", fontWeight: 700, display: "block", marginBottom: "6px", color: "#374151" }}>
@@ -105,6 +105,7 @@ export default function WhatsAppAPISettingsPage() {
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="e.g. +91 9876543210"
@@ -119,6 +120,7 @@ export default function WhatsAppAPISettingsPage() {
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={phoneId}
                 onChange={(e) => setPhoneId(e.target.value)}
                 placeholder="e.g. 10928374659201"
@@ -135,6 +137,7 @@ export default function WhatsAppAPISettingsPage() {
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={wabaId}
                 onChange={(e) => setWabaId(e.target.value)}
                 placeholder="e.g. 991827364501"
@@ -149,6 +152,7 @@ export default function WhatsAppAPISettingsPage() {
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={managerId}
                 onChange={(e) => setManagerId(e.target.value)}
                 placeholder="e.g. 5544332211"
@@ -164,6 +168,7 @@ export default function WhatsAppAPISettingsPage() {
             <div style={{ position: "relative" }}>
               <input
                 type={showToken ? "text" : "password"}
+                autoComplete="new-password"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 placeholder="Paste Meta Permanent Token starting with EAAG..."
