@@ -64,7 +64,8 @@ import {
   assignWhatsAppLeadAction,
   getAllEmployeesAndTeams,
   toggleConversationAIAction,
-  createFollowUpTaskAction
+  createFollowUpTaskAction,
+  uploadMediaToMetaAction
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
@@ -270,10 +271,18 @@ export default function WhatsAppInboxComponent() {
         ? "AUDIO"
         : "DOCUMENT";
 
+      const uploadRes = await uploadMediaToMetaAction(fileDataUrl, file.name, file.type);
+      if (!uploadRes.success || !uploadRes.mediaId) {
+        setToastMsg(`❌ Upload Failed: ${uploadRes.error}`);
+        setSendingMsg(false);
+        setTimeout(() => setToastMsg(null), 4000);
+        return;
+      }
+
       const res = await sendWhatsAppMessageAction({
         conversationId: selectedConvId,
         content: `Attached file: ${file.name}`,
-        mediaUrl: fileDataUrl,
+        mediaUrl: uploadRes.mediaId, // passing the ID to Meta API
         mediaFilename: file.name,
         messageType: fileType,
         senderType: "AGENT",
@@ -791,8 +800,16 @@ export default function WhatsAppInboxComponent() {
                       {/* Video Message Renderer */}
                       {msg.messageType === "VIDEO" && (
                         <div style={{ marginTop: "4px" }}>
-                          <video src={msg.mediaUrl} controls style={{ width: "100%", maxHeight: "220px", borderRadius: "8px" }} />
+                          <video src={msg.mediaUrl || ""} controls style={{ width: "100%", maxHeight: "220px", borderRadius: "8px" }} />
                           {msg.content && <p className="message-text-content" style={{ marginTop: "4px" }}>{msg.content}</p>}
+                        </div>
+                      )}
+
+                      {/* Audio Message Renderer */}
+                      {msg.messageType === "AUDIO" && (
+                        <div style={{ marginTop: "4px", background: "#f3f4f6", padding: "8px", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                          <span style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280" }}>Voice Message</span>
+                          <audio src={msg.mediaUrl || ""} controls style={{ width: "100%", height: "36px" }} />
                         </div>
                       )}
 

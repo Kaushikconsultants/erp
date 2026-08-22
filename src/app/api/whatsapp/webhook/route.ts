@@ -42,7 +42,13 @@ export async function POST(req: NextRequest) {
       const msg = value.messages[0];
       const fromPhone = msg.from;
       const cleanPhone = fromPhone.replace(/\D/g, '').slice(-10);
-      const textContent = msg.text?.body || msg.caption || msg.interactive?.button_reply?.title || "[Media Message]";
+      
+      const isMedia = ["image", "video", "audio", "document"].includes(msg.type);
+      const mediaId = isMedia ? msg[msg.type]?.id : null;
+      const mediaMimeType = isMedia ? msg[msg.type]?.mime_type : null;
+      const proxyMediaUrl = mediaId ? `/api/whatsapp/media/${mediaId}` : null;
+      
+      const textContent = msg.text?.body || msg[msg.type]?.caption || msg.interactive?.button_reply?.title || (isMedia ? `[${msg.type.toUpperCase()}]` : "[Message]");
 
       // Feature 5: Extract WhatsApp Profile Name from Meta payload
       const whatsappProfileName = value.contacts?.[0]?.profile?.name || null;
@@ -131,6 +137,8 @@ export async function POST(req: NextRequest) {
           senderName: customer.contactPerson,
           messageType: msg.type ? msg.type.toUpperCase() : "TEXT",
           content: textContent,
+          mediaUrl: proxyMediaUrl,
+          mediaType: mediaMimeType,
           status: "RECEIVED",
           metaMessageId: msg.id,
           sentAt: new Date(parseInt(msg.timestamp) * 1000 || Date.now())

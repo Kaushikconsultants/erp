@@ -348,25 +348,31 @@ export async function sendWhatsAppMessageAction(data: {
 
         const absoluteMediaUrl = data.mediaUrl?.startsWith('http') 
           ? data.mediaUrl 
-          : `https://espon.in${data.mediaUrl}`; // Fallback domain for local files
+          : data.mediaUrl?.startsWith('data:') 
+          ? data.mediaUrl // Handled below or via pre-upload
+          : `https://espon.in${data.mediaUrl}`;
+
+        // If mediaUrl is just a Meta Media ID (doesn't start with http/data:/)
+        const isMediaId = data.mediaUrl && !data.mediaUrl.includes('://') && !data.mediaUrl.startsWith('/');
+        const mediaField = isMediaId ? { id: data.mediaUrl } : { link: absoluteMediaUrl };
 
         if (data.messageType === 'DOCUMENT' && data.mediaUrl) {
            payload.type = 'document';
-           payload.document = {
-             link: absoluteMediaUrl,
-             caption: data.content,
-             filename: data.mediaFilename || 'Document.pdf'
-           };
+           payload.document = { ...mediaField, caption: data.content, filename: data.mediaFilename || 'Document.pdf' };
         } else if (data.messageType === 'IMAGE' && data.mediaUrl) {
            payload.type = 'image';
-           payload.image = {
-             link: absoluteMediaUrl,
-             caption: data.content
-           };
+           payload.image = { ...mediaField, caption: data.content };
+        } else if (data.messageType === 'VIDEO' && data.mediaUrl) {
+           payload.type = 'video';
+           payload.video = { ...mediaField, caption: data.content };
+        } else if (data.messageType === 'AUDIO' && data.mediaUrl) {
+           payload.type = 'audio';
+           payload.audio = { ...mediaField }; // Audio does not support caption in Meta API
         } else {
            payload.type = 'text';
            payload.text = { body: data.content };
         }
+
 
         try {
            const response = await fetch(url, {
@@ -1692,6 +1698,43 @@ export async function saveWhatsAppSettingsAction(data: {
     }
     revalidatePath("/whatsapp/settings");
     return { success: true, settings };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ---------------------------------------------------------
+// 15. SECURE UPLOAD MEDIA TO META
+// ---------------------------------------------------------
+export async function uploadMediaToMetaAction(base64DataUrl: string, filename: string, mimeType: string) {
+  try {
+    const account = await prisma.whatsAppAccount.findFirst();
+    const token = account?.accessToken;
+    const phoneId = account?.phoneId;
+    if (!token || !phoneId) return { success: false, error: "Missing WhatsApp credentials" };
+
+    const base64Data = base64DataUrl.split(',')[1];
+    const buffer = Buffer.from(base64Data, 'base64');
+    const blob = new Blob([buffer], { type: mimeType });
+
+    const formData = new FormData();
+    formData.append('file', blob, filename);
+    formData.append('type', mimeType);
+    formData.append('messaging_product', 'whatsapp');
+
+    const url = `https://graph.facebook.com/v20.0/${phoneId}/media`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+
+    const resData = await response.json();
+    if (resData.id) {
+      return { success: true, mediaId: resData.id };
+    } else {
+      return { success: false, error: resData.error?.message || "Upload failed" };
+    }
   } catch (error: any) {
     return { success: false, error: error.message };
   }
