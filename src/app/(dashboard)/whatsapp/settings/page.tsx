@@ -1,18 +1,47 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Settings, ShieldCheck, Clock, Users, Bell, Key, CheckCircle2 } from "lucide-react";
+import { getWhatsAppSettingsAction, saveWhatsAppSettingsAction } from "@/app/actions/whatsAppPlatformActions";
 
 export default function WhatsAppSettingsPage() {
-  const [workingHours, setWorkingHours] = useState("09:00 AM - 07:00 PM");
+  const [workingHoursStart, setWorkingHoursStart] = useState("09:00");
+  const [workingHoursEnd, setWorkingHoursEnd] = useState("19:00");
   const [slaMinutes, setSlaMinutes] = useState(15);
+  const [autoAssignStrategy, setAutoAssignStrategy] = useState("ROUND_ROBIN");
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const res = await getWhatsAppSettingsAction();
+      if (res.success && res.settings) {
+        setWorkingHoursStart(res.settings.workingHoursStart || "09:00");
+        setWorkingHoursEnd(res.settings.workingHoursEnd || "19:00");
+        setSlaMinutes(res.settings.slaWarningMinutes || 15);
+        setAutoAssignStrategy(res.settings.autoAssignStrategy || "ROUND_ROBIN");
+      }
+      setLoading(false);
+    };
+    fetchSettings();
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    const res = await saveWhatsAppSettingsAction({
+      workingHoursStart,
+      workingHoursEnd,
+      slaWarningMinutes: slaMinutes,
+      autoAssignStrategy
+    });
+    
+    if (res.success) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   };
+
+  if (loading) return <div style={{ padding: "20px" }}>Loading settings...</div>;
 
   return (
     <div style={{ padding: "20px", maxWidth: "750px" }}>
@@ -27,9 +56,15 @@ export default function WhatsAppSettingsPage() {
         )}
 
         <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div>
-            <label style={{ fontSize: "12.5px", fontWeight: 700, display: "block", marginBottom: "6px" }}>Working Hours / Out of Office Policy</label>
-            <input type="text" value={workingHours} onChange={(e) => setWorkingHours(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }} />
+          <div style={{ display: "flex", gap: "16px" }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: "12.5px", fontWeight: 700, display: "block", marginBottom: "6px" }}>Working Hours Start</label>
+              <input type="time" value={workingHoursStart} onChange={(e) => setWorkingHoursStart(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: "12.5px", fontWeight: 700, display: "block", marginBottom: "6px" }}>Working Hours End</label>
+              <input type="time" value={workingHoursEnd} onChange={(e) => setWorkingHoursEnd(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }} />
+            </div>
           </div>
 
           <div>
@@ -40,7 +75,7 @@ export default function WhatsAppSettingsPage() {
 
           <div>
             <label style={{ fontSize: "12.5px", fontWeight: 700, display: "block", marginBottom: "6px" }}>Auto Assignment Strategy</label>
-            <select style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }}>
+            <select value={autoAssignStrategy} onChange={(e) => setAutoAssignStrategy(e.target.value)} style={{ width: "100%", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }}>
               <option value="ROUND_ROBIN">Round Robin (Equal distribution among active reps)</option>
               <option value="LEAST_ASSIGNED">Least Assigned (Assign to agent with fewest open chats)</option>
               <option value="LOCATION_BASED">Territory & State Based Routing</option>

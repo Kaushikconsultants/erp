@@ -48,7 +48,11 @@ import {
   ExternalLink,
   ImageIcon,
   PlayCircle,
-  Volume2
+  Volume2,
+  VideoIcon,
+  Mic,
+  LockIcon,
+  Download
 } from "lucide-react";
 import {
   getWhatsAppConversations,
@@ -59,7 +63,8 @@ import {
   generateWhatsAppPaymentLinkAction,
   assignWhatsAppLeadAction,
   getAllEmployeesAndTeams,
-  toggleConversationAIAction
+  toggleConversationAIAction,
+  createFollowUpTaskAction
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
@@ -123,7 +128,13 @@ export default function WhatsAppInboxComponent() {
 
   // Modals
   const [showReplyLibraryModal, setShowReplyLibraryModal] = useState<boolean>(false);
+  const [showFollowUpModal, setShowFollowUpModal] = useState<boolean>(false);
   const [showQuoteModal, setShowQuoteModal] = useState<boolean>(false);
+  const [followUpDays, setFollowUpDays] = useState<number>(3);
+  const [followUpNotes, setFollowUpNotes] = useState<string>("");
+
+  const [paymentAmount, setPaymentAmount] = useState<number>(1000);
+
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showAssignModal, setShowAssignModal] = useState<boolean>(false);
   const [assigningLead, setAssigningLead] = useState<boolean>(false);
@@ -337,6 +348,25 @@ export default function WhatsAppInboxComponent() {
     }
   };
 
+  // Handle Create FollowUp Submit
+  const handleCreateFollowUpSubmit = async () => {
+    if (!activeConvDetail?.customer?.id) return;
+    const res = await createFollowUpTaskAction({
+      customerId: activeConvDetail.customer.id,
+      notes: followUpNotes,
+      days: followUpDays
+    });
+    if (res.success) {
+      setShowFollowUpModal(false);
+      setToastMsg(`Follow-up scheduled for ${followUpDays} days from now.`);
+      setTimeout(() => setToastMsg(null), 3000);
+      await fetchConversationDetail(selectedConvId!);
+    } else {
+      setToastMsg(`Failed to schedule follow-up.`);
+      setTimeout(() => setToastMsg(null), 3000);
+    }
+  };
+
   // Handle Lead Assignment (Manual or Round-Robin)
   const handleAssignLead = async (employeeId?: string, method: 'MANUAL' | 'ROUND_ROBIN' = 'MANUAL') => {
     if (!selectedConvId) return;
@@ -379,6 +409,27 @@ export default function WhatsAppInboxComponent() {
           <div className="left-panel-title-row">
             <span className="left-panel-title">WhatsApp Inbox</span>
             <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <button
+                className="panel-toggle-btn"
+                onClick={async () => {
+                  const { exportWhatsAppConversationsCSV } = await import("@/app/actions/whatsAppPlatformActions");
+                  const res = await exportWhatsAppConversationsCSV();
+                  if (res.success && res.csv) {
+                    const blob = new Blob([res.csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `whatsapp_conversations_${new Date().toISOString().slice(0,10)}.csv`;
+                    a.click();
+                  } else {
+                    alert("Export failed: " + res.error);
+                  }
+                }}
+                title="Export Conversations to CSV"
+                style={{ color: "#64748b" }}
+              >
+                <Download size={16} />
+              </button>
               <button
                 className="panel-toggle-btn"
                 onClick={toggleFullScreenMode}
@@ -698,9 +749,15 @@ export default function WhatsAppInboxComponent() {
                 }
 
                 return (
-                  <div key={msg.id} className={`message-row ${isAgent ? "outgoing" : "incoming"}`}>
-                    <div className="message-bubble">
-                      <div className="message-sender-name">{msg.senderName}</div>
+                  <div key={msg.id} className={`message-row ${isAgent ? "outgoing" : "incoming"} ${msg.isInternalNote ? "internal-note-row" : ""}`}>
+                    <div className="message-bubble" style={msg.isInternalNote ? { background: '#fef9c3', color: '#854d0e', border: '1px solid #fde047' } : {}}>
+                      <div className="message-sender-name" style={msg.isInternalNote ? { color: '#a16207' } : {}}>
+                        {msg.isInternalNote ? (
+                          <span style={{ display: "flex", alignItems: "center", gap: "4px" }}><LockIcon size={12} /> Internal Note</span>
+                        ) : (
+                          msg.senderName
+                        )}
+                      </div>
 
                       {/* PDF Document Renderer */}
                       {msg.messageType === "DOCUMENT" && (
@@ -755,18 +812,19 @@ export default function WhatsAppInboxComponent() {
 
                       {/* Standard Text Renderer */}
                       {msg.messageType !== "DOCUMENT" && msg.messageType !== "IMAGE" && msg.messageType !== "VIDEO" && msg.messageType !== "PAYMENT_LINK" && (
-                        <p className="message-text-content">{msg.content}</p>
+                        <p className="message-text-content" style={msg.isInternalNote ? { color: '#713f12' } : {}}>{msg.content}</p>
                       )}
 
                       <div className="message-meta-line">
-                        <span className="message-timestamp">
+                        <span className="message-timestamp" style={msg.isInternalNote ? { color: '#a16207' } : {}}>
                           {new Date(msg.sentAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
-                        {isAgent && <CheckCheck size={14} className="msg-check-icon" />}
+                        {isAgent && !msg.isInternalNote && <CheckCheck size={14} className="msg-check-icon" />}
                       </div>
                     </div>
                   </div>
                 );
+
               })}
               <div ref={chatBottomRef} />
             </div>
@@ -784,8 +842,8 @@ export default function WhatsAppInboxComponent() {
                 <button className="quick-chip" onClick={() => applyQuickShortcut("/payment")}>
                   <CreditCard size={12} /> /payment
                 </button>
-                <button className="quick-chip" onClick={() => applyQuickShortcut("/followup")}>
-                  <Clock size={12} /> /followup
+                <button className="quick-chip" onClick={() => setShowFollowUpModal(true)}>
+                  <Calendar size={12} /> + Follow Up
                 </button>
                 <button className="quick-chip highlight" onClick={() => setShowReplyLibraryModal(true)}>
                   <Zap size={12} /> Reply Library
@@ -1306,6 +1364,39 @@ export default function WhatsAppInboxComponent() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showFollowUpModal && (
+        <div className="inbox-modal-backdrop" onClick={() => setShowFollowUpModal(false)}>
+          <div className="inbox-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-row">
+              <h3>Schedule Follow-Up Task</h3>
+              <button onClick={() => setShowFollowUpModal(false)}>×</button>
+            </div>
+            <div className="modal-form-body">
+              <label>Follow-Up In (Days)</label>
+              <input
+                type="number"
+                min="1"
+                max="90"
+                value={followUpDays}
+                onChange={(e) => setFollowUpDays(parseInt(e.target.value) || 3)}
+              />
+
+              <label>Follow-Up Notes / Context</label>
+              <textarea
+                rows={3}
+                value={followUpNotes}
+                onChange={(e) => setFollowUpNotes(e.target.value)}
+                placeholder="E.g. Check if they liked the sample shirts..."
+              />
+
+              <button className="modal-submit-btn" onClick={handleCreateFollowUpSubmit}>
+                Create Follow-Up Task
+              </button>
             </div>
           </div>
         </div>

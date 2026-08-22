@@ -1166,3 +1166,59 @@ model BroadcastRead {
   @@unique([broadcastId, userId])
 }
 
+// ---------------------------------------------------------
+// WhatsApp Chatbot Flow State (Per-Customer Position Tracking)
+// ---------------------------------------------------------
+model WhatsAppFlowState {
+  id            String   @id @default(uuid())
+  phone         String   @unique
+  flowId        String
+  currentNodeId String
+  variables     String   @default("{}")  // JSON: captured user inputs
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ---------------------------------------------------------
+// WhatsApp AI Execution Log (Debug & Audit Trail)
+// ---------------------------------------------------------
+model WhatsAppAILog {
+  id           String   @id @default(uuid())
+  phone        String
+  userMessage  String
+  aiReply      String?
+  toolsCalled  String   @default("none")  // comma-separated: lookupOrder, searchProducts, recommendSize
+  status       String   @default("SUCCESS") // SUCCESS, FAILED, SKIPPED
+  errorMessage String?
+  durationMs   Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------
+// Web Push Notification Subscriptions
+// ---------------------------------------------------------
+model WhatsAppPushSubscription {
+  id           String   @id @default(uuid())
+  userId       String
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  createdAt    DateTime @default(now())
+}
+
+// ---------------------------------------------------------
+// WhatsApp Account Settings (Persisted Working Hours, SLA, etc.)
+// ---------------------------------------------------------
+model WhatsAppSettings {
+  id                   String   @id @default(uuid())
+  workingHoursStart    String   @default("09:00")
+  workingHoursEnd      String   @default("19:00")
+  outOfOfficeMessage   String   @default("We are currently unavailable. We will respond during working hours 9 AM - 7 PM.")
+  slaWarningMinutes    Int      @default(15)
+  slaBreadMinutes      Int      @default(30)
+  autoAssignStrategy   String   @default("ROUND_ROBIN") // ROUND_ROBIN, LEAST_ASSIGNED, MANUAL
+  aiConfidenceThreshold Int     @default(85)
+  welcomeMessage       String   @default("Welcome! How can we help you today?")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}

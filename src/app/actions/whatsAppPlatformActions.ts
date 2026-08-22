@@ -1584,3 +1584,115 @@ export async function getWhatsAppAudienceSegments() {
     return { success: false, error: e.message, segments: [] };
   }
 }
+
+// ---------------------------------------------------------
+// 12. EXPORT CONVERSATIONS TO CSV
+// ---------------------------------------------------------
+
+export async function exportWhatsAppConversationsCSV() {
+  try {
+    const conversations = await prisma.whatsAppConversation.findMany({
+      include: {
+        customer: true,
+        assignedEmployee: { include: { user: true } }
+      },
+      orderBy: { lastMessageAt: 'desc' }
+    });
+
+    const headers = ["Customer Name", "Phone Number", "Lead Stage", "Priority", "Assigned To", "Last Message", "Last Activity"];
+    
+    const rows = conversations.map(c => [
+      `"${(c.customer?.businessName || c.customer?.contactPerson || "").replace(/"/g, '""')}"`,
+      `"${c.customer?.mobile || ""}"`,
+      `"${c.leadStatus || ""}"`,
+      `"${c.priority || ""}"`,
+      `"${c.assignedEmployee?.user?.name || ""}"`,
+      `"${(c.lastMessageText || "").replace(/"/g, '""')}"`,
+      `"${c.lastMessageAt ? new Date(c.lastMessageAt).toLocaleString() : ""}"`
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    return { success: true, csv: csvContent };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ---------------------------------------------------------
+// 13. QUICK CREATE FOLLOW-UP TASK FROM INBOX
+// ---------------------------------------------------------
+export async function createFollowUpTaskAction(data: {
+  customerId: string;
+  notes: string;
+  days: number;
+}) {
+  try {
+    const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
+    const employee = await prisma.employee.findFirst();
+    
+    if (!customer || !employee) return { success: false, error: "Missing records" };
+
+    const followUpDate = new Date();
+    followUpDate.setDate(followUpDate.getDate() + data.days);
+
+    const followUp = await prisma.followUp.create({
+      data: {
+        customerId: customer.id,
+        employeeId: employee.id,
+        date: followUpDate,
+        followUpType: 'WhatsApp Chat',
+        notes: data.notes
+      }
+    });
+
+    // Also update Customer's nextFollowUp
+    await prisma.customer.update({
+      where: { id: customer.id },
+      data: { nextFollowUp: followUpDate }
+    });
+
+    return { success: true, followUp };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// ---------------------------------------------------------
+// 14. WHATSAPP SETTINGS PERSISTENCE
+// ---------------------------------------------------------
+export async function getWhatsAppSettingsAction() {
+  try {
+    let settings = await prisma.whatsAppSettings.findFirst();
+    if (!settings) {
+      settings = await prisma.whatsAppSettings.create({
+        data: {} // Uses default schema values
+      });
+    }
+    return { success: true, settings };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function saveWhatsAppSettingsAction(data: {
+  workingHoursStart: string;
+  workingHoursEnd: string;
+  slaWarningMinutes: number;
+  autoAssignStrategy: string;
+}) {
+  try {
+    let settings = await prisma.whatsAppSettings.findFirst();
+    if (!settings) {
+      settings = await prisma.whatsAppSettings.create({ data });
+    } else {
+      settings = await prisma.whatsAppSettings.update({
+        where: { id: settings.id },
+        data
+      });
+    }
+    revalidatePath("/whatsapp/settings");
+    return { success: true, settings };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}

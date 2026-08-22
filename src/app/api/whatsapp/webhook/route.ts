@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { handleIncomingAILogic } from "@/lib/whatsappAI";
+import { executeFlowEngine } from "@/lib/whatsappFlowEngine";
 
 // GET Endpoint - Webhook Verification Challenge from Meta WhatsApp API
 export async function GET(req: NextRequest) {
@@ -26,7 +27,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Check Meta WhatsApp Cloud API Structure
     const entry = body.entry?.[0];
     const changes = entry?.changes?.[0];
     const value = changes?.value;
@@ -35,12 +35,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "ignored" });
     }
 
-    // 1. Process Incoming Messages
+    // ══════════════════════════════════════════════════════
+    // 1. PROCESS INCOMING MESSAGES
+    // ══════════════════════════════════════════════════════
     if (value.messages && value.messages.length > 0) {
       const msg = value.messages[0];
-      const fromPhone = msg.from; // Phone number e.g. "919812034567"
+      const fromPhone = msg.from;
       const cleanPhone = fromPhone.replace(/\D/g, '').slice(-10);
-      const textContent = msg.text?.body || msg.caption || "[Media Message]";
+      const textContent = msg.text?.body || msg.caption || msg.interactive?.button_reply?.title || "[Media Message]";
+
+      // Feature 5: Extract WhatsApp Profile Name from Meta payload
+      const whatsappProfileName = value.contacts?.[0]?.profile?.name || null;
 
       // Step A: Search CRM by Phone Number
       let customer = await prisma.customer.findFirst({
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
         customer = await prisma.customer.create({
           data: {
             businessName: `WhatsApp Lead (${cleanPhone})`,
-            contactPerson: value.contacts?.[0]?.profile?.name || `Contact +91 ${cleanPhone}`,
+            contactPerson: whatsappProfileName || `Contact +91 ${cleanPhone}`,
             mobile: cleanPhone,
             whatsappNumber: cleanPhone,
             customerType: "Wholesaler",
@@ -69,6 +74,13 @@ export async function POST(req: NextRequest) {
             tags: "WhatsApp Lead, Auto Created"
           }
         });
+      } else if (whatsappProfileName && customer.contactPerson?.startsWith("Contact +91")) {
+        // Feature 5: Update contact name if it was an auto-placeholder
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: { contactPerson: whatsappProfileName }
+        });
+        customer = { ...customer, contactPerson: whatsappProfileName };
       }
 
       // Step C: Link/Find Conversation
@@ -78,7 +90,7 @@ export async function POST(req: NextRequest) {
 
       const account = await prisma.whatsAppAccount.findFirst() || await prisma.whatsAppAccount.create({
         data: {
-          name: "Espon Main Sales",
+          name: "Main WhatsApp",
           phoneNumber: "+91 7206066678",
           status: "CONNECTED"
         }
@@ -121,58 +133,104 @@ export async function POST(req: NextRequest) {
           content: textContent,
           status: "RECEIVED",
           metaMessageId: msg.id,
-          sentAt: new Date(msg.timestamp * 1000 || Date.now())
+          sentAt: new Date(parseInt(msg.timestamp) * 1000 || Date.now())
         }
       });
 
-      console.log(`[WhatsApp Webhook] Incoming message from +91 ${cleanPhone} saved to CRM!`);
+      console.log(`[WhatsApp Webhook] Incoming message from +91 ${cleanPhone}: "${textContent.slice(0, 50)}"`);
 
-      // Execute AI Logic if enabled
-      if (conversation.aiHandled) {
-        // Fetch chat history for context
-        const recentMessages = await prisma.whatsAppMessage.findMany({
-          where: { conversationId: conversation.id, senderType: { in: ["CUSTOMER", "AGENT", "AI"] } },
-          orderBy: { sentAt: 'desc' },
-          take: 6
-        });
-        const historyLines = recentMessages.reverse().map(m => `${m.senderType}: ${m.content}`);
-        
-        const aiResponse = await handleIncomingAILogic(msg.from, textContent, historyLines);
-        if (aiResponse) {
-          // Log AI message to DB
-          await prisma.whatsAppMessage.create({
-            data: {
-              conversationId: conversation.id,
-              senderType: "AI",
-              senderName: "AI Assistant",
-              messageType: "TEXT",
-              content: aiResponse,
-              status: "SENT",
-              sentAt: new Date()
-            }
+      // Feature 1: Send Web Push Notification to all subscribed agents
+      sendPushNotificationToAgents(
+        `💬 ${customer.contactPerson || '+91 ' + cleanPhone}`,
+        textContent.slice(0, 100),
+        `/whatsapp/inbox`
+      ).catch((e) => console.error("[Push] Failed:", e.message));
+
+      // Feature 2: Chatbot Flow Engine — check if a flow should intercept
+      const isTextMessage = msg.type === "text" || msg.type === "interactive";
+      if (isTextMessage) {
+        const flowHandled = await executeFlowEngine(fromPhone, textContent, conversation.id);
+
+        if (!flowHandled && conversation.aiHandled) {
+          // Feature 7: AI + Logging
+          const aiStart = Date.now();
+          const recentMessages = await prisma.whatsAppMessage.findMany({
+            where: { conversationId: conversation.id, senderType: { in: ["CUSTOMER", "AGENT", "AI"] } },
+            orderBy: { sentAt: 'desc' },
+            take: 6
           });
+          const historyLines = recentMessages.reverse().map(m => `${m.senderType}: ${m.content}`);
+
+          let aiResponse: string | null = null;
+          let aiStatus = "SUCCESS";
+          let aiError: string | undefined;
+          let toolsCalled = "none";
+
+          try {
+            aiResponse = await handleIncomingAILogic(fromPhone, textContent, historyLines);
+            // Detect which tools were called from the response content
+            const tools: string[] = [];
+            if (textContent.match(/[12]\d{3}/)) tools.push("lookupOrder");
+            if (/shirt|short|combo|pant|product/i.test(textContent)) tools.push("searchProducts");
+            if (/size|weight|kg|cm|waist/i.test(textContent)) tools.push("recommendSize");
+            toolsCalled = tools.length > 0 ? tools.join(", ") : "ai_reply";
+          } catch (e: any) {
+            aiStatus = "FAILED";
+            aiError = e.message;
+          }
+
+          const aiDuration = Date.now() - aiStart;
+
+          // Feature 7: Log AI execution to DB
+          await prisma.whatsAppAILog.create({
+            data: {
+              phone: cleanPhone,
+              userMessage: textContent.slice(0, 500),
+              aiReply: aiResponse?.slice(0, 2000) || null,
+              toolsCalled,
+              status: aiStatus,
+              errorMessage: aiError,
+              durationMs: aiDuration
+            }
+          }).catch(() => {}); // Non-critical, don't fail webhook on log error
+
+          if (aiResponse) {
+            await prisma.whatsAppMessage.create({
+              data: {
+                conversationId: conversation.id,
+                senderType: "AI",
+                senderName: "AI Assistant",
+                messageType: "TEXT",
+                content: aiResponse,
+                status: "SENT",
+                sentAt: new Date()
+              }
+            });
+          }
         }
       }
     }
 
-    // 2. Process Message Status Updates (Delivered, Read, Failed)
+    // ══════════════════════════════════════════════════════
+    // 2. PROCESS MESSAGE STATUS UPDATES (Delivered, Read, Failed)
+    // ══════════════════════════════════════════════════════
     if (value.statuses && value.statuses.length > 0) {
       const statusUpdate = value.statuses[0];
       const metaMessageId = statusUpdate.id;
       const status = statusUpdate.status.toUpperCase();
-      
+
       console.log(`[WhatsApp Webhook] Status update: ${status} for msg ID: ${metaMessageId}`);
 
       const updateData: any = { status };
-      if (status === 'DELIVERED') updateData.deliveredAt = new Date(statusUpdate.timestamp * 1000 || Date.now());
-      if (status === 'READ') updateData.readAt = new Date(statusUpdate.timestamp * 1000 || Date.now());
+      if (status === 'DELIVERED') updateData.deliveredAt = new Date(parseInt(statusUpdate.timestamp) * 1000 || Date.now());
+      if (status === 'READ') updateData.readAt = new Date(parseInt(statusUpdate.timestamp) * 1000 || Date.now());
 
       try {
         await prisma.whatsAppMessage.update({
           where: { metaMessageId },
           data: updateData
         });
-      } catch (e) {
+      } catch (_) {
         console.warn(`[WhatsApp Webhook] Could not update status for message ID ${metaMessageId}`);
       }
     }
@@ -181,5 +239,29 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("[WhatsApp Webhook Error]:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// Helper: Fire-and-forget Web Push to all subscribed agents
+async function sendPushNotificationToAgents(title: string, body: string, url: string) {
+  const subs = await prisma.whatsAppPushSubscription.findMany();
+  if (subs.length === 0) return;
+
+  const payload = JSON.stringify({ title, body, data: { url } });
+
+  for (const sub of subs) {
+    try {
+      const subscription = {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth }
+      };
+
+      // Call our own internal push endpoint (avoids importing web-push in Edge Runtime)
+      await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/push/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.INTERNAL_API_SECRET || 'crm_internal_2026' },
+        body: JSON.stringify({ subscription, payload })
+      });
+    } catch (_) {}
   }
 }
