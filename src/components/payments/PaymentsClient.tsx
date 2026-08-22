@@ -859,10 +859,10 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         </div>
       </div>
 
-      {/* COMPACT & STYLISH RECORD PAYMENT MODAL (NO SCROLLING NEEDED) */}
+      {/* COMPACT, MODERN & ZERO-SCROLL 2-COLUMN RECORD PAYMENT MODAL */}
       {showModal && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '640px', padding: '24px' }}>
+        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
+          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '860px', padding: '20px 24px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.15)' }}>
             
             {/* Modal Header */}
             <div style={{
@@ -871,12 +871,12 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               alignItems: 'center',
               marginBottom: '16px',
               borderBottom: '1px solid var(--border)',
-              paddingBottom: '12px'
+              paddingBottom: '10px'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{
-                  width: 34,
-                  height: 34,
+                  width: 32,
+                  height: 32,
                   borderRadius: '8px',
                   background: 'var(--accent-primary)',
                   display: 'flex',
@@ -887,7 +887,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                   <Plus size={16} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                  <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
                     Record Customer Payment
                   </h2>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
@@ -900,314 +900,318 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 type="button"
                 onClick={() => setShowModal(false)}
                 className="close-btn"
-                style={{ fontSize: '1.25rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ fontSize: '1.25rem', color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none' }}
               >
                 ×
               </button>
             </div>
 
-            {/* Modal Body */}
+            {/* Modal Body: 2 Columns Side-by-Side */}
             <form onSubmit={handleSubmitPayment}>
-              
-              {/* Tab Selector Segmented Bar */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '6px',
-                backgroundColor: 'var(--bg-primary)',
-                padding: '4px',
-                borderRadius: '8px',
-                marginBottom: '14px',
-                border: '1px solid var(--border)'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('invoice')}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    fontWeight: modalTab === 'invoice' ? 600 : 400,
-                    backgroundColor: modalTab === 'invoice' ? 'var(--bg-secondary)' : 'transparent',
-                    color: modalTab === 'invoice' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                    border: 'none',
-                    boxShadow: modalTab === 'invoice' ? 'var(--shadow-sm)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <FileCheck size={14} /> Settle Unpaid Invoice
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setModalTab('advance')}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    fontSize: '0.8rem',
-                    fontWeight: modalTab === 'advance' ? 600 : 400,
-                    backgroundColor: modalTab === 'advance' ? 'var(--bg-secondary)' : 'transparent',
-                    color: modalTab === 'advance' ? '#0f766e' : 'var(--text-secondary)',
-                    border: 'none',
-                    boxShadow: modalTab === 'advance' ? 'var(--shadow-sm)' : 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Building2 size={14} /> Advance / On-Account
-                </button>
-              </div>
-
-              {/* Grid 1: Customer & Invoice in clean 2-column layout */}
-              <div style={{ display: 'grid', gridTemplateColumns: modalTab === 'invoice' && modalCustomer ? '1.1fr 1fr' : '1fr', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px', alignItems: 'start' }}>
                 
-                {/* Select Customer */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    Customer *
-                  </label>
-                  <ModernSearchableSelect
-                    options={modalCustomerOptions}
-                    value={modalCustomer}
-                    onChange={handleCustomerChange}
-                    placeholder="-- Choose Customer --"
-                    searchPlaceholder="Search customer by name, phone, city..."
-                    icon={<User size={14} />}
-                  />
-                </div>
-
-                {/* If Invoice Tab & Customer Selected, show compact Invoice Picker */}
-                {modalTab === 'invoice' && modalCustomer && (
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                      Invoice to Settle *
-                    </label>
-                    {loadingInvoices ? (
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '6px' }}>Loading invoices...</div>
-                    ) : customerInvoices.length > 0 ? (
-                      <ModernSearchableSelect
-                        options={modalInvoiceOptions}
-                        value={selectedInvoiceId}
-                        onChange={handleInvoiceSelect}
-                        placeholder="Select Invoice"
-                        searchPlaceholder="Search invoice #..."
-                        icon={<FileCheck size={14} />}
-                      />
-                    ) : (
-                      <div style={{ fontSize: '0.75rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '6px 10px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
-                        ✓ No pending invoice. Switch to Advance tab.
-                      </div>
-                    )}
+                {/* LEFT COLUMN: Customer & Invoice Selection */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-primary)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                  
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    1. Customer & Settlement Type
                   </div>
-                )}
-              </div>
 
-              {/* Grid 2: Amount & Modern Calendar Date Picker in 2-column layout */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                
-                {/* Amount */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    Payment Amount (₹) *
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--success)', fontWeight: 600, fontSize: '0.9rem' }}>
-                      ₹
-                    </span>
+                  {/* Tab Selector Segmented Bar */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '4px',
+                    backgroundColor: 'var(--bg-secondary)',
+                    padding: '3px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('invoice')}
+                      style={{
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.76rem',
+                        fontWeight: modalTab === 'invoice' ? 600 : 400,
+                        backgroundColor: modalTab === 'invoice' ? 'var(--accent-primary)' : 'transparent',
+                        color: modalTab === 'invoice' ? '#ffffff' : 'var(--text-secondary)',
+                        border: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <FileCheck size={13} /> Settle Invoice
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('advance')}
+                      style={{
+                        padding: '6px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.76rem',
+                        fontWeight: modalTab === 'advance' ? 600 : 400,
+                        backgroundColor: modalTab === 'advance' ? '#0f766e' : 'transparent',
+                        color: modalTab === 'advance' ? '#ffffff' : 'var(--text-secondary)',
+                        border: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '5px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      <Building2 size={13} /> Advance / On-Account
+                    </button>
+                  </div>
+
+                  {/* Customer Select */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                      Customer *
+                    </label>
+                    <ModernSearchableSelect
+                      options={modalCustomerOptions}
+                      value={modalCustomer}
+                      onChange={handleCustomerChange}
+                      placeholder="-- Choose Customer --"
+                      searchPlaceholder="Search by name, mobile, city..."
+                      icon={<User size={14} />}
+                    />
+                  </div>
+
+                  {/* Invoice Select (If invoice tab) */}
+                  {modalTab === 'invoice' && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        Invoice to Settle *
+                      </label>
+                      {!modalCustomer ? (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--bg-secondary)', padding: '8px 10px', borderRadius: '6px', border: '1px dashed var(--border)' }}>
+                          Select a customer above to view unpaid invoices
+                        </div>
+                      ) : loadingInvoices ? (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '6px' }}>Loading invoices...</div>
+                      ) : customerInvoices.length > 0 ? (
+                        <ModernSearchableSelect
+                          options={modalInvoiceOptions}
+                          value={selectedInvoiceId}
+                          onChange={handleInvoiceSelect}
+                          placeholder="Select Invoice"
+                          searchPlaceholder="Search invoice #..."
+                          icon={<FileCheck size={14} />}
+                        />
+                      ) : (
+                        <div style={{ fontSize: '0.75rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '6px 10px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
+                          ✓ No pending invoices. Switch to Advance tab.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Notes / Remarks */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                      Internal Remarks
+                    </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="1"
-                      required
-                      placeholder="0.00"
+                      type="text"
+                      placeholder="e.g. Verified in bank account"
                       className="form-input"
                       style={{
                         width: '100%',
-                        paddingLeft: '26px',
-                        fontSize: '0.9rem',
-                        fontWeight: 600
+                        fontSize: '0.8rem',
+                        fontWeight: 400
                       }}
-                      value={payAmount}
-                      onChange={e => setPayAmount(e.target.value)}
+                      value={payNotes}
+                      onChange={e => setPayNotes(e.target.value)}
                     />
                   </div>
+
                 </div>
 
-                {/* Date Input with quick presets */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                      Payment Date *
-                    </label>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setQuickModalDate('today')}
-                        style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--accent-primary)', fontWeight: 500, border: '1px solid var(--border)', cursor: 'pointer' }}
-                      >
-                        Today
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickModalDate('yesterday')}
-                        style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', background: 'var(--bg-primary)', color: 'var(--text-secondary)', fontWeight: 400, border: '1px solid var(--border)', cursor: 'pointer' }}
-                      >
-                        Yesterday
-                      </button>
+                {/* RIGHT COLUMN: Amount, Mode & Bank Details */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-primary)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                  
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    2. Payment & Transaction Info
+                  </div>
+
+                  {/* Amount & Date Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    
+                    {/* Amount */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        Amount (₹) *
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--success)', fontWeight: 600, fontSize: '0.9rem' }}>
+                          ₹
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="1"
+                          required
+                          placeholder="0.00"
+                          className="form-input"
+                          style={{
+                            width: '100%',
+                            paddingLeft: '24px',
+                            fontSize: '0.88rem',
+                            fontWeight: 600
+                          }}
+                          value={payAmount}
+                          onChange={e => setPayAmount(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Date */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                        <label style={{ fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                          Date *
+                        </label>
+                        <div style={{ display: 'flex', gap: '3px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setQuickModalDate('today')}
+                            style={{ fontSize: '0.66rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--bg-secondary)', color: 'var(--accent-primary)', fontWeight: 500, border: '1px solid var(--border)', cursor: 'pointer' }}
+                          >
+                            Today
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuickModalDate('yesterday')}
+                            style={{ fontSize: '0.66rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontWeight: 400, border: '1px solid var(--border)', cursor: 'pointer' }}
+                          >
+                            Yest
+                          </button>
+                        </div>
+                      </div>
+                      <input
+                        type="date"
+                        required
+                        className="form-input"
+                        style={{
+                          width: '100%',
+                          fontSize: '0.8rem',
+                          fontWeight: 400
+                        }}
+                        value={payDate}
+                        onChange={e => setPayDate(e.target.value)}
+                      />
                     </div>
                   </div>
 
-                  <div style={{ position: 'relative' }}>
-                    <CalendarIcon size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input
-                      type="date"
-                      required
-                      className="form-input"
-                      style={{
-                        width: '100%',
-                        paddingLeft: '28px',
-                        fontSize: '0.82rem',
-                        fontWeight: 400
-                      }}
-                      value={payDate}
-                      onChange={e => setPayDate(e.target.value)}
-                    />
+                  {/* Mode & Account Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        Payment Mode *
+                      </label>
+                      <ModernSearchableSelect
+                        options={modalModeOptions}
+                        value={payMode}
+                        onChange={setPayMode}
+                        placeholder="Select Mode"
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        Receiving Account *
+                      </label>
+                      <ModernSearchableSelect
+                        options={modalAccountOptions}
+                        value={payAccount}
+                        onChange={setPayAccount}
+                        placeholder="Select Account"
+                        icon={<Landmark size={13} />}
+                      />
+                    </div>
                   </div>
-                </div>
 
-              </div>
+                  {/* Reference & Payer Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        UTR / Cheque Ref #
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. UTR-9876543210"
+                        className="form-input"
+                        style={{
+                          width: '100%',
+                          fontSize: '0.8rem',
+                          fontWeight: 400
+                        }}
+                        value={refNumber}
+                        onChange={e => setRefNumber(e.target.value)}
+                      />
+                    </div>
 
-              {/* Grid 3: Payment Mode & Receiving Account in 2-column layout */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                
-                {/* Payment Mode */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    Payment Mode *
-                  </label>
-                  <ModernSearchableSelect
-                    options={modalModeOptions}
-                    value={payMode}
-                    onChange={setPayMode}
-                    placeholder="Select Mode"
-                  />
-                </div>
-
-                {/* Receiving Account / Bank / QR */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    Receiving Account / Source *
-                  </label>
-                  <ModernSearchableSelect
-                    options={modalAccountOptions}
-                    value={payAccount}
-                    onChange={setPayAccount}
-                    placeholder="Select Account / Bank"
-                    icon={<Landmark size={14} />}
-                  />
-                </div>
-
-              </div>
-
-              {/* Grid 4: Reference Number & Payer Name */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    UTR / Cheque / Txn Ref #
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <Hash size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input
-                      type="text"
-                      placeholder="e.g. UTR-9876543210"
-                      className="form-input"
-                      style={{
-                        width: '100%',
-                        paddingLeft: '28px',
-                        fontSize: '0.82rem',
-                        fontWeight: 400
-                      }}
-                      value={refNumber}
-                      onChange={e => setRefNumber(e.target.value)}
-                    />
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                        Payer Name / Depositor
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Name of payer"
+                        className="form-input"
+                        style={{
+                          width: '100%',
+                          fontSize: '0.8rem',
+                          fontWeight: 400
+                        }}
+                        value={payerName}
+                        onChange={e => setPayerName(e.target.value)}
+                      />
+                    </div>
                   </div>
+
+                  {/* Actions Footer inside right column */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="action-btn"
+                      style={{ fontSize: '0.8rem', fontWeight: 500, padding: '7px 14px' }}
+                    >
+                      Cancel
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="primary-btn"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        padding: '7px 18px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Check size={14} /> {submitting ? 'Recording...' : 'Confirm & Save Payment'}
+                    </button>
+                  </div>
+
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                    Payer Name / Depositor Title
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Name of payer"
-                    className="form-input"
-                    style={{
-                      width: '100%',
-                      fontSize: '0.82rem',
-                      fontWeight: 400
-                    }}
-                    value={payerName}
-                    onChange={e => setPayerName(e.target.value)}
-                  />
-                </div>
-
               </div>
-
-              {/* Remarks / Notes */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                  Internal Notes & Remarks
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Received via PhonePe QR, verified in account"
-                  className="form-input"
-                  style={{
-                    width: '100%',
-                    fontSize: '0.82rem',
-                    fontWeight: 400
-                  }}
-                  value={payNotes}
-                  onChange={e => setPayNotes(e.target.value)}
-                />
-              </div>
-
-              {/* Modal Footer Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="action-btn"
-                  style={{ fontSize: '0.82rem', fontWeight: 500 }}
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="primary-btn"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Check size={14} /> {submitting ? 'Recording...' : 'Confirm & Save Payment'}
-                </button>
-              </div>
-
             </form>
 
           </div>
