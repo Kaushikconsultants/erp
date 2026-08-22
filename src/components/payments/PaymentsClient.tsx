@@ -859,24 +859,24 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         </div>
       </div>
 
-      {/* COMPACT, MODERN & ZERO-SCROLL 2-COLUMN RECORD PAYMENT MODAL */}
+      {/* COMPACT, PERFECTLY ALIGNED & ZERO-SCROLL RECORD PAYMENT MODAL */}
       {showModal && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '16px' }}>
-          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '860px', padding: '20px 24px', borderRadius: '16px', border: '1px solid var(--border)', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.15)' }}>
+        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
+          <div className="modal-content glass-panel" style={{ width: '100%', maxWidth: '880px', padding: '18px 24px', borderRadius: '14px', border: '1px solid var(--border)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', maxHeight: '92vh', overflow: 'visible' }}>
             
             {/* Modal Header */}
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: '16px',
+              marginBottom: '12px',
               borderBottom: '1px solid var(--border)',
-              paddingBottom: '10px'
+              paddingBottom: '8px'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{
-                  width: 32,
-                  height: 32,
+                  width: 30,
+                  height: 30,
                   borderRadius: '8px',
                   background: 'var(--accent-primary)',
                   display: 'flex',
@@ -890,7 +890,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                   <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
                     Record Customer Payment
                   </h2>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: 0 }}>
                     Settle open invoice or receive customer advance deposit
                   </p>
                 </div>
@@ -900,81 +900,80 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 type="button"
                 onClick={() => setShowModal(false)}
                 className="close-btn"
-                style={{ fontSize: '1.25rem', color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none' }}
+                style={{ fontSize: '1.25rem', color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none', width: '28px', height: '28px' }}
               >
                 ×
               </button>
             </div>
 
-            {/* Modal Body: 2 Columns Side-by-Side */}
+            {/* Modal Body */}
             <form onSubmit={handleSubmitPayment}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px', alignItems: 'start' }}>
+              
+              {/* Top Segmented Tab Switcher */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '4px',
+                backgroundColor: 'var(--bg-primary)',
+                padding: '3px',
+                borderRadius: '8px',
+                marginBottom: '12px',
+                border: '1px solid var(--border)'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setModalTab('invoice')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    fontWeight: modalTab === 'invoice' ? 600 : 400,
+                    backgroundColor: modalTab === 'invoice' ? 'var(--accent-primary)' : 'transparent',
+                    color: modalTab === 'invoice' ? '#ffffff' : 'var(--text-secondary)',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <FileCheck size={13} /> Settle Unpaid Invoice
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModalTab('advance')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    fontWeight: modalTab === 'advance' ? 600 : 400,
+                    backgroundColor: modalTab === 'advance' ? '#0f766e' : 'transparent',
+                    color: modalTab === 'advance' ? '#ffffff' : 'var(--text-secondary)',
+                    border: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '5px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  <Building2 size={13} /> Advance / On-Account Deposit
+                </button>
+              </div>
+
+              {/* 2 Balanced Columns Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', alignItems: 'stretch', marginBottom: '14px' }}>
                 
-                {/* LEFT COLUMN: Customer & Invoice Selection */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-primary)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                {/* LEFT COLUMN: Customer, Invoice & Notes */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)', minWidth: 0 }}>
                   
-                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                    1. Customer & Settlement Type
-                  </div>
-
-                  {/* Tab Selector Segmented Bar */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: '4px',
-                    backgroundColor: 'var(--bg-secondary)',
-                    padding: '3px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border)'
-                  }}>
-                    <button
-                      type="button"
-                      onClick={() => setModalTab('invoice')}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.76rem',
-                        fontWeight: modalTab === 'invoice' ? 600 : 400,
-                        backgroundColor: modalTab === 'invoice' ? 'var(--accent-primary)' : 'transparent',
-                        color: modalTab === 'invoice' ? '#ffffff' : 'var(--text-secondary)',
-                        border: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '5px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <FileCheck size={13} /> Settle Invoice
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setModalTab('advance')}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.76rem',
-                        fontWeight: modalTab === 'advance' ? 600 : 400,
-                        backgroundColor: modalTab === 'advance' ? '#0f766e' : 'transparent',
-                        color: modalTab === 'advance' ? '#ffffff' : 'var(--text-secondary)',
-                        border: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '5px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <Building2 size={13} /> Advance / On-Account
-                    </button>
-                  </div>
-
-                  {/* Customer Select */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  {/* Field 1: Customer */}
+                  <div style={{ minWidth: 0 }}>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
                       Customer *
                     </label>
                     <ModernSearchableSelect
@@ -982,20 +981,20 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                       value={modalCustomer}
                       onChange={handleCustomerChange}
                       placeholder="-- Choose Customer --"
-                      searchPlaceholder="Search by name, mobile, city..."
-                      icon={<User size={14} />}
+                      searchPlaceholder="Search customer name, mobile..."
+                      icon={<User size={13} />}
                     />
                   </div>
 
-                  {/* Invoice Select (If invoice tab) */}
-                  {modalTab === 'invoice' && (
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                        Invoice to Settle *
-                      </label>
-                      {!modalCustomer ? (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--bg-secondary)', padding: '8px 10px', borderRadius: '6px', border: '1px dashed var(--border)' }}>
-                          Select a customer above to view unpaid invoices
+                  {/* Field 2: Invoice to Settle */}
+                  <div style={{ minWidth: 0 }}>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
+                      {modalTab === 'invoice' ? 'Invoice to Settle *' : 'Deposit Allocation'}
+                    </label>
+                    {modalTab === 'invoice' ? (
+                      !modalCustomer ? (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px dashed var(--border)' }}>
+                          Select customer to pick invoice
                         </div>
                       ) : loadingInvoices ? (
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '6px' }}>Loading invoices...</div>
@@ -1006,19 +1005,23 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                           onChange={handleInvoiceSelect}
                           placeholder="Select Invoice"
                           searchPlaceholder="Search invoice #..."
-                          icon={<FileCheck size={14} />}
+                          icon={<FileCheck size={13} />}
                         />
                       ) : (
-                        <div style={{ fontSize: '0.75rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '6px 10px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
-                          ✓ No pending invoices. Switch to Advance tab.
+                        <div style={{ fontSize: '0.74rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '7px 10px', borderRadius: '8px', border: '1px solid #a7f3d0' }}>
+                          ✓ No pending invoices.
                         </div>
-                      )}
-                    </div>
-                  )}
+                      )
+                    ) : (
+                      <div style={{ fontSize: '0.75rem', color: '#0f766e', backgroundColor: '#f0fdfa', padding: '7px 10px', borderRadius: '8px', border: '1px solid #99f6e4' }}>
+                        Customer account will be credited as Advance
+                      </div>
+                    )}
+                  </div>
 
-                  {/* Notes / Remarks */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  {/* Field 3: Internal Remarks */}
+                  <div style={{ minWidth: 0 }}>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
                       Internal Remarks
                     </label>
                     <input
@@ -1028,7 +1031,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                       style={{
                         width: '100%',
                         fontSize: '0.8rem',
-                        fontWeight: 400
+                        fontWeight: 400,
+                        height: '34px'
                       }}
                       value={payNotes}
                       onChange={e => setPayNotes(e.target.value)}
@@ -1037,23 +1041,19 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
 
                 </div>
 
-                {/* RIGHT COLUMN: Amount, Mode & Bank Details */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'var(--bg-primary)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                {/* RIGHT COLUMN: Amount, Mode, Account & UTR */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)', minWidth: 0 }}>
                   
-                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                    2. Payment & Transaction Info
-                  </div>
-
-                  {/* Amount & Date Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  {/* Row 1: Amount & Date */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', minWidth: 0 }}>
                     
                     {/* Amount */}
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
                         Amount (₹) *
                       </label>
                       <div style={{ position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--success)', fontWeight: 600, fontSize: '0.9rem' }}>
+                        <span style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: 'var(--success)', fontWeight: 600, fontSize: '0.85rem' }}>
                           ₹
                         </span>
                         <input
@@ -1065,9 +1065,10 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                           className="form-input"
                           style={{
                             width: '100%',
-                            paddingLeft: '24px',
-                            fontSize: '0.88rem',
-                            fontWeight: 600
+                            paddingLeft: '22px',
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            height: '34px'
                           }}
                           value={payAmount}
                           onChange={e => setPayAmount(e.target.value)}
@@ -1076,36 +1077,20 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                     </div>
 
                     {/* Date */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <label style={{ fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)' }}>
-                          Date *
-                        </label>
-                        <div style={{ display: 'flex', gap: '3px' }}>
-                          <button
-                            type="button"
-                            onClick={() => setQuickModalDate('today')}
-                            style={{ fontSize: '0.66rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--bg-secondary)', color: 'var(--accent-primary)', fontWeight: 500, border: '1px solid var(--border)', cursor: 'pointer' }}
-                          >
-                            Today
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setQuickModalDate('yesterday')}
-                            style={{ fontSize: '0.66rem', padding: '1px 5px', borderRadius: '4px', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontWeight: 400, border: '1px solid var(--border)', cursor: 'pointer' }}
-                          >
-                            Yest
-                          </button>
-                        </div>
-                      </div>
+                    <div style={{ minWidth: 0 }}>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
+                        Payment Date *
+                      </label>
                       <input
                         type="date"
                         required
                         className="form-input"
                         style={{
                           width: '100%',
-                          fontSize: '0.8rem',
-                          fontWeight: 400
+                          fontSize: '0.78rem',
+                          fontWeight: 400,
+                          height: '34px',
+                          padding: '4px 8px'
                         }}
                         value={payDate}
                         onChange={e => setPayDate(e.target.value)}
@@ -1113,10 +1098,10 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                     </div>
                   </div>
 
-                  {/* Mode & Account Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  {/* Row 2: Payment Mode & Receiving Account */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', minWidth: 0 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
                         Payment Mode *
                       </label>
                       <ModernSearchableSelect
@@ -1127,8 +1112,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                       />
                     </div>
 
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    <div style={{ minWidth: 0 }}>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
                         Receiving Account *
                       </label>
                       <ModernSearchableSelect
@@ -1136,15 +1121,15 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                         value={payAccount}
                         onChange={setPayAccount}
                         placeholder="Select Account"
-                        icon={<Landmark size={13} />}
+                        icon={<Landmark size={12} />}
                       />
                     </div>
                   </div>
 
-                  {/* Reference & Payer Grid */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  {/* Row 3: UTR Ref & Payer Name */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', minWidth: 0 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
                         UTR / Cheque Ref #
                       </label>
                       <input
@@ -1153,17 +1138,18 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                         className="form-input"
                         style={{
                           width: '100%',
-                          fontSize: '0.8rem',
-                          fontWeight: 400
+                          fontSize: '0.78rem',
+                          fontWeight: 400,
+                          height: '34px'
                         }}
                         value={refNumber}
                         onChange={e => setRefNumber(e.target.value)}
                       />
                     </div>
 
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                        Payer Name / Depositor
+                    <div style={{ minWidth: 0 }}>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
+                        Payer / Depositor Name
                       </label>
                       <input
                         type="text"
@@ -1171,8 +1157,9 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                         className="form-input"
                         style={{
                           width: '100%',
-                          fontSize: '0.8rem',
-                          fontWeight: 400
+                          fontSize: '0.78rem',
+                          fontWeight: 400,
+                          height: '34px'
                         }}
                         value={payerName}
                         onChange={e => setPayerName(e.target.value)}
@@ -1180,38 +1167,39 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                     </div>
                   </div>
 
-                  {/* Actions Footer inside right column */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
-                    <button
-                      type="button"
-                      onClick={() => setShowModal(false)}
-                      className="action-btn"
-                      style={{ fontSize: '0.8rem', fontWeight: 500, padding: '7px 14px' }}
-                    >
-                      Cancel
-                    </button>
-
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="primary-btn"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontSize: '0.82rem',
-                        fontWeight: 600,
-                        padding: '7px 18px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Check size={14} /> {submitting ? 'Recording...' : 'Confirm & Save Payment'}
-                    </button>
-                  </div>
-
                 </div>
 
               </div>
+
+              {/* Bottom Unified Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="action-btn"
+                  style={{ fontSize: '0.8rem', fontWeight: 500, padding: '6px 14px' }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="primary-btn"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    padding: '6px 18px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Check size={14} /> {submitting ? 'Recording...' : 'Confirm & Save Payment'}
+                </button>
+              </div>
+
             </form>
 
           </div>

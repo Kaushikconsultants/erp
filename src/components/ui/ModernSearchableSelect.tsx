@@ -81,7 +81,7 @@ export default function ModernSearchableSelect({
   });
 
   return (
-    <div ref={containerRef} style={{ position: "relative", width: "100%", ...style }}>
+    <div ref={containerRef} style={{ position: "relative", width: "100%", minWidth: 0, ...style }}>
       {/* Trigger Button */}
       <button
         type="button"
@@ -89,52 +89,49 @@ export default function ModernSearchableSelect({
         onClick={() => setIsOpen(!isOpen)}
         style={{
           width: "100%",
-          padding: "8px 12px",
+          minWidth: 0,
+          padding: "7px 10px",
           backgroundColor: "#ffffff",
-          border: isOpen ? "1px solid #6366f1" : "1px solid #cbd5e1",
+          border: isOpen ? "1px solid var(--accent-primary)" : "1px solid var(--border)",
           borderRadius: "8px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: "8px",
+          gap: "6px",
           textAlign: "left",
           cursor: disabled ? "not-allowed" : "pointer",
-          boxShadow: isOpen ? "0 0 0 3px rgba(99, 102, 241, 0.15)" : "0 1px 2px rgba(0,0,0,0.03)",
+          boxShadow: isOpen ? "0 0 0 3px rgba(79, 70, 229, 0.12)" : "var(--shadow-sm)",
           transition: "all 0.15s ease",
           fontSize: "0.82rem",
-          color: selectedOption ? "#0f172a" : "#94a3b8"
+          color: selectedOption ? "var(--text-primary)" : "var(--text-muted)"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-          {icon && <span style={{ color: "#94a3b8", display: "flex", alignItems: "center" }}>{icon}</span>}
-          <span style={{ fontWeight: selectedOption ? 500 : 400, overflow: "hidden", textOverflow: "ellipsis", color: selectedOption ? "#1e293b" : "#94a3b8" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", minWidth: 0, flex: 1 }}>
+          {icon && <span style={{ color: "var(--text-muted)", display: "flex", alignItems: "center", flexShrink: 0 }}>{icon}</span>}
+          <span style={{ fontWeight: selectedOption ? 500 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: selectedOption ? "var(--text-primary)" : "var(--text-muted)", display: "block" }}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
-          {selectedOption?.subLabel && (
-            <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 400 }}>
-              ({selectedOption.subLabel})
-            </span>
-          )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
           {allowClear && selectedOption && (
             <span
               onClick={(e) => {
                 e.stopPropagation();
                 onChange("");
               }}
-              style={{ color: "#94a3b8", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
+              style={{ color: "var(--text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
             >
               <X size={12} />
             </span>
           )}
           <ChevronDown
-            size={14}
+            size={13}
             style={{
-              color: "#94a3b8",
+              color: "var(--text-muted)",
               transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-              transition: "transform 0.2s ease"
+              transition: "transform 0.2s ease",
+              flexShrink: 0
             }}
           />
         </div>
