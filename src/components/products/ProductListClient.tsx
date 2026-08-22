@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, ChevronDown, Edit, Trash2, Scale, Tag, History, Image as ImageIcon, Eye, Layers } from 'lucide-react';
+import { Search, ChevronDown, Edit, Trash2, Scale, Tag, History, Image as ImageIcon, Eye, Layers, RotateCcw, X, Filter } from 'lucide-react';
 import AddProductButton from '@/components/ui/AddProductButton';
 import ManageCategoriesModal from '@/components/products/ManageCategoriesModal';
 import EditProductModal from '@/components/ui/EditProductModal';
@@ -107,116 +107,246 @@ export default function ProductListClient({ products, categories, categoriesData
     setSelectedStatus('All Statuses');
   };
 
+  const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories' || selectedStatus !== 'All Statuses';
+
   return (
-    <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+    <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
       
-      {/* ─── FILTERS & HEADER ACTIONS ─── */}
-      <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+      {/* ─── FILTERS & HEADER ACTIONS TOOLBAR ─── */}
+      <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: '#ffffff' }}>
         
-        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
-          {/* Search */}
-          <div style={{ position: 'relative', flex: '1', minWidth: '250px', maxWidth: '380px' }}>
-            <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+        {/* Row 1: Section Title & Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '10px',
+              backgroundColor: '#e0e7ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#4f46e5'
+            }}>
+              <Layers size={18} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                Product Catalog & Inventory
+              </h3>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> products
+              </p>
+            </div>
+          </div>
+
+          {/* Action Buttons Group */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* Article Transaction History & Usage Button */}
+            <button
+              onClick={() => {
+                if (products.length > 0) {
+                  const first = products[0];
+                  setSelectedHistoryArticle(first.articleNumber || first.sku || first.id);
+                }
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid #c7d2fe',
+                backgroundColor: '#eef2ff',
+                color: '#4338ca',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(79, 70, 229, 0.08)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eef2ff'}
+              title="Open Article Transaction History, Quotations, and Invoice Usage"
+            >
+              <History size={15} color="#4f46e5" />
+              Article History & Usage
+            </button>
+
+            {canManage && (
+              <>
+                <button
+                  onClick={() => setShowCategoryModal(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#334155',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                >
+                  <Scale size={15} color="#4f46e5" />
+                  Manage Categories & Weights
+                </button>
+                <AddProductButton categories={categories} />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Row 2: Search & Filter Controls */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          flexWrap: 'wrap',
+          backgroundColor: '#f8fafc',
+          padding: '10px 12px',
+          borderRadius: '10px',
+          border: '1px solid #e2e8f0'
+        }}>
+          {/* Search Input */}
+          <div style={{ position: 'relative', flex: '1', minWidth: '260px' }}>
+            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
               placeholder="Search by product name, SKU, article no..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+              style={{
+                width: '100%',
+                padding: '8px 32px 8px 36px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                outline: 'none',
+                backgroundColor: '#ffffff',
+                color: '#1e293b'
+              }}
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#94a3b8',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center'
+                }}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           {/* Category Dropdown */}
-          <div style={{ position: 'relative', width: '190px' }}>
+          <div style={{ position: 'relative', width: '180px' }}>
             <select 
               value={selectedCategory} 
               onChange={e => setSelectedCategory(e.target.value)}
-              style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', appearance: 'none', backgroundColor: '#fff', outline: 'none' }}
+              style={{
+                width: '100%',
+                padding: '8px 30px 8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                appearance: 'none',
+                backgroundColor: '#ffffff',
+                outline: 'none',
+                color: '#334155',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
             >
               <option value="All Categories">All Categories</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <ChevronDown size={16} color="#64748b" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+            <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
           {/* Status Dropdown */}
-          <div style={{ position: 'relative', width: '170px' }}>
+          <div style={{ position: 'relative', width: '160px' }}>
             <select 
               value={selectedStatus} 
               onChange={e => setSelectedStatus(e.target.value)}
-              style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', appearance: 'none', backgroundColor: '#fff', outline: 'none' }}
+              style={{
+                width: '100%',
+                padding: '8px 30px 8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.85rem',
+                appearance: 'none',
+                backgroundColor: '#ffffff',
+                outline: 'none',
+                color: '#334155',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
             >
               <option value="All Statuses">All Statuses</option>
               <option value="In Stock">In Stock</option>
               <option value="Low Stock">Low Stock</option>
               <option value="Out of Stock">Out of Stock</option>
             </select>
-            <ChevronDown size={16} color="#64748b" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+            <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
-          <button 
-            onClick={handleReset}
-            style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 500, color: '#475569' }}
-          >
-            Reset
-          </button>
-        </div>
-
-        {/* Right Toolbar Actions */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Article Transaction History & Usage Button */}
-          <button
-            onClick={() => {
-              if (products.length > 0) {
-                const first = products[0];
-                setSelectedHistoryArticle(first.articleNumber || first.sku || first.id);
-              }
-            }}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 14px',
-              borderRadius: '8px',
-              border: '1px solid #c7d2fe',
-              backgroundColor: '#eef2ff',
-              color: '#4338ca',
-              fontSize: '0.88rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'background-color 0.15s'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eef2ff'}
-            title="Open Article Transaction History, Quotations, and Invoice Usage"
-          >
-            <History size={16} color="#4f46e5" />
-            Article History & Usage
-          </button>
-
-          {canManage && (
-            <>
-              <button
-                onClick={() => setShowCategoryModal(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#fff',
-                  color: '#334155',
-                  fontSize: '0.88rem',
-                  fontWeight: 500,
-                  cursor: 'pointer'
-                }}
-              >
-                <Scale size={16} color="#4f46e5" />
-                Manage Categories & Weights
-              </button>
-              <AddProductButton categories={categories} />
-            </>
+          {/* Reset Filters Button */}
+          {hasActiveFilters ? (
+            <button 
+              onClick={handleReset}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid #fecaca',
+                backgroundColor: '#fef2f2',
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+                color: '#dc2626',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+            >
+              <RotateCcw size={13} /> Reset
+            </button>
+          ) : (
+            <button 
+              onClick={handleReset}
+              disabled
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                backgroundColor: '#ffffff',
+                fontSize: '0.85rem',
+                color: '#94a3b8',
+                cursor: 'default'
+              }}
+            >
+              Reset
+            </button>
           )}
         </div>
       </div>
