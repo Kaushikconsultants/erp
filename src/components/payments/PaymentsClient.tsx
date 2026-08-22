@@ -23,10 +23,10 @@ import {
   Hash,
   Landmark,
   FileCheck,
-  Check,
-  ChevronDown
+  Check
 } from 'lucide-react';
 import { recordCustomerPayment, getCustomerUnpaidInvoices, cancelPayment } from '@/app/actions/paymentActions';
+import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
 
 interface CustomerOption {
   id: string;
@@ -157,6 +157,59 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
 
   // View Receipt Modal State
   const [viewReceipt, setViewReceipt] = useState<PaymentRecord | null>(null);
+
+  // Filter Options for ModernSearchableSelect
+  const customerFilterOptions: SelectOption[] = useMemo(() => [
+    { value: 'All', label: 'All Customers' },
+    ...customers.map(c => ({
+      value: c.id,
+      label: c.businessName,
+      subLabel: `${c.contactPerson} • ${c.mobile}${c.city ? ' • ' + c.city : ''}`
+    }))
+  ], [customers]);
+
+  const modeFilterOptions: SelectOption[] = [
+    { value: 'All', label: 'All Payment Modes' },
+    { value: 'UPI', label: 'UPI / QR Code' },
+    { value: 'Bank Transfer', label: 'Bank Transfer (NEFT/RTGS/IMPS)' },
+    { value: 'Cash', label: 'Cash' },
+    { value: 'Cheque', label: 'Cheque' },
+    { value: 'Card', label: 'Credit / Debit Card' },
+    { value: 'Advance Adjustment', label: 'Advance Adjustment' }
+  ];
+
+  const typeFilterOptions: SelectOption[] = [
+    { value: 'All', label: 'All Payment Types' },
+    { value: 'Invoice Payment', label: 'Invoice Payment' },
+    { value: 'Advance Payment', label: 'Advance Payment' },
+    { value: 'On-Account', label: 'On-Account' }
+  ];
+
+  const modalCustomerOptions: SelectOption[] = useMemo(() => [
+    ...customers.map(c => ({
+      value: c.id,
+      label: c.businessName,
+      subLabel: `${c.contactPerson} • ${c.mobile}${c.city ? ' • ' + c.city : ''}`
+    }))
+  ], [customers]);
+
+  const modalInvoiceOptions: SelectOption[] = useMemo(() => [
+    ...customerInvoices.map(inv => ({
+      value: inv.id,
+      label: `${inv.invoiceNumber}`,
+      subLabel: `Due: ₹${inv.amountDue.toLocaleString('en-IN')} (Total: ₹${inv.totalAmount.toLocaleString('en-IN')})`
+    }))
+  ], [customerInvoices]);
+
+  const modalModeOptions: SelectOption[] = PAYMENT_MODES.map(m => ({
+    value: m,
+    label: m
+  }));
+
+  const modalAccountOptions: SelectOption[] = RECEIVING_ACCOUNTS.map(a => ({
+    value: a,
+    label: a
+  }));
 
   // Quick date presets
   const handleDatePreset = (preset: string) => {
@@ -507,10 +560,10 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         </div>
       )}
 
-      {/* Filter Toolbar */}
+      {/* Modern Filter Toolbar with Custom Searchable Dropdowns */}
       <div className="glass-panel" style={{ padding: '16px 20px', marginBottom: '20px' }}>
         
-        {/* Row 1: Search & Filter Dropdowns */}
+        {/* Row 1: Search & Custom Searchable Dropdowns */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.4fr) repeat(3, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
           
           {/* Search Input */}
@@ -539,77 +592,33 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             )}
           </div>
 
-          {/* Customer Dropdown */}
-          <div style={{ position: 'relative' }}>
-            <select
-              className="form-input"
-              style={{
-                width: '100%',
-                paddingRight: '28px',
-                fontSize: '0.82rem',
-                fontWeight: 400,
-                appearance: 'none',
-                cursor: 'pointer'
-              }}
-              value={selectedCustomer}
-              onChange={e => setSelectedCustomer(e.target.value)}
-            >
-              <option value="All">All Customers</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>{c.businessName} ({c.contactPerson})</option>
-              ))}
-            </select>
-            <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-          </div>
+          {/* Custom Searchable Customer Dropdown */}
+          <ModernSearchableSelect
+            options={customerFilterOptions}
+            value={selectedCustomer}
+            onChange={setSelectedCustomer}
+            placeholder="All Customers"
+            searchPlaceholder="Search customer..."
+            icon={<User size={14} />}
+          />
 
-          {/* Payment Mode */}
-          <div style={{ position: 'relative' }}>
-            <select
-              className="form-input"
-              style={{
-                width: '100%',
-                paddingRight: '28px',
-                fontSize: '0.82rem',
-                fontWeight: 400,
-                appearance: 'none',
-                cursor: 'pointer'
-              }}
-              value={selectedMode}
-              onChange={e => setSelectedMode(e.target.value)}
-            >
-              <option value="All">All Payment Modes</option>
-              <option value="UPI">UPI / QR Code</option>
-              <option value="Bank Transfer">Bank Transfer (NEFT/RTGS/IMPS)</option>
-              <option value="Cash">Cash</option>
-              <option value="Cheque">Cheque</option>
-              <option value="Card">Card</option>
-              <option value="Advance Adjustment">Advance Adjustment</option>
-            </select>
-            <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-          </div>
+          {/* Custom Payment Mode Dropdown */}
+          <ModernSearchableSelect
+            options={modeFilterOptions}
+            value={selectedMode}
+            onChange={setSelectedMode}
+            placeholder="All Payment Modes"
+            searchPlaceholder="Search mode..."
+          />
 
-          {/* Payment Type */}
-          <div style={{ position: 'relative' }}>
-            <select
-              className="form-input"
-              style={{
-                width: '100%',
-                paddingRight: '28px',
-                fontSize: '0.82rem',
-                fontWeight: 400,
-                appearance: 'none',
-                cursor: 'pointer'
-              }}
-              value={selectedType}
-              onChange={e => setSelectedType(e.target.value)}
-            >
-              <option value="All">All Payment Types</option>
-              <option value="Invoice Payment">Invoice Payment</option>
-              <option value="Advance Payment">Advance Payment</option>
-              <option value="On-Account">On-Account</option>
-            </select>
-            <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-          </div>
+          {/* Custom Payment Type Dropdown */}
+          <ModernSearchableSelect
+            options={typeFilterOptions}
+            value={selectedType}
+            onChange={setSelectedType}
+            placeholder="All Payment Types"
+            searchPlaceholder="Search type..."
+          />
         </div>
 
         {/* Row 2: Date Presets & Inputs */}
@@ -964,32 +973,14 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
                     Customer *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <User size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <select
-                      required
-                      className="form-input"
-                      style={{
-                        width: '100%',
-                        paddingLeft: '30px',
-                        paddingRight: '26px',
-                        fontSize: '0.82rem',
-                        fontWeight: 400,
-                        appearance: 'none',
-                        cursor: 'pointer'
-                      }}
-                      value={modalCustomer}
-                      onChange={e => handleCustomerChange(e.target.value)}
-                    >
-                      <option value="">-- Choose Customer --</option>
-                      {customers.map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.businessName} ({c.contactPerson}) {c.city ? `• ${c.city}` : ''}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                  </div>
+                  <ModernSearchableSelect
+                    options={modalCustomerOptions}
+                    value={modalCustomer}
+                    onChange={handleCustomerChange}
+                    placeholder="-- Choose Customer --"
+                    searchPlaceholder="Search customer by name, phone, city..."
+                    icon={<User size={14} />}
+                  />
                 </div>
 
                 {/* If Invoice Tab & Customer Selected, show compact Invoice Picker */}
@@ -1001,29 +992,14 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                     {loadingInvoices ? (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '6px' }}>Loading invoices...</div>
                     ) : customerInvoices.length > 0 ? (
-                      <div style={{ position: 'relative' }}>
-                        <select
-                          className="form-input"
-                          style={{
-                            width: '100%',
-                            paddingRight: '26px',
-                            fontSize: '0.82rem',
-                            fontWeight: 500,
-                            color: 'var(--accent-primary)',
-                            appearance: 'none',
-                            cursor: 'pointer'
-                          }}
-                          value={selectedInvoiceId}
-                          onChange={e => handleInvoiceSelect(e.target.value)}
-                        >
-                          {customerInvoices.map(inv => (
-                            <option key={inv.id} value={inv.id}>
-                              {inv.invoiceNumber} (Due: ₹{inv.amountDue.toLocaleString('en-IN')})
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent-primary)', pointerEvents: 'none' }} />
-                      </div>
+                      <ModernSearchableSelect
+                        options={modalInvoiceOptions}
+                        value={selectedInvoiceId}
+                        onChange={handleInvoiceSelect}
+                        placeholder="Select Invoice"
+                        searchPlaceholder="Search invoice #..."
+                        icon={<FileCheck size={14} />}
+                      />
                     ) : (
                       <div style={{ fontSize: '0.75rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '6px 10px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
                         ✓ No pending invoice. Switch to Advance tab.
@@ -1116,26 +1092,12 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
                     Payment Mode *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <select
-                      className="form-input"
-                      style={{
-                        width: '100%',
-                        paddingRight: '26px',
-                        fontSize: '0.82rem',
-                        fontWeight: 400,
-                        appearance: 'none',
-                        cursor: 'pointer'
-                      }}
-                      value={payMode}
-                      onChange={e => setPayMode(e.target.value)}
-                    >
-                      {PAYMENT_MODES.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                  </div>
+                  <ModernSearchableSelect
+                    options={modalModeOptions}
+                    value={payMode}
+                    onChange={setPayMode}
+                    placeholder="Select Mode"
+                  />
                 </div>
 
                 {/* Receiving Account / Bank / QR */}
@@ -1143,28 +1105,13 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '4px' }}>
                     Receiving Account / Source *
                   </label>
-                  <div style={{ position: 'relative' }}>
-                    <Landmark size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <select
-                      className="form-input"
-                      style={{
-                        width: '100%',
-                        paddingLeft: '28px',
-                        paddingRight: '26px',
-                        fontSize: '0.82rem',
-                        fontWeight: 400,
-                        appearance: 'none',
-                        cursor: 'pointer'
-                      }}
-                      value={payAccount}
-                      onChange={e => setPayAccount(e.target.value)}
-                    >
-                      {RECEIVING_ACCOUNTS.map(a => (
-                        <option key={a} value={a}>{a}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={14} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-                  </div>
+                  <ModernSearchableSelect
+                    options={modalAccountOptions}
+                    value={payAccount}
+                    onChange={setPayAccount}
+                    placeholder="Select Account / Bank"
+                    icon={<Landmark size={14} />}
+                  />
                 </div>
 
               </div>
