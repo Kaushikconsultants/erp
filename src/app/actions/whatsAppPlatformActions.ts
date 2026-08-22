@@ -147,7 +147,8 @@ export async function getWhatsAppConversations(filters: ConversationFilterOption
       },
       orderBy: {
         lastMessageAt: filters.sortBy === 'oldest' ? 'asc' : 'desc'
-      }
+      },
+      take: 50
     });
 
     return { success: true, conversations };
