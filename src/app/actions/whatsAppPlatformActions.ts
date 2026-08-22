@@ -239,6 +239,65 @@ export async function getWhatsAppConversationById(id: string) {
 // 2. MESSAGING & CHAT ACTIONS
 // ---------------------------------------------------------
 
+export async function sendDirectWhatsAppDispatchAction(phone: string, content: string) {
+  try {
+    const cleanPhone = phone.replace(/\D/g, "");
+    
+    let customer = await prisma.customer.findFirst({
+      where: {
+        OR: [
+          { mobile: { contains: cleanPhone } },
+          { whatsappNumber: { contains: cleanPhone } }
+        ]
+      }
+    });
+
+    if (!customer) {
+      customer = await prisma.customer.create({
+        data: {
+          businessName: "Direct WhatsApp Contact",
+          contactPerson: "Unknown Lead",
+          mobile: cleanPhone,
+          whatsappNumber: cleanPhone,
+          source: "Direct Dispatch",
+          status: "New Lead"
+        }
+      });
+    }
+
+    const account = await prisma.whatsAppAccount.findFirst();
+    if (!account) return { success: false, error: "WhatsApp API Account is not configured." };
+
+    let conversation = await prisma.whatsAppConversation.findFirst({
+      where: { customerId: customer.id, accountId: account.id, status: 'OPEN' }
+    });
+
+    if (!conversation) {
+      conversation = await prisma.whatsAppConversation.create({
+        data: {
+          accountId: account.id,
+          customerId: customer.id,
+          status: 'OPEN',
+          priority: 'MEDIUM',
+          customerType: customer.customerType || 'Retailer',
+          leadStatus: customer.status || 'New Lead'
+        }
+      });
+    }
+
+    return await sendWhatsAppMessageAction({
+      conversationId: conversation.id,
+      content,
+      senderType: 'AGENT',
+      senderName: 'Direct Dispatch',
+      messageType: 'TEXT'
+    });
+  } catch (error: any) {
+    console.error("Direct Dispatch Error:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function sendWhatsAppMessageAction(data: {
   conversationId: string;
   senderType?: 'AGENT' | 'SYSTEM' | 'BOT' | 'AI' | 'CUSTOMER';

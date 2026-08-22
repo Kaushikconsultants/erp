@@ -2,12 +2,13 @@
 
 import React, { useState } from "react";
 import { Send, UserCheck, MessageSquare, CheckCircle } from "lucide-react";
-import { sendWhatsAppMessageAction } from "@/app/actions/whatsAppPlatformActions";
+import { sendDirectWhatsAppDispatchAction } from "@/app/actions/whatsAppPlatformActions";
 
 export default function WhatsAppDirectMessagesPage() {
   const [phone, setPhone] = useState("9812034567");
   const [message, setMessage] = useState("Hello! Sending a direct WhatsApp message from Espon CRM.");
   const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSendDirect = async (e: React.FormEvent) => {
@@ -16,12 +17,17 @@ export default function WhatsAppDirectMessagesPage() {
 
     setLoading(true);
     setStatus(null);
+    setError(null);
 
-    // Call server action to send WhatsApp direct message
-    setTimeout(() => {
+    const res = await sendDirectWhatsAppDispatchAction(phone, message);
+    
+    if (res.success) {
       setStatus(`Direct WhatsApp Message successfully dispatched to +91 ${phone}! Saved to CRM Activity Timeline.`);
-      setLoading(false);
-    }, 800);
+    } else {
+      setError(`Failed to send message: ${res.error}`);
+    }
+    
+    setLoading(false);
   };
 
   return (
@@ -34,6 +40,12 @@ export default function WhatsAppDirectMessagesPage() {
           <div style={{ background: "#dcfce7", border: "1px solid #86efac", color: "#166534", padding: "12px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
             <CheckCircle size={18} />
             <span>{status}</span>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", color: "#991b1b", padding: "12px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+            <span>{error}</span>
           </div>
         )}
 
