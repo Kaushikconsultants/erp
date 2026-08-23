@@ -32,7 +32,7 @@ export default async function GstFilingPage() {
   }
 
   return (
-    <div className="page-container" style={{ padding: '24px' }}>
+    <div className="page-container" style={{ padding: '16px 20px', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
       <GstFilingClient initialData={initialData} />
     </div>
   );

@@ -1572,6 +1572,8 @@ model OnlineFilingSetting {
   lastSyncDate         DateTime?
   sandboxMode          Boolean   @default(false)
   apiAuthToken         String?
+  tokenExpiresAt       DateTime?
+  sessionActive        Boolean   @default(false)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 }
