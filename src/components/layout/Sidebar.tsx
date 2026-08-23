@@ -1,5 +1,5 @@
 "use client";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -9,24 +9,28 @@ import {
   ShoppingCart, 
   Package, 
   BarChart3, 
-  Settings,
-  CheckSquare,
-  Banknote,
-  Truck,
-  FileSpreadsheet,
-  ShoppingBag,
-  Warehouse,
-  Building2,
-  Receipt,
-  Wallet,
-  ClipboardList,
-  CalendarDays,
-  ShieldCheck,
-  Zap,
-  MessageSquare,
-  Megaphone,
-  FileMinus,
-  ScrollText
+  Settings, 
+  CheckSquare, 
+  Banknote, 
+  Truck, 
+  FileSpreadsheet, 
+  ShoppingBag, 
+  Warehouse, 
+  Building2, 
+  Receipt, 
+  Wallet, 
+  ClipboardList, 
+  CalendarDays, 
+  ShieldCheck, 
+  Zap, 
+  MessageSquare, 
+  Megaphone, 
+  FileMinus, 
+  ScrollText,
+  ChevronDown,
+  Sparkles,
+  Layers,
+  UserCheck
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -45,7 +49,7 @@ const Sidebar = ({
   showAnalytics = true, 
   showProcurement = false, 
   userRole, 
-  allowedSections = null,
+  allowedSections = null, 
   onClose 
 }: SidebarProps) => {
   const pathname = usePathname();
@@ -77,8 +81,51 @@ const Sidebar = ({
     );
   };
 
+  // State to track open/collapsed state of each category dropdown
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+    crm: true,
+    sales: true,
+    purchases: true,
+    hrms: true,
+    reports: true
+  });
+
+  // Auto-expand category if current route matches any of its sub-items
+  useEffect(() => {
+    if (pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/whatsapp')) {
+      setOpenCategories(prev => ({ ...prev, crm: true }));
+    }
+    if (pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || pathname.startsWith('/payments') || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills')) {
+      setOpenCategories(prev => ({ ...prev, sales: true }));
+    }
+    if (pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses')) {
+      setOpenCategories(prev => ({ ...prev, purchases: true }));
+    }
+    if (pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || pathname.startsWith('/expenses') || pathname.startsWith('/leaves') || pathname.startsWith('/hiring')) {
+      setOpenCategories(prev => ({ ...prev, hrms: true }));
+    }
+    if (pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs')) {
+      setOpenCategories(prev => ({ ...prev, reports: true }));
+    }
+  }, [pathname]);
+
+  const toggleCategory = (categoryKey: string) => {
+    setOpenCategories(prev => ({
+      ...prev,
+      [categoryKey]: !prev[categoryKey]
+    }));
+  };
+
+  // Active checkers for category highlights
+  const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/whatsapp');
+  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills');
+  const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
+  const isHrmsActive = pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || (pathname.startsWith('/expenses') && !isPurchasesActive) || pathname.startsWith('/leaves') || pathname.startsWith('/hiring');
+  const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs');
+
   return (
     <aside className="sidebar">
+      {/* Header */}
       <div className="sidebar-header">
         <Link href="/" onClick={onClose} style={{ textDecoration: 'none' }}>
           <BrandLogo size="md" showSubtitle={true} />
@@ -86,211 +133,319 @@ const Sidebar = ({
         <button className="mobile-close-btn" onClick={onClose}>×</button>
       </div>
       
+      {/* Navigation */}
       <nav className="sidebar-nav">
+        
         {/* MAIN SECTION */}
         {canAccess('dashboard') && (
           <div className="nav-section">
             <p className="nav-section-title">MAIN</p>
             <Link href="/" onClick={onClose} className={`nav-item ${isActive('/') ? 'active' : ''}`}>
-              <LayoutDashboard size={20} />
+              <LayoutDashboard size={18} />
               <span>Dashboard</span>
             </Link>
             <Link href="/broadcasts" onClick={onClose} className={`nav-item ${isActive('/broadcasts') ? 'active' : ''}`}>
-              <Megaphone size={20} style={{ color: '#4f46e5' }} />
+              <Megaphone size={18} style={{ color: '#4f46e5' }} />
               <span>Team Notices</span>
-              <span style={{ marginLeft: 'auto', background: '#4f46e5', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '10px' }}>NEW</span>
+              <span style={{ marginLeft: 'auto', background: '#4f46e5', color: '#fff', fontSize: '9px', fontWeight: 700, padding: '2px 5px', borderRadius: '10px' }}>NEW</span>
             </Link>
           </div>
         )}
 
-        {/* WHATSAPP PLATFORM SECTION */}
-        <div className="nav-section">
-          <p className="nav-section-title">WHATSAPP AUTOMATION</p>
-          <Link href="/whatsapp/inbox" onClick={onClose} className={`nav-item ${isActive('/whatsapp') ? 'active' : ''}`}>
-            <MessageSquare size={20} style={{ color: '#10b981' }} />
-            <span>WhatsApp Inbox</span>
-            <span style={{ marginLeft: 'auto', background: '#10b981', color: '#fff', fontSize: '11px', fontWeight: 600, padding: '2px 6px', borderRadius: '10px' }}>CRM</span>
-          </Link>
-        </div>
-
-        {/* CRM SECTION */}
-        {(canAccess('customers') || canAccess('calls_tasks')) && (
+        {/* 1. CRM & CLIENTS CATEGORY DROPDOWN */}
+        {(canAccess('customers') || canAccess('calls_tasks') || canAccess('leads')) && (
           <div className="nav-section">
-            <p className="nav-section-title">CRM & CLIENTS</p>
-            {canAccess('customers') && (
-              <Link href="/customers" onClick={onClose} className={`nav-item ${isActive('/customers') ? 'active' : ''}`}>
-                <Users size={20} />
-                <span>Customers</span>
-              </Link>
-            )}
-            {canAccess('calls_tasks') && (
-              <>
-                <Link href="/calls" onClick={onClose} className={`nav-item ${isActive('/calls') ? 'active' : ''}`}>
-                  <PhoneCall size={20} />
-                  <span>Calls & Follow-ups</span>
+            <button
+              type="button"
+              onClick={() => toggleCategory('crm')}
+              className={`category-dropdown-header ${openCategories.crm ? 'is-open' : ''} ${isCrmActive ? 'has-active-child' : ''}`}
+            >
+              <div className="category-header-title">
+                <Users size={16} style={{ color: isCrmActive ? '#4f46e5' : '#64748b' }} />
+                <span>CRM & CLIENTS</span>
+              </div>
+              <div className="category-chevron">
+                <ChevronDown size={14} />
+              </div>
+            </button>
+
+            {openCategories.crm && (
+              <div className="category-sub-list">
+                <Link href="/whatsapp/inbox" onClick={onClose} className={`category-sub-item ${isActive('/whatsapp') ? 'active' : ''}`}>
+                  <MessageSquare size={16} style={{ color: '#10b981' }} />
+                  <span>WhatsApp Inbox</span>
+                  <span style={{ marginLeft: 'auto', background: '#10b981', color: '#fff', fontSize: '9px', fontWeight: 600, padding: '1px 5px', borderRadius: '8px' }}>CRM</span>
                 </Link>
-                <Link href="/tasks" onClick={onClose} className={`nav-item ${isActive('/tasks') ? 'active' : ''}`}>
-                  <CheckSquare size={20} />
-                  <span>Tasks</span>
-                </Link>
-              </>
+
+                {canAccess('customers') && (
+                  <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
+                    <Users size={16} />
+                    <span>Customers</span>
+                  </Link>
+                )}
+
+                {canAccess('calls_tasks') && (
+                  <>
+                    <Link href="/calls" onClick={onClose} className={`category-sub-item ${isActive('/calls') ? 'active' : ''}`}>
+                      <PhoneCall size={16} />
+                      <span>Calls & Follow-ups</span>
+                    </Link>
+                    <Link href="/tasks" onClick={onClose} className={`category-sub-item ${isActive('/tasks') ? 'active' : ''}`}>
+                      <CheckSquare size={16} />
+                      <span>Tasks</span>
+                    </Link>
+                  </>
+                )}
+              </div>
             )}
           </div>
         )}
 
-        {/* SALES SECTION */}
-        {(canAccess('orders') || canAccess('quotations') || canAccess('invoices') || canAccess('payments') || canAccess('products') || canAccess('dispatches')) && (
+        {/* 2. SALES & DISPATCH CATEGORY DROPDOWN */}
+        {(canAccess('orders') || canAccess('quotations') || canAccess('invoices') || canAccess('payments') || canAccess('products') || canAccess('dispatches') || canAccess('credit_notes') || canAccess('eway_bills')) && (
           <div className="nav-section">
-            <p className="nav-section-title">SALES & DISPATCH</p>
-            {canAccess('orders') && (
-              <Link href="/orders" onClick={onClose} className={`nav-item ${isActive('/orders') ? 'active' : ''}`}>
-                <ShoppingCart size={20} />
-                <span>Orders</span>
-              </Link>
-            )}
-            {canAccess('quotations') && (
-              <Link href="/quotations" onClick={onClose} className={`nav-item ${isActive('/quotations') ? 'active' : ''}`}>
-                <FileSpreadsheet size={20} />
-                <span>Quotations</span>
-              </Link>
-            )}
-            {canAccess('invoices') && (
-              <Link href="/invoices" onClick={onClose} className={`nav-item ${isActive('/invoices') ? 'active' : ''}`}>
-                <Receipt size={20} />
-                <span>Invoices</span>
-              </Link>
-            )}
-            {(canAccess('credit_notes') || canAccess('invoices') || canAccess('orders')) && (
-              <Link href="/credit-notes" onClick={onClose} className={`nav-item ${isActive('/credit-notes') ? 'active' : ''}`}>
-                <FileMinus size={20} style={{ color: '#e11d48' }} />
-                <span>Credit Notes</span>
-              </Link>
-            )}
-            {canAccess('payments') && (
-              <Link href="/payments" onClick={onClose} className={`nav-item ${isActive('/payments') ? 'active' : ''}`}>
-                <Wallet size={20} />
-                <span>Payments</span>
-              </Link>
-            )}
-            {canAccess('products') && (
-              <Link href="/products" onClick={onClose} className={`nav-item ${isActive('/products') ? 'active' : ''}`}>
-                <Package size={20} />
-                <span>Products</span>
-              </Link>
-            )}
-            {canAccess('dispatches') && (
-              <Link href="/dispatches" onClick={onClose} className={`nav-item ${isActive('/dispatches') ? 'active' : ''}`}>
-                <Truck size={20} />
-                <span>Dispatches</span>
-              </Link>
-            )}
-            {(canAccess('eway_bills') || canAccess('dispatches') || canAccess('orders')) && (
-              <Link href="/eway-bills" onClick={onClose} className={`nav-item ${isActive('/eway-bills') ? 'active' : ''}`}>
-                <ScrollText size={20} style={{ color: '#0d9488' }} />
-                <span>E-Way Bills</span>
-              </Link>
+            <button
+              type="button"
+              onClick={() => toggleCategory('sales')}
+              className={`category-dropdown-header ${openCategories.sales ? 'is-open' : ''} ${isSalesActive ? 'has-active-child' : ''}`}
+            >
+              <div className="category-header-title">
+                <ShoppingCart size={16} style={{ color: isSalesActive ? '#4f46e5' : '#64748b' }} />
+                <span>SALES & DISPATCH</span>
+              </div>
+              <div className="category-chevron">
+                <ChevronDown size={14} />
+              </div>
+            </button>
+
+            {openCategories.sales && (
+              <div className="category-sub-list">
+                {canAccess('orders') && (
+                  <Link href="/orders" onClick={onClose} className={`category-sub-item ${isActive('/orders') ? 'active' : ''}`}>
+                    <ShoppingCart size={16} />
+                    <span>Sales Orders</span>
+                  </Link>
+                )}
+
+                {canAccess('quotations') && (
+                  <Link href="/quotations" onClick={onClose} className={`category-sub-item ${isActive('/quotations') ? 'active' : ''}`}>
+                    <FileSpreadsheet size={16} />
+                    <span>Quotations</span>
+                  </Link>
+                )}
+
+                {canAccess('invoices') && (
+                  <Link href="/invoices" onClick={onClose} className={`category-sub-item ${isActive('/invoices') ? 'active' : ''}`}>
+                    <Receipt size={16} />
+                    <span>Invoices</span>
+                  </Link>
+                )}
+
+                {(canAccess('credit_notes') || canAccess('invoices') || canAccess('orders')) && (
+                  <Link href="/credit-notes" onClick={onClose} className={`category-sub-item ${isActive('/credit-notes') ? 'active' : ''}`}>
+                    <FileMinus size={16} style={{ color: '#e11d48' }} />
+                    <span>Credit Notes</span>
+                  </Link>
+                )}
+
+                {canAccess('payments') && (
+                  <Link href="/payments" onClick={onClose} className={`category-sub-item ${isActive('/payments') ? 'active' : ''}`}>
+                    <Wallet size={16} />
+                    <span>Customer Payments</span>
+                  </Link>
+                )}
+
+                {canAccess('products') && (
+                  <Link href="/products" onClick={onClose} className={`category-sub-item ${isActive('/products') ? 'active' : ''}`}>
+                    <Package size={16} />
+                    <span>Products Catalog</span>
+                  </Link>
+                )}
+
+                {canAccess('dispatches') && (
+                  <Link href="/dispatches" onClick={onClose} className={`category-sub-item ${isActive('/dispatches') ? 'active' : ''}`}>
+                    <Truck size={16} />
+                    <span>Dispatches</span>
+                  </Link>
+                )}
+
+                {(canAccess('eway_bills') || canAccess('dispatches') || canAccess('orders')) && (
+                  <Link href="/eway-bills" onClick={onClose} className={`category-sub-item ${isActive('/eway-bills') ? 'active' : ''}`}>
+                    <ScrollText size={16} style={{ color: '#0d9488' }} />
+                    <span>E-Way Bills</span>
+                  </Link>
+                )}
+              </div>
             )}
           </div>
         )}
 
-        {/* PURCHASES & PROCUREMENT SECTION */}
+        {/* 3. PURCHASES CATEGORY DROPDOWN */}
         {canAccess('purchases') && (
           <div className="nav-section">
-            <p className="nav-section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <ShoppingBag size={14} style={{ color: 'var(--accent-primary)' }} /> PURCHASES
-            </p>
-            <Link href="/vendors" onClick={onClose} className={`nav-item ${isActive('/vendors') ? 'active' : ''}`}>
-              <Building2 size={18} />
-              <span>Vendors</span>
-            </Link>
-            <Link href="/expenses" onClick={onClose} className={`nav-item ${isActive('/expenses') ? 'active' : ''}`}>
-              <ClipboardList size={18} />
-              <span>Expenses</span>
-            </Link>
-            <Link href="/purchases" onClick={onClose} className={`nav-item ${isActive('/purchases') ? 'active' : ''}`}>
-              <ShoppingBag size={18} />
-              <span>Purchase Orders</span>
-            </Link>
-            <Link href="/bills" onClick={onClose} className={`nav-item ${isActive('/bills') ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Receipt size={18} style={{ color: '#2563eb' }} />
-                <span>Bills</span>
+            <button
+              type="button"
+              onClick={() => toggleCategory('purchases')}
+              className={`category-dropdown-header ${openCategories.purchases ? 'is-open' : ''} ${isPurchasesActive ? 'has-active-child' : ''}`}
+            >
+              <div className="category-header-title">
+                <ShoppingBag size={16} style={{ color: isPurchasesActive ? '#2563eb' : '#64748b' }} />
+                <span>PURCHASES</span>
               </div>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-primary)', opacity: 0.9 }}>+</span>
-            </Link>
-            <Link href="/payments-made" onClick={onClose} className={`nav-item ${isActive('/payments-made') ? 'active' : ''}`}>
-              <Banknote size={18} style={{ color: '#059669' }} />
-              <span>Payments Made</span>
-            </Link>
-            <Link href="/vendor-credits" onClick={onClose} className={`nav-item ${isActive('/vendor-credits') ? 'active' : ''}`}>
-              <FileMinus size={18} style={{ color: '#dc2626' }} />
-              <span>Vendor Credits</span>
-            </Link>
-            <Link href="/warehouses" onClick={onClose} className={`nav-item ${isActive('/warehouses') ? 'active' : ''}`}>
-              <Warehouse size={18} />
-              <span>Warehouses</span>
-            </Link>
+              <div className="category-chevron">
+                <ChevronDown size={14} />
+              </div>
+            </button>
+
+            {openCategories.purchases && (
+              <div className="category-sub-list">
+                <Link href="/vendors" onClick={onClose} className={`category-sub-item ${isActive('/vendors') ? 'active' : ''}`}>
+                  <Building2 size={16} />
+                  <span>Vendors</span>
+                </Link>
+                
+                <Link href="/expenses" onClick={onClose} className={`category-sub-item ${isActive('/expenses') ? 'active' : ''}`}>
+                  <ClipboardList size={16} />
+                  <span>Expenses</span>
+                </Link>
+
+                <Link href="/purchases" onClick={onClose} className={`category-sub-item ${isActive('/purchases') ? 'active' : ''}`}>
+                  <ShoppingBag size={16} />
+                  <span>Purchase Orders</span>
+                </Link>
+
+                <Link 
+                  href="/bills" 
+                  onClick={onClose} 
+                  className={`category-sub-item ${isActive('/bills') ? 'active' : ''}`} 
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                    <Receipt size={16} style={{ color: '#2563eb' }} />
+                    <span>Bills</span>
+                  </div>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent-primary)', opacity: 0.9 }}>+</span>
+                </Link>
+
+                <Link href="/payments-made" onClick={onClose} className={`category-sub-item ${isActive('/payments-made') ? 'active' : ''}`}>
+                  <Banknote size={16} style={{ color: '#059669' }} />
+                  <span>Payments Made</span>
+                </Link>
+
+                <Link href="/vendor-credits" onClick={onClose} className={`category-sub-item ${isActive('/vendor-credits') ? 'active' : ''}`}>
+                  <FileMinus size={16} style={{ color: '#dc2626' }} />
+                  <span>Vendor Credits</span>
+                </Link>
+
+                <Link href="/warehouses" onClick={onClose} className={`category-sub-item ${isActive('/warehouses') ? 'active' : ''}`}>
+                  <Warehouse size={16} />
+                  <span>Warehouses</span>
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
-        {/* HRMS SECTION */}
+        {/* 4. HRMS CATEGORY DROPDOWN */}
         {canAccess('hrms') && (
           <div className="nav-section">
-            <p className="nav-section-title">HRMS</p>
-            <Link href="/payroll" onClick={onClose} className={`nav-item ${isActive('/payroll') ? 'active' : ''}`}>
-              <Banknote size={20} />
-              <span>Payroll</span>
-            </Link>
-            <Link href="/attendance" onClick={onClose} className={`nav-item ${isActive('/attendance') ? 'active' : ''}`}>
-              <CalendarDays size={20} />
-              <span>Attendance</span>
-            </Link>
-            <Link href="/expenses" onClick={onClose} className={`nav-item ${isActive('/expenses') ? 'active' : ''}`}>
-              <ClipboardList size={20} />
-              <span>Expenses</span>
-            </Link>
-            <Link href="/leaves" onClick={onClose} className={`nav-item ${isActive('/leaves') ? 'active' : ''}`}>
-              <CheckSquare size={20} />
-              <span>Leaves</span>
-            </Link>
-            <Link href="/hiring" onClick={onClose} className={`nav-item ${isActive('/hiring') ? 'active' : ''}`}>
-              <Users size={20} />
-              <span>Hiring & Interviews</span>
-            </Link>
+            <button
+              type="button"
+              onClick={() => toggleCategory('hrms')}
+              className={`category-dropdown-header ${openCategories.hrms ? 'is-open' : ''} ${isHrmsActive ? 'has-active-child' : ''}`}
+            >
+              <div className="category-header-title">
+                <Banknote size={16} style={{ color: isHrmsActive ? '#4f46e5' : '#64748b' }} />
+                <span>HRMS</span>
+              </div>
+              <div className="category-chevron">
+                <ChevronDown size={14} />
+              </div>
+            </button>
+
+            {openCategories.hrms && (
+              <div className="category-sub-list">
+                <Link href="/payroll" onClick={onClose} className={`category-sub-item ${isActive('/payroll') ? 'active' : ''}`}>
+                  <Banknote size={16} />
+                  <span>Payroll</span>
+                </Link>
+
+                <Link href="/attendance" onClick={onClose} className={`category-sub-item ${isActive('/attendance') ? 'active' : ''}`}>
+                  <CalendarDays size={16} />
+                  <span>Attendance</span>
+                </Link>
+
+                <Link href="/expenses" onClick={onClose} className={`category-sub-item ${isActive('/expenses') ? 'active' : ''}`}>
+                  <ClipboardList size={16} />
+                  <span>Expenses</span>
+                </Link>
+
+                <Link href="/leaves" onClick={onClose} className={`category-sub-item ${isActive('/leaves') ? 'active' : ''}`}>
+                  <CheckSquare size={16} />
+                  <span>Leaves</span>
+                </Link>
+
+                <Link href="/hiring" onClick={onClose} className={`category-sub-item ${isActive('/hiring') ? 'active' : ''}`}>
+                  <Users size={16} />
+                  <span>Hiring & Interviews</span>
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
-        {/* REPORTS & ANALYTICS SECTION */}
+        {/* 5. REPORTS & INTELLIGENCE CATEGORY DROPDOWN */}
         {canAccess('reports') && (
           <div className="nav-section">
-            <p className="nav-section-title">REPORTS & INTELLIGENCE</p>
-            {showAnalytics && (
-              <Link href="/analytics" onClick={onClose} className={`nav-item ${isActive('/analytics') ? 'active' : ''}`}>
-                <BarChart3 size={20} />
-                <span>Analytics</span>
-              </Link>
+            <button
+              type="button"
+              onClick={() => toggleCategory('reports')}
+              className={`category-dropdown-header ${openCategories.reports ? 'is-open' : ''} ${isReportsActive ? 'has-active-child' : ''}`}
+            >
+              <div className="category-header-title">
+                <BarChart3 size={16} style={{ color: isReportsActive ? '#4f46e5' : '#64748b' }} />
+                <span>REPORTS & INTELLIGENCE</span>
+              </div>
+              <div className="category-chevron">
+                <ChevronDown size={14} />
+              </div>
+            </button>
+
+            {openCategories.reports && (
+              <div className="category-sub-list">
+                {showAnalytics && (
+                  <Link href="/analytics" onClick={onClose} className={`category-sub-item ${isActive('/analytics') ? 'active' : ''}`}>
+                    <BarChart3 size={16} />
+                    <span>Analytics</span>
+                  </Link>
+                )}
+
+                <Link href="/reports" onClick={onClose} className={`category-sub-item ${isActive('/reports') ? 'active' : ''}`}>
+                  <FileSpreadsheet size={16} />
+                  <span>Reports Center</span>
+                </Link>
+
+                <Link href="/settings/workflows" onClick={onClose} className={`category-sub-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
+                  <Zap size={16} />
+                  <span>AI Workflows</span>
+                </Link>
+
+                <Link href="/settings/audit-logs" onClick={onClose} className={`category-sub-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
+                  <ShieldCheck size={16} />
+                  <span>Audit Logs</span>
+                </Link>
+              </div>
             )}
-            <Link href="/reports" onClick={onClose} className={`nav-item ${isActive('/reports') ? 'active' : ''}`}>
-              <FileSpreadsheet size={20} />
-              <span>Reports Center</span>
-            </Link>
-            <Link href="/settings/workflows" onClick={onClose} className={`nav-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
-              <Zap size={20} />
-              <span>AI Workflows</span>
-            </Link>
-            <Link href="/settings/audit-logs" onClick={onClose} className={`nav-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
-              <ShieldCheck size={20} />
-              <span>Audit Logs</span>
-            </Link>
           </div>
         )}
+
       </nav>
 
       {/* SETTINGS FOOTER */}
       {(showSettings || canAccess('settings')) && canAccess('settings') && (
         <div className="sidebar-footer">
           <Link href="/settings" onClick={onClose} className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
-            <Settings size={20} />
+            <Settings size={18} />
             <span>Settings & Admin</span>
           </Link>
         </div>
