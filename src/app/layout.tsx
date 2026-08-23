@@ -58,15 +58,18 @@ export default async function RootLayout({
 
   // Inject Theme Variables
   const primaryColor = settings?.themeColor || '#4f46e5';
+  const baseFontSize = settings?.fontSize || '16px';
   const themeStyles = {
     '--accent-primary': primaryColor,
     '--accent-primary-hover': `${primaryColor}dd`,
     '--accent-light': `${primaryColor}1a`,
     '--font-family': fontFamilyString,
+    '--app-base-font-size': baseFontSize,
     '--base-font-weight': settings?.useBoldText ? '700' : '400',
     '--radius-md': settings?.buttonRadius || '8px',
     '--radius-sm': settings?.buttonRadius === '9999px' ? '9999px' : settings?.buttonRadius === '0px' ? '0px' : '4px',
     '--radius-lg': settings?.buttonRadius === '9999px' ? '9999px' : settings?.buttonRadius === '0px' ? '0px' : '12px',
+    fontSize: baseFontSize,
   } as React.CSSProperties;
 
   return (

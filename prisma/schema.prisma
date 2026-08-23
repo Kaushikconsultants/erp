@@ -527,6 +527,7 @@ model CompanySettings {
   
   themeColor      String? @default("#4f46e5")
   fontFamily      String? @default("Inter")
+  fontSize        String? @default("16px")
   buttonRadius    String? @default("8px")
   useBoldText     Boolean @default(false)
   monthlyTarget   Float   @default(2000000)

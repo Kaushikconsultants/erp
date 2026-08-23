@@ -29,6 +29,7 @@ const FALLBACK_SETTINGS = {
   upiId: "7206066678@OKBIZAXIS",
   themeColor: "#4f46e5",
   fontFamily: "Inter",
+  fontSize: "16px",
   buttonRadius: "8px",
   useBoldText: false,
   monthlyTarget: 2000000,
@@ -183,6 +184,7 @@ export async function updateCompanySettings(formData: FormData) {
 
     const themeColor = formData.get("themeColor") as string;
     const fontFamily = formData.get("fontFamily") as string;
+    const fontSize = formData.get("fontSize") as string;
     const buttonRadius = formData.get("buttonRadius") as string;
     const useBoldText = formData.get("useBoldText") === "true";
 
@@ -217,6 +219,7 @@ export async function updateCompanySettings(formData: FormData) {
         ...(nextInvoiceNumber ? { nextInvoiceNumber } : {}),
         ...(themeColor ? { themeColor } : {}),
         ...(fontFamily ? { fontFamily } : {}),
+        ...(fontSize ? { fontSize } : {}),
         ...(buttonRadius ? { buttonRadius } : {}),
         ...(callOutcomes ? { callOutcomes } : {}),
         ...(callTypes ? { callTypes } : {}),
@@ -233,6 +236,7 @@ export async function updateCompanySettings(formData: FormData) {
         nextInvoiceNumber: nextInvoiceNumber || "INV-1001",
         themeColor: themeColor || "#4f46e5",
         fontFamily: fontFamily || "Inter",
+        fontSize: fontSize || "16px",
         buttonRadius: buttonRadius || "8px",
         useBoldText,
         ...(callOutcomes ? { callOutcomes } : {}),
