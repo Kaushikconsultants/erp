@@ -1,0 +1,39 @@
+import React from 'react';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { getGstFilingOverview } from '@/app/actions/gstFilingActions';
+import GstFilingClient from '@/components/gst-filing/GstFilingClient';
+
+export const dynamic = 'force-dynamic';
+
+export default async function GstFilingPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect('/login');
+
+  const userRole = (session.user as any).role;
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+  const isAccounts = userRole === 'ACCOUNTS';
+
+  if (!isSuperOrAdmin && !isAccounts) {
+    redirect('/');
+  }
+
+  const initialData = await getGstFilingOverview();
+
+  if (!initialData.success) {
+    return (
+      <div className="page-container" style={{ padding: '24px' }}>
+        <div style={{ color: '#dc2626' }}>
+          Failed to load GST Filing data: {initialData.error}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="page-container" style={{ padding: '24px' }}>
+      <GstFilingClient initialData={initialData} />
+    </div>
+  );
+}

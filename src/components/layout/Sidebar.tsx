@@ -27,7 +27,8 @@ import {
   Megaphone, 
   FileMinus, 
   ScrollText,
-  ChevronRight
+  ChevronRight,
+  Landmark
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -96,10 +97,10 @@ const Sidebar = ({
 
   // Active state indicators
   const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/whatsapp');
-  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills');
+  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills') || pathname.startsWith('/gst-filing');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
   const isHrmsActive = pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || (pathname.startsWith('/expenses') && !isPurchasesActive) || pathname.startsWith('/leaves') || pathname.startsWith('/hiring');
-  const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs');
+  const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs') || pathname.startsWith('/gst-filing');
 
   return (
     <aside className="sidebar">
@@ -253,6 +254,14 @@ const Sidebar = ({
                     <span>E-Way Bills</span>
                   </Link>
                 )}
+
+                {(canAccess('invoices') || canAccess('orders') || isSuperOrAdmin) && (
+                  <Link href="/gst-filing" onClick={onClose} className={`category-sub-item ${isActive('/gst-filing') ? 'active' : ''}`}>
+                    <Landmark size={16} style={{ color: '#2563eb' }} />
+                    <span>GST Filing & Compliances</span>
+                    <span style={{ marginLeft: 'auto', background: '#eff6ff', color: '#2563eb', fontSize: '9px', fontWeight: 600, padding: '1px 5px', borderRadius: '8px' }}>GSTN</span>
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -401,6 +410,12 @@ const Sidebar = ({
                 <Link href="/reports" onClick={onClose} className={`category-sub-item ${isActive('/reports') ? 'active' : ''}`}>
                   <FileSpreadsheet size={16} />
                   <span>Reports Center</span>
+                </Link>
+
+                <Link href="/gst-filing" onClick={onClose} className={`category-sub-item ${isActive('/gst-filing') ? 'active' : ''}`}>
+                  <Landmark size={16} style={{ color: '#2563eb' }} />
+                  <span>GST Filing & Compliances</span>
+                  <span style={{ marginLeft: 'auto', background: '#eff6ff', color: '#2563eb', fontSize: '9px', fontWeight: 600, padding: '1px 5px', borderRadius: '8px' }}>GSTN</span>
                 </Link>
 
                 <Link href="/settings/workflows" onClick={onClose} className={`category-sub-item ${isActive('/settings/workflows') ? 'active' : ''}`}>

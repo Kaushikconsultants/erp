@@ -1576,3 +1576,44 @@ model OnlineFilingSetting {
   updatedAt            DateTime  @updatedAt
 }
 
+model GstFilingReturn {
+  id                  String    @id @default(uuid())
+  returnType          String    // GSTR-1, GSTR-3B, GSTR-2B, GSTR-9, CMP-08
+  financialYear       String    // e.g. "2024-25"
+  period              String    // e.g. "April", "May", "Q1", "Q2"
+  periodKey           String    // e.g. "042024", "052024"
+  status              String    @default("Draft") // Draft, Ready To Upload, Uploaded, Filed, Reconciled
+  arnNumber           String?   // Acknowledgment Reference Number e.g. AA0804240019283
+  filingDate          DateTime?
+  dueDate             DateTime?
+  totalTaxableValue   Float     @default(0)
+  totalTaxAmount      Float     @default(0)
+  cgstAmount          Float     @default(0)
+  sgstAmount          Float     @default(0)
+  igstAmount          Float     @default(0)
+  cessAmount          Float     @default(0)
+  itcClaimed          Float     @default(0)
+  taxPaidCash         Float     @default(0)
+  taxPaidCredit       Float     @default(0)
+  jsonPayload         String?   // Complete GSTN-compliant JSON payload
+  portalSyncStatus    String?   // SUCCESS, PENDING, FAILED
+  portalSyncResponse  String?   // GSTN portal response body
+  lastSyncedAt        DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([returnType, financialYear, periodKey])
+}
+
+model GstPortalLog {
+  id              String   @id @default(uuid())
+  action          String   // SYNC_GSTR1, FETCH_GSTR2B, GENERATE_3B, CHECK_STATUS, AUTH_TOKEN
+  status          String   // SUCCESS, FAILED, WARNING
+  requestPayload  String?
+  responsePayload String?
+  arn             String?
+  message         String
+  createdAt       DateTime @default(now())
+}
+
+
