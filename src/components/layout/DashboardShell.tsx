@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import MobileBottomNav from './MobileBottomNav';
-import FloatingQuickActionFAB from '../ui/FloatingQuickActionFAB';
 import { usePathname } from 'next/navigation';
 
 interface DashboardShellProps {
@@ -59,11 +58,12 @@ export default function DashboardShell({
         </main>
       </div>
 
-      {/* Floating Action Button for Mobile Quick Actions */}
-      <FloatingQuickActionFAB />
-
-      {/* Native Android Bottom Navigation Bar */}
-      <MobileBottomNav userRole={userRole} allowedSections={allowedSections} />
+      {/* Native App-Style Bottom Navigation Bar & Action Sheet */}
+      <MobileBottomNav 
+        userRole={userRole} 
+        allowedSections={allowedSections} 
+        onMenuClick={() => setIsSidebarOpen(true)}
+      />
     </div>
   );
 }
