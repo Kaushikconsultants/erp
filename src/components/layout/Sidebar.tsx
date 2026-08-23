@@ -189,20 +189,41 @@ const Sidebar = ({
           </div>
         )}
 
-        {/* PROCUREMENT SECTION */}
-        {(showProcurement || canAccess('procurement')) && canAccess('procurement') && (
+        {/* PURCHASES & PROCUREMENT SECTION */}
+        {(showProcurement || canAccess('procurement') || canAccess('purchases')) && (
           <div className="nav-section">
-            <p className="nav-section-title">PROCUREMENT</p>
+            <p className="nav-section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <ShoppingBag size={14} style={{ color: 'var(--accent-primary)' }} /> PURCHASES
+            </p>
             <Link href="/vendors" onClick={onClose} className={`nav-item ${isActive('/vendors') ? 'active' : ''}`}>
-              <Building2 size={20} />
+              <Building2 size={18} />
               <span>Vendors</span>
             </Link>
+            <Link href="/expenses" onClick={onClose} className={`nav-item ${isActive('/expenses') ? 'active' : ''}`}>
+              <ClipboardList size={18} />
+              <span>Expenses</span>
+            </Link>
             <Link href="/purchases" onClick={onClose} className={`nav-item ${isActive('/purchases') ? 'active' : ''}`}>
-              <ShoppingBag size={20} />
+              <ShoppingBag size={18} />
               <span>Purchase Orders</span>
             </Link>
+            <Link href="/bills" onClick={onClose} className={`nav-item ${isActive('/bills') ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Receipt size={18} style={{ color: '#2563eb' }} />
+                <span>Bills</span>
+              </div>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-primary)', opacity: 0.9 }}>+</span>
+            </Link>
+            <Link href="/payments-made" onClick={onClose} className={`nav-item ${isActive('/payments-made') ? 'active' : ''}`}>
+              <Banknote size={18} style={{ color: '#059669' }} />
+              <span>Payments Made</span>
+            </Link>
+            <Link href="/vendor-credits" onClick={onClose} className={`nav-item ${isActive('/vendor-credits') ? 'active' : ''}`}>
+              <FileMinus size={18} style={{ color: '#dc2626' }} />
+              <span>Vendor Credits</span>
+            </Link>
             <Link href="/warehouses" onClick={onClose} className={`nav-item ${isActive('/warehouses') ? 'active' : ''}`}>
-              <Warehouse size={20} />
+              <Warehouse size={18} />
               <span>Warehouses</span>
             </Link>
           </div>

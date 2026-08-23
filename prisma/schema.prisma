@@ -271,6 +271,8 @@ model Product {
   inventoryTransactions InventoryTransaction[]
   purchaseOrderItems PurchaseOrderItem[]
   creditNoteItems CreditNoteItem[]
+  billItems       BillItem[]
+  vendorCreditItems VendorCreditItem[]
 }
 
 model ProductCategory {
@@ -695,6 +697,9 @@ model Vendor {
   updatedAt       DateTime @updatedAt
 
   purchaseOrders  PurchaseOrder[]
+  bills           Bill[]
+  payments        VendorPayment[]
+  vendorCredits   VendorCredit[]
 }
 
 model PurchaseOrder {
@@ -712,6 +717,7 @@ model PurchaseOrder {
   updatedAt       DateTime @updatedAt
 
   items           PurchaseOrderItem[]
+  bills           Bill[]
 }
 
 model PurchaseOrderItem {
@@ -725,6 +731,117 @@ model PurchaseOrderItem {
   rate            Float
   taxAmount       Float         @default(0)
   total           Float
+}
+
+model Bill {
+  id               String    @id @default(uuid())
+  billNumber       String    @unique // Auto: BILL-0001
+  vendorBillNumber String?   // Vendor Invoice / Bill Reference Number
+  vendorId         String
+  vendor           Vendor    @relation(fields: [vendorId], references: [id])
+  purchaseOrderId  String?
+  purchaseOrder    PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  
+  billDate         DateTime  @default(now())
+  dueDate          DateTime?
+  paymentTerms     String?   @default("Net 30")
+  
+  subtotal         Float     @default(0)
+  taxAmount        Float     @default(0)
+  discountAmount   Float     @default(0)
+  totalAmount      Float
+  amountPaid       Float     @default(0)
+  amountDue        Float
+  
+  status           String    @default("Open") // Draft, Open, Paid, Partially Paid, Overdue, Void
+  notes            String?
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  items            BillItem[]
+  payments         VendorPayment[]
+  vendorCredits    VendorCredit[]
+}
+
+model BillItem {
+  id          String   @id @default(uuid())
+  billId      String
+  bill        Bill     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id])
+  
+  description String
+  hsnCode     String?  @default("6109")
+  quantity    Int      @default(1)
+  unit        String?  @default("pcs")
+  rate        Float    @default(0)
+  gstRate     Float    @default(0)
+  taxAmount   Float    @default(0)
+  total       Float    @default(0)
+}
+
+model VendorPayment {
+  id               String    @id @default(uuid())
+  paymentNumber    String    @unique // VPAY-2026-0001
+  vendorId         String
+  vendor           Vendor    @relation(fields: [vendorId], references: [id])
+  billId           String?
+  bill             Bill?     @relation(fields: [billId], references: [id])
+  
+  amount           Float
+  paymentDate      DateTime  @default(now())
+  paymentMode      String    // Bank Transfer (NEFT/RTGS), UPI, Cheque, Cash, Advance Adjustment, Other
+  paidFromAccount  String?   // HDFC Bank Current A/c, ICICI Bank, Cash in Hand, etc.
+  referenceNumber  String?   // UTR #, Cheque #, Transaction ID
+  paymentType      String    @default("Bill Payment") // Bill Payment, Advance Deposit, On-Account
+  status           String    @default("Completed") // Completed, Pending, Cancelled
+  notes            String?
+  recordedBy       String?
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model VendorCredit {
+  id               String    @id @default(uuid())
+  creditNoteNumber String    @unique // DN-0001 (Debit Note / Vendor Credit)
+  vendorId         String
+  vendor           Vendor    @relation(fields: [vendorId], references: [id])
+  billId           String?
+  bill             Bill?     @relation(fields: [billId], references: [id])
+  
+  creditDate       DateTime  @default(now())
+  reason           String    // Goods Return, Rate Difference, Quality Rejection, Post-Purchase Discount, Other
+  status           String    @default("OPEN") // OPEN, ADJUSTED, REFUNDED, CANCELLED
+  
+  subtotal         Float     @default(0)
+  taxAmount        Float     @default(0)
+  totalAmount      Float     @default(0)
+  allocatedAmount  Float     @default(0)
+  balanceAmount    Float     @default(0)
+  
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  items            VendorCreditItem[]
+}
+
+model VendorCreditItem {
+  id             String       @id @default(uuid())
+  vendorCreditId String
+  vendorCredit   VendorCredit @relation(fields: [vendorCreditId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product?     @relation(fields: [productId], references: [id])
+  
+  description    String
+  hsnCode        String?      @default("6109")
+  quantity       Int          @default(1)
+  rate           Float        @default(0)
+  gstRate        Float        @default(0)
+  taxAmount      Float        @default(0)
+  total          Float        @default(0)
 }
 
 model Invoice {
