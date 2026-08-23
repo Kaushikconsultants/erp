@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -27,10 +27,7 @@ import {
   Megaphone, 
   FileMinus, 
   ScrollText,
-  ChevronDown,
-  Sparkles,
-  Layers,
-  UserCheck
+  ChevronRight
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -81,33 +78,14 @@ const Sidebar = ({
     );
   };
 
-  // State to track open/collapsed state of each category dropdown
+  // Default state: ALL dropdown categories collapsed by default
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
-    crm: true,
-    sales: true,
-    purchases: true,
-    hrms: true,
-    reports: true
+    crm: false,
+    sales: false,
+    purchases: false,
+    hrms: false,
+    reports: false
   });
-
-  // Auto-expand category if current route matches any of its sub-items
-  useEffect(() => {
-    if (pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/whatsapp')) {
-      setOpenCategories(prev => ({ ...prev, crm: true }));
-    }
-    if (pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || pathname.startsWith('/payments') || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills')) {
-      setOpenCategories(prev => ({ ...prev, sales: true }));
-    }
-    if (pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses')) {
-      setOpenCategories(prev => ({ ...prev, purchases: true }));
-    }
-    if (pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || pathname.startsWith('/expenses') || pathname.startsWith('/leaves') || pathname.startsWith('/hiring')) {
-      setOpenCategories(prev => ({ ...prev, hrms: true }));
-    }
-    if (pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs')) {
-      setOpenCategories(prev => ({ ...prev, reports: true }));
-    }
-  }, [pathname]);
 
   const toggleCategory = (categoryKey: string) => {
     setOpenCategories(prev => ({
@@ -116,7 +94,7 @@ const Sidebar = ({
     }));
   };
 
-  // Active checkers for category highlights
+  // Active state indicators
   const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/whatsapp');
   const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
@@ -161,11 +139,11 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.crm ? 'is-open' : ''} ${isCrmActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <Users size={16} style={{ color: isCrmActive ? '#4f46e5' : '#64748b' }} />
+                <Users size={18} style={{ color: isCrmActive ? '#4f46e5' : '#64748b' }} />
                 <span>CRM & CLIENTS</span>
               </div>
               <div className="category-chevron">
-                <ChevronDown size={14} />
+                <ChevronRight size={15} />
               </div>
             </button>
 
@@ -210,11 +188,11 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.sales ? 'is-open' : ''} ${isSalesActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <ShoppingCart size={16} style={{ color: isSalesActive ? '#4f46e5' : '#64748b' }} />
+                <ShoppingCart size={18} style={{ color: isSalesActive ? '#4f46e5' : '#64748b' }} />
                 <span>SALES & DISPATCH</span>
               </div>
               <div className="category-chevron">
-                <ChevronDown size={14} />
+                <ChevronRight size={15} />
               </div>
             </button>
 
@@ -289,11 +267,11 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.purchases ? 'is-open' : ''} ${isPurchasesActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <ShoppingBag size={16} style={{ color: isPurchasesActive ? '#2563eb' : '#64748b' }} />
+                <ShoppingBag size={18} style={{ color: isPurchasesActive ? '#2563eb' : '#64748b' }} />
                 <span>PURCHASES</span>
               </div>
               <div className="category-chevron">
-                <ChevronDown size={14} />
+                <ChevronRight size={15} />
               </div>
             </button>
 
@@ -355,11 +333,11 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.hrms ? 'is-open' : ''} ${isHrmsActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <Banknote size={16} style={{ color: isHrmsActive ? '#4f46e5' : '#64748b' }} />
+                <Banknote size={18} style={{ color: isHrmsActive ? '#4f46e5' : '#64748b' }} />
                 <span>HRMS</span>
               </div>
               <div className="category-chevron">
-                <ChevronDown size={14} />
+                <ChevronRight size={15} />
               </div>
             </button>
 
@@ -403,11 +381,11 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.reports ? 'is-open' : ''} ${isReportsActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <BarChart3 size={16} style={{ color: isReportsActive ? '#4f46e5' : '#64748b' }} />
+                <BarChart3 size={18} style={{ color: isReportsActive ? '#4f46e5' : '#64748b' }} />
                 <span>REPORTS & INTELLIGENCE</span>
               </div>
               <div className="category-chevron">
-                <ChevronDown size={14} />
+                <ChevronRight size={15} />
               </div>
             </button>
 
