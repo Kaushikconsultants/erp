@@ -90,7 +90,9 @@ export default function ModernSearchableSelect({
         style={{
           width: "100%",
           minWidth: 0,
-          padding: "7px 10px",
+          height: "36px",
+          boxSizing: "border-box",
+          padding: "0 10px",
           backgroundColor: "#ffffff",
           border: isOpen ? "1px solid var(--accent-primary)" : "1px solid var(--border)",
           borderRadius: "8px",

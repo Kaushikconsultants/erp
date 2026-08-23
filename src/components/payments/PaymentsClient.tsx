@@ -337,15 +337,39 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
   // Filter Payments
   const filteredPayments = useMemo(() => {
     return payments.filter(p => {
-      // Search
+      // Robust Multi-field & Multi-term Search
       if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchNumber = p.paymentNumber.toLowerCase().includes(q);
-        const matchCust = p.customer?.businessName.toLowerCase().includes(q) || p.customer?.contactPerson.toLowerCase().includes(q) || p.customer?.mobile.includes(q);
-        const matchInv = p.invoice?.invoiceNumber.toLowerCase().includes(q);
-        const matchRef = p.referenceNumber?.toLowerCase().includes(q);
-        const matchPayer = p.payerName?.toLowerCase().includes(q);
-        if (!matchNumber && !matchCust && !matchInv && !matchRef && !matchPayer) return false;
+        const q = search.trim().toLowerCase();
+        const searchTerms = q.split(/\s+/).filter(Boolean);
+
+        const searchableFields = [
+          p.paymentNumber,
+          p.customer?.businessName,
+          p.customer?.contactPerson,
+          p.customer?.mobile,
+          p.customer?.city,
+          p.customer?.gstNumber,
+          p.invoice?.invoiceNumber,
+          p.paymentMode,
+          p.paymentType,
+          p.receivingAccount,
+          p.referenceNumber,
+          p.payerName,
+          p.notes,
+          p.status,
+          p.order?.orderNumber,
+          p.invoice?.order?.orderNumber,
+          String(p.amount),
+          p.amount ? p.amount.toLocaleString('en-IN') : '',
+          p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-GB') : '',
+          p.paymentDate ? new Date(p.paymentDate).toISOString().split('T')[0] : ''
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        const isMatch = searchTerms.every(term => searchableFields.includes(term));
+        if (!isMatch) return false;
       }
 
       // Mode
@@ -568,31 +592,73 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
       )}
 
       {/* Modern Filter Toolbar with Custom Searchable Dropdowns */}
-      <div className="glass-panel" style={{ padding: '16px 20px', marginBottom: '20px' }}>
+      <div className="glass-panel" style={{ padding: '14px 18px', marginBottom: '20px', borderRadius: '12px' }}>
         
-        {/* Row 1: Search & Custom Searchable Dropdowns */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 1.4fr) repeat(3, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+        {/* Row 1: Search & Custom Searchable Dropdowns (All aligned to 36px) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1.4fr) repeat(3, minmax(170px, 1fr))', gap: '10px', alignItems: 'center', marginBottom: '12px' }}>
           
-          {/* Search Input */}
-          <div style={{ position: 'relative' }}>
-            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          {/* Custom Modern Search Input */}
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%', minWidth: 0, height: '36px' }}>
+            <Search
+              size={15}
+              style={{
+                position: 'absolute',
+                left: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: 'var(--text-muted)',
+                pointerEvents: 'none',
+                flexShrink: 0
+              }}
+            />
             <input
               type="text"
-              placeholder="Search payment #, customer, UTR, ref..."
-              className="form-input"
+              placeholder="Search payment #, customer, UTR, invoice, amount..."
               style={{
                 width: '100%',
+                height: '36px',
+                boxSizing: 'border-box',
                 paddingLeft: '34px',
+                paddingRight: search ? '30px' : '12px',
+                backgroundColor: '#ffffff',
+                border: '1px solid var(--border)',
+                borderRadius: '8px',
                 fontSize: '0.82rem',
-                fontWeight: 400
+                color: 'var(--text-primary)',
+                outline: 'none',
+                boxShadow: 'var(--shadow-sm)',
+                transition: 'all 0.15s ease'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(79, 70, 229, 0.12)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
               }}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             {search && (
               <button
+                type="button"
                 onClick={() => setSearch('')}
-                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-muted)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px',
+                  borderRadius: '4px'
+                }}
               >
                 <X size={13} />
               </button>
@@ -606,7 +672,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             onChange={setSelectedCustomer}
             placeholder="All Customers"
             searchPlaceholder="Search customer..."
-            icon={<User size={14} />}
+            icon={<User size={13} />}
           />
 
           {/* Custom Payment Mode Dropdown */}
@@ -616,6 +682,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             onChange={setSelectedMode}
             placeholder="All Payment Modes"
             searchPlaceholder="Search mode..."
+            icon={<Wallet size={13} />}
           />
 
           {/* Custom Payment Type Dropdown */}
@@ -625,6 +692,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             onChange={setSelectedType}
             placeholder="All Payment Types"
             searchPlaceholder="Search type..."
+            icon={<FileCheck size={13} />}
           />
         </div>
 
@@ -654,7 +722,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                   backgroundColor: datePreset === p.id ? 'var(--accent-primary)' : 'var(--bg-primary)',
                   color: datePreset === p.id ? '#ffffff' : 'var(--text-secondary)',
                   border: '1px solid var(--border)',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
                 }}
               >
                 {p.label}
@@ -662,11 +731,11 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             ))}
 
             {/* Date Input Controls */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px', backgroundColor: 'var(--bg-primary)', padding: '2px 6px', borderRadius: '6px', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px', backgroundColor: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
               <input
                 type="date"
                 style={{
-                  padding: '2px 4px',
+                  padding: '2px',
                   border: 'none',
                   background: 'transparent',
                   fontSize: '0.78rem',
@@ -681,7 +750,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               <input
                 type="date"
                 style={{
-                  padding: '2px 4px',
+                  padding: '2px',
                   border: 'none',
                   background: 'transparent',
                   fontSize: '0.78rem',
@@ -695,31 +764,37 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             </div>
           </div>
 
-          {(search || selectedMode !== 'All' || selectedType !== 'All' || selectedCustomer !== 'All' || startDate || endDate) && (
-            <button
-              onClick={() => {
-                setSearch('');
-                setSelectedMode('All');
-                setSelectedType('All');
-                setSelectedCustomer('All');
-                setSelectedStatus('All');
-                handleDatePreset('all');
-              }}
-              style={{
-                fontSize: '0.75rem',
-                color: 'var(--danger)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px'
-              }}
-            >
-              Reset Filters ✕
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              Showing <strong style={{ color: 'var(--text-primary)' }}>{filteredPayments.length}</strong> of {payments.length} payments
+            </span>
+
+            {(search || selectedCustomer !== 'All' || selectedMode !== 'All' || selectedType !== 'All' || startDate || endDate) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setSelectedCustomer('All');
+                  setSelectedMode('All');
+                  setSelectedType('All');
+                  setStartDate('');
+                  setEndDate('');
+                  setDatePreset('all');
+                }}
+                style={{
+                  fontSize: '0.74rem',
+                  color: 'var(--accent-primary)',
+                  background: 'none',
+                  border: 'none',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textDecoration: 'underline'
+                }}
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
