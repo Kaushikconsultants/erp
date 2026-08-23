@@ -65,12 +65,16 @@ const Sidebar = ({
       if (userRole === 'SALES') return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
       if (userRole === 'HR') return ['dashboard', 'hrms'].includes(sectionKey);
       if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms'].includes(sectionKey);
-      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'procurement', 'dispatches'].includes(sectionKey);
-      if (userRole === 'PURCHASE') return ['dashboard', 'procurement', 'products'].includes(sectionKey);
+      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches'].includes(sectionKey);
+      if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products'].includes(sectionKey);
       if (userRole === 'SUPPORT') return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);
-      return true;
+      return false;
     }
-    return allowedSections.includes(sectionKey);
+    return (
+      allowedSections.includes(sectionKey) ||
+      (sectionKey === 'purchases' && allowedSections.includes('procurement')) ||
+      (sectionKey === 'procurement' && allowedSections.includes('purchases'))
+    );
   };
 
   return (
@@ -190,7 +194,7 @@ const Sidebar = ({
         )}
 
         {/* PURCHASES & PROCUREMENT SECTION */}
-        {(showProcurement || canAccess('procurement') || canAccess('purchases')) && (
+        {canAccess('purchases') && (
           <div className="nav-section">
             <p className="nav-section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <ShoppingBag size={14} style={{ color: 'var(--accent-primary)' }} /> PURCHASES

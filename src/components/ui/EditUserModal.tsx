@@ -27,14 +27,40 @@ const ALL_SECTIONS = [
   { id: 'orders', label: '🛒 Sales Orders', desc: 'Order creation, status & details' },
   { id: 'quotations', label: '📋 Quotations', desc: 'Estimate pipeline & quote creation' },
   { id: 'invoices', label: '🧾 Invoices & Billing', desc: 'Tax invoices & billing document section' },
-  { id: 'payments', label: '💳 Payments', desc: 'Payment tracking & received amounts' },
+  { id: 'payments', label: '💳 Payments (Inward)', desc: 'Customer payment tracking & receipts' },
   { id: 'products', label: '📦 Products Catalog', desc: 'Item pricing, SKU & product management' },
   { id: 'dispatches', label: '🚚 Dispatches', desc: 'Shipping pipeline & delivery tracking' },
-  { id: 'procurement', label: '🏬 Procurement', desc: 'Vendors, purchase orders & warehouses' },
+  { id: 'purchases', label: '🛍️ Purchases & Vendors', desc: 'Vendors, purchase orders, bills, payments made, vendor credits' },
   { id: 'hrms', label: '💼 HRMS & Payroll', desc: 'Payroll, attendance, expenses, leaves & hiring' },
   { id: 'reports', label: '📈 Reports & Analytics', desc: 'Analytics charts, reports center & audit logs' },
   { id: 'settings', label: '⚙️ Settings & Admin', desc: 'System settings, roles & user management' }
 ];
+
+const getDefaultSectionsForRole = (role: string): string[] => {
+  switch (role) {
+    case 'SUPER_ADMIN':
+    case 'ADMIN':
+      return ALL_SECTIONS.map(s => s.id);
+    case 'SALES':
+      return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'];
+    case 'PURCHASE':
+      return ['dashboard', 'purchases', 'products'];
+    case 'WAREHOUSE':
+      return ['dashboard', 'products', 'purchases', 'dispatches'];
+    case 'DISPATCH':
+      return ['dashboard', 'dispatches'];
+    case 'ACCOUNTS':
+      return ['dashboard', 'invoices', 'payments', 'orders', 'hrms'];
+    case 'HR':
+      return ['dashboard', 'hrms'];
+    case 'SUPPORT':
+      return ['dashboard', 'customers', 'calls_tasks'];
+    case 'MANAGER':
+      return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products', 'reports'];
+    default:
+      return ['dashboard'];
+  }
+};
 
 export default function EditUserModal({ user, onClose }: EditUserModalProps) {
   const [loading, setLoading] = useState(false);
@@ -44,14 +70,14 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
 
   // Parse existing allowed sections
   const initialAllowed: string[] = (() => {
-    if (!user.allowedSections) return ALL_SECTIONS.map(s => s.id);
+    if (!user.allowedSections) return getDefaultSectionsForRole(user.role);
     try {
       if (user.allowedSections.startsWith('[')) {
         return JSON.parse(user.allowedSections);
       }
       return user.allowedSections.split(',').map(s => s.trim());
     } catch {
-      return ALL_SECTIONS.map(s => s.id);
+      return getDefaultSectionsForRole(user.role);
     }
   })();
 

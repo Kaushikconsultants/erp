@@ -5,22 +5,20 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
+import { canUserAccessSection } from "@/lib/authPermissions";
+
 async function canManagePurchases() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return false;
-  const role = (session.user as any).role;
-  if (role === 'ADMIN' || role === 'SUPER_ADMIN') return true;
-  const roleDef = await prisma.role.findUnique({ where: { name: role } });
-  if (!roleDef) return false;
-  try {
-    const perms = JSON.parse(roleDef.permissions) as string[];
-    return perms.includes("Manage Purchases") || perms.includes("Manage Invoices") || perms.includes("Manage Vendors");
-  } catch { return false; }
+  return await canUserAccessSection(session.user, 'purchases');
 }
 
 export async function getVendorCredits() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
+
+  const hasAccess = await canUserAccessSection(session.user, 'purchases');
+  if (!hasAccess) return { error: "Unauthorized" };
 
   try {
     const credits = await prisma.vendorCredit.findMany({

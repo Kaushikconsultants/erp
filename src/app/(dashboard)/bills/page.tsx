@@ -6,11 +6,16 @@ import { getBills } from '@/app/actions/billActions';
 import { prisma } from '@/lib/prisma';
 import BillsClient from '@/components/bills/BillsClient';
 
+import { canUserAccessSection } from '@/lib/authPermissions';
+
 export const dynamic = 'force-dynamic';
 
 export default async function BillsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
+
+  const hasAccess = await canUserAccessSection(session.user, 'purchases');
+  if (!hasAccess) redirect('/');
 
   const res = await getBills();
   const bills = res.success ? res.bills : [];

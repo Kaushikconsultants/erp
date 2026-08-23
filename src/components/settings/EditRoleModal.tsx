@@ -1,67 +1,33 @@
 "use client";
 
 import React, { useState } from 'react';
-import { X, Shield, Check } from 'lucide-react';
-import { createRole } from '@/app/actions/roleActions';
+import { X, Shield, Trash2 } from 'lucide-react';
+import { updateRole, deleteRole } from '@/app/actions/roleActions';
+import { PERMISSION_GROUPS } from './CreateRoleModal';
 
-interface CreateRoleModalProps {
+interface EditRoleModalProps {
+  role: {
+    id: string;
+    name: string;
+    permissions: string;
+    _count?: { users: number };
+  };
   onClose: () => void;
 }
 
-export const PERMISSION_GROUPS = [
-  {
-    category: "🛍️ Purchases & Procurement",
-    permissions: [
-      { id: "Manage Purchases", desc: "Create, view & approve purchase orders" },
-      { id: "Manage Bills", desc: "Create, view & edit vendor purchase bills" },
-      { id: "Manage Vendor Payments", desc: "Disburse & record payments made to vendors" },
-      { id: "Manage Vendor Credits", desc: "Issue debit notes & allocate credits to bills" },
-      { id: "Manage Vendors", desc: "Add, edit & view vendor directory & balances" },
-      { id: "Manage Warehouses", desc: "Manage warehouse stock locations & inventory transactions" },
-      { id: "Manage Procurement", desc: "Full procurement suite access" }
-    ]
-  },
-  {
-    category: "🛒 Sales & CRM",
-    permissions: [
-      { id: "Manage Orders", desc: "Create, process & manage customer sales orders" },
-      { id: "Manage Quotations", desc: "Create & convert sales quotations / estimates" },
-      { id: "Manage Invoices", desc: "Generate & manage customer GST tax invoices" },
-      { id: "Manage Payments", desc: "Record customer incoming payments & receipts" },
-      { id: "Manage Customers", desc: "Create & edit customer accounts & credit limits" },
-      { id: "View All Customers", desc: "View all customer accounts in the CRM" },
-      { id: "Manage Dispatches", desc: "Manage shipments, logistics & delivery tracking" },
-      { id: "Manage Inventory", desc: "Manage product catalog, prices & stock levels" }
-    ]
-  },
-  {
-    category: "💼 HRMS & Operations",
-    permissions: [
-      { id: "Manage HRMS", desc: "Full employee directory & HR dashboard" },
-      { id: "Manage Payroll", desc: "Process monthly salaries, deductions & payslips" },
-      { id: "Approve Leaves", desc: "Review & approve employee leave applications" },
-      { id: "Manage Attendance", desc: "Manage attendance check-in logs & work hours" },
-      { id: "Manage Expenses", desc: "Review & approve staff expense claims" },
-      { id: "Manage Hiring", desc: "Candidate interview evaluations & job applications" }
-    ]
-  },
-  {
-    category: "⚙️ Administration & Intelligence",
-    permissions: [
-      { id: "Manage Settings", desc: "System settings, organization profile & workflows" },
-      { id: "Manage Users", desc: "Add/edit team user accounts & section access" },
-      { id: "View Analytics", desc: "Access intelligence reports & analytics center" },
-      { id: "Delete Records", desc: "Permission to delete data records & documents" }
-    ]
-  }
-];
+export default function EditRoleModal({ role, onClose }: EditRoleModalProps) {
+  const initialPerms: string[] = (() => {
+    try {
+      return JSON.parse(role.permissions || '[]');
+    } catch {
+      return [];
+    }
+  })();
 
-export default function CreateRoleModal({ onClose }: CreateRoleModalProps) {
-  const [roleName, setRoleName] = useState('');
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
-    "Manage Orders", "Manage Quotations", "Manage Customers"
-  ]);
+  const [roleName, setRoleName] = useState(role.name);
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(initialPerms);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
   const handleTogglePermission = (permission: string) => {
@@ -95,13 +61,26 @@ export default function CreateRoleModal({ onClose }: CreateRoleModalProps) {
     setLoading(true);
     setError('');
 
-    const res = await createRole({ name: roleName.trim(), permissions: selectedPermissions });
+    const res = await updateRole(role.id, { name: roleName.trim(), permissions: selectedPermissions });
     setLoading(false);
 
     if (res.success) {
       onClose();
     } else {
-      setError(res.error || "Failed to create role.");
+      setError(res.error || "Failed to update role.");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Are you sure you want to delete role "${role.name}"?`)) return;
+    setDeleting(true);
+    const res = await deleteRole(role.id);
+    setDeleting(false);
+
+    if (res.success) {
+      onClose();
+    } else {
+      setError(res.error || "Failed to delete role.");
     }
   };
 
@@ -116,8 +95,8 @@ export default function CreateRoleModal({ onClose }: CreateRoleModalProps) {
               <Shield size={18} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Create Custom Role</h2>
-              <p style={{ fontSize: '0.78rem', margin: '2px 0 0', color: '#64748b' }}>Define role name and granular permission policies</p>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>Edit Role: {role.name}</h2>
+              <p style={{ fontSize: '0.78rem', margin: '2px 0 0', color: '#64748b' }}>Modify permissions policy for this role</p>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.4rem', color: '#94a3b8', cursor: 'pointer' }}>×</button>
@@ -134,7 +113,6 @@ export default function CreateRoleModal({ onClose }: CreateRoleModalProps) {
               type="text" 
               value={roleName}
               onChange={e => setRoleName(e.target.value)}
-              placeholder="e.g. Purchase Executive, Senior Sales Manager, Auditor"
               required
               style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none' }}
             />
@@ -208,21 +186,36 @@ export default function CreateRoleModal({ onClose }: CreateRoleModalProps) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
-            <button 
-              type="button" 
-              onClick={onClose}
-              style={{ padding: '8px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer' }}
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              disabled={loading}
-              style={{ padding: '8px 22px', borderRadius: '8px', backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', fontSize: '0.82rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}
-            >
-              {loading ? "Creating..." : "Save Role"}
-            </button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
+            <div>
+              {role._count?.users === 0 && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #fecdd3', backgroundColor: '#fff1f2', color: '#e11d48', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  <Trash2 size={14} /> {deleting ? 'Deleting...' : 'Delete Role'}
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                type="button" 
+                onClick={onClose}
+                style={{ padding: '8px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                disabled={loading}
+                style={{ padding: '8px 22px', borderRadius: '8px', backgroundColor: '#4f46e5', color: '#ffffff', border: 'none', fontSize: '0.82rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer' }}
+              >
+                {loading ? "Saving..." : "Update Role"}
+              </button>
+            </div>
           </div>
         </form>
 

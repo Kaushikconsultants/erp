@@ -39,8 +39,12 @@ export default async function DashboardLayout({
 
   const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
   const showSettings = isSuperOrAdmin || canManageSettings;
-  const showAnalytics = isSuperOrAdmin || (allowedSectionsList ? allowedSectionsList.includes('reports') : true);
-  const showProcurement = isSuperOrAdmin || (allowedSectionsList ? allowedSectionsList.includes('procurement') : true);
+  const showAnalytics = isSuperOrAdmin || (allowedSectionsList ? allowedSectionsList.includes('reports') : false);
+  const showProcurement = isSuperOrAdmin || (
+    allowedSectionsList
+      ? (allowedSectionsList.includes('purchases') || allowedSectionsList.includes('procurement'))
+      : (userRole === 'PURCHASE' || userRole === 'WAREHOUSE')
+  );
 
   return (
     <DashboardShell 

@@ -6,11 +6,16 @@ import { getVendorCredits } from '@/app/actions/vendorCreditActions';
 import { prisma } from '@/lib/prisma';
 import VendorCreditsClient from '@/components/vendor-credits/VendorCreditsClient';
 
+import { canUserAccessSection } from '@/lib/authPermissions';
+
 export const dynamic = 'force-dynamic';
 
 export default async function VendorCreditsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
+
+  const hasAccess = await canUserAccessSection(session.user, 'purchases');
+  if (!hasAccess) redirect('/');
 
   const res = await getVendorCredits();
   const credits = res.success ? res.credits : [];

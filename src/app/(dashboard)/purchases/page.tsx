@@ -6,11 +6,16 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
+import { canUserAccessSection } from '@/lib/authPermissions';
+
 export const dynamic = 'force-dynamic';
 
 export default async function PurchasesPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
+
+  const hasAccess = await canUserAccessSection(session.user, 'purchases');
+  if (!hasAccess) redirect('/');
 
   const res = await getPurchaseOrders();
   const orders = res.success ? res.orders : [];

@@ -38,8 +38,21 @@ export default function MobileBottomNav({ userRole, allowedSections }: MobileBot
 
   const canAccess = (sectionKey: string): boolean => {
     if (isSuperOrAdmin) return true;
-    if (!allowedSections || allowedSections.length === 0) return true;
-    return allowedSections.includes(sectionKey);
+    if (!allowedSections || allowedSections.length === 0) {
+      if (userRole === 'DISPATCH') return ['dispatches'].includes(sectionKey);
+      if (userRole === 'SALES') return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
+      if (userRole === 'HR') return ['dashboard', 'hrms'].includes(sectionKey);
+      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms'].includes(sectionKey);
+      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches'].includes(sectionKey);
+      if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products'].includes(sectionKey);
+      if (userRole === 'SUPPORT') return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);
+      return false;
+    }
+    return (
+      allowedSections.includes(sectionKey) ||
+      (sectionKey === 'purchases' && allowedSections.includes('procurement')) ||
+      (sectionKey === 'procurement' && allowedSections.includes('purchases'))
+    );
   };
 
   return (

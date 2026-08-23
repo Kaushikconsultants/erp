@@ -15,19 +15,51 @@ const ALL_SECTIONS = [
   { id: 'orders', label: '🛒 Sales Orders', desc: 'Order creation, status & details' },
   { id: 'quotations', label: '📋 Quotations', desc: 'Estimate pipeline & quote creation' },
   { id: 'invoices', label: '🧾 Invoices & Billing', desc: 'Tax invoices & billing document section' },
-  { id: 'payments', label: '💳 Payments', desc: 'Payment tracking & received amounts' },
+  { id: 'payments', label: '💳 Payments (Inward)', desc: 'Customer payment tracking & receipts' },
   { id: 'products', label: '📦 Products Catalog', desc: 'Item pricing, SKU & product management' },
   { id: 'dispatches', label: '🚚 Dispatches', desc: 'Shipping pipeline & delivery tracking' },
-  { id: 'procurement', label: '🏬 Procurement', desc: 'Vendors, purchase orders & warehouses' },
+  { id: 'purchases', label: '🛍️ Purchases & Vendors', desc: 'Vendors, purchase orders, bills, payments made, vendor credits' },
   { id: 'hrms', label: '💼 HRMS & Payroll', desc: 'Payroll, attendance, expenses, leaves & hiring' },
   { id: 'reports', label: '📈 Reports & Analytics', desc: 'Analytics charts, reports center & audit logs' },
   { id: 'settings', label: '⚙️ Settings & Admin', desc: 'System settings, roles & user management' }
 ];
 
+const getDefaultSectionsForRole = (role: string): string[] => {
+  switch (role) {
+    case 'SUPER_ADMIN':
+    case 'ADMIN':
+      return ALL_SECTIONS.map(s => s.id);
+    case 'SALES':
+      return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'];
+    case 'PURCHASE':
+      return ['dashboard', 'purchases', 'products'];
+    case 'WAREHOUSE':
+      return ['dashboard', 'products', 'purchases', 'dispatches'];
+    case 'DISPATCH':
+      return ['dashboard', 'dispatches'];
+    case 'ACCOUNTS':
+      return ['dashboard', 'invoices', 'payments', 'orders', 'hrms'];
+    case 'HR':
+      return ['dashboard', 'hrms'];
+    case 'SUPPORT':
+      return ['dashboard', 'customers', 'calls_tasks'];
+    case 'MANAGER':
+      return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products', 'reports'];
+    default:
+      return ['dashboard'];
+  }
+};
+
 export default function AddUserModal({ onClose }: AddUserModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selectedSections, setSelectedSections] = useState<string[]>(ALL_SECTIONS.map(s => s.id));
+  const [selectedRole, setSelectedRole] = useState("SALES");
+  const [selectedSections, setSelectedSections] = useState<string[]>(getDefaultSectionsForRole("SALES"));
+
+  const handleRoleChange = (newRole: string) => {
+    setSelectedRole(newRole);
+    setSelectedSections(getDefaultSectionsForRole(newRole));
+  };
 
   const toggleSection = (id: string) => {
     setSelectedSections(prev => 
@@ -58,15 +90,15 @@ export default function AddUserModal({ onClose }: AddUserModalProps) {
 
   return (
     <div className="modal-backdrop" style={{ overflowY: 'auto', padding: '20px 10px' }}>
-      <div className="modal-content glass-panel animate-in" style={{ maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-        <div className="modal-header" style={{ paddingBottom: '16px', borderBottom: '1px solid #e2e8f0' }}>
+      <div className="modal-container" style={{ maxWidth: '640px' }}>
+        <div className="modal-header">
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Add New Software User</h2>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>Create user credentials, assign role, and set section access permissions.</p>
+            <h2 className="modal-title">Create New Team Member</h2>
+            <p className="modal-subtitle">Add employee account with role and custom access permissions</p>
           </div>
-          <button type="button" className="close-btn" onClick={onClose}>×</button>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '16px' }}>
           {error && <div className="error-message" style={{ padding: '10px', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '6px', fontSize: '0.85rem' }}>{error}</div>}
           
@@ -96,7 +128,13 @@ export default function AddUserModal({ onClose }: AddUserModalProps) {
 
           <div className="form-group">
             <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0f172a' }}>Department Role *</label>
-            <select name="role" required style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', backgroundColor: '#f8fafc' }}>
+            <select 
+              name="role" 
+              required 
+              value={selectedRole}
+              onChange={e => handleRoleChange(e.target.value)}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', backgroundColor: '#f8fafc' }}
+            >
               <option value="SALES">💼 Sales Executive / CRM</option>
               <option value="MANAGER">👔 Operations Manager</option>
               <option value="DISPATCH">🚚 Dispatch & Logistics Team</option>
@@ -119,7 +157,7 @@ export default function AddUserModal({ onClose }: AddUserModalProps) {
                   Allowed Section Access (Admin Controls)
                 </label>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                  Check sections this user can access in software navigation:
+                  Check sections this user can access in software navigation (e.g. grant or restrict Purchases):
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -140,7 +178,7 @@ export default function AddUserModal({ onClose }: AddUserModalProps) {
                     padding: '6px 8px',
                     borderRadius: '6px',
                     backgroundColor: selectedSections.includes(sec.id) ? '#ffffff' : 'transparent',
-                    border: selectedSections.includes(sec.id) ? '1px solid var(--accent-primary, #cbd5e1)' : '1px solid transparent',
+                    border: `1px solid ${selectedSections.includes(sec.id) ? '#cbd5e1' : 'transparent'}`,
                     cursor: 'pointer'
                   }}
                 >
@@ -151,17 +189,21 @@ export default function AddUserModal({ onClose }: AddUserModalProps) {
                     style={{ marginTop: '2px', accentColor: 'var(--accent-primary, #4f46e5)' }}
                   />
                   <div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>{sec.label}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>{sec.desc}</div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600, color: selectedSections.includes(sec.id) ? '#0f172a' : '#64748b' }}>
+                      {sec.label}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{sec.desc}</div>
                   </div>
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '14px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-            <button type="submit" className="primary-btn" disabled={loading} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: 'var(--accent-primary, #4f46e5)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+          <div className="modal-footer" style={{ marginTop: '8px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="btn-secondary" onClick={onClose} disabled={loading} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff' }}>
+              Cancel
+            </button>
+            <button type="submit" className="primary-btn" disabled={loading} style={{ padding: '8px 20px', borderRadius: '6px' }}>
               {loading ? "Creating User..." : "Create User"}
             </button>
           </div>

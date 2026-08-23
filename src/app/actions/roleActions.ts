@@ -23,6 +23,33 @@ export async function createRole(data: { name: string; permissions: string[] }) 
   }
 }
 
+export async function updateRole(roleId: string, data: { name: string; permissions: string[] }) {
+  try {
+    const existing = await prisma.role.findUnique({ where: { id: roleId } });
+    if (!existing) return { error: "Role not found." };
+
+    // Check if name is taken by another role
+    if (existing.name !== data.name) {
+      const nameCheck = await prisma.role.findUnique({ where: { name: data.name } });
+      if (nameCheck) return { error: "A role with this name already exists." };
+    }
+
+    await prisma.role.update({
+      where: { id: roleId },
+      data: {
+        name: data.name,
+        permissions: JSON.stringify(data.permissions)
+      }
+    });
+
+    revalidatePath('/settings/roles');
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating role:", error);
+    return { error: error.message || "Failed to update role." };
+  }
+}
+
 export async function deleteRole(roleId: string) {
   try {
     const role = await prisma.role.findUnique({
