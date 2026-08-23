@@ -178,9 +178,9 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
 export async function getTenantBillingOverview() {
   try {
     const ctx = await getTenantContext();
-    if (!ctx) return { success: false, error: "Not authenticated" };
+    if (!ctx || !ctx.organizationId) return { success: false, error: "Not authenticated" };
 
-    const org = await prisma.organization.findUnique({
+    let org = await prisma.organization.findUnique({
       where: { id: ctx.organizationId },
       include: {
         subscriptions: {
@@ -193,6 +193,21 @@ export async function getTenantBillingOverview() {
         }
       }
     });
+
+    if (!org) {
+      org = await prisma.organization.findFirst({
+        include: {
+          subscriptions: {
+            orderBy: { createdAt: 'desc' },
+            take: 10
+          },
+          invoicesIssued: {
+            orderBy: { createdAt: 'desc' },
+            take: 10
+          }
+        }
+      });
+    }
 
     if (!org) return { success: false, error: "Organization not found" };
 
