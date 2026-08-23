@@ -17,13 +17,21 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { PLAN_PRICING } from '@/lib/planConfig';
+import { getLivePlanPricing } from '@/app/actions/tenantActions';
 
 export default function PricingPage() {
+  const [plans, setPlans] = useState<any>(PLAN_PRICING);
   const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'QUARTERLY' | 'ANNUALLY'>('ANNUALLY');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
+  React.useEffect(() => {
+    getLivePlanPricing().then(res => {
+      if (res) setPlans(res);
+    });
+  }, []);
+
   const getPrice = (planKey: 'STARTER' | 'GROWTH' | 'ENTERPRISE') => {
-    const plan = PLAN_PRICING[planKey];
+    const plan = plans[planKey] || PLAN_PRICING[planKey];
     if (billingCycle === 'MONTHLY') return { amount: plan.monthlyPrice, period: '/ month', note: 'Billed monthly' };
     if (billingCycle === 'QUARTERLY') return { amount: Math.round(plan.quarterlyPrice / 3), period: '/ month', note: `Billed quarterly (₹${plan.quarterlyPrice.toLocaleString('en-IN')}) • 10% Off` };
     return { amount: Math.round(plan.annualPrice / 12), period: '/ month', note: `Billed annually (₹${plan.annualPrice.toLocaleString('en-IN')}) • 20% Off` };
@@ -161,7 +169,7 @@ export default function PricingPage() {
           </Link>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '20px', flex: 1 }}>
-            {PLAN_PRICING.STARTER.features.map((feat, idx) => (
+            {(plans.STARTER?.features || PLAN_PRICING.STARTER.features).map((feat: string, idx: number) => (
               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.82rem', color: '#334155' }}>
                 <Check size={16} style={{ color: '#10b981', flexShrink: 0 }} />
                 <span>{feat}</span>
@@ -192,7 +200,7 @@ export default function PricingPage() {
           </Link>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '20px', flex: 1 }}>
-            {PLAN_PRICING.GROWTH.features.map((feat, idx) => (
+            {(plans.GROWTH?.features || PLAN_PRICING.GROWTH.features).map((feat: string, idx: number) => (
               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.82rem', color: '#334155' }}>
                 <Check size={16} style={{ color: '#4f46e5', flexShrink: 0 }} />
                 <span><strong>{feat}</strong></span>
@@ -219,7 +227,7 @@ export default function PricingPage() {
           </Link>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '20px', flex: 1 }}>
-            {PLAN_PRICING.ENTERPRISE.features.map((feat, idx) => (
+            {(plans.ENTERPRISE?.features || PLAN_PRICING.ENTERPRISE.features).map((feat: string, idx: number) => (
               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.82rem', color: '#334155' }}>
                 <Check size={16} style={{ color: '#10b981', flexShrink: 0 }} />
                 <span>{feat}</span>

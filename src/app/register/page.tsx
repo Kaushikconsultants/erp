@@ -19,12 +19,20 @@ import {
   Landmark,
   Briefcase
 } from 'lucide-react';
-import { registerNewBusiness } from '@/app/actions/tenantActions';
+import { registerNewBusiness, getLivePlanPricing } from '@/app/actions/tenantActions';
 import { PLAN_PRICING } from '@/lib/planConfig';
 
 function RegisterWizardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const [plans, setPlans] = useState<any>(PLAN_PRICING);
+
+  React.useEffect(() => {
+    getLivePlanPricing().then(res => {
+      if (res) setPlans(res);
+    });
+  }, []);
 
   const initialPlan = (searchParams.get('plan') as any) || 'GROWTH';
   const initialCycle = (searchParams.get('cycle') as any) || 'ANNUALLY';
@@ -421,7 +429,7 @@ function RegisterWizardContent() {
               {/* Plan Choice Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
                 {(['STARTER', 'GROWTH', 'ENTERPRISE'] as const).map(planKey => {
-                  const plan = PLAN_PRICING[planKey];
+                  const plan = plans[planKey] || PLAN_PRICING[planKey];
                   const isSelected = formData.plan === planKey;
                   let price = plan.monthlyPrice;
                   if (formData.billingCycle === 'QUARTERLY') price = Math.round(plan.quarterlyPrice / 3);

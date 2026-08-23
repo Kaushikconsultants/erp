@@ -396,16 +396,239 @@ export async function getPlatformAdminOverview() {
         phone: org.phone,
         city: org.city,
         state: org.state,
+        tradeName: org.tradeName,
         plan: org.subscriptionPlan,
         billingCycle: org.billingCycle,
         status: org.subscriptionStatus,
         userCount: org.users.length,
         currentPeriodEnd: org.currentPeriodEnd,
-        createdAt: org.createdAt
-      }))
+        createdAt: org.createdAt,
+        maxUsers: org.maxUsers,
+        maxBranches: org.maxBranches,
+        maxWarehouses: org.maxWarehouses,
+        monthlyOrderLimit: org.monthlyOrderLimit,
+        whatsAppCreditBalance: org.whatsAppCreditBalance,
+        isGstEnabled: org.isGstEnabled,
+        isWhatsAppEnabled: org.isWhatsAppEnabled,
+        isEWayBillEnabled: org.isEWayBillEnabled,
+        isHrmsEnabled: org.isHrmsEnabled,
+      })),
+      pricingSettings: await getLivePlanPricing()
     };
   } catch (error: any) {
     console.error("Error loading platform admin data:", error);
     return { success: false, error: error.message || "Failed to load platform data." };
   }
 }
+
+/**
+ * Fetch dynamic live platform pricing (falling back to database setting if customized)
+ */
+export async function getLivePlanPricing() {
+  try {
+    let setting = await prisma.platformPricingSetting.findUnique({
+      where: { id: "default" }
+    });
+
+    if (!setting) {
+      setting = await prisma.platformPricingSetting.create({
+        data: {
+          id: "default",
+          starterMonthlyPrice: 999,
+          starterQuarterlyPrice: 2699,
+          starterAnnualPrice: 9599,
+          starterMaxUsers: 3,
+          starterMaxOrders: 500,
+          starterWhatsAppCredits: 500,
+          starterFeatures: ["Up to 3 Users", "1 Branch", "500 Orders / mo", "Basic CRM & Invoicing", "500 WhatsApp Msgs", "GST Reports"],
+
+          growthMonthlyPrice: 2499,
+          growthQuarterlyPrice: 6749,
+          growthAnnualPrice: 23999,
+          growthMaxUsers: 10,
+          growthMaxOrders: 2000,
+          growthWhatsAppCredits: 2500,
+          growthFeatures: ["Up to 10 Users", "3 Branches & 2 Warehouses", "2,000 Orders / mo", "Full CRM & Purchase Ledger", "Live GST Portal Filing (1/3B/2B)", "2,500 WhatsApp Msgs & AI"],
+
+          enterpriseMonthlyPrice: 5999,
+          enterpriseQuarterlyPrice: 16199,
+          enterpriseAnnualPrice: 57599,
+          enterpriseMaxUsers: 999,
+          enterpriseMaxOrders: 999999,
+          enterpriseWhatsAppCredits: 10000,
+          enterpriseFeatures: ["Unlimited Users", "Unlimited Branches & Multi-Warehouse", "Unlimited Orders", "Automated E-Way Bill Generation", "Dedicated WhatsApp AI Bot", "Priority Support & API Access"]
+        }
+      });
+    }
+
+    return {
+      STARTER: {
+        name: "Starter Plan",
+        monthlyPrice: setting.starterMonthlyPrice,
+        quarterlyPrice: setting.starterQuarterlyPrice,
+        annualPrice: setting.starterAnnualPrice,
+        maxUsers: setting.starterMaxUsers,
+        maxBranches: 1,
+        maxWarehouses: 1,
+        monthlyOrderLimit: setting.starterMaxOrders,
+        whatsAppCredits: setting.starterWhatsAppCredits,
+        features: setting.starterFeatures
+      },
+      GROWTH: {
+        name: "Growth Plan",
+        monthlyPrice: setting.growthMonthlyPrice,
+        quarterlyPrice: setting.growthQuarterlyPrice,
+        annualPrice: setting.growthAnnualPrice,
+        maxUsers: setting.growthMaxUsers,
+        maxBranches: 3,
+        maxWarehouses: 2,
+        monthlyOrderLimit: setting.growthMaxOrders,
+        whatsAppCredits: setting.growthWhatsAppCredits,
+        features: setting.growthFeatures
+      },
+      ENTERPRISE: {
+        name: "Enterprise Plan",
+        monthlyPrice: setting.enterpriseMonthlyPrice,
+        quarterlyPrice: setting.enterpriseQuarterlyPrice,
+        annualPrice: setting.enterpriseAnnualPrice,
+        maxUsers: setting.enterpriseMaxUsers,
+        maxBranches: 99,
+        maxWarehouses: 99,
+        monthlyOrderLimit: setting.enterpriseMaxOrders,
+        whatsAppCredits: setting.enterpriseWhatsAppCredits,
+        features: setting.enterpriseFeatures
+      }
+    };
+  } catch (error) {
+    console.error("Error fetching live plan pricing:", error);
+    return PLAN_PRICING;
+  }
+}
+
+/**
+ * Super Admin: Update Public Plan Pricing & Quotas
+ */
+export async function updatePlatformPricingSettings(input: {
+  starterMonthlyPrice: number;
+  starterQuarterlyPrice: number;
+  starterAnnualPrice: number;
+  starterMaxUsers: number;
+  starterMaxOrders: number;
+  starterWhatsAppCredits: number;
+
+  growthMonthlyPrice: number;
+  growthQuarterlyPrice: number;
+  growthAnnualPrice: number;
+  growthMaxUsers: number;
+  growthMaxOrders: number;
+  growthWhatsAppCredits: number;
+
+  enterpriseMonthlyPrice: number;
+  enterpriseQuarterlyPrice: number;
+  enterpriseAnnualPrice: number;
+  enterpriseMaxUsers: number;
+  enterpriseMaxOrders: number;
+  enterpriseWhatsAppCredits: number;
+}) {
+  try {
+    const ctx = await getTenantContext();
+    if (!ctx || ctx.userRole !== 'SUPER_ADMIN') {
+      return { success: false, error: "Access denied. Super Admin role required." };
+    }
+
+    await prisma.platformPricingSetting.upsert({
+      where: { id: "default" },
+      create: {
+        id: "default",
+        ...input
+      },
+      update: {
+        ...input
+      }
+    });
+
+    revalidatePath('/pricing');
+    revalidatePath('/register');
+    revalidatePath('/platform-admin');
+    revalidatePath('/settings/billing');
+
+    return {
+      success: true,
+      message: "Public pricing & tier configurations updated successfully!"
+    };
+  } catch (error: any) {
+    console.error("Error updating platform pricing:", error);
+    return { success: false, error: error.message || "Failed to update pricing." };
+  }
+}
+
+/**
+ * Super Admin: Edit Services, Quotas, and Feature Access for an Existing Customer/Tenant
+ */
+export async function updateTenantSubscriptionAndServices(input: {
+  organizationId: string;
+  name?: string;
+  tradeName?: string;
+  subscriptionPlan: string;
+  billingCycle: string;
+  subscriptionStatus: string;
+  currentPeriodEnd?: string | Date;
+  maxUsers: number;
+  maxBranches: number;
+  maxWarehouses: number;
+  monthlyOrderLimit: number;
+  whatsAppCreditBalance: number;
+  isGstEnabled: boolean;
+  isWhatsAppEnabled: boolean;
+  isEWayBillEnabled: boolean;
+  isHrmsEnabled: boolean;
+}) {
+  try {
+    const ctx = await getTenantContext();
+    if (!ctx || ctx.userRole !== 'SUPER_ADMIN') {
+      return { success: false, error: "Access denied. Super Admin role required." };
+    }
+
+    const org = await prisma.organization.findUnique({
+      where: { id: input.organizationId }
+    });
+
+    if (!org) return { success: false, error: "Organization not found." };
+
+    const updateData: any = {
+      subscriptionPlan: input.subscriptionPlan,
+      billingCycle: input.billingCycle,
+      subscriptionStatus: input.subscriptionStatus,
+      maxUsers: Number(input.maxUsers),
+      maxBranches: Number(input.maxBranches),
+      maxWarehouses: Number(input.maxWarehouses),
+      monthlyOrderLimit: Number(input.monthlyOrderLimit),
+      whatsAppCreditBalance: Number(input.whatsAppCreditBalance),
+      isGstEnabled: Boolean(input.isGstEnabled),
+      isWhatsAppEnabled: Boolean(input.isWhatsAppEnabled),
+      isEWayBillEnabled: Boolean(input.isEWayBillEnabled),
+      isHrmsEnabled: Boolean(input.isHrmsEnabled),
+    };
+
+    if (input.name) updateData.name = input.name;
+    if (input.tradeName) updateData.tradeName = input.tradeName;
+    if (input.currentPeriodEnd) updateData.currentPeriodEnd = new Date(input.currentPeriodEnd);
+
+    await prisma.organization.update({
+      where: { id: input.organizationId },
+      data: updateData
+    });
+
+    revalidatePath('/platform-admin');
+    revalidatePath('/settings/billing');
+
+    return {
+      success: true,
+      message: `Services and subscription for "${org.name}" updated successfully!`
+    };
+  } catch (error: any) {
+    console.error("Error updating tenant services:", error);
+    return { success: false, error: error.message || "Failed to update tenant services." };
+  }
+}
+

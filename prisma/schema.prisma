@@ -111,6 +111,35 @@ model SubscriptionInvoice {
   createdAt         DateTime     @default(now())
 }
 
+model PlatformPricingSetting {
+  id                    String   @id @default("default")
+  starterMonthlyPrice   Float    @default(999)
+  starterQuarterlyPrice Float    @default(2699)
+  starterAnnualPrice    Float    @default(9599)
+  starterMaxUsers       Int      @default(3)
+  starterMaxOrders      Int      @default(500)
+  starterWhatsAppCredits Int     @default(500)
+  starterFeatures       String[] @default(["Up to 3 Users", "1 Branch", "500 Orders / mo", "Basic CRM & Invoicing", "500 WhatsApp Msgs", "GST Reports"])
+
+  growthMonthlyPrice    Float    @default(2499)
+  growthQuarterlyPrice  Float    @default(6749)
+  growthAnnualPrice     Float    @default(23999)
+  growthMaxUsers        Int      @default(10)
+  growthMaxOrders       Int      @default(2000)
+  growthWhatsAppCredits Int      @default(2500)
+  growthFeatures        String[] @default(["Up to 10 Users", "3 Branches & 2 Warehouses", "2,000 Orders / mo", "Full CRM & Purchase Ledger", "Live GST Portal Filing (1/3B/2B)", "2,500 WhatsApp Msgs & AI"])
+
+  enterpriseMonthlyPrice Float   @default(5999)
+  enterpriseQuarterlyPrice Float @default(16199)
+  enterpriseAnnualPrice   Float  @default(57599)
+  enterpriseMaxUsers     Int      @default(999)
+  enterpriseMaxOrders    Int      @default(999999)
+  enterpriseWhatsAppCredits Int   @default(10000)
+  enterpriseFeatures     String[] @default(["Unlimited Users", "Unlimited Branches & Multi-Warehouse", "Unlimited Orders", "Automated E-Way Bill Generation", "Dedicated WhatsApp AI Bot", "Priority Support & API Access"])
+
+  updatedAt             DateTime @updatedAt
+}
+
 // ---------------------------------------------------------
 // User & Role Management
 // ---------------------------------------------------------
