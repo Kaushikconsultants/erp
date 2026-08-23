@@ -9,31 +9,136 @@ datasource db {
 }
 
 // ---------------------------------------------------------
+// Multi-Tenant SaaS Platform: Organizations & Subscriptions
+// ---------------------------------------------------------
+model Organization {
+  id                    String    @id @default(uuid())
+  name                  String    // Company Legal Name e.g. "Acme Clothing Pvt Ltd"
+  slug                  String    @unique // Unique URL slug e.g. "acme-clothing"
+  tradeName             String?
+  industry              String?   @default("Apparel & Garments") // Apparel, Manufacturing, Wholesale, Retail
+  businessType          String?   @default("Private Limited") // Pvt Ltd, Partnership, Proprietorship
+  gstin                 String?
+  pan                   String?
+  phone                 String?
+  email                 String
+  website               String?
+  logoUrl               String?
+  address               String?
+  city                  String?
+  state                 String?
+  pincode               String?
+  country               String    @default("India")
+  
+  // Subscription Plan & Billing Cycle
+  subscriptionPlan      String    @default("GROWTH") // TRIAL, STARTER, GROWTH, ENTERPRISE, CUSTOM
+  billingCycle          String    @default("MONTHLY") // MONTHLY, QUARTERLY, ANNUALLY
+  subscriptionStatus    String    @default("ACTIVE")  // TRIAL, ACTIVE, PAST_DUE, EXPIRED, CANCELLED
+  trialEndsAt           DateTime?
+  currentPeriodStart    DateTime  @default(now())
+  currentPeriodEnd      DateTime  @default(now())
+  cancelAtPeriodEnd     Boolean   @default(false)
+  
+  // Payment Gateway References
+  gatewayCustomerId     String?   // Razorpay Customer ID
+  gatewaySubscriptionId String?   // Razorpay Subscription ID
+  
+  // Quotas & Feature Access
+  maxUsers              Int       @default(10)
+  maxBranches           Int       @default(3)
+  maxWarehouses         Int       @default(2)
+  monthlyOrderLimit     Int       @default(2000)
+  whatsAppCreditBalance Int       @default(1000)
+  
+  isGstEnabled          Boolean   @default(true)
+  isWhatsAppEnabled     Boolean   @default(true)
+  isEWayBillEnabled     Boolean   @default(true)
+  isHrmsEnabled         Boolean   @default(true)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  users                 User[]
+  employees             Employee[]
+  customers             Customer[]
+  vendors               Vendor[]
+  products              Product[]
+  orders                Order[]
+  invoices              Invoice[]
+  bills                 Bill[]
+  quotations            Quotation[]
+  creditNotes           CreditNote[]
+  branches              Branch[]
+  warehouses            Warehouse[]
+  companySettings       CompanySettings?
+  gstSettings           GstSetting?
+  subscriptions         SubscriptionHistory[]
+  invoicesIssued        SubscriptionInvoice[]
+  gstFilingReturns      GstFilingReturn[]
+  eWayBills             EWayBill[]
+}
+
+model SubscriptionHistory {
+  id                String       @id @default(uuid())
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan              String       // STARTER, GROWTH, ENTERPRISE
+  billingCycle      String       // MONTHLY, QUARTERLY, ANNUALLY
+  amount            Float
+  currency          String       @default("INR")
+  taxAmount         Float        @default(0) // 18% GST on SaaS
+  totalAmount       Float
+  status            String       @default("PAID") // PAID, PENDING, FAILED, REFUNDED
+  paymentMethod     String?      // UPI, CARD, NETBANKING
+  gatewayPaymentId  String?
+  startDate         DateTime     @default(now())
+  endDate           DateTime
+  createdAt         DateTime     @default(now())
+}
+
+model SubscriptionInvoice {
+  id                String       @id @default(uuid())
+  invoiceNumber     String       @unique // SaaS-2024-0001
+  organizationId    String
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  amount            Float
+  cgst              Float        @default(0)
+  sgst              Float        @default(0)
+  igst              Float        @default(0)
+  total             Float
+  paidAt            DateTime?
+  pdfUrl            String?
+  createdAt         DateTime     @default(now())
+}
+
+// ---------------------------------------------------------
 // User & Role Management
 // ---------------------------------------------------------
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      String   @default("SALES")
-  roleId    String?
-  roleDef   Role?    @relation(fields: [roleId], references: [id])
-  isActive  Boolean  @default(true)
-  canManageSettings Boolean @default(false)
+  id                String        @id @default(uuid())
+  organizationId    String?
+  organization      Organization? @relation(fields: [organizationId], references: [id])
+  name              String
+  email             String        @unique
+  password          String
+  role              String        @default("SALES")
+  roleId            String?
+  roleDef           Role?         @relation(fields: [roleId], references: [id])
+  isActive          Boolean       @default(true)
+  canManageSettings Boolean       @default(false)
   allowedSections   String? // Comma-separated or JSON array of section keys allowed for this user
   lastActiveAt      DateTime?
-  presenceStatus    String?  @default("OFFLINE") // "ONLINE", "IDLE", "OFFLINE"
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  presenceStatus    String?       @default("OFFLINE") // "ONLINE", "IDLE", "OFFLINE"
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
-  employee Employee?
-  auditLogs AuditLog[]
-  notifications Notification[]
-  customerProfile Customer? @relation("CustomerUser")
+  employee          Employee?
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  customerProfile   Customer?     @relation("CustomerUser")
   broadcastsCreated TeamBroadcast[] @relation("BroadcastAuthor")
-  broadcastReplies BroadcastReply[]
-  broadcastReads BroadcastRead[]
+  broadcastReplies  BroadcastReply[]
+  broadcastReads    BroadcastRead[]
 }
 
 model Role {
@@ -50,6 +155,8 @@ model Role {
 // ---------------------------------------------------------
 model Employee {
   id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   userId          String   @unique
   user            User     @relation(fields: [userId], references: [id])
   employeeId      String   @unique // Company generated ID
@@ -112,6 +219,8 @@ model Team {
 // ---------------------------------------------------------
 model Customer {
   id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   businessName    String
   contactPerson   String
   mobile          String
@@ -244,6 +353,8 @@ model Task {
 // ---------------------------------------------------------
 model Product {
   id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   name            String
   sku             String?  @unique
   articleNumber   String?  @unique
@@ -301,6 +412,8 @@ model InventoryTransaction {
 
 model Order {
   id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   orderNumber     String   @unique
   customerId      String
   customer        Customer @relation(fields: [customerId], references: [id])
@@ -502,6 +615,8 @@ model IncentiveRule {
 // ---------------------------------------------------------
 model CompanySettings {
   id            String   @id @default("default")
+  organizationId String?  @unique
+  organization   Organization? @relation(fields: [organizationId], references: [id])
   companyName   String   @default("Espon Clothing Private Limited")
   address       String   @default("Sco 71A , 2nd Floor , Ashoka PlazaDelhi Road")
   city          String   @default("Rohtak")
@@ -543,6 +658,8 @@ model CompanySettings {
 
 model Quotation {
   id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   quotationNumber String   @unique
   revisionNumber  Int      @default(0)
   parentQuoteId   String?
@@ -650,38 +767,44 @@ model QuotationActivity {
 // ---------------------------------------------------------
 
 model Branch {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  code        String?  @unique
-  address     String?
-  city        String?
-  state       String?
-  pincode     String?
-  phone       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  name            String   @unique
+  code            String?  @unique
+  address         String?
+  city            String?
+  state           String?
+  pincode         String?
+  phone           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  employees   Employee[]
-  customers   Customer[]
-  warehouses  Warehouse[]
+  employees       Employee[]
+  customers       Customer[]
+  warehouses      Warehouse[]
 }
 
 model Warehouse {
-  id          String   @id @default(uuid())
-  name        String
-  code        String?  @unique
-  address     String?
-  managerId   String?
-  branchId    String?
-  branch      Branch?  @relation(fields: [branchId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  name            String
+  code            String?  @unique
+  address         String?
+  managerId       String?
+  branchId        String?
+  branch          Branch?  @relation(fields: [branchId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   inventoryTransactions InventoryTransaction[]
 }
 
 model Vendor {
   id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   companyName     String
   contactPerson   String?
   email           String?  @unique
@@ -736,6 +859,8 @@ model PurchaseOrderItem {
 
 model Bill {
   id               String    @id @default(uuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
   billNumber       String    @unique // Auto: BILL-0001
   vendorBillNumber String?   // Vendor Invoice / Bill Reference Number
   vendorId         String
@@ -847,6 +972,8 @@ model VendorCreditItem {
 
 model Invoice {
   id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   invoiceNumber   String   @unique
   customerId      String
   customer        Customer @relation(fields: [customerId], references: [id])
@@ -872,6 +999,8 @@ model Invoice {
 
 model CreditNote {
   id               String   @id @default(uuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
   creditNoteNumber String   @unique // e.g. CN-1001
   invoiceId        String?
   invoice          Invoice? @relation(fields: [invoiceId], references: [id])
@@ -927,6 +1056,8 @@ model CreditNoteItem {
 
 model EWayBill {
   id              String    @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
   ewbNumber       String    @unique // 12-digit EWB Number e.g. 141289345678
   ewbDate         DateTime  @default(now())
   validUntil      DateTime?
@@ -1533,6 +1664,8 @@ model TaxPreference {
 
 model GstSetting {
   id                  String   @id @default(uuid())
+  organizationId      String?  @unique
+  organization        Organization? @relation(fields: [organizationId], references: [id])
   gstin               String?
   legalName           String?
   tradeName           String?
@@ -1580,6 +1713,8 @@ model OnlineFilingSetting {
 
 model GstFilingReturn {
   id                  String    @id @default(uuid())
+  organizationId      String?
+  organization        Organization? @relation(fields: [organizationId], references: [id])
   returnType          String    // GSTR-1, GSTR-3B, GSTR-2B, GSTR-9, CMP-08
   financialYear       String    // e.g. "2024-25"
   period              String    // e.g. "April", "May", "Q1", "Q2"

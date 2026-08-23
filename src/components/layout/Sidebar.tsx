@@ -434,13 +434,23 @@ const Sidebar = ({
 
       </nav>
 
-      {/* SETTINGS FOOTER */}
+      {/* SETTINGS & BILLING FOOTER */}
       {(showSettings || canAccess('settings')) && canAccess('settings') && (
-        <div className="sidebar-footer">
-          <Link href="/settings" onClick={onClose} className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
+        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <Link href="/settings" onClick={onClose} className={`nav-item ${isActive('/settings') && !isActive('/settings/billing') ? 'active' : ''}`}>
             <Settings size={18} />
-            <span>Settings & Admin</span>
+            <span>Settings</span>
           </Link>
+          <Link href="/settings/billing" onClick={onClose} className={`nav-item ${isActive('/settings/billing') ? 'active' : ''}`}>
+            <Receipt size={18} style={{ color: '#059669' }} />
+            <span>Subscription & Billing</span>
+          </Link>
+          {isSuperOrAdmin && (
+            <Link href="/platform-admin" onClick={onClose} className={`nav-item ${isActive('/platform-admin') ? 'active' : ''}`}>
+              <Landmark size={18} style={{ color: '#4f46e5' }} />
+              <span>SaaS Platform Admin</span>
+            </Link>
+          )}
         </div>
       )}
     </aside>

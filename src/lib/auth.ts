@@ -17,7 +17,8 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+          where: { email: credentials.email },
+          include: { organization: true }
         });
 
         if (!user || !user.password) {
@@ -36,6 +37,11 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           role: user.role,
           canManageSettings: user.canManageSettings,
+          organizationId: user.organizationId || user.organization?.id,
+          organizationName: user.organization?.name,
+          organizationSlug: user.organization?.slug,
+          subscriptionPlan: user.organization?.subscriptionPlan || "GROWTH",
+          subscriptionStatus: user.organization?.subscriptionStatus || "ACTIVE"
         };
       }
     })
@@ -55,7 +61,6 @@ export const authOptions: NextAuthOptions = {
 
       try {
         const targetUrl = new URL(url);
-        // Allows callback URLs on the same origin or Vercel deployments
         if (
           targetUrl.origin === baseUrl ||
           targetUrl.origin === effectiveBaseUrl ||
@@ -67,7 +72,6 @@ export const authOptions: NextAuthOptions = {
         // ignore invalid URL
       }
 
-      // Allow dynamic localhost ports in development
       if (process.env.NODE_ENV === "development" && url.startsWith("http://localhost:")) {
         return url;
       }
@@ -79,6 +83,11 @@ export const authOptions: NextAuthOptions = {
         token.role = (user as any).role;
         token.id = user.id;
         token.canManageSettings = (user as any).canManageSettings;
+        token.organizationId = (user as any).organizationId;
+        token.organizationName = (user as any).organizationName;
+        token.organizationSlug = (user as any).organizationSlug;
+        token.subscriptionPlan = (user as any).subscriptionPlan;
+        token.subscriptionStatus = (user as any).subscriptionStatus;
       }
       return token;
     },
@@ -87,6 +96,11 @@ export const authOptions: NextAuthOptions = {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
         (session.user as any).canManageSettings = token.canManageSettings;
+        (session.user as any).organizationId = token.organizationId;
+        (session.user as any).organizationName = token.organizationName;
+        (session.user as any).organizationSlug = token.organizationSlug;
+        (session.user as any).subscriptionPlan = token.subscriptionPlan;
+        (session.user as any).subscriptionStatus = token.subscriptionStatus;
       }
       return session;
     }
