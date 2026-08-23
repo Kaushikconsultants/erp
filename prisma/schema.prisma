@@ -1490,3 +1490,88 @@ model WhatsAppCannedResponse {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+// ---------------------------------------------------------
+// Comprehensive Tax & GST Settings Suite
+// ---------------------------------------------------------
+model TaxRate {
+  id          String   @id @default(uuid())
+  name        String
+  type        String   // CGST, SGST, IGST, UTGST, CESS, Tax Group
+  rate        Float    // e.g. 5, 2.5, 9, 18, 12, 28, 0
+  isGroup     Boolean  @default(false)
+  subTaxes    String?  // JSON array of sub-tax rate IDs for tax groups
+  isDefault   Boolean  @default(false)
+  status      String   @default("Active") // Active, Inactive
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TaxExemption {
+  id          String   @id @default(uuid())
+  name        String   // e.g. "Special Economic Zone (SEZ)", "Export Goods"
+  type        String   // Customer, Vendor, Item, Transaction
+  reason      String
+  status      String   @default("Active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TaxPreference {
+  id                    String   @id @default(uuid())
+  taxPreference         String   @default("Taxable") // Taxable, Tax Exempt
+  intraStateTaxRateId   String?
+  interStateTaxRateId   String?
+  itemTaxInclusiveness  String   @default("Tax Exclusive") // Tax Exclusive, Tax Inclusive
+  defaultHsn            String?  @default("6109")
+  enableReverseCharge   Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model GstSetting {
+  id                  String   @id @default(uuid())
+  gstin               String?
+  legalName           String?
+  tradeName           String?
+  registeredState     String?  @default("Rajasthan")
+  stateCode           String?  @default("08")
+  isComposition       Boolean  @default(false)
+  enableRcm           Boolean  @default(false)
+  eWayBillThreshold   Float    @default(50000)
+  enableEInvoicing    Boolean  @default(false)
+  eInvoicingThreshold Float    @default(50000000)
+  filingFrequency     String   @default("Monthly") // Monthly, Quarterly
+  gstr1FilingDueDay   Int      @default(11)
+  gstr3bFilingDueDay  Int      @default(20)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model GstTdsSetting {
+  id              String   @id @default(uuid())
+  enableGstTds    Boolean  @default(false)
+  tdsSection      String   @default("Section 51")
+  tdsRate         Float    @default(2.0)
+  thresholdAmount Float    @default(250000)
+  deductorType    String   @default("Government Authority / PSU")
+  tanNumber       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model OnlineFilingSetting {
+  id                   String    @id @default(uuid())
+  gstPortalUsername    String?
+  gstPortalApiEnabled  Boolean   @default(false)
+  autoSyncGstr1        Boolean   @default(true)
+  autoSyncGstr3b       Boolean   @default(true)
+  autoSyncGstr2b       Boolean   @default(true)
+  lastSyncDate         DateTime?
+  sandboxMode          Boolean   @default(false)
+  apiAuthToken         String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+

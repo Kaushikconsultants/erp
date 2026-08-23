@@ -10,6 +10,7 @@ export default function SettingsMenu() {
 
   const companySettings = [
     { label: "Organization Profile & Logo", href: "/settings/organization" },
+    { label: "Tax Rates & GST Settings", href: "/settings/taxes" },
     { label: "Appearance & Theme", modal: "Theme" },
     { label: "Roles & Permissions", href: "/settings/roles" },
     { label: "Territory Management", href: "/settings/territories" },
