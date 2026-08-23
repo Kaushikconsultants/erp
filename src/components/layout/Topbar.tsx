@@ -54,8 +54,16 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
             className="user-profile hover-lift" 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
           >
-            <div className="avatar">
-              <User size={20} />
+            <div className="avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {(session?.user as any)?.avatarUrl || session?.user?.image ? (
+                <img
+                  src={(session?.user as any)?.avatarUrl || session?.user?.image}
+                  alt={userName}
+                  style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                />
+              ) : (
+                <User size={20} />
+              )}
             </div>
             <div className="user-info">
               <span className="user-name">{userName}</span>

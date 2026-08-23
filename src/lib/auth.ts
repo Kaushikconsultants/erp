@@ -35,6 +35,8 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           name: user.name,
           email: user.email,
+          image: user.avatarUrl || user.image,
+          avatarUrl: user.avatarUrl || user.image,
           role: user.role,
           canManageSettings: user.canManageSettings,
           organizationId: user.organizationId || user.organization?.id,
@@ -78,10 +80,12 @@ export const authOptions: NextAuthOptions = {
 
       return effectiveBaseUrl;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session: updateSession }) {
       if (user) {
         token.role = (user as any).role;
         token.id = user.id;
+        token.image = (user as any).image || (user as any).avatarUrl;
+        token.avatarUrl = (user as any).avatarUrl || (user as any).image;
         token.canManageSettings = (user as any).canManageSettings;
         token.organizationId = (user as any).organizationId;
         token.organizationName = (user as any).organizationName;
@@ -89,12 +93,23 @@ export const authOptions: NextAuthOptions = {
         token.subscriptionPlan = (user as any).subscriptionPlan;
         token.subscriptionStatus = (user as any).subscriptionStatus;
       }
+      if (trigger === "update" && updateSession) {
+        if (updateSession.name) token.name = updateSession.name;
+        if (updateSession.email) token.email = updateSession.email;
+        if (updateSession.avatarUrl !== undefined) {
+          token.avatarUrl = updateSession.avatarUrl;
+          token.picture = updateSession.avatarUrl;
+          token.image = updateSession.avatarUrl;
+        }
+      }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
+        session.user.image = (token.avatarUrl as string) || (token.image as string) || (token.picture as string);
+        (session.user as any).avatarUrl = (token.avatarUrl as string) || (token.image as string);
         (session.user as any).canManageSettings = token.canManageSettings;
         (session.user as any).organizationId = token.organizationId;
         (session.user as any).organizationName = token.organizationName;

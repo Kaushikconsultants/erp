@@ -4,6 +4,36 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = (session.user as any).id;
+    const userEmail = session.user.email;
+
+    const user = await prisma.user.findFirst({
+      where: userId ? { id: userId } : { email: userEmail! },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatarUrl: true,
+        image: true,
+        presenceStatus: true,
+        createdAt: true,
+      }
+    });
+
+    return NextResponse.json({ user });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,8 +43,9 @@ export async function PUT(req: Request) {
     }
 
     const userId = (session.user as any).id;
+    const userEmail = session.user.email;
     const body = await req.json();
-    const { name, email, password } = body;
+    const { name, email, password, avatarUrl } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
@@ -25,7 +56,7 @@ export async function PUT(req: Request) {
       where: { email }
     });
 
-    if (existingUser && existingUser.id !== userId) {
+    if (existingUser && existingUser.id !== userId && existingUser.email !== userEmail) {
       return NextResponse.json({ error: 'Email is already in use by another account' }, { status: 400 });
     }
 
@@ -34,19 +65,26 @@ export async function PUT(req: Request) {
       email,
     };
 
+    if (avatarUrl !== undefined) {
+      updateData.avatarUrl = avatarUrl;
+      updateData.image = avatarUrl;
+    }
+
     if (password && password.trim().length > 0) {
       const hashedPassword = await bcrypt.hash(password, 10);
       updateData.password = hashedPassword;
     }
 
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: userId ? { id: userId } : { email: userEmail! },
       data: updateData,
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
+        avatarUrl: true,
+        image: true,
       }
     });
 

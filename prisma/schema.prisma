@@ -156,6 +156,8 @@ model User {
   isActive          Boolean       @default(true)
   canManageSettings Boolean       @default(false)
   allowedSections   String? // Comma-separated or JSON array of section keys allowed for this user
+  avatarUrl         String?
+  image             String?
   lastActiveAt      DateTime?
   presenceStatus    String?       @default("OFFLINE") // "ONLINE", "IDLE", "OFFLINE"
   createdAt         DateTime      @default(now())
