@@ -58,7 +58,7 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
             <input type="text" name="name" required placeholder="Sportswear T-Shirt Pro" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="grid-row">
             <div className="form-group">
               <label>SKU</label>
               <input type="text" name="sku" required placeholder="TSH-PRO-001" />
@@ -70,7 +70,7 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div className="grid-row">
             <div className="form-group">
               <label>HSN Code</label>
               <input type="text" name="hsnCode" placeholder="6205" />
@@ -94,7 +94,7 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+          <div className="grid-row" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
             <div className="form-group">
               <label>Weight (kg)</label>
               <input type="number" name="weight" step="0.01" placeholder="e.g. 0.25" />
