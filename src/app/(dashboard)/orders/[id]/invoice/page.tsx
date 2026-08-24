@@ -236,7 +236,11 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                   </>
                 )}
                 <td style={{ padding: '8px 6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold' }}>
-                  {fmt(item.total || (item.rate * item.quantity))}
+                  {(() => {
+                    const gst = (item.gstRate || 0) / 100;
+                    const totalWithTax = item.total || (item.rate * item.quantity);
+                    return fmt(totalWithTax / (1 + gst));
+                  })()}
                 </td>
               </tr>
             ))}
@@ -300,6 +304,17 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                   </div>
                 </>
               )}
+
+              {(() => {
+                const totalTax = totalCgst + totalSgst + totalIgst;
+                const shippingCharges = Math.round((grandTotal - taxableAmount - totalTax) * 100) / 100;
+                return shippingCharges > 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                    <span>Shipping charge</span>
+                    <span>{fmt(shippingCharges)}</span>
+                  </div>
+                ) : null;
+              })()}
 
               {receivedAmount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#dc2626' }}>
