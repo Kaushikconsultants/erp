@@ -24,6 +24,11 @@ export default function WhatsAppAPISettingsPage() {
   const [registering, setRegistering] = useState(false);
   const [regResult, setRegResult] = useState<{ success: boolean; text: string } | null>(null);
 
+  // Test Message State
+  const [testPhone, setTestPhone] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; text: string } | null>(null);
+
   useEffect(() => {
     getWhatsAppApiCredentialsAction().then((res) => {
       if (res.success && res.credentials) {
@@ -101,6 +106,35 @@ export default function WhatsAppAPISettingsPage() {
       setRegResult({ success: false, text: error.message || "Network error while registering" });
     }
     setRegistering(false);
+  };
+
+  const handleTestMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testPhone) {
+      setTestResult({ success: false, text: "Please enter a phone number to test." });
+      return;
+    }
+    
+    setTesting(true);
+    setTestResult(null);
+    
+    try {
+      const res = await fetch('/api/whatsapp/test-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: testPhone })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setTestResult({ success: true, text: "Test message sent successfully! Check your WhatsApp." });
+      } else {
+        setTestResult({ success: false, text: data.error || "Failed to send test message" });
+      }
+    } catch (error: any) {
+      setTestResult({ success: false, text: error.message || "Network error while testing" });
+    }
+    setTesting(false);
   };
 
   return (
@@ -287,6 +321,45 @@ export default function WhatsAppAPISettingsPage() {
             >
               {registering ? <RefreshCw size={16} className="spin-icon" /> : <Send size={16} />}
               <span>{registering ? "Registering with Meta..." : "Register Phone Number"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "24px", marginTop: "24px", boxShadow: "0 4px 14px rgba(0,0,0,0.03)" }}>
+        <h2 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 4px 0", color: "#111827" }}>Test API Connection</h2>
+        <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 20px 0" }}>Send a <code>hello_world</code> template message to verify your Meta API connection is working.</p>
+
+        {testResult && (
+          <div style={{ background: testResult.success ? "#dcfce7" : "#fee2e2", border: `1px solid ${testResult.success ? "#86efac" : "#fca5a5"}`, color: testResult.success ? "#166534" : "#991b1b", padding: "12px 16px", borderRadius: "8px", fontSize: "13.5px", fontWeight: 600, marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
+            {testResult.success ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+            <span>{testResult.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleTestMessage} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={{ fontSize: "12.5px", fontWeight: 700, display: "block", marginBottom: "6px", color: "#374151" }}>
+              Test Phone Number (with Country Code)
+            </label>
+            <input
+              type="text"
+              value={testPhone}
+              onChange={(e) => setTestPhone(e.target.value)}
+              placeholder="e.g. 919876543210"
+              required
+              style={{ width: "100%", maxWidth: "300px", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
+            <button
+              type="submit"
+              disabled={testing || !isConnected}
+              style={{ display: "flex", alignItems: "center", gap: "6px", background: testing || !isConnected ? "#9ca3af" : "#f59e0b", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "6px", fontSize: "13.5px", fontWeight: 700, cursor: testing || !isConnected ? "not-allowed" : "pointer" }}
+            >
+              {testing ? <RefreshCw size={16} className="spin-icon" /> : <Send size={16} />}
+              <span>{testing ? "Sending..." : "Send hello_world Template"}</span>
             </button>
           </div>
         </form>
