@@ -122,7 +122,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
           {/* Header Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <GenerateInvoiceButton orderId={order.id} existingInvoiceId={existingInvoice?.id} />
+
+
             <Link 
               href={`/orders/${order.id}/invoice`} 
               target="_blank" 
