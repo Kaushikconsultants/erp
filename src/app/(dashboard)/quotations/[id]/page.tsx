@@ -6,6 +6,7 @@ import { numberToWordsINR } from '@/lib/gstUtils';
 import PrintInvoiceButton from '@/components/orders/PrintInvoiceButton';
 import DownloadPdfButton from '@/components/orders/DownloadPdfButton';
 import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
+import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
 
 export default async function QuotationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -62,7 +63,10 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
           <a href={`/quotations/${quotation.id}/edit`} style={{ padding: '8px 16px', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', borderRadius: '6px', color: '#1d4ed8', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
             ✏️ Edit Quotation
           </a>
-          {quotation.status !== 'Converted' && (
+          {quotation.status === 'Confirmed' && (
+            <ConvertToInvoiceBtn quotationId={quotation.id} />
+          )}
+          {quotation.status !== 'Converted' && quotation.status !== 'Confirmed' && (
             <ConvertQuotationBtn quotationId={quotation.id} />
           )}
           <DownloadPdfButton elementId="printable-quote" filename={`${quotation.quotationNumber}.pdf`} />

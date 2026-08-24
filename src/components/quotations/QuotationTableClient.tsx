@@ -18,6 +18,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
+import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
 import EditQuotationModal from '@/components/quotations/EditQuotationModal';
 import { deleteQuotation } from '@/app/actions/quotationActions';
 
@@ -337,8 +338,8 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                         borderRadius: 'var(--radius-sm, 6px)', 
                         fontSize: '0.75rem', 
                         fontWeight: 600,
-                        backgroundColor: q.status === 'Converted' || q.status === 'Accepted' ? '#dcfce7' : q.status === 'Sent' ? 'var(--accent-light, #e0e7ff)' : '#f1f5f9',
-                        color: q.status === 'Converted' || q.status === 'Accepted' ? '#166534' : q.status === 'Sent' ? 'var(--accent-primary, #3730a3)' : '#475569'
+                        backgroundColor: q.status === 'Converted' || q.status === 'Accepted' ? '#dcfce7' : q.status === 'Confirmed' ? '#dbeafe' : q.status === 'Sent' ? 'var(--accent-light, #e0e7ff)' : '#f1f5f9',
+                        color: q.status === 'Converted' || q.status === 'Accepted' ? '#166534' : q.status === 'Confirmed' ? '#1d4ed8' : q.status === 'Sent' ? 'var(--accent-primary, #3730a3)' : '#475569'
                       }}>
                         {q.status}
                       </span>
@@ -366,7 +367,11 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                           <Trash2 size={13} /> {deletingId === q.id ? '...' : 'Delete'}
                         </button>
 
-                        {q.status !== 'Converted' && (
+                        {q.status === 'Confirmed' && (
+                          <ConvertToInvoiceBtn quotationId={q.id} />
+                        )}
+
+                        {q.status !== 'Converted' && q.status !== 'Confirmed' && (
                           <ConvertQuotationBtn quotationId={q.id} />
                         )}
                       </div>

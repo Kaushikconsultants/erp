@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { convertQuotationToOrder } from '@/app/actions/quotationActions';
+import { confirmQuotation } from '@/app/actions/quotationActions';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, CheckCircle2, X, FileCheck, Percent, ShieldAlert, CreditCard, Banknote, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, X, FileCheck, Percent, ShieldAlert, CreditCard, ShieldCheck } from 'lucide-react';
 
 export default function ConvertQuotationBtn({ quotationId }: { quotationId: string }) {
   const [loading, setLoading] = useState(false);
@@ -22,18 +22,18 @@ export default function ConvertQuotationBtn({ quotationId }: { quotationId: stri
     setIsModalOpen(false);
     setLoading(true);
 
-    const res = await convertQuotationToOrder(quotationId, selectedSlab, {
+    const res = await confirmQuotation(quotationId, selectedSlab, {
       paymentOption,
       tokenAmount: Number(tokenAmount || 0)
     });
 
     setLoading(false);
 
-    if (res.success && res.orderId) {
-      alert(`Quotation confirmed & converted to Sales Order #${res.orderNumber}!`);
-      router.push(`/orders/${res.orderId}`);
+    if (res.success) {
+      alert('Quotation confirmed successfully!');
+      router.refresh();
     } else {
-      alert(res.error || "Failed to convert quotation");
+      alert(res.error || "Failed to confirm quotation");
     }
   };
 
@@ -91,7 +91,7 @@ export default function ConvertQuotationBtn({ quotationId }: { quotationId: stri
           "Processing..."
         ) : (
           <>
-            <CheckCircle2 size={14} /> Confirm Order
+            <CheckCircle2 size={14} /> Confirm Quotation
           </>
         )}
       </button>
@@ -141,10 +141,10 @@ export default function ConvertQuotationBtn({ quotationId }: { quotationId: stri
                 </div>
                 <div>
                   <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#ffffff' }}>
-                    Confirm Quotation & Convert to Order
+                    Confirm Quotation
                   </h2>
                   <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'rgba(255, 255, 255, 0.85)', lineHeight: 1.3 }}>
-                    Verify payment received or credit terms to officially issue a Sales Order.
+                    Verify payment received or credit terms to confirm this quotation.
                   </p>
                 </div>
               </div>
@@ -349,7 +349,7 @@ export default function ConvertQuotationBtn({ quotationId }: { quotationId: stri
                 }}
               >
                 <CheckCircle2 size={16} />
-                {loading ? "Processing..." : "Confirm & Process to Order"}
+                {loading ? "Processing..." : "Confirm Quotation"}
               </button>
             </div>
           </div>

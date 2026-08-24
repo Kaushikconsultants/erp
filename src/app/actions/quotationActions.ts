@@ -743,3 +743,68 @@ export async function deleteQuotation(id: string) {
     return { error: error?.message || "Failed to delete quotation" };
   }
 }
+
+// ─── Confirm Quotation (sets status = "Confirmed", stores payment info) ───────
+// Does NOT create a Sales Order or Invoice. That happens via "Convert to Invoice".
+export async function confirmQuotation(
+  quotationId: string,
+  discountSlab: string = '1-15',
+  confirmationData?: {
+    paymentOption: 'FULL' | 'TOKEN' | 'CREDIT';
+    tokenAmount?: number;
+  }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id || null;
+    const userName = (session?.user as any)?.name || "System";
+
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: { customer: true }
+    });
+
+    if (!quotation) return { error: "Quotation not found" };
+    if (quotation.status === 'Confirmed' || quotation.status === 'Converted') {
+      return { error: "Quotation is already confirmed or converted." };
+    }
+
+    const paymentOption = confirmationData?.paymentOption || 'FULL';
+    let effectiveReceived = 0;
+
+    if (paymentOption === 'FULL') {
+      effectiveReceived = quotation.totalValue;
+    } else if (paymentOption === 'TOKEN') {
+      const amt = Number(confirmationData?.tokenAmount || 0);
+      if (amt <= 0) return { error: "Please enter a valid token/advance payment amount (greater than ₹0)." };
+      effectiveReceived = amt;
+    } else if (paymentOption === 'CREDIT') {
+      effectiveReceived = 0;
+    }
+
+    await prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        status: "Confirmed",
+        receivedAmount: effectiveReceived,
+        activities: {
+          create: {
+            userId,
+            userName,
+            action: "Quotation Confirmed",
+            details: `Quotation confirmed [Method: ${paymentOption}, Received: ₹${effectiveReceived}]`
+          }
+        }
+      }
+    });
+
+    revalidatePath("/quotations");
+    revalidatePath("/", "layout");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error confirming quotation:", error);
+    return { error: "Failed to confirm quotation" };
+  }
+}
+
