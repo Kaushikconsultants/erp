@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import "./WhatsAppHeaderNav.css";
 
-const subNavItems = [
+const subNavItems: Array<{name: string; path: string; icon: any; badge?: string; highlight?: boolean}> = [
   { name: "WhatsApp Inbox", path: "/whatsapp/inbox", icon: MessageSquare },
   { name: "Direct Messages", path: "/whatsapp/direct-messages", icon: Send },
   { name: "WhatsApp Dashboard", path: "/whatsapp/dashboard", icon: LayoutDashboard },
