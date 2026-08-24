@@ -117,13 +117,43 @@ export async function lookupGstin(rawGstin: string) {
     // ignore
   }
 
-  // 3. Check if an external GST Verification API Key is configured
+  // 3. Try Cashfree GSTIN Verification (Sandbox: https://sandbox.cashfree.com/verification/gstin)
+  try {
+    const { verifyCashfreeGstin } = await import("@/lib/cashfreeGstService");
+    const filingSetting = await prisma.onlineFilingSetting.findFirst();
+    const cashfreeRes = await verifyCashfreeGstin(gstin, {
+      clientId: filingSetting?.gstPortalUsername || undefined,
+      clientSecret: filingSetting?.apiAuthToken || undefined,
+      isSandbox: filingSetting?.sandboxMode ?? true
+    });
+
+    if (cashfreeRes.success && cashfreeRes.companyName) {
+      return {
+        success: true,
+        isExactMatch: true,
+        source: "cashfree_verification",
+        companyName: cashfreeRes.companyName,
+        contactPerson: cashfreeRes.contactPerson || "",
+        address: cashfreeRes.address || "",
+        city: cashfreeRes.city || stateName,
+        state: cashfreeRes.state || stateName,
+        pincode: cashfreeRes.pincode || "",
+        pan: cashfreeRes.pan || pan,
+        status: cashfreeRes.status,
+        gstin
+      };
+    }
+  } catch (err) {
+    // continue to alternative providers
+  }
+
+  // 4. Check if an alternative external GST Verification API Key is configured
   try {
     const filingSetting = await prisma.onlineFilingSetting.findFirst();
     const apiKey = filingSetting?.apiAuthToken?.trim();
 
     if (apiKey) {
-      // 3a. Try AppyFlow API format
+      // 4a. Try AppyFlow API format
       try {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 4000);

@@ -7,7 +7,8 @@ import {
   actionTrackReturns, 
   actionSearchHsn, 
   actionVerifyIrn, 
-  actionTrackEwb 
+  actionTrackEwb,
+  actionVerifyCashfree
 } from "@/app/actions/gstPublicActions";
 import { 
   ShieldCheck, 
@@ -26,11 +27,21 @@ import {
   MapPin, 
   CreditCard,
   Hash,
-  Sparkles
+  Sparkles,
+  Key
 } from "lucide-react";
 
 export default function GstDeveloperPortalTools() {
-  const [activeTab, setActiveTab] = useState<'taxpayer' | 'pan' | 'returns' | 'hsn' | 'einvoice' | 'ewaybill'>('taxpayer');
+  const [activeTab, setActiveTab] = useState<'cashfree' | 'taxpayer' | 'pan' | 'returns' | 'hsn' | 'einvoice' | 'ewaybill'>('cashfree');
+
+  // 0. Cashfree GSTIN Verification state
+  const [cashfreeGstin, setCashfreeGstin] = useState("29AAACP2916R1ZR");
+  const [cashfreeClientId, setCashfreeClientId] = useState("");
+  const [cashfreeClientSecret, setCashfreeClientSecret] = useState("");
+  const [cashfreeIsSandbox, setCashfreeIsSandbox] = useState(true);
+  const [cashfreeLoading, setCashfreeLoading] = useState(false);
+  const [cashfreeData, setCashfreeData] = useState<any>(null);
+  const [cashfreeError, setCashfreeError] = useState("");
 
   // 1. Taxpayer state
   const [gstinInput, setGstinInput] = useState("06AAHCE7721Q1Z4");
@@ -149,6 +160,24 @@ export default function GstDeveloperPortalTools() {
     }
   };
 
+  const handleVerifyCashfree = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setCashfreeLoading(true);
+    setCashfreeError("");
+    setCashfreeData(null);
+    const res = await actionVerifyCashfree(cashfreeGstin, {
+      clientId: cashfreeClientId.trim() || undefined,
+      clientSecret: cashfreeClientSecret.trim() || undefined,
+      isSandbox: cashfreeIsSandbox
+    }) as any;
+    setCashfreeLoading(false);
+    if (res && res.success) {
+      setCashfreeData(res);
+    } else {
+      setCashfreeError(res?.error || "Cashfree GSTIN verification failed");
+    }
+  };
+
   return (
     <div style={{ backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "24px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
       
@@ -156,25 +185,36 @@ export default function GstDeveloperPortalTools() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "16px", marginBottom: "20px" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
-            <ShieldCheck size={22} color="#2563eb" /> GST Public APIs & Verification Suite
+            <ShieldCheck size={22} color="#2563eb" /> GST Public APIs & Cashfree Verification Suite
           </h2>
           <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
-            Direct integration with official GST Developer Portal (<code>developer.gst.gov.in/apiportal/common</code>)
+            Direct integration with Cashfree (<code>sandbox.cashfree.com/verification/gstin</code>) & official GST Developer Portal (<code>developer.gst.gov.in/apiportal/common</code>)
           </p>
         </div>
-        <a 
-          href="https://developer.gst.gov.in/apiportal/common" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 600, color: "#2563eb", textDecoration: "none", backgroundColor: "#eff6ff", padding: "6px 12px", borderRadius: "6px", border: "1px solid #bfdbfe" }}
-        >
-          Official GST Developer Docs <ExternalLink size={12} />
-        </a>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <a 
+            href="https://sandbox.cashfree.com/verification/gstin" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 600, color: "#059669", textDecoration: "none", backgroundColor: "#ecfdf5", padding: "6px 12px", borderRadius: "6px", border: "1px solid #a7f3d0" }}
+          >
+            Cashfree GST Docs <ExternalLink size={12} />
+          </a>
+          <a 
+            href="https://developer.gst.gov.in/apiportal/common" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 600, color: "#2563eb", textDecoration: "none", backgroundColor: "#eff6ff", padding: "6px 12px", borderRadius: "6px", border: "1px solid #bfdbfe" }}
+          >
+            Official GST Portal <ExternalLink size={12} />
+          </a>
+        </div>
       </div>
 
       {/* Tabs Bar */}
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "24px", backgroundColor: "#f8fafc", padding: "6px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
         {[
+          { id: 'cashfree', label: '💳 Cashfree GSTIN Verifier', icon: ShieldCheck },
           { id: 'taxpayer', label: '🔍 Search Taxpayer (GSTIN)', icon: Search },
           { id: 'pan', label: '🪪 Search by PAN', icon: CreditCard },
           { id: 'returns', label: '📊 Track Return Filing Status', icon: FileCheck2 },
@@ -209,6 +249,166 @@ export default function GstDeveloperPortalTools() {
           );
         })}
       </div>
+
+      {/* ─── TAB 0: CASHFREE GSTIN VERIFIER (sandbox.cashfree.com/verification/gstin) ─── */}
+      {activeTab === 'cashfree' && (
+        <div>
+          {/* Credentials Info Header */}
+          <div style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "14px 16px", marginBottom: "18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <span style={{ fontSize: "0.84rem", fontWeight: 700, color: "#166534", display: "flex", alignItems: "center", gap: "6px" }}>
+                <ShieldCheck size={16} /> Cashfree Verification API (Sandbox / Production)
+              </span>
+              <span style={{ fontSize: "0.72rem", backgroundColor: cashfreeIsSandbox ? "#dbeafe" : "#fef3c7", color: cashfreeIsSandbox ? "#1e40af" : "#92400e", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>
+                {cashfreeIsSandbox ? "SANDBOX MODE" : "PRODUCTION MODE"}
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: "0.76rem", color: "#15803d" }}>
+              Endpoint: <code>{cashfreeIsSandbox ? "https://sandbox.cashfree.com/verification/gstin" : "https://api.cashfree.com/verification/gstin"}</code>
+            </p>
+          </div>
+
+          <form onSubmit={handleVerifyCashfree} style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  Cashfree Client ID <span style={{ color: "#64748b", fontWeight: 400 }}>(Optional if set in Settings / .env)</span>
+                </label>
+                <input
+                  type="text"
+                  value={cashfreeClientId}
+                  onChange={e => setCashfreeClientId(e.target.value)}
+                  placeholder="e.g. CF_CLIENT_ID..."
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  Cashfree Client Secret <span style={{ color: "#64748b", fontWeight: 400 }}>(Optional if set in Settings / .env)</span>
+                </label>
+                <input
+                  type="password"
+                  value={cashfreeClientSecret}
+                  onChange={e => setCashfreeClientSecret(e.target.value)}
+                  placeholder="e.g. CF_CLIENT_SECRET..."
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  15-Digit GSTIN to Verify
+                </label>
+                <input
+                  type="text"
+                  value={cashfreeGstin}
+                  onChange={e => setCashfreeGstin(e.target.value.toUpperCase())}
+                  placeholder="e.g. 29AAACP2916R1ZR"
+                  maxLength={15}
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.9rem", fontFamily: "monospace", fontWeight: 700, textTransform: "uppercase" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingTop: "20px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 600, color: "#475569", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={cashfreeIsSandbox}
+                    onChange={e => setCashfreeIsSandbox(e.target.checked)}
+                  />
+                  <span>Sandbox</span>
+                </label>
+                <button
+                  type="submit"
+                  disabled={cashfreeLoading}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "10px 18px",
+                    backgroundColor: "#059669",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: "8px",
+                    fontWeight: 700,
+                    fontSize: "0.85rem",
+                    cursor: cashfreeLoading ? "not-allowed" : "pointer"
+                  }}
+                >
+                  {cashfreeLoading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                  {cashfreeLoading ? "Verifying..." : "Verify with Cashfree"}
+                </button>
+              </div>
+            </div>
+          </form>
+
+          {/* Cashfree Error */}
+          {cashfreeError && (
+            <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fca5a5", color: "#b91c1c", padding: "12px 16px", borderRadius: "8px", fontSize: "0.84rem", display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <AlertCircle size={18} />
+              <span>{cashfreeError}</span>
+            </div>
+          )}
+
+          {/* Cashfree Verified Result Card */}
+          {cashfreeData && (
+            <div style={{ backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "12px" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#0f172a" }}>
+                    {cashfreeData.companyName || cashfreeData.legalName || "Verified Taxpayer"}
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#64748b" }}>
+                    Trade Name: <strong style={{ color: "#0f172a" }}>{cashfreeData.tradeName || cashfreeData.legalName || "-"}</strong>
+                  </p>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ display: "inline-block", backgroundColor: "#ecfdf5", color: "#059669", padding: "4px 10px", borderRadius: "6px", fontSize: "0.78rem", fontWeight: 700, border: "1px solid #a7f3d0" }}>
+                    ✓ {cashfreeData.status || "ACTIVE"}
+                  </span>
+                  <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "4px" }}>
+                    Ref ID: {cashfreeData.referenceId || "N/A"}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" }}>
+                <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block", textTransform: "uppercase" }}>GSTIN & PAN</span>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0f172a", marginTop: "2px", fontFamily: "monospace" }}>
+                    {cashfreeData.gstin}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#475569" }}>
+                    PAN: {cashfreeData.pan || "-"}
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block", textTransform: "uppercase" }}>Taxpayer Type</span>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
+                    {cashfreeData.taxpayerType || "Regular"}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#475569" }}>
+                    Reg: {cashfreeData.dateOfRegistration || "-"}
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0", gridColumn: "span 2" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block", textTransform: "uppercase" }}>Principal Place Address</span>
+                  <div style={{ fontSize: "0.84rem", color: "#1e293b", marginTop: "2px", lineHeight: 1.4 }}>
+                    {cashfreeData.address || "-"}
+                  </div>
+                  <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                    City: <strong>{cashfreeData.city || "-"}</strong> • State: <strong>{cashfreeData.state || "-"}</strong> • Pincode: <strong>{cashfreeData.pincode || "-"}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ─── TAB 1: SEARCH TAXPAYER BY GSTIN ─── */}
       {activeTab === 'taxpayer' && (

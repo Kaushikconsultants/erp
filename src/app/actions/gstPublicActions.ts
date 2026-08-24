@@ -91,3 +91,16 @@ export async function actionTrackEwb(ewbNo: string) {
     return { success: false, error: error.message || "Failed to verify E-Way Bill" };
   }
 }
+
+/**
+ * 7. Cashfree GSTIN Live Verification (https://sandbox.cashfree.com/verification/gstin)
+ */
+export async function actionVerifyCashfree(gstin: string, config?: { clientId?: string; clientSecret?: string; isSandbox?: boolean }) {
+  try {
+    const { verifyCashfreeGstin } = await import("@/lib/cashfreeGstService");
+    return await verifyCashfreeGstin(gstin, config);
+  } catch (error: any) {
+    return { success: false, error: error.message || "Cashfree verification failed" };
+  }
+}
+
