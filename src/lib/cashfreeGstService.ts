@@ -29,6 +29,7 @@ export interface CashfreeGstConfig {
   clientId?: string;
   clientSecret?: string;
   isSandbox?: boolean;
+  businessName?: string;
 }
 
 /**
@@ -99,6 +100,13 @@ export async function verifyCashfreeGstin(
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
 
+    const bodyPayload: any = {
+      GSTIN: gstin
+    };
+    if (config?.businessName) {
+      bodyPayload.business_name = config.businessName;
+    }
+
     const response = await fetch(baseUrl, {
       method: "POST",
       headers: {
@@ -106,9 +114,7 @@ export async function verifyCashfreeGstin(
         "x-client-id": clientId,
         "x-client-secret": clientSecret
       },
-      body: JSON.stringify({
-        GSTIN: gstin
-      }),
+      body: JSON.stringify(bodyPayload),
       signal: controller.signal
     });
 
