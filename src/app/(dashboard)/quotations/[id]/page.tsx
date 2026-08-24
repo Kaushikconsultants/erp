@@ -295,22 +295,9 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             <div style={{ padding: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span>Sub Total</span>
-                <span style={{ fontWeight: 'bold' }}>{fmt(quotation.subtotal)}</span>
+                <span style={{ fontWeight: 'bold' }}>{fmt(quotation.taxableAmount || quotation.subtotal)}</span>
               </div>
 
-              {quotation.itemDiscount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#16a34a' }}>
-                  <span>Item Discount</span>
-                  <span>(-) {fmt(quotation.itemDiscount)}</span>
-                </div>
-              )}
-
-              {quotation.additionalDiscount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#16a34a' }}>
-                  <span>Additional Discount</span>
-                  <span>(-) {fmt(quotation.additionalDiscount)}</span>
-                </div>
-              )}
 
               {isInterstate ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
