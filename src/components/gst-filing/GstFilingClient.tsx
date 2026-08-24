@@ -44,6 +44,7 @@ import {
   loginToGstPortal,
   logoutGstPortal
 } from '@/app/actions/gstFilingActions';
+import GstDeveloperPortalTools from '@/components/gst/GstDeveloperPortalTools';
 
 interface GstFilingClientProps {
   initialData: any;
@@ -51,7 +52,7 @@ interface GstFilingClientProps {
 
 export default function GstFilingClient({ initialData }: GstFilingClientProps) {
   const [data, setData] = useState(initialData);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'gstr1' | 'gstr3b' | 'gstr2b' | 'gstr9' | 'portal'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'gstr1' | 'gstr3b' | 'gstr2b' | 'gstr9' | 'public_apis' | 'portal'>('dashboard');
   const [gstr1SubTab, setGstr1SubTab] = useState<'b2b' | 'b2cs' | 'b2cl' | 'cdnr' | 'hsn' | 'docs'>('b2b');
 
   // Portal Login Modal State
@@ -556,6 +557,7 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
           { key: 'gstr3b', label: 'GSTR-3B', icon: FileText },
           { key: 'gstr2b', label: `ITC Recon (${gstr2bData.itcReconRows.length})`, icon: ShieldCheck },
           { key: 'gstr9', label: 'GSTR-9', icon: FileSpreadsheet },
+          { key: 'public_apis', label: '⚡ GST Public APIs (developer.gst.gov.in)', icon: ShieldCheck },
           { key: 'portal', label: 'Portal Logs', icon: Zap }
         ].map(tab => {
           const Icon = tab.icon;
@@ -913,7 +915,14 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
         </div>
       )}
 
-      {/* TAB 6: GST PORTAL LOGS */}
+      {/* TAB 6: GST PUBLIC APIS (developer.gst.gov.in) */}
+      {activeTab === 'public_apis' && (
+        <div style={{ marginTop: '4px' }}>
+          <GstDeveloperPortalTools />
+        </div>
+      )}
+
+      {/* TAB 7: GST PORTAL LOGS */}
       {activeTab === 'portal' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ padding: '14px', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
