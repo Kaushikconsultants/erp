@@ -68,10 +68,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   // Use the stored totalValue which was correctly computed from the quotation
   const grandTotal = order.totalValue || Math.round(subtotal + totalTax);
 
-  // Actual monetary discount = gross subtotal - (grand total - tax - shipping)
-  // Simply: what was charged vs what the rate*qty sum is
-  const grossItemsTotal = order.items.reduce((acc, item) => acc + (item.rate * item.quantity), 0);
-  const actualDiscount = Math.round(grossItemsTotal - (grandTotal - totalTax));
+  // Post-discount taxable amount (matches quotation Sub Total)
+  const taxableAmount = Math.max(0, grandTotal - totalTax);
 
   return (
     <div style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', padding: '40px 20px' }} className="invoice-container-wrapper">
@@ -234,15 +232,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
                 <tr>
-                  <td style={{ padding: '6px 0', color: '#4b5563' }}>Taxable Amount:</td>
-                  <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>₹{subtotal.toLocaleString('en-IN')}</td>
+                  <td style={{ padding: '6px 0', color: '#4b5563' }}>Sub Total:</td>
+                  <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>₹{taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 </tr>
-                {actualDiscount > 0 && (
-                  <tr>
-                    <td style={{ padding: '6px 0', color: '#16a34a' }}>Discount:</td>
-                    <td style={{ padding: '6px 0', textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>-₹{actualDiscount.toLocaleString('en-IN')}</td>
-                  </tr>
-                )}
                 {isInterstate ? (
                   <tr>
                     <td style={{ padding: '6px 0', color: '#4b5563' }}>IGST:</td>
