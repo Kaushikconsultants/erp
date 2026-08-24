@@ -16,15 +16,16 @@ export async function POST(req: NextRequest) {
       if (account) {
         account = await prisma.whatsAppAccount.update({
           where: { id: account.id },
-          data: { accessToken, phoneNumberId, wabaId: wabaId || account.wabaId }
+          data: { accessToken, phoneId: phoneNumberId, businessAccountId: wabaId || account.businessAccountId }
         });
       } else {
         account = await prisma.whatsAppAccount.create({
           data: {
             accessToken,
-            phoneNumberId,
-            wabaId: wabaId || "",
-            phoneNumber: ""
+            phoneId: phoneNumberId,
+            businessAccountId: wabaId || "",
+            phoneNumber: "",
+            name: "Main WhatsApp Account",
           }
         });
       }
