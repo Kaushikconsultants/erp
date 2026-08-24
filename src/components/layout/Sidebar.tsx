@@ -104,17 +104,6 @@ const Sidebar = ({
   const isHrmsActive = pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || (pathname.startsWith('/expenses') && !isPurchasesActive) || pathname.startsWith('/leaves') || pathname.startsWith('/hiring');
   const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs') || pathname.startsWith('/gst-filing');
 
-  React.useEffect(() => {
-    setOpenCategories(prev => ({
-      ...prev,
-      crm: prev.crm || isCrmActive,
-      sales: prev.sales || isSalesActive,
-      purchases: prev.purchases || isPurchasesActive,
-      hrms: prev.hrms || isHrmsActive,
-      reports: prev.reports || isReportsActive
-    }));
-  }, [pathname]);
-
   return (
     <aside className="sidebar">
       {/* Header */}
