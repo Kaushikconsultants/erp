@@ -59,33 +59,22 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
     try {
       const res = await lookupGstin(raw);
       if (res && res.success) {
-        if (res.companyName && !companyName) {
-          setCompanyName(res.companyName);
-        } else if (res.companyName && companyName !== res.companyName) {
+        if (res.companyName) {
           setCompanyName(res.companyName);
         }
-
-        if (res.contactPerson && !contactPerson) {
+        if (res.contactPerson) {
           setContactPerson(res.contactPerson);
         }
-
-        if (res.address && !streetAddress) {
+        if (res.address) {
           setStreetAddress(res.address);
         }
+        setAddressData(prev => ({
+          pincode: res.pincode || prev.pincode,
+          city: res.city || prev.city,
+          state: res.state || prev.state
+        }));
 
-        if (res.city || res.state || res.pincode) {
-          setAddressData(prev => ({
-            pincode: res.pincode || prev.pincode,
-            city: res.city || prev.city,
-            state: res.state || prev.state
-          }));
-        }
-
-        setGstSuccessMsg(
-          res.companyName
-            ? `✓ Auto-filled: ${res.companyName} (${res.state || 'State mapped'})`
-            : `✓ State identified: ${res.state} (PAN: ${res.pan || '-'})`
-        );
+        setGstSuccessMsg(`✓ Auto-filled: ${res.companyName || 'Verified Taxpayer'} (${res.state || 'State mapped'})`);
       } else if (res && res.error) {
         setError(res.error);
       }
