@@ -634,7 +634,7 @@ export default function WhatsAppInboxComponent() {
                       </div>
 
                       <div className="conv-contact-sub">
-                        <span>{cust?.contactPerson} ({cust?.mobile})</span>
+                        <span>{cust?.contactPerson} (+91 {String(cust?.mobile || cust?.whatsappNumber || "").replace(/^91/, '').replace(/^\+91/, '').trim()})</span>
                       </div>
 
                       <div className="conv-snippet-line">
@@ -698,7 +698,7 @@ export default function WhatsAppInboxComponent() {
                     </span>
                   </div>
                   <div className="chat-sub-line">
-                    <span>+91 {activeConvDetail.customer?.mobile}</span>
+                    <span>+91 {String(activeConvDetail.customer?.mobile || activeConvDetail.customer?.whatsappNumber || "").replace(/^91/, '').replace(/^\+91/, '').trim()}</span>
                     <span>•</span>
                     <span>Assigned: {activeConvDetail.assignedEmployee?.user?.name || "Ikra (Sales)"}</span>
                     <span>•</span>

@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
         const defaultEmployee = await prisma.employee.findFirst();
         customer = await prisma.customer.create({
           data: {
-            businessName: `WhatsApp Lead (${cleanPhone})`,
+            businessName: whatsappProfileName ? `WhatsApp Lead (${whatsappProfileName})` : `WhatsApp Lead (${cleanPhone})`,
             contactPerson: whatsappProfileName || `Contact +91 ${cleanPhone}`,
             mobile: cleanPhone,
             whatsappNumber: cleanPhone,
@@ -80,8 +80,8 @@ export async function POST(req: NextRequest) {
             tags: "WhatsApp Lead, Auto Created"
           }
         });
-      } else if (whatsappProfileName && customer.contactPerson?.startsWith("Contact +91")) {
-        // Feature 5: Update contact name if it was an auto-placeholder
+      } else if (whatsappProfileName && (customer.contactPerson?.startsWith("Contact +91") || customer.contactPerson === "Unknown Lead" || !customer.contactPerson)) {
+        // Feature 5: Update contact name if it was an auto-placeholder or Unknown
         await prisma.customer.update({
           where: { id: customer.id },
           data: { contactPerson: whatsappProfileName }
@@ -102,6 +102,8 @@ export async function POST(req: NextRequest) {
         }
       });
 
+      const messageTimestamp = new Date(parseInt(msg.timestamp) * 1000 || Date.now());
+
       if (!conversation) {
         conversation = await prisma.whatsAppConversation.create({
           data: {
@@ -112,7 +114,7 @@ export async function POST(req: NextRequest) {
             priority: "HIGH",
             leadStatus: customer.leadStage || "New Lead",
             lastMessageText: textContent,
-            lastMessageAt: new Date(),
+            lastMessageAt: messageTimestamp,
             unreadCount: 1,
             tags: customer.tags
           }
@@ -122,7 +124,7 @@ export async function POST(req: NextRequest) {
           where: { id: conversation.id },
           data: {
             lastMessageText: textContent,
-            lastMessageAt: new Date(),
+            lastMessageAt: messageTimestamp,
             unreadCount: conversation.unreadCount + 1,
             status: "OPEN"
           }
@@ -141,7 +143,7 @@ export async function POST(req: NextRequest) {
           mediaType: mediaMimeType,
           status: "RECEIVED",
           metaMessageId: msg.id,
-          sentAt: new Date(parseInt(msg.timestamp) * 1000 || Date.now())
+          sentAt: messageTimestamp
         }
       });
 
