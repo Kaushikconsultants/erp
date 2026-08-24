@@ -241,7 +241,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                         </>
                       )}
                       <td style={{ padding: '8px 6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold' }}>
-                        {fmt(item.total)}
+                        {fmt(item.total / (1 + (item.gstRate || 0) / 100))}
                       </td>
                     </tr>
                   ))}
@@ -323,6 +323,18 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                   <span>{fmt(quotation.shippingCharges)}</span>
                 </div>
               )}
+
+              {(() => {
+                const totalTax = isInterstate ? quotation.igst : (quotation.cgst + quotation.sgst);
+                const calculatedSum = (quotation.taxableAmount || quotation.subtotal) + totalTax + (quotation.shippingCharges || 0);
+                const rounding = Math.round((quotation.totalValue - calculatedSum) * 100) / 100;
+                return rounding !== 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                    <span>Rounding</span>
+                    <span>{fmt(rounding)}</span>
+                  </div>
+                ) : null;
+              })()}
 
               {quotation.receivedAmount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#dc2626' }}>

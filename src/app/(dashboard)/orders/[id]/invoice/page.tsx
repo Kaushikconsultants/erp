@@ -316,6 +316,19 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 ) : null;
               })()}
 
+              {(() => {
+                const totalTax = totalCgst + totalSgst + totalIgst;
+                const shippingCharges = Math.round((grandTotal - taxableAmount - totalTax) * 100) / 100;
+                const calculatedSum = taxableAmount + totalTax + Math.max(0, shippingCharges);
+                const rounding = Math.round((grandTotal - calculatedSum) * 100) / 100;
+                return rounding !== 0 ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                    <span>Rounding</span>
+                    <span>{fmt(rounding)}</span>
+                  </div>
+                ) : null;
+              })()}
+
               {receivedAmount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#dc2626' }}>
                   <span>Received</span>
