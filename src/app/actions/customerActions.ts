@@ -117,7 +117,101 @@ export async function lookupGstin(rawGstin: string) {
     // ignore
   }
 
-  // 3. Intelligent GSTIN Entity Analysis
+  // 3. Check if an external GST Verification API Key is configured
+  try {
+    const filingSetting = await prisma.onlineFilingSetting.findFirst();
+    const apiKey = filingSetting?.apiAuthToken?.trim();
+
+    if (apiKey) {
+      // 3a. Try AppyFlow API format
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const appyRes = await fetch(`https://appyflow.in/api/verifyGST?gstNo=${gstin}&key_secret=${apiKey}`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (appyRes.ok) {
+          const json = await appyRes.json();
+          if (json && !json.error && json.taxpayerInfo) {
+            const t = json.taxpayerInfo;
+            const legalName = t.lgnm || t.tradeNam || "";
+            const tradeName = t.tradeNam || legalName;
+            const bno = t.pradr?.addr?.bno || "";
+            const bnm = t.pradr?.addr?.bnm || "";
+            const st = t.pradr?.addr?.st || "";
+            const loc = t.pradr?.addr?.loc || "";
+            const dst = t.pradr?.addr?.dst || "";
+            const pncd = t.pradr?.addr?.pncd || "";
+            const stcd = t.pradr?.addr?.stcd || stateName;
+            const streetAddr = [bno, bnm, st, loc].filter(Boolean).join(", ");
+
+            return {
+              success: true,
+              isExactMatch: true,
+              source: "appyflow_live_api",
+              companyName: (tradeName || legalName).trim(),
+              contactPerson: legalName !== tradeName ? legalName.trim() : "",
+              address: streetAddr.trim(),
+              city: dst.trim(),
+              state: stcd || stateName,
+              pincode: String(pncd).trim(),
+              pan: pan,
+              gstin
+            };
+          }
+        }
+      } catch (err) {
+        // continue
+      }
+
+      // 3b. Try Sheet GSTINCheck API format
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const sheetRes = await fetch(`https://sheet.gstincheck.co.in/check/${apiKey}/${gstin}`, {
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (sheetRes.ok) {
+          const json = await sheetRes.json();
+          if (json && json.flag && json.data) {
+            const d = json.data;
+            const legalName = d.lgnm || d.tradeNam || "";
+            const tradeName = d.tradeNam || legalName;
+            const bno = d.pradr?.addr?.bno || "";
+            const bnm = d.pradr?.addr?.bnm || "";
+            const st = d.pradr?.addr?.st || "";
+            const loc = d.pradr?.addr?.loc || "";
+            const dst = d.pradr?.addr?.dst || "";
+            const pncd = d.pradr?.addr?.pncd || "";
+            const stcd = d.pradr?.addr?.stcd || stateName;
+            const streetAddr = [bno, bnm, st, loc].filter(Boolean).join(", ");
+
+            return {
+              success: true,
+              isExactMatch: true,
+              source: "gstincheck_live_api",
+              companyName: (tradeName || legalName).trim(),
+              contactPerson: legalName !== tradeName ? legalName.trim() : "",
+              address: streetAddr.trim(),
+              city: dst.trim(),
+              state: stcd || stateName,
+              pincode: String(pncd).trim(),
+              pan: pan,
+              gstin
+            };
+          }
+        }
+      } catch (err) {
+        // continue
+      }
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  // 4. Intelligent GSTIN Entity Analysis
   const entityLetter = pan.length >= 4 ? pan.charAt(3) : 'P';
   let entityTypeDesc = "Proprietorship / Individual";
   if (entityLetter === 'C') {

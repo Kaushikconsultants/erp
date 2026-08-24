@@ -462,6 +462,7 @@ export async function updateGstTdsSetting(data: {
 
 export async function updateOnlineFilingSetting(data: {
   gstPortalUsername?: string;
+  apiAuthToken?: string;
   gstPortalApiEnabled: boolean;
   autoSyncGstr1: boolean;
   autoSyncGstr3b: boolean;

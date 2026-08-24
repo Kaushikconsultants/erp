@@ -967,6 +967,22 @@ export default function TaxSettingsClient({
                   />
                 </div>
 
+                <div className="form-group">
+                  <label style={{ display: 'block', fontSize: '0.81rem', fontWeight: 500, color: '#1e293b', marginBottom: '4px' }}>
+                    GST Verification & Auto-Fill API Key / Secret <span style={{ color: '#2563eb', fontWeight: 400 }}>(AppyFlow / GSTINCheck / Sandbox)</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={filingForm.apiAuthToken || ''}
+                    onChange={e => setFilingForm({ ...filingForm, apiAuthToken: e.target.value })}
+                    placeholder="Enter GSP API Key / Key Secret to auto-fetch live taxpayer names & addresses"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  />
+                  <p style={{ fontSize: '0.72rem', color: '#64748b', margin: '4px 0 0' }}>
+                    When configured, entering any 15-digit GSTIN instantly auto-fills company legal name, trade name, and registered address across all forms.
+                  </p>
+                </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.81rem', fontWeight: 450 }}>
                     <input
