@@ -28,7 +28,7 @@ import {
 import "./WhatsAppHeaderNav.css";
 
 const subNavItems = [
-  { name: "WhatsApp Inbox", path: "/whatsapp/inbox", icon: MessageSquare, badge: "3" },
+  { name: "WhatsApp Inbox", path: "/whatsapp/inbox", icon: MessageSquare },
   { name: "Direct Messages", path: "/whatsapp/direct-messages", icon: Send },
   { name: "WhatsApp Dashboard", path: "/whatsapp/dashboard", icon: LayoutDashboard },
   { name: "Contacts", path: "/whatsapp/contacts", icon: Users },
