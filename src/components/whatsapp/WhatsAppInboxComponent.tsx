@@ -456,6 +456,16 @@ export default function WhatsAppInboxComponent() {
               </button>
               <button
                 className="panel-toggle-btn"
+                onClick={() => {
+                  fetchConversationsList();
+                }}
+                title="Refresh Chats"
+                style={{ color: "#64748b" }}
+              >
+                <RefreshCw size={16} />
+              </button>
+              <button
+                className="panel-toggle-btn"
                 onClick={toggleFullScreenMode}
                 title={isFullScreen ? "Exit Full Screen Mode (Esc)" : "Full Screen Mode"}
                 style={{ color: isFullScreen ? "#10b981" : "#64748b" }}
