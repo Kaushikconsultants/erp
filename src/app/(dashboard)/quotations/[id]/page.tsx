@@ -294,19 +294,33 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                 <span style={{ fontWeight: 'bold' }}>{fmt(quotation.subtotal)}</span>
               </div>
 
+              {quotation.itemDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#16a34a' }}>
+                  <span>Item Discount</span>
+                  <span>(-) {fmt(quotation.itemDiscount)}</span>
+                </div>
+              )}
+
+              {quotation.additionalDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#16a34a' }}>
+                  <span>Additional Discount</span>
+                  <span>(-) {fmt(quotation.additionalDiscount)}</span>
+                </div>
+              )}
+
               {isInterstate ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                  <span>IGST {quotation.subtotal > 0 && quotation.igst > 0 ? `(${Math.round((quotation.igst / quotation.subtotal) * 100)}%)` : ''}</span>
+                  <span>IGST {quotation.taxableAmount > 0 && quotation.igst > 0 ? `(${Math.round((quotation.igst / quotation.taxableAmount) * 100)}%)` : ''}</span>
                   <span>{fmt(quotation.igst)}</span>
                 </div>
               ) : (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                    <span>CGST {quotation.subtotal > 0 && quotation.cgst > 0 ? `(${Math.round((quotation.cgst / quotation.subtotal) * 100 * 10) / 10}%)` : ''}</span>
+                    <span>CGST {quotation.taxableAmount > 0 && quotation.cgst > 0 ? `(${Math.round((quotation.cgst / quotation.taxableAmount) * 100 * 10) / 10}%)` : ''}</span>
                     <span>{fmt(quotation.cgst)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                    <span>SGST {quotation.subtotal > 0 && quotation.sgst > 0 ? `(${Math.round((quotation.sgst / quotation.subtotal) * 100 * 10) / 10}%)` : ''}</span>
+                    <span>SGST {quotation.taxableAmount > 0 && quotation.sgst > 0 ? `(${Math.round((quotation.sgst / quotation.taxableAmount) * 100 * 10) / 10}%)` : ''}</span>
                     <span>{fmt(quotation.sgst)}</span>
                   </div>
                 </>
@@ -328,7 +342,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
 
               <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px 0', marginTop: '8px', fontWeight: 'bold', fontSize: '13px' }}>
                 <span>Total</span>
-                <span>₹{fmt(quotation.totalValue)}</span>
+                <span>₹{fmt(Math.max(0, quotation.totalValue - (quotation.receivedAmount || 0)))}</span>
               </div>
             </div>
 
