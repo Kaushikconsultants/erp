@@ -27,12 +27,16 @@ const ALL_SECTIONS = [
   { id: 'orders', label: '🛒 Sales Orders', desc: 'Order creation, status & details' },
   { id: 'quotations', label: '📋 Quotations', desc: 'Estimate pipeline & quote creation' },
   { id: 'invoices', label: '🧾 Invoices & Billing', desc: 'Tax invoices & billing document section' },
+  { id: 'credit_notes', label: '📄 Credit Notes', desc: 'Credit notes & sales return management' },
   { id: 'payments', label: '💳 Payments (Inward)', desc: 'Customer payment tracking & receipts' },
   { id: 'products', label: '📦 Products Catalog', desc: 'Item pricing, SKU & product management' },
   { id: 'dispatches', label: '🚚 Dispatches', desc: 'Shipping pipeline & delivery tracking' },
+  { id: 'eway_bills', label: '📜 E-Way Bills', desc: 'E-way bill generation & transport tracking' },
   { id: 'purchases', label: '🛍️ Purchases & Vendors', desc: 'Vendors, purchase orders, bills, payments made, vendor credits' },
-  { id: 'hrms', label: '💼 HRMS & Payroll', desc: 'Payroll, attendance, expenses, leaves & hiring' },
+  { id: 'hrms', label: '💼 HRMS & Employee Portal', desc: 'Payroll, attendance, expenses & leaves' },
+  { id: 'hiring', label: '👥 Hiring & Interviews', desc: 'Job postings, candidates & interview pipelines' },
   { id: 'reports', label: '📈 Reports & Analytics', desc: 'Analytics charts, reports center & audit logs' },
+  { id: 'gst_filing', label: '🏛️ GST Filing & Compliances', desc: 'GSTR-1, GSTR-3B & GST returns' },
   { id: 'settings', label: '⚙️ Settings & Admin', desc: 'System settings, roles & user management' }
 ];
 
@@ -46,13 +50,13 @@ const getDefaultSectionsForRole = (role: string): string[] => {
     case 'PURCHASE':
       return ['dashboard', 'purchases', 'products'];
     case 'WAREHOUSE':
-      return ['dashboard', 'products', 'purchases', 'dispatches'];
+      return ['dashboard', 'products', 'purchases', 'dispatches', 'eway_bills'];
     case 'DISPATCH':
-      return ['dashboard', 'dispatches'];
+      return ['dashboard', 'dispatches', 'eway_bills'];
     case 'ACCOUNTS':
-      return ['dashboard', 'invoices', 'payments', 'orders', 'hrms'];
+      return ['dashboard', 'invoices', 'payments', 'orders', 'credit_notes', 'purchases', 'hrms', 'gst_filing'];
     case 'HR':
-      return ['dashboard', 'hrms'];
+      return ['dashboard', 'hrms', 'hiring'];
     case 'SUPPORT':
       return ['dashboard', 'customers', 'calls_tasks'];
     case 'MANAGER':

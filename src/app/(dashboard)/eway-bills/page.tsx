@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { getEWayBills } from '@/app/actions/ewayBillActions';
 import { prisma } from '@/lib/prisma';
 import { getCompanySettings } from '@/app/actions/companyActions';
+import { canUserAccessSection } from '@/lib/authPermissions';
 import EWayBillsClient from '@/components/eway-bills/EWayBillsClient';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,9 @@ export const dynamic = 'force-dynamic';
 export default async function EWayBillsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
+
+  const hasAccess = await canUserAccessSection(session.user, 'eway_bills');
+  if (!hasAccess) redirect('/');
 
   const [ewbRes, orders, customers, companyRes] = await Promise.all([
     getEWayBills(),

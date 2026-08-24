@@ -44,17 +44,23 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
   const canAccess = (sectionKey: string): boolean => {
     if (isSuperOrAdmin) return true;
     if (!allowedSections || allowedSections.length === 0) {
-      if (userRole === 'DISPATCH') return ['dispatches'].includes(sectionKey);
+      if (userRole === 'DISPATCH') return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
       if (userRole === 'SALES') return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
-      if (userRole === 'HR') return ['dashboard', 'hrms'].includes(sectionKey);
-      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'gst'].includes(sectionKey);
-      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches'].includes(sectionKey);
+      if (userRole === 'HR') return ['dashboard', 'hrms', 'hiring'].includes(sectionKey);
+      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing'].includes(sectionKey);
+      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
       if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products'].includes(sectionKey);
       if (userRole === 'SUPPORT') return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);
       return false;
     }
     return (
       allowedSections.includes(sectionKey) ||
+      (sectionKey === 'credit_notes' && allowedSections.includes('credit-notes')) ||
+      (sectionKey === 'credit-notes' && allowedSections.includes('credit_notes')) ||
+      (sectionKey === 'eway_bills' && (allowedSections.includes('eway-bills') || allowedSections.includes('eway'))) ||
+      (sectionKey === 'eway-bills' && (allowedSections.includes('eway_bills') || allowedSections.includes('eway'))) ||
+      (sectionKey === 'gst_filing' && (allowedSections.includes('gst-filing') || allowedSections.includes('gst') || allowedSections.includes('gst_filings'))) ||
+      (sectionKey === 'gst-filing' && (allowedSections.includes('gst_filing') || allowedSections.includes('gst') || allowedSections.includes('gst_filings'))) ||
       (sectionKey === 'purchases' && allowedSections.includes('procurement')) ||
       (sectionKey === 'procurement' && allowedSections.includes('purchases'))
     );
@@ -156,12 +162,14 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
                 <span>Add Customer</span>
               </Link>
 
-              <Link href="/gst-filing" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
-                <div className="tile-icon-box blue">
-                  <Landmark size={20} />
-                </div>
-                <span>GST Filing</span>
-              </Link>
+              {canAccess('gst_filing') && (
+                <Link href="/gst-filing" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
+                  <div className="tile-icon-box blue">
+                    <Landmark size={20} />
+                  </div>
+                  <span>GST Filing</span>
+                </Link>
+              )}
 
               <Link href="/whatsapp/inbox" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
                 <div className="tile-icon-box green">
@@ -170,33 +178,41 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
                 <span>WhatsApp</span>
               </Link>
 
-              <Link href="/calls" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
-                <div className="tile-icon-box blue">
-                  <PhoneCall size={20} />
-                </div>
-                <span>Log Call</span>
-              </Link>
+              {canAccess('calls_tasks') && (
+                <Link href="/calls" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
+                  <div className="tile-icon-box blue">
+                    <PhoneCall size={20} />
+                  </div>
+                  <span>Log Call</span>
+                </Link>
+              )}
 
-              <Link href="/eway-bills" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
-                <div className="tile-icon-box green">
-                  <ScrollText size={20} />
-                </div>
-                <span>E-Way Bills</span>
-              </Link>
+              {canAccess('eway_bills') && (
+                <Link href="/eway-bills" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
+                  <div className="tile-icon-box green">
+                    <ScrollText size={20} />
+                  </div>
+                  <span>E-Way Bills</span>
+                </Link>
+              )}
 
-              <Link href="/purchases" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
-                <div className="tile-icon-box orange">
-                  <Package size={20} />
-                </div>
-                <span>Purchases</span>
-              </Link>
+              {canAccess('purchases') && (
+                <Link href="/purchases" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
+                  <div className="tile-icon-box orange">
+                    <Package size={20} />
+                  </div>
+                  <span>Purchases</span>
+                </Link>
+              )}
 
-              <Link href="/settings" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
-                <div className="tile-icon-box gray">
-                  <Settings size={20} />
-                </div>
-                <span>Settings</span>
-              </Link>
+              {isSuperOrAdmin && (
+                <Link href="/settings" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
+                  <div className="tile-icon-box gray">
+                    <Settings size={20} />
+                  </div>
+                  <span>Settings</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>

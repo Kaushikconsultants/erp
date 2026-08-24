@@ -65,17 +65,23 @@ const Sidebar = ({
     if (isSuperOrAdmin) return true;
     if (!allowedSections || allowedSections.length === 0) {
       // Default Role Fallbacks if no custom allowedSections specified
-      if (userRole === 'DISPATCH') return ['dispatches'].includes(sectionKey);
+      if (userRole === 'DISPATCH') return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
       if (userRole === 'SALES') return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
-      if (userRole === 'HR') return ['dashboard', 'hrms'].includes(sectionKey);
-      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales'].includes(sectionKey);
-      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches'].includes(sectionKey);
+      if (userRole === 'HR') return ['dashboard', 'hrms', 'hiring'].includes(sectionKey);
+      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing'].includes(sectionKey);
+      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
       if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products'].includes(sectionKey);
       if (userRole === 'SUPPORT') return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);
       return false;
     }
     return (
       allowedSections.includes(sectionKey) ||
+      (sectionKey === 'credit_notes' && allowedSections.includes('credit-notes')) ||
+      (sectionKey === 'credit-notes' && allowedSections.includes('credit_notes')) ||
+      (sectionKey === 'eway_bills' && (allowedSections.includes('eway-bills') || allowedSections.includes('eway'))) ||
+      (sectionKey === 'eway-bills' && (allowedSections.includes('eway_bills') || allowedSections.includes('eway'))) ||
+      (sectionKey === 'gst_filing' && (allowedSections.includes('gst-filing') || allowedSections.includes('gst') || allowedSections.includes('gst_filings'))) ||
+      (sectionKey === 'gst-filing' && (allowedSections.includes('gst_filing') || allowedSections.includes('gst') || allowedSections.includes('gst_filings'))) ||
       (sectionKey === 'purchases' && allowedSections.includes('procurement')) ||
       (sectionKey === 'procurement' && allowedSections.includes('purchases'))
     );
@@ -232,7 +238,7 @@ const Sidebar = ({
                   </Link>
                 )}
 
-                {(canAccess('credit_notes') || canAccess('invoices') || canAccess('orders')) && (
+                {canAccess('credit_notes') && (
                   <Link href="/credit-notes" onClick={onClose} className={`category-sub-item ${isActive('/credit-notes') ? 'active' : ''}`}>
                     <FileMinus size={16} style={{ color: '#e11d48' }} />
                     <span>Credit Notes</span>
@@ -260,14 +266,14 @@ const Sidebar = ({
                   </Link>
                 )}
 
-                {(canAccess('eway_bills') || canAccess('dispatches') || canAccess('orders')) && (
+                {canAccess('eway_bills') && (
                   <Link href="/eway-bills" onClick={onClose} className={`category-sub-item ${isActive('/eway-bills') ? 'active' : ''}`}>
                     <ScrollText size={16} style={{ color: '#0d9488' }} />
                     <span>E-Way Bills</span>
                   </Link>
                 )}
 
-                {(canAccess('invoices') || canAccess('orders') || isSuperOrAdmin) && (
+                {canAccess('gst_filing') && (
                   <Link href="/gst-filing" onClick={onClose} className={`category-sub-item ${isActive('/gst-filing') ? 'active' : ''}`}>
                     <Landmark size={16} style={{ color: '#2563eb' }} />
                     <span>GST Filing & Compliances</span>
@@ -384,10 +390,12 @@ const Sidebar = ({
                   <span>Leaves</span>
                 </Link>
 
-                <Link href="/hiring" onClick={onClose} className={`category-sub-item ${isActive('/hiring') ? 'active' : ''}`}>
-                  <Users size={16} />
-                  <span>Hiring & Interviews</span>
-                </Link>
+                {canAccess('hiring') && (
+                  <Link href="/hiring" onClick={onClose} className={`category-sub-item ${isActive('/hiring') ? 'active' : ''}`}>
+                    <Users size={16} />
+                    <span>Hiring & Interviews</span>
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -424,11 +432,13 @@ const Sidebar = ({
                   <span>Reports Center</span>
                 </Link>
 
-                <Link href="/gst-filing" onClick={onClose} className={`category-sub-item ${isActive('/gst-filing') ? 'active' : ''}`}>
-                  <Landmark size={16} style={{ color: '#2563eb' }} />
-                  <span>GST Filing & Compliances</span>
-                  <span style={{ marginLeft: 'auto', background: '#eff6ff', color: '#2563eb', fontSize: '9px', fontWeight: 600, padding: '1px 5px', borderRadius: '8px' }}>GSTN</span>
-                </Link>
+                {canAccess('gst_filing') && (
+                  <Link href="/gst-filing" onClick={onClose} className={`category-sub-item ${isActive('/gst-filing') ? 'active' : ''}`}>
+                    <Landmark size={16} style={{ color: '#2563eb' }} />
+                    <span>GST Filing & Compliances</span>
+                    <span style={{ marginLeft: 'auto', background: '#eff6ff', color: '#2563eb', fontSize: '9px', fontWeight: 600, padding: '1px 5px', borderRadius: '8px' }}>GSTN</span>
+                  </Link>
+                )}
 
                 <Link href="/settings/workflows" onClick={onClose} className={`category-sub-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
                   <Zap size={16} />

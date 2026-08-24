@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getCreditNotes } from '@/app/actions/creditNoteActions';
 import { prisma } from '@/lib/prisma';
+import { canUserAccessSection } from '@/lib/authPermissions';
 import CreditNotesClient from '@/components/credit-notes/CreditNotesClient';
 
 export const dynamic = 'force-dynamic';
@@ -11,6 +12,9 @@ export const dynamic = 'force-dynamic';
 export default async function CreditNotesPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
+
+  const hasAccess = await canUserAccessSection(session.user, 'credit_notes');
+  if (!hasAccess) redirect('/');
 
   const [cnRes, customers, products, invoices] = await Promise.all([
     getCreditNotes(),

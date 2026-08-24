@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getGstFilingOverview } from '@/app/actions/gstFilingActions';
+import { canUserAccessSection } from '@/lib/authPermissions';
 import GstFilingClient from '@/components/gst-filing/GstFilingClient';
 
 export const dynamic = 'force-dynamic';
@@ -11,11 +12,8 @@ export default async function GstFilingPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
-  const userRole = (session.user as any).role;
-  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
-  const isAccounts = userRole === 'ACCOUNTS';
-
-  if (!isSuperOrAdmin && !isAccounts) {
+  const hasAccess = await canUserAccessSection(session.user, 'gst_filing');
+  if (!hasAccess) {
     redirect('/');
   }
 

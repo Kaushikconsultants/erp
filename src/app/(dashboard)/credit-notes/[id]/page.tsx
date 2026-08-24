@@ -6,10 +6,20 @@ import { generateHsnSummary, numberToWordsINR } from '@/lib/gstUtils';
 import PrintInvoiceButton from '@/components/orders/PrintInvoiceButton';
 import DownloadPdfButton from '@/components/orders/DownloadPdfButton';
 import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { canUserAccessSection } from '@/lib/authPermissions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function CreditNoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect('/login');
+
+  const hasAccess = await canUserAccessSection(session.user, 'credit_notes');
+  if (!hasAccess) redirect('/');
+
   const { id } = await params;
 
   const [creditNote, companyRes] = await Promise.all([

@@ -18,11 +18,18 @@ export async function canUserAccessSection(sessionUser: any, sectionKey: string)
     if (customRole?.permissions) {
       try {
         const perms = JSON.parse(customRole.permissions) as string[];
-        if (sectionKey === 'purchases' || sectionKey === 'procurement') {
-          if (perms.some(p => p.toLowerCase().includes("purchase") || p.toLowerCase().includes("procurement") || p.toLowerCase().includes("bill") || p.toLowerCase().includes("vendor"))) {
-            return true;
+        const match = perms.some(p => {
+          const lower = p.toLowerCase();
+          if (sectionKey === 'credit_notes' || sectionKey === 'credit-notes') return lower.includes('credit');
+          if (sectionKey === 'eway_bills' || sectionKey === 'eway-bills') return lower.includes('eway') || lower.includes('e-way');
+          if (sectionKey === 'gst_filing' || sectionKey === 'gst-filing') return lower.includes('gst');
+          if (sectionKey === 'hiring') return lower.includes('hiring') || lower.includes('interview');
+          if (sectionKey === 'purchases' || sectionKey === 'procurement') {
+            return lower.includes("purchase") || lower.includes("procurement") || lower.includes("bill") || lower.includes("vendor");
           }
-        }
+          return lower.includes(sectionKey.toLowerCase());
+        });
+        if (match) return true;
       } catch {}
     }
   }
@@ -38,6 +45,12 @@ export async function canUserAccessSection(sessionUser: any, sectionKey: string)
       }
       return (
         allowed.includes(sectionKey) ||
+        (sectionKey === 'credit_notes' && allowed.includes('credit-notes')) ||
+        (sectionKey === 'credit-notes' && allowed.includes('credit_notes')) ||
+        (sectionKey === 'eway_bills' && (allowed.includes('eway-bills') || allowed.includes('eway'))) ||
+        (sectionKey === 'eway-bills' && (allowed.includes('eway_bills') || allowed.includes('eway'))) ||
+        (sectionKey === 'gst_filing' && (allowed.includes('gst-filing') || allowed.includes('gst') || allowed.includes('gst_filings'))) ||
+        (sectionKey === 'gst-filing' && (allowed.includes('gst_filing') || allowed.includes('gst') || allowed.includes('gst_filings'))) ||
         (sectionKey === 'purchases' && allowed.includes('procurement')) ||
         (sectionKey === 'procurement' && allowed.includes('purchases'))
       );
@@ -46,20 +59,20 @@ export async function canUserAccessSection(sessionUser: any, sectionKey: string)
 
   // Fallback defaults for standard roles
   if (dbUser.role === 'PURCHASE' || dbUser.role === 'WAREHOUSE') {
-    return ['purchases', 'procurement', 'products', 'dashboard'].includes(sectionKey);
+    return ['purchases', 'procurement', 'products', 'dashboard', 'eway_bills', 'eway-bills'].includes(sectionKey);
   }
   if (dbUser.role === 'SALES') {
-    // Sales person does NOT have access to purchases unless granted in allowedSections
+    // Sales person ONLY has access to standard sales workflow (NO credit_notes, eway, gst_filing, hiring)
     return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
   }
   if (dbUser.role === 'DISPATCH') {
-    return ['dashboard', 'dispatches'].includes(sectionKey);
+    return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
   }
   if (dbUser.role === 'ACCOUNTS') {
-    return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'gst-filing', 'reports'].includes(sectionKey);
+    return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing', 'reports'].includes(sectionKey);
   }
   if (dbUser.role === 'HR') {
-    return ['dashboard', 'hrms'].includes(sectionKey);
+    return ['dashboard', 'hrms', 'hiring'].includes(sectionKey);
   }
   if (dbUser.role === 'SUPPORT') {
     return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);

@@ -5,10 +5,20 @@ import { getCompanySettings } from '@/app/actions/companyActions';
 import PrintInvoiceButton from '@/components/orders/PrintInvoiceButton';
 import DownloadPdfButton from '@/components/orders/DownloadPdfButton';
 import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { canUserAccessSection } from '@/lib/authPermissions';
 
 export const dynamic = 'force-dynamic';
 
 export default async function EWayBillDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect('/login');
+
+  const hasAccess = await canUserAccessSection(session.user, 'eway_bills');
+  if (!hasAccess) redirect('/');
+
   const { id } = await params;
 
   const [ewayBill, companyRes] = await Promise.all([
