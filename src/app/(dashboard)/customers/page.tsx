@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import AddCustomerButton from '@/components/ui/AddCustomerButton';
 import CustomerTable from '@/components/ui/CustomerTable';
+import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,18 +23,9 @@ export default async function CustomersPage() {
   let whereClause = {};
 
   if (!isAdmin) {
-    try {
-      const employee = await prisma.employee.findUnique({
-        where: { userId: userId }
-      });
-
-      if (employee) {
-        whereClause = { assignedSalespersonId: employee.id };
-      } else {
-        whereClause = { id: '00000000-0000-0000-0000-000000000000' };
-      }
-    } catch (e) {
-      console.error("Employee lookup error:", e);
+    const employee = await getOrCreateEmployee(userId, session.user);
+    if (employee) {
+      whereClause = { assignedSalespersonId: employee.id };
     }
   }
 

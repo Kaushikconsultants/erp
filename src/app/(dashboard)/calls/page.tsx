@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import LogCallButton from '@/components/ui/LogCallButton';
 import CallsTableClient from '@/components/ui/CallsTableClient';
 import { getCompanySettings } from '@/app/actions/companyActions';
+import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
 export default async function CallsPage() {
   const session = await getServerSession(authOptions);
@@ -22,16 +23,10 @@ export default async function CallsPage() {
   let customerWhereClause = {};
 
   if (!isAdmin) {
-    const employee = await prisma.employee.findUnique({
-      where: { userId: userId }
-    });
-
+    const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
       callWhereClause = { employeeId: employee.id };
       customerWhereClause = { assignedSalespersonId: employee.id };
-    } else {
-      callWhereClause = { id: '00000000-0000-0000-0000-000000000000' };
-      customerWhereClause = { id: '00000000-0000-0000-0000-000000000000' };
     }
   }
 

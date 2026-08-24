@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import CreateOrderButton from '@/components/ui/CreateOrderButton';
 import OrderListClient, { UnifiedDocument } from '@/components/orders/OrderListClient';
 import { calculateIncentives, OrderData } from '@/lib/incentiveEngine';
+import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,20 +24,10 @@ export default async function OrdersPage() {
   let customerWhereClause: any = {};
 
   if (userRole === 'SALES') {
-    try {
-      const employee = await prisma.employee.findUnique({
-        where: { userId: userId }
-      });
-
-      if (employee) {
-        orderWhereClause = { salespersonId: employee.id };
-        customerWhereClause = { assignedSalespersonId: employee.id };
-      } else {
-        orderWhereClause = { id: '00000000-0000-0000-0000-000000000000' };
-        customerWhereClause = { id: '00000000-0000-0000-0000-000000000000' };
-      }
-    } catch (e) {
-      console.error("Employee lookup error:", e);
+    const employee = await getOrCreateEmployee(userId, session.user);
+    if (employee) {
+      orderWhereClause = { salespersonId: employee.id };
+      customerWhereClause = { assignedSalespersonId: employee.id };
     }
   }
 

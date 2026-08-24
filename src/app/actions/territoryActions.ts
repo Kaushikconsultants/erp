@@ -36,3 +36,36 @@ export async function createTerritory(formData: FormData) {
     return { error: "Failed to create territory" };
   }
 }
+
+export async function updateTerritory(id: string, data: { name: string; pincodes?: string; description?: string }) {
+  if (!id || !data.name) return { error: "ID and Name are required" };
+
+  try {
+    const territory = await prisma.territory.update({
+      where: { id },
+      data: {
+        name: data.name,
+        pincodes: data.pincodes,
+        description: data.description
+      }
+    });
+    revalidatePath("/settings/territories");
+    return { success: true, territory };
+  } catch (error) {
+    return { error: "Failed to update territory" };
+  }
+}
+
+export async function deleteTerritory(id: string) {
+  if (!id) return { error: "ID is required" };
+
+  try {
+    await prisma.territory.delete({
+      where: { id }
+    });
+    revalidatePath("/settings/territories");
+    return { success: true };
+  } catch (error) {
+    return { error: "Failed to delete territory" };
+  }
+}

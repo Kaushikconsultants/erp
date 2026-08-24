@@ -11,9 +11,13 @@ export default function SettingsMenu() {
   const companySettings = [
     { label: "Organization Profile & Logo", href: "/settings/organization" },
     { label: "Tax Rates & GST Settings", href: "/settings/taxes" },
-    { label: "Appearance & Theme", modal: "Theme" },
+    { label: "Subscription & Cloud Billing", href: "/settings/billing" },
+    { label: "AI Workflows & Automation", href: "/settings/workflows" },
+    { label: "Audit Logs & Security", href: "/settings/audit-logs" },
     { label: "Roles & Permissions", href: "/settings/roles" },
     { label: "Territory Management", href: "/settings/territories" },
+    { label: "SaaS Platform Admin", href: "/platform-admin" },
+    { label: "Appearance & Theme", modal: "Theme" },
     { label: "Incentive Rules", modal: "Incentive Rules" },
     { label: "Backup Data", modal: "Backup Data" }
   ];

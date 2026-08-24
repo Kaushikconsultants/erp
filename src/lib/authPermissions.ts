@@ -56,7 +56,7 @@ export async function canUserAccessSection(sessionUser: any, sectionKey: string)
     return ['dashboard', 'dispatches'].includes(sectionKey);
   }
   if (dbUser.role === 'ACCOUNTS') {
-    return ['dashboard', 'invoices', 'payments', 'orders', 'hrms'].includes(sectionKey);
+    return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'gst-filing', 'reports'].includes(sectionKey);
   }
   if (dbUser.role === 'HR') {
     return ['dashboard', 'hrms'].includes(sectionKey);

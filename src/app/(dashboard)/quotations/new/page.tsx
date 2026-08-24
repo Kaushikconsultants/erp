@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import CreateQuotationForm from '@/components/quotations/CreateQuotationForm';
 import { getCategories } from '@/app/actions/categoryActions';
 import { getCompanySettings } from '@/app/actions/companyActions';
+import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,15 +20,9 @@ export default async function NewQuotationPage() {
 
   let customerWhere: any = {};
   if (!isAdmin) {
-    try {
-      const employee = await prisma.employee.findUnique({ where: { userId } });
-      if (employee) {
-        customerWhere = { assignedSalespersonId: employee.id };
-      } else {
-        customerWhere = { id: '00000000-0000-0000-0000-000000000000' };
-      }
-    } catch (e) {
-      console.error("Employee lookup error:", e);
+    const employee = await getOrCreateEmployee(userId, session.user);
+    if (employee) {
+      customerWhere = { assignedSalespersonId: employee.id };
     }
   }
 

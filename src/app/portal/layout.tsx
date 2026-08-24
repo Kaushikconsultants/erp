@@ -1,9 +1,26 @@
+"use client";
+
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import BrandLogo from "@/components/ui/BrandLogo";
 import { ShoppingBag, FileText, FileCheck, LogOut, LayoutDashboard } from "lucide-react";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  const navLinks = [
+    { href: "/portal", label: "Overview", icon: LayoutDashboard, exact: true },
+    { href: "/portal/orders", label: "My Orders", icon: ShoppingBag },
+    { href: "/portal/invoices", label: "Invoices & Dues", icon: FileText },
+    { href: "/portal/quotations", label: "Quotes & Proposals", icon: FileCheck },
+  ];
+
+  const isLinkActive = (href: string, exact?: boolean) => {
+    if (exact) return pathname === href;
+    return pathname.startsWith(href);
+  };
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc', fontFamily: "'Inter', -apple-system, sans-serif", display: 'flex', flexDirection: 'column' }}>
       
@@ -22,18 +39,33 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
             {/* Nav Links */}
             <nav style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Link href="/portal" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', backgroundColor: '#4f46e5', color: '#ffffff', fontSize: '0.85rem', fontWeight: '700', textDecoration: 'none', boxShadow: '0 2px 6px rgba(79, 70, 229, 0.2)' }}>
-                <LayoutDashboard size={16} /> Overview
-              </Link>
-              <Link href="/portal/orders" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', color: '#475569', fontSize: '0.85rem', fontWeight: '600', textDecoration: 'none', transition: 'background-color 0.15s' }}>
-                <ShoppingBag size={16} style={{ color: '#6366f1' }} /> My Orders
-              </Link>
-              <Link href="/portal/invoices" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', color: '#475569', fontSize: '0.85rem', fontWeight: '600', textDecoration: 'none', transition: 'background-color 0.15s' }}>
-                <FileText size={16} style={{ color: '#d97706' }} /> Invoices & Dues
-              </Link>
-              <Link href="/portal/quotations" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '10px', color: '#475569', fontSize: '0.85rem', fontWeight: '600', textDecoration: 'none', transition: 'background-color 0.15s' }}>
-                <FileCheck size={16} style={{ color: '#059669' }} /> Quotes & Proposals
-              </Link>
+              {navLinks.map((item) => {
+                const IconComponent = item.icon;
+                const active = isLinkActive(item.href, item.exact);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      backgroundColor: active ? '#4f46e5' : 'transparent',
+                      color: active ? '#ffffff' : '#475569',
+                      fontSize: '0.85rem',
+                      fontWeight: active ? '700' : '600',
+                      textDecoration: 'none',
+                      boxShadow: active ? '0 2px 6px rgba(79, 70, 229, 0.2)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <IconComponent size={16} style={{ color: active ? '#ffffff' : '#64748b' }} />
+                    {item.label}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
 
@@ -68,7 +100,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
       {/* Footer */}
       <footer style={{ backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '20px 0', textAlign: 'center', fontSize: '0.8rem', color: '#94a3b8' }}>
-        &copy; {new Date().getFullYear()} Heart of Business &bull; Client Self-Service Portal. All rights reserved.
+        &copy; {new Date().getFullYear()} Client Self-Service Portal. All rights reserved.
       </footer>
     </div>
   );

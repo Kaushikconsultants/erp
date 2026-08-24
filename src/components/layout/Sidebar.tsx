@@ -28,7 +28,9 @@ import {
   FileMinus, 
   ScrollText,
   ChevronRight,
-  Landmark
+  Landmark,
+  TrendingUp,
+  Clock
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -66,7 +68,7 @@ const Sidebar = ({
       if (userRole === 'DISPATCH') return ['dispatches'].includes(sectionKey);
       if (userRole === 'SALES') return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
       if (userRole === 'HR') return ['dashboard', 'hrms'].includes(sectionKey);
-      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms'].includes(sectionKey);
+      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales'].includes(sectionKey);
       if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches'].includes(sectionKey);
       if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products'].includes(sectionKey);
       if (userRole === 'SUPPORT') return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);
@@ -96,11 +98,22 @@ const Sidebar = ({
   };
 
   // Active state indicators
-  const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/whatsapp');
+  const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups') || pathname.startsWith('/whatsapp');
   const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills') || pathname.startsWith('/gst-filing');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
   const isHrmsActive = pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || (pathname.startsWith('/expenses') && !isPurchasesActive) || pathname.startsWith('/leaves') || pathname.startsWith('/hiring');
   const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs') || pathname.startsWith('/gst-filing');
+
+  React.useEffect(() => {
+    setOpenCategories(prev => ({
+      ...prev,
+      crm: prev.crm || isCrmActive,
+      sales: prev.sales || isSalesActive,
+      purchases: prev.purchases || isPurchasesActive,
+      hrms: prev.hrms || isHrmsActive,
+      reports: prev.reports || isReportsActive
+    }));
+  }, [pathname]);
 
   return (
     <aside className="sidebar">
@@ -157,17 +170,27 @@ const Sidebar = ({
                 </Link>
 
                 {canAccess('customers') && (
-                  <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
-                    <Users size={16} />
-                    <span>Customers</span>
-                  </Link>
+                  <>
+                    <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
+                      <Users size={16} />
+                      <span>Customers</span>
+                    </Link>
+                    <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
+                      <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
+                      <span>Sales Pipeline (Leads)</span>
+                    </Link>
+                  </>
                 )}
 
                 {canAccess('calls_tasks') && (
                   <>
                     <Link href="/calls" onClick={onClose} className={`category-sub-item ${isActive('/calls') ? 'active' : ''}`}>
                       <PhoneCall size={16} />
-                      <span>Calls & Follow-ups</span>
+                      <span>Calls</span>
+                    </Link>
+                    <Link href="/follow-ups" onClick={onClose} className={`category-sub-item ${isActive('/follow-ups') ? 'active' : ''}`}>
+                      <Clock size={16} style={{ color: '#f59e0b' }} />
+                      <span>Follow-ups</span>
                     </Link>
                     <Link href="/tasks" onClick={onClose} className={`category-sub-item ${isActive('/tasks') ? 'active' : ''}`}>
                       <CheckSquare size={16} />

@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import CreateTaskButton from '@/components/ui/CreateTaskButton';
+import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
 export default async function TasksPage() {
   const session = await getServerSession(authOptions);
@@ -19,10 +20,7 @@ export default async function TasksPage() {
   let customerWhereClause = {};
 
   if (userRole === 'SALES') {
-    const employee = await prisma.employee.findUnique({
-      where: { userId: userId }
-    });
-
+    const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
       taskWhereClause = {
         OR: [
@@ -31,9 +29,6 @@ export default async function TasksPage() {
         ]
       };
       customerWhereClause = { assignedSalespersonId: employee.id };
-    } else {
-      taskWhereClause = { id: '00000000-0000-0000-0000-000000000000' };
-      customerWhereClause = { id: '00000000-0000-0000-0000-000000000000' };
     }
   }
 

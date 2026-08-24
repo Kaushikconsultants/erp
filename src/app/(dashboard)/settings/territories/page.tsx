@@ -1,48 +1,43 @@
 import React from 'react';
 import { getTerritories } from '@/app/actions/territoryActions';
-import { Map, Plus } from 'lucide-react';
+import TerritoryManagerClient from '@/components/settings/TerritoryManagerClient';
+import { Map, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+
+export const dynamic = 'force-dynamic';
 
 export default async function TerritoriesSettingsPage() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect('/login');
+
+  const userRole = (session.user as any).role;
+  const canManageSettings = (session.user as any).canManageSettings;
+
+  if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && !canManageSettings) {
+    redirect('/settings');
+  }
+
   const res = await getTerritories();
-  const territories = res.success ? res.territories : [];
+  const territories = res.success ? (res.territories as any[]) : [];
 
   return (
-    <div className="page-container">
-      <div className="dashboard-header">
+    <div className="page-container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="dashboard-header mb-6">
         <div>
-          <h1 className="page-title"><Map className="inline-block mr-2" /> Territory Management</h1>
-          <p className="page-subtitle">Manage sales territories and pincodes</p>
+          <Link href="/settings" className="text-sm text-indigo-600 hover:underline flex items-center gap-1 mb-2">
+            <ArrowLeft size={16} /> Back to Settings
+          </Link>
+          <h1 className="page-title flex items-center gap-3">
+            <Map className="text-indigo-600" /> Territory Management
+          </h1>
+          <p className="page-subtitle">Configure sales territories, regional zones, and mapped pincodes.</p>
         </div>
-        <button className="primary-btn"><Plus size={16} /> Add Territory</button>
       </div>
 
-      <div className="glass-panel p-6">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Territory Name</th>
-              <th>Pincodes</th>
-              <th>Customers</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {territories?.map((t: any) => (
-              <tr key={t.id}>
-                <td className="font-medium">{t.name}</td>
-                <td className="text-sm text-gray-500 truncate max-w-xs">{t.pincodes || 'All'}</td>
-                <td>{t._count?.customers || 0}</td>
-                <td><button className="text-blue-500 text-sm">Edit</button></td>
-              </tr>
-            ))}
-            {territories?.length === 0 && (
-              <tr>
-                <td colSpan={4} className="text-center text-muted py-4">No territories defined.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <TerritoryManagerClient initialTerritories={territories} />
     </div>
   );
 }

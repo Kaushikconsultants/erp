@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,14 +23,9 @@ export default async function FollowUpsDashboard() {
   };
 
   if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-    const employee = await prisma.employee.findUnique({
-      where: { userId: userId }
-    });
-
+    const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
       whereClause.employeeId = employee.id;
-    } else {
-      whereClause.id = '00000000-0000-0000-0000-000000000000';
     }
   }
 
