@@ -140,3 +140,80 @@ export async function updateAttendanceAdmin(employeeId: string, dateStr: string,
   }
 }
 
+// Admin-only: Edit check-in and check-out times for any employee
+export async function updateCheckInOut(
+  attendanceId: string,
+  employeeId: string,
+  dateStr: string,
+  checkInTime: string,   // "HH:MM" 24h format
+  checkOutTime: string   // "HH:MM" 24h format or ""
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { error: "Unauthorized" };
+
+    const role = (session.user as any).role;
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
+      return { error: "Only admins can edit check-in/out times." };
+    }
+
+    const [year, month, day] = dateStr.split("-").map(Number);
+
+    const buildDateTime = (timeStr: string) => {
+      const [h, m] = timeStr.split(":").map(Number);
+      return new Date(year, month - 1, day, h, m, 0);
+    };
+
+    const checkIn = checkInTime ? buildDateTime(checkInTime) : null;
+    const checkOut = checkOutTime ? buildDateTime(checkOutTime) : null;
+
+    let workingHours: number | null = null;
+    if (checkIn && checkOut) {
+      workingHours = Math.round(((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60)) * 100) / 100;
+    }
+
+    const targetDate = new Date(year, month - 1, day, 0, 0, 0);
+    const targetDateEnd = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000);
+
+    if (attendanceId) {
+      // Update existing record
+      await prisma.attendance.update({
+        where: { id: attendanceId },
+        data: {
+          checkIn: checkIn ?? undefined,
+          checkOut: checkOut ?? null,
+          workingHours: workingHours ?? undefined,
+        }
+      });
+    } else {
+      // Create new attendance record for this day
+      const existing = await prisma.attendance.findFirst({
+        where: { employeeId, date: { gte: targetDate, lt: targetDateEnd } }
+      });
+      if (existing) {
+        await prisma.attendance.update({
+          where: { id: existing.id },
+          data: { checkIn: checkIn ?? undefined, checkOut: checkOut ?? null, workingHours: workingHours ?? undefined }
+        });
+      } else {
+        await prisma.attendance.create({
+          data: {
+            employeeId,
+            date: targetDate,
+            checkIn: checkIn ?? undefined,
+            checkOut: checkOut ?? null,
+            workingHours: workingHours ?? undefined,
+            status: "Present"
+          }
+        });
+      }
+    }
+
+    revalidatePath("/attendance");
+    revalidatePath("/payroll");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update check-in/out:", error);
+    return { error: "Failed to update check-in/out times." };
+  }
+}
