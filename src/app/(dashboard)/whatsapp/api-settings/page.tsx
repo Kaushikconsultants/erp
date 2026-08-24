@@ -19,6 +19,11 @@ export default function WhatsAppAPISettingsPage() {
   const [saving, setSaving] = useState(false);
   const [resultMsg, setResultMsg] = useState<{ success: boolean; text: string } | null>(null);
 
+  // Registration State
+  const [pin, setPin] = useState("");
+  const [registering, setRegistering] = useState(false);
+  const [regResult, setRegResult] = useState<{ success: boolean; text: string } | null>(null);
+
   useEffect(() => {
     getWhatsAppApiCredentialsAction().then((res) => {
       if (res.success && res.credentials) {
@@ -61,6 +66,41 @@ export default function WhatsAppAPISettingsPage() {
       });
     }
     setSaving(false);
+  };
+
+  const handleRegisterPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phoneId || !pin || !token || !wabaId) {
+      setRegResult({ success: false, text: "Please enter your Phone ID, WABA ID, Access Token, and 6-digit PIN before registering." });
+      return;
+    }
+    
+    setRegistering(true);
+    setRegResult(null);
+    
+    try {
+      const res = await fetch('/api/whatsapp/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phoneNumberId: phoneId, 
+          wabaId: wabaId,
+          accessToken: token,
+          pin: pin 
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setRegResult({ success: true, text: "Phone number successfully registered and verified by Meta! Your credentials are saved." });
+        setIsConnected(true);
+      } else {
+        setRegResult({ success: false, text: data.error || "Failed to register phone number" });
+      }
+    } catch (error: any) {
+      setRegResult({ success: false, text: error.message || "Network error while registering" });
+    }
+    setRegistering(false);
   };
 
   return (
@@ -206,6 +246,47 @@ export default function WhatsAppAPISettingsPage() {
             >
               {saving ? <RefreshCw size={16} className="spin-icon" /> : <Save size={16} />}
               <span>{saving ? "Testing & Connecting..." : "Test & Save API Credentials"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "24px", marginTop: "24px", boxShadow: "0 4px 14px rgba(0,0,0,0.03)" }}>
+        <h2 style={{ fontSize: "18px", fontWeight: 700, margin: "0 0 4px 0", color: "#111827" }}>Meta WhatsApp Phone Registration</h2>
+        <p style={{ fontSize: "13px", color: "#6b7280", margin: "0 0 20px 0" }}>Register your business phone number with Meta API. Make sure your Phone ID, WABA ID, and Access Token are filled above. Requires a 6-digit PIN.</p>
+
+        {regResult && (
+          <div style={{ background: regResult.success ? "#dcfce7" : "#fee2e2", border: `1px solid ${regResult.success ? "#86efac" : "#fca5a5"}`, color: regResult.success ? "#166534" : "#991b1b", padding: "12px 16px", borderRadius: "8px", fontSize: "13.5px", fontWeight: 600, marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
+            {regResult.success ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+            <span>{regResult.text}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleRegisterPhone} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div>
+            <label style={{ fontSize: "12.5px", fontWeight: 700, display: "block", marginBottom: "6px", color: "#374151" }}>
+              6-Digit Registration PIN <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <input
+              type="password"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="e.g. 123456"
+              required
+              maxLength={6}
+              pattern="\d{6}"
+              style={{ width: "100%", maxWidth: "300px", padding: "10px", borderRadius: "6px", border: "1px solid #d1d5db", fontSize: "13.5px" }}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
+            <button
+              type="submit"
+              disabled={registering}
+              style={{ display: "flex", alignItems: "center", gap: "6px", background: registering ? "#9ca3af" : "#2563eb", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "6px", fontSize: "13.5px", fontWeight: 700, cursor: registering ? "not-allowed" : "pointer" }}
+            >
+              {registering ? <RefreshCw size={16} className="spin-icon" /> : <Send size={16} />}
+              <span>{registering ? "Registering with Meta..." : "Register Phone Number"}</span>
             </button>
           </div>
         </form>
