@@ -558,11 +558,16 @@ export async function convertQuotationToOrder(
 
     if (!quotation) return { error: "Quotation not found" };
 
+    // If quotation was already Confirmed, reuse the stored receivedAmount from the Confirm step
     const paymentOption = confirmationData?.paymentOption || 'FULL';
     let effectiveReceived = 0;
     let overridePaymentStatus = "Unpaid";
 
-    if (paymentOption === 'FULL') {
+    if (quotation.status === 'Confirmed' && quotation.receivedAmount > 0) {
+      // Use the amount already confirmed and stored
+      effectiveReceived = quotation.receivedAmount;
+      overridePaymentStatus = effectiveReceived >= quotation.totalValue ? "Paid" : "Partially Paid";
+    } else if (paymentOption === 'FULL') {
       effectiveReceived = quotation.totalValue;
       overridePaymentStatus = "Paid";
     } else if (paymentOption === 'TOKEN') {
@@ -573,23 +578,12 @@ export async function convertQuotationToOrder(
       effectiveReceived = amt;
       overridePaymentStatus = amt >= quotation.totalValue ? "Paid" : "Partially Paid";
     } else if (paymentOption === 'CREDIT') {
-      const isCreditAllowed = quotation.customer?.status?.toLowerCase() === 'credit' || 
-                              quotation.customer?.preferredPaymentMethod?.toLowerCase() === 'credit';
       effectiveReceived = 0;
       overridePaymentStatus = "Credit";
     }
 
-    let overrideDiscount = quotation.itemDiscount + quotation.additionalDiscount;
-    if (discountSlab === '0') {
-      overrideDiscount = 0;
-    } else if (discountSlab === '1-15') {
-      overrideDiscount = 10;
-    } else if (discountSlab === '>15') {
-      overrideDiscount = 20;
-    } else if (discountSlab === 'credit') {
-      overrideDiscount = 20;
-      overridePaymentStatus = "Credit";
-    }
+    // Store actual monetary discount (not slab %) in the order record
+    const overrideDiscount = quotation.itemDiscount + quotation.additionalDiscount;
 
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
@@ -682,7 +676,7 @@ export async function convertQuotationToOrder(
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         subtotal: quotation.subtotal,
         taxAmount: quotation.taxTotal,
-        discountAmount: overrideDiscount,
+        discountAmount: quotation.itemDiscount + quotation.additionalDiscount, // actual ₹ discount, not slab %
         totalAmount: quotation.totalValue,
         amountPaid: effectiveReceived,
         amountDue: Math.max(0, quotation.totalValue - effectiveReceived),
@@ -691,6 +685,7 @@ export async function convertQuotationToOrder(
         notes: `Auto-generated on converting Quotation #${quotation.quotationNumber}`
       }
     });
+
 
     // If advance payment was received, record Payment transaction
     if (effectiveReceived > 0) {

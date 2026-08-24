@@ -64,7 +64,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const totalSgst = order.sgst || hsnSummary.reduce((acc, row) => acc + row.sgstAmount, 0);
   const totalIgst = order.igst || hsnSummary.reduce((acc, row) => acc + row.igstAmount, 0);
   const totalTax = totalCgst + totalSgst + totalIgst;
-  const grandTotal = Math.round(subtotal - order.discount + totalTax);
+
+  // Use the stored totalValue which was correctly computed from the quotation
+  const grandTotal = order.totalValue || Math.round(subtotal + totalTax);
+
+  // Actual monetary discount = gross subtotal - (grand total - tax - shipping)
+  // Simply: what was charged vs what the rate*qty sum is
+  const grossItemsTotal = order.items.reduce((acc, item) => acc + (item.rate * item.quantity), 0);
+  const actualDiscount = Math.round(grossItemsTotal - (grandTotal - totalTax - (order.shippingCharges || 0)));
 
   return (
     <div style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', padding: '40px 20px' }} className="invoice-container-wrapper">
@@ -180,7 +187,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </thead>
           <tbody>
             {order.items.map((item, idx) => {
-              const taxable = item.rate * item.quantity;
+              // Use item.total if available (already has discount applied), else fall back to rate * qty
+              const taxable = item.total || (item.rate * item.quantity);
               return (
                 <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <td style={{ padding: '12px', color: '#6b7280' }}>{idx + 1}</td>
@@ -229,10 +237,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                   <td style={{ padding: '6px 0', color: '#4b5563' }}>Taxable Amount:</td>
                   <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>₹{subtotal.toLocaleString('en-IN')}</td>
                 </tr>
-                {order.discount > 0 && (
+                {actualDiscount > 0 && (
                   <tr>
                     <td style={{ padding: '6px 0', color: '#16a34a' }}>Discount:</td>
-                    <td style={{ padding: '6px 0', textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>-₹{order.discount.toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '6px 0', textAlign: 'right', color: '#16a34a', fontWeight: 600 }}>-₹{actualDiscount.toLocaleString('en-IN')}</td>
                   </tr>
                 )}
                 {isInterstate ? (
