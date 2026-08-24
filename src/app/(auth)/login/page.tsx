@@ -176,7 +176,15 @@ function LoginForm() {
           Set up a dedicated multi-tenant workspace with full ERP, CRM, Invoicing, and live GST tools.
         </p>
 
-        <Link href="/register" className="signup-btn hover-lift">
+        <Link 
+          href="/register" 
+          className="signup-btn hover-lift"
+          onClick={(e) => {
+            e.preventDefault();
+            router.push("/register");
+          }}
+          style={{ cursor: 'pointer' }}
+        >
           <span>Create Free Account</span>
           <ArrowRight size={15} />
         </Link>
@@ -184,7 +192,14 @@ function LoginForm() {
 
       {/* Pricing link */}
       <div style={{ textAlign: 'center', marginTop: '4px' }}>
-        <Link href="/pricing" style={{ fontSize: '0.8rem', color: '#64748b', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+        <Link 
+          href="/pricing" 
+          onClick={(e) => {
+            e.preventDefault();
+            router.push("/pricing");
+          }}
+          style={{ fontSize: '0.8rem', color: '#64748b', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+        >
           View all plans & pricing options <ArrowRight size={12} />
         </Link>
       </div>
