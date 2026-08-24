@@ -43,6 +43,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     notFound();
   }
 
+  const userRole = (session.user as any).role || 'SALES';
+  const userId = (session.user as any).id;
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
+  if (!isSuperOrAdmin) {
+    const employee = await prisma.employee.findUnique({ where: { userId } });
+    if (employee && order.salespersonId !== employee.id && order.customer?.assignedSalespersonId !== employee.id) {
+      redirect('/orders');
+    }
+  }
+
   // Check for existing invoice
   const existingInvoice = await prisma.invoice.findFirst({ where: { orderId: id } });
 

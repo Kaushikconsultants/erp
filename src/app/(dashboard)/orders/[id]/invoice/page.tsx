@@ -6,7 +6,14 @@ import { numberToWordsINR } from '@/lib/gstUtils';
 import PrintInvoiceButton from '@/components/orders/PrintInvoiceButton';
 import DownloadPdfButton from '@/components/orders/DownloadPdfButton';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) redirect('/login');
+
   const { id } = await params;
 
   const [order, companyRes] = await Promise.all([
@@ -22,6 +29,17 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   ]);
 
   if (!order) notFound();
+
+  const userRole = (session.user as any).role || 'SALES';
+  const userId = (session.user as any).id;
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
+  if (!isSuperOrAdmin) {
+    const employee = await prisma.employee.findUnique({ where: { userId } });
+    if (employee && order.salespersonId !== employee.id && order.customer?.assignedSalespersonId !== employee.id) {
+      redirect('/orders');
+    }
+  }
 
   const company = companyRes.settings || {
     companyName: "Espon Clothing Private Limited",

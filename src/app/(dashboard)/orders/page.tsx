@@ -19,15 +19,32 @@ export default async function OrdersPage() {
 
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
 
   let orderWhereClause: any = {};
   let customerWhereClause: any = {};
+  let quotationWhereClause: any = {};
 
-  if (userRole === 'SALES') {
+  if (!isSuperOrAdmin) {
     const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
-      orderWhereClause = { salespersonId: employee.id };
+      orderWhereClause = {
+        OR: [
+          { salespersonId: employee.id },
+          { customer: { assignedSalespersonId: employee.id } }
+        ]
+      };
       customerWhereClause = { assignedSalespersonId: employee.id };
+      quotationWhereClause = {
+        OR: [
+          { salespersonId: employee.id },
+          { customer: { assignedSalespersonId: employee.id } }
+        ]
+      };
+    } else {
+      orderWhereClause = { salespersonId: 'unassigned' };
+      customerWhereClause = { assignedSalespersonId: 'unassigned' };
+      quotationWhereClause = { salespersonId: 'unassigned' };
     }
   }
 
@@ -44,6 +61,7 @@ export default async function OrdersPage() {
         orderBy: { createdAt: 'desc' },
         include: {
           customer: true,
+          salesperson: { include: { user: true } },
           items: { include: { product: true } }
         }
       }),
@@ -57,11 +75,12 @@ export default async function OrdersPage() {
         where: { stockQuantity: { gt: 0 } },
         orderBy: { name: 'asc' }
       }),
-      (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN')
-        ? prisma.employee.findMany({ include: { user: true }, orderBy: { user: { name: 'asc' } } })
-        : Promise.resolve([]),
+      prisma.employee.findMany({
+        include: { user: true },
+        orderBy: { user: { name: 'asc' } }
+      }),
       prisma.quotation.findMany({
-        where: userRole === 'SALES' ? { salespersonId: userId } : {},
+        where: quotationWhereClause,
         orderBy: { createdAt: 'desc' },
         include: {
           customer: true,
