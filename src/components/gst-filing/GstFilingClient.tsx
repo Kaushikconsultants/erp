@@ -142,6 +142,11 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
 
   // Handle Live GSTR-1 Sync to Portal
   const handleSyncGstr1 = async () => {
+    if (!isSessionActive) {
+      setIsLoginModalOpen(true);
+      showToast("🔒 Authentication Required: Please login to GST Portal first.");
+      return;
+    }
     setIsSyncingGstr1(true);
     const res = await syncGstr1ToPortal(periodInfo.financialYear, periodInfo.periodKey);
     setIsSyncingGstr1(false);
@@ -149,12 +154,20 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
       showToast(res.message || "GSTR-1 successfully uploaded to GST Portal!");
       window.location.reload();
     } else {
-      alert("Portal Error: " + res.error);
+      if ((res as any).requireLogin) {
+        setIsLoginModalOpen(true);
+      }
+      alert(res.error || "Portal Error");
     }
   };
 
   // Handle Live GSTR-2B Fetch from Portal
   const handleFetchGstr2b = async () => {
+    if (!isSessionActive) {
+      setIsLoginModalOpen(true);
+      showToast("🔒 Authentication Required: Please login to GST Portal first.");
+      return;
+    }
     setIsFetching2B(true);
     const res = await fetchGstr2bFromPortal(periodInfo.financialYear, periodInfo.periodKey);
     setIsFetching2B(false);
@@ -162,12 +175,20 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
       showToast(res.message || "GSTR-2B successfully fetched and reconciled!");
       window.location.reload();
     } else {
-      alert("Portal Error: " + res.error);
+      if ((res as any).requireLogin) {
+        setIsLoginModalOpen(true);
+      }
+      alert(res.error || "Portal Error");
     }
   };
 
   // Handle GSTR-3B Filing
   const handleFileGstr3b = async () => {
+    if (!isSessionActive) {
+      setIsLoginModalOpen(true);
+      showToast("🔒 Authentication Required: Please login to GST Portal first.");
+      return;
+    }
     if (!confirm(`Confirm filing of GSTR-3B for ${periodInfo.period} ${periodInfo.financialYear} with Net Tax payment of ₹${metrics.netCashLiability?.toLocaleString('en-IN')}?`)) {
       return;
     }
@@ -178,7 +199,10 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
       showToast(res.message || "GSTR-3B successfully filed!");
       window.location.reload();
     } else {
-      alert("Filing Error: " + res.error);
+      if ((res as any).requireLogin) {
+        setIsLoginModalOpen(true);
+      }
+      alert(res.error || "Filing Error");
     }
   };
 
@@ -579,8 +603,16 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
                   Taxable: ₹{metrics.totalOutwardTaxable?.toLocaleString('en-IN') || "0"} | Tax: ₹{metrics.totalOutputTax?.toLocaleString('en-IN') || "0"}
                 </div>
               </div>
-              <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '0.68rem', fontWeight: 600, backgroundColor: returnStatuses.gstr1?.status === 'Filed' ? '#ecfdf5' : '#eff6ff', color: returnStatuses.gstr1?.status === 'Filed' ? '#059669' : '#2563eb' }}>
-                {returnStatuses.gstr1?.status || "Ready"}
+              <span style={{
+                padding: '2px 8px',
+                borderRadius: '8px',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                backgroundColor: returnStatuses.gstr1?.status === 'Uploaded & Validated' || returnStatuses.gstr1?.status === 'Filed' ? '#ecfdf5' : '#f1f5f9',
+                color: returnStatuses.gstr1?.status === 'Uploaded & Validated' || returnStatuses.gstr1?.status === 'Filed' ? '#059669' : '#475569',
+                border: '1px solid #e2e8f0'
+              }}>
+                {returnStatuses.gstr1?.status || (isSessionActive ? "Ready To Upload" : "Not Synced (Offline)")}
               </span>
             </div>
 
@@ -618,8 +650,16 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
                   Eligible ITC: ₹{metrics.totalItcAvailable?.toLocaleString('en-IN') || "0"} ({metrics.itcMatchRate || 100}% Matched)
                 </div>
               </div>
-              <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '0.68rem', fontWeight: 600, backgroundColor: '#ecfdf5', color: '#059669' }}>
-                Reconciled
+              <span style={{
+                padding: '2px 8px',
+                borderRadius: '8px',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                backgroundColor: isSessionActive && returnStatuses.gstr2b?.status === 'Reconciled' ? '#ecfdf5' : '#f1f5f9',
+                color: isSessionActive && returnStatuses.gstr2b?.status === 'Reconciled' ? '#059669' : '#475569',
+                border: '1px solid #e2e8f0'
+              }}>
+                {isSessionActive ? (returnStatuses.gstr2b?.status || "Fetch Required") : "Not Synced (Offline)"}
               </span>
             </div>
 
@@ -648,8 +688,16 @@ export default function GstFilingClient({ initialData }: GstFilingClientProps) {
                   ITC Offset: ₹{metrics.totalItcAvailable?.toLocaleString('en-IN') || "0"} | Net Cash: ₹{metrics.netCashLiability?.toLocaleString('en-IN') || "0"}
                 </div>
               </div>
-              <span style={{ padding: '2px 8px', borderRadius: '8px', fontSize: '0.68rem', fontWeight: 600, backgroundColor: returnStatuses.gstr3b?.status === 'Filed' ? '#ecfdf5' : '#fff1f2', color: returnStatuses.gstr3b?.status === 'Filed' ? '#059669' : '#e11d48' }}>
-                {returnStatuses.gstr3b?.status || "Draft"}
+              <span style={{
+                padding: '2px 8px',
+                borderRadius: '8px',
+                fontSize: '0.68rem',
+                fontWeight: 600,
+                backgroundColor: returnStatuses.gstr3b?.status === 'Filed' ? '#ecfdf5' : '#fef3c7',
+                color: returnStatuses.gstr3b?.status === 'Filed' ? '#059669' : '#d97706',
+                border: '1px solid #fef3c7'
+              }}>
+                {returnStatuses.gstr3b?.status || (isSessionActive ? "Draft" : "Pending Login & Filing")}
               </span>
             </div>
 

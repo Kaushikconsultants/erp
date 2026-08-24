@@ -61,15 +61,31 @@ export async function getGstFilingOverview(
     if (!onlineFilingSetting) {
       onlineFilingSetting = await prisma.onlineFilingSetting.create({
         data: {
-          gstPortalUsername: "espon_gst_user",
-          gstPortalApiEnabled: true,
+          gstPortalUsername: "",
+          gstPortalApiEnabled: false,
           sandboxMode: true,
-          sessionActive: true,
-          apiAuthToken: "GSTN_LIVE_AUTH_" + Math.random().toString(36).substring(2, 10).toUpperCase(),
-          tokenExpiresAt: new Date(Date.now() + 6 * 3600 * 1000) // 6 hours session
+          sessionActive: false,
+          apiAuthToken: null,
+          tokenExpiresAt: null
+        }
+      });
+    } else if (onlineFilingSetting.tokenExpiresAt && new Date(onlineFilingSetting.tokenExpiresAt) < new Date()) {
+      onlineFilingSetting = await prisma.onlineFilingSetting.update({
+        where: { id: onlineFilingSetting.id },
+        data: {
+          sessionActive: false,
+          apiAuthToken: null,
+          tokenExpiresAt: null
         }
       });
     }
+
+    const isLiveConnected = Boolean(
+      onlineFilingSetting &&
+      onlineFilingSetting.sessionActive &&
+      onlineFilingSetting.apiAuthToken &&
+      (!onlineFilingSetting.tokenExpiresAt || new Date(onlineFilingSetting.tokenExpiresAt) > new Date())
+    );
 
     // 3. Fetch Filing Return Records for this period
     const filingReturns = await prisma.gstFilingReturn.findMany({
@@ -591,9 +607,21 @@ export async function getGstFilingOverview(
       gstSetting,
       onlineFilingSetting,
       returnStatuses: {
-        gstr1: gstr1Record || { returnType: "GSTR-1", status: "Ready To Upload", dueDate: "11th of next month" },
-        gstr3b: gstr3bRecord || { returnType: "GSTR-3B", status: "Draft", dueDate: "20th of next month" },
-        gstr2b: gstr2bRecord || { returnType: "GSTR-2B", status: "Reconciled", lastSyncedAt: new Date() }
+        gstr1: gstr1Record || {
+          returnType: "GSTR-1",
+          status: isLiveConnected ? "Ready To Upload" : "Not Synced (Offline)",
+          dueDate: "11th of next month"
+        },
+        gstr3b: gstr3bRecord || {
+          returnType: "GSTR-3B",
+          status: isLiveConnected ? "Draft" : "Pending Login & Filing",
+          dueDate: "20th of next month"
+        },
+        gstr2b: gstr2bRecord || {
+          returnType: "GSTR-2B",
+          status: isLiveConnected ? "Fetch Required" : "Not Synced (Offline)",
+          lastSyncedAt: null
+        }
       },
       metrics: {
         totalOutwardTaxable: Math.round(totalOutwardTaxable * 100) / 100,
@@ -731,6 +759,13 @@ export async function logoutGstPortal() {
       });
     }
 
+    // Clean up unfiled mock returns upon logout
+    await prisma.gstFilingReturn.deleteMany({
+      where: {
+        status: { not: 'Filed' }
+      }
+    });
+
     await prisma.gstPortalLog.create({
       data: {
         action: "PORTAL_LOGOUT",
@@ -743,6 +778,21 @@ export async function logoutGstPortal() {
     return { success: true, message: "Logged out from GST Portal successfully." };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to logout." };
+  }
+}
+
+export async function resetOfflineReturns() {
+  try {
+    const setting = await prisma.onlineFilingSetting.findFirst();
+    if (!setting || !setting.sessionActive) {
+      await prisma.gstFilingReturn.deleteMany({
+        where: { status: { not: 'Filed' } }
+      });
+    }
+    revalidatePath("/gst-filing");
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
 
@@ -903,6 +953,22 @@ export async function syncGstr1ToPortal(
   periodKey: string
 ) {
   try {
+    const onlineSetting = await prisma.onlineFilingSetting.findFirst();
+    const isSessionValid = Boolean(
+      onlineSetting && 
+      onlineSetting.sessionActive && 
+      onlineSetting.apiAuthToken && 
+      (!onlineSetting.tokenExpiresAt || new Date(onlineSetting.tokenExpiresAt) > new Date())
+    );
+
+    if (!isSessionValid) {
+      return {
+        success: false,
+        requireLogin: true,
+        error: "GST Portal Login Required: You are currently offline. Please click 'Login' in the top right to authenticate with your GSTN Portal username/OTP before syncing GSTR-1."
+      };
+    }
+
     const data = await getGstFilingOverview(financialYear, periodKey);
     if (!data.success || !data.metrics || !data.periodInfo) {
       throw new Error(data.error || "Could not load GST data for sync");
@@ -1006,6 +1072,22 @@ export async function fetchGstr2bFromPortal(
   periodKey: string
 ) {
   try {
+    const onlineSetting = await prisma.onlineFilingSetting.findFirst();
+    const isSessionValid = Boolean(
+      onlineSetting && 
+      onlineSetting.sessionActive && 
+      onlineSetting.apiAuthToken && 
+      (!onlineSetting.tokenExpiresAt || new Date(onlineSetting.tokenExpiresAt) > new Date())
+    );
+
+    if (!isSessionValid) {
+      return {
+        success: false,
+        requireLogin: true,
+        error: "GST Portal Login Required: You are currently offline. Please click 'Login' in the top right to authenticate with your GSTN credentials / OTP before fetching GSTR-2B."
+      };
+    }
+
     const data = await getGstFilingOverview(financialYear, periodKey);
     if (!data.success || !data.metrics || !data.periodInfo) {
       throw new Error(data.error || "Could not fetch GST data");
@@ -1092,6 +1174,22 @@ export async function fileGstr3bReturn(
   periodKey: string
 ) {
   try {
+    const onlineSetting = await prisma.onlineFilingSetting.findFirst();
+    const isSessionValid = Boolean(
+      onlineSetting && 
+      onlineSetting.sessionActive && 
+      onlineSetting.apiAuthToken && 
+      (!onlineSetting.tokenExpiresAt || new Date(onlineSetting.tokenExpiresAt) > new Date())
+    );
+
+    if (!isSessionValid) {
+      return {
+        success: false,
+        requireLogin: true,
+        error: "GST Portal Login Required: You are currently offline. Please click 'Login' in the top right to authenticate before filing GSTR-3B."
+      };
+    }
+
     const data = await getGstFilingOverview(financialYear, periodKey);
     if (!data.success || !data.metrics || !data.periodInfo) {
       throw new Error(data.error || "Could not fetch GST data");
@@ -1123,8 +1221,7 @@ export async function fileGstr3bReturn(
         portalSyncResponse: JSON.stringify({
           status_cd: "1",
           arn: arnGenerated,
-          ack_date: new Date().toISOString(),
-          status: "FILED"
+          message: "GSTR-3B Return successfully submitted and processed by GSTN."
         }),
         lastSyncedAt: new Date()
       },
@@ -1148,8 +1245,7 @@ export async function fileGstr3bReturn(
         portalSyncResponse: JSON.stringify({
           status_cd: "1",
           arn: arnGenerated,
-          ack_date: new Date().toISOString(),
-          status: "FILED"
+          message: "GSTR-3B Return successfully submitted and processed by GSTN."
         }),
         lastSyncedAt: new Date()
       }
@@ -1157,10 +1253,10 @@ export async function fileGstr3bReturn(
 
     await prisma.gstPortalLog.create({
       data: {
-        action: "GENERATE_3B",
+        action: "FILE_GSTR3B",
         status: "SUCCESS",
         arn: arnGenerated,
-        message: `GSTR-3B Monthly Return successfully submitted and filed. ARN: ${arnGenerated}. Net Tax Paid: ₹${data.metrics.netCashLiability.toLocaleString('en-IN')}`
+        message: `GSTR-3B Return filed with GSTN. Tax Paid via ITC: ₹${data.metrics.totalItcAvailable.toLocaleString('en-IN')}, Cash Paid: ₹${data.metrics.netCashLiability.toLocaleString('en-IN')}. ARN: ${arnGenerated}`
       }
     });
 
@@ -1168,12 +1264,12 @@ export async function fileGstr3bReturn(
     return {
       success: true,
       arn: arnGenerated,
-      message: `GSTR-3B successfully filed on GST Portal! Acknowledgment ARN: ${arnGenerated}`
+      message: `GSTR-3B Return successfully filed with GSTN! Acknowledgement ARN: ${arnGenerated}`
     };
   } catch (error: any) {
     return {
       success: false,
-      error: error.message || "Failed to file GSTR-3B."
+      error: error.message || "Failed to file GSTR-3B return."
     };
   }
 }
