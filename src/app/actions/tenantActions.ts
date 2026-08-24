@@ -111,6 +111,19 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
       }
     });
 
+    // 2b. Create Employee profile for Super Admin User
+    await prisma.employee.create({
+      data: {
+        userId: adminUser.id,
+        employeeId: "EMP-001",
+        department: "Executive",
+        designation: "Managing Director",
+        employmentStatus: "Active",
+        joiningDate: new Date(),
+        organizationId: organization.id,
+      }
+    });
+
     // 3. Create Default CompanySettings for this organization
     await prisma.companySettings.create({
       data: {

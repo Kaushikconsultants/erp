@@ -22,6 +22,8 @@ import {
 import { registerNewBusiness, getLivePlanPricing } from '@/app/actions/tenantActions';
 import { PLAN_PRICING } from '@/lib/planConfig';
 
+import BrandLogo from '@/components/ui/BrandLogo';
+
 function RegisterWizardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -116,13 +118,8 @@ function RegisterWizardContent() {
       
       {/* Header */}
       <header style={{ padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-        <Link href="/pricing" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-          <div style={{ width: '34px', height: '34px', borderRadius: '10px', background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>
-            E
-          </div>
-          <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
-            Espon ERP
-          </span>
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <BrandLogo size="md" showSubtitle={true} />
         </Link>
 
         <div style={{ fontSize: '0.875rem', color: '#64748b' }}>
