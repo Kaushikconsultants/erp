@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-export const GST_STATE_CODES: Record<string, string> = {
+const GST_STATE_CODES: Record<string, string> = {
   "01": "Jammu and Kashmir",
   "02": "Himachal Pradesh",
   "03": "Punjab",
