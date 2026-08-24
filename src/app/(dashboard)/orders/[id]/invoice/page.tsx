@@ -55,8 +55,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const receivedAmount = order.paymentReceived || 0;
   const balanceDue = Math.max(0, grandTotal - receivedAmount);
 
-  // Check if any item has a discount
-  const hasDiscount = order.items.some(item => (item.discountPercent || 0) > 0) || order.discount > 0;
+  // Check if order has a discount (order-level, not per-item — OrderItem has no discountPercent)
+  const hasDiscount = order.discount > 0;
 
   return (
     <div style={{ backgroundColor: '#e5e7eb', minHeight: '100vh', padding: '40px 20px' }}>
@@ -199,7 +199,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 </td>
                 {hasDiscount && (
                   <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                    {(item.discountPercent || 0) > 0 ? `${(item.discountPercent || 0).toFixed(2)}%` : '0.00%'}
+                    —
                   </td>
                 )}
                 {isInterstate ? (
