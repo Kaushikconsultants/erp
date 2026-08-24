@@ -20,10 +20,33 @@ interface AttendanceCardProps {
   today: Date;
 }
 
-const toTimeInput = (dt: string | Date | null | undefined): string => {
+// Convert a Date/string to 12h display string e.g. "09:30 AM"
+const toTimeDisplay = (dt: string | Date | null | undefined): string => {
   if (!dt) return '';
   const d = new Date(dt);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  let h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+};
+
+// Split a Date into {h12, min, ampm} parts
+const to12hParts = (dt: string | Date | null | undefined) => {
+  if (!dt) return { h: '09', m: '00', ampm: 'AM' };
+  const d = new Date(dt);
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return { h: String(h).padStart(2, '0'), m: String(d.getMinutes()).padStart(2, '0'), ampm };
+};
+
+// Convert 12h parts back to "HH:MM" 24h string for server
+const to24h = (h: string, m: string, ampm: string): string => {
+  let hour = parseInt(h);
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, '0')}:${m}`;
 };
 
 export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today }: AttendanceCardProps) {
@@ -31,8 +54,15 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
   const [activeTab, setActiveTab] = useState<'status' | 'timing'>('status');
   const [loading, setLoading] = useState(false);
   const [newStatus, setNewStatus] = useState("Present");
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
+  // Check-in 12h parts
+  const [ciH, setCiH] = useState('09');
+  const [ciM, setCiM] = useState('00');
+  const [ciAmpm, setCiAmpm] = useState<'AM'|'PM'>('AM');
+  // Check-out 12h parts
+  const [coH, setCoH] = useState('06');
+  const [coM, setCoM] = useState('00');
+  const [coAmpm, setCoAmpm] = useState<'AM'|'PM'>('PM');
+  const [hasCheckOut, setHasCheckOut] = useState(false);
 
   const attendanceMap: Record<number, any> = {};
   emp.attendances.forEach((a: any) => {
@@ -48,8 +78,11 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
     setEditingDay({ day, record });
     setActiveTab('status');
     setNewStatus(record ? record.status : "Present");
-    setCheckIn(toTimeInput(record?.checkIn));
-    setCheckOut(toTimeInput(record?.checkOut));
+    const ci = to12hParts(record?.checkIn);
+    setCiH(ci.h); setCiM(ci.m); setCiAmpm(ci.ampm as 'AM'|'PM');
+    const co = to12hParts(record?.checkOut);
+    setCoH(co.h); setCoM(co.m); setCoAmpm(co.ampm as 'AM'|'PM');
+    setHasCheckOut(!!record?.checkOut);
   };
 
   const dateStr = editingDay
@@ -68,15 +101,18 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
   const handleSaveTiming = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingDay) return;
-    if (!checkIn) { alert('Check-in time is required.'); return; }
-    if (checkOut && checkOut <= checkIn) { alert('Check-out must be after check-in.'); return; }
+    const checkIn24 = to24h(ciH, ciM, ciAmpm);
+    const checkOut24 = hasCheckOut ? to24h(coH, coM, coAmpm) : '';
+    if (hasCheckOut && checkOut24 <= checkIn24) {
+      alert('Check-out must be after check-in.'); return;
+    }
     setLoading(true);
     const res = await updateCheckInOut(
       editingDay.record?.id || '',
       emp.id,
       dateStr,
-      checkIn,
-      checkOut
+      checkIn24,
+      checkOut24
     );
     setLoading(false);
     if ((res as any).error) { alert((res as any).error); return; }
@@ -86,11 +122,10 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
   // Compute working hours for display in cell tooltip
   const getWorkingHours = (record: any) => {
     if (!record?.checkIn) return '';
-    const ci = new Date(record.checkIn);
     const co = record.checkOut ? new Date(record.checkOut) : null;
-    if (!co) return `In: ${toTimeInput(ci)}`;
-    const hrs = ((co.getTime() - ci.getTime()) / (1000 * 60 * 60)).toFixed(1);
-    return `${toTimeInput(ci)} – ${toTimeInput(co)} (${hrs}h)`;
+    if (!co) return `In: ${toTimeDisplay(record.checkIn)}`;
+    const hrs = ((co.getTime() - new Date(record.checkIn).getTime()) / (1000 * 60 * 60)).toFixed(1);
+    return `${toTimeDisplay(record.checkIn)} – ${toTimeDisplay(co)} (${hrs}h)`;
   };
 
   return (
@@ -137,8 +172,8 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
               {day}
               {hasTime && (
                 <div style={{ fontSize: '8px', opacity: 0.85, lineHeight: 1, marginTop: '2px' }}>
-                  {toTimeInput(record.checkIn)}
-                  {record.checkOut ? `–${toTimeInput(record.checkOut)}` : '…'}
+                  {toTimeDisplay(record.checkIn)}
+                  {record.checkOut ? `–${toTimeDisplay(record.checkOut)}` : '…'}
                 </div>
               )}
             </div>
@@ -215,45 +250,80 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
             {/* Tab: Timing */}
             {activeTab === 'timing' && (
               <form onSubmit={handleSaveTiming} className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div className="vertical-group">
-                    <label>Check-in Time <span style={{ color: '#ef4444' }}>*</span></label>
-                    <input
-                      type="time"
-                      value={checkIn}
-                      onChange={e => setCheckIn(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="vertical-group">
-                    <label>Check-out Time</label>
-                    <input
-                      type="time"
-                      value={checkOut}
-                      onChange={e => setCheckOut(e.target.value)}
-                    />
-                  </div>
-                </div>
 
-                {checkIn && checkOut && checkOut > checkIn && (
-                  <div style={{
-                    marginTop: '10px', padding: '8px 12px', borderRadius: '6px',
-                    background: 'rgba(34,197,94,0.1)', border: '1px solid #bbf7d0',
-                    fontSize: '0.82rem', color: '#166534', fontWeight: 600
-                  }}>
-                    ⏱ Working hours: {
-                      (() => {
-                        const [ih, im] = checkIn.split(':').map(Number);
-                        const [oh, om] = checkOut.split(':').map(Number);
-                        const hrs = (oh * 60 + om - ih * 60 - im) / 60;
-                        return `${hrs.toFixed(1)} hrs`;
-                      })()
-                    }
-                  </div>
+                {/* 12h Time Picker helper */}
+                {(['ci', 'co'] as const).map(key => {
+                  const isCI = key === 'ci';
+                  const h = isCI ? ciH : coH;
+                  const m = isCI ? ciM : coM;
+                  const ampm = isCI ? ciAmpm : coAmpm;
+                  const setH = isCI ? setCiH : setCoH;
+                  const setM = isCI ? setCiM : setCoM;
+                  const setAmpm = isCI ? setCiAmpm : setCoAmpm;
+                  if (!isCI && !hasCheckOut) return null;
+                  return (
+                    <div key={key} className="vertical-group" style={{ marginBottom: '14px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
+                        <span>{isCI ? 'Check-in Time' : 'Check-out Time'}
+                          {isCI && <span style={{ color: '#ef4444' }}> *</span>}
+                        </span>
+                        {!isCI && (
+                          <button type="button" onClick={() => setHasCheckOut(false)}
+                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
+                            ✕ Remove
+                          </button>
+                        )}
+                      </label>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {/* Hour */}
+                        <select value={h} onChange={e => setH(e.target.value)}
+                          style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.9rem', textAlign: 'center' }}>
+                          {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(hh => (
+                            <option key={hh} value={hh}>{hh}</option>
+                          ))}
+                        </select>
+                        <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>:</span>
+                        {/* Minute */}
+                        <select value={m} onChange={e => setM(e.target.value)}
+                          style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.9rem', textAlign: 'center' }}>
+                          {Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0')).map(mm => (
+                            <option key={mm} value={mm}>{mm}</option>
+                          ))}
+                        </select>
+                        {/* AM/PM */}
+                        <select value={ampm} onChange={e => setAmpm(e.target.value as 'AM'|'PM')}
+                          style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.9rem', fontWeight: 700 }}>
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {!hasCheckOut && (
+                  <button type="button" onClick={() => setHasCheckOut(true)}
+                    style={{ marginBottom: '12px', background: 'none', border: '1px dashed var(--accent-primary)', borderRadius: '6px', color: 'var(--accent-primary)', padding: '6px 14px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+                    + Add Check-out Time
+                  </button>
                 )}
 
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                  ⚠️ Admin override — this will update the employee's check-in/out record for {dateStr}.
+                {hasCheckOut && (() => {
+                  const ci24 = to24h(ciH, ciM, ciAmpm);
+                  const co24 = to24h(coH, coM, coAmpm);
+                  if (co24 <= ci24) return null;
+                  const [ih, im] = ci24.split(':').map(Number);
+                  const [oh, om] = co24.split(':').map(Number);
+                  const hrs = ((oh * 60 + om) - (ih * 60 + im)) / 60;
+                  return (
+                    <div style={{ marginBottom: '10px', padding: '8px 12px', borderRadius: '6px', background: 'rgba(34,197,94,0.1)', border: '1px solid #bbf7d0', fontSize: '0.82rem', color: '#166534', fontWeight: 600 }}>
+                      ⏱ Working hours: {hrs.toFixed(1)} hrs
+                    </div>
+                  );
+                })()}
+
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  ⚠️ Admin override — updates {emp.user.name}'s record for {dateStr}.
                 </p>
 
                 <div className="modal-footer" style={{ marginTop: '12px', background: 'transparent', padding: '0', border: 'none' }}>
