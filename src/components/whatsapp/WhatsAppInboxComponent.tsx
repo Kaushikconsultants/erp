@@ -181,8 +181,8 @@ export default function WhatsAppInboxComponent() {
   }, []);
 
   // Fetch Conversation List
-  const fetchConversationsList = async () => {
-    setLoadingConvs(true);
+  const fetchConversationsList = async (silent = false) => {
+    if (!silent) setLoadingConvs(true);
     const res = await getWhatsAppConversations({
       search: searchQuery,
       tab: activeNavTab as any,
@@ -206,7 +206,7 @@ export default function WhatsAppInboxComponent() {
       setSelectedConvId(null);
       setActiveConvDetail(null);
     }
-    setLoadingConvs(false);
+    if (!silent) setLoadingConvs(false);
   };
 
   useEffect(() => {
@@ -214,8 +214,8 @@ export default function WhatsAppInboxComponent() {
   }, [searchQuery, activeNavTab, unreadOnly, leadStatusFilter, filterEmployeeId]);
 
   // Fetch Selected Conversation Detail
-  const fetchConversationDetail = async (id: string) => {
-    setLoadingDetail(true);
+  const fetchConversationDetail = async (id: string, silent = false) => {
+    if (!silent) setLoadingDetail(true);
     const res = await getWhatsAppConversationById(id);
     if (res.success && res.conversation) {
       setActiveConvDetail(res.conversation);
@@ -232,7 +232,7 @@ export default function WhatsAppInboxComponent() {
         tags: res.conversation.tags || ""
       });
     }
-    setLoadingDetail(false);
+    if (!silent) setLoadingDetail(false);
   };
 
   useEffect(() => {
@@ -240,6 +240,17 @@ export default function WhatsAppInboxComponent() {
       fetchConversationDetail(selectedConvId);
     }
   }, [selectedConvId]);
+
+  // Real-time Auto Polling (Every 3 seconds)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchConversationsList(true);
+      if (selectedConvId) {
+        fetchConversationDetail(selectedConvId, true);
+      }
+    }, 3000);
+    return () => clearInterval(intervalId);
+  }, [searchQuery, activeNavTab, unreadOnly, leadStatusFilter, filterEmployeeId, selectedConvId]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
