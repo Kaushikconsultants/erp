@@ -77,11 +77,12 @@ export async function lookupGstin(rawGstin: string) {
     if (existing && existing.businessName) {
       return {
         success: true,
+        isExactMatch: true,
         source: "database",
         companyName: existing.businessName,
         contactPerson: existing.contactPerson || "",
-        address: existing.billingAddress || `Commercial Area, ${existing.state || stateName}`,
-        city: existing.city || stateName,
+        address: existing.billingAddress || "",
+        city: existing.city || "",
         state: existing.state || stateName,
         pincode: existing.pincode || "",
         pan: existing.pan || pan,
@@ -92,38 +93,53 @@ export async function lookupGstin(rawGstin: string) {
     console.error("Local GST lookup error:", err);
   }
 
-  // 2. Intelligent GSTIN Entity Analysis
-  const entityLetter = pan.length >= 4 ? pan.charAt(3) : 'P';
-  let entityTypeDesc = "Proprietorship";
-  let suffix = "Enterprise";
-  if (entityLetter === 'C') {
-    entityTypeDesc = "Private Limited Company";
-    suffix = "Pvt Ltd";
-  } else if (entityLetter === 'P') {
-    entityTypeDesc = "Proprietorship / Individual";
-    suffix = "Trading Co";
-  } else if (entityLetter === 'F') {
-    entityTypeDesc = "Partnership Firm / LLP";
-    suffix = "& Associates";
-  } else if (entityLetter === 'H') {
-    entityTypeDesc = "Hindu Undivided Family (HUF)";
-    suffix = "Enterprises";
-  } else if (entityLetter === 'T') {
-    entityTypeDesc = "Trust";
-    suffix = "Trust";
+  // 2. Check if GSTIN is registered company in CompanySettings
+  try {
+    const company = await prisma.companySettings.findFirst({
+      where: { gstin: gstin }
+    });
+    if (company && company.companyName) {
+      return {
+        success: true,
+        isExactMatch: true,
+        source: "company_settings",
+        companyName: company.companyName,
+        contactPerson: company.signatoryName || "",
+        address: company.address || "",
+        city: company.city || "",
+        state: company.state || stateName,
+        pincode: company.pincode || "",
+        pan: company.pan || pan,
+        gstin
+      };
+    }
+  } catch (err) {
+    // ignore
   }
 
-  const generatedCompanyName = `M/S ${pan} ${suffix}`;
-  const generatedAddress = `Main Commercial Market, ${stateName}`;
-  const generatedCity = stateName;
+  // 3. Intelligent GSTIN Entity Analysis
+  const entityLetter = pan.length >= 4 ? pan.charAt(3) : 'P';
+  let entityTypeDesc = "Proprietorship / Individual";
+  if (entityLetter === 'C') {
+    entityTypeDesc = "Private Limited / Limited Company";
+  } else if (entityLetter === 'F') {
+    entityTypeDesc = "Partnership Firm / LLP";
+  } else if (entityLetter === 'H') {
+    entityTypeDesc = "Hindu Undivided Family (HUF)";
+  } else if (entityLetter === 'T') {
+    entityTypeDesc = "Trust";
+  } else if (entityLetter === 'A') {
+    entityTypeDesc = "Association of Persons (AOP)";
+  }
 
   return {
     success: true,
+    isExactMatch: false,
     source: "gstin_verified",
-    companyName: generatedCompanyName,
-    contactPerson: `Authorized Person (${pan})`,
-    address: generatedAddress,
-    city: generatedCity,
+    companyName: "",
+    contactPerson: "",
+    address: "",
+    city: "",
     state: stateName,
     pincode: "",
     pan: pan,

@@ -74,7 +74,11 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
           state: res.state || prev.state
         }));
 
-        setGstSuccessMsg(`✓ Auto-filled: ${res.companyName || 'Verified Taxpayer'} (${res.state || 'State mapped'})`);
+        if (res.isExactMatch && res.companyName) {
+          setGstSuccessMsg(`✓ Auto-filled: ${res.companyName} (${res.state})`);
+        } else {
+          setGstSuccessMsg(`✓ Verified GSTIN: State: ${res.state} • PAN: ${res.pan} (${res.entityType || 'Registered'})`);
+        }
       } else if (res && res.error) {
         setError(res.error);
       }
