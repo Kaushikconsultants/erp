@@ -71,7 +71,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   // Actual monetary discount = gross subtotal - (grand total - tax - shipping)
   // Simply: what was charged vs what the rate*qty sum is
   const grossItemsTotal = order.items.reduce((acc, item) => acc + (item.rate * item.quantity), 0);
-  const actualDiscount = Math.round(grossItemsTotal - (grandTotal - totalTax - (order.shippingCharges || 0)));
+  const actualDiscount = Math.round(grossItemsTotal - (grandTotal - totalTax));
 
   return (
     <div style={{ backgroundColor: '#f3f4f6', minHeight: '100vh', padding: '40px 20px' }} className="invoice-container-wrapper">
