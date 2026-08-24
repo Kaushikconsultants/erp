@@ -167,6 +167,85 @@ export async function cancelInvoice(id: string) {
   } catch { return { error: "Failed to cancel invoice" }; }
 }
 
+export async function updateInvoice(id: string, data: {
+  invoiceDate?: string;
+  dueDate?: string;
+  paymentTerms?: string;
+  status?: string;
+  notes?: string;
+  totalAmount?: number;
+  amountPaid?: number;
+}) {
+  const { allowed } = await canManageInvoices();
+  if (!allowed) return { error: "Unauthorized" };
+
+  try {
+    const existing = await prisma.invoice.findUnique({ where: { id } });
+    if (!existing) return { error: "Invoice not found" };
+
+    const totalAmount = data.totalAmount !== undefined ? data.totalAmount : existing.totalAmount;
+    const amountPaid = data.amountPaid !== undefined ? data.amountPaid : existing.amountPaid;
+    const amountDue = Math.max(0, totalAmount - amountPaid);
+
+    let status = data.status || existing.status;
+    if (data.status === undefined) {
+      if (amountDue <= 0) status = "Paid";
+      else if (amountPaid > 0) status = "Partially Paid";
+      else status = "Unpaid";
+    }
+
+    const updated = await prisma.invoice.update({
+      where: { id },
+      data: {
+        invoiceDate: data.invoiceDate ? new Date(data.invoiceDate) : undefined,
+        dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+        paymentTerms: data.paymentTerms !== undefined ? data.paymentTerms : undefined,
+        status,
+        notes: data.notes !== undefined ? data.notes : undefined,
+        totalAmount,
+        amountPaid,
+        amountDue,
+      }
+    });
+
+    revalidatePath("/invoices");
+    return { success: true, invoice: updated };
+  } catch (error: any) {
+    return { error: "Failed to update invoice: " + error.message };
+  }
+}
+
+export async function deleteInvoice(id: string) {
+  const { allowed } = await canManageInvoices();
+  if (!allowed) return { error: "Unauthorized" };
+
+  try {
+    const existing = await prisma.invoice.findUnique({ where: { id } });
+    if (!existing) return { error: "Invoice not found" };
+
+    // Unlink any credit notes
+    await prisma.creditNote.updateMany({
+      where: { invoiceId: id },
+      data: { invoiceId: null }
+    });
+
+    // Unlink or delete associated payments
+    await prisma.payment.updateMany({
+      where: { invoiceId: id },
+      data: { invoiceId: null }
+    });
+
+    await prisma.invoice.delete({
+      where: { id }
+    });
+
+    revalidatePath("/invoices");
+    return { success: true };
+  } catch (error: any) {
+    return { error: "Failed to delete invoice: " + error.message };
+  }
+}
+
 // Accounts receivable ageing
 export async function getReceivablesAgeing() {
   const session = await getServerSession(authOptions);
