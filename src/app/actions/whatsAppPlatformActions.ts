@@ -51,7 +51,7 @@ export interface ConversationFilterOptions {
 }
 
 export async function getWhatsAppConversations(filters: ConversationFilterOptions = {}) {
-  await ensureSeeded();
+  // await ensureSeeded();
   try {
     const session = await getServerSession(authOptions);
     const userRole = (session?.user as any)?.role || 'SALES';
