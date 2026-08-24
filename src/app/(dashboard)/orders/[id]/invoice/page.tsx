@@ -49,14 +49,28 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const totalIgst = order.igst || 0;
   const totalCgst = order.cgst || 0;
   const totalSgst = order.sgst || 0;
-  const totalTax = totalCgst + totalSgst + totalIgst;
   const grandTotal = order.totalValue || 0;
-  const taxableAmount = Math.max(0, grandTotal - totalTax);
   const receivedAmount = order.paymentReceived || 0;
   const balanceDue = Math.max(0, grandTotal - receivedAmount);
 
-  // Check if order has a discount (order-level, not per-item — OrderItem has no discountPercent)
-  const hasDiscount = order.discount > 0;
+  // Sub Total = sum of post-discount, pre-tax amounts per item
+  // Reverse-engineer from stored item.total and gstRate: discountedBase = total / (1 + gstRate/100)
+  const taxableAmount = order.items.reduce((sum, item) => {
+    const gst = (item.gstRate || 0) / 100;
+    return sum + (item.total || (item.rate * item.quantity)) / (1 + gst);
+  }, 0);
+
+  // Compute per-item discount %: compare gross (rate*qty) vs post-discount base
+  const getItemDiscountPct = (item: typeof order.items[0]): number => {
+    const gross = item.rate * item.quantity;
+    if (gross <= 0) return 0;
+    const gst = (item.gstRate || 0) / 100;
+    const discountedBase = (item.total || gross) / (1 + gst);
+    const pct = Math.round((1 - discountedBase / gross) * 10000) / 100;
+    return pct > 0 ? pct : 0;
+  };
+
+  const hasDiscount = order.items.some(item => getItemDiscountPct(item) > 0);
 
   return (
     <div style={{ backgroundColor: '#e5e7eb', minHeight: '100vh', padding: '40px 20px' }}>
@@ -199,7 +213,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 </td>
                 {hasDiscount && (
                   <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                    —
+                    {getItemDiscountPct(item) > 0 ? `${getItemDiscountPct(item).toFixed(2)}%` : '0.00%'}
                   </td>
                 )}
                 {isInterstate ? (
