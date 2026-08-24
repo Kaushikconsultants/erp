@@ -105,7 +105,7 @@ const Sidebar = ({
 
   // Active state indicators
   const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups') || pathname.startsWith('/whatsapp');
-  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills') || pathname.startsWith('/gst-filing');
+  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
   const isHrmsActive = pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || (pathname.startsWith('/expenses') && !isPurchasesActive) || pathname.startsWith('/leaves') || pathname.startsWith('/hiring');
   const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs') || pathname.startsWith('/gst-filing');
@@ -270,14 +270,6 @@ const Sidebar = ({
                   <Link href="/eway-bills" onClick={onClose} className={`category-sub-item ${isActive('/eway-bills') ? 'active' : ''}`}>
                     <ScrollText size={16} style={{ color: '#0d9488' }} />
                     <span>E-Way Bills</span>
-                  </Link>
-                )}
-
-                {canAccess('gst_filing') && (
-                  <Link href="/gst-filing" onClick={onClose} className={`category-sub-item ${isActive('/gst-filing') ? 'active' : ''}`}>
-                    <Landmark size={16} style={{ color: '#2563eb' }} />
-                    <span>GST Filing & Compliances</span>
-                    <span style={{ marginLeft: 'auto', background: '#eff6ff', color: '#2563eb', fontSize: '9px', fontWeight: 600, padding: '1px 5px', borderRadius: '8px' }}>GSTN</span>
                   </Link>
                 )}
               </div>
