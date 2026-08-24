@@ -36,6 +36,31 @@ export async function POST(req: NextRequest) {
     }
 
     // ══════════════════════════════════════════════════════
+    // 0. EMERGENCY DEBUG LOGGING (Raw Payload Dump)
+    // ══════════════════════════════════════════════════════
+    try {
+      const dbAccount = await prisma.whatsAppAccount.findFirst() || await prisma.whatsAppAccount.create({ data: { name: "Debug", phoneNumber: "000", status: "CONNECTED" } });
+      let debugCustomer = await prisma.customer.findFirst({ where: { mobile: "0000000000" } });
+      if (!debugCustomer) debugCustomer = await prisma.customer.create({ data: { businessName: "Debug", contactPerson: "Debug", mobile: "0000000000" } });
+      let debugConv = await prisma.whatsAppConversation.findFirst({ where: { customerId: debugCustomer.id } });
+      if (!debugConv) debugConv = await prisma.whatsAppConversation.create({ data: { accountId: dbAccount.id, customerId: debugCustomer.id, status: "OPEN" } });
+      
+      await prisma.whatsAppMessage.create({
+        data: {
+          conversationId: debugConv.id,
+          senderType: "SYSTEM",
+          senderName: "WEBHOOK_PAYLOAD_DUMP",
+          messageType: "TEXT",
+          content: JSON.stringify(body).slice(0, 4000),
+          status: "SENT",
+          sentAt: new Date()
+        }
+      });
+    } catch (e) {
+      console.error("Failed to dump raw payload", e);
+    }
+
+    // ══════════════════════════════════════════════════════
     // 1. PROCESS INCOMING MESSAGES
     // ══════════════════════════════════════════════════════
     if (value.messages && value.messages.length > 0) {
