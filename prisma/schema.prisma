@@ -267,6 +267,9 @@ model Customer {
   pincode         String?
   landmark        String?
   
+  openingBalance  Float    @default(0)
+  openingBalanceType String? @default("DEBIT") // "DEBIT" (To Receive / Dr) or "CREDIT" (To Pay / Cr)
+
   regularDiscount String?
   preferredPaymentMethod String?
   

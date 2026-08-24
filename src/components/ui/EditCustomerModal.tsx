@@ -194,6 +194,38 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
 
           <div className="section-header">
             <div className="section-badge" style={{ background: '#059669' }}>4</div>
+            <h3>FINANCIALS & OPENING BALANCE</h3>
+          </div>
+
+          <div className="grid-row" style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+            <div className="vertical-group">
+              <label style={{ fontWeight: 700 }}>Opening Balance (₹)</label>
+              <input 
+                type="number" 
+                step="0.01" 
+                min="0"
+                name="openingBalance" 
+                defaultValue={(customer as any).openingBalance || 0} 
+                style={{ backgroundColor: '#ffffff', fontWeight: 700 }}
+              />
+              <div className="sub-label">Initial balance before ERP onboarding</div>
+            </div>
+            <div className="vertical-group">
+              <label style={{ fontWeight: 700 }}>Balance Type</label>
+              <select 
+                name="openingBalanceType" 
+                defaultValue={(customer as any).openingBalanceType || "DEBIT"}
+                style={{ backgroundColor: '#ffffff', fontWeight: 600, padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+              >
+                <option value="DEBIT">Debit / To Receive (Dr) - Customer owes you</option>
+                <option value="CREDIT">Credit / To Pay (Cr) - Advance from customer</option>
+              </select>
+              <div className="sub-label">Debit = Receivable, Credit = Advance</div>
+            </div>
+          </div>
+
+          <div className="section-header">
+            <div className="section-badge" style={{ background: '#6366f1' }}>5</div>
             <h3>PREFERENCES</h3>
           </div>
           
@@ -225,7 +257,7 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
           </div>
 
           <div className="section-header">
-            <div className="section-badge purple">5</div>
+            <div className="section-badge purple">6</div>
             <h3>ASSIGNED AGENT</h3>
           </div>
 
