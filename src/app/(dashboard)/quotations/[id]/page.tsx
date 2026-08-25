@@ -344,17 +344,24 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                 ) : null;
               })()}
 
-              {quotation.receivedAmount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#dc2626' }}>
-                  <span>Received</span>
-                  <span>(-) {fmt(quotation.receivedAmount)}</span>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px 0', marginTop: '8px', fontWeight: 'bold', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #000', padding: '6px 0', marginTop: '8px', fontWeight: 'bold', fontSize: '13px' }}>
                 <span>Total</span>
-                <span>₹{fmt(Math.max(0, quotation.totalValue - (quotation.receivedAmount || 0)))}</span>
+                <span>₹{fmt(quotation.totalValue)}</span>
               </div>
+
+              {quotation.receivedAmount > 0 && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', color: '#059669', fontWeight: 600, fontSize: '12px' }}>
+                    <span>Payment Received</span>
+                    <span>(-) ₹{fmt(quotation.receivedAmount)}</span>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #cbd5e1', borderBottom: '1px solid #000', padding: '6px 0', marginTop: '2px', fontWeight: 'bold', fontSize: '13px', color: Math.max(0, quotation.totalValue - quotation.receivedAmount) === 0 ? '#059669' : '#dc2626' }}>
+                    <span>Balance Due</span>
+                    <span>₹{fmt(Math.max(0, quotation.totalValue - quotation.receivedAmount))}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Authorized Signature Box */}

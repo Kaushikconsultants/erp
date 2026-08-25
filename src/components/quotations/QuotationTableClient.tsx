@@ -330,7 +330,12 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                       {q.salesperson?.user?.name || 'Unassigned'}
                     </td>
                     <td style={{ padding: '14px 20px', fontWeight: 700, color: '#0f172a', textAlign: 'right' }}>
-                      ₹{(q.totalValue || 0).toLocaleString('en-IN')}
+                      <div>₹{(q.totalValue || 0).toLocaleString('en-IN')}</div>
+                      {q.receivedAmount > 0 && (
+                        <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600, marginTop: '2px' }}>
+                          ₹{q.receivedAmount.toLocaleString('en-IN')} Paid
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '14px 20px' }}>
                       <span style={{ 
@@ -341,7 +346,7 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                         backgroundColor: q.status === 'Converted' || q.status === 'Accepted' ? '#dcfce7' : q.status === 'Confirmed' ? '#dbeafe' : q.status === 'Sent' ? 'var(--accent-light, #e0e7ff)' : '#f1f5f9',
                         color: q.status === 'Converted' || q.status === 'Accepted' ? '#166534' : q.status === 'Confirmed' ? '#1d4ed8' : q.status === 'Sent' ? 'var(--accent-primary, #3730a3)' : '#475569'
                       }}>
-                        {q.status}
+                        {q.status === 'Confirmed' && q.receivedAmount > 0 ? `Confirmed (₹${q.receivedAmount.toLocaleString('en-IN')})` : q.status}
                       </span>
                     </td>
                     <td style={{ padding: '14px 20px' }}>

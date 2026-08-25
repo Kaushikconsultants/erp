@@ -370,9 +370,14 @@ export async function updateQuotationFull(id: string, data: {
     
     let totalValue = taxableAmount + taxTotal + shippingCharges + adjustment;
     const roundOff = data.roundOff !== undefined ? data.roundOff : Math.round(totalValue) - totalValue;
-    totalValue = totalValue + roundOff;
+    const existingQuotation = await prisma.quotation.findUnique({
+      where: { id },
+      select: { receivedAmount: true, status: true }
+    });
 
-    const receivedAmount = data.receivedAmount || 0;
+    const receivedAmount = data.receivedAmount !== undefined 
+      ? data.receivedAmount 
+      : (existingQuotation?.receivedAmount || 0);
 
     await prisma.quotationItem.deleteMany({ where: { quotationId: id } });
 
