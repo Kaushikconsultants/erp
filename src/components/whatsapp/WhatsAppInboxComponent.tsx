@@ -70,9 +70,7 @@ import {
   toggleConversationAIAction,
   createFollowUpTaskAction,
   uploadMediaToMetaAction,
-  getWhatsAppCannedResponsesAction,
-  getWhatsAppAILogsAction,
-  getWhatsAppWebhookLogsAction
+  getWhatsAppCannedResponsesAction
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
@@ -85,20 +83,6 @@ export default function WhatsAppInboxComponent() {
   const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
 
-  // AI Logs State
-  const [aiLogs, setAiLogs] = useState<any[]>([]);
-  const [aiLogStats, setAiLogStats] = useState({ total: 0, success: 0, error: 0, manual: 0, avgDuration: 0 });
-  const [loadingLogs, setLoadingLogs] = useState(false);
-  const [logsSearch, setLogsSearch] = useState('');
-  const [logsStatusFilter, setLogsStatusFilter] = useState('ALL');
-
-  // Webhook Logs State
-  const [webhookEvents, setWebhookEvents] = useState<any[]>([]);
-  const [webhookPayloads, setWebhookPayloads] = useState<any[]>([]);
-  const [webhookStats, setWebhookStats] = useState({ totalReceived: 0, totalRead: 0, totalText: 0, totalMedia: 0 });
-  const [loadingWebhook, setLoadingWebhook] = useState(false);
-  const [webhookSearch, setWebhookSearch] = useState('');
-  const [logsSubTab, setLogsSubTab] = useState<'ai' | 'webhook'>('ai');
 
   // Full Screen & Sidebar Collapse States
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
@@ -282,48 +266,6 @@ export default function WhatsAppInboxComponent() {
     return () => clearInterval(intervalId);
   }, [searchQuery, activeNavTab, unreadOnly, leadStatusFilter, filterEmployeeId, selectedConvId]);
 
-  // Fetch AI Execution Logs
-  const fetchAILogs = async (silent = false) => {
-    if (!silent) setLoadingLogs(true);
-    try {
-      const res = await getWhatsAppAILogsAction(logsSearch, logsStatusFilter);
-      if (res.success) {
-        setAiLogs(res.logs || []);
-        setAiLogStats(res.stats || { total: 0, success: 0, error: 0, manual: 0, avgDuration: 0 });
-      }
-    } catch (err) {
-      console.error('Failed to load AI logs', err);
-    }
-    if (!silent) setLoadingLogs(false);
-  };
-
-  useEffect(() => {
-    if (activeInboxView === 'logs') {
-      fetchAILogs();
-    }
-  }, [activeInboxView, logsSearch, logsStatusFilter]);
-
-  // Fetch Meta Webhook Logs
-  const fetchWebhookLogs = async () => {
-    setLoadingWebhook(true);
-    try {
-      const res = await getWhatsAppWebhookLogsAction(webhookSearch);
-      if (res.success) {
-        setWebhookEvents(res.events || []);
-        setWebhookPayloads(res.payloadDumps || []);
-        setWebhookStats(res.stats || { totalReceived: 0, totalRead: 0, totalText: 0, totalMedia: 0 });
-      }
-    } catch (err) {
-      console.error('Failed to load webhook logs', err);
-    }
-    setLoadingWebhook(false);
-  };
-
-  useEffect(() => {
-    if (activeInboxView === 'logs' && logsSubTab === 'webhook') {
-      fetchWebhookLogs();
-    }
-  }, [activeInboxView, logsSubTab, webhookSearch]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
