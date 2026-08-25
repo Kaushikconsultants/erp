@@ -5,16 +5,20 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+import { getTenantContext } from '@/lib/tenant';
+
 export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   const session = await getServerSession(authOptions);
+  const tenantCtx = await getTenantContext();
   
   let userRole = (session?.user as any)?.role || 'SALES';
   let canManageSettings = (session?.user as any)?.canManageSettings || false;
   let allowedSectionsList: string[] | null = null;
+  const isPlatformOwner = tenantCtx?.isPlatformOwner || false;
 
   if (session?.user) {
     const dbUser = await prisma.user.findUnique({
@@ -52,6 +56,7 @@ export default async function DashboardLayout({
       showAnalytics={showAnalytics}
       showProcurement={showProcurement}
       userRole={userRole}
+      isPlatformOwner={isPlatformOwner}
       allowedSections={allowedSectionsList}
     >
       <PresenceHeartbeat />

@@ -12,6 +12,7 @@ interface DashboardShellProps {
   showAnalytics?: boolean;
   showProcurement?: boolean;
   userRole?: string;
+  isPlatformOwner?: boolean;
   allowedSections?: string[] | null;
 }
 
@@ -21,6 +22,7 @@ export default function DashboardShell({
   showAnalytics = true, 
   showProcurement = false, 
   userRole,
+  isPlatformOwner = false,
   allowedSections = null
 }: DashboardShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -47,6 +49,7 @@ export default function DashboardShell({
         showAnalytics={showAnalytics}
         showProcurement={showProcurement}
         userRole={userRole}
+        isPlatformOwner={isPlatformOwner}
         allowedSections={allowedSections}
         onClose={() => setIsSidebarOpen(false)} 
       />

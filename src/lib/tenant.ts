@@ -4,6 +4,35 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultOrganization } from "./ensureDefaultOrg";
 
+export const PLATFORM_ROOT_ORG_SLUG = "espon-global";
+export const PLATFORM_ROOT_ADMIN_EMAILS = [
+  "ashishgoyal4545@gmail.com",
+  "clothingespon@gmail.com",
+  "admin@company.com",
+  "superadmin@espon.in"
+];
+
+export function isPlatformRootOwner(
+  userEmail?: string | null, 
+  orgSlug?: string | null, 
+  userRole?: string | null
+): boolean {
+  if (!userEmail) return false;
+  const cleanEmail = userEmail.toLowerCase().trim();
+
+  // 1. Explicit Platform Root Owner Emails
+  if (PLATFORM_ROOT_ADMIN_EMAILS.some(e => e.toLowerCase() === cleanEmail)) {
+    return true;
+  }
+
+  // 2. Super Admin belonging specifically to the host root organization (espon-global)
+  if (orgSlug === PLATFORM_ROOT_ORG_SLUG && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN')) {
+    return true;
+  }
+
+  return false;
+}
+
 export interface TenantContext {
   organizationId: string;
   organizationName: string;
@@ -12,6 +41,7 @@ export interface TenantContext {
   subscriptionStatus: string;
   userId: string;
   userRole: string;
+  isPlatformOwner: boolean;
 }
 
 export const getTenantContext = cache(async function getTenantContext(): Promise<TenantContext | null> {
@@ -57,6 +87,9 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     return null;
   }
 
+  const effectiveRole = dbUser?.role || (session.user as any).role || "SALES";
+  const isPlatformOwner = isPlatformRootOwner(userEmail, org.slug, effectiveRole);
+
   return {
     organizationId: org.id,
     organizationName: org.name,
@@ -64,7 +97,8 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     subscriptionPlan: org.subscriptionPlan || "GROWTH",
     subscriptionStatus: org.subscriptionStatus || "ACTIVE",
     userId: userId || dbUser?.id || "user-id",
-    userRole: dbUser?.role || (session.user as any).role || "SALES",
+    userRole: effectiveRole,
+    isPlatformOwner,
   };
 });
 

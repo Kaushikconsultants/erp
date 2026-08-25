@@ -364,8 +364,8 @@ export async function changeSubscriptionPlan(newPlan: 'STARTER' | 'GROWTH' | 'EN
 export async function getPlatformAdminOverview() {
   try {
     const ctx = await getTenantContext();
-    if (!ctx || ctx.userRole !== 'SUPER_ADMIN') {
-      return { success: false, error: "Access denied. Super Admin role required." };
+    if (!ctx || !ctx.isPlatformOwner) {
+      return { success: false, error: "Access denied. Platform Super Admin credentials required." };
     }
 
     const organizations = await prisma.organization.findMany({
@@ -545,8 +545,8 @@ export async function updatePlatformPricingSettings(input: {
 }) {
   try {
     const ctx = await getTenantContext();
-    if (!ctx || ctx.userRole !== 'SUPER_ADMIN') {
-      return { success: false, error: "Access denied. Super Admin role required." };
+    if (!ctx || !ctx.isPlatformOwner) {
+      return { success: false, error: "Access denied. Platform Super Admin credentials required." };
     }
 
     await prisma.platformPricingSetting.upsert({
@@ -598,8 +598,8 @@ export async function updateTenantSubscriptionAndServices(input: {
 }) {
   try {
     const ctx = await getTenantContext();
-    if (!ctx || ctx.userRole !== 'SUPER_ADMIN') {
-      return { success: false, error: "Access denied. Super Admin role required." };
+    if (!ctx || !ctx.isPlatformOwner) {
+      return { success: false, error: "Access denied. Platform Super Admin credentials required." };
     }
 
     const org = await prisma.organization.findUnique({

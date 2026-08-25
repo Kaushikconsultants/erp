@@ -8,10 +8,11 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import './settings.css';
 
-import { getTenantOrgId } from '@/lib/tenant';
+import { getTenantOrgId, getTenantContext } from '@/lib/tenant';
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions);
+  const tenantCtx = await getTenantContext();
   
   if (!session?.user) {
     redirect('/login');
@@ -20,6 +21,7 @@ export default async function SettingsPage() {
   const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role;
   const canManageSettings = (session.user as any).canManageSettings;
+  const isPlatformOwner = tenantCtx?.isPlatformOwner || false;
 
   if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && !canManageSettings) {
     redirect('/');
@@ -42,7 +44,7 @@ export default async function SettingsPage() {
       </div>
 
       <div className="settings-grid">
-        <SettingsMenu />
+        <SettingsMenu isPlatformOwner={isPlatformOwner} />
 
         <div className="glass-panel settings-card full-width">
           <h3>User Management</h3>

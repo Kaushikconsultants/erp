@@ -40,6 +40,7 @@ interface SidebarProps {
   showAnalytics?: boolean;
   showProcurement?: boolean;
   userRole?: string;
+  isPlatformOwner?: boolean;
   allowedSections?: string[] | null;
   onClose?: () => void;
 }
@@ -49,6 +50,7 @@ const Sidebar = ({
   showAnalytics = true, 
   showProcurement = false, 
   userRole, 
+  isPlatformOwner = false,
   allowedSections = null, 
   onClose 
 }: SidebarProps) => {
@@ -459,7 +461,7 @@ const Sidebar = ({
             <Receipt size={18} style={{ color: '#059669' }} />
             <span>Subscription & Billing</span>
           </Link>
-          {isSuperOrAdmin && (
+          {isPlatformOwner && (
             <Link href="/platform-admin" onClick={onClose} className={`nav-item ${isActive('/platform-admin') ? 'active' : ''}`}>
               <Landmark size={18} style={{ color: '#4f46e5' }} />
               <span>SaaS Platform Admin</span>

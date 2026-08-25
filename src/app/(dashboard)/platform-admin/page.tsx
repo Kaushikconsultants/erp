@@ -9,12 +9,7 @@ export default async function PlatformAdminPage() {
   const result = await getPlatformAdminOverview();
 
   if (!result.success) {
-    return (
-      <div style={{ padding: '24px' }}>
-        <h2>Platform Administration</h2>
-        <p style={{ color: '#ef4444' }}>{result.error || "Access Denied."}</p>
-      </div>
-    );
+    redirect('/');
   }
 
   return (

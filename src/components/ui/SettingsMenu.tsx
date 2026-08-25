@@ -5,7 +5,11 @@ import Link from 'next/link';
 import SettingsModal from './SettingsModal';
 import ThemeSettingsModal from './ThemeSettingsModal';
 
-export default function SettingsMenu() {
+interface SettingsMenuProps {
+  isPlatformOwner?: boolean;
+}
+
+export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuProps) {
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
 
   const companySettings = [
@@ -17,7 +21,7 @@ export default function SettingsMenu() {
     { label: "Audit Logs & Security", href: "/settings/audit-logs" },
     { label: "Roles & Permissions", href: "/settings/roles" },
     { label: "Territory Management", href: "/settings/territories" },
-    { label: "SaaS Platform Admin", href: "/platform-admin" },
+    ...(isPlatformOwner ? [{ label: "SaaS Platform Admin", href: "/platform-admin" }] : []),
     { label: "Appearance & Theme", modal: "Theme" },
     { label: "Incentive Rules", modal: "Incentive Rules" },
     { label: "Backup Data", modal: "Backup Data" }
