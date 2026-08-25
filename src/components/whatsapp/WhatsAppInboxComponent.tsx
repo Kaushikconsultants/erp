@@ -77,12 +77,21 @@ import "./WhatsAppInbox.css";
 
 const EMOJI_LIST = ["👍", "🙏", "✅", "📦", "📄", "💰", "📞", "❤️", "🔥", "💯", "🏷️", "🚚"];
 
-export default function WhatsAppInboxComponent() {
+export default function WhatsAppInboxComponent({
+  initialConversations = [],
+  initialEmployees = []
+}: {
+  initialConversations?: any[];
+  initialEmployees?: any[];
+}) {
   const { conversations, setConversations, activeConvDetail, setActiveConvDetail } = useWhatsAppStore();
-  const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
-  const [loadingConvs, setLoadingConvs] = useState<boolean>(conversations.length === 0);
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(
+    initialConversations[0]?.id || null
+  );
+  const [loadingConvs, setLoadingConvs] = useState<boolean>(
+    conversations.length === 0 && initialConversations.length === 0
+  );
   const [loadingDetail, setLoadingDetail] = useState<boolean>(activeConvDetail === null);
-
 
   // Full Screen & Sidebar Collapse States
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
@@ -132,7 +141,17 @@ export default function WhatsAppInboxComponent() {
   const [leadStatusFilter, setLeadStatusFilter] = useState<string>("");
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const [filterEmployeeId, setFilterEmployeeId] = useState<string>("");
-  const [employeesList, setEmployeesList] = useState<any[]>([]);
+  const [employeesList, setEmployeesList] = useState<any[]>(initialEmployees);
+
+  // Initialize store from initialConversations if available
+  useEffect(() => {
+    if (initialConversations.length > 0 && conversations.length === 0) {
+      setConversations(initialConversations);
+      if (!selectedConvId) {
+        setSelectedConvId(initialConversations[0].id);
+      }
+    }
+  }, [initialConversations]);
 
   // Messaging Input State
   const [messageInput, setMessageInput] = useState<string>("");
@@ -166,24 +185,17 @@ export default function WhatsAppInboxComponent() {
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
-  // Fetch Employees List for Filtering & Assignment
+  // Fetch Employees List & Canned Responses
   useEffect(() => {
-    const fetchEmps = async () => {
-      const res = await getAllEmployeesAndTeams();
-      if (res.success && res.employees) {
-        setEmployeesList(res.employees);
-      }
-    };
-    fetchEmps();
+    if (employeesList.length === 0) {
+      getAllEmployeesAndTeams().then(res => {
+        if (res.success && res.employees) setEmployeesList(res.employees);
+      });
+    }
     
-    // Fetch Canned Responses
-    const fetchCanned = async () => {
-      const res = await getWhatsAppCannedResponsesAction();
-      if (res.success && res.responses) {
-        setCannedResponses(res.responses);
-      }
-    };
-    fetchCanned();
+    getWhatsAppCannedResponsesAction().then(res => {
+      if (res.success && res.responses) setCannedResponses(res.responses);
+    });
   }, []);
 
   // Fetch Conversations List
@@ -326,8 +338,8 @@ export default function WhatsAppInboxComponent() {
       await fetchConversationDetail(selectedConvId, true);
       await fetchConversationsList(true);
     } else {
-      setToastMsg("Failed to send message.");
-      setTimeout(() => setToastMsg(null), 3000);
+      setToastMsg(`❌ ${res.error || "Failed to send message."}`);
+      setTimeout(() => setToastMsg(null), 4000);
       await fetchConversationDetail(selectedConvId, true);
     }
     setSendingMsg(false);

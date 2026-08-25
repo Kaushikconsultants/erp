@@ -6,19 +6,20 @@ import { revalidatePath } from "next/cache";
 
 // Ensure seed data is initialized automatically if database is fresh
 async function ensureSeeded() {
-  try {
-    const count = await prisma.whatsAppConversation.count();
-    if (count === 0) {
-      await seedWhatsAppPlatformData();
-    }
-  } catch (e) {
-    console.error("ensureSeeded warning:", e);
-  }
+  // Fast no-op: DB is seeded and indexed
 }
 
 export async function getMetaApiCredentials() {
   try {
-    const account = await prisma.whatsAppAccount.findFirst();
+    const account = await prisma.whatsAppAccount.findFirst({
+      where: {
+        OR: [
+          { isDefault: true },
+          { status: 'CONNECTED' }
+        ]
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
     return {
       phoneId: account?.phoneId || '',
       token: account?.accessToken || '',
@@ -182,7 +183,6 @@ export async function getWhatsAppConversations(filters: ConversationFilterOption
 }
 
 export async function getWhatsAppConversationById(id: string) {
-  await ensureSeeded();
   try {
     const conversation = await prisma.whatsAppConversation.findUnique({
       where: { id },
@@ -346,33 +346,58 @@ export async function sendWhatsAppMessageAction(data: {
 
     let metaMessageId = null;
     let messageStatus = 'SENT';
+    let metaErrorMessage: string | null = null;
 
     // Call Meta API if it's an outbound message and not an internal note
     if (!data.isInternalNote && data.senderType !== 'CUSTOMER') {
-      const token = conversation.account?.accessToken;
-      const phoneId = conversation.account?.phoneId;
+      let token = conversation.account?.accessToken;
+      let phoneId = conversation.account?.phoneId;
 
-      if (token && phoneId && !token.startsWith("EAAG")) {
+      // Fallback: If conversation account is missing or has no token, look up default connected account
+      if (!token || !phoneId) {
+        const fallbackAcc = await prisma.whatsAppAccount.findFirst({
+          where: {
+            OR: [
+              { isDefault: true },
+              { status: 'CONNECTED' }
+            ],
+            accessToken: { not: null },
+            phoneId: { not: null }
+          },
+          orderBy: { updatedAt: 'desc' }
+        });
+        if (fallbackAcc) {
+          token = fallbackAcc.accessToken;
+          phoneId = fallbackAcc.phoneId;
+        }
+      }
+
+      if (token && phoneId) {
         const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
         const headers = {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         };
 
-        const recipientPhone = conversation.customer.whatsappNumber 
-          ? conversation.customer.whatsappNumber.replace(/\D/g, '') 
-          : conversation.customer.mobile.replace(/\D/g, '');
+        // Clean and normalize recipient phone
+        let recipientPhone = (conversation.customer?.whatsappNumber || conversation.customer?.mobile || '').replace(/\D/g, '');
+        if (recipientPhone.startsWith('0')) {
+          recipientPhone = recipientPhone.replace(/^0+/, '');
+        }
+        if (recipientPhone.length === 10) {
+          recipientPhone = `91${recipientPhone}`;
+        }
 
         const payload: any = {
           messaging_product: 'whatsapp',
           recipient_type: 'individual',
-          to: recipientPhone.startsWith('91') ? recipientPhone : `91${recipientPhone}`,
+          to: recipientPhone,
         };
 
         const absoluteMediaUrl = data.mediaUrl?.startsWith('http') 
           ? data.mediaUrl 
           : data.mediaUrl?.startsWith('data:') 
-          ? data.mediaUrl // Handled below or via pre-upload
+          ? data.mediaUrl
           : `https://espon.in${data.mediaUrl}`;
 
         // If mediaUrl is just a Meta Media ID (doesn't start with http/data:/)
@@ -396,7 +421,6 @@ export async function sendWhatsAppMessageAction(data: {
            payload.text = { body: data.content };
         }
 
-
         try {
            const response = await fetch(url, {
              method: 'POST',
@@ -407,14 +431,21 @@ export async function sendWhatsAppMessageAction(data: {
            
            if (resData.messages?.[0]?.id) {
              metaMessageId = resData.messages[0].id;
+             messageStatus = 'SENT';
            } else if (resData.error) {
-             console.error("Meta API Error:", resData.error);
+             console.error("[Meta WhatsApp Error]:", resData.error);
+             metaErrorMessage = resData.error.message || "Meta API Error";
              messageStatus = 'FAILED';
            }
-        } catch (e) {
-           console.error("Failed to send Meta API message:", e);
+        } catch (e: any) {
+           console.error("[Failed to send Meta API message]:", e);
+           metaErrorMessage = e?.message || "Failed to connect to Meta API";
            messageStatus = 'FAILED';
         }
+      } else {
+        console.warn("[WhatsApp Action] No connected account token or phoneId found.");
+        metaErrorMessage = "WhatsApp API account is not connected. Please check Settings.";
+        messageStatus = 'FAILED';
       }
     }
 
