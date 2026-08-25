@@ -80,8 +80,8 @@ const EMOJI_LIST = ["👍", "🙏", "✅", "📦", "📄", "💰", "📞", "❤�
 export default function WhatsAppInboxComponent() {
   const { conversations, setConversations, activeConvDetail, setActiveConvDetail } = useWhatsAppStore();
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
-  const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
-  const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
+  const [loadingConvs, setLoadingConvs] = useState<boolean>(conversations.length === 0);
+  const [loadingDetail, setLoadingDetail] = useState<boolean>(activeConvDetail === null);
 
 
   // Full Screen & Sidebar Collapse States
