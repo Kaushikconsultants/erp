@@ -8,13 +8,14 @@ export const dynamic = 'force-dynamic';
 export default async function LeadsPage() {
   const res = await getPipelineData();
   const leads = res.success ? res.customers : [];
+  const employees = res.success ? (res.employees || []) : [];
 
   return (
     <div className="page-container" style={{ padding: '24px', maxWidth: '100%', overflow: 'hidden' }}>
       <div className="dashboard-header mb-6">
         <div>
           <h1 className="page-title">Sales Pipeline</h1>
-          <p className="page-subtitle">Drag and drop leads to update their stage</p>
+          <p className="page-subtitle">Track deal stages, advance leads, and accelerate sales conversions</p>
         </div>
         <div>
           <Link href="/customers" className="primary-btn">
@@ -23,7 +24,7 @@ export default async function LeadsPage() {
         </div>
       </div>
 
-      <KanbanBoard initialLeads={leads} />
+      <KanbanBoard initialLeads={leads} employees={employees} />
     </div>
   );
 }
