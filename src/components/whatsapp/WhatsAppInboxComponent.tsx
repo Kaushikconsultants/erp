@@ -220,7 +220,7 @@ export default function WhatsAppInboxComponent() {
   };
 
   useEffect(() => {
-    fetchConversationsList();
+    fetchConversationsList(conversations.length > 0);
   }, [searchQuery, activeNavTab, unreadOnly, leadStatusFilter, filterEmployeeId]);
 
   // Fetch Selected Conversation Detail
@@ -251,7 +251,7 @@ export default function WhatsAppInboxComponent() {
 
   useEffect(() => {
     if (selectedConvId) {
-      fetchConversationDetail(selectedConvId);
+      fetchConversationDetail(selectedConvId, activeConvDetail !== null);
     }
   }, [selectedConvId]);
 
@@ -289,8 +289,8 @@ export default function WhatsAppInboxComponent() {
     });
 
     if (res.success) {
-      await fetchConversationDetail(selectedConvId);
-      await fetchConversationsList();
+      await fetchConversationDetail(selectedConvId, true);
+      await fetchConversationsList(true);
     }
     setSendingMsg(false);
   };
@@ -333,8 +333,8 @@ export default function WhatsAppInboxComponent() {
       if (res.success) {
         setToastMsg(`✓ Direct attachment "${file.name}" sent to customer!`);
         setTimeout(() => setToastMsg(null), 3000);
-        await fetchConversationDetail(selectedConvId);
-        await fetchConversationsList();
+        await fetchConversationDetail(selectedConvId, true);
+        await fetchConversationsList(true);
       }
       setSendingMsg(false);
     };
@@ -362,8 +362,8 @@ export default function WhatsAppInboxComponent() {
     });
     if (res.success) {
       setIsEditingCRM(false);
-      await fetchConversationDetail(selectedConvId);
-      await fetchConversationsList();
+      await fetchConversationDetail(selectedConvId, true);
+      await fetchConversationsList(true);
     }
   };
 
@@ -377,8 +377,8 @@ export default function WhatsAppInboxComponent() {
     });
     if (res.success) {
       setShowQuoteModal(false);
-      await fetchConversationDetail(selectedConvId);
-      await fetchConversationsList();
+      await fetchConversationDetail(selectedConvId, true);
+      await fetchConversationsList(true);
     }
   };
 
@@ -393,8 +393,8 @@ export default function WhatsAppInboxComponent() {
     });
     if (res.success) {
       setShowPaymentModal(false);
-      await fetchConversationDetail(selectedConvId);
-      await fetchConversationsList();
+      await fetchConversationDetail(selectedConvId, true);
+      await fetchConversationsList(true);
     }
   };
 
@@ -410,7 +410,7 @@ export default function WhatsAppInboxComponent() {
       setShowFollowUpModal(false);
       setToastMsg(`Follow-up scheduled for ${followUpDays} days from now.`);
       setTimeout(() => setToastMsg(null), 3000);
-      await fetchConversationDetail(selectedConvId!);
+      await fetchConversationDetail(selectedConvId!, true);
     } else {
       setToastMsg(`Failed to schedule follow-up.`);
       setTimeout(() => setToastMsg(null), 3000);
@@ -428,8 +428,8 @@ export default function WhatsAppInboxComponent() {
     });
     if (res.success) {
       setShowAssignModal(false);
-      await fetchConversationDetail(selectedConvId);
-      await fetchConversationsList();
+      await fetchConversationDetail(selectedConvId, true);
+      await fetchConversationsList(true);
     }
     setAssigningLead(false);
   };
@@ -483,7 +483,7 @@ export default function WhatsAppInboxComponent() {
               <button
                 className="panel-toggle-btn"
                 onClick={() => {
-                  fetchConversationsList();
+                  fetchConversationsList(true);
                 }}
                 title="Refresh Chats"
                 style={{ color: "#64748b" }}
