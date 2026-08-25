@@ -51,7 +51,12 @@ import {
   Volume2,
   VideoIcon,
   Mic,
-  Download
+  Download,
+  Terminal,
+  Activity,
+  XCircle,
+  CheckCircle2,
+  Pause
 } from "lucide-react";
 import {
   getWhatsAppConversations,
@@ -65,7 +70,8 @@ import {
   toggleConversationAIAction,
   createFollowUpTaskAction,
   uploadMediaToMetaAction,
-  getWhatsAppCannedResponsesAction
+  getWhatsAppCannedResponsesAction,
+  getWhatsAppAILogsAction
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
@@ -77,6 +83,16 @@ export default function WhatsAppInboxComponent() {
   const [activeConvDetail, setActiveConvDetail] = useState<any | null>(null);
   const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
+
+  // Inbox Sub-Tabs: 'inbox' | 'logs'
+  const [activeInboxView, setActiveInboxView] = useState<'inbox' | 'logs'>('inbox');
+
+  // AI Logs State
+  const [aiLogs, setAiLogs] = useState<any[]>([]);
+  const [aiLogStats, setAiLogStats] = useState({ total: 0, success: 0, error: 0, manual: 0, avgDuration: 0 });
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logsSearch, setLogsSearch] = useState('');
+  const [logsStatusFilter, setLogsStatusFilter] = useState('ALL');
 
   // Full Screen & Sidebar Collapse States
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
@@ -259,6 +275,28 @@ export default function WhatsAppInboxComponent() {
     }, 3000);
     return () => clearInterval(intervalId);
   }, [searchQuery, activeNavTab, unreadOnly, leadStatusFilter, filterEmployeeId, selectedConvId]);
+
+  // Fetch AI Execution Logs
+  const fetchAILogs = async (silent = false) => {
+    if (!silent) setLoadingLogs(true);
+    try {
+      const res = await getWhatsAppAILogsAction(logsSearch, logsStatusFilter);
+      if (res.success) {
+        setAiLogs(res.logs || []);
+        setAiLogStats(res.stats || { total: 0, success: 0, error: 0, manual: 0, avgDuration: 0 });
+      }
+    } catch (err) {
+      console.error('Failed to load AI logs', err);
+    }
+    if (!silent) setLoadingLogs(false);
+  };
+
+  useEffect(() => {
+    if (activeInboxView === 'logs') {
+      fetchAILogs();
+    }
+  }, [activeInboxView, logsSearch, logsStatusFilter]);
+
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -534,6 +572,14 @@ export default function WhatsAppInboxComponent() {
                   <UserX size={14} />
                   <span>Unassigned</span>
                 </button>
+                <button
+                  className={`folder-tab ${activeInboxView === 'logs' ? 'active' : ''}`}
+                  style={{ color: activeInboxView === 'logs' ? '#8b5cf6' : '' }}
+                  onClick={() => setActiveInboxView('logs')}
+                >
+                  <Terminal size={14} />
+                  <span>AI Logs</span>
+                </button>
               </div>
 
               {/* Search Bar */}
@@ -672,14 +718,134 @@ export default function WhatsAppInboxComponent() {
         </div>
       </div>
 
+      {/* ================================================================= */}
+      {/* AI LOGS PANEL — Replaces center+right when in logs view            */}
+      {/* ================================================================= */}
+      {activeInboxView === 'logs' && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f8fafc' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Terminal size={20} color="#8b5cf6" />
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1e293b' }}>AI Execution Logs</h2>
+              <span style={{ fontSize: '11px', background: '#f3f0ff', color: '#8b5cf6', border: '1px solid #ddd6fe', borderRadius: '20px', padding: '2px 10px', fontWeight: 600 }}>Live Engine</span>
+            </div>
+            <button onClick={() => fetchAILogs()} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+              <RefreshCw size={14} className={loadingLogs ? 'spin-icon' : ''} /> Refresh
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            {[
+              { label: 'Total Executions', value: aiLogStats.total, color: '#1e293b' },
+              { label: 'Successful', value: aiLogStats.success, color: '#16a34a' },
+              { label: 'Errors', value: aiLogStats.error, color: '#dc2626' },
+              { label: 'Manual Mode', value: aiLogStats.manual, color: '#d97706' },
+              { label: 'Avg Response', value: `${aiLogStats.avgDuration}ms`, color: '#2563eb' },
+            ].map((stat, i) => (
+              <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.label}</div>
+                <div style={{ fontSize: '24px', fontWeight: 800, color: stat.color }}>{stat.value}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: 'linear-gradient(to right, #f0fdf4, #f8fafc)', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ background: '#dcfce7', borderRadius: '8px', padding: '8px', display: 'flex' }}><Activity size={18} color="#16a34a" /></div>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>AI Capacity Monitor <span style={{ fontSize: '10px', background: '#dcfce7', color: '#16a34a', borderRadius: '20px', padding: '2px 8px', marginLeft: '6px' }}>Normal</span></div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Webhook → AI Engine → WhatsApp reply chain active.</div>
+              </div>
+            </div>
+            <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Zap size={14} color="#f59e0b" /> Avg: <strong>{aiLogStats.avgDuration}ms</strong>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input type="text" placeholder="Search phone, message, AI reply..." value={logsSearch} onChange={e => setLogsSearch(e.target.value)} style={{ width: '100%', paddingLeft: '32px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <select value={logsStatusFilter} onChange={e => setLogsStatusFilter(e.target.value)} style={{ padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', background: '#fff' }}>
+              <option value="ALL">All Status</option>
+              <option value="SUCCESS">✅ Success</option>
+              <option value="FAILED">❌ Failed</option>
+            </select>
+          </div>
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  {['Status', 'Phone', 'Customer Message', 'AI Reply', 'Tools', 'Duration', 'Time'].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loadingLogs ? (
+                  [...Array(6)].map((_, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      {[...Array(7)].map((__, j) => (
+                        <td key={j} style={{ padding: '12px 14px' }}>
+                          <div style={{ height: '12px', background: 'linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', borderRadius: '6px', width: `${40 + j * 8}%` }}></div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : aiLogs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '48px', textAlign: 'center', color: '#94a3b8' }}>
+                      <div style={{ marginBottom: '8px', opacity: 0.4 }}><Terminal size={32} /></div>
+                      <div style={{ fontWeight: 600, marginBottom: '4px' }}>No AI execution logs yet</div>
+                      <div style={{ fontSize: '12px' }}>AI logs appear here when the AI auto-responds to customer messages.</div>
+                    </td>
+                  </tr>
+                ) : (
+                  aiLogs.map((log, i) => (
+                    <tr key={log.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                      <td style={{ padding: '10px 14px' }}>
+                        {log.status === 'SUCCESS' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#16a34a', fontWeight: 600 }}><CheckCircle2 size={13} /> SUCCESS</span>}
+                        {log.status === 'FAILED' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#dc2626', fontWeight: 600 }}><XCircle size={13} /> FAILED</span>}
+                        {log.status !== 'SUCCESS' && log.status !== 'FAILED' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#d97706', fontWeight: 600 }}><Pause size={13} /> {log.status || 'MANUAL'}</span>}
+                      </td>
+                      <td style={{ padding: '10px 14px', fontWeight: 700, color: '#1e293b' }}>+91 {String(log.phone || '').replace(/^91/, '').replace(/^\+91/, '')}</td>
+                      <td style={{ padding: '10px 14px', color: '#475569', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.userMessage || 'N/A'}</td>
+                      <td style={{ padding: '10px 14px', color: '#16a34a', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.aiReply || 'N/A'}</td>
+                      <td style={{ padding: '10px 14px' }}><span style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '2px 8px', fontFamily: 'monospace', fontSize: '11px', color: '#475569' }}>{log.toolsCalled || 'none'}</span></td>
+                      <td style={{ padding: '10px 14px', color: '#64748b' }}>{log.durationMs ? `${log.durationMs}ms` : '-'}</td>
+                      <td style={{ padding: '10px 14px', color: '#94a3b8', fontSize: '11px', whiteSpace: 'nowrap' }}>{log.createdAt ? new Date(log.createdAt).toLocaleString() : '-'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Only show center+right panels when in inbox view */}
+      {activeInboxView === 'inbox' && <>
       {/* ----------------------------------------------------------------- */}
       {/* CENTER COLUMN: LIVE CHAT WINDOW */}
       {/* ----------------------------------------------------------------- */}
       <div className="inbox-center-panel">
         {loadingDetail ? (
-          <div className="chat-loading-state">
-            <RefreshCw size={28} className="spin-icon" />
-            <p>Loading WhatsApp Chat & CRM Data...</p>
+          // Skeleton loader instead of a boring spinner
+          <div className="chat-skeleton-loader">
+            <div className="chat-skeleton-header">
+              <div className="skeleton-avatar large"></div>
+              <div className="skeleton-content">
+                <div className="skeleton-line medium"></div>
+                <div className="skeleton-line short"></div>
+              </div>
+            </div>
+            <div className="chat-skeleton-messages">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className={`skeleton-bubble ${i % 2 === 0 ? 'left' : 'right'}`}>
+                  <div className="skeleton-line" style={{ width: `${45 + (i * 13) % 40}%`, height: '14px', borderRadius: '12px' }}></div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : !activeConvDetail ? (
           <div className="chat-empty-selection">
@@ -1565,6 +1731,7 @@ export default function WhatsAppInboxComponent() {
           </div>
         </div>
       )}
+      </> }
     </div>
   );
 }

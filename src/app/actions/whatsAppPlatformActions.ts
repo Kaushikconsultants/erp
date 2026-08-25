@@ -1832,3 +1832,50 @@ export async function getWhatsAppCannedResponsesAction() {
   }
 }
 
+// ---------------------------------------------------------
+// 17. AI EXECUTION LOGS
+// ---------------------------------------------------------
+export async function getWhatsAppAILogsAction(search = '', statusFilter = 'ALL') {
+  try {
+    const where: any = {};
+    if (statusFilter !== 'ALL') where.status = statusFilter;
+    if (search) {
+      where.OR = [
+        { phone: { contains: search, mode: 'insensitive' } },
+        { userMessage: { contains: search, mode: 'insensitive' } },
+        { aiReply: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [logs, total, success, errorCount, avgDurationResult] = await Promise.all([
+      prisma.whatsAppAILog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: 100
+      }),
+      prisma.whatsAppAILog.count({ where }),
+      prisma.whatsAppAILog.count({ where: { ...where, status: 'SUCCESS' } }),
+      prisma.whatsAppAILog.count({ where: { ...where, status: 'FAILED' } }),
+      prisma.whatsAppAILog.aggregate({
+        _avg: { durationMs: true },
+        where
+      })
+    ]);
+
+    return {
+      success: true,
+      logs,
+      stats: {
+        total,
+        success,
+        error: errorCount,
+        manual: total - success - errorCount,
+        avgDuration: Math.round(avgDurationResult._avg.durationMs || 0)
+      }
+    };
+  } catch (e: any) {
+    return { success: false, error: e.message, logs: [], stats: { total: 0, success: 0, error: 0, manual: 0, avgDuration: 0 } };
+  }
+}
+
+
