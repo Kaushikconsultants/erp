@@ -278,12 +278,46 @@ export default function WhatsAppInboxComponent() {
 
     setSendingMsg(true);
     const textToSend = messageInput;
+    const isInternal = isInternalNote;
     setMessageInput("");
+
+    // --- Optimistic UI Update ---
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage = {
+      id: tempId,
+      content: textToSend,
+      senderType: "AGENT",
+      senderName: "Sales Rep",
+      messageType: "TEXT",
+      isInternalNote: isInternal,
+      sentAt: new Date().toISOString(),
+      status: "SENDING"
+    };
+
+    setActiveConvDetail((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        messages: [...(prev.messages || []), optimisticMessage],
+        lastMessageText: textToSend,
+        lastMessageAt: optimisticMessage.sentAt
+      };
+    });
+
+    setConversations((prev: any[]) => {
+      return prev.map(c => {
+        if (c.id === selectedConvId) {
+          return { ...c, lastMessageText: textToSend, lastMessageAt: optimisticMessage.sentAt };
+        }
+        return c;
+      }).sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime());
+    });
+    // ---------------------------
 
     const res = await sendWhatsAppMessageAction({
       conversationId: selectedConvId,
       content: textToSend,
-      isInternalNote,
+      isInternalNote: isInternal,
       senderType: "AGENT",
       senderName: "Sales Rep"
     });
@@ -291,6 +325,10 @@ export default function WhatsAppInboxComponent() {
     if (res.success) {
       await fetchConversationDetail(selectedConvId, true);
       await fetchConversationsList(true);
+    } else {
+      setToastMsg("Failed to send message.");
+      setTimeout(() => setToastMsg(null), 3000);
+      await fetchConversationDetail(selectedConvId, true);
     }
     setSendingMsg(false);
   };
