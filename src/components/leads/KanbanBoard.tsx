@@ -17,8 +17,10 @@ import {
   Search, 
   Sparkles,
   Edit2,
-  X
+  X,
+  Target
 } from 'lucide-react';
+import SalesTargetTracker from './SalesTargetTracker';
 
 const STAGES = [
   { id: 'New Lead', title: 'New Lead', color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', nextStep: 'Contacted', nextActionLabel: 'Mark Contacted' },
@@ -157,15 +159,68 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
     await assignLeadRep(leadId, empId || null);
   };
 
+  const [currentView, setCurrentView] = useState<'KANBAN' | 'TARGETS'>('KANBAN');
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       
-      {/* ─── 1. TOP PIPELINE METRICS CARDS (THEME MATCHED) ─── */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
-        gap: '16px' 
-      }}>
+      {/* ─── 0. TOP VIEW SWITCHER TABS ─── */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '6px', backgroundColor: '#e2e8f0', padding: '3px', borderRadius: '8px' }}>
+          <button
+            type="button"
+            onClick={() => setCurrentView('KANBAN')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: currentView === 'KANBAN' ? '#ffffff' : 'transparent',
+              color: currentView === 'KANBAN' ? '#0f172a' : '#64748b',
+              fontWeight: currentView === 'KANBAN' ? 600 : 500,
+              fontSize: '0.82rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: currentView === 'KANBAN' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+            }}
+          >
+            <Layers size={14} /> Pipeline Kanban
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setCurrentView('TARGETS')}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '6px',
+              border: 'none',
+              backgroundColor: currentView === 'TARGETS' ? '#ffffff' : 'transparent',
+              color: currentView === 'TARGETS' ? '#0f172a' : '#64748b',
+              fontWeight: currentView === 'TARGETS' ? 600 : 500,
+              fontSize: '0.82rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: currentView === 'TARGETS' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+            }}
+          >
+            <Target size={14} color="#4f46e5" /> Rep Targets & Leaderboard
+          </button>
+        </div>
+      </div>
+
+      {currentView === 'TARGETS' ? (
+        <SalesTargetTracker />
+      ) : (
+        <>
+          {/* ─── 1. TOP PIPELINE METRICS CARDS (THEME MATCHED) ─── */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+            gap: '16px' 
+          }}>
         {/* Card 1: Total Leads */}
         <div style={{ 
           backgroundColor: '#ffffff', 
@@ -744,6 +799,8 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
         </div>
 
       </div>
+      </>
+      )}
 
       {/* ─── 4. PROCEED TO NEXT STEP MODAL (THEME MATCHED) ─── */}
       {advancingLead && (

@@ -14,6 +14,7 @@ import AddCustomerModal from '@/components/ui/AddCustomerModal';
 import ShippingRateCalculator from '@/components/ui/ShippingRateCalculator';
 import QuickBarcodeScannerBar from '@/components/scanner/QuickBarcodeScannerBar';
 import GarmentMatrixModal from '@/components/quotations/GarmentMatrixModal';
+import { getCustomerTierDiscount, calculateTieredRate } from '@/lib/pricingUtils';
 
 import { useSearchParams } from 'next/navigation';
 
@@ -307,13 +308,17 @@ export default function CreateQuotationForm({ customers, products, employees, ca
       ? Number(product.weight) 
       : (catWeight > 0 ? catWeight : 0.25);
 
+    const tierInfo = getCustomerTierDiscount(selectedCustomer);
+    const basePrice = product.sellingPrice || 0;
+    const effectiveRate = calculateTieredRate(basePrice, tierInfo.discountPercent);
+
     const newItems = [...items];
     newItems[index] = {
       ...newItems[index],
       productId: product.id,
       productName: product.name,
       sku: product.articleNumber || product.sku || '',
-      rate: product.sellingPrice || 0,
+      rate: effectiveRate,
       unitWeight: resolvedWeight,
       availableStock: product.stockQuantity || 0,
       description: product.description || ''
@@ -759,10 +764,28 @@ export default function CreateQuotationForm({ customers, products, employees, ca
 
             {/* EDITABLE CUSTOMER DETAILS CARD */}
             <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Editable Customer Information</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>Customer Details</span>
+                  {selectedCustomer && (() => {
+                    const tier = getCustomerTierDiscount(selectedCustomer);
+                    return (
+                      <span style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        backgroundColor: tier.badgeBg,
+                        color: tier.badgeColor,
+                        border: `1px solid ${tier.badgeColor}33`
+                      }}>
+                        🏷️ {tier.tierName}
+                      </span>
+                    );
+                  })()}
+                </div>
                 <span style={{ fontSize: '0.75rem', backgroundColor: totals.isIntrastate ? '#dcfce7' : '#e0e7ff', color: totals.isIntrastate ? '#15803d' : '#3730a3', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                  {totals.isIntrastate ? 'Intra-State GST (CGST + SGST)' : 'Inter-State GST (IGST)'}
+                  {totals.isIntrastate ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
                 </span>
               </div>
 
@@ -1350,7 +1373,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
           initialDestinationPincode={getDestinationPincode()}
           initialWeight={totals.totalWeight}
           onClose={() => setShowShippingCalculator(false)}
-          onSelectRate={(rate) => {
+          onSelectRate={(rate: any) => {
             setFormData(prev => ({ ...prev, shippingCharges: rate.charge }));
             setShowShippingCalculator(false);
           }}

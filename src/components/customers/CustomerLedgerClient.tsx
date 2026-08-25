@@ -9,6 +9,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 import { CustomerLedgerResult } from '@/app/actions/customerLedgerActions';
+import DynamicUpiQr from '@/components/common/DynamicUpiQr';
 
 interface CustomerLedgerClientProps {
   initialData: CustomerLedgerResult;
@@ -360,14 +361,24 @@ export default function CustomerLedgerClient({ initialData, customerId }: Custom
           </table>
         </div>
 
-        {/* Bank Details & Terms */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px', fontSize: '0.78rem', color: '#64748b', lineHeight: 1.5 }}>
+        {/* Bank Details, Dynamic UPI QR & Terms */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr auto 1fr', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '16px', fontSize: '0.78rem', color: '#64748b', alignItems: 'center' }}>
           <div>
             <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>Bank Transfer / RTGS Details:</div>
             <div>A/C Name: <span style={{ color: '#0f172a', fontWeight: 500 }}>{company.bankAccountName || 'ESPON CLOTHING PRIVATE LIMITED'}</span></div>
             <div>A/c No: <span style={{ color: '#0f172a', fontWeight: 500 }}>{company.accountNumber || '016805006415'}</span></div>
             <div>IFSC: <span style={{ color: '#0f172a', fontWeight: 500 }}>{company.ifscCode || 'ICIC0000168'}</span> • Branch: {company.branch || 'Rohtak'}</div>
             <div>UPI ID: <span style={{ color: '#0f172a', fontWeight: 500 }}>{company.upiId || '7206066678@OKBIZAXIS'}</span></div>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <DynamicUpiQr
+              upiId={company.upiId || '7206066678@OKBIZAXIS'}
+              payeeName={company.bankAccountName || company.companyName || 'ESPON CLOTHING'}
+              amount={data.closingBalance > 0 ? data.closingBalance : 0}
+              transactionNote={`Khata ${customer.businessName?.substring(0, 15)}`}
+              size={85}
+            />
           </div>
 
           <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>

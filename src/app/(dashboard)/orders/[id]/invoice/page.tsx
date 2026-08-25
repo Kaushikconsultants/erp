@@ -5,6 +5,7 @@ import { getCompanySettings } from '@/app/actions/companyActions';
 import { numberToWordsINR } from '@/lib/gstUtils';
 import PrintInvoiceButton from '@/components/orders/PrintInvoiceButton';
 import DownloadPdfButton from '@/components/orders/DownloadPdfButton';
+import DynamicUpiQr from '@/components/common/DynamicUpiQr';
 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -289,14 +290,23 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            {/* Bank Details */}
-            <div style={{ fontSize: '11px', marginTop: '16px' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Bank Details -</div>
-              <div>A/C Name - {company.bankAccountName || 'ESPON CLOTHING PRIVATE LIMITED.'}</div>
-              <div>A/c No. - {company.accountNumber || '016805006415'}</div>
-              <div>IFSC code - {company.ifscCode || 'ICIC0000168'}</div>
-              <div>Branch - {company.branch || 'Rohtak'}</div>
-              <div>UPI ID - {company.upiId || '7206066678@OKBIZAXIS'}</div>
+            {/* Bank Details & Dynamic UPI QR */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '16px', gap: '12px' }}>
+              <div style={{ fontSize: '11px' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Bank Details -</div>
+                <div>A/C Name - {company.bankAccountName || 'ESPON CLOTHING PRIVATE LIMITED.'}</div>
+                <div>A/c No. - {company.accountNumber || '016805006415'}</div>
+                <div>IFSC code - {company.ifscCode || 'ICIC0000168'}</div>
+                <div>Branch - {company.branch || 'Rohtak'}</div>
+                <div>UPI ID - {company.upiId || '7206066678@OKBIZAXIS'}</div>
+              </div>
+              <DynamicUpiQr
+                upiId={company.upiId || '7206066678@OKBIZAXIS'}
+                payeeName={company.bankAccountName || company.companyName || 'Espon Sports'}
+                amount={balanceDue > 0 ? balanceDue : grandTotal}
+                transactionNote={`Inv #${order.orderNumber}`}
+                size={85}
+              />
             </div>
           </div>
 

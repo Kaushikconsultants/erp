@@ -3,12 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { getDispatchPipelineOrders, updateOrderStatus, updateDispatchDetails } from '@/app/actions/orderActions';
 import { Truck, Package, Printer, FileText, CheckCircle2, Eye, PackageCheck, ScanBarcode, ScrollText } from 'lucide-react';
 import OrderPackingScannerModal from '@/components/scanner/OrderPackingScannerModal';
+import CartonLabelModal from '@/components/dispatches/CartonLabelModal';
 
 export default function DispatchesPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [awbModal, setAwbModal] = useState<string | null>(null); // orderId
   const [packingModalOrderId, setPackingModalOrderId] = useState<string | null>(null);
+  const [cartonModalOrder, setCartonModalOrder] = useState<any | null>(null);
   const [awbInput, setAwbInput] = useState('');
   const [courierInput, setCourierInput] = useState('');
   const [saving, setSaving] = useState(false);
@@ -162,13 +164,20 @@ export default function DispatchesPage() {
                 >
                   <PackageCheck size={16} /> Scan & Pack Items
                 </button>
-                <button 
-                  onClick={() => handleMarkPacked(order.id)}
-                  className="action-btn secondary" 
-                  style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '6px', background: '#fff', border: '1px solid #cbd5e1', color: '#475569', fontSize: '0.8rem' }}
-                >
-                  <CheckCircle2 size={15} color="#10b981" /> Quick Mark Packed
-                </button>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button 
+                    onClick={() => setCartonModalOrder(order)}
+                    style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', padding: '6px 8px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    🏷️ Box Labels
+                  </button>
+                  <button 
+                    onClick={() => handleMarkPacked(order.id)}
+                    style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#059669', padding: '6px 8px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    <CheckCircle2 size={13} color="#10b981" /> Packed
+                  </button>
+                </div>
               </div>
             ))}
             {packingOrders.length === 0 && <p style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>No orders in packing</p>}
@@ -180,11 +189,19 @@ export default function DispatchesPage() {
               <Truck size={16} /> 3. Ready to Ship ({packedOrders.length})
             </h3>
             {packedOrders.map(order => renderCard(order, 
-              <button 
-                onClick={() => setAwbModal(order.id)}
-                className="action-btn" style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '8px', background: '#3b82f6', color: '#fff' }}>
-                + Assign AWB
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+                <button 
+                  onClick={() => setCartonModalOrder(order)}
+                  style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', padding: '6px 10px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  🏷️ Print Box Labels
+                </button>
+                <button 
+                  onClick={() => setAwbModal(order.id)}
+                  className="action-btn" style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '8px', background: '#3b82f6', color: '#fff', padding: '6px 10px', fontSize: '0.8rem' }}>
+                  + Assign AWB
+                </button>
+              </div>
             ))}
             {packedOrders.length === 0 && <p style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>No orders ready</p>}
           </div>
@@ -195,8 +212,16 @@ export default function DispatchesPage() {
               <CheckCircle2 size={16} /> 4. Dispatched ({dispatchedOrders.length})
             </h3>
             {dispatchedOrders.map(order => renderCard(order, 
-              <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
-                {order.awbNumber} ({order.courierName})
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
+                <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600 }}>
+                  {order.awbNumber} ({order.courierName})
+                </div>
+                <button 
+                  onClick={() => setCartonModalOrder(order)}
+                  style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '4px', background: '#f8fafc', border: '1px solid #cbd5e1', color: '#475569', padding: '4px 8px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 500, cursor: 'pointer', marginTop: '4px' }}
+                >
+                  🏷️ Box Labels
+                </button>
               </div>
             ))}
             {dispatchedOrders.length === 0 && <p style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center' }}>No dispatched orders</p>}
@@ -221,10 +246,10 @@ export default function DispatchesPage() {
                   required 
                   value={courierInput}
                   onChange={e => setCourierInput(e.target.value)}
-                  placeholder="e.g. BlueDart, Delhivery" 
+                  placeholder="e.g. Bluedart, Delhivery, V-Trans" 
                 />
               </div>
-              <div className="vertical-group">
+              <div className="vertical-group" style={{ marginTop: '12px' }}>
                 <label>AWB Tracking Number</label>
                 <input 
                   type="text" 
@@ -254,6 +279,14 @@ export default function DispatchesPage() {
             setPackingModalOrderId(null);
             loadOrders();
           }}
+        />
+      )}
+
+      {/* CARTON LABEL MODAL */}
+      {cartonModalOrder && (
+        <CartonLabelModal
+          order={cartonModalOrder}
+          onClose={() => setCartonModalOrder(null)}
         />
       )}
     </div>
