@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
@@ -41,60 +42,63 @@ const FALLBACK_SETTINGS = {
   updatedAt: new Date()
 };
 
+const fetchSettingsInternal = cache(async (orgId?: string) => {
+  let settings = null;
+  if (orgId) {
+    settings = await prisma.companySettings.findFirst({
+      where: {
+        OR: [
+          { organizationId: orgId },
+          { id: `settings-${orgId}` }
+        ]
+      }
+    });
+
+    if (!settings) {
+      const org = await prisma.organization.findUnique({ where: { id: orgId } });
+      if (org) {
+        settings = await prisma.companySettings.create({
+          data: {
+            id: `settings-${org.id}`,
+            organizationId: org.id,
+            companyName: org.name,
+            gstin: org.gstin || null,
+            pan: org.pan || null,
+            address: org.address || `${org.city || 'Rohtak'}, ${org.state || 'Haryana'}`,
+            city: org.city || "Rohtak",
+            state: org.state || "Haryana",
+            pincode: org.pincode || "124001",
+            country: org.country || "India",
+            mobile: org.phone || "",
+            email: org.email || "",
+            website: org.website || "",
+            themeColor: "#4f46e5",
+            signatoryName: org.name,
+            signatoryDesignation: "Authorized Signatory"
+          }
+        }).catch(async () => {
+          return await prisma.companySettings.findFirst({ where: { organizationId: orgId } });
+        });
+      }
+    }
+  }
+
+  if (!settings) {
+    settings = await prisma.companySettings.findUnique({ where: { id: "default" } });
+  }
+
+  if (!settings) {
+    settings = await prisma.companySettings.findFirst();
+  }
+
+  return settings;
+});
+
 export async function getCompanySettings() {
   try {
     const session = await getServerSession(authOptions);
     const orgId = (session?.user as any)?.organizationId || (await getTenantOrgId());
-
-    let settings = null;
-
-    if (orgId) {
-      settings = await prisma.companySettings.findFirst({
-        where: {
-          OR: [
-            { organizationId: orgId },
-            { id: `settings-${orgId}` }
-          ]
-        }
-      });
-
-      // If still not found for this tenant, look up the Organization record and create tenant settings
-      if (!settings) {
-        const org = await prisma.organization.findUnique({ where: { id: orgId } });
-        if (org) {
-          settings = await prisma.companySettings.create({
-            data: {
-              id: `settings-${org.id}`,
-              organizationId: org.id,
-              companyName: org.name,
-              gstin: org.gstin || null,
-              pan: org.pan || null,
-              address: org.address || `${org.city || 'Rohtak'}, ${org.state || 'Haryana'}`,
-              city: org.city || "Rohtak",
-              state: org.state || "Haryana",
-              pincode: org.pincode || "124001",
-              country: org.country || "India",
-              mobile: org.phone || "",
-              email: org.email || "",
-              website: org.website || "",
-              themeColor: "#4f46e5",
-              signatoryName: org.name,
-              signatoryDesignation: "Authorized Signatory"
-            }
-          }).catch(async () => {
-            return await prisma.companySettings.findFirst({ where: { organizationId: orgId } });
-          });
-        }
-      }
-    }
-
-    if (!settings) {
-      settings = await prisma.companySettings.findUnique({ where: { id: "default" } });
-    }
-
-    if (!settings) {
-      settings = await prisma.companySettings.findFirst();
-    }
+    const settings = await fetchSettingsInternal(orgId);
 
     return { success: true, settings: settings || FALLBACK_SETTINGS };
   } catch (error) {

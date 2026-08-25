@@ -4,14 +4,14 @@ import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { getCompanySettings } from "./actions/companyActions";
 
-const inter = Inter({ subsets: ["latin"], variable: '--font-inter' });
-const roboto = Roboto({ weight: ['400', '500', '700'], subsets: ["latin"], variable: '--font-roboto' });
-const outfit = Outfit({ subsets: ["latin"], variable: '--font-outfit' });
-const poppins = Poppins({ weight: ['400', '500', '600', '700'], subsets: ["latin"], variable: '--font-poppins' });
-const openSans = Open_Sans({ subsets: ["latin"], variable: '--font-open-sans' });
-const montserrat = Montserrat({ subsets: ["latin"], variable: '--font-montserrat' });
-const lato = Lato({ weight: ['400', '700'], subsets: ["latin"], variable: '--font-lato' });
-const oswald = Oswald({ subsets: ["latin"], variable: '--font-oswald' });
+const inter = Inter({ subsets: ["latin"], variable: '--font-inter', display: 'swap' });
+const roboto = Roboto({ weight: ['400', '500', '700'], subsets: ["latin"], variable: '--font-roboto', display: 'swap' });
+const outfit = Outfit({ subsets: ["latin"], variable: '--font-outfit', display: 'swap' });
+const poppins = Poppins({ weight: ['400', '500', '600', '700'], subsets: ["latin"], variable: '--font-poppins', display: 'swap' });
+const openSans = Open_Sans({ subsets: ["latin"], variable: '--font-open-sans', display: 'swap' });
+const montserrat = Montserrat({ subsets: ["latin"], variable: '--font-montserrat', display: 'swap' });
+const lato = Lato({ weight: ['400', '700'], subsets: ["latin"], variable: '--font-lato', display: 'swap' });
+const oswald = Oswald({ subsets: ["latin"], variable: '--font-oswald', display: 'swap' });
 
 export const viewport: Viewport = {
   width: "device-width",

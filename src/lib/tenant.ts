@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -13,7 +14,7 @@ export interface TenantContext {
   userRole: string;
 }
 
-export async function getTenantContext(): Promise<TenantContext | null> {
+export const getTenantContext = cache(async function getTenantContext(): Promise<TenantContext | null> {
   const session = await getServerSession(authOptions);
   
   if (!session?.user) {
@@ -65,9 +66,9 @@ export async function getTenantContext(): Promise<TenantContext | null> {
     userId: userId || dbUser?.id || "user-id",
     userRole: dbUser?.role || (session.user as any).role || "SALES",
   };
-}
+});
 
-export async function getTenantOrgId(): Promise<string> {
+export const getTenantOrgId = cache(async function getTenantOrgId(): Promise<string> {
   const ctx = await getTenantContext();
   if (ctx?.organizationId) return ctx.organizationId;
   
@@ -76,14 +77,14 @@ export async function getTenantOrgId(): Promise<string> {
   }) || await prisma.organization.findFirst();
 
   return defaultOrg?.id || "default-org";
-}
+});
 
 /**
  * Returns tenant-scoped filter for Prisma queries:
  * - Admin/SuperAdmin: { organizationId: orgId }
  * - Non-Admin (Sales/Employee): { organizationId: orgId, assignedSalespersonId: employee.id }
  */
-export async function getTenantScope() {
+export const getTenantScope = cache(async function getTenantScope() {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return {
@@ -115,7 +116,7 @@ export async function getTenantScope() {
     userId,
     role: userRole
   };
-}
+});
 
 export async function checkTenantQuota(orgId: string, quotaType: 'USERS' | 'ORDERS' | 'WHATSAPP') {
   if (!orgId) return { allowed: true };

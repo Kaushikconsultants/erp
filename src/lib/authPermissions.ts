@@ -1,6 +1,7 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
-export async function canUserAccessSection(sessionUser: any, sectionKey: string): Promise<boolean> {
+export const canUserAccessSection = cache(async function canUserAccessSection(sessionUser: any, sectionKey: string): Promise<boolean> {
   if (!sessionUser) return false;
   const role = sessionUser.role;
   if (role === 'SUPER_ADMIN' || role === 'ADMIN') return true;
@@ -79,4 +80,4 @@ export async function canUserAccessSection(sessionUser: any, sectionKey: string)
   }
 
   return false;
-}
+});
