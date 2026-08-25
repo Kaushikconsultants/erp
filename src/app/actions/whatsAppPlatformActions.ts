@@ -557,6 +557,9 @@ export async function sendWhatsAppMessageAction(data: {
     }
 
     revalidatePath(`/whatsapp/inbox`);
+    if (messageStatus === 'FAILED') {
+      return { success: false, error: metaErrorMessage || "Failed to deliver message via Meta WhatsApp API." };
+    }
     return { success: true, message };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -1082,7 +1085,9 @@ export async function getWhatsAppTemplates() {
 export async function sendWhatsAppTemplateAction(toPhone: string, templateName: string, languageCode = "en_US", components: any[] = []) {
   try {
     const creds = await getMetaApiCredentials();
-    const cleanPhone = toPhone.replace(/\D/g, "");
+    let cleanPhone = toPhone.replace(/\D/g, "");
+    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.replace(/^0+/, '');
+    if (cleanPhone.length === 10) cleanPhone = `91${cleanPhone}`;
 
     if (creds && creds.isConnected) {
       const url = `https://graph.facebook.com/v20.0/${creds.phoneId}/messages`;
