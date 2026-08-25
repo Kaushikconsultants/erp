@@ -180,31 +180,35 @@ export default function WhatsAppInboxComponent() {
     fetchCanned();
   }, []);
 
-  // Fetch Conversation List
+  // Fetch Conversations List
   const fetchConversationsList = async (silent = false) => {
     if (!silent) setLoadingConvs(true);
-    const res = await getWhatsAppConversations({
-      search: searchQuery,
-      tab: activeNavTab as any,
-      unreadOnly,
-      leadStatus: leadStatusFilter || undefined,
-      filterEmployeeId: filterEmployeeId || undefined
-    });
-    if (res.success && res.conversations) {
-      setConversations(res.conversations);
-      if (res.conversations.length > 0) {
-        const isCurrentInList = res.conversations.some((c: any) => c.id === selectedConvId);
-        if (!selectedConvId || !isCurrentInList) {
-          setSelectedConvId(res.conversations[0].id);
+    try {
+      const res = await getWhatsAppConversations({
+        search: searchQuery,
+        tab: activeNavTab as any,
+        unreadOnly,
+        leadStatus: leadStatusFilter || undefined,
+        filterEmployeeId: filterEmployeeId || undefined
+      });
+      if (res.success && res.conversations) {
+        setConversations(res.conversations);
+        if (res.conversations.length > 0) {
+          const isCurrentInList = res.conversations.some((c: any) => c.id === selectedConvId);
+          if (!selectedConvId || !isCurrentInList) {
+            setSelectedConvId(res.conversations[0].id);
+          }
+        } else {
+          setSelectedConvId(null);
+          setActiveConvDetail(null);
         }
       } else {
+        setConversations([]);
         setSelectedConvId(null);
         setActiveConvDetail(null);
       }
-    } else {
-      setConversations([]);
-      setSelectedConvId(null);
-      setActiveConvDetail(null);
+    } catch (err) {
+      console.error("Failed to fetch conversations", err);
     }
     if (!silent) setLoadingConvs(false);
   };
@@ -216,21 +220,25 @@ export default function WhatsAppInboxComponent() {
   // Fetch Selected Conversation Detail
   const fetchConversationDetail = async (id: string, silent = false) => {
     if (!silent) setLoadingDetail(true);
-    const res = await getWhatsAppConversationById(id);
-    if (res.success && res.conversation) {
-      setActiveConvDetail(res.conversation);
-      setCrmEditData({
-        businessName: res.conversation.customer?.businessName || "",
-        contactPerson: res.conversation.customer?.contactPerson || "",
-        mobile: res.conversation.customer?.mobile || "",
-        email: res.conversation.customer?.email || "",
-        city: res.conversation.customer?.city || "",
-        state: res.conversation.customer?.state || "",
-        customerType: res.conversation.customerType || "Wholesaler",
-        leadStage: res.conversation.leadStatus || "New Lead",
-        priority: res.conversation.priority || "MEDIUM",
-        tags: res.conversation.tags || ""
-      });
+    try {
+      const res = await getWhatsAppConversationById(id);
+      if (res.success && res.conversation) {
+        setActiveConvDetail(res.conversation);
+        setCrmEditData({
+          businessName: res.conversation.customer?.businessName || "",
+          contactPerson: res.conversation.customer?.contactPerson || "",
+          mobile: res.conversation.customer?.mobile || "",
+          email: res.conversation.customer?.email || "",
+          city: res.conversation.customer?.city || "",
+          state: res.conversation.customer?.state || "",
+          customerType: res.conversation.customerType || "Wholesaler",
+          leadStage: res.conversation.leadStatus || "New Lead",
+          priority: res.conversation.priority || "MEDIUM",
+          tags: res.conversation.tags || ""
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch conversation details", err);
     }
     if (!silent) setLoadingDetail(false);
   };
