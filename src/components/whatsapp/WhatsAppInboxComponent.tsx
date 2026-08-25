@@ -71,7 +71,8 @@ import {
   createFollowUpTaskAction,
   uploadMediaToMetaAction,
   getWhatsAppCannedResponsesAction,
-  getWhatsAppAILogsAction
+  getWhatsAppAILogsAction,
+  getWhatsAppWebhookLogsAction
 } from "@/app/actions/whatsAppPlatformActions";
 import "./WhatsAppInbox.css";
 
@@ -93,6 +94,14 @@ export default function WhatsAppInboxComponent() {
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logsSearch, setLogsSearch] = useState('');
   const [logsStatusFilter, setLogsStatusFilter] = useState('ALL');
+
+  // Webhook Logs State
+  const [webhookEvents, setWebhookEvents] = useState<any[]>([]);
+  const [webhookPayloads, setWebhookPayloads] = useState<any[]>([]);
+  const [webhookStats, setWebhookStats] = useState({ totalReceived: 0, totalRead: 0, totalText: 0, totalMedia: 0 });
+  const [loadingWebhook, setLoadingWebhook] = useState(false);
+  const [webhookSearch, setWebhookSearch] = useState('');
+  const [logsSubTab, setLogsSubTab] = useState<'ai' | 'webhook'>('ai');
 
   // Full Screen & Sidebar Collapse States
   const [isFullScreen, setIsFullScreen] = useState<boolean>(false);
@@ -297,6 +306,27 @@ export default function WhatsAppInboxComponent() {
     }
   }, [activeInboxView, logsSearch, logsStatusFilter]);
 
+  // Fetch Meta Webhook Logs
+  const fetchWebhookLogs = async () => {
+    setLoadingWebhook(true);
+    try {
+      const res = await getWhatsAppWebhookLogsAction(webhookSearch);
+      if (res.success) {
+        setWebhookEvents(res.events || []);
+        setWebhookPayloads(res.payloadDumps || []);
+        setWebhookStats(res.stats || { totalReceived: 0, totalRead: 0, totalText: 0, totalMedia: 0 });
+      }
+    } catch (err) {
+      console.error('Failed to load webhook logs', err);
+    }
+    setLoadingWebhook(false);
+  };
+
+  useEffect(() => {
+    if (activeInboxView === 'logs' && logsSubTab === 'webhook') {
+      fetchWebhookLogs();
+    }
+  }, [activeInboxView, logsSubTab, webhookSearch]);
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -719,20 +749,44 @@ export default function WhatsAppInboxComponent() {
       </div>
 
       {/* ================================================================= */}
-      {/* AI LOGS PANEL — Replaces center+right when in logs view            */}
+      {/* LOGS PANEL — AI Logs + Webhook Logs                              */}
       {/* ================================================================= */}
       {activeInboxView === 'logs' && (
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f8fafc' }}>
+          {/* Header + Sub-Tabs */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <Terminal size={20} color="#8b5cf6" />
-              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1e293b' }}>AI Execution Logs</h2>
-              <span style={{ fontSize: '11px', background: '#f3f0ff', color: '#8b5cf6', border: '1px solid #ddd6fe', borderRadius: '20px', padding: '2px 10px', fontWeight: 600 }}>Live Engine</span>
+              <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#1e293b' }}>Logs</h2>
+              {/* Sub-Tab Pills */}
+              <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '10px', padding: '3px', gap: '2px' }}>
+                <button
+                  onClick={() => setLogsSubTab('ai')}
+                  style={{ padding: '5px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', background: logsSubTab === 'ai' ? '#fff' : 'transparent', color: logsSubTab === 'ai' ? '#8b5cf6' : '#64748b', boxShadow: logsSubTab === 'ai' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}
+                >
+                  🤖 AI Logs
+                </button>
+                <button
+                  onClick={() => setLogsSubTab('webhook')}
+                  style={{ padding: '5px 14px', borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: 600, cursor: 'pointer', background: logsSubTab === 'webhook' ? '#fff' : 'transparent', color: logsSubTab === 'webhook' ? '#0ea5e9' : '#64748b', boxShadow: logsSubTab === 'webhook' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', transition: 'all 0.15s' }}
+                >
+                  🌐 Webhook Logs
+                </button>
+              </div>
+              <span style={{ fontSize: '11px', background: '#f3f0ff', color: '#8b5cf6', border: '1px solid #ddd6fe', borderRadius: '20px', padding: '2px 10px', fontWeight: 600 }}>+91 7404388242</span>
             </div>
-            <button onClick={() => fetchAILogs()} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#475569' }}>
-              <RefreshCw size={14} className={loadingLogs ? 'spin-icon' : ''} /> Refresh
+            <button
+              onClick={() => logsSubTab === 'ai' ? fetchAILogs() : fetchWebhookLogs()}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: 600, color: '#475569' }}
+            >
+              <RefreshCw size={14} className={(logsSubTab === 'ai' ? loadingLogs : loadingWebhook) ? 'spin-icon' : ''} /> Refresh
             </button>
           </div>
+            </button>
+          </div>
+
+          {/* ---- AI LOGS TAB ---- */}
+          {logsSubTab === 'ai' && (<>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px', marginBottom: '20px' }}>
             {[
               { label: 'Total Executions', value: aiLogStats.total, color: '#1e293b' },
@@ -820,6 +874,139 @@ export default function WhatsAppInboxComponent() {
               </tbody>
             </table>
           </div>
+          </>)}
+
+          {/* ---- WEBHOOK LOGS TAB ---- */}
+          {logsSubTab === 'webhook' && (<>
+          {/* Stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            {[
+              { label: 'Total Received', value: webhookStats.totalReceived, color: '#1e293b', icon: '📨' },
+              { label: 'Read by Bot/Agent', value: webhookStats.totalRead, color: '#16a34a', icon: '✅' },
+              { label: 'Text Messages', value: webhookStats.totalText, color: '#2563eb', icon: '💬' },
+              { label: 'Media Messages', value: webhookStats.totalMedia, color: '#7c3aed', icon: '📎' },
+            ].map((stat, i) => (
+              <div key={i} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+                <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{stat.icon} {stat.label}</div>
+                <div style={{ fontSize: '28px', fontWeight: 800, color: stat.color }}>{stat.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Webhook Health Banner */}
+          <div style={{ background: 'linear-gradient(to right, #eff6ff, #f8fafc)', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ background: '#dbeafe', borderRadius: '8px', padding: '8px', display: 'flex' }}><Zap size={18} color="#2563eb" /></div>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>Meta Webhook Status <span style={{ fontSize: '10px', background: '#dbeafe', color: '#2563eb', borderRadius: '20px', padding: '2px 8px', marginLeft: '6px' }}>+91 7404388242</span></div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Showing all incoming Meta webhook events received for this number.</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input type="text" placeholder="Search by phone, message content, or message ID..." value={webhookSearch} onChange={e => setWebhookSearch(e.target.value)} style={{ width: '100%', paddingLeft: '32px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+
+          {/* Incoming Events Table */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <MessageSquare size={15} color="#0ea5e9" />
+              <span style={{ fontWeight: 700, fontSize: '13px', color: '#1e293b' }}>Incoming Message Events</span>
+              <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#94a3b8' }}>Last 100 events</span>
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  {['From', 'Customer', 'Type', 'Message Content', 'Meta Message ID', 'Status', 'Received At'].map(h => (
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loadingWebhook ? (
+                  [...Array(5)].map((_, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      {[...Array(7)].map((__, j) => (
+                        <td key={j} style={{ padding: '12px 14px' }}>
+                          <div style={{ height: '12px', background: 'linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', borderRadius: '6px', width: `${40 + j * 8}%` }}></div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : webhookEvents.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '48px', textAlign: 'center', color: '#94a3b8' }}>
+                      <div style={{ marginBottom: '8px', opacity: 0.4 }}><Zap size={32} /></div>
+                      <div style={{ fontWeight: 600, marginBottom: '4px' }}>No webhook events yet</div>
+                      <div style={{ fontSize: '12px' }}>Send a WhatsApp message to +91 7404388242 and it will appear here.</div>
+                    </td>
+                  </tr>
+                ) : (
+                  webhookEvents.map((evt, i) => (
+                    <tr key={evt.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                      <td style={{ padding: '10px 14px', fontWeight: 700, color: '#1e293b' }}>
+                        +91 {String(evt.conversation?.customer?.mobile || '').replace(/^91/, '').replace(/^\+91/, '')}
+                      </td>
+                      <td style={{ padding: '10px 14px', color: '#475569' }}>
+                        {evt.conversation?.customer?.contactPerson || evt.conversation?.customer?.businessName || '—'}
+                      </td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <span style={{ background: evt.messageType === 'TEXT' ? '#eff6ff' : '#fdf4ff', color: evt.messageType === 'TEXT' ? '#2563eb' : '#7c3aed', border: `1px solid ${evt.messageType === 'TEXT' ? '#bfdbfe' : '#e9d5ff'}`, borderRadius: '6px', padding: '2px 8px', fontSize: '11px', fontWeight: 600 }}>
+                          {evt.messageType || 'TEXT'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 14px', color: '#475569', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {evt.content || '—'}
+                      </td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '10px', color: '#94a3b8', background: '#f8fafc', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                          {evt.metaMessageId ? `${evt.metaMessageId.slice(0, 20)}...` : '—'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 14px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '11px', color: evt.status === 'RECEIVED' ? '#16a34a' : '#94a3b8' }}>
+                          {evt.status || 'RECEIVED'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '10px 14px', color: '#94a3b8', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                        {evt.sentAt ? new Date(evt.sentAt).toLocaleString() : '—'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Raw Payload Dumps */}
+          {webhookPayloads.length > 0 && (
+            <div style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }}>
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Terminal size={15} color="#34d399" />
+                <span style={{ fontWeight: 700, fontSize: '13px', color: '#e2e8f0' }}>Raw Webhook Payload Dumps</span>
+                <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#64748b' }}>Last {webhookPayloads.length} dumps</span>
+              </div>
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '300px', overflowY: 'auto' }}>
+                {webhookPayloads.map((p, i) => (
+                  <div key={i}>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px' }}>{p.sentAt ? new Date(p.sentAt).toLocaleString() : ''}</div>
+                    <pre style={{ margin: 0, background: '#1e293b', color: '#86efac', borderRadius: '8px', padding: '12px', fontSize: '10.5px', overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {(() => { try { return JSON.stringify(JSON.parse(p.content || '{}'), null, 2); } catch { return p.content || ''; } })()}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          </>)}
+
         </div>
       )}
 

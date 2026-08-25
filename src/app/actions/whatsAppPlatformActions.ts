@@ -1878,4 +1878,59 @@ export async function getWhatsAppAILogsAction(search = '', statusFilter = 'ALL')
   }
 }
 
+// ---------------------------------------------------------
+// 18. META WEBHOOK LOGS (Incoming events for our number)
+// ---------------------------------------------------------
+export async function getWhatsAppWebhookLogsAction(search = '') {
+  try {
+    const incomingWhere: any = { senderType: 'CUSTOMER' };
+    const payloadWhere: any = { senderName: 'WEBHOOK_PAYLOAD_DUMP' };
+
+    if (search) {
+      incomingWhere.OR = [
+        { content: { contains: search, mode: 'insensitive' } },
+        { senderName: { contains: search, mode: 'insensitive' } },
+        { metaMessageId: { contains: search, mode: 'insensitive' } }
+      ];
+    }
+
+    const [events, payloadDumps, totalReceived, totalRead] = await Promise.all([
+      prisma.whatsAppMessage.findMany({
+        where: incomingWhere,
+        include: {
+          conversation: {
+            include: {
+              customer: { select: { contactPerson: true, mobile: true, businessName: true } }
+            }
+          }
+        },
+        orderBy: { sentAt: 'desc' },
+        take: 100
+      }),
+      prisma.whatsAppMessage.findMany({
+        where: payloadWhere,
+        orderBy: { sentAt: 'desc' },
+        take: 30
+      }),
+      prisma.whatsAppMessage.count({ where: { senderType: 'CUSTOMER' } }),
+      prisma.whatsAppMessage.count({ where: { senderType: 'CUSTOMER', status: 'READ' } }),
+    ]);
+
+    return {
+      success: true,
+      events,
+      payloadDumps,
+      stats: {
+        totalReceived,
+        totalRead,
+        totalText: events.filter((e: any) => e.messageType === 'TEXT').length,
+        totalMedia: events.filter((e: any) => e.messageType !== 'TEXT').length
+      }
+    };
+  } catch (e: any) {
+    return { success: false, error: e.message, events: [], payloadDumps: [], stats: { totalReceived: 0, totalRead: 0, totalText: 0, totalMedia: 0 } };
+  }
+}
+
+
 
