@@ -4,19 +4,21 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function getExpenses() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
 
+  const organizationId = await getTenantOrgId();
   const role = (session.user as any).role;
   const userId = (session.user as any).id;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
 
   try {
-    let whereClause: any = {};
+    let whereClause: any = { employee: { organizationId } };
     if (!isAdmin) {
-      const employee = await prisma.employee.findUnique({ where: { userId } });
+      const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
       if (!employee) return { error: "Employee record not found" };
       whereClause.employeeId = employee.id;
     }

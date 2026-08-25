@@ -8,21 +8,24 @@ import { getCategories } from '@/app/actions/categoryActions';
 import { getCompanySettings } from '@/app/actions/companyActions';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function NewQuotationPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
+  const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role;
   const userId = (session.user as any).id;
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
-  let customerWhere: any = {};
+  let customerWhere: any = { organizationId: orgId };
   if (!isAdmin) {
     const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
-      customerWhere = { assignedSalespersonId: employee.id };
+      customerWhere = { assignedSalespersonId: employee.id, organizationId: orgId };
     }
   }
 
@@ -40,6 +43,7 @@ export default async function NewQuotationPage() {
         orderBy: { businessName: 'asc' }
       }),
       prisma.product.findMany({
+        where: { organizationId: orgId },
         select: { 
           id: true, 
           name: true, 
@@ -57,6 +61,7 @@ export default async function NewQuotationPage() {
         orderBy: { name: 'asc' }
       }),
       prisma.employee.findMany({
+        where: { organizationId: orgId },
         include: { user: true }
       }),
       getCategories(),

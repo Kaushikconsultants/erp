@@ -7,8 +7,11 @@ import InventoryReportsButton from '@/components/ui/InventoryReportsButton';
 import ProductListClient from '@/components/products/ProductListClient';
 import { getCategories } from '@/app/actions/categoryActions';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export default async function ProductsPage() {
   const session = await getServerSession(authOptions);
+  const orgId = await getTenantOrgId();
   const roleName = (session?.user as any)?.role;
   let canManageInventory = roleName === 'ADMIN' || roleName === 'SUPER_ADMIN';
 
@@ -25,6 +28,7 @@ export default async function ProductsPage() {
   }
 
   const products = await prisma.product.findMany({
+    where: { organizationId: orgId },
     orderBy: { createdAt: 'desc' }
   });
 

@@ -6,16 +6,21 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import PaymentsClient from '@/components/payments/PaymentsClient';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function PaymentsPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
+  const orgId = await getTenantOrgId();
+
   const [paymentsRes, summaryRes, customers] = await Promise.all([
     getPayments(),
     getPaymentSummary(),
     prisma.customer.findMany({
+      where: { organizationId: orgId },
       select: {
         id: true,
         businessName: true,

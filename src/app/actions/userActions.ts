@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 
+import { getTenantOrgId } from "@/lib/tenant";
+
 export async function createUser(formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
@@ -19,6 +21,8 @@ export async function createUser(formData: FormData) {
   }
 
   try {
+    const organizationId = await getTenantOrgId();
+
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -33,6 +37,7 @@ export async function createUser(formData: FormData) {
 
     const user = await prisma.user.create({
       data: {
+        organizationId,
         name,
         email,
         password: hashedPassword,
@@ -58,6 +63,7 @@ export async function createUser(formData: FormData) {
 
     await prisma.employee.create({
       data: {
+        organizationId,
         userId: user.id,
         employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
         department: departmentMap[role] || "General Operations",

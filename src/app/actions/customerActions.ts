@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getTenantOrgId } from "@/lib/tenant";
 
 const GST_STATE_CODES: Record<string, string> = {
   "01": "Jammu and Kashmir",
@@ -334,8 +335,11 @@ export async function createCustomer(formData: FormData) {
       }
     }
 
+    const organizationId = await getTenantOrgId();
+
     const customer = await prisma.customer.create({
       data: {
+        organizationId,
         businessName: companyName,
         contactPerson: contactPerson || companyName,
         email,
@@ -482,9 +486,15 @@ export async function getCustomerIntelligence(customerId: string) {
 
 export async function getFollowUpRecommendations() {
   try {
+    const organizationId = await getTenantOrgId();
+
     // 1. Overdue FollowUps
     const overdue = await prisma.followUp.findMany({
-      where: { status: "Pending", date: { lt: new Date() } },
+      where: {
+        status: "Pending",
+        date: { lt: new Date() },
+        customer: { organizationId }
+      },
       include: { customer: true, employee: true }
     });
 
@@ -494,7 +504,8 @@ export async function getFollowUpRecommendations() {
     
     const reorderDue = await prisma.customer.findMany({
       where: { 
-        orders: { some: {} },
+        organizationId,
+        orders: { some: { organizationId } },
         lastContactDate: { lt: thirtyFiveDaysAgo }
       },
       take: 10
@@ -509,6 +520,7 @@ export async function getFollowUpRecommendations() {
 export async function bulkImportCustomers(customers: any[]) {
   try {
     const session = await getServerSession(authOptions);
+    const organizationId = await getTenantOrgId();
     let defaultSalespersonId = null;
 
     if (session?.user) {
@@ -518,6 +530,7 @@ export async function bulkImportCustomers(customers: any[]) {
     }
 
     const dataToInsert = customers.map(c => ({
+      organizationId,
       businessName: c.BusinessName || "Unknown Business",
       contactPerson: c.ContactPerson || "Unknown Contact",
       mobile: c.Mobile || "",

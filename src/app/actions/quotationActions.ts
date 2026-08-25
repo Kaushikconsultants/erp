@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { calculateItemGst } from "@/lib/gstUtils";
 import { getCompanySettings } from "./companyActions";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function createQuotation(data: {
   customerId: string;
@@ -159,8 +160,11 @@ export async function createQuotation(data: {
     const qNumber = data.quotationNumber || `QT-${Date.now().toString().slice(-6)}`;
     const finalStatus = data.status || "Draft";
 
+    const organizationId = await getTenantOrgId();
+
     const quotation = await prisma.quotation.create({
       data: {
+        organizationId,
         quotationNumber: qNumber,
         referenceNumber: data.referenceNumber || null,
         customerId: data.customerId,
@@ -442,15 +446,17 @@ export async function getQuotations() {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
 
+    const organizationId = await getTenantOrgId();
     const role = (session.user as any).role;
     const userId = (session.user as any).id;
     const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "ACCOUNTANT";
 
-    let whereClause: any = {};
+    let whereClause: any = { organizationId };
     if (!isAdmin) {
-      const employee = await prisma.employee.findUnique({ where: { userId } });
+      const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
       if (employee) {
         whereClause = {
+          organizationId,
           OR: [
             { salespersonId: employee.id },
             { customer: { assignedSalespersonId: employee.id } }

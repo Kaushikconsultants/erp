@@ -1,9 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { revalidatePath, unstable_cache } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getTenantOrgId } from "@/lib/tenant";
 
 const FALLBACK_SETTINGS = {
   id: "default",
@@ -20,7 +21,7 @@ const FALLBACK_SETTINGS = {
   website: "www.espon.in",
   logoUrl: null as string | null,
   signatoryUrl: null as string | null,
-  signatoryName: "Ashish Aggarwal",
+  signatoryName: "Authorized Signatory",
   signatoryDesignation: "Authorized Signatory",
   bankAccountName: "ESPON CLOTHING PRIVATE LIMITED.",
   accountNumber: "016805006415",
@@ -40,51 +41,61 @@ const FALLBACK_SETTINGS = {
   updatedAt: new Date()
 };
 
-const getCachedSettings = unstable_cache(
-  async () => {
-    try {
-      let settings = await prisma.companySettings.findUnique({
-        where: { id: "default" }
-      });
-
-      if (!settings) {
-        settings = await prisma.companySettings.create({
-          data: {
-            id: "default",
-            companyName: "Espon Clothing Private Limited",
-            address: "Sco 71A , 2nd Floor , Ashoka PlazaDelhi Road",
-            city: "Rohtak",
-            state: "Haryana",
-            pincode: "124001",
-            country: "India",
-            gstin: "06AAHCE7721Q1Z4",
-            pan: "AAHCE7721Q",
-            mobile: "7206066678",
-            email: "clothingespon@gmail.com",
-            website: "www.espon.in",
-            bankAccountName: "ESPON CLOTHING PRIVATE LIMITED.",
-            accountNumber: "016805006415",
-            ifscCode: "ICIC0000168",
-            branch: "Rohtak",
-            upiId: "7206066678@OKBIZAXIS",
-            signatoryName: "Ashish Aggarwal",
-            signatoryDesignation: "Authorized Signatory"
-          }
-        });
-      }
-      return settings;
-    } catch (e) {
-      console.error("getCachedSettings DB error:", e);
-      return null;
-    }
-  },
-  ['company-settings-cache'],
-  { tags: ['company-settings'] }
-);
-
 export async function getCompanySettings() {
   try {
-    const settings = await getCachedSettings();
+    const session = await getServerSession(authOptions);
+    const orgId = (session?.user as any)?.organizationId || (await getTenantOrgId());
+
+    let settings = null;
+
+    if (orgId) {
+      settings = await prisma.companySettings.findFirst({
+        where: {
+          OR: [
+            { organizationId: orgId },
+            { id: `settings-${orgId}` }
+          ]
+        }
+      });
+
+      // If still not found for this tenant, look up the Organization record and create tenant settings
+      if (!settings) {
+        const org = await prisma.organization.findUnique({ where: { id: orgId } });
+        if (org) {
+          settings = await prisma.companySettings.create({
+            data: {
+              id: `settings-${org.id}`,
+              organizationId: org.id,
+              companyName: org.name,
+              gstin: org.gstin || null,
+              pan: org.pan || null,
+              address: org.address || `${org.city || 'Rohtak'}, ${org.state || 'Haryana'}`,
+              city: org.city || "Rohtak",
+              state: org.state || "Haryana",
+              pincode: org.pincode || "124001",
+              country: org.country || "India",
+              mobile: org.phone || "",
+              email: org.email || "",
+              website: org.website || "",
+              themeColor: "#4f46e5",
+              signatoryName: org.name,
+              signatoryDesignation: "Authorized Signatory"
+            }
+          }).catch(async () => {
+            return await prisma.companySettings.findFirst({ where: { organizationId: orgId } });
+          });
+        }
+      }
+    }
+
+    if (!settings) {
+      settings = await prisma.companySettings.findUnique({ where: { id: "default" } });
+    }
+
+    if (!settings) {
+      settings = await prisma.companySettings.findFirst();
+    }
+
     return { success: true, settings: settings || FALLBACK_SETTINGS };
   } catch (error) {
     console.error("Error getting company settings:", error);
@@ -97,10 +108,14 @@ export async function getCompanySettings() {
 
 export async function updateMonthlyTarget(target: number) {
   try {
+    const orgId = await getTenantOrgId();
+    const current = await getCompanySettings();
+    const settingId = current.settings?.id || (orgId ? `settings-${orgId}` : "default");
+
     const updated = await prisma.companySettings.upsert({
-      where: { id: "default" },
-      update: { monthlyTarget: target },
-      create: { id: "default", companyName: "Espon Clothing Private Limited", monthlyTarget: target }
+      where: { id: settingId },
+      update: { monthlyTarget: target, organizationId: orgId },
+      create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", monthlyTarget: target }
     });
     revalidatePath("/");
     return { success: true, settings: updated };
@@ -118,11 +133,15 @@ export async function updateCallOutcomes(outcomes: string[]) {
       return { error: "Unauthorized: Admin privileges required." };
     }
 
+    const orgId = await getTenantOrgId();
+    const current = await getCompanySettings();
+    const settingId = current.settings?.id || (orgId ? `settings-${orgId}` : "default");
+
     const cleanOutcomes = outcomes.map(o => o.trim()).filter(Boolean);
     const updated = await prisma.companySettings.upsert({
-      where: { id: "default" },
-      update: { callOutcomes: cleanOutcomes },
-      create: { id: "default", companyName: "Espon Clothing Private Limited", callOutcomes: cleanOutcomes }
+      where: { id: settingId },
+      update: { callOutcomes: cleanOutcomes, organizationId: orgId },
+      create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", callOutcomes: cleanOutcomes }
     });
     revalidatePath("/calls");
     revalidatePath("/settings");
@@ -142,11 +161,15 @@ export async function updateCallTypes(callTypes: string[]) {
       return { error: "Unauthorized: Admin privileges required." };
     }
 
+    const orgId = await getTenantOrgId();
+    const current = await getCompanySettings();
+    const settingId = current.settings?.id || (orgId ? `settings-${orgId}` : "default");
+
     const cleanTypes = callTypes.map(t => t.trim()).filter(Boolean);
     const updated = await prisma.companySettings.upsert({
-      where: { id: "default" },
-      update: { callTypes: cleanTypes },
-      create: { id: "default", companyName: "Espon Clothing Private Limited", callTypes: cleanTypes }
+      where: { id: settingId },
+      update: { callTypes: cleanTypes, organizationId: orgId },
+      create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", callTypes: cleanTypes }
     });
     revalidatePath("/calls");
     revalidatePath("/settings");
@@ -160,6 +183,10 @@ export async function updateCallTypes(callTypes: string[]) {
 
 export async function updateCompanySettings(formData: FormData) {
   try {
+    const orgId = await getTenantOrgId();
+    const current = await getCompanySettings();
+    const settingId = current.settings?.id || (orgId ? `settings-${orgId}` : "default");
+
     const companyName = formData.get("companyName") as string;
     const gstin = formData.get("gstin") as string;
     const pan = formData.get("pan") as string;
@@ -208,11 +235,12 @@ export async function updateCompanySettings(formData: FormData) {
     const nextInvoiceNumber = formData.get("nextInvoiceNumber") as string;
 
     const updated = await prisma.companySettings.upsert({
-      where: { id: "default" },
+      where: { id: settingId },
       update: {
+        organizationId: orgId,
         companyName, gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl, 
         signatoryUrl: signatoryUrl || null,
-        signatoryName: signatoryName || "Ashish Aggarwal",
+        signatoryName: signatoryName || "Authorized Signatory",
         signatoryDesignation: signatoryDesignation || "Authorized Signatory",
         bankAccountName, accountNumber, ifscCode, branch, upiId,
         ...(nextQuotationNumber ? { nextQuotationNumber } : {}),
@@ -226,10 +254,12 @@ export async function updateCompanySettings(formData: FormData) {
         useBoldText
       },
       create: {
-        id: "default",
-        companyName, gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl,
+        id: settingId,
+        organizationId: orgId,
+        companyName: companyName || "My Business",
+        gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl,
         signatoryUrl: signatoryUrl || null,
-        signatoryName: signatoryName || "Ashish Aggarwal",
+        signatoryName: signatoryName || "Authorized Signatory",
         signatoryDesignation: signatoryDesignation || "Authorized Signatory",
         bankAccountName, accountNumber, ifscCode, branch, upiId,
         nextQuotationNumber: nextQuotationNumber || "QT-1001",
@@ -243,6 +273,26 @@ export async function updateCompanySettings(formData: FormData) {
         ...(callTypes ? { callTypes } : {})
       }
     });
+
+    // Also sync the Organization record if orgId is set
+    if (orgId) {
+      await prisma.organization.update({
+        where: { id: orgId },
+        data: {
+          name: companyName || undefined,
+          gstin: gstin || undefined,
+          pan: pan || undefined,
+          phone: mobile || undefined,
+          email: email || undefined,
+          city: city || undefined,
+          state: state || undefined,
+          pincode: pincode || undefined,
+          website: website || undefined,
+          logoUrl: logoUrl || undefined,
+          address: address || undefined,
+        }
+      }).catch(() => {});
+    }
 
     revalidatePath("/settings");
     revalidatePath("/settings/organization");

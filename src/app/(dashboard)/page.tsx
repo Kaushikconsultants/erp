@@ -12,6 +12,8 @@ import { calculateIncentives, OrderData } from '@/lib/incentiveEngine';
 import { getFollowUpRecommendations } from '@/app/actions/customerActions';
 import './dashboard.css';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export default async function Home() {
   const session = await getServerSession(authOptions);
   
@@ -19,6 +21,7 @@ export default async function Home() {
     redirect('/login');
   }
 
+  const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
 
@@ -33,11 +36,18 @@ export default async function Home() {
 
   if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
     // ---------------------------------------------------------
-    // ADMIN DASHBOARD DATA
+    // ADMIN DASHBOARD DATA (Tenant Scoped)
     // ---------------------------------------------------------
-    const totalCustomers = await prisma.customer.count();
-    const totalOrders = await prisma.order.count();
-    const totalRevenueResult = await prisma.order.aggregate({ _sum: { totalValue: true } });
+    const totalCustomers = await prisma.customer.count({
+      where: { organizationId: orgId }
+    });
+    const totalOrders = await prisma.order.count({
+      where: { organizationId: orgId }
+    });
+    const totalRevenueResult = await prisma.order.aggregate({
+      where: { organizationId: orgId },
+      _sum: { totalValue: true }
+    });
     const totalRevenue = totalRevenueResult._sum.totalValue || 0;
     
     const todayStartOfDay = new Date();
@@ -45,6 +55,7 @@ export default async function Home() {
 
     const pendingCalls = await prisma.call.count({
       where: { 
+        customer: { organizationId: orgId },
         followUpDate: { gte: todayStartOfDay }
       }
     });
@@ -70,11 +81,14 @@ export default async function Home() {
     }
 
     const todayOrdersCount = await prisma.order.count({
-      where: { orderDate: { gte: todayStart } }
+      where: { organizationId: orgId, orderDate: { gte: todayStart } }
     });
 
     const activeAttendances = await prisma.attendance.findMany({
-      where: { date: { gte: todayStart } },
+      where: {
+        date: { gte: todayStart },
+        employee: { organizationId: orgId }
+      },
       include: { employee: { include: { user: true } } },
       orderBy: { checkIn: 'desc' }
     });
@@ -87,7 +101,7 @@ export default async function Home() {
     }));
 
     const todayOrdersList = await prisma.order.findMany({
-      where: { orderDate: { gte: todayStart } },
+      where: { organizationId: orgId, orderDate: { gte: todayStart } },
       include: { salesperson: { include: { user: true } } }
     });
     
@@ -117,6 +131,7 @@ export default async function Home() {
 
     // Calculate Top Categories from real DB order items if available
     const allOrderItemsForTopCat = await prisma.orderItem.findMany({
+      where: { order: { organizationId: orgId } },
       include: { product: true },
       take: 100
     });
@@ -140,10 +155,11 @@ export default async function Home() {
 
     // Fetch team performance (Employees and their MTD sales)
     const employees = await prisma.employee.findMany({
+      where: { organizationId: orgId },
       include: {
         user: true,
         orders: {
-          where: { orderDate: { gte: startOfMonth } },
+          where: { organizationId: orgId, orderDate: { gte: startOfMonth } },
           select: { totalValue: true }
         }
       }
@@ -162,7 +178,7 @@ export default async function Home() {
 
     // Fetch Hot Customers (Negotiation stage)
     const hotLeads = await prisma.customer.findMany({
-      where: { leadStage: 'Negotiation' },
+      where: { organizationId: orgId, leadStage: 'Negotiation' },
       include: { assignedSalesperson: { include: { user: true } } },
       take: 5,
       orderBy: { updatedAt: 'desc' }

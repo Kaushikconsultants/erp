@@ -7,6 +7,8 @@ import { prisma } from '@/lib/prisma';
 import { canUserAccessSection } from '@/lib/authPermissions';
 import CreditNotesClient from '@/components/credit-notes/CreditNotesClient';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function CreditNotesPage() {
@@ -16,9 +18,12 @@ export default async function CreditNotesPage() {
   const hasAccess = await canUserAccessSection(session.user, 'credit_notes');
   if (!hasAccess) redirect('/');
 
+  const orgId = await getTenantOrgId();
+
   const [cnRes, customers, products, invoices] = await Promise.all([
     getCreditNotes(),
     prisma.customer.findMany({
+      where: { organizationId: orgId },
       select: {
         id: true,
         businessName: true,
@@ -31,6 +36,7 @@ export default async function CreditNotesPage() {
       orderBy: { businessName: 'asc' }
     }),
     prisma.product.findMany({
+      where: { organizationId: orgId },
       select: {
         id: true,
         name: true,
@@ -43,6 +49,7 @@ export default async function CreditNotesPage() {
       orderBy: { name: 'asc' }
     }),
     prisma.invoice.findMany({
+      where: { organizationId: orgId },
       select: {
         id: true,
         invoiceNumber: true,

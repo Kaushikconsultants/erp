@@ -8,6 +8,8 @@ import BillsClient from '@/components/bills/BillsClient';
 
 import { canUserAccessSection } from '@/lib/authPermissions';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function BillsPage() {
@@ -16,6 +18,8 @@ export default async function BillsPage() {
 
   const hasAccess = await canUserAccessSection(session.user, 'purchases');
   if (!hasAccess) redirect('/');
+
+  const orgId = await getTenantOrgId();
 
   const res = await getBills();
   const bills = res.success ? res.bills : [];
@@ -40,7 +44,7 @@ export default async function BillsPage() {
       state: true,
       paymentTerms: true
     },
-    where: { status: 'Active' },
+    where: { organizationId: orgId, status: 'Active' },
     orderBy: { companyName: 'asc' }
   });
 
@@ -52,12 +56,13 @@ export default async function BillsPage() {
       purchasePrice: true,
       sellingPrice: true
     },
-    where: { status: 'Active' },
+    where: { organizationId: orgId, status: 'Active' },
     orderBy: { name: 'asc' }
   });
 
   const purchaseOrders = await prisma.purchaseOrder.findMany({
     where: {
+      vendor: { organizationId: orgId },
       status: { in: ['Issued', 'Partially Received', 'Received'] }
     },
     select: {

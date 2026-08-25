@@ -2,6 +2,9 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getOrCreateEmployee } from "@/lib/employeeHelper";
 
 export async function createTask(formData: FormData) {
   const title = formData.get("title") as string;
@@ -16,13 +19,16 @@ export async function createTask(formData: FormData) {
   }
 
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { error: "Unauthorized" };
+
     let dueDate = null;
     if (dueDateStr) {
       dueDate = new Date(dueDateStr);
     }
 
-    // For MVP, creator is the first user
-    const creator = await prisma.employee.findFirst();
+    const userId = (session.user as any).id;
+    const creator = await getOrCreateEmployee(userId, session.user);
     if (!creator) return { error: "Creator profile not found" };
 
     const task = await prisma.task.create({

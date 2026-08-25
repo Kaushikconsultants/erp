@@ -8,6 +8,8 @@ import CallScriptingPanel from '@/components/telecalling/CallScriptingPanel';
 import CustomerTimeline from '@/components/customers/CustomerTimeline';
 import CustomerIntelligencePanel from '@/components/customers/CustomerIntelligencePanel';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export default async function CustomerProfilePage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   
@@ -15,6 +17,7 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
     redirect('/login');
   }
 
+  const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role || 'SALES';
 
   // Await the params resolution for Next.js app router dynamic segments
@@ -42,7 +45,7 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
 
   const objections = await prisma.objection.findMany();
 
-  if (!customer) {
+  if (!customer || customer.organizationId !== orgId) {
     return (
       <div className="page-container">
         <h1>Customer Not Found</h1>

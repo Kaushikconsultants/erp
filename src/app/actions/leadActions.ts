@@ -4,21 +4,23 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function getPipelineData() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
   
+  const organizationId = await getTenantOrgId();
   const role = (session.user as any).role;
   const userId = (session.user as any).id;
   
-  let whereClause = {};
+  let whereClause: any = { organizationId };
   
   // If not admin, only show assigned leads
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
-    const employee = await prisma.employee.findUnique({ where: { userId } });
+    const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
     if (employee) {
-      whereClause = { assignedSalespersonId: employee.id };
+      whereClause.assignedSalespersonId = employee.id;
     }
   }
 

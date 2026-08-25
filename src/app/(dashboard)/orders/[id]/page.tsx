@@ -24,10 +24,13 @@ import {
 } from 'lucide-react';
 import GenerateInvoiceButton from '@/components/invoices/GenerateInvoiceButton';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
+  const orgId = await getTenantOrgId();
   const { id } = await params;
 
   const order = await prisma.order.findUnique({
@@ -39,7 +42,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     }
   });
 
-  if (!order) {
+  if (!order || order.organizationId !== orgId) {
     notFound();
   }
 

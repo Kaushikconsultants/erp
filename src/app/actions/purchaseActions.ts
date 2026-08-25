@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 import { canUserAccessSection } from "@/lib/authPermissions";
+import { getTenantOrgId } from "@/lib/tenant";
 
 async function canManagePurchases() {
   const session = await getServerSession(authOptions);
@@ -20,7 +21,11 @@ export async function getPurchaseOrders() {
   const hasAccess = await canUserAccessSection(session.user, 'purchases');
   if (!hasAccess) return { error: "Unauthorized" };
   try {
+    const organizationId = await getTenantOrgId();
     const orders = await prisma.purchaseOrder.findMany({
+      where: {
+        vendor: { organizationId }
+      },
       include: {
         vendor: { select: { companyName: true, contactPerson: true } },
         items: {

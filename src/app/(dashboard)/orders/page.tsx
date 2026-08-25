@@ -7,6 +7,7 @@ import CreateOrderButton from '@/components/ui/CreateOrderButton';
 import OrderListClient, { UnifiedDocument } from '@/components/orders/OrderListClient';
 import { calculateIncentives, OrderData } from '@/lib/incentiveEngine';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
+import { getTenantScope } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,35 +18,29 @@ export default async function OrdersPage() {
     redirect('/login');
   }
 
-  const userRole = (session.user as any).role || 'SALES';
-  const userId = (session.user as any).id;
-  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+  const { organizationId, isAdmin, employeeId } = await getTenantScope();
 
-  let orderWhereClause: any = {};
-  let customerWhereClause: any = {};
-  let quotationWhereClause: any = {};
+  let orderWhereClause: any = { organizationId };
+  let customerWhereClause: any = { organizationId };
+  let quotationWhereClause: any = { organizationId };
 
-  if (!isSuperOrAdmin) {
-    const employee = await getOrCreateEmployee(userId, session.user);
-    if (employee) {
-      orderWhereClause = {
-        OR: [
-          { salespersonId: employee.id },
-          { customer: { assignedSalespersonId: employee.id } }
-        ]
-      };
-      customerWhereClause = { assignedSalespersonId: employee.id };
-      quotationWhereClause = {
-        OR: [
-          { salespersonId: employee.id },
-          { customer: { assignedSalespersonId: employee.id } }
-        ]
-      };
-    } else {
-      orderWhereClause = { salespersonId: 'unassigned' };
-      customerWhereClause = { assignedSalespersonId: 'unassigned' };
-      quotationWhereClause = { salespersonId: 'unassigned' };
-    }
+  if (!isAdmin) {
+    const empId = employeeId || 'unassigned';
+    orderWhereClause = {
+      organizationId,
+      OR: [
+        { salespersonId: empId },
+        { customer: { assignedSalespersonId: empId } }
+      ]
+    };
+    customerWhereClause = { organizationId, assignedSalespersonId: empId };
+    quotationWhereClause = {
+      organizationId,
+      OR: [
+        { salespersonId: empId },
+        { customer: { assignedSalespersonId: empId } }
+      ]
+    };
   }
 
   let orders: any[] = [];
@@ -71,11 +66,12 @@ export default async function OrdersPage() {
         orderBy: { businessName: 'asc' }
       }),
       prisma.product.findMany({
+        where: { organizationId, stockQuantity: { gt: 0 } },
         select: { id: true, name: true, sellingPrice: true },
-        where: { stockQuantity: { gt: 0 } },
         orderBy: { name: 'asc' }
       }),
       prisma.employee.findMany({
+        where: { organizationId },
         include: { user: true },
         orderBy: { user: { name: 'asc' } }
       }),
@@ -84,7 +80,7 @@ export default async function OrdersPage() {
         orderBy: { createdAt: 'desc' },
         include: {
           customer: true,
-          salesperson: { include: { user: true } }
+          items: { include: { product: true } }
         }
       })
     ]);

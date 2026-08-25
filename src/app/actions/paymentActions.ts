@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function getPayments(filters?: {
   search?: string;
@@ -20,7 +21,10 @@ export async function getPayments(filters?: {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    const where: any = {};
+    const organizationId = await getTenantOrgId();
+    const where: any = {
+      customer: { organizationId }
+    };
 
     if (filters?.invoiceId) where.invoiceId = filters.invoiceId;
     if (filters?.customerId) where.customerId = filters.customerId;
@@ -41,16 +45,22 @@ export async function getPayments(filters?: {
 
     if (filters?.search && filters.search.trim()) {
       const q = filters.search.trim();
-      where.OR = [
-        { paymentNumber: { contains: q, mode: 'insensitive' } },
-        { referenceNumber: { contains: q, mode: 'insensitive' } },
-        { payerName: { contains: q, mode: 'insensitive' } },
-        { receivingAccount: { contains: q, mode: 'insensitive' } },
-        { customer: { businessName: { contains: q, mode: 'insensitive' } } },
-        { customer: { contactPerson: { contains: q, mode: 'insensitive' } } },
-        { customer: { mobile: { contains: q, mode: 'insensitive' } } },
-        { invoice: { invoiceNumber: { contains: q, mode: 'insensitive' } } },
+      where.AND = [
+        { customer: { organizationId } },
+        {
+          OR: [
+            { paymentNumber: { contains: q, mode: 'insensitive' } },
+            { referenceNumber: { contains: q, mode: 'insensitive' } },
+            { payerName: { contains: q, mode: 'insensitive' } },
+            { receivingAccount: { contains: q, mode: 'insensitive' } },
+            { customer: { businessName: { contains: q, mode: 'insensitive' } } },
+            { customer: { contactPerson: { contains: q, mode: 'insensitive' } } },
+            { customer: { mobile: { contains: q, mode: 'insensitive' } } },
+            { invoice: { invoiceNumber: { contains: q, mode: 'insensitive' } } },
+          ]
+        }
       ];
+      delete where.customer;
     }
 
     const payments = await prisma.payment.findMany({
@@ -102,6 +112,7 @@ export async function getPaymentSummary() {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const today = new Date();
     const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
@@ -113,15 +124,15 @@ export async function getPaymentSummary() {
       totalOutstanding,
       advanceCount
     ] = await Promise.all([
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Completed' } }),
-      prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Completed', paymentDate: { gte: startOfMonth } } }),
-      prisma.payment.groupBy({ by: ['paymentMode'], _sum: { amount: true }, where: { status: 'Completed' } }),
-      prisma.payment.groupBy({ by: ['receivingAccount'], _sum: { amount: true }, where: { status: 'Completed' } }),
+      prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Completed', customer: { organizationId } } }),
+      prisma.payment.aggregate({ _sum: { amount: true }, where: { status: 'Completed', customer: { organizationId }, paymentDate: { gte: startOfMonth } } }),
+      prisma.payment.groupBy({ by: ['paymentMode'], _sum: { amount: true }, where: { status: 'Completed', customer: { organizationId } } }),
+      prisma.payment.groupBy({ by: ['receivingAccount'], _sum: { amount: true }, where: { status: 'Completed', customer: { organizationId } } }),
       prisma.invoice.aggregate({
         _sum: { amountDue: true },
-        where: { status: { in: ['Unpaid', 'Partially Paid', 'Overdue'] } }
+        where: { organizationId, status: { in: ['Unpaid', 'Partially Paid', 'Overdue'] } }
       }),
-      prisma.payment.count({ where: { paymentType: 'Advance Payment', status: 'Completed' } })
+      prisma.payment.count({ where: { paymentType: 'Advance Payment', status: 'Completed', customer: { organizationId } } })
     ]);
 
     return {

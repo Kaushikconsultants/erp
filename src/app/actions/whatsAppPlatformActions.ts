@@ -37,6 +37,7 @@ export async function getMetaApiCredentials() {
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export interface ConversationFilterOptions {
   search?: string;
@@ -54,24 +55,31 @@ export async function getWhatsAppConversations(filters: ConversationFilterOption
   // await ensureSeeded();
   try {
     const session = await getServerSession(authOptions);
+    const orgId = await getTenantOrgId();
     const userRole = (session?.user as any)?.role || 'SALES';
     const userId = (session?.user as any)?.id;
     const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN' || userRole === 'MANAGER';
 
     let currentEmployee = null;
     if (userId) {
-      currentEmployee = await prisma.employee.findUnique({ where: { userId } });
+      currentEmployee = await prisma.employee.findFirst({ where: { userId, organizationId: orgId } });
     }
 
-    const where: any = {};
+    const where: any = {
+      customer: { organizationId: orgId }
+    };
 
     if (filters.search && filters.search.trim()) {
       const q = filters.search.trim();
-      where.OR = [
-        { customer: { businessName: { contains: q, mode: 'insensitive' } } },
-        { customer: { contactPerson: { contains: q, mode: 'insensitive' } } },
-        { customer: { mobile: { contains: q, mode: 'insensitive' } } },
-        { lastMessageText: { contains: q, mode: 'insensitive' } }
+      where.AND = [
+        {
+          OR: [
+            { customer: { businessName: { contains: q, mode: 'insensitive' } } },
+            { customer: { contactPerson: { contains: q, mode: 'insensitive' } } },
+            { customer: { mobile: { contains: q, mode: 'insensitive' } } },
+            { lastMessageText: { contains: q, mode: 'insensitive' } }
+          ]
+        }
       ];
     }
 
@@ -1557,7 +1565,8 @@ export async function launchWhatsAppBroadcastAction(data: {
   audienceType: 'ALL' | 'HOT' | 'WARM' | 'COLD' | 'LEADS';
 }) {
   try {
-    const whereClause: any = { mobile: { not: null } };
+    const orgId = await getTenantOrgId();
+    const whereClause: any = { organizationId: orgId, mobile: { not: null } };
     if (data.audienceType === 'HOT') whereClause.temperature = 'HOT';
     else if (data.audienceType === 'WARM') whereClause.temperature = 'WARM';
     else if (data.audienceType === 'COLD') whereClause.temperature = 'COLD';

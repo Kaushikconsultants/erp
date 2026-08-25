@@ -8,6 +8,8 @@ import VendorCreditsClient from '@/components/vendor-credits/VendorCreditsClient
 
 import { canUserAccessSection } from '@/lib/authPermissions';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function VendorCreditsPage() {
@@ -16,6 +18,8 @@ export default async function VendorCreditsPage() {
 
   const hasAccess = await canUserAccessSection(session.user, 'purchases');
   if (!hasAccess) redirect('/');
+
+  const orgId = await getTenantOrgId();
 
   const res = await getVendorCredits();
   const credits = res.success ? res.credits : [];
@@ -28,6 +32,7 @@ export default async function VendorCreditsPage() {
   };
 
   const vendors = await prisma.vendor.findMany({
+    where: { organizationId: orgId, status: 'Active' },
     select: {
       id: true,
       companyName: true,
@@ -37,32 +42,36 @@ export default async function VendorCreditsPage() {
       state: true,
       gstNumber: true
     },
-    where: { status: 'Active' },
     orderBy: { companyName: 'asc' }
   });
 
   const products = await prisma.product.findMany({
+    where: { organizationId: orgId, status: 'Active' },
     select: {
       id: true,
       name: true,
       sku: true,
       purchasePrice: true
     },
-    where: { status: 'Active' },
     orderBy: { name: 'asc' }
   });
 
   const bills = await prisma.bill.findMany({
+    where: {
+      organizationId: orgId,
+      amountDue: { gt: 0 },
+      status: { in: ['Open', 'Partially Paid', 'Overdue'] }
+    },
     select: {
       id: true,
       billNumber: true,
       vendorBillNumber: true,
       vendorId: true,
       totalAmount: true,
-      amountDue: true,
-      status: true
+      amountPaid: true,
+      amountDue: true
     },
-    orderBy: { billDate: 'desc' }
+    orderBy: { billDate: 'asc' }
   });
 
   return (

@@ -3,14 +3,18 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+import { getTenantOrgId } from "@/lib/tenant";
+
 export async function getCategories() {
   try {
+    const organizationId = await getTenantOrgId();
     const dbCategories = await prisma.productCategory.findMany({
       orderBy: { name: 'asc' }
     });
 
-    // Also fetch unique categories existing on Product table
+    // Also fetch unique categories existing on Product table for this organization
     const products = await prisma.product.findMany({
+      where: { organizationId },
       select: { category: true }
     });
     

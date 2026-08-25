@@ -7,6 +7,8 @@ import CreateQuotationForm from '@/components/quotations/CreateQuotationForm';
 import { getCategories } from '@/app/actions/categoryActions';
 import { getCompanySettings } from '@/app/actions/companyActions';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function EditQuotationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -14,16 +16,17 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
+  const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role;
   const userId = (session.user as any).id;
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
-  let customerWhere: any = {};
+  let customerWhere: any = { organizationId: orgId };
   if (!isAdmin) {
     try {
       const employee = await prisma.employee.findUnique({ where: { userId } });
       if (employee) {
-        customerWhere = { assignedSalespersonId: employee.id };
+        customerWhere = { assignedSalespersonId: employee.id, organizationId: orgId };
       } else {
         customerWhere = { id: '00000000-0000-0000-0000-000000000000' };
       }
@@ -46,6 +49,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
       orderBy: { businessName: 'asc' }
     }),
     prisma.product.findMany({
+      where: { organizationId: orgId },
       select: { 
         id: true, 
         name: true, 
@@ -63,13 +67,14 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
       orderBy: { name: 'asc' }
     }),
     prisma.employee.findMany({
+      where: { organizationId: orgId },
       include: { user: true }
     }),
     getCategories(),
     getCompanySettings()
   ]);
 
-  if (!quotation) {
+  if (!quotation || quotation.organizationId !== orgId) {
     notFound();
   }
 

@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+import { getTenantOrgId } from "@/lib/tenant";
+
 export interface SearchResultItem {
   id: string;
   title: string;
@@ -18,11 +20,13 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
 
   const cleanQuery = query.trim();
   const session = await getServerSession(authOptions);
+  const orgId = await getTenantOrgId();
   const userRole = (session?.user as any)?.role || 'SALES';
   const userId = (session?.user as any)?.id;
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
   let customerWhere: any = {
+    organizationId: orgId,
     OR: [
       { businessName: { contains: cleanQuery, mode: 'insensitive' } },
       { contactPerson: { contains: cleanQuery, mode: 'insensitive' } },
@@ -31,6 +35,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
   };
 
   let quotationWhere: any = {
+    organizationId: orgId,
     OR: [
       { quotationNumber: { contains: cleanQuery, mode: 'insensitive' } },
       { customer: { businessName: { contains: cleanQuery, mode: 'insensitive' } } },
@@ -38,6 +43,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
   };
 
   let orderWhere: any = {
+    organizationId: orgId,
     OR: [
       { orderNumber: { contains: cleanQuery, mode: 'insensitive' } },
       { customer: { businessName: { contains: cleanQuery, mode: 'insensitive' } } },
@@ -49,6 +55,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
       const employee = await prisma.employee.findUnique({ where: { userId } });
       if (employee) {
         customerWhere = {
+          organizationId: orgId,
           AND: [
             { assignedSalespersonId: employee.id },
             {
@@ -61,6 +68,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
           ]
         };
         quotationWhere = {
+          organizationId: orgId,
           AND: [
             { salespersonId: employee.id },
             {
@@ -72,6 +80,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
           ]
         };
         orderWhere = {
+          organizationId: orgId,
           AND: [
             { salespersonId: employee.id },
             {
@@ -111,6 +120,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
       }),
       prisma.product.findMany({
         where: {
+          organizationId: orgId,
           OR: [
             { name: { contains: cleanQuery, mode: 'insensitive' } },
             { articleNumber: { contains: cleanQuery, mode: 'insensitive' } },
@@ -122,6 +132,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
       }),
       prisma.whatsAppConversation.findMany({
         where: {
+          customer: { organizationId: orgId },
           OR: [
             { customer: { businessName: { contains: cleanQuery, mode: 'insensitive' } } },
             { customer: { contactPerson: { contains: cleanQuery, mode: 'insensitive' } } },

@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function FollowUpsDashboard() {
@@ -15,11 +17,13 @@ export default async function FollowUpsDashboard() {
     redirect('/login');
   }
 
+  const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
 
   let whereClause: any = {
-    followUpDate: { not: null }
+    followUpDate: { not: null },
+    customer: { organizationId: orgId }
   };
 
   if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {

@@ -8,6 +8,8 @@ import { getCompanySettings } from '@/app/actions/companyActions';
 import { canUserAccessSection } from '@/lib/authPermissions';
 import EWayBillsClient from '@/components/eway-bills/EWayBillsClient';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function EWayBillsPage() {
@@ -17,10 +19,13 @@ export default async function EWayBillsPage() {
   const hasAccess = await canUserAccessSection(session.user, 'eway_bills');
   if (!hasAccess) redirect('/');
 
+  const orgId = await getTenantOrgId();
+
   const [ewbRes, orders, customers, companyRes] = await Promise.all([
     getEWayBills(),
     prisma.order.findMany({
       where: {
+        organizationId: orgId,
         orderStatus: { in: ['Processing', 'Packing', 'Packed', 'Dispatched'] }
       },
       include: {
@@ -32,6 +37,7 @@ export default async function EWayBillsPage() {
       take: 100
     }),
     prisma.customer.findMany({
+      where: { organizationId: orgId },
       select: {
         id: true,
         businessName: true,

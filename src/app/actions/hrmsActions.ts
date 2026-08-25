@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { calculateIncentives, OrderData } from "@/lib/incentiveEngine";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function processSalary(employeeId: string, month: string, data: {
   basicSalary: number;
@@ -83,12 +84,13 @@ export async function markSalaryPaid(salaryId: string) {
 export async function getPayrollData(month: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
+  const organizationId = await getTenantOrgId();
   const role = (session.user as any)?.role;
   const userId = (session.user as any)?.id;
   const isAdmin = role === 'ADMIN' || role === 'SUPER_ADMIN';
 
   try {
-    const whereEmp: any = {};
+    const whereEmp: any = { organizationId };
     if (!isAdmin) whereEmp.userId = userId;
 
     const [yearStr, monthStr] = month.split('-');

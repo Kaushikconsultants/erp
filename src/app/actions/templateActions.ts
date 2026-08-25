@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export interface TemplateConfig {
   id: string;
@@ -513,8 +514,12 @@ export async function getAllCategoryTemplates(category?: string) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { success: false, error: "Unauthorized" };
 
+    const organizationId = await getTenantOrgId();
+
     // Fetch company settings to see if custom templates are saved
-    const companySettings = await prisma.companySettings.findFirst();
+    const companySettings = await prisma.companySettings.findFirst({
+      where: { organizationId }
+    });
     const customTemplatesJson = (companySettings as any)?.customTemplates;
     let customTemplatesMap: Record<string, TemplateConfig[]> = {};
     
@@ -588,7 +593,10 @@ export async function setDefaultCategoryTemplate(category: string, templateId: s
     const session = await getServerSession(authOptions);
     if (!session?.user) return { success: false, error: "Unauthorized" };
 
-    const companySettings = await prisma.companySettings.findFirst();
+    const organizationId = await getTenantOrgId();
+    const companySettings = await prisma.companySettings.findFirst({
+      where: { organizationId }
+    });
     if (!companySettings) return { success: false, error: "Company settings not found" };
 
     let customTemplatesMap: Record<string, TemplateConfig[]> = {};
@@ -645,7 +653,10 @@ export async function saveCategoryTemplate(category: string, templateData: Templ
     const session = await getServerSession(authOptions);
     if (!session?.user) return { success: false, error: "Unauthorized" };
 
-    const companySettings = await prisma.companySettings.findFirst();
+    const organizationId = await getTenantOrgId();
+    const companySettings = await prisma.companySettings.findFirst({
+      where: { organizationId }
+    });
     if (!companySettings) return { success: false, error: "Company settings not found" };
 
     let customTemplatesMap: Record<string, TemplateConfig[]> = {};

@@ -7,6 +7,8 @@ import AddCustomerButton from '@/components/ui/AddCustomerButton';
 import CustomerTable from '@/components/ui/CustomerTable';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
+import { getTenantScope } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function CustomersPage() {
@@ -16,17 +18,12 @@ export default async function CustomersPage() {
     redirect('/login');
   }
 
-  const userRole = (session.user as any).role || 'SALES';
-  const userId = (session.user as any).id;
-  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+  const { organizationId, isAdmin, employeeId } = await getTenantScope();
 
-  let whereClause = {};
+  let whereClause: any = { organizationId };
 
   if (!isAdmin) {
-    const employee = await getOrCreateEmployee(userId, session.user);
-    if (employee) {
-      whereClause = { assignedSalespersonId: employee.id };
-    }
+    whereClause.assignedSalespersonId = employeeId || 'unassigned';
   }
 
   let customers: any[] = [];
@@ -47,9 +44,10 @@ export default async function CustomersPage() {
   }
 
   let allEmployees: { id: string; name: string }[] = [];
-  if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+  if (isAdmin) {
     try {
       const employeesData = await prisma.employee.findMany({
+        where: { organizationId },
         include: { user: true },
         orderBy: { user: { name: 'asc' } }
       });

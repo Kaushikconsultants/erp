@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 import { canUserAccessSection } from "@/lib/authPermissions";
+import { getTenantOrgId } from "@/lib/tenant";
 
 async function canManagePurchases() {
   const session = await getServerSession(authOptions);
@@ -21,7 +22,9 @@ export async function getBills() {
   if (!hasAccess) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const bills = await prisma.bill.findMany({
+      where: { organizationId },
       include: {
         vendor: {
           select: {
@@ -118,8 +121,10 @@ export async function createBill(data: {
     const userId = (session?.user as any)?.id;
     const employee = await prisma.employee.findUnique({ where: { userId } });
 
+    const organizationId = await getTenantOrgId();
+
     // Generate unique Bill Number e.g. BILL-0001
-    const count = await prisma.bill.count();
+    const count = await prisma.bill.count({ where: { organizationId } });
     const billNumber = `BILL-${String(count + 1).padStart(4, '0')}`;
 
     // Calculate item totals
@@ -152,6 +157,7 @@ export async function createBill(data: {
     const bill = await prisma.$transaction(async (tx) => {
       const newBill = await tx.bill.create({
         data: {
+          organizationId,
           billNumber,
           vendorBillNumber: data.vendorBillNumber || null,
           vendorId: data.vendorId,

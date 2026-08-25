@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 import { canUserAccessSection } from "@/lib/authPermissions";
+import { getTenantOrgId } from "@/lib/tenant";
 
 async function canManagePayments() {
   const session = await getServerSession(authOptions);
@@ -21,7 +22,11 @@ export async function getVendorPayments() {
   if (!hasAccess) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const payments = await prisma.vendorPayment.findMany({
+      where: {
+        vendor: { organizationId }
+      },
       include: {
         vendor: {
           select: {

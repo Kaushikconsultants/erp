@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 // Helper to determine financial year and period
 export async function getCurrentGstPeriod() {
@@ -36,15 +37,19 @@ export async function getGstFilingOverview(
   periodKeyParam?: string
 ) {
   try {
+    const organizationId = await getTenantOrgId();
     const current = await getCurrentGstPeriod();
     const financialYear = financialYearParam || current.financialYear;
     const periodKey = periodKeyParam || current.periodKey;
 
     // 1. Fetch GST Settings
-    let gstSetting = await prisma.gstSetting.findFirst();
+    let gstSetting = await prisma.gstSetting.findFirst({
+      where: { organizationId }
+    });
     if (!gstSetting) {
       gstSetting = await prisma.gstSetting.create({
         data: {
+          organizationId,
           gstin: "08AABCE1234F1Z5",
           legalName: "ESPON GLOBAL INDUSTRIES PVT LTD",
           tradeName: "ESPON CRM",
@@ -53,7 +58,7 @@ export async function getGstFilingOverview(
           eWayBillThreshold: 50000,
           filingFrequency: "Monthly"
         }
-      });
+      }).catch(async () => await prisma.gstSetting.findFirst({ where: { organizationId } }));
     }
 
     // 2. Fetch Online Portal Settings
@@ -102,7 +107,7 @@ export async function getGstFilingOverview(
     // 4. Fetch Real Sales Orders & Invoices (Outward Supplies)
     const [orders, invoices, creditNotes, bills, purchaseOrders, vendorCredits] = await Promise.all([
       prisma.order.findMany({
-        where: { orderStatus: { not: 'Cancelled' } },
+        where: { organizationId, orderStatus: { not: 'Cancelled' } },
         include: {
           customer: true,
           items: {
@@ -112,6 +117,7 @@ export async function getGstFilingOverview(
         orderBy: { orderDate: 'desc' }
       }),
       prisma.invoice.findMany({
+        where: { organizationId },
         include: {
           customer: true,
           order: {
@@ -123,6 +129,7 @@ export async function getGstFilingOverview(
         orderBy: { invoiceDate: 'desc' }
       }),
       prisma.creditNote.findMany({
+        where: { organizationId },
         include: {
           customer: true,
           items: true
@@ -130,7 +137,7 @@ export async function getGstFilingOverview(
         orderBy: { creditNoteDate: 'desc' }
       }),
       prisma.bill.findMany({
-        where: { status: { not: 'Cancelled' } },
+        where: { organizationId, status: { not: 'Cancelled' } },
         include: {
           vendor: true,
           items: true
@@ -138,7 +145,7 @@ export async function getGstFilingOverview(
         orderBy: { billDate: 'desc' }
       }),
       prisma.purchaseOrder.findMany({
-        where: { status: { in: ['Issued', 'Received', 'Partially Received', 'Completed', 'Approved'] } },
+        where: { vendor: { organizationId }, status: { in: ['Issued', 'Received', 'Partially Received', 'Completed', 'Approved'] } },
         include: {
           vendor: true,
           items: {
@@ -148,6 +155,7 @@ export async function getGstFilingOverview(
         orderBy: { orderDate: 'desc' }
       }),
       prisma.vendorCredit.findMany({
+        where: { vendor: { organizationId } },
         include: {
           vendor: true,
           items: true

@@ -6,6 +6,8 @@ import { redirect } from 'next/navigation';
 import CreateTaskButton from '@/components/ui/CreateTaskButton';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export default async function TasksPage() {
   const session = await getServerSession(authOptions);
   
@@ -13,22 +15,28 @@ export default async function TasksPage() {
     redirect('/login');
   }
 
+  const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
 
-  let taskWhereClause = {};
-  let customerWhereClause = {};
+  let taskWhereClause: any = {
+    assignee: { organizationId: orgId }
+  };
+  let customerWhereClause: any = {
+    organizationId: orgId
+  };
 
   if (userRole === 'SALES') {
     const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
       taskWhereClause = {
+        assignee: { organizationId: orgId },
         OR: [
           { assigneeId: employee.id },
           { creatorId: employee.id }
         ]
       };
-      customerWhereClause = { assignedSalespersonId: employee.id };
+      customerWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
     }
   }
 
@@ -42,6 +50,7 @@ export default async function TasksPage() {
   });
 
   const employees = await prisma.employee.findMany({
+    where: { organizationId: orgId },
     include: { user: true },
     orderBy: { user: { name: 'asc' } }
   });

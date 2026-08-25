@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export interface GenerateEWayBillInput {
   orderId?: string;
@@ -53,7 +54,8 @@ export async function getEWayBills(filters?: {
   transportMode?: string;
 }) {
   try {
-    const where: any = {};
+    const organizationId = await getTenantOrgId();
+    const where: any = { organizationId };
 
     if (filters?.status && filters.status !== 'All') {
       where.status = filters.status;
@@ -93,8 +95,9 @@ export async function getEWayBills(filters?: {
 
 export async function getEWayBillById(id: string) {
   try {
-    const ewayBill = await prisma.eWayBill.findUnique({
-      where: { id },
+    const organizationId = await getTenantOrgId();
+    const ewayBill = await prisma.eWayBill.findFirst({
+      where: { id, organizationId },
       include: {
         customer: true,
         order: {
@@ -131,6 +134,7 @@ export async function generateEWayBill(input: GenerateEWayBillInput) {
       return { success: false, error: "Document Number is required" };
     }
 
+    const organizationId = await getTenantOrgId();
     const ewbNumber = await generateRandomEWBNumber();
     const distance = Number(input.approxDistanceKm) || 100;
 
@@ -141,7 +145,9 @@ export async function generateEWayBill(input: GenerateEWayBillInput) {
     validUntil.setHours(23, 59, 59, 999);
 
     // Get company settings for default consignor info if not provided
-    const company = await prisma.companySettings.findFirst();
+    const company = await prisma.companySettings.findFirst({
+      where: { organizationId }
+    });
 
     const fromGstin = input.fromGstin || company?.gstin || "06AAHCE7721Q1Z4";
     const fromTradeName = input.fromTradeName || company?.companyName || "ESPON CLOTHING PRIVATE LIMITED";
@@ -152,6 +158,7 @@ export async function generateEWayBill(input: GenerateEWayBillInput) {
 
     const ewayBill = await prisma.eWayBill.create({
       data: {
+        organizationId,
         ewbNumber,
         ewbDate: new Date(),
         validUntil,

@@ -20,80 +20,100 @@ export async function getTenantContext(): Promise<TenantContext | null> {
     return null;
   }
 
-  let orgId = (session.user as any).organizationId;
   const userEmail = session.user.email;
   const userId = (session.user as any).id;
 
-  // 1. If orgId is not present in token, check the database user record
-  if (!orgId && (userId || userEmail)) {
-    const dbUser = await prisma.user.findFirst({
+  // 1. Always verify the current user in the database to get their actual organizationId
+  let dbUser = null;
+  if (userId || userEmail) {
+    dbUser = await prisma.user.findFirst({
       where: userId ? { id: userId } : { email: userEmail! },
       include: { organization: true }
     });
-    if (dbUser?.organizationId) {
-      orgId = dbUser.organizationId;
+  }
+
+  let orgId = dbUser?.organizationId || (session.user as any).organizationId;
+  let org = dbUser?.organization || (orgId ? await prisma.organization.findUnique({ where: { id: orgId } }) : null);
+
+  // 2. Only if the database has zero organizations at all, create root org
+  if (!org) {
+    const totalOrgs = await prisma.organization.count();
+    if (totalOrgs === 0) {
+      org = await ensureDefaultOrganization();
+      orgId = org?.id;
     }
   }
 
-  // 2. Ensure organization exists
-  let org = orgId ? await prisma.organization.findUnique({ where: { id: orgId } }) : null;
-
   if (!org) {
-    org = await ensureDefaultOrganization();
+    // If user is truly unlinked to any org, find root org
+    org = await prisma.organization.findFirst({
+      where: { slug: "espon-global" }
+    }) || await prisma.organization.findFirst();
     orgId = org?.id;
   }
 
   if (!org) {
-    org = await prisma.organization.findFirst();
-    orgId = org?.id;
-  }
-
-  // 3. If database has no organization yet, create one
-  if (!org) {
-    org = await prisma.organization.create({
-      data: {
-        name: "Espon Global Industries Private Limited",
-        slug: "espon-global",
-        tradeName: "Espon Apparel",
-        email: userEmail || "clothingespon@gmail.com",
-        phone: "7206066678",
-        city: "Rohtak",
-        state: "Haryana",
-        subscriptionPlan: "ENTERPRISE",
-        billingCycle: "ANNUALLY",
-        subscriptionStatus: "ACTIVE",
-        maxUsers: 999,
-        maxBranches: 99,
-        maxWarehouses: 99,
-        monthlyOrderLimit: 999999,
-        whatsAppCreditBalance: 50000,
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-      }
-    });
-    orgId = org.id;
-  }
-
-  // 4. Link the user to the organization in DB if not linked
-  if (orgId && (userId || userEmail)) {
-    try {
-      await prisma.user.updateMany({
-        where: userId ? { id: userId, organizationId: null } : { email: userEmail!, organizationId: null },
-        data: { organizationId: orgId }
-      });
-    } catch (e) {
-      // ignore
-    }
+    return null;
   }
 
   return {
-    organizationId: orgId!,
+    organizationId: org.id,
     organizationName: org.name,
     organizationSlug: org.slug,
     subscriptionPlan: org.subscriptionPlan || "GROWTH",
     subscriptionStatus: org.subscriptionStatus || "ACTIVE",
-    userId: userId || "user-id",
-    userRole: (session.user as any).role || "SUPER_ADMIN",
+    userId: userId || dbUser?.id || "user-id",
+    userRole: dbUser?.role || (session.user as any).role || "SALES",
+  };
+}
+
+export async function getTenantOrgId(): Promise<string> {
+  const ctx = await getTenantContext();
+  if (ctx?.organizationId) return ctx.organizationId;
+  
+  const defaultOrg = await prisma.organization.findFirst({
+    where: { slug: "espon-global" }
+  }) || await prisma.organization.findFirst();
+
+  return defaultOrg?.id || "default-org";
+}
+
+/**
+ * Returns tenant-scoped filter for Prisma queries:
+ * - Admin/SuperAdmin: { organizationId: orgId }
+ * - Non-Admin (Sales/Employee): { organizationId: orgId, assignedSalespersonId: employee.id }
+ */
+export async function getTenantScope() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return {
+      organizationId: "UNAUTHENTICATED",
+      isAdmin: false,
+      employeeId: null,
+      userId: null,
+      role: "ANONYMOUS"
+    };
+  }
+
+  const orgId = await getTenantOrgId();
+  const userRole = (session.user as any).role || "SALES";
+  const userId = (session.user as any).id;
+  const isAdmin = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+
+  let employeeId: string | null = null;
+  if (!isAdmin && userId) {
+    const employee = await prisma.employee.findUnique({
+      where: { userId }
+    });
+    employeeId = employee?.id || null;
+  }
+
+  return {
+    organizationId: orgId,
+    isAdmin,
+    employeeId,
+    userId,
+    role: userRole
   };
 }
 

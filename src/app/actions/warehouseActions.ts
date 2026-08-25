@@ -5,11 +5,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
+import { getTenantOrgId } from "@/lib/tenant";
+
 export async function getWarehouses() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
   try {
+    const organizationId = await getTenantOrgId();
     const warehouses = await prisma.warehouse.findMany({
+      where: { organizationId },
       include: {
         branch: { select: { name: true } },
         inventoryTransactions: {
@@ -30,8 +34,10 @@ export async function createWarehouse(formData: FormData) {
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const warehouse = await prisma.warehouse.create({
       data: {
+        organizationId,
         name: formData.get("name") as string,
         code: formData.get("code") as string || null,
         address: formData.get("address") as string || null,

@@ -8,6 +8,8 @@ import { redirect } from 'next/navigation';
 
 import { canUserAccessSection } from '@/lib/authPermissions';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function PurchasesPage() {
@@ -17,18 +19,20 @@ export default async function PurchasesPage() {
   const hasAccess = await canUserAccessSection(session.user, 'purchases');
   if (!hasAccess) redirect('/');
 
+  const orgId = await getTenantOrgId();
+
   const res = await getPurchaseOrders();
   const orders = res.success ? res.orders : [];
 
   const vendors = await prisma.vendor.findMany({
+    where: { organizationId: orgId, status: 'Active' },
     select: { id: true, companyName: true },
-    where: { status: 'Active' },
     orderBy: { companyName: 'asc' }
   });
 
   const products = await prisma.product.findMany({
+    where: { organizationId: orgId, status: 'Active' },
     select: { id: true, name: true, sku: true, sellingPrice: true },
-    where: { status: 'Active' },
     orderBy: { name: 'asc' }
   });
 

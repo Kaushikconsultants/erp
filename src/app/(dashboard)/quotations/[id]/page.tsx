@@ -8,7 +8,15 @@ import DownloadPdfButton from '@/components/orders/DownloadPdfButton';
 import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
 import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { getTenantOrgId } from '@/lib/tenant';
+
 export default async function QuotationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) notFound();
+
+  const orgId = await getTenantOrgId();
   const { id } = await params;
 
   const [quotation, companyRes] = await Promise.all([
@@ -23,7 +31,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
     getCompanySettings()
   ]);
 
-  if (!quotation) {
+  if (!quotation || quotation.organizationId !== orgId) {
     notFound();
   }
 

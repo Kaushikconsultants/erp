@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function createProduct(formData: FormData) {
   const session = await getServerSession(authOptions);
@@ -54,6 +55,8 @@ export async function createProduct(formData: FormData) {
   }
 
   try {
+    const organizationId = await getTenantOrgId();
+
     if ((isNaN(weight) || weight <= 0) && category) {
       const catObj = await prisma.productCategory.findUnique({ where: { name: category.trim() } });
       if (catObj?.weight) {
@@ -63,6 +66,7 @@ export async function createProduct(formData: FormData) {
 
     const existingProduct = await prisma.product.findFirst({
       where: { 
+        organizationId,
         OR: [
           { sku: sku },
           { articleNumber: articleNumber }
@@ -76,6 +80,7 @@ export async function createProduct(formData: FormData) {
 
     const product = await prisma.product.create({
       data: {
+        organizationId,
         name,
         sku: sku,
         articleNumber: articleNumber,

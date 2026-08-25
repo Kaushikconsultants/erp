@@ -8,6 +8,8 @@ import CallsTableClient from '@/components/ui/CallsTableClient';
 import { getCompanySettings } from '@/app/actions/companyActions';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export default async function CallsPage() {
   const session = await getServerSession(authOptions);
   
@@ -15,18 +17,23 @@ export default async function CallsPage() {
     redirect('/login');
   }
 
+  const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
-  let callWhereClause = {};
-  let customerWhereClause = {};
+  let callWhereClause: any = {
+    customer: { organizationId: orgId }
+  };
+  let customerWhereClause: any = {
+    organizationId: orgId
+  };
 
   if (!isAdmin) {
     const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
-      callWhereClause = { employeeId: employee.id };
-      customerWhereClause = { assignedSalespersonId: employee.id };
+      callWhereClause = { employeeId: employee.id, customer: { organizationId: orgId } };
+      customerWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
     }
   }
 

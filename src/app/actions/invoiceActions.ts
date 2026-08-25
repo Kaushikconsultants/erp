@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 async function canManageInvoices() {
   const session = await getServerSession(authOptions);
@@ -22,7 +23,8 @@ export async function getInvoices(filters?: { status?: string; customerId?: stri
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    const where: any = {};
+    const organizationId = await getTenantOrgId();
+    const where: any = { organizationId };
     if (filters?.status && filters.status !== 'All') where.status = filters.status;
     if (filters?.customerId) where.customerId = filters.customerId;
 
@@ -56,22 +58,25 @@ export async function createInvoiceFromOrder(orderId: string, dueDate?: string, 
   if (!allowed) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+
     // Check if invoice already exists for this order
-    const existing = await prisma.invoice.findFirst({ where: { orderId } });
+    const existing = await prisma.invoice.findFirst({ where: { orderId, organizationId } });
     if (existing) return { error: "Invoice already exists for this order", invoiceId: existing.id };
 
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, organizationId },
       include: { customer: true }
     });
     if (!order) return { error: "Order not found" };
 
     // Generate invoice number
-    const count = await prisma.invoice.count();
+    const count = await prisma.invoice.count({ where: { organizationId } });
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
 
     const invoice = await prisma.invoice.create({
       data: {
+        organizationId,
         invoiceNumber,
         customerId: order.customerId,
         orderId: order.id,
@@ -110,11 +115,13 @@ export async function createManualInvoice(data: {
   if (!allowed) return { error: "Unauthorized" };
 
   try {
-    const count = await prisma.invoice.count();
+    const organizationId = await getTenantOrgId();
+    const count = await prisma.invoice.count({ where: { organizationId } });
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
 
     const invoice = await prisma.invoice.create({
       data: {
+        organizationId,
         invoiceNumber,
         customerId: data.customerId,
         invoiceDate: new Date(),

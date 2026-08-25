@@ -8,6 +8,7 @@ import { fetchRealTimeTracking } from "@/lib/shippingAggregator";
 import { calculateItemGst } from "@/lib/gstUtils";
 import { getCompanySettings } from "./companyActions";
 import { shipmozoService, RateCalculationParams } from "@/lib/shipmozoService";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function createOrder(formData: FormData) {
   const customerId = formData.get("customerId") as string;
@@ -21,8 +22,10 @@ export async function createOrder(formData: FormData) {
   }
 
   try {
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
+    const organizationId = await getTenantOrgId();
+
+    const product = await prisma.product.findFirst({
+      where: { id: productId, organizationId },
     });
 
     if (!product) {
@@ -35,7 +38,7 @@ export async function createOrder(formData: FormData) {
       const session = await getServerSession(authOptions);
       if (session?.user) {
         const userId = (session.user as any).id;
-        const employee = await prisma.employee.findUnique({ where: { userId } });
+        const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
         if (employee) {
           finalSalespersonId = employee.id;
         }
@@ -43,14 +46,14 @@ export async function createOrder(formData: FormData) {
     }
 
     if (!finalSalespersonId) {
-      const employee = await prisma.employee.findFirst();
+      const employee = await prisma.employee.findFirst({ where: { organizationId } });
       if (!employee) {
-        return { error: "No salesperson found" };
+        return { error: "No salesperson found for this organization" };
       }
       finalSalespersonId = employee.id;
     }
 
-    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
+    const customer = await prisma.customer.findFirst({ where: { id: customerId, organizationId } });
     if (!customer) return { error: "Customer not found" };
 
     const companyRes = await getCompanySettings();
@@ -70,6 +73,7 @@ export async function createOrder(formData: FormData) {
 
     const order = await prisma.order.create({
       data: {
+        organizationId,
         orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
         customerId,
         salespersonId: finalSalespersonId,
@@ -119,11 +123,12 @@ export async function createOrder(formData: FormData) {
     });
 
     // Automatically generate invoice for this order
-    const invoiceCount = await prisma.invoice.count();
+    const invoiceCount = await prisma.invoice.count({ where: { organizationId } });
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(5, '0')}`;
 
     await prisma.invoice.create({
       data: {
+        organizationId,
         invoiceNumber,
         customerId,
         orderId: order.id,
@@ -175,14 +180,15 @@ export async function getDispatchedOrders() {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
 
+    const organizationId = await getTenantOrgId();
     const role = (session.user as any).role;
     const userId = (session.user as any).id;
 
-    let whereClause: any = { orderStatus: "Dispatched" };
+    let whereClause: any = { organizationId, orderStatus: "Dispatched" };
 
     // If Sales, only show their dispatched orders
     if (role === "SALES" || role === "TELECALLER") {
-      const employee = await prisma.employee.findUnique({ where: { userId } });
+      const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
       if (!employee) return { error: "Employee profile not found" };
       whereClause.salespersonId = employee.id;
     }
@@ -205,8 +211,9 @@ export async function getDispatchedOrders() {
 
 export async function updateDispatchDetails(orderId: string, awbNumber: string, courierName: string) {
   try {
-    const order = await prisma.order.update({
-      where: { id: orderId },
+    const organizationId = await getTenantOrgId();
+    const order = await prisma.order.updateMany({
+      where: { id: orderId, organizationId },
       data: {
         awbNumber,
         courierName,
@@ -224,7 +231,8 @@ export async function updateDispatchDetails(orderId: string, awbNumber: string, 
 
 export async function trackOrder(orderId: string) {
   try {
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const organizationId = await getTenantOrgId();
+    const order = await prisma.order.findFirst({ where: { id: orderId, organizationId } });
     if (!order) return { error: "Order not found" };
     if (!order.awbNumber) return { error: "No AWB Number found for this order" };
 
@@ -232,8 +240,8 @@ export async function trackOrder(orderId: string) {
     
     // Optionally update the DB with latest status
     if (trackingData.success && trackingData.currentStatus !== order.shippingStatus) {
-      await prisma.order.update({
-        where: { id: orderId },
+      await prisma.order.updateMany({
+        where: { id: orderId, organizationId },
         data: { shippingStatus: trackingData.currentStatus }
       });
       revalidatePath("/dispatches");
@@ -252,9 +260,12 @@ export async function getDispatchPipelineOrders() {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
 
+    const organizationId = await getTenantOrgId();
+
     // Fetch all orders in dispatch pipeline states
     const orders = await prisma.order.findMany({
       where: {
+        organizationId,
         orderStatus: { in: ["Processing", "Packing", "Packed", "Dispatched"] }
       },
       include: {
@@ -276,14 +287,15 @@ export async function updateOrderStatus(orderId: string, status: string) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
 
-    const order = await prisma.order.update({
-      where: { id: orderId },
+    const organizationId = await getTenantOrgId();
+
+    const order = await prisma.order.updateMany({
+      where: { id: orderId, organizationId },
       data: { 
         orderStatus: status,
         shippingStatus: status === "Packed" ? "Packed" : status === "Dispatched" ? "Manifested" : undefined
       }
     });
-
 
     revalidatePath("/dispatches");
     revalidatePath("/orders");

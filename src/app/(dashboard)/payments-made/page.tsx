@@ -8,6 +8,8 @@ import PaymentsMadeClient from '@/components/payments-made/PaymentsMadeClient';
 
 import { canUserAccessSection } from '@/lib/authPermissions';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export const dynamic = 'force-dynamic';
 
 export default async function PaymentsMadePage() {
@@ -16,6 +18,8 @@ export default async function PaymentsMadePage() {
 
   const hasAccess = await canUserAccessSection(session.user, 'purchases');
   if (!hasAccess) redirect('/');
+
+  const orgId = await getTenantOrgId();
 
   const res = await getVendorPayments();
   const payments = res.success ? res.payments : [];
@@ -27,6 +31,7 @@ export default async function PaymentsMadePage() {
   };
 
   const vendors = await prisma.vendor.findMany({
+    where: { organizationId: orgId, status: 'Active' },
     select: {
       id: true,
       companyName: true,
@@ -36,12 +41,12 @@ export default async function PaymentsMadePage() {
       state: true,
       gstNumber: true
     },
-    where: { status: 'Active' },
     orderBy: { companyName: 'asc' }
   });
 
   const unpaidBills = await prisma.bill.findMany({
     where: {
+      organizationId: orgId,
       amountDue: { gt: 0 },
       status: { in: ['Open', 'Partially Paid', 'Overdue'] }
     },

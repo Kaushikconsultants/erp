@@ -9,6 +9,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { canUserAccessSection } from '@/lib/authPermissions';
+import { getTenantOrgId } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,7 @@ export default async function EWayBillDetailPage({ params }: { params: Promise<{
   const hasAccess = await canUserAccessSection(session.user, 'eway_bills');
   if (!hasAccess) redirect('/');
 
+  const orgId = await getTenantOrgId();
   const { id } = await params;
 
   const [ewayBill, companyRes] = await Promise.all([
@@ -36,7 +38,7 @@ export default async function EWayBillDetailPage({ params }: { params: Promise<{
     getCompanySettings()
   ]);
 
-  if (!ewayBill) {
+  if (!ewayBill || ewayBill.organizationId !== orgId) {
     notFound();
   }
 

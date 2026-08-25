@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 // Standard Default Indian GST Master Seed Data
 const DEFAULT_TAX_RATES = [
@@ -84,14 +85,19 @@ export async function getTaxSettings() {
     }
 
     // 4. Ensure GST Settings exist
-    let gstSetting = await prisma.gstSetting.findFirst();
+    const organizationId = await getTenantOrgId();
+    let gstSetting = await prisma.gstSetting.findFirst({
+      where: { organizationId }
+    });
     if (!gstSetting) {
+      const org = await prisma.organization.findUnique({ where: { id: organizationId } });
       gstSetting = await prisma.gstSetting.create({
         data: {
-          gstin: "08AABCE1234F1Z5",
-          legalName: "ESPON GLOBAL INDUSTRIES PVT LTD",
-          tradeName: "ESPON CRM",
-          registeredState: "Rajasthan",
+          organizationId,
+          gstin: org?.gstin || "08AABCE1234F1Z5",
+          legalName: org?.name || "ESPON GLOBAL INDUSTRIES PVT LTD",
+          tradeName: org?.tradeName || org?.name || "ESPON CRM",
+          registeredState: org?.state || "Rajasthan",
           stateCode: "08",
           isComposition: false,
           enableRcm: false,
@@ -102,7 +108,9 @@ export async function getTaxSettings() {
           gstr1FilingDueDay: 11,
           gstr3bFilingDueDay: 20
         }
-      });
+      }).catch(async () => {
+        return await prisma.gstSetting.findFirst({ where: { organizationId } });
+      }) as any;
     }
 
     // 5. Ensure GST TDS Settings exist
@@ -138,10 +146,12 @@ export async function getTaxSettings() {
 
     // 7. Calculate Real-Time GST Metrics from live database (Orders / Invoices / Bills)
     const orders = await prisma.order.findMany({
+      where: { organizationId },
       select: { totalValue: true, subtotal: true, tax: true, cgst: true, sgst: true, igst: true, orderStatus: true, isInterstate: true }
     });
 
     const bills = await prisma.bill.findMany({
+      where: { organizationId },
       select: { subtotal: true, taxAmount: true, totalAmount: true, status: true }
     });
 
@@ -394,12 +404,16 @@ export async function updateGstSetting(data: {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    const existing = await prisma.gstSetting.findFirst();
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.gstSetting.findFirst({
+      where: { organizationId }
+    });
     if (existing) {
       await prisma.gstSetting.update({
         where: { id: existing.id },
         data: {
           ...data,
+          organizationId,
           eWayBillThreshold: data.eWayBillThreshold ? Number(data.eWayBillThreshold) : 50000,
           eInvoicingThreshold: data.eInvoicingThreshold ? Number(data.eInvoicingThreshold) : 50000000
         }
@@ -408,6 +422,7 @@ export async function updateGstSetting(data: {
       await prisma.gstSetting.create({
         data: {
           ...data,
+          organizationId,
           eWayBillThreshold: data.eWayBillThreshold ? Number(data.eWayBillThreshold) : 50000,
           eInvoicingThreshold: data.eInvoicingThreshold ? Number(data.eInvoicingThreshold) : 50000000
         }

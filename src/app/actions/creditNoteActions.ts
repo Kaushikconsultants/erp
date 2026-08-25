@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export interface CreateCreditNoteInput {
   customerId: string;
@@ -36,7 +37,8 @@ export async function getCreditNotes(filters?: {
   customerId?: string;
 }) {
   try {
-    const where: any = {};
+    const organizationId = await getTenantOrgId();
+    const where: any = { organizationId };
 
     if (filters?.status && filters.status !== 'All') {
       where.status = filters.status;
@@ -120,7 +122,8 @@ export async function getCreditNoteById(id: string) {
 
 export async function getNextCreditNoteNumber(): Promise<string> {
   try {
-    const count = await prisma.creditNote.count();
+    const organizationId = await getTenantOrgId();
+    const count = await prisma.creditNote.count({ where: { organizationId } });
     const year = new Date().getFullYear();
     const sequence = String(count + 1).padStart(4, '0');
     return `CN-${year}-${sequence}`;
@@ -138,15 +141,18 @@ export async function createCreditNote(input: CreateCreditNoteInput) {
       return { success: false, error: "At least one line item is required" };
     }
 
+    const organizationId = await getTenantOrgId();
     const creditNoteNumber = await getNextCreditNoteNumber();
 
     // Fetch customer to check state for GST (CGST/SGST vs IGST)
-    const customer = await prisma.customer.findUnique({
-      where: { id: input.customerId }
+    const customer = await prisma.customer.findFirst({
+      where: { id: input.customerId, organizationId }
     });
 
     // Check company settings for state
-    const company = await prisma.companySettings.findFirst();
+    const company = await prisma.companySettings.findFirst({
+      where: { organizationId }
+    });
     const companyState = (company?.state || "Delhi").trim().toLowerCase();
     const customerState = (customer?.state || companyState).trim().toLowerCase();
     const isInterstate = companyState !== customerState;
@@ -207,6 +213,7 @@ export async function createCreditNote(input: CreateCreditNoteInput) {
     // Create Credit Note
     const creditNote = await prisma.creditNote.create({
       data: {
+        organizationId,
         creditNoteNumber,
         customerId: input.customerId,
         invoiceId: input.invoiceId || null,

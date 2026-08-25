@@ -10,6 +10,7 @@ import { TrendingUp, Users, Target, Zap, Trophy, Crown, MapPin, Search, Clock, S
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { getTenantOrgId } from '@/lib/tenant';
 
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
@@ -46,13 +47,15 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
     );
   }
 
+  const orgId = await getTenantOrgId();
+
   // ─── FETCH MONTHLY TARGET ───
-  const settings = await prisma.companySettings.findUnique({ where: { id: "default" } });
+  const settings = await prisma.companySettings.findFirst({ where: { organizationId: orgId } });
   const MONTHLY_GOAL = settings?.monthlyTarget || 2000000;
 
   // ─── FETCH FILTERS ───
   const agents = await prisma.user.findMany({
-    where: { role: { in: ['Sales', 'SALES'] } },
+    where: { organizationId: orgId, role: { in: ['Sales', 'SALES'] } },
     select: { id: true, name: true }
   });
 
@@ -60,18 +63,18 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
   const distinctStatesResult = await prisma.customer.findMany({
     select: { state: true },
     distinct: ['state'],
-    where: { state: { not: null } }
+    where: { organizationId: orgId, state: { not: null } }
   });
   const states = distinctStatesResult.map(s => s.state).filter(Boolean);
 
   // Build Prisma Where clauses based on filters
-  const customerWhere: any = {};
+  const customerWhere: any = { organizationId: orgId };
   if (selectedState !== 'all') customerWhere.state = selectedState;
   if (selectedAgentId !== 'all') {
     customerWhere.assignedSalesperson = { userId: selectedAgentId };
   }
 
-  const orderWhere: any = { orderStatus: { not: 'Cancelled' } };
+  const orderWhere: any = { organizationId: orgId, orderStatus: { not: 'Cancelled' } };
   if (selectedState !== 'all') orderWhere.customer = { state: selectedState };
   if (selectedAgentId !== 'all') orderWhere.salesperson = { userId: selectedAgentId };
 
@@ -199,6 +202,7 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
 
   // ─── TEAM DATA ───
   const employees = await prisma.employee.findMany({
+    where: { organizationId: orgId },
     include: {
       user: true,
       orders: {

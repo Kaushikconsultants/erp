@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 
 import { canUserAccessSection } from "@/lib/authPermissions";
+import { getTenantOrgId } from "@/lib/tenant";
 
 async function canManageVendors() {
   const session = await getServerSession(authOptions);
@@ -20,7 +21,9 @@ export async function getVendors() {
   const hasAccess = await canUserAccessSection(session.user, 'purchases');
   if (!hasAccess) return { error: "Unauthorized" };
   try {
+    const organizationId = await getTenantOrgId();
     const vendors = await prisma.vendor.findMany({
+      where: { organizationId },
       include: {
         purchaseOrders: {
           select: { id: true, totalValue: true, status: true }
@@ -52,8 +55,10 @@ export async function createVendor(formData: FormData) {
   if (!companyName) return { error: "Company name is required" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const vendor = await prisma.vendor.create({
       data: {
+        organizationId,
         companyName,
         contactPerson: contactPerson || null,
         email: email || null,

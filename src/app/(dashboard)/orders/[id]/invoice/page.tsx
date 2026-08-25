@@ -10,10 +10,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
+import { getTenantOrgId } from '@/lib/tenant';
+
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
+  const orgId = await getTenantOrgId();
   const { id } = await params;
 
   const [order, companyRes] = await Promise.all([
@@ -28,7 +31,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     getCompanySettings()
   ]);
 
-  if (!order) notFound();
+  if (!order || order.organizationId !== orgId) notFound();
 
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function getEmployeeScorecard(employeeId: string) {
   try {
@@ -53,7 +54,9 @@ export async function getEmployeeScorecard(employeeId: string) {
 
 export async function getSalesIntelligence() {
   try {
+    const organizationId = await getTenantOrgId();
     const orders = await prisma.order.findMany({
+      where: { organizationId },
       include: {
         items: { include: { product: true } }
       }
@@ -82,7 +85,8 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    const where: any = { orderStatus: { not: 'Cancelled' } };
+    const organizationId = await getTenantOrgId();
+    const where: any = { organizationId, orderStatus: { not: 'Cancelled' } };
     if (startDate || endDate) {
       where.orderDate = {};
       if (startDate) where.orderDate.gte = new Date(startDate);
@@ -110,7 +114,9 @@ export async function getInventoryReport() {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const products = await prisma.product.findMany({
+      where: { organizationId },
       orderBy: { stockQuantity: 'asc' }
     });
 
@@ -129,12 +135,15 @@ export async function getFinancialsReport() {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const [invoices, payments] = await Promise.all([
       prisma.invoice.findMany({
+        where: { organizationId },
         include: { customer: { select: { businessName: true } } },
         orderBy: { invoiceDate: 'desc' }
       }),
       prisma.payment.findMany({
+        where: { invoice: { organizationId } },
         include: { invoice: { include: { customer: { select: { businessName: true } } } } },
         orderBy: { paymentDate: 'desc' }
       })
