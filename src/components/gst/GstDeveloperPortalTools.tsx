@@ -8,7 +8,8 @@ import {
   actionSearchHsn, 
   actionVerifyIrn, 
   actionTrackEwb,
-  actionVerifyCashfree
+  actionVerifyCashfree,
+  actionValidateTpStatus
 } from "@/app/actions/gstPublicActions";
 import { 
   ShieldCheck, 
@@ -28,13 +29,21 @@ import {
   CreditCard,
   Hash,
   Sparkles,
-  Key
+  Key,
+  Check
 } from "lucide-react";
 
 export default function GstDeveloperPortalTools() {
-  const [activeTab, setActiveTab] = useState<'cashfree' | 'taxpayer' | 'pan' | 'returns' | 'hsn' | 'einvoice' | 'ewaybill'>('cashfree');
+  const [activeTab, setActiveTab] = useState<'tpstatus' | 'cashfree' | 'taxpayer' | 'pan' | 'returns' | 'hsn' | 'einvoice' | 'ewaybill'>('tpstatus');
 
-  // 0. Cashfree GSTIN Verification state
+  // 0. Official GST TP Status API (/commonapi/v1.0/tpstatus) state
+  const [tpStatusGstin, setTpStatusGstin] = useState("29AAICP2912R1ZR");
+  const [tpStatusDomain, setTpStatusDomain] = useState("");
+  const [tpStatusLoading, setTpStatusLoading] = useState(false);
+  const [tpStatusData, setTpStatusData] = useState<any>(null);
+  const [tpStatusError, setTpStatusError] = useState("");
+
+  // 0b. Cashfree GSTIN Verification state
   const [cashfreeGstin, setCashfreeGstin] = useState("29AAACP2916R1ZR");
   const [cashfreeClientId, setCashfreeClientId] = useState("");
   const [cashfreeClientSecret, setCashfreeClientSecret] = useState("");
@@ -178,6 +187,20 @@ export default function GstDeveloperPortalTools() {
     }
   };
 
+  const handleValidateTpStatus = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setTpStatusLoading(true);
+    setTpStatusError("");
+    setTpStatusData(null);
+    const res = await actionValidateTpStatus(tpStatusGstin, tpStatusDomain.trim() || undefined) as any;
+    setTpStatusLoading(false);
+    if (res && res.success && res.data) {
+      setTpStatusData(res.data);
+    } else {
+      setTpStatusError(res?.error || "Failed to validate taxpayer status");
+    }
+  };
+
   return (
     <div style={{ backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", padding: "24px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
       
@@ -185,28 +208,28 @@ export default function GstDeveloperPortalTools() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid #e2e8f0", paddingBottom: "16px", marginBottom: "20px" }}>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
-            <ShieldCheck size={22} color="#2563eb" /> GST Public APIs & Cashfree Verification Suite
+            <ShieldCheck size={22} color="#2563eb" /> GST Public APIs & Taxpayer Verification Suite
           </h2>
           <p style={{ margin: "3px 0 0", fontSize: "0.82rem", color: "#64748b" }}>
-            Direct integration with Cashfree (<code>sandbox.cashfree.com/verification/gstin</code>) & official GST Developer Portal (<code>developer.gst.gov.in/apiportal/common</code>)
+            Official GST Developer Portal (<code>developer.gst.gov.in/apiportal/</code>) & Cashfree (<code>sandbox.cashfree.com/verification/gstin</code>)
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
+          <a 
+            href="https://developer.gst.gov.in/apiportal/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 600, color: "#2563eb", textDecoration: "none", backgroundColor: "#eff6ff", padding: "6px 12px", borderRadius: "6px", border: "1px solid #bfdbfe" }}
+          >
+            GST Portal Docs <ExternalLink size={12} />
+          </a>
           <a 
             href="https://sandbox.cashfree.com/verification/gstin" 
             target="_blank" 
             rel="noopener noreferrer"
             style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 600, color: "#059669", textDecoration: "none", backgroundColor: "#ecfdf5", padding: "6px 12px", borderRadius: "6px", border: "1px solid #a7f3d0" }}
           >
-            Cashfree GST Docs <ExternalLink size={12} />
-          </a>
-          <a 
-            href="https://developer.gst.gov.in/apiportal/common" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{ display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.78rem", fontWeight: 600, color: "#2563eb", textDecoration: "none", backgroundColor: "#eff6ff", padding: "6px 12px", borderRadius: "6px", border: "1px solid #bfdbfe" }}
-          >
-            Official GST Portal <ExternalLink size={12} />
+            Cashfree Docs <ExternalLink size={12} />
           </a>
         </div>
       </div>
@@ -214,6 +237,7 @@ export default function GstDeveloperPortalTools() {
       {/* Tabs Bar */}
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "24px", backgroundColor: "#f8fafc", padding: "6px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
         {[
+          { id: 'tpstatus', label: '⚡ Validate Status (/tpstatus)', icon: Check },
           { id: 'cashfree', label: '💳 Cashfree GSTIN Verifier', icon: ShieldCheck },
           { id: 'taxpayer', label: '🔍 Search Taxpayer (GSTIN)', icon: Search },
           { id: 'pan', label: '🪪 Search by PAN', icon: CreditCard },
@@ -249,6 +273,150 @@ export default function GstDeveloperPortalTools() {
           );
         })}
       </div>
+
+      {/* ─── TAB -1: OFFICIAL GST TPSTATUS API (GET /commonapi/v1.0/tpstatus?gstin={}&action=TP) ─── */}
+      {activeTab === 'tpstatus' && (
+        <div>
+          {/* API Info Header */}
+          <div style={{ backgroundColor: "#f0fdfa", border: "1px solid #99f6e4", borderRadius: "10px", padding: "14px 16px", marginBottom: "18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <span style={{ fontSize: "0.84rem", fontWeight: 700, color: "#0f766e", display: "flex", alignItems: "center", gap: "6px" }}>
+                <CheckCircle2 size={16} /> Official Public Taxpayer Status API (v1.0 /tpstatus)
+              </span>
+              <span style={{ fontSize: "0.72rem", backgroundColor: "#ccfbf1", color: "#115e59", padding: "2px 8px", borderRadius: "4px", fontWeight: 700 }}>
+                METHOD: GET • ACTION: TP
+              </span>
+            </div>
+            <p style={{ margin: 0, fontSize: "0.76rem", color: "#134e4a", fontFamily: "monospace" }}>
+              GET https://{tpStatusDomain.trim() || 'domain-name'}/commonapi/v1.0/tpstatus?gstin={tpStatusGstin}&action=TP
+            </p>
+          </div>
+
+          <form onSubmit={handleValidateTpStatus} style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: "10px", alignItems: "flex-end" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  Domain / Gateway <span style={{ color: "#64748b", fontWeight: 400 }}>(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={tpStatusDomain}
+                  onChange={e => setTpStatusDomain(e.target.value)}
+                  placeholder="e.g. dev.gst.gov.in"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.84rem" }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 600, color: "#334155", marginBottom: "4px" }}>
+                  GSTIN to Validate
+                </label>
+                <input
+                  type="text"
+                  value={tpStatusGstin}
+                  onChange={e => setTpStatusGstin(e.target.value.toUpperCase())}
+                  placeholder="e.g. 29AAICP2912R1ZR"
+                  maxLength={15}
+                  style={{ width: "100%", padding: "10px 14px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.9rem", fontFamily: "monospace", fontWeight: 700, textTransform: "uppercase" }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={tpStatusLoading}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "10px 20px",
+                  backgroundColor: "#0d9488",
+                  color: "#ffffff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: 700,
+                  fontSize: "0.85rem",
+                  cursor: tpStatusLoading ? "not-allowed" : "pointer"
+                }}
+              >
+                {tpStatusLoading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                {tpStatusLoading ? "Validating..." : "Validate GSTIN Status"}
+              </button>
+            </div>
+          </form>
+
+          {/* TP Status Error */}
+          {tpStatusError && (
+            <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fca5a5", color: "#b91c1c", padding: "12px 16px", borderRadius: "8px", fontSize: "0.84rem", display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <AlertCircle size={18} />
+              <span>{tpStatusError}</span>
+            </div>
+          )}
+
+          {/* Official TP Status JSON Response Card */}
+          {tpStatusData && (
+            <div style={{ backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #e2e8f0", paddingBottom: "12px" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
+                    GSTIN Validation Response
+                    <span style={{ fontSize: "0.74rem", backgroundColor: tpStatusData.validGstin ? "#ecfdf5" : "#fef2f2", color: tpStatusData.validGstin ? "#059669" : "#b91c1c", padding: "2px 8px", borderRadius: "4px", fontWeight: 700, border: `1px solid ${tpStatusData.validGstin ? '#a7f3d0' : '#fca5a5'}` }}>
+                      {tpStatusData.validGstin ? "✓ VALID GSTIN" : "✗ INVALID GSTIN"}
+                    </span>
+                  </h3>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#64748b" }}>
+                    Status: <strong style={{ color: tpStatusData.status === "Active" ? "#059669" : "#d97706" }}>{tpStatusData.status}</strong> • State: <strong>{tpStatusData.stateName} ({tpStatusData.stateCode})</strong>
+                  </p>
+                </div>
+              </div>
+
+              {/* Response Fields Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
+                <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block", textTransform: "uppercase" }}>gstin</span>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0f172a", marginTop: "2px", fontFamily: "monospace" }}>
+                    {tpStatusData.gstin}
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block", textTransform: "uppercase" }}>validGstin</span>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: tpStatusData.validGstin ? "#059669" : "#b91c1c", marginTop: "2px", fontFamily: "monospace" }}>
+                    {String(tpStatusData.validGstin)}
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block", textTransform: "uppercase" }}>status</span>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: tpStatusData.status === "Active" ? "#059669" : "#0f172a", marginTop: "2px" }}>
+                    {tpStatusData.status}
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: "#ffffff", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block", textTransform: "uppercase" }}>stateCode & stateName</span>
+                  <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
+                    {tpStatusData.stateCode} - {tpStatusData.stateName}
+                  </div>
+                </div>
+              </div>
+
+              {/* JSON Payload View */}
+              <div style={{ backgroundColor: "#0f172a", borderRadius: "8px", padding: "14px", color: "#38bdf8", fontFamily: "monospace", fontSize: "0.8rem", overflowX: "auto" }}>
+                <span style={{ color: "#94a3b8", display: "block", marginBottom: "4px", fontSize: "0.72rem" }}>Official Response JSON Payload:</span>
+                <pre style={{ margin: 0 }}>
+{JSON.stringify({
+  gstin: tpStatusData.gstin,
+  stateCode: tpStatusData.stateCode,
+  stateName: tpStatusData.stateName,
+  status: tpStatusData.status,
+  validGstin: tpStatusData.validGstin
+}, null, 2)}
+                </pre>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ─── TAB 0: CASHFREE GSTIN VERIFIER (sandbox.cashfree.com/verification/gstin) ─── */}
       {activeTab === 'cashfree' && (

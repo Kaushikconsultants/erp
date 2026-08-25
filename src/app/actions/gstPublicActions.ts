@@ -104,3 +104,16 @@ export async function actionVerifyCashfree(gstin: string, config?: { clientId?: 
   }
 }
 
+/**
+ * 8. Official GST Developer Portal Taxpayer Status (GET /commonapi/v1.0/tpstatus?gstin={}&action=TP)
+ */
+export async function actionValidateTpStatus(gstin: string, domainName?: string) {
+  try {
+    const { validateTaxpayerStatusApi } = await import("@/lib/gstGovService");
+    return await validateTaxpayerStatusApi(gstin, domainName);
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to validate taxpayer status" };
+  }
+}
+
+
