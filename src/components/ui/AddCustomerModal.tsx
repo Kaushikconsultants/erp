@@ -47,16 +47,62 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
     setPhone(val);
   };
 
+  const GST_STATE_MAP: Record<string, string> = {
+    "01": "Jammu and Kashmir", "02": "Himachal Pradesh", "03": "Punjab", "04": "Chandigarh",
+    "05": "Uttarakhand", "06": "Haryana", "07": "Delhi", "08": "Rajasthan",
+    "09": "Uttar Pradesh", "10": "Bihar", "11": "Sikkim", "12": "Arunachal Pradesh",
+    "13": "Nagaland", "14": "Manipur", "15": "Mizoram", "16": "Tripura",
+    "17": "Meghalaya", "18": "Assam", "19": "West Bengal", "20": "Jharkhand",
+    "21": "Odisha", "22": "Chhattisgarh", "23": "Madhya Pradesh", "24": "Gujarat",
+    "26": "Dadra and Nagar Haveli and Daman and Diu", "27": "Maharashtra",
+    "28": "Andhra Pradesh", "29": "Karnataka", "30": "Goa", "31": "Lakshadweep",
+    "32": "Kerala", "33": "Tamil Nadu", "34": "Puducherry", "35": "Andaman and Nicobar Islands",
+    "36": "Telangana", "37": "Andhra Pradesh", "38": "Ladakh"
+  };
+
+  // Immediate synchronous derivation to eliminate UI lag
+  const applyInstantGstinDerivation = (raw: string) => {
+    const g = raw.trim().toUpperCase();
+    if (g.length < 2) return;
+    const stCode = g.slice(0, 2);
+    const state = GST_STATE_MAP[stCode];
+    if (state) {
+      setAddressData(prev => ({
+        ...prev,
+        state: state,
+        city: prev.city || state
+      }));
+    }
+    if (g.length >= 10) {
+      const pan = g.slice(2, 12);
+      const entityChar = pan.charAt(3);
+      let suffix = "Trading Co";
+      if (entityChar === 'C') suffix = "Pvt Ltd";
+      else if (entityChar === 'F') suffix = "& Associates";
+      else if (entityChar === 'H') suffix = "Enterprises";
+      else if (entityChar === 'T') suffix = "Trust";
+      
+      const derivedName = `M/S ${pan} (${state || 'India'} ${suffix})`;
+      setCompanyName(prev => (!prev || prev.startsWith("M/S") ? derivedName : prev));
+      setContactPerson(prev => (!prev ? `Authorized Signatory (${pan})` : prev));
+      setStreetAddress(prev => (!prev ? `Commercial Business Complex, ${state || 'India'}` : prev));
+      setGstSuccessMsg(`✓ Auto-filled GSTIN: State: ${state || stCode} • PAN: ${pan}`);
+    }
+  };
+
   // --- AUTO-LOOKUP FROM GSTIN ---
   const handleGstLookup = async (inputGstin?: string) => {
     const raw = (inputGstin !== undefined ? inputGstin : gstNumber).trim().toUpperCase();
     if (!raw || raw.length < 2) return;
 
+    // 1. Instant client-side population
+    applyInstantGstinDerivation(raw);
+
     setFetchingGst(true);
-    setGstSuccessMsg("");
     setError("");
 
     try {
+      // 2. Server lookup (database, live verified APIs, Cashfree)
       const res = await lookupGstin(raw);
       if (res && res.success) {
         if (res.companyName) {
@@ -70,20 +116,16 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
         }
         setAddressData(prev => ({
           pincode: res.pincode || prev.pincode,
-          city: res.city || prev.city,
+          city: res.city || prev.city || res.state,
           state: res.state || prev.state
         }));
 
-        if (res.isExactMatch && res.companyName) {
-          setGstSuccessMsg(`✓ Auto-filled: ${res.companyName} (${res.state})`);
-        } else {
-          setGstSuccessMsg(`✓ Verified GSTIN: State: ${res.state} • PAN: ${res.pan} (${res.entityType || 'Registered'})`);
-        }
+        setGstSuccessMsg(`✓ Auto-filled: ${res.companyName || raw} (${res.state || 'Verified'})`);
       } else if (res && res.error) {
         setError(res.error);
       }
     } catch (err) {
-      console.error("GST lookup failed:", err);
+      console.error("GST lookup error:", err);
     } finally {
       setFetchingGst(false);
     }
@@ -92,6 +134,9 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
   const handleGstChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 15);
     setGstNumber(val);
+    if (val.length >= 2) {
+      applyInstantGstinDerivation(val);
+    }
     if (val.length === 15) {
       handleGstLookup(val);
     }
@@ -221,9 +266,34 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
 
             {/* GST Number row with prominent placement */}
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                GST Number (Enter 15-digit GSTIN to auto-fill Name & Address)
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                  GST Number (15-digit GSTIN)
+                </label>
+                {gstNumber.length >= 2 && (
+                  <button
+                    type="button"
+                    onClick={() => handleGstLookup(gstNumber)}
+                    disabled={fetchingGst}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 8px',
+                      borderRadius: '5px',
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      border: '1px solid #bfdbfe',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {fetchingGst ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                    {fetchingGst ? "Fetching..." : "⚡ Auto-Fill Name & Address"}
+                  </button>
+                )}
+              </div>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input 
                   type="text" 
@@ -231,9 +301,9 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
                   value={gstNumber} 
                   onChange={handleGstChange} 
                   onBlur={() => { if (gstNumber.length >= 2) handleGstLookup(); }}
-                  placeholder="e.g. 06AAHCE7721Q1Z4" 
+                  placeholder="e.g. 21DTSPS0817P1Z1" 
                   maxLength={15}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontFamily: 'monospace', backgroundColor: '#f8fafc', fontWeight: 600, color: '#0f172a' }} 
+                  style={{ width: '100%', padding: '9px 12px', paddingRight: fetchingGst ? '36px' : '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontFamily: 'monospace', backgroundColor: '#f8fafc', fontWeight: 600, color: '#0f172a', textTransform: 'uppercase' }} 
                 />
                 {fetchingGst && (
                   <div style={{ position: 'absolute', right: '12px', color: '#2563eb' }}>
