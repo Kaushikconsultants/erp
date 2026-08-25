@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Package, X, Plus, Sparkles, Check, Grid, Calculator } from 'lucide-react';
+import { X, Sparkles, Check, Grid } from 'lucide-react';
 
 const DEFAULT_SIZES = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
 const DEFAULT_COLORS = ['Black', 'Navy Blue', 'Dark Grey', 'White', 'Royal Blue', 'Maroon', 'Olive Green'];
@@ -114,7 +114,7 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
           productId: selectedProduct.id || '',
           productName: `${selectedProduct.name || 'Garment Item'} - ${color}`,
           sku: `${selectedProduct.sku || 'SKU'}-${color.substring(0, 3).toUpperCase()}`,
-          description: `Ratio Set Breakdown: [${sizeBreakdown.join(', ')}] • Total ${colorTotalQty} pcs`,
+          description: `Set Breakdown: [${sizeBreakdown.join(', ')}] • Total ${colorTotalQty} pcs`,
           hsnCode: selectedProduct.category?.hsnCode || '6109',
           quantity: colorTotalQty,
           rate: rate,
@@ -142,60 +142,86 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
       position: 'fixed',
       inset: 0,
       zIndex: 99999,
-      backgroundColor: 'rgba(15, 23, 42, 0.7)',
+      backgroundColor: 'rgba(15, 23, 42, 0.4)',
       backdropFilter: 'blur(4px)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '16px'
+      padding: '16px',
+      fontFamily: 'var(--font-family, "Inter", -apple-system, sans-serif)'
     }} onClick={onClose}>
       
       <div style={{
         backgroundColor: '#ffffff',
-        borderRadius: '16px',
+        borderRadius: '12px',
         width: '100%',
-        maxWidth: '850px',
+        maxWidth: '820px',
         maxHeight: '90vh',
         display: 'flex',
         flexDirection: 'column',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+        border: '1px solid #e2e8f0',
         overflow: 'hidden'
       }} onClick={e => e.stopPropagation()}>
         
-        {/* Header */}
+        {/* Modal Header (Matching App Theme) */}
         <div style={{
-          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-          color: '#ffffff',
-          padding: '18px 24px',
+          backgroundColor: '#f8fafc',
+          padding: '14px 20px',
+          borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ padding: '8px', borderRadius: '10px', backgroundColor: 'rgba(255,255,255,0.1)' }}>
-              <Grid size={20} color="#38bdf8" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              borderRadius: '8px', 
+              backgroundColor: '#eff6ff', 
+              color: '#2563eb', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Grid size={16} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#1e293b' }}>
                 Garment Size & Color Matrix (Ratio Ordering)
               </h3>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
-                Fast wholesale set-wise entry for sizes and colors
+              <p style={{ margin: '1px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                Set-wise quantity entry for wholesale size curves
               </p>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
-            <X size={20} />
+          <button 
+            onClick={onClose} 
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              color: '#94a3b8', 
+              cursor: 'pointer', 
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '6px'
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#1e293b'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#94a3b8'; }}
+          >
+            <X size={18} />
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* Top Selection Row: Product & Rate */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: '#475569', marginBottom: '4px' }}>
                 Select Apparel Product
               </label>
               <select
@@ -205,7 +231,7 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
                   const p = products.find(prod => prod.id === e.target.value);
                   if (p?.sellingPrice) setRate(p.sellingPrice);
                 }}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 600 }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#1e293b', backgroundColor: '#ffffff' }}
               >
                 {products.map(p => (
                   <option key={p.id} value={p.id}>
@@ -216,44 +242,47 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: '#475569', marginBottom: '4px' }}>
                 Unit Rate (₹ / Piece)
               </label>
               <input
                 type="number"
                 value={rate}
                 onChange={e => setRate(parseFloat(e.target.value) || 0)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontWeight: 700, color: '#059669' }}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: 600, color: '#059669', backgroundColor: '#ffffff' }}
               />
             </div>
           </div>
 
           {/* Quick Ratio Presets */}
           <div>
-            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
-              ⚡ Quick Standard Ratio Presets:
+            <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>
+              Standard Ratio Presets:
             </span>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
               {RATIO_PRESETS.map((preset, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => handleApplyPreset(preset)}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: '8px',
+                    padding: '5px 10px',
+                    borderRadius: '6px',
                     border: '1px solid #bfdbfe',
                     backgroundColor: '#eff6ff',
-                    color: '#1d4ed8',
-                    fontSize: '0.78rem',
-                    fontWeight: 700,
+                    color: '#2563eb',
+                    fontSize: '0.75rem',
+                    fontWeight: 500,
                     cursor: 'pointer',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '4px',
+                    transition: 'background-color 0.15s'
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dbeafe'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#eff6ff'; }}
                 >
-                  <Sparkles size={12} /> {preset.name}
+                  <Sparkles size={11} /> {preset.name}
                 </button>
               ))}
             </div>
@@ -261,7 +290,7 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
 
           {/* Color Selection Pills */}
           <div>
-            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.04em' }}>
+            <span style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>
               Available Color Ways:
             </span>
             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -273,20 +302,20 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
                     type="button"
                     onClick={() => handleToggleColor(color)}
                     style={{
-                      padding: '5px 12px',
-                      borderRadius: '20px',
-                      border: isSelected ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      border: isSelected ? '1px solid #2563eb' : '1px solid #cbd5e1',
                       backgroundColor: isSelected ? '#eff6ff' : '#ffffff',
-                      color: isSelected ? '#1d4ed8' : '#475569',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
+                      color: isSelected ? '#2563eb' : '#475569',
+                      fontSize: '0.75rem',
+                      fontWeight: isSelected ? 600 : 500,
                       cursor: 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '4px'
                     }}
                   >
-                    {isSelected && <Check size={12} />} {color}
+                    {isSelected && <Check size={11} />} {color}
                   </button>
                 );
               })}
@@ -299,12 +328,12 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
                   value={newColorInput}
                   onChange={e => setNewColorInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddCustomColor(); }}
-                  style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', width: '110px' }}
+                  style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.75rem', width: '100px' }}
                 />
                 <button
                   type="button"
                   onClick={handleAddCustomColor}
-                  style={{ padding: '4px 8px', borderRadius: '6px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}
+                  style={{ padding: '4px 8px', borderRadius: '6px', backgroundColor: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 500 }}
                 >
                   Add
                 </button>
@@ -313,16 +342,16 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
           </div>
 
           {/* Size & Color Matrix Table */}
-          <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+          <div style={{ overflowX: 'auto', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
               <thead>
-                <tr style={{ backgroundColor: '#0f172a', color: '#ffffff', textAlign: 'center' }}>
-                  <th style={{ padding: '10px 14px', textAlign: 'left' }}>Color Way</th>
+                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', textAlign: 'center', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <th style={{ padding: '9px 12px', textAlign: 'left', fontWeight: 600 }}>Color Way</th>
                   {DEFAULT_SIZES.map(s => (
-                    <th key={s} style={{ padding: '10px 12px', minWidth: '60px' }}>Size {s}</th>
+                    <th key={s} style={{ padding: '9px 8px', minWidth: '50px', fontWeight: 600 }}>Size {s}</th>
                   ))}
-                  <th style={{ padding: '10px 14px', textAlign: 'right', minWidth: '90px' }}>Total (Pcs)</th>
-                  <th style={{ padding: '10px 14px', textAlign: 'right', minWidth: '100px' }}>Amount (₹)</th>
+                  <th style={{ padding: '9px 12px', textAlign: 'right', minWidth: '80px', fontWeight: 600 }}>Total</th>
+                  <th style={{ padding: '9px 12px', textAlign: 'right', minWidth: '90px', fontWeight: 600 }}>Amount (₹)</th>
                 </tr>
               </thead>
               <tbody>
@@ -334,35 +363,35 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
                   const rowTotalAmount = rowTotalQty * rate;
 
                   return (
-                    <tr key={color} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                      <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0f172a' }}>
+                    <tr key={color} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                      <td style={{ padding: '8px 12px', fontWeight: 500, color: '#1e293b' }}>
                         {color}
                       </td>
                       {DEFAULT_SIZES.map(s => (
-                        <td key={s} style={{ padding: '6px 8px', textAlign: 'center' }}>
+                        <td key={s} style={{ padding: '4px 6px', textAlign: 'center' }}>
                           <input
                             type="number"
                             min="0"
                             value={matrix[color]?.[s] !== undefined ? matrix[color][s] : 0}
                             onChange={e => handleQtyChange(color, s, e.target.value)}
                             style={{
-                              width: '50px',
-                              padding: '6px 4px',
+                              width: '42px',
+                              padding: '4px 2px',
                               textAlign: 'center',
-                              borderRadius: '6px',
+                              borderRadius: '4px',
                               border: '1px solid #cbd5e1',
-                              fontWeight: 700,
-                              fontSize: '0.9rem',
+                              fontWeight: 500,
+                              fontSize: '0.82rem',
                               backgroundColor: (matrix[color]?.[s] || 0) > 0 ? '#eff6ff' : '#ffffff',
-                              color: (matrix[color]?.[s] || 0) > 0 ? '#1d4ed8' : '#0f172a'
+                              color: (matrix[color]?.[s] || 0) > 0 ? '#2563eb' : '#334155'
                             }}
                           />
                         </td>
                       ))}
-                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#2563eb' }}>
                         {rowTotalQty} pcs
                       </td>
-                      <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: '#059669' }}>
+                      <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600, color: '#059669' }}>
                         ₹{rowTotalAmount.toLocaleString('en-IN')}
                       </td>
                     </tr>
@@ -370,8 +399,8 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
                 })}
 
                 {/* Matrix Total Row */}
-                <tr style={{ backgroundColor: '#f1f5f9', fontWeight: 900, borderTop: '2px solid #0f172a' }}>
-                  <td style={{ padding: '12px 14px', textTransform: 'uppercase' }}>
+                <tr style={{ backgroundColor: '#f8fafc', fontWeight: 600, borderTop: '1px solid #cbd5e1' }}>
+                  <td style={{ padding: '10px 12px', textTransform: 'uppercase', fontSize: '0.75rem', color: '#475569' }}>
                     Grand Summary:
                   </td>
                   {DEFAULT_SIZES.map(s => {
@@ -380,15 +409,15 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
                       colQty += (matrix[c]?.[s] || 0);
                     });
                     return (
-                      <td key={s} style={{ padding: '12px 8px', textAlign: 'center', color: '#1e293b' }}>
+                      <td key={s} style={{ padding: '10px 6px', textAlign: 'center', color: '#1e293b' }}>
                         {colQty}
                       </td>
                     );
                   })}
-                  <td style={{ padding: '12px 14px', textAlign: 'right', color: '#1d4ed8', fontSize: '1rem' }}>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', color: '#2563eb' }}>
                     {grandTotalQty} pcs
                   </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right', color: '#059669', fontSize: '1.05rem' }}>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', color: '#059669' }}>
                     ₹{grandTotalAmount.toLocaleString('en-IN')}
                   </td>
                 </tr>
@@ -401,24 +430,24 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
         {/* Modal Footer */}
         <div style={{
           backgroundColor: '#f8fafc',
-          padding: '16px 24px',
+          padding: '12px 20px',
           borderTop: '1px solid #e2e8f0',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
           <div>
-            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Total Selected:</span>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Total Selected: </span>
+            <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#1e293b' }}>
               {grandTotalQty} pieces = <span style={{ color: '#059669' }}>₹{grandTotalAmount.toLocaleString('en-IN')}</span>
-            </div>
+            </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button
               type="button"
               onClick={onClose}
-              style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
+              style={{ padding: '6px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontSize: '0.82rem', fontWeight: 500, cursor: 'pointer' }}
             >
               Cancel
             </button>
@@ -426,16 +455,18 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
               type="button"
               onClick={handleConfirmAdd}
               style={{
-                padding: '10px 22px',
-                borderRadius: '8px',
+                padding: '6px 16px',
+                borderRadius: '6px',
                 border: 'none',
                 backgroundColor: '#2563eb',
                 color: '#ffffff',
-                fontWeight: 800,
-                fontSize: '0.9rem',
+                fontWeight: 500,
+                fontSize: '0.82rem',
                 cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.3)'
+                transition: 'background-color 0.15s'
               }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1d4ed8'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#2563eb'; }}
             >
               + Add {grandTotalQty} pcs to Quotation
             </button>
