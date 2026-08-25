@@ -337,12 +337,16 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '14px 20px' }}>
+                    <td style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>
                       <span style={{ 
-                        padding: '3px 10px', 
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 10px', 
                         borderRadius: 'var(--radius-sm, 6px)', 
                         fontSize: '0.75rem', 
                         fontWeight: 600,
+                        whiteSpace: 'nowrap',
                         backgroundColor: q.status === 'Converted' || q.status === 'Accepted' ? '#dcfce7' : q.status === 'Confirmed' ? '#dbeafe' : q.status === 'Sent' ? 'var(--accent-light, #e0e7ff)' : '#f1f5f9',
                         color: q.status === 'Converted' || q.status === 'Accepted' ? '#166534' : q.status === 'Confirmed' ? '#1d4ed8' : q.status === 'Sent' ? 'var(--accent-primary, #3730a3)' : '#475569'
                       }}>
