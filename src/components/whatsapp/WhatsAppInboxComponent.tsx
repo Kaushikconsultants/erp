@@ -72,14 +72,14 @@ import {
   uploadMediaToMetaAction,
   getWhatsAppCannedResponsesAction
 } from "@/app/actions/whatsAppPlatformActions";
+import { useWhatsAppStore } from "@/store/whatsappStore";
 import "./WhatsAppInbox.css";
 
 const EMOJI_LIST = ["👍", "🙏", "✅", "📦", "📄", "💰", "📞", "❤️", "🔥", "💯", "🏷️", "🚚"];
 
 export default function WhatsAppInboxComponent() {
-  const [conversations, setConversations] = useState<any[]>([]);
+  const { conversations, setConversations, activeConvDetail, setActiveConvDetail } = useWhatsAppStore();
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
-  const [activeConvDetail, setActiveConvDetail] = useState<any | null>(null);
   const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
 

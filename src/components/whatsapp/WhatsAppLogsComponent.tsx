@@ -17,22 +17,22 @@ import {
   getWhatsAppAILogsAction,
   getWhatsAppWebhookLogsAction
 } from "@/app/actions/whatsAppPlatformActions";
+import { useWhatsAppStore } from "@/store/whatsappStore";
 import "./WhatsAppInbox.css"; // Reuse the same CSS file for .logs-panel styles
 
 export default function WhatsAppLogsComponent() {
   const [logsSubTab, setLogsSubTab] = useState<'ai' | 'webhook'>('ai');
 
   // AI Logs State
-  const [aiLogs, setAiLogs] = useState<any[]>([]);
-  const [aiLogStats, setAiLogStats] = useState({ total: 0, success: 0, error: 0, manual: 0, avgDuration: 0 });
+  const { 
+    aiLogs, setAiLogs, aiLogStats, setAiLogStats,
+    webhookEvents, setWebhookEvents, webhookPayloads, setWebhookPayloads, webhookStats, setWebhookStats 
+  } = useWhatsAppStore();
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [logsSearch, setLogsSearch] = useState('');
   const [logsStatusFilter, setLogsStatusFilter] = useState('ALL');
 
   // Webhook Logs State
-  const [webhookEvents, setWebhookEvents] = useState<any[]>([]);
-  const [webhookPayloads, setWebhookPayloads] = useState<any[]>([]);
-  const [webhookStats, setWebhookStats] = useState({ totalReceived: 0, totalRead: 0, totalText: 0, totalMedia: 0 });
   const [webhookSearch, setWebhookSearch] = useState('');
   const [loadingWebhook, setLoadingWebhook] = useState(false);
 
@@ -53,13 +53,13 @@ export default function WhatsAppLogsComponent() {
 
   useEffect(() => {
     if (logsSubTab === 'ai') {
-      fetchAILogs();
+      fetchAILogs(aiLogs.length > 0);
     }
   }, [logsSubTab, logsSearch, logsStatusFilter]);
 
   // Fetch Meta Webhook Logs
-  const fetchWebhookLogs = async () => {
-    setLoadingWebhook(true);
+  const fetchWebhookLogs = async (silent = false) => {
+    if (!silent) setLoadingWebhook(true);
     try {
       const res = await getWhatsAppWebhookLogsAction(webhookSearch);
       if (res.success) {
@@ -75,7 +75,7 @@ export default function WhatsAppLogsComponent() {
 
   useEffect(() => {
     if (logsSubTab === 'webhook') {
-      fetchWebhookLogs();
+      fetchWebhookLogs(webhookEvents.length > 0);
     }
   }, [logsSubTab, webhookSearch]);
 
