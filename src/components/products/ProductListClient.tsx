@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, ChevronDown, Edit, Trash2, Scale, Tag, History, Image as ImageIcon, Eye, Layers, RotateCcw, X, Filter } from 'lucide-react';
+import { Search, ChevronDown, Edit, Trash2, Scale, Tag, History, Image as ImageIcon, Eye, Layers, RotateCcw, X, Filter, BookOpen } from 'lucide-react';
 import AddProductButton from '@/components/ui/AddProductButton';
 import ManageCategoriesModal from '@/components/products/ManageCategoriesModal';
 import EditProductModal from '@/components/ui/EditProductModal';
 import BarcodeLabelModal from '@/components/products/BarcodeLabelModal';
 import ArticleHistoryModal from '@/components/products/ArticleHistoryModal';
+import ProductCatalogModal from '@/components/products/ProductCatalogModal';
 import { deleteProduct } from '@/app/actions/productActions';
 
 interface Product {
@@ -41,6 +42,7 @@ export default function ProductListClient({ products, categories, categoriesData
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [printLabelProduct, setPrintLabelProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -142,6 +144,32 @@ export default function ProductListClient({ products, categories, categoriesData
 
           {/* Action Buttons Group */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* 1-Click Wholesale Catalog / Lookbook Generator Button */}
+            <button
+              onClick={() => setShowCatalogModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid #bfdbfe',
+                backgroundColor: '#eff6ff',
+                color: '#2563eb',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(37, 99, 235, 0.08)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+              title="1-Click Generate Wholesale Product Catalog & Lookbook (PDF & WhatsApp)"
+            >
+              <BookOpen size={15} color="#2563eb" />
+              Wholesale Catalog
+            </button>
+
             {/* Article Transaction History & Usage Button */}
             <button
               onClick={() => {
@@ -160,7 +188,7 @@ export default function ProductListClient({ products, categories, categoriesData
                 backgroundColor: '#eef2ff',
                 color: '#4338ca',
                 fontSize: '0.85rem',
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: 'pointer',
                 boxShadow: '0 1px 2px rgba(79, 70, 229, 0.08)',
                 transition: 'all 0.15s ease'
@@ -170,7 +198,7 @@ export default function ProductListClient({ products, categories, categoriesData
               title="Open Article Transaction History, Quotations, and Invoice Usage"
             >
               <History size={15} color="#4f46e5" />
-              Article History & Usage
+              Article History
             </button>
 
             {canManage && (
@@ -627,6 +655,15 @@ export default function ProductListClient({ products, categories, categoriesData
         <BarcodeLabelModal
           product={printLabelProduct}
           onClose={() => setPrintLabelProduct(null)}
+        />
+      )}
+
+      {/* Wholesale Product Catalog / Lookbook Modal */}
+      {showCatalogModal && (
+        <ProductCatalogModal
+          products={products}
+          categories={categories}
+          onClose={() => setShowCatalogModal(false)}
         />
       )}
 
