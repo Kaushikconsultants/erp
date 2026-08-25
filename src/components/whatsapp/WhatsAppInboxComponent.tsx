@@ -85,9 +85,6 @@ export default function WhatsAppInboxComponent() {
   const [loadingConvs, setLoadingConvs] = useState<boolean>(true);
   const [loadingDetail, setLoadingDetail] = useState<boolean>(false);
 
-  // Inbox Sub-Tabs: 'inbox' | 'logs'
-  const [activeInboxView, setActiveInboxView] = useState<'inbox' | 'logs'>('inbox');
-
   // AI Logs State
   const [aiLogs, setAiLogs] = useState<any[]>([]);
   const [aiLogStats, setAiLogStats] = useState({ total: 0, success: 0, error: 0, manual: 0, avgDuration: 0 });
@@ -602,14 +599,6 @@ export default function WhatsAppInboxComponent() {
                   <UserX size={14} />
                   <span>Unassigned</span>
                 </button>
-                <button
-                  className={`folder-tab ${activeInboxView === 'logs' ? 'active' : ''}`}
-                  style={{ color: activeInboxView === 'logs' ? '#8b5cf6' : '' }}
-                  onClick={() => setActiveInboxView('logs')}
-                >
-                  <Terminal size={14} />
-                  <span>AI Logs</span>
-                </button>
               </div>
 
               {/* Search Bar */}
@@ -748,104 +737,6 @@ export default function WhatsAppInboxComponent() {
         </div>
       </div>
 
-      {/* ================================================================= */}
-      {/* LOGS PANEL                                                        */}
-      {/* ================================================================= */}
-      {activeInboxView === 'logs' && (
-        <div className="logs-panel">
-          {/* Page Header */}
-          <div className="logs-panel-header">
-            <div className="logs-panel-title-row">
-              <Terminal size={18} className="logs-icon" />
-              <h2 className="logs-title">WhatsApp Logs</h2>
-              <span className="logs-number-badge">+91 7404388242</span>
-            </div>
-            <div className="logs-subtab-pills">
-              <button
-                className={`logs-subtab-btn ${logsSubTab === 'ai' ? 'active-ai' : ''}`}
-                onClick={() => setLogsSubTab('ai')}
-              >
-                <Bot size={13} /> AI Logs
-              </button>
-              <button
-                className={`logs-subtab-btn ${logsSubTab === 'webhook' ? 'active-webhook' : ''}`}
-                onClick={() => setLogsSubTab('webhook')}
-              >
-                <Zap size={13} /> Webhook Logs
-              </button>
-            </div>
-            <button
-              className="logs-refresh-btn"
-              onClick={() => logsSubTab === 'ai' ? fetchAILogs() : fetchWebhookLogs()}
-            >
-              <RefreshCw size={13} className={(logsSubTab === 'ai' ? loadingLogs : loadingWebhook) ? 'spin-icon' : ''} />
-              Refresh
-            </button>
-          </div>
-
-          {/* ---- AI LOGS ---- */}
-          {logsSubTab === 'ai' && (
-            <div className="logs-content">
-              {/* Stats Row */}
-              <div className="logs-stats-grid">
-                {[
-                  { label: 'Total Executions', value: aiLogStats.total, cls: 'stat-neutral' },
-                  { label: 'Successful', value: aiLogStats.success, cls: 'stat-success' },
-                  { label: 'Errors', value: aiLogStats.error, cls: 'stat-error' },
-                  { label: 'Manual Mode', value: aiLogStats.manual, cls: 'stat-warn' },
-                  { label: 'Avg Response', value: `${aiLogStats.avgDuration}ms`, cls: 'stat-info' },
-                ].map((s, i) => (
-                  <div key={i} className="logs-stat-card">
-                    <span className="logs-stat-label">{s.label}</span>
-                    <span className={`logs-stat-value ${s.cls}`}>{s.value}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Search + Filter Bar */}
-              <div className="logs-toolbar">
-                <div className="inbox-search-box logs-search">
-                  <Search size={14} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Search phone, message, AI reply..."
-                    value={logsSearch}
-                    onChange={e => setLogsSearch(e.target.value)}
-                  />
-                </div>
-                <select
-                  className="filter-select"
-                  value={logsStatusFilter}
-                  onChange={e => setLogsStatusFilter(e.target.value)}
-                >
-                  <option value="ALL">All Status</option>
-                  <option value="SUCCESS">✅ Success</option>
-                  <option value="FAILED">❌ Failed</option>
-                </select>
-              </div>
-
-              {/* Table */}
-              <div className="logs-table-card">
-                <div className="logs-table-header">
-                  <Terminal size={14} className="logs-icon" />
-                  <span>AI Execution Logs</span>
-                  <span className="logs-table-count">{aiLogs.length} records</span>
-                </div>
-                <div className="logs-table-wrap">
-                  <table className="logs-table">
-                    <thead>
-                      <tr>
-                        {['Status', 'Phone', 'Customer Message', 'AI Reply', 'Tools', 'Duration', 'Time'].map(h => (
-                          <th key={h}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {loadingLogs ? (
-                        [...Array(6)].map((_, i) => (
-                          <tr key={i}>
-                            {[...Array(7)].map((__, j) => (
-                              <td key={j}><div className="skeleton-line" style={{ width: `${40 + j * 8}%`, height: '11px' }} /></td>
                             ))}
                           </tr>
                         ))
@@ -1901,7 +1792,7 @@ export default function WhatsAppInboxComponent() {
           </div>
         </div>
       )}
-      </> }
+      {/* End of inbox panels */}
     </div>
   );
 }

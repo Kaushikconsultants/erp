@@ -23,7 +23,8 @@ import {
   Settings,
   Maximize2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Terminal
 } from "lucide-react";
 import "./WhatsAppHeaderNav.css";
 
@@ -31,6 +32,7 @@ const subNavItems: Array<{name: string; path: string; icon: any; badge?: string;
   { name: "WhatsApp Inbox", path: "/whatsapp/inbox", icon: MessageSquare },
   { name: "Direct Messages", path: "/whatsapp/direct-messages", icon: Send },
   { name: "WhatsApp Dashboard", path: "/whatsapp/dashboard", icon: LayoutDashboard },
+  { name: "WhatsApp Logs", path: "/whatsapp/logs", icon: Terminal },
   { name: "Contacts", path: "/whatsapp/contacts", icon: Users },
   { name: "AI Automation", path: "/whatsapp/ai-automation", icon: Bot, highlight: true },
   { name: "Chatbot Builder", path: "/whatsapp/chatbot-builder", icon: GitFork },
