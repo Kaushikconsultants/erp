@@ -92,18 +92,18 @@ export async function sendQuotationViaWhatsApp(quotationId: string, customPhone?
       }
     }
 
-    // 2. Log in WhatsApp Conversation table
+    // 2. Log in WhatsApp Conversation table if account exists
     let conv = await prisma.whatsAppConversation.findFirst({
       where: {
         customer: { mobile: quotation.customer?.mobile }
       }
     });
 
-    if (!conv && quotation.customerId) {
+    if (!conv && quotation.customerId && account?.id) {
       conv = await prisma.whatsAppConversation.create({
         data: {
           customerId: quotation.customerId,
-          accountId: account?.id || null,
+          accountId: account.id,
           lastMessageText: `Quotation #${quotation.quotationNumber}`,
           lastMessageAt: new Date()
         }
@@ -117,7 +117,7 @@ export async function sendQuotationViaWhatsApp(quotationId: string, customPhone?
           senderType: 'AGENT',
           senderName: (session.user as any).name || 'Sales Rep',
           content: messageText,
-          metaMessageId,
+          metaMessageId: metaMessageId || undefined,
           status: 'SENT',
           sentAt: new Date()
         }

@@ -43,8 +43,8 @@ export async function getPipelineData() {
             take: 3
           },
           calls: {
-            select: { id: true, callType: true, outcome: true, followUpDate: true, notes: true, callTime: true },
-            orderBy: { callTime: 'desc' },
+            select: { id: true, callType: true, outcome: true, followUpDate: true, notes: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
             take: 1
           }
         },
@@ -58,7 +58,7 @@ export async function getPipelineData() {
     ]);
     
     // Normalize deal values: If expectedValue is 0 or null, check quotations / orders or default
-    const formattedCustomers = customers.map(c => {
+    const formattedCustomers = (customers as any[]).map(c => {
       let dealVal = c.expectedValue || 0;
       if (!dealVal || dealVal === 0) {
         const latestQuote = c.quotations?.[0]?.totalValue;
@@ -186,19 +186,22 @@ export async function advanceLeadStep(customerId: string, nextStage: string, not
     });
 
     if (notes || followUpDate) {
-      // Record in Call/FollowUp table for history
+      // Record in Call table for history
       const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
-      await prisma.call.create({
-        data: {
-          customerId,
-          employeeId: employee?.id || customer.assignedSalespersonId || null,
-          callType: "OUTBOUND",
-          outcome: `Moved to ${nextStage}`,
-          notes: notes || `Advanced deal to ${nextStage} stage`,
-          followUpDate: followUpDate ? new Date(followUpDate) : null,
-          callTime: new Date()
-        }
-      });
+      const empId = employee?.id || customer.assignedSalespersonId;
+      if (empId) {
+        await prisma.call.create({
+          data: {
+            customerId,
+            employeeId: empId,
+            callType: "Outgoing",
+            status: "Connected",
+            outcome: `Moved to ${nextStage}`,
+            notes: notes || `Advanced deal to ${nextStage} stage`,
+            followUpDate: followUpDate ? new Date(followUpDate) : null
+          }
+        });
+      }
     }
 
     revalidatePath("/leads");
