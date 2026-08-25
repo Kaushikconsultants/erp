@@ -13,6 +13,7 @@ import { lookupBarcode } from '@/app/actions/scannerActions';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
 import ShippingRateCalculator from '@/components/ui/ShippingRateCalculator';
 import QuickBarcodeScannerBar from '@/components/scanner/QuickBarcodeScannerBar';
+import GarmentMatrixModal from '@/components/quotations/GarmentMatrixModal';
 
 import { useSearchParams } from 'next/navigation';
 
@@ -21,6 +22,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [showGarmentMatrix, setShowGarmentMatrix] = useState(false);
   const [showShippingCalculator, setShowShippingCalculator] = useState(false);
   const [showShippingAddress, setShowShippingAddress] = useState(
     initialQuotation?.shippingAddress && initialQuotation.shippingAddress !== initialQuotation.billingAddress ? true : false
@@ -920,8 +922,29 @@ export default function CreateQuotationForm({ customers, products, employees, ca
 
         {/* MIDDLE SECTION: LINE ITEMS TABLE WITH % OR ₹ DISCOUNT */}
         <div style={{ marginTop: '32px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Item Details</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Item Details</h2>
+              <button
+                type="button"
+                onClick={() => setShowGarmentMatrix(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: '#f5f3ff',
+                  color: '#7c3aed',
+                  border: '1px solid #ddd6fe',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                📦 Garment Size & Color Matrix
+              </button>
+            </div>
             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>All prices in INR (₹)</span>
           </div>
 
@@ -1161,7 +1184,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             </table>
           </div>
 
-          <div style={{ marginTop: '14px' }}>
+          <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <button 
               type="button" 
               onClick={addItem} 
@@ -1172,7 +1195,20 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                 borderRadius: '6px', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' 
               }}
             >
-              <Plus size={14} /> Add another line item
+              <Plus size={14} /> Add single line item
+            </button>
+
+            <button 
+              type="button" 
+              onClick={() => setShowGarmentMatrix(true)} 
+              style={{ 
+                display: 'inline-flex', alignItems: 'center', gap: '6px', 
+                padding: '8px 14px', border: '1px solid #ddd6fe', 
+                color: '#7c3aed', backgroundColor: '#f5f3ff', 
+                borderRadius: '6px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' 
+              }}
+            >
+              📦 Open Garment Size & Color Matrix
             </button>
           </div>
         </div>
@@ -1549,6 +1585,19 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             )}
           </div>
         </>
+      )}
+
+      {showGarmentMatrix && (
+        <GarmentMatrixModal
+          products={products}
+          onAddItems={(newItems) => {
+            setItems(prev => {
+              const filteredPrev = prev.filter(p => p.productId || p.productName);
+              return [...filteredPrev, ...newItems];
+            });
+          }}
+          onClose={() => setShowGarmentMatrix(false)}
+        />
       )}
     </div>
   );

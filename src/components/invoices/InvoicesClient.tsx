@@ -17,10 +17,16 @@ import {
   Wallet, 
   Filter,
   Receipt,
-  RotateCcw
+  RotateCcw,
+  MessageSquare,
+  BellRing,
+  FileSpreadsheet,
+  Download
 } from "lucide-react";
 import { recordPayment } from "@/app/actions/paymentActions";
 import { updateInvoice, deleteInvoice } from "@/app/actions/invoiceActions";
+import { sendInvoiceViaWhatsApp, sendPaymentReminder } from "@/app/actions/documentShareActions";
+import { exportTallySalesInvoices } from "@/app/actions/tallyExportActions";
 import "@/components/ui/modal.css";
 
 const PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Cheque", "Card", "Other"];
@@ -67,6 +73,42 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
   const showToast = (msg: string) => {
     setSuccessMessage(msg);
     setTimeout(() => setSuccessMessage(""), 3500);
+  };
+
+  const handleSendWhatsApp = async (inv: any) => {
+    const res = await sendInvoiceViaWhatsApp(inv.id);
+    if (res.success) {
+      showToast(res.message || "Invoice sent on WhatsApp!");
+    } else {
+      const cleanPhone = (inv.customer?.mobile || '').replace(/\D/g, '');
+      const waUrl = cleanPhone ? `https://wa.me/91${cleanPhone}` : `https://wa.me/`;
+      window.open(waUrl, '_blank');
+    }
+  };
+
+  const handleReminder = async (inv: any) => {
+    const res = await sendPaymentReminder(inv.id);
+    if (res.success) {
+      showToast(res.message || "Payment reminder sent!");
+    } else {
+      alert(res.error || "Failed to send payment reminder");
+    }
+  };
+
+  const handleExportTally = async () => {
+    const res = await exportTallySalesInvoices();
+    if (res.success && res.csvContent) {
+      const encodedUri = encodeURI("data:text/csv;charset=utf-8," + res.csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", res.filename || "Tally_Sales_Invoices.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast(`Exported ${res.totalInvoices} invoices for Tally Prime / Busy ERP!`);
+    } else {
+      alert(res.error || "Failed to export Tally data");
+    }
   };
 
   // --- RECORD PAYMENT ---
@@ -573,7 +615,54 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           </a>
                         )}
 
-                        {/* 2. Record Payment Button */}
+                        {/* 2. WhatsApp Send Invoice Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsApp(inv)}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: '7px',
+                            backgroundColor: '#25D366',
+                            color: '#ffffff',
+                            border: 'none',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            boxShadow: '0 1px 3px rgba(37, 211, 102, 0.2)'
+                          }}
+                          title="Send Invoice on WhatsApp"
+                        >
+                          <MessageSquare size={13} /> WhatsApp
+                        </button>
+
+                        {/* 3. Overdue Payment Reminder Button */}
+                        {inv.amountDue > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleReminder(inv)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: '7px',
+                              backgroundColor: '#fef3c7',
+                              color: '#b45309',
+                              border: '1px solid #fde68a',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            title="Send Overdue WhatsApp Payment Reminder"
+                          >
+                            <BellRing size={13} /> Remind
+                          </button>
+                        )}
+
+                        {/* 4. Record Payment Button */}
                         {inv.status !== 'Paid' && inv.status !== 'Cancelled' && (
                           <button
                             type="button"
@@ -600,7 +689,7 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           </button>
                         )}
 
-                        {/* 3. Edit Invoice Button */}
+                        {/* 5. Edit Invoice Button */}
                         <button
                           type="button"
                           onClick={() => { setError(""); setEditModal(inv); }}

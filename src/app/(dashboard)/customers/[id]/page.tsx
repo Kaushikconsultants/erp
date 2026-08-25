@@ -61,7 +61,25 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
           <h1 className="page-title">{customer.businessName}</h1>
           <p className="page-subtitle">Contact Person: {customer.contactPerson}</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <Link 
+            href={`/customers/${customer.id}/ledger`} 
+            className="action-btn" 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              backgroundColor: '#ecfdf5', 
+              color: '#059669', 
+              border: '1px solid #a7f3d0',
+              fontWeight: 700,
+              padding: '6px 14px',
+              borderRadius: '8px',
+              textDecoration: 'none'
+            }}
+          >
+            📜 Account Ledger / Khata
+          </Link>
           <Link href={`/portal?customerId=${customer.id}`} target="_blank" className="action-btn text-blue" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: '600' }}>
             🌐 Open Client Portal
           </Link>

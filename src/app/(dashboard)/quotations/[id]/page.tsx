@@ -7,6 +7,7 @@ import PrintInvoiceButton from '@/components/orders/PrintInvoiceButton';
 import DownloadPdfButton from '@/components/orders/DownloadPdfButton';
 import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
 import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
+import SendQuotationWhatsAppBtn from '@/components/quotations/SendQuotationWhatsAppBtn';
 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -77,6 +78,11 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
           {quotation.status !== 'Converted' && quotation.status !== 'Confirmed' && (
             <ConvertQuotationBtn quotationId={quotation.id} />
           )}
+          <SendQuotationWhatsAppBtn 
+            quotationId={quotation.id} 
+            customerPhone={quotation.customer?.mobile} 
+            quotationNumber={quotation.quotationNumber} 
+          />
           <DownloadPdfButton elementId="printable-quote" filename={`${quotation.quotationNumber}.pdf`} />
           <PrintInvoiceButton />
         </div>
