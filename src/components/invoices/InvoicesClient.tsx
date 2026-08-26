@@ -478,27 +478,24 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
           <table className="data-table" style={{ width: '100%', fontSize: '0.82rem', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left', whiteSpace: 'nowrap' }}>Invoice #</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Customer</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Order Ref</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Invoice Date</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Due Date</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Total</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Paid</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Outstanding</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'center' }}>Actions</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left', whiteSpace: 'nowrap' }}>Invoice #</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Customer</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Invoice Date</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Total</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Paid</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Outstanding</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'center' }}>Status</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(inv => {
-                const isOverdue = inv.status !== 'Paid' && inv.dueDate && new Date(inv.dueDate) < new Date();
                 const badge = STATUS_BADGES[inv.status] || STATUS_BADGES.Unpaid;
 
                 return (
                   <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.1s ease' }}>
                     {/* INVOICE # */}
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                       {inv.orderId ? (
                         <a
                           href={`/orders/${inv.orderId}/invoice`}
@@ -515,38 +512,14 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                     </td>
 
                     {/* CUSTOMER */}
-                    <td style={{ padding: '12px 14px' }}>
+                    <td style={{ padding: '12px 16px' }}>
                       <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.84rem' }}>{inv.customer?.businessName}</div>
                       <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>{inv.customer?.mobile || '-'}</div>
                     </td>
 
-                    {/* ORDER REF */}
-                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                      {inv.order?.orderNumber ? (
-                        <a 
-                          href={`/orders/${inv.orderId}`} 
-                          style={{ color: '#475569', fontWeight: 500, textDecoration: 'none', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '0.76rem' }}
-                        >
-                          {inv.order.orderNumber}
-                        </a>
-                      ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Manual</span>
-                      )}
-                    </td>
-
                     {/* INVOICE DATE */}
-                    <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '12px 16px', color: '#475569', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                       {new Date(inv.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </td>
-
-                    {/* DUE DATE */}
-                    <td style={{ padding: '12px 14px', color: isOverdue ? '#b91c1c' : '#475569', fontSize: '0.8rem', whiteSpace: 'nowrap', fontWeight: isOverdue ? 600 : 400 }}>
-                      {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
-                      {isOverdue && (
-                        <span style={{ fontSize: '0.62rem', backgroundColor: '#fee2e2', color: '#991b1b', padding: '1px 4px', borderRadius: '3px', marginLeft: '4px', fontWeight: 600, border: '1px solid #fecaca' }}>
-                          OVERDUE
-                        </span>
-                      )}
                     </td>
 
                     {/* TOTAL */}
@@ -750,7 +723,7 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
               
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: '48px', color: '#94a3b8' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px', color: '#94a3b8' }}>
                     <Receipt size={32} style={{ margin: '0 auto 8px auto', opacity: 0.5 }} />
                     <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#475569' }}>No invoices found</div>
                     <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>Try searching with a different keyword or resetting filters.</div>
