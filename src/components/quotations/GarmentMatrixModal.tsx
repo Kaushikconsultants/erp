@@ -24,8 +24,101 @@ interface GarmentMatrixModalProps {
   initialProductId?: string;
   initialRate?: number;
   initialDescription?: string;
+  initialGarmentMatrix?: { colors?: string[]; matrix?: Record<string, Record<string, number>> };
   onAddItems: (newItems: any[]) => void;
   onClose: () => void;
+}
+
+// Robust parser to extract exact colors and size distributions from description text
+function parseMatrixData(
+  desc?: string,
+  savedMatrixData?: { colors?: string[]; matrix?: Record<string, Record<string, number>> }
+): { colors: string[]; matrix: Record<string, Record<string, number>> } {
+  // 1. If structured matrix was stored, use it directly
+  if (savedMatrixData?.matrix && Object.keys(savedMatrixData.matrix).length > 0) {
+    const colors = savedMatrixData.colors && savedMatrixData.colors.length > 0
+      ? savedMatrixData.colors
+      : Object.keys(savedMatrixData.matrix);
+    return { colors, matrix: savedMatrixData.matrix };
+  }
+
+  // 2. If no description or no bracket breakdown
+  if (!desc || !desc.includes('[')) {
+    return {
+      colors: ['Black', 'Navy Blue'],
+      matrix: {
+        'Black': { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 },
+        'Navy Blue': { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 }
+      }
+    };
+  }
+
+  // 3. Parse multiline description
+  const parsedMatrix: Record<string, Record<string, number>> = {};
+  const parsedColors: string[] = [];
+
+  const lines = desc.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const bracketMatch = trimmed.match(/\[(.*?)\]/);
+    if (!bracketMatch) continue;
+
+    const sizeStr = bracketMatch[1]; // e.g. "M:1, L:1, XL:1, XXL:1"
+
+    // Extract color name before the bracket or before "(... pcs)"
+    let colorName = '';
+    const colonBracketIndex = trimmed.indexOf(': [');
+    if (colonBracketIndex !== -1) {
+      const prefix = trimmed.substring(0, colonBracketIndex).replace(/^[•\-\*\s]+/, '').trim();
+      const pcsIndex = prefix.indexOf(' (');
+      colorName = pcsIndex !== -1 ? prefix.substring(0, pcsIndex).trim() : prefix.trim();
+    }
+
+    if (!colorName) {
+      for (const col of DEFAULT_COLORS) {
+        if (trimmed.toLowerCase().includes(col.toLowerCase())) {
+          colorName = col;
+          break;
+        }
+      }
+    }
+
+    if (!colorName || colorName.toLowerCase().includes('breakdown') || colorName.toLowerCase().includes('ratio') || colorName.toLowerCase().includes('set')) {
+      colorName = 'Black';
+    }
+
+    const sizeDist: Record<string, number> = { S: 0, M: 0, L: 0, XL: 0, XXL: 0, '3XL': 0 };
+    const tokens = sizeStr.split(/[,;]+/);
+    for (const tok of tokens) {
+      const parts = tok.trim().split(':');
+      if (parts.length === 2) {
+        const sName = parts[0].trim().toUpperCase();
+        const sQty = parseInt(parts[1].trim()) || 0;
+        if (DEFAULT_SIZES.includes(sName)) {
+          sizeDist[sName] = sQty;
+        } else if (sName === '3XL') {
+          sizeDist['3XL'] = sQty;
+        }
+      }
+    }
+
+    parsedMatrix[colorName] = sizeDist;
+    if (!parsedColors.includes(colorName)) {
+      parsedColors.push(colorName);
+    }
+  }
+
+  if (parsedColors.length === 0) {
+    return {
+      colors: ['Black', 'Navy Blue'],
+      matrix: {
+        'Black': { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 },
+        'Navy Blue': { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 }
+      }
+    };
+  }
+
+  return { colors: parsedColors, matrix: parsedMatrix };
 }
 
 export default function GarmentMatrixModal({ 
@@ -33,28 +126,24 @@ export default function GarmentMatrixModal({
   initialProductId,
   initialRate,
   initialDescription,
+  initialGarmentMatrix,
   onAddItems, 
   onClose 
 }: GarmentMatrixModalProps) {
+  const isEditing = Boolean(initialProductId || initialDescription || initialGarmentMatrix);
+
   const [selectedProductId, setSelectedProductId] = useState(
     initialProductId && products.some(p => p.id === initialProductId)
       ? initialProductId
       : (products[0]?.id || '')
   );
 
-  // Pre-select colors from existing description if available
-  const initialColors = React.useMemo(() => {
-    if (!initialDescription) return ['Black', 'Navy Blue'];
-    const found: string[] = [];
-    DEFAULT_COLORS.forEach(c => {
-      if (initialDescription.toLowerCase().includes(c.toLowerCase())) {
-        found.push(c);
-      }
-    });
-    return found.length > 0 ? found : ['Black', 'Navy Blue'];
-  }, [initialDescription]);
+  // Initialize colors and matrix from parsed description or saved matrix
+  const parsedData = React.useMemo(() => {
+    return parseMatrixData(initialDescription, initialGarmentMatrix);
+  }, [initialDescription, initialGarmentMatrix]);
 
-  const [selectedColors, setSelectedColors] = useState<string[]>(initialColors);
+  const [selectedColors, setSelectedColors] = useState<string[]>(parsedData.colors);
   const [newColorInput, setNewColorInput] = useState('');
 
   // Ratio Presets State (Persisted in localStorage)
@@ -90,13 +179,7 @@ export default function GarmentMatrixModal({
   };
 
   // Matrix quantities: { [color]: { [size]: number } }
-  const [matrix, setMatrix] = useState<Record<string, Record<string, number>>>(() => {
-    const initialMatrix: Record<string, Record<string, number>> = {};
-    initialColors.forEach(c => {
-      initialMatrix[c] = { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 };
-    });
-    return initialMatrix;
-  });
+  const [matrix, setMatrix] = useState<Record<string, Record<string, number>>>(parsedData.matrix);
 
   const [groupAsSingleLine, setGroupAsSingleLine] = useState(true);
 
@@ -270,7 +353,8 @@ export default function GarmentMatrixModal({
         discountPercent: 0,
         discountAmount: 0,
         gstRate: 5,
-        availableStock: selectedProduct.stockQuantity || 100
+        availableStock: selectedProduct.stockQuantity || 100,
+        garmentMatrix: { colors: selectedColors, matrix }
       });
     } else {
       // Separate Line Items per Color
@@ -300,7 +384,8 @@ export default function GarmentMatrixModal({
             discountPercent: 0,
             discountAmount: 0,
             gstRate: 5,
-            availableStock: selectedProduct.stockQuantity || 100
+            availableStock: selectedProduct.stockQuantity || 100,
+            garmentMatrix: { colors: [color], matrix: { [color]: matrix[color] } }
           });
         }
       });
@@ -824,7 +909,7 @@ export default function GarmentMatrixModal({
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#1d4ed8'; }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#2563eb'; }}
             >
-              + Add {grandTotalQty} pcs to Quotation
+              {isEditing ? `✓ Update Item Ratio (${grandTotalQty} pcs)` : `+ Add ${grandTotalQty} pcs to Quotation`}
             </button>
           </div>
         </div>

@@ -1622,6 +1622,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
           initialProductId={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].productId : undefined}
           initialRate={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].rate : undefined}
           initialDescription={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].description : undefined}
+          initialGarmentMatrix={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].garmentMatrix : undefined}
           onAddItems={(newItems) => {
             if (matrixTargetIndex !== null && matrixTargetIndex >= 0 && matrixTargetIndex < items.length) {
               setItems(prev => {
@@ -1637,7 +1638,8 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                     quantity: ni.quantity,
                     rate: ni.rate,
                     unitWeight: ni.unitWeight,
-                    hsnCode: ni.hsnCode || updated[matrixTargetIndex].hsnCode
+                    hsnCode: ni.hsnCode || updated[matrixTargetIndex].hsnCode,
+                    garmentMatrix: ni.garmentMatrix
                   };
                 } else {
                   updated.splice(matrixTargetIndex, 1, ...newItems);
