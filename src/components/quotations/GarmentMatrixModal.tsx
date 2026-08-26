@@ -21,13 +21,40 @@ const DEFAULT_RATIO_PRESETS: RatioPreset[] = [
 
 interface GarmentMatrixModalProps {
   products: any[];
+  initialProductId?: string;
+  initialRate?: number;
+  initialDescription?: string;
   onAddItems: (newItems: any[]) => void;
   onClose: () => void;
 }
 
-export default function GarmentMatrixModal({ products, onAddItems, onClose }: GarmentMatrixModalProps) {
-  const [selectedProductId, setSelectedProductId] = useState(products[0]?.id || '');
-  const [selectedColors, setSelectedColors] = useState<string[]>(['Black', 'Navy Blue']);
+export default function GarmentMatrixModal({ 
+  products, 
+  initialProductId,
+  initialRate,
+  initialDescription,
+  onAddItems, 
+  onClose 
+}: GarmentMatrixModalProps) {
+  const [selectedProductId, setSelectedProductId] = useState(
+    initialProductId && products.some(p => p.id === initialProductId)
+      ? initialProductId
+      : (products[0]?.id || '')
+  );
+
+  // Pre-select colors from existing description if available
+  const initialColors = React.useMemo(() => {
+    if (!initialDescription) return ['Black', 'Navy Blue'];
+    const found: string[] = [];
+    DEFAULT_COLORS.forEach(c => {
+      if (initialDescription.toLowerCase().includes(c.toLowerCase())) {
+        found.push(c);
+      }
+    });
+    return found.length > 0 ? found : ['Black', 'Navy Blue'];
+  }, [initialDescription]);
+
+  const [selectedColors, setSelectedColors] = useState<string[]>(initialColors);
   const [newColorInput, setNewColorInput] = useState('');
 
   // Ratio Presets State (Persisted in localStorage)
@@ -63,15 +90,22 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
   };
 
   // Matrix quantities: { [color]: { [size]: number } }
-  const [matrix, setMatrix] = useState<Record<string, Record<string, number>>>({
-    'Black': { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 },
-    'Navy Blue': { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 }
+  const [matrix, setMatrix] = useState<Record<string, Record<string, number>>>(() => {
+    const initialMatrix: Record<string, Record<string, number>> = {};
+    initialColors.forEach(c => {
+      initialMatrix[c] = { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 };
+    });
+    return initialMatrix;
   });
 
   const [groupAsSingleLine, setGroupAsSingleLine] = useState(true);
 
   const selectedProduct = products.find(p => p.id === selectedProductId) || products[0] || {};
-  const [rate, setRate] = useState<number>(selectedProduct?.sellingPrice || 250);
+  const [rate, setRate] = useState<number>(
+    (initialRate !== undefined && initialRate > 0)
+      ? initialRate
+      : (selectedProduct?.sellingPrice || 250)
+  );
 
   // Update matrix quantity
   const handleQtyChange = (color: string, size: string, value: string) => {

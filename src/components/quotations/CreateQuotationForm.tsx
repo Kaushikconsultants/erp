@@ -24,6 +24,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
   const [loading, setLoading] = useState(false);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showGarmentMatrix, setShowGarmentMatrix] = useState(false);
+  const [matrixTargetIndex, setMatrixTargetIndex] = useState<number | null>(null);
   const [showShippingCalculator, setShowShippingCalculator] = useState(false);
   const [showShippingAddress, setShowShippingAddress] = useState(
     initialQuotation?.shippingAddress && initialQuotation.shippingAddress !== initialQuotation.billingAddress ? true : false
@@ -1088,6 +1089,33 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                                      /> kg
                                   </span>
                                   <span>|</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setMatrixTargetIndex(index);
+                                      setShowGarmentMatrix(true);
+                                    }}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      padding: '2px 8px',
+                                      borderRadius: '4px',
+                                      backgroundColor: '#f5f3ff',
+                                      border: '1px solid #ddd6fe',
+                                      color: '#7c3aed',
+                                      fontSize: '0.72rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                    title="Open Garment Size & Color Ratio Matrix for this item"
+                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#ede9fe'}
+                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f5f3ff'}
+                                  >
+                                    📦 Matrix
+                                  </button>
+                                  <span>|</span>
                                   <span>Stock: <span style={{ color: item.availableStock > 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>{item.availableStock} pcs</span></span>
                                 </div>
                               </div>
@@ -1210,19 +1238,6 @@ export default function CreateQuotationForm({ customers, products, employees, ca
               }}
             >
               <Plus size={14} /> Add single line item
-            </button>
-
-            <button 
-              type="button" 
-              onClick={() => setShowGarmentMatrix(true)} 
-              style={{ 
-                display: 'inline-flex', alignItems: 'center', gap: '6px', 
-                padding: '8px 14px', border: '1px solid #ddd6fe', 
-                color: '#7c3aed', backgroundColor: '#f5f3ff', 
-                borderRadius: '6px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' 
-              }}
-            >
-              📦 Open Garment Size & Color Matrix
             </button>
           </div>
         </div>
@@ -1604,13 +1619,44 @@ export default function CreateQuotationForm({ customers, products, employees, ca
       {showGarmentMatrix && (
         <GarmentMatrixModal
           products={products}
+          initialProductId={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].productId : undefined}
+          initialRate={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].rate : undefined}
+          initialDescription={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].description : undefined}
           onAddItems={(newItems) => {
-            setItems(prev => {
-              const filteredPrev = prev.filter(p => p.productId || p.productName);
-              return [...filteredPrev, ...newItems];
-            });
+            if (matrixTargetIndex !== null && matrixTargetIndex >= 0 && matrixTargetIndex < items.length) {
+              setItems(prev => {
+                const updated = [...prev];
+                if (newItems.length === 1) {
+                  const ni = newItems[0];
+                  updated[matrixTargetIndex] = {
+                    ...updated[matrixTargetIndex],
+                    productId: ni.productId || updated[matrixTargetIndex].productId,
+                    productName: ni.productName,
+                    sku: ni.sku,
+                    description: ni.description,
+                    quantity: ni.quantity,
+                    rate: ni.rate,
+                    unitWeight: ni.unitWeight,
+                    hsnCode: ni.hsnCode || updated[matrixTargetIndex].hsnCode
+                  };
+                } else {
+                  updated.splice(matrixTargetIndex, 1, ...newItems);
+                }
+                return updated;
+              });
+            } else {
+              setItems(prev => {
+                const filteredPrev = prev.filter(p => p.productId || p.productName);
+                return [...filteredPrev, ...newItems];
+              });
+            }
+            setMatrixTargetIndex(null);
+            setShowGarmentMatrix(false);
           }}
-          onClose={() => setShowGarmentMatrix(false)}
+          onClose={() => {
+            setMatrixTargetIndex(null);
+            setShowGarmentMatrix(false);
+          }}
         />
       )}
     </div>
