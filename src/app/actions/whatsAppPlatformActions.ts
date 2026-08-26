@@ -516,9 +516,10 @@ export async function sendWhatsAppMessageAction(data: {
               data: { url: `/whatsapp/inbox` } 
             });
             
+            const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
             for (const sub of subs) {
               try {
-                await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/push/send`, {
+                await fetch(`${baseUrl}/api/push/send`, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'x-internal-secret': process.env.INTERNAL_API_SECRET || 'crm_internal_2026' },
                   body: JSON.stringify({

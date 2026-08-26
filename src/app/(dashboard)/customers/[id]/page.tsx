@@ -45,13 +45,29 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
 
   const objections = await prisma.objection.findMany();
 
-  if (!customer || customer.organizationId !== orgId) {
+  if (!customer) {
     return (
       <div className="page-container">
         <h1>Customer Not Found</h1>
         <Link href="/customers" className="primary-btn">Back to Customers</Link>
       </div>
     );
+  }
+
+  if (customer.organizationId && customer.organizationId !== orgId) {
+    return (
+      <div className="page-container">
+        <h1>Customer Not Found</h1>
+        <Link href="/customers" className="primary-btn">Back to Customers</Link>
+      </div>
+    );
+  }
+
+  if (!customer.organizationId && orgId) {
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: { organizationId: orgId }
+    }).catch(() => {});
   }
 
   return (

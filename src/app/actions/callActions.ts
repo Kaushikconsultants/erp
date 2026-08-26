@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+import { getTenantOrgId } from "@/lib/tenant";
+
 export async function logCall(formData: FormData) {
   const customerId = formData.get("customerId") as string;
   const type = formData.get("type") as string || "OUTBOUND";
@@ -19,6 +21,7 @@ export async function logCall(formData: FormData) {
   }
 
   try {
+    const organizationId = await getTenantOrgId();
     // Get the logged-in user's session to find THEIR employee record
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
@@ -27,9 +30,9 @@ export async function logCall(formData: FormData) {
     if (userId) {
       employee = await prisma.employee.findUnique({ where: { userId } });
     }
-    // Fallback only if no employee record found for this user
+    // Fallback scoped to current organization
     if (!employee) {
-      employee = await prisma.employee.findFirst();
+      employee = await prisma.employee.findFirst({ where: { organizationId } });
     }
 
     if (!employee) {

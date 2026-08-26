@@ -24,7 +24,12 @@ export async function getInvoices(filters?: { status?: string; customerId?: stri
 
   try {
     const organizationId = await getTenantOrgId();
-    const where: any = { organizationId };
+    const where: any = {
+      OR: [
+        { organizationId },
+        { organizationId: null }
+      ]
+    };
     if (filters?.status && filters.status !== 'All') where.status = filters.status;
     if (filters?.customerId) where.customerId = filters.customerId;
 
@@ -61,14 +66,26 @@ export async function createInvoiceFromOrder(orderId: string, dueDate?: string, 
     const organizationId = await getTenantOrgId();
 
     // Check if invoice already exists for this order
-    const existing = await prisma.invoice.findFirst({ where: { orderId, organizationId } });
+    const existing = await prisma.invoice.findFirst({
+      where: {
+        orderId,
+        OR: [{ organizationId }, { organizationId: null }]
+      }
+    });
     if (existing) return { error: "Invoice already exists for this order", invoiceId: existing.id };
 
     const order = await prisma.order.findFirst({
-      where: { id: orderId, organizationId },
+      where: {
+        id: orderId,
+        OR: [{ organizationId }, { organizationId: null }]
+      },
       include: { customer: true }
     });
     if (!order) return { error: "Order not found" };
+
+    if (!order.organizationId && organizationId) {
+      await prisma.order.update({ where: { id: order.id }, data: { organizationId } }).catch(() => {});
+    }
 
     // Generate invoice number
     const count = await prisma.invoice.count({ where: { organizationId } });

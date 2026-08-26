@@ -163,7 +163,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
         title: c.businessName || c.contactPerson,
         subtitle: `Contact: ${c.contactPerson} (${c.mobile})`,
         type: 'Customer',
-        url: `/customers?search=${encodeURIComponent(c.businessName || c.contactPerson)}`,
+        url: `/customers/${c.id}`,
         badgeColor: '#3b82f6'
       });
     });

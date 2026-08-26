@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
+import { getCompanySettings } from "@/app/actions/companyActions";
 
 export async function getPayments(filters?: {
   search?: string;
@@ -23,7 +24,11 @@ export async function getPayments(filters?: {
   try {
     const organizationId = await getTenantOrgId();
     const where: any = {
-      customer: { organizationId }
+      OR: [
+        { customer: { organizationId } },
+        { invoice: { organizationId } },
+        { order: { organizationId } }
+      ]
     };
 
     if (filters?.invoiceId) where.invoiceId = filters.invoiceId;
@@ -46,7 +51,13 @@ export async function getPayments(filters?: {
     if (filters?.search && filters.search.trim()) {
       const q = filters.search.trim();
       where.AND = [
-        { customer: { organizationId } },
+        {
+          OR: [
+            { customer: { organizationId } },
+            { invoice: { organizationId } },
+            { order: { organizationId } }
+          ]
+        },
         {
           OR: [
             { paymentNumber: { contains: q, mode: 'insensitive' } },
@@ -60,7 +71,7 @@ export async function getPayments(filters?: {
           ]
         }
       ];
-      delete where.customer;
+      delete where.OR;
     }
 
     const payments = await prisma.payment.findMany({
@@ -180,6 +191,9 @@ export async function recordCustomerPayment(data: {
     const pDate = data.paymentDate ? new Date(data.paymentDate) : new Date();
     const paymentStatus = data.status || 'Completed';
 
+    const companyRes = await getCompanySettings();
+    const defaultReceivingAccount = companyRes.settings?.bankAccountName ? `${companyRes.settings?.bankAccountName} A/c` : 'ICICI Bank Current A/c';
+
     if (data.paymentType === 'Invoice Payment' && data.invoiceId) {
       // Record payment against specific invoice
       const invoice = await prisma.invoice.findUnique({
@@ -206,7 +220,7 @@ export async function recordCustomerPayment(data: {
             amount: payAmount,
             paymentDate: pDate,
             paymentMode: data.paymentMode,
-            receivingAccount: data.receivingAccount || 'HDFC Bank Current A/c',
+            receivingAccount: data.receivingAccount || defaultReceivingAccount,
             referenceNumber: data.referenceNumber || null,
             payerName: data.payerName || customer.businessName,
             status: paymentStatus,
@@ -228,7 +242,7 @@ export async function recordCustomerPayment(data: {
             action: 'PAYMENT_RECORDED',
             module: 'Finance',
             recordId: data.invoiceId,
-            newValue: JSON.stringify({ paymentNumber, amount: payAmount, mode: data.paymentMode, receivingAccount: data.receivingAccount })
+            newValue: JSON.stringify({ paymentNumber, amount: payAmount, mode: data.paymentMode, receivingAccount: data.receivingAccount || defaultReceivingAccount })
           }
         })
       ]);
@@ -259,7 +273,7 @@ export async function recordCustomerPayment(data: {
           amount: data.amount,
           paymentDate: pDate,
           paymentMode: data.paymentMode,
-          receivingAccount: data.receivingAccount || 'HDFC Bank Current A/c',
+          receivingAccount: data.receivingAccount || defaultReceivingAccount,
           referenceNumber: data.referenceNumber || null,
           payerName: data.payerName || customer.businessName,
           status: paymentStatus,

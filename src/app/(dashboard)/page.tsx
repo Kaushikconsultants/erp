@@ -219,11 +219,15 @@ export default async function Home() {
     todayStart.setHours(0, 0, 0, 0);
 
     const teamMembers = await prisma.employee.findMany({
+      where: { organizationId: orgId },
       include: { user: true }
     });
 
     const teamCallsToday = await prisma.call.findMany({
-      where: { createdAt: { gte: todayStart } },
+      where: { 
+        customer: { organizationId: orgId },
+        createdAt: { gte: todayStart } 
+      },
       include: { customer: true }
     });
 

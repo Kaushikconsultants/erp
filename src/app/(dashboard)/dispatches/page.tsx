@@ -64,14 +64,14 @@ export default function DispatchesPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{order.orderNumber}</div>
-          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{order.customer.businessName}</div>
+          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{order.customer?.businessName || 'Direct Customer'}</div>
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: '#f1f5f9', padding: '2px 8px', borderRadius: '12px' }}>
           {order.invoices && order.invoices.length > 0 ? order.invoices[0].invoiceNumber : 'Invoice Pending'}
         </div>
       </div>
       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
-        📍 {order.customer.city || 'City'}, {order.customer.state || 'State'} - {order.customer.pincode || 'ZIP'}
+        📍 {order.customer?.city || 'City'}, {order.customer?.state || 'State'} - {order.customer?.pincode || 'ZIP'}
       </div>
       <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
         {actionRender}

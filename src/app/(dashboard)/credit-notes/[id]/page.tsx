@@ -10,6 +10,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { canUserAccessSection } from '@/lib/authPermissions';
+import { getTenantOrgId } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,8 +44,21 @@ export default async function CreditNoteDetailPage({ params }: { params: Promise
     getCompanySettings()
   ]);
 
+  const orgId = await getTenantOrgId();
+
   if (!creditNote) {
     notFound();
+  }
+
+  if (creditNote.organizationId && creditNote.organizationId !== orgId) {
+    notFound();
+  }
+
+  if (!creditNote.organizationId && orgId) {
+    await prisma.creditNote.update({
+      where: { id },
+      data: { organizationId: orgId }
+    }).catch(() => {});
   }
 
   const company = companyRes.settings || {

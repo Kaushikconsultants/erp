@@ -451,7 +451,7 @@ const Sidebar = ({
       </nav>
 
       {/* SETTINGS & BILLING FOOTER */}
-      {(showSettings || canAccess('settings')) && canAccess('settings') && (
+      {(showSettings || canAccess('settings')) && (
         <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <Link href="/settings" onClick={onClose} className={`nav-item ${isActive('/settings') && !isActive('/settings/billing') ? 'active' : ''}`}>
             <Settings size={18} />

@@ -38,8 +38,19 @@ export default async function EWayBillDetailPage({ params }: { params: Promise<{
     getCompanySettings()
   ]);
 
-  if (!ewayBill || ewayBill.organizationId !== orgId) {
+  if (!ewayBill) {
     notFound();
+  }
+
+  if (ewayBill.organizationId && ewayBill.organizationId !== orgId) {
+    notFound();
+  }
+
+  if (!ewayBill.organizationId && orgId) {
+    await prisma.eWayBill.update({
+      where: { id },
+      data: { organizationId: orgId }
+    }).catch(() => {});
   }
 
   const company = companyRes.settings || {
