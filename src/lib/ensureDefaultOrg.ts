@@ -90,6 +90,7 @@ export async function ensureDefaultOrganization() {
         });
         await prisma.employee.create({
           data: {
+            employeeId: item.email.startsWith("admin") ? "EMP-000" : "EMP-001",
             userId: newUser.id,
             organizationId: orgId,
             designation: "Managing Director",
