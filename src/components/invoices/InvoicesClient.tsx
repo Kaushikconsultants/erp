@@ -32,12 +32,12 @@ import "@/components/ui/modal.css";
 const PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Cheque", "Card", "Other"];
 
 const STATUS_BADGES: Record<string, { bg: string; color: string; border: string }> = {
-  Paid: { bg: "rgba(34, 197, 94, 0.1)", color: "#16a34a", border: "#bbf7d0" },
-  "Partially Paid": { bg: "rgba(245, 158, 11, 0.1)", color: "#d97706", border: "#fde68a" },
-  Unpaid: { bg: "rgba(239, 68, 68, 0.08)", color: "#dc2626", border: "#fecaca" },
-  Overdue: { bg: "rgba(220, 38, 38, 0.15)", color: "#b91c1c", border: "#fca5a5" },
-  Cancelled: { bg: "rgba(100, 116, 139, 0.1)", color: "#64748b", border: "#cbd5e1" },
-  Draft: { bg: "rgba(148, 163, 184, 0.1)", color: "#475569", border: "#e2e8f0" }
+  Paid: { bg: "#f0fdf4", color: "#15803d", border: "#bbf7d0" },
+  "Partially Paid": { bg: "#fffbeb", color: "#b45309", border: "#fde68a" },
+  Unpaid: { bg: "#fef2f2", color: "#b91c1c", border: "#fecaca" },
+  Overdue: { bg: "#fef2f2", color: "#991b1b", border: "#fca5a5" },
+  Cancelled: { bg: "#f8fafc", color: "#64748b", border: "#e2e8f0" },
+  Draft: { bg: "#f8fafc", color: "#475569", border: "#e2e8f0" }
 };
 
 export default function InvoicesClient({ initialInvoices }: { initialInvoices: any[] }) {
@@ -239,83 +239,83 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
         gap: '16px' 
       }}>
         {/* Card 1: Total Outstanding */}
-        <div className="glass-panel" style={{ 
-          padding: '20px 24px', 
-          borderRadius: '14px',
+        <div style={{ 
+          padding: '18px 20px', 
+          borderRadius: '12px',
           border: '1px solid #e2e8f0',
-          borderLeft: '4px solid #ef4444',
           backgroundColor: '#ffffff',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.82rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 600 }}>
               Total Outstanding
             </div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#dc2626', marginTop: '4px' }}>
-              ₹{totalOutstanding.toLocaleString()}
+            <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#0f172a', marginTop: '3px' }}>
+              ₹{totalOutstanding.toLocaleString('en-IN')}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
+            <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
               Across pending & overdue invoices
             </div>
           </div>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', backgroundColor: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AlertCircle size={24} color="#dc2626" />
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AlertCircle size={20} color="#dc2626" />
           </div>
         </div>
 
         {/* Card 2: Total Collected */}
-        <div className="glass-panel" style={{ 
-          padding: '20px 24px', 
-          borderRadius: '14px',
+        <div style={{ 
+          padding: '18px 20px', 
+          borderRadius: '12px',
           border: '1px solid #e2e8f0',
-          borderLeft: '4px solid #22c55e',
           backgroundColor: '#ffffff',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.82rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 600 }}>
               Total Collected
             </div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#16a34a', marginTop: '4px' }}>
-              ₹{totalCollected.toLocaleString()}
+            <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#0f172a', marginTop: '3px' }}>
+              ₹{totalCollected.toLocaleString('en-IN')}
             </div>
-            <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600, marginTop: '2px' }}>
+            <div style={{ fontSize: '0.74rem', color: '#16a34a', fontWeight: 500, marginTop: '2px' }}>
               ✓ {paidCount} fully paid invoices
             </div>
           </div>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', backgroundColor: 'rgba(34, 197, 94, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Wallet size={24} color="#16a34a" />
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Wallet size={20} color="#16a34a" />
           </div>
         </div>
 
         {/* Card 3: Overdue Invoices */}
-        <div className="glass-panel" style={{ 
-          padding: '20px 24px', 
-          borderRadius: '14px',
+        <div style={{ 
+          padding: '18px 20px', 
+          borderRadius: '12px',
           border: '1px solid #e2e8f0',
-          borderLeft: `4px solid ${overdueCount > 0 ? '#f59e0b' : '#3b82f6'}`,
           backgroundColor: '#ffffff',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
         }}>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.82rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 600 }}>
               Overdue Invoices
             </div>
-            <div style={{ fontSize: '1.8rem', fontWeight: 800, color: overdueCount > 0 ? '#d97706' : '#0f172a', marginTop: '4px' }}>
+            <div style={{ fontSize: '1.45rem', fontWeight: 600, color: overdueCount > 0 ? '#b91c1c' : '#0f172a', marginTop: '3px' }}>
               {overdueCount}
             </div>
-            <div style={{ fontSize: '0.75rem', color: overdueCount > 0 ? '#d97706' : '#64748b', fontWeight: 600, marginTop: '2px' }}>
-              {overdueCount > 0 ? "Requires immediate follow-up" : "All payments on schedule"}
+            <div style={{ fontSize: '0.74rem', color: overdueCount > 0 ? '#b91c1c' : '#64748b', marginTop: '2px' }}>
+              {overdueCount > 0 ? "Requires follow-up" : "All payments on schedule"}
             </div>
           </div>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', backgroundColor: overdueCount > 0 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Receipt size={24} color={overdueCount > 0 ? '#d97706' : '#3b82f6'} />
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: overdueCount > 0 ? '#fef2f2' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Receipt size={20} color={overdueCount > 0 ? '#dc2626' : '#4f46e5'} />
           </div>
         </div>
       </div>
@@ -328,10 +328,10 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
         flexWrap: 'wrap', 
         gap: '12px',
         backgroundColor: '#ffffff',
-        padding: '14px 18px',
-        borderRadius: '12px',
+        padding: '12px 16px',
+        borderRadius: '10px',
         border: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
       }}>
         {/* Left: Search input + Status Filter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flex: 1, minWidth: '300px' }}>
@@ -340,31 +340,31 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
             position: 'relative',
             display: 'flex',
             alignItems: 'center',
-            minWidth: '280px',
-            maxWidth: '380px',
+            minWidth: '260px',
+            maxWidth: '360px',
             flex: 1
           }}>
             <Search 
-              size={16} 
+              size={15} 
               style={{ position: 'absolute', left: '12px', color: '#94a3b8', pointerEvents: 'none' }} 
             />
             <input
               type="text"
-              placeholder="Search by invoice #, customer, phone, order..."
+              placeholder="Search invoice #, customer, phone..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
                 width: '100%',
-                padding: '9px 36px 9px 36px',
-                borderRadius: '8px',
+                padding: '8px 32px 8px 34px',
+                borderRadius: '6px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#f8fafc',
-                fontSize: '0.85rem',
+                fontSize: '0.82rem',
                 color: '#0f172a',
                 outline: 'none',
                 transition: 'all 0.15s ease',
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-primary, #4f46e5)'; e.currentTarget.style.backgroundColor = '#ffffff'; }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.backgroundColor = '#ffffff'; }}
               onBlur={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.backgroundColor = '#f8fafc'; }}
             />
             {search && (
@@ -391,17 +391,17 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
 
           {/* Status Filter Dropdown */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Filter size={15} color="#64748b" />
+            <Filter size={14} color="#64748b" />
             <select
               value={filterStatus}
               onChange={e => setFilterStatus(e.target.value)}
               style={{
-                padding: '9px 14px',
-                borderRadius: '8px',
+                padding: '8px 12px',
+                borderRadius: '6px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
-                fontSize: '0.85rem',
-                fontWeight: 600,
+                fontSize: '0.82rem',
+                fontWeight: 500,
                 color: '#334155',
                 outline: 'none',
                 cursor: 'pointer'
@@ -420,13 +420,13 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
             <button
               onClick={() => { setSearch(''); setFilterStatus('All'); }}
               style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
+                padding: '7px 10px',
+                borderRadius: '6px',
                 border: '1px solid #e2e8f0',
                 backgroundColor: '#f1f5f9',
                 color: '#475569',
-                fontSize: '0.8rem',
-                fontWeight: 600,
+                fontSize: '0.78rem',
+                fontWeight: 500,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -447,21 +447,21 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '9px 16px',
-              borderRadius: '8px',
-              border: '1px solid #fecdd3',
-              backgroundColor: '#fff1f2',
-              color: '#e11d48',
-              fontSize: '0.85rem',
-              fontWeight: 700,
+              padding: '8px 14px',
+              borderRadius: '6px',
+              border: '1px solid #e2e8f0',
+              backgroundColor: '#ffffff',
+              color: '#334155',
+              fontSize: '0.82rem',
+              fontWeight: 500,
               textDecoration: 'none',
               transition: 'all 0.15s ease',
-              boxShadow: '0 1px 2px rgba(225, 29, 72, 0.05)'
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
             }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#ffe4e6'; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff1f2'; }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
           >
-            <FileMinus size={15} /> Credit Notes & Returns
+            <FileMinus size={14} color="#64748b" /> Credit Notes & Returns
           </Link>
         </div>
       </div>
@@ -469,25 +469,25 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
       {/* Invoice Table Panel */}
       <div style={{
         backgroundColor: '#ffffff',
-        borderRadius: '14px',
+        borderRadius: '12px',
         border: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
         overflow: 'hidden'
       }}>
         <div className="table-responsive">
-          <table className="data-table" style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
+          <table className="data-table" style={{ width: '100%', fontSize: '0.82rem', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase' }}>Invoice #</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase' }}>Customer</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase' }}>Order Ref</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase' }}>Invoice Date</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase' }}>Due Date</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase', textAlign: 'right' }}>Total</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase', textAlign: 'right' }}>Paid</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase', textAlign: 'right' }}>Outstanding</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase' }}>Status</th>
-                <th style={{ padding: '14px 16px', fontWeight: 600, color: '#475569', fontSize: '0.78rem', textTransform: 'uppercase', textAlign: 'center' }}>Actions</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left', whiteSpace: 'nowrap' }}>Invoice #</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Customer</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Order Ref</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Invoice Date</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Due Date</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Total</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Paid</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Outstanding</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'center' }}>Status</th>
+                <th style={{ padding: '12px 14px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -498,94 +498,94 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                 return (
                   <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.1s ease' }}>
                     {/* INVOICE # */}
-                    <td style={{ padding: '14px 16px', fontWeight: 700 }}>
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       {inv.orderId ? (
                         <a
                           href={`/orders/${inv.orderId}/invoice`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace', fontSize: '0.88rem' }}
+                          style={{ color: '#4f46e5', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 600, fontSize: '0.82rem' }}
                           title="View / Print Tax Invoice"
                         >
-                          {inv.invoiceNumber} <ExternalLink size={12} />
+                          {inv.invoiceNumber} <ExternalLink size={11} color="#6366f1" />
                         </a>
                       ) : (
-                        <span style={{ fontFamily: 'monospace', fontSize: '0.88rem', color: '#1e293b' }}>{inv.invoiceNumber}</span>
+                        <span style={{ fontSize: '0.82rem', color: '#1e293b', fontWeight: 600 }}>{inv.invoiceNumber}</span>
                       )}
                     </td>
 
                     {/* CUSTOMER */}
-                    <td style={{ padding: '14px 16px' }}>
-                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{inv.customer?.businessName}</div>
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>{inv.customer?.mobile || '-'}</div>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.84rem' }}>{inv.customer?.businessName}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>{inv.customer?.mobile || '-'}</div>
                     </td>
 
                     {/* ORDER REF */}
-                    <td style={{ padding: '14px 16px', color: '#475569' }}>
+                    <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                       {inv.order?.orderNumber ? (
                         <a 
                           href={`/orders/${inv.orderId}`} 
-                          style={{ color: '#475569', fontWeight: 600, textDecoration: 'none', backgroundColor: '#f1f5f9', padding: '3px 7px', borderRadius: '5px', fontSize: '0.78rem' }}
+                          style={{ color: '#475569', fontWeight: 500, textDecoration: 'none', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', fontSize: '0.76rem' }}
                         >
                           {inv.order.orderNumber}
                         </a>
                       ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '0.78rem' }}>Manual</span>
+                        <span style={{ color: '#94a3b8', fontSize: '0.76rem' }}>Manual</span>
                       )}
                     </td>
 
                     {/* INVOICE DATE */}
-                    <td style={{ padding: '14px 16px', color: '#475569', fontSize: '0.82rem' }}>
+                    <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                       {new Date(inv.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </td>
 
                     {/* DUE DATE */}
-                    <td style={{ padding: '14px 16px', color: isOverdue ? '#dc2626' : '#475569', fontSize: '0.82rem', fontWeight: isOverdue ? 700 : 400 }}>
+                    <td style={{ padding: '12px 14px', color: isOverdue ? '#b91c1c' : '#475569', fontSize: '0.8rem', whiteSpace: 'nowrap', fontWeight: isOverdue ? 600 : 400 }}>
                       {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
                       {isOverdue && (
-                        <span style={{ fontSize: '0.65rem', backgroundColor: '#fee2e2', color: '#b91c1c', padding: '1px 5px', borderRadius: '4px', marginLeft: '6px', fontWeight: 800, border: '1px solid #fca5a5' }}>
+                        <span style={{ fontSize: '0.62rem', backgroundColor: '#fee2e2', color: '#991b1b', padding: '1px 4px', borderRadius: '3px', marginLeft: '4px', fontWeight: 600, border: '1px solid #fecaca' }}>
                           OVERDUE
                         </span>
                       )}
                     </td>
 
                     {/* TOTAL */}
-                    <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>
+                    <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 500, color: '#0f172a', fontSize: '0.84rem', whiteSpace: 'nowrap' }}>
                       ₹{(Number(inv.totalAmount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
 
                     {/* PAID */}
-                    <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 700, color: '#16a34a', fontSize: '0.9rem' }}>
+                    <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 500, color: '#16a34a', fontSize: '0.84rem', whiteSpace: 'nowrap' }}>
                       ₹{(Number(inv.amountPaid) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
 
                     {/* OUTSTANDING */}
-                    <td style={{ padding: '14px 16px', textAlign: 'right', fontWeight: 800, color: (Number(inv.amountDue) || 0) > 0 ? '#dc2626' : '#16a34a', fontSize: '0.9rem' }}>
+                    <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 600, color: (Number(inv.amountDue) || 0) > 0 ? '#b91c1c' : '#16a34a', fontSize: '0.84rem', whiteSpace: 'nowrap' }}>
                       ₹{(Number(inv.amountDue) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                     </td>
 
                     {/* STATUS BADGE */}
-                    <td style={{ padding: '14px 16px' }}>
+                    <td style={{ padding: '12px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                       <span style={{ 
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px',
-                        padding: '4px 10px', 
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
+                        padding: '3px 8px', 
+                        borderRadius: '6px',
+                        fontSize: '0.72rem',
+                        fontWeight: 500,
                         backgroundColor: badge.bg,
                         color: badge.color,
                         border: `1px solid ${badge.border}`
                       }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: badge.color }} />
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: badge.color }} />
                         {inv.status}
                       </span>
                     </td>
 
                     {/* ACTIONS */}
-                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}>
+                    <td style={{ padding: '12px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
                         
                         {/* 1. Print Button */}
                         {inv.orderId && (
@@ -594,13 +594,13 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
-                              padding: '6px 10px',
-                              borderRadius: '7px',
-                              backgroundColor: '#f8fafc',
+                              padding: '4px 8px',
+                              borderRadius: '5px',
+                              backgroundColor: '#ffffff',
                               color: '#334155',
                               border: '1px solid #cbd5e1',
-                              fontSize: '0.78rem',
-                              fontWeight: 600,
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
@@ -609,9 +609,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             }}
                             title="Print Tax Invoice"
                             onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
-                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.color = '#334155'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = '#334155'; }}
                           >
-                            <Printer size={13} /> Print
+                            <Printer size={12} /> Print
                           </a>
                         )}
 
@@ -620,22 +620,24 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           type="button"
                           onClick={() => handleSendWhatsApp(inv)}
                           style={{
-                            padding: '6px 10px',
-                            borderRadius: '7px',
-                            backgroundColor: '#25D366',
-                            color: '#ffffff',
-                            border: 'none',
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
+                            padding: '4px 8px',
+                            borderRadius: '5px',
+                            backgroundColor: '#f0fdf4',
+                            color: '#15803d',
+                            border: '1px solid #bbf7d0',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px',
-                            boxShadow: '0 1px 3px rgba(37, 211, 102, 0.2)'
+                            transition: 'all 0.15s ease'
                           }}
                           title="Send Invoice on WhatsApp"
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dcfce7'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f0fdf4'; }}
                         >
-                          <MessageSquare size={13} /> WhatsApp
+                          <MessageSquare size={12} /> WhatsApp
                         </button>
 
                         {/* 3. Overdue Payment Reminder Button */}
@@ -644,21 +646,24 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             type="button"
                             onClick={() => handleReminder(inv)}
                             style={{
-                              padding: '6px 10px',
-                              borderRadius: '7px',
-                              backgroundColor: '#fef3c7',
+                              padding: '4px 8px',
+                              borderRadius: '5px',
+                              backgroundColor: '#fffbeb',
                               color: '#b45309',
                               border: '1px solid #fde68a',
-                              fontSize: '0.78rem',
-                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px'
+                              gap: '4px',
+                              transition: 'all 0.15s ease'
                             }}
                             title="Send Overdue WhatsApp Payment Reminder"
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fef3c7'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fffbeb'; }}
                           >
-                            <BellRing size={13} /> Remind
+                            <BellRing size={12} /> Remind
                           </button>
                         )}
 
@@ -668,13 +673,13 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             type="button"
                             onClick={() => { setError(""); setPaymentModal(inv); }}
                             style={{
-                              padding: '6px 10px',
-                              borderRadius: '7px',
-                              backgroundColor: 'var(--accent-light, #eff6ff)',
-                              color: 'var(--accent-primary, #2563eb)',
+                              padding: '4px 8px',
+                              borderRadius: '5px',
+                              backgroundColor: '#eff6ff',
+                              color: '#2563eb',
                               border: '1px solid #bfdbfe',
-                              fontSize: '0.78rem',
-                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
@@ -683,9 +688,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             }}
                             title="Record Customer Payment"
                             onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dbeafe'; }}
-                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--accent-light, #eff6ff)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#eff6ff'; }}
                           >
-                            <CreditCard size={13} /> Pay
+                            <CreditCard size={12} /> Pay
                           </button>
                         )}
 
@@ -694,12 +699,12 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           type="button"
                           onClick={() => { setError(""); setEditModal(inv); }}
                           style={{
-                            padding: '6px 8px',
-                            borderRadius: '7px',
+                            padding: '4px 6px',
+                            borderRadius: '5px',
                             backgroundColor: '#f8fafc',
                             color: '#4f46e5',
-                            border: '1px solid #c7d2fe',
-                            fontSize: '0.78rem',
+                            border: '1px solid #e2e8f0',
+                            fontSize: '0.75rem',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -707,23 +712,23 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             transition: 'all 0.15s ease'
                           }}
                           title="Edit Invoice Details"
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#eef2ff'; }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.borderColor = '#c7d2fe'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                         >
-                          <Edit3 size={14} />
+                          <Edit3 size={13} />
                         </button>
 
-                        {/* 4. Delete Invoice Button */}
+                        {/* 6. Delete Invoice Button */}
                         <button
                           type="button"
                           onClick={() => { setError(""); setDeleteModal(inv); }}
                           style={{
-                            padding: '6px 8px',
-                            borderRadius: '7px',
-                            backgroundColor: '#fff1f2',
+                            padding: '4px 6px',
+                            borderRadius: '5px',
+                            backgroundColor: '#f8fafc',
                             color: '#e11d48',
-                            border: '1px solid #fecdd3',
-                            fontSize: '0.78rem',
+                            border: '1px solid #e2e8f0',
+                            fontSize: '0.75rem',
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -731,10 +736,10 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             transition: 'all 0.15s ease'
                           }}
                           title="Delete Invoice"
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#ffe4e6'; }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fff1f2'; }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fff1f2'; e.currentTarget.style.borderColor = '#fecdd3'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={13} />
                         </button>
 
                       </div>
@@ -763,9 +768,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
           <div className="modal-content glass-panel animate-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div className="modal-header">
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>Record Payment</h2>
+                <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600, color: '#0f172a' }}>Record Payment</h2>
                 <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  {paymentModal.invoiceNumber} — <strong>{paymentModal.customer?.businessName}</strong>
+                  {paymentModal.invoiceNumber} — <span style={{ fontWeight: 600, color: '#334155' }}>{paymentModal.customer?.businessName}</span>
                 </p>
               </div>
               <button className="close-btn" onClick={() => setPaymentModal(null)}>×</button>
@@ -774,17 +779,17 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
             <form onSubmit={handlePayment} className="modal-body" style={{ marginTop: '14px' }}>
               {/* Payment Summary Box */}
               <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#64748b' }}>
                   <span>Total Invoice Amount</span>
-                  <strong style={{ color: '#0f172a' }}>₹{paymentModal.totalAmount?.toLocaleString()}</strong>
+                  <span style={{ color: '#0f172a', fontWeight: 600 }}>₹{paymentModal.totalAmount?.toLocaleString('en-IN')}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: '#64748b', marginTop: '4px' }}>
                   <span>Already Paid</span>
-                  <span style={{ color: '#16a34a', fontWeight: 700 }}>₹{paymentModal.amountPaid?.toLocaleString()}</span>
+                  <span style={{ color: '#16a34a', fontWeight: 500 }}>₹{paymentModal.amountPaid?.toLocaleString('en-IN')}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e2e8f0', fontSize: '0.95rem' }}>
-                  <span>Remaining Due</span>
-                  <span style={{ color: '#dc2626' }}>₹{paymentModal.amountDue?.toLocaleString()}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e2e8f0', fontSize: '0.9rem' }}>
+                  <span style={{ color: '#334155' }}>Remaining Due</span>
+                  <span style={{ color: '#b91c1c' }}>₹{paymentModal.amountDue?.toLocaleString('en-IN')}</span>
                 </div>
               </div>
 
@@ -867,11 +872,11 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
           <div className="modal-content glass-panel animate-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="modal-header">
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Edit3 size={18} color="var(--accent-primary, #4f46e5)" /> Edit Invoice
+                <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Edit3 size={16} color="var(--accent-primary, #4f46e5)" /> Edit Invoice
                 </h2>
                 <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  {editModal.invoiceNumber} • <strong>{editModal.customer?.businessName}</strong>
+                  {editModal.invoiceNumber} • <span style={{ fontWeight: 600, color: '#334155' }}>{editModal.customer?.businessName}</span>
                 </p>
               </div>
               <button className="close-btn" onClick={() => setEditModal(null)}>×</button>
