@@ -1,6 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
+import { ensureDefaultOrganization } from "@/lib/ensureDefaultOrg";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
@@ -16,10 +17,24 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
+        const inputEmail = credentials.email.trim();
+        let user = await prisma.user.findFirst({
+          where: { 
+            email: { equals: inputEmail, mode: 'insensitive' }
+          },
           include: { organization: true }
         });
+
+        // Auto-seed default root organization and Super Admin on fresh database
+        if (!user && (inputEmail.toLowerCase() === "admin@company.com" || inputEmail.toLowerCase() === "clothingespon@gmail.com") && credentials.password === "admin123") {
+          await ensureDefaultOrganization();
+          user = await prisma.user.findFirst({
+            where: { 
+              email: { equals: inputEmail, mode: 'insensitive' }
+            },
+            include: { organization: true }
+          });
+        }
 
         if (!user || !user.password) {
           return null;

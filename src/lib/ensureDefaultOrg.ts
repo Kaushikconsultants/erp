@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import bcrypt from "bcryptjs";
 
 export async function ensureDefaultOrganization() {
   try {
@@ -35,6 +36,71 @@ export async function ensureDefaultOrganization() {
     }
 
     const orgId = defaultOrg.id;
+
+    // Ensure default company settings
+    const existingSettings = await prisma.companySettings.findFirst({
+      where: { organizationId: orgId }
+    });
+    if (!existingSettings) {
+      await prisma.companySettings.create({
+        data: {
+          id: `settings-${orgId}`,
+          organizationId: orgId,
+          companyName: "Espon Clothing Private Limited",
+          address: "Sco 71A , 2nd Floor , Ashoka PlazaDelhi Road",
+          city: "Rohtak",
+          state: "Haryana",
+          pincode: "124001",
+          country: "India",
+          gstin: "06AAHCE7721Q1Z4",
+          pan: "AAHCE7721Q",
+          mobile: "7206066678",
+          email: "clothingespon@gmail.com",
+          website: "www.espon.in",
+          bankAccountName: "ESPON CLOTHING PRIVATE LIMITED.",
+          accountNumber: "016805006415",
+          ifscCode: "ICIC0000168",
+          branch: "Rohtak",
+          upiId: "7206066678@OKBIZAXIS",
+          themeColor: "#4f46e5",
+          fontFamily: "Inter"
+        }
+      }).catch(() => {});
+    }
+
+    // Ensure default admin users exist
+    const adminEmails = [
+      { email: "admin@company.com", name: "Admin User" },
+      { email: "clothingespon@gmail.com", name: "Ashish Aggarwal" }
+    ];
+
+    for (const item of adminEmails) {
+      const existingUser = await prisma.user.findUnique({ where: { email: item.email } });
+      if (!existingUser) {
+        const hashedPassword = await bcrypt.hash("admin123", 10);
+        const newUser = await prisma.user.create({
+          data: {
+            email: item.email,
+            password: hashedPassword,
+            name: item.name,
+            role: "SUPER_ADMIN",
+            canManageSettings: true,
+            organizationId: orgId
+          }
+        });
+        await prisma.employee.create({
+          data: {
+            userId: newUser.id,
+            organizationId: orgId,
+            designation: "Managing Director",
+            department: "Management",
+            joiningDate: new Date(),
+            salary: 150000,
+            target: 2000000
+          }
+        }).catch(() => {});
+      }
+    }
 
     // Link existing records without organizationId
     await prisma.user.updateMany({
