@@ -948,25 +948,6 @@ export default function CreateQuotationForm({ customers, products, employees, ca
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Item Details</h2>
-              <button
-                type="button"
-                onClick={() => setShowGarmentMatrix(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  backgroundColor: '#f5f3ff',
-                  color: '#7c3aed',
-                  border: '1px solid #ddd6fe',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer'
-                }}
-              >
-                📦 Garment Size & Color Matrix
-              </button>
             </div>
             <span style={{ fontSize: '0.75rem', color: '#64748b' }}>All prices in INR (₹)</span>
           </div>
