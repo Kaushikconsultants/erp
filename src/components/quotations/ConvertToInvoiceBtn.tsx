@@ -10,13 +10,13 @@ export default function ConvertToInvoiceBtn({ quotationId }: { quotationId: stri
   const router = useRouter();
 
   const handleConvert = async () => {
-    if (!confirm('Convert this confirmed quotation to a Sales Order & Invoice?')) return;
+    if (!confirm('Convert this confirmed quotation to a Sales Order & Tax Invoice?')) return;
     setLoading(true);
     const res = await convertQuotationToOrder(quotationId, '1-15', { paymentOption: 'FULL' });
     setLoading(false);
     if (res.success && res.orderId) {
-      alert(`Invoice created! Sales Order #${res.orderNumber}`);
-      router.push(`/orders/${res.orderId}`);
+      alert(`Tax Invoice & Sales Order #${res.orderNumber} created successfully!`);
+      router.push(`/orders/${res.orderId}/invoice`);
       router.refresh();
     } else {
       alert(res.error || 'Failed to convert to invoice');

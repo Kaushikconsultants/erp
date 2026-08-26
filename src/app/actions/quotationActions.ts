@@ -569,6 +569,8 @@ export async function convertQuotationToOrder(
 
     if (!quotation) return { error: "Quotation not found" };
 
+    const orgId = quotation.organizationId || (session?.user as any)?.organizationId || (await getTenantOrgId());
+
     // If quotation was already Confirmed, reuse the stored receivedAmount from the Confirm step
     const paymentOption = confirmationData?.paymentOption || 'FULL';
     let effectiveReceived = 0;
@@ -593,16 +595,26 @@ export async function convertQuotationToOrder(
       overridePaymentStatus = "Credit";
     }
 
-    // Store actual monetary discount (not slab %) in the order record
+    // Store actual monetary discount in the order record
     const overrideDiscount = quotation.itemDiscount + quotation.additionalDiscount;
 
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
+    // Resolve a valid salespersonId
+    let salespersonId = quotation.salespersonId;
+    if (!salespersonId) {
+      const defaultEmp = await prisma.employee.findFirst({
+        where: orgId ? { organizationId: orgId } : undefined
+      }) || await prisma.employee.findFirst();
+      salespersonId = defaultEmp?.id || "";
+    }
+
     const order = await prisma.order.create({
       data: {
         orderNumber,
+        organizationId: orgId,
         customerId: quotation.customerId,
-        salespersonId: quotation.salespersonId,
+        salespersonId,
         totalValue: quotation.totalValue,
         subtotal: quotation.subtotal,
         discount: overrideDiscount,
@@ -637,6 +649,7 @@ export async function convertQuotationToOrder(
       where: { id: quotationId },
       data: { 
         status: "Converted",
+        organizationId: quotation.organizationId || orgId,
         receivedAmount: effectiveReceived,
         activities: {
           create: {
@@ -674,20 +687,21 @@ export async function convertQuotationToOrder(
     }
 
     // Automatically generate invoice for this order
-    const invoiceCount = await prisma.invoice.count();
+    const invoiceCount = await prisma.invoice.count({ where: { organizationId: orgId } });
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(5, '0')}`;
     const invoiceStatus = effectiveReceived >= quotation.totalValue ? 'Paid' : effectiveReceived > 0 ? 'Partially Paid' : 'Unpaid';
 
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber,
+        organizationId: orgId,
         customerId: quotation.customerId,
         orderId: order.id,
         invoiceDate: new Date(),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         subtotal: quotation.subtotal,
         taxAmount: quotation.taxTotal,
-        discountAmount: quotation.itemDiscount + quotation.additionalDiscount, // actual ₹ discount, not slab %
+        discountAmount: quotation.itemDiscount + quotation.additionalDiscount,
         totalAmount: quotation.totalValue,
         amountPaid: effectiveReceived,
         amountDue: Math.max(0, quotation.totalValue - effectiveReceived),
@@ -697,7 +711,6 @@ export async function convertQuotationToOrder(
       }
     });
 
-
     // If advance payment was received, record Payment transaction
     if (effectiveReceived > 0) {
       try {
@@ -706,6 +719,8 @@ export async function convertQuotationToOrder(
           data: {
             paymentNumber,
             invoiceId: invoice.id,
+            customerId: quotation.customerId,
+            orderId: order.id,
             amount: effectiveReceived,
             paymentDate: new Date(),
             paymentMode: paymentOption || 'Bank Transfer',
@@ -720,13 +735,22 @@ export async function convertQuotationToOrder(
     }
 
     revalidatePath("/quotations");
+    revalidatePath(`/quotations/${quotationId}`);
     revalidatePath("/orders");
+    revalidatePath(`/orders/${order.id}`);
+    revalidatePath(`/orders/${order.id}/invoice`);
     revalidatePath("/invoices");
     revalidatePath("/payments");
     revalidatePath("/products");
     revalidatePath("/", "layout");
 
-    return { success: true, orderId: order.id, orderNumber: order.orderNumber };
+    return { 
+      success: true, 
+      orderId: order.id, 
+      orderNumber: order.orderNumber,
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber
+    };
   } catch (error) {
     console.error("Error converting quotation to order:", error);
     return { error: "Failed to convert quotation to order" };

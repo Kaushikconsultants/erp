@@ -42,8 +42,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     }
   });
 
-  if (!order || order.organizationId !== orgId) {
+  if (!order) {
     notFound();
+  }
+
+  if (order.organizationId && order.organizationId !== orgId) {
+    notFound();
+  }
+
+  if (!order.organizationId && orgId) {
+    await prisma.order.update({
+      where: { id },
+      data: { organizationId: orgId }
+    }).catch(() => {});
   }
 
   const userRole = (session.user as any).role || 'SALES';

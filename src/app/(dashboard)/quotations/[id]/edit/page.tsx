@@ -74,8 +74,19 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
     getCompanySettings()
   ]);
 
-  if (!quotation || quotation.organizationId !== orgId) {
+  if (!quotation) {
     notFound();
+  }
+
+  if (quotation.organizationId && quotation.organizationId !== orgId) {
+    notFound();
+  }
+
+  if (!quotation.organizationId && orgId) {
+    await prisma.quotation.update({
+      where: { id },
+      data: { organizationId: orgId }
+    }).catch(() => {});
   }
 
   const employees = employeesRaw.map(e => ({ id: e.id, name: e.user?.name || 'Unknown' }));

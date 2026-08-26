@@ -32,7 +32,15 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     getCompanySettings()
   ]);
 
-  if (!order || order.organizationId !== orgId) notFound();
+  if (!order) notFound();
+  if (order.organizationId && order.organizationId !== orgId) notFound();
+
+  if (!order.organizationId && orgId) {
+    await prisma.order.update({
+      where: { id },
+      data: { organizationId: orgId }
+    }).catch(() => {});
+  }
 
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
