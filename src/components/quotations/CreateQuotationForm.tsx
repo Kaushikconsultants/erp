@@ -1138,13 +1138,23 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                                 Change
                               </button>
                             </div>
-                            <input 
-                              type="text" 
-                              placeholder="Add item description / specifications (optional)..." 
-                              value={item.description || ''} 
-                              onChange={e => handleItemChange(index, 'description', e.target.value)}
-                              style={{ marginTop: '6px', width: '100%', fontSize: '0.78rem', padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}
-                            />
+                            {item.description && item.description.includes('\n') ? (
+                              <textarea
+                                rows={Math.min(5, (item.description.match(/\n/g) || []).length + 1)}
+                                placeholder="Add item description / specifications (optional)..."
+                                value={item.description || ''}
+                                onChange={e => handleItemChange(index, 'description', e.target.value)}
+                                style={{ marginTop: '6px', width: '100%', fontSize: '0.74rem', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', color: '#334155', resize: 'vertical', lineHeight: 1.4 }}
+                              />
+                            ) : (
+                              <input 
+                                type="text" 
+                                placeholder="Add item description / specifications (optional)..." 
+                                value={item.description || ''} 
+                                onChange={e => handleItemChange(index, 'description', e.target.value)}
+                                style={{ marginTop: '6px', width: '100%', fontSize: '0.78rem', padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}
+                              />
+                            )}
                           </div>
                         )}
                       </td>

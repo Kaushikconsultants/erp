@@ -30,6 +30,8 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
     'Navy Blue': { S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0 }
   });
 
+  const [groupAsSingleLine, setGroupAsSingleLine] = useState(true);
+
   const selectedProduct = products.find(p => p.id === selectedProductId) || products[0] || {};
   const [rate, setRate] = useState<number>(selectedProduct?.sellingPrice || 250);
 
@@ -95,42 +97,83 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
 
   // Generate Quotation Line Items
   const handleConfirmAdd = () => {
+    if (grandTotalQty === 0) {
+      alert("Please enter quantities greater than 0.");
+      return;
+    }
+
     const newItems: any[] = [];
 
-    selectedColors.forEach(color => {
-      let colorTotalQty = 0;
-      const sizeBreakdown: string[] = [];
+    if (groupAsSingleLine) {
+      // 1 Compact Master Line Item for the Article
+      const colorBreakdowns: string[] = [];
 
-      DEFAULT_SIZES.forEach(size => {
-        const q = matrix[color]?.[size] || 0;
-        if (q > 0) {
-          colorTotalQty += q;
-          sizeBreakdown.push(`${size}:${q}`);
+      selectedColors.forEach(color => {
+        let colorQty = 0;
+        const sizeParts: string[] = [];
+        DEFAULT_SIZES.forEach(size => {
+          const q = matrix[color]?.[size] || 0;
+          if (q > 0) {
+            colorQty += q;
+            sizeParts.push(`${size}:${q}`);
+          }
+        });
+
+        if (colorQty > 0) {
+          colorBreakdowns.push(`${color} (${colorQty} pcs): [${sizeParts.join(', ')}]`);
         }
       });
 
-      if (colorTotalQty > 0) {
-        newItems.push({
-          productId: selectedProduct.id || '',
-          productName: `${selectedProduct.name || 'Garment Item'} - ${color}`,
-          sku: `${selectedProduct.sku || 'SKU'}-${color.substring(0, 3).toUpperCase()}`,
-          description: `Set Breakdown: [${sizeBreakdown.join(', ')}] • Total ${colorTotalQty} pcs`,
-          hsnCode: selectedProduct.category?.hsnCode || '6109',
-          quantity: colorTotalQty,
-          rate: rate,
-          unitWeight: selectedProduct.weight || 0.25,
-          discountType: 'percent',
-          discountPercent: 0,
-          discountAmount: 0,
-          gstRate: 5,
-          availableStock: selectedProduct.stockQuantity || 100
-        });
-      }
-    });
+      const description = `Ratio Breakdown (${selectedColors.length} Colors • Total ${grandTotalQty} pcs):\n` +
+        colorBreakdowns.map(b => `• ${b}`).join('\n');
 
-    if (newItems.length === 0) {
-      alert("Please enter quantities greater than 0.");
-      return;
+      newItems.push({
+        productId: selectedProduct.id || '',
+        productName: `${selectedProduct.name || 'Garment Item'}${selectedProduct.articleNumber ? ` (Art #${selectedProduct.articleNumber})` : ''}`,
+        sku: selectedProduct.articleNumber || selectedProduct.sku || 'SKU',
+        description,
+        hsnCode: selectedProduct.category?.hsnCode || '6109',
+        quantity: grandTotalQty,
+        rate: rate,
+        unitWeight: selectedProduct.weight || 0.25,
+        discountType: 'percent',
+        discountPercent: 0,
+        discountAmount: 0,
+        gstRate: 5,
+        availableStock: selectedProduct.stockQuantity || 100
+      });
+    } else {
+      // Separate Line Items per Color
+      selectedColors.forEach(color => {
+        let colorTotalQty = 0;
+        const sizeBreakdown: string[] = [];
+
+        DEFAULT_SIZES.forEach(size => {
+          const q = matrix[color]?.[size] || 0;
+          if (q > 0) {
+            colorTotalQty += q;
+            sizeBreakdown.push(`${size}:${q}`);
+          }
+        });
+
+        if (colorTotalQty > 0) {
+          newItems.push({
+            productId: selectedProduct.id || '',
+            productName: `${selectedProduct.name || 'Garment Item'} - ${color}`,
+            sku: `${selectedProduct.sku || 'SKU'}-${color.substring(0, 3).toUpperCase()}`,
+            description: `Set Breakdown: [${sizeBreakdown.join(', ')}] • Total ${colorTotalQty} pcs`,
+            hsnCode: selectedProduct.category?.hsnCode || '6109',
+            quantity: colorTotalQty,
+            rate: rate,
+            unitWeight: selectedProduct.weight || 0.25,
+            discountType: 'percent',
+            discountPercent: 0,
+            discountAmount: 0,
+            gstRate: 5,
+            availableStock: selectedProduct.stockQuantity || 100
+          });
+        }
+      });
     }
 
     onAddItems(newItems);
@@ -436,11 +479,25 @@ export default function GarmentMatrixModal({ products, onAddItems, onClose }: Ga
           justifyContent: 'space-between',
           alignItems: 'center'
         }}>
-          <div>
-            <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Total Selected: </span>
-            <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#1e293b' }}>
-              {grandTotalQty} pieces = <span style={{ color: '#059669' }}>₹{grandTotalAmount.toLocaleString('en-IN')}</span>
-            </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div>
+              <span style={{ fontSize: '0.78rem', color: '#64748b' }}>Total Selected: </span>
+              <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#1e293b' }}>
+                {grandTotalQty} pieces = <span style={{ color: '#059669' }}>₹{grandTotalAmount.toLocaleString('en-IN')}</span>
+              </span>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: '#334155', cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={groupAsSingleLine}
+                onChange={e => setGroupAsSingleLine(e.target.checked)}
+                style={{ width: '14px', height: '14px', accentColor: '#2563eb', cursor: 'pointer' }}
+              />
+              <span style={{ fontWeight: groupAsSingleLine ? 600 : 400, color: groupAsSingleLine ? '#2563eb' : '#64748b' }}>
+                Group into 1 Line Item (Keeps Quotation Compact on 1 Page)
+              </span>
+            </label>
           </div>
 
           <div style={{ display: 'flex', gap: '8px' }}>
