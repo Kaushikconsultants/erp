@@ -36,63 +36,84 @@ export default async function Home() {
 
   if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
     // ---------------------------------------------------------
-    // ADMIN DASHBOARD DATA (Tenant Scoped)
+    // ADMIN DASHBOARD DATA (Tenant Scoped - Concurrent Fetching)
     // ---------------------------------------------------------
-    const totalCustomers = await prisma.customer.count({
-      where: { organizationId: orgId }
-    });
-    const totalOrders = await prisma.order.count({
-      where: { organizationId: orgId }
-    });
-    const totalRevenueResult = await prisma.order.aggregate({
-      where: { organizationId: orgId },
-      _sum: { totalValue: true }
-    });
-    const totalRevenue = totalRevenueResult._sum.totalValue || 0;
-    
     const todayStartOfDay = new Date();
     todayStartOfDay.setHours(0, 0, 0, 0);
 
-    const pendingCalls = await prisma.call.count({
-      where: { 
-        customer: { organizationId: orgId },
-        followUpDate: { gte: todayStartOfDay }
-      }
-    });
-
-    // --- LIVE PANEL & ATTENDANCE DATA ---
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
-    let adminCheckedIn = false;
-    let adminCheckedOut = false;
-
-    if (employee) {
-      const adminAtt = await prisma.attendance.findFirst({
+    const [
+      totalCustomers,
+      totalOrders,
+      totalRevenueResult,
+      pendingCalls,
+      adminAtt,
+      todayOrdersCount,
+      activeAttendances,
+      todayOrdersList,
+      allOrderItemsForTopCat,
+      employees,
+      hotLeads
+    ] = await Promise.all([
+      prisma.customer.count({ where: { organizationId: orgId } }),
+      prisma.order.count({ where: { organizationId: orgId } }),
+      prisma.order.aggregate({
+        where: { organizationId: orgId },
+        _sum: { totalValue: true }
+      }),
+      prisma.call.count({
+        where: { 
+          customer: { organizationId: orgId },
+          followUpDate: { gte: todayStartOfDay }
+        }
+      }),
+      employee ? prisma.attendance.findFirst({
         where: {
           employeeId: employee.id,
-          date: { gte: todayStart }
+          date: { gte: todayStartOfDay }
         }
-      });
-      if (adminAtt) {
-        adminCheckedIn = true;
-        if (adminAtt.checkOut) adminCheckedOut = true;
-      }
-    }
+      }) : Promise.resolve(null),
+      prisma.order.count({
+        where: { organizationId: orgId, orderDate: { gte: todayStartOfDay } }
+      }),
+      prisma.attendance.findMany({
+        where: {
+          date: { gte: todayStartOfDay },
+          employee: { organizationId: orgId }
+        },
+        include: { employee: { include: { user: true } } },
+        orderBy: { checkIn: 'desc' }
+      }),
+      prisma.order.findMany({
+        where: { organizationId: orgId, orderDate: { gte: todayStartOfDay } },
+        include: { salesperson: { include: { user: true } } }
+      }),
+      prisma.orderItem.findMany({
+        where: { order: { organizationId: orgId } },
+        include: { product: true },
+        take: 100
+      }),
+      prisma.employee.findMany({
+        where: { organizationId: orgId },
+        include: {
+          user: true,
+          orders: {
+            where: { organizationId: orgId, orderDate: { gte: startOfMonth } },
+            select: { totalValue: true }
+          }
+        }
+      }),
+      prisma.customer.findMany({
+        where: { organizationId: orgId, leadStage: 'Negotiation' },
+        include: { assignedSalesperson: { include: { user: true } } },
+        take: 5,
+        orderBy: { updatedAt: 'desc' }
+      })
+    ]);
 
-    const todayOrdersCount = await prisma.order.count({
-      where: { organizationId: orgId, orderDate: { gte: todayStart } }
-    });
+    const totalRevenue = totalRevenueResult._sum.totalValue || 0;
+    const adminCheckedIn = !!adminAtt;
+    const adminCheckedOut = !!adminAtt?.checkOut;
 
-    const activeAttendances = await prisma.attendance.findMany({
-      where: {
-        date: { gte: todayStart },
-        employee: { organizationId: orgId }
-      },
-      include: { employee: { include: { user: true } } },
-      orderBy: { checkIn: 'desc' }
-    });
-    
     const liveAttendance = activeAttendances.map(a => ({
       id: a.id,
       name: a.employee?.user?.name || 'Team Member',
@@ -100,11 +121,6 @@ export default async function Home() {
       isShiftActive: !a.checkOut
     }));
 
-    const todayOrdersList = await prisma.order.findMany({
-      where: { organizationId: orgId, orderDate: { gte: todayStart } },
-      include: { salesperson: { include: { user: true } } }
-    });
-    
     const salesMap: Record<string, { name: string, total: number, orders: number }> = {};
     todayOrdersList.forEach(o => {
       const spId = o.salespersonId;
@@ -116,9 +132,8 @@ export default async function Home() {
     });
 
     const liveLeaderboard = Object.values(salesMap).sort((a, b) => b.total - a.total);
-    // -----------------------
 
-    // Mock Sales Data for Chart (replace with real grouped data later)
+    // Mock Sales Data for Chart
     const salesData = [
       { name: 'Mon', sales: 4000 },
       { name: 'Tue', sales: 3000 },
@@ -130,12 +145,6 @@ export default async function Home() {
     ];
 
     // Calculate Top Categories from real DB order items if available
-    const allOrderItemsForTopCat = await prisma.orderItem.findMany({
-      where: { order: { organizationId: orgId } },
-      include: { product: true },
-      take: 100
-    });
-
     const categoryMap: Record<string, number> = {};
     allOrderItemsForTopCat.forEach(item => {
       const catName = item.product?.category || 'Uncategorized';
@@ -153,18 +162,6 @@ export default async function Home() {
       { name: 'Jackets', category: 'Jackets', value: 15000, revenue: 15000 },
     ];
 
-    // Fetch team performance (Employees and their MTD sales)
-    const employees = await prisma.employee.findMany({
-      where: { organizationId: orgId },
-      include: {
-        user: true,
-        orders: {
-          where: { organizationId: orgId, orderDate: { gte: startOfMonth } },
-          select: { totalValue: true }
-        }
-      }
-    });
-
     const teamPerformance = employees.map(emp => {
       const salesMTD = emp.orders.reduce((sum, o) => sum + o.totalValue, 0);
       const target = emp.target || 500000;
@@ -174,15 +171,7 @@ export default async function Home() {
         sales: salesMTD,
         targetPercent: Math.min(100, Math.round((salesMTD / target) * 100))
       };
-    }).sort((a, b) => b.sales - a.sales); // sort highest sales first
-
-    // Fetch Hot Customers (Negotiation stage)
-    const hotLeads = await prisma.customer.findMany({
-      where: { organizationId: orgId, leadStage: 'Negotiation' },
-      include: { assignedSalesperson: { include: { user: true } } },
-      take: 5,
-      orderBy: { updatedAt: 'desc' }
-    });
+    }).sort((a, b) => b.sales - a.sales);
 
     const hotCustomers = hotLeads.map(lead => ({
       id: lead.id,
@@ -218,18 +207,19 @@ export default async function Home() {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const teamMembers = await prisma.employee.findMany({
-      where: { organizationId: orgId },
-      include: { user: true }
-    });
-
-    const teamCallsToday = await prisma.call.findMany({
-      where: { 
-        customer: { organizationId: orgId },
-        createdAt: { gte: todayStart } 
-      },
-      include: { customer: true }
-    });
+    const [teamMembers, teamCallsToday] = await Promise.all([
+      prisma.employee.findMany({
+        where: { organizationId: orgId },
+        include: { user: true }
+      }),
+      prisma.call.findMany({
+        where: { 
+          customer: { organizationId: orgId },
+          createdAt: { gte: todayStart } 
+        },
+        include: { customer: true }
+      })
+    ]);
 
     return (
       <>
@@ -243,13 +233,17 @@ export default async function Home() {
       </>
     );
   } else if (userRole === 'TELECALLER') {
-    let isCheckedIn = false;
-    let isCheckedOut = false;
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    if (employee) {
-      const attendanceRecord = await prisma.attendance.findFirst({
+    const [
+      attendanceRecord,
+      todayTasks,
+      missedCalls,
+      todayCallsCount,
+      recommendations
+    ] = await Promise.all([
+      employee ? prisma.attendance.findFirst({
         where: {
           employeeId: employee.id,
           date: {
@@ -257,41 +251,34 @@ export default async function Home() {
             lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
           }
         }
-      });
-      if (attendanceRecord) {
-        isCheckedIn = true;
-        if (attendanceRecord.checkOut) {
-          isCheckedOut = true;
+      }) : Promise.resolve(null),
+      employee ? prisma.task.findMany({
+        where: {
+          assigneeId: employee.id,
+          status: { not: 'Completed' },
+          dueDate: { lte: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000) }
         }
-      }
-    }
+      }) : Promise.resolve([]),
+      employee ? prisma.call.findMany({
+        where: {
+          employeeId: employee.id,
+          outcome: { in: ["Missed", "No Answer", "Busy", "Voicemail"] },
+        },
+        include: { customer: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10
+      }) : Promise.resolve([]),
+      employee ? prisma.call.count({
+        where: {
+          employeeId: employee.id,
+          createdAt: { gte: todayStart }
+        }
+      }) : Promise.resolve(0),
+      getFollowUpRecommendations()
+    ]);
 
-    const todayTasks = employee ? await prisma.task.findMany({
-      where: {
-        assigneeId: employee.id,
-        status: { not: 'Completed' },
-        dueDate: { lte: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000) }
-      }
-    }) : [];
-
-    const missedCalls = employee ? await prisma.call.findMany({
-      where: {
-        employeeId: employee.id,
-        outcome: { in: ["Missed", "No Answer", "Busy", "Voicemail"] },
-      },
-      include: { customer: true },
-      orderBy: { createdAt: 'desc' },
-      take: 10
-    }) : [];
-
-    const todayCallsCount = employee ? await prisma.call.count({
-      where: {
-        employeeId: employee.id,
-        createdAt: { gte: todayStart }
-      }
-    }) : 0;
-
-    const recommendations = await getFollowUpRecommendations();
+    const isCheckedIn = !!attendanceRecord;
+    const isCheckedOut = !!attendanceRecord?.checkOut;
 
     return (
       <>
@@ -313,16 +300,16 @@ export default async function Home() {
     // ---------------------------------------------------------
     // EMPLOYEE / SALES DASHBOARD DATA
     // ---------------------------------------------------------
-    let isCheckedIn = false;
-    let isCheckedOut = false;
-    
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    if (employee) {
-
-      const attendanceRecord = await prisma.attendance.findFirst({
+    const [
+      attendanceRecord,
+      allEmployeeOrders,
+      allFollowUps
+    ] = await Promise.all([
+      employee ? prisma.attendance.findFirst({
         where: {
           employeeId: employee.id,
           date: {
@@ -330,33 +317,33 @@ export default async function Home() {
             lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
           }
         }
-      });
+      }) : Promise.resolve(null),
+      employee ? prisma.order.findMany({
+        where: { salespersonId: employee.id },
+        select: { 
+          id: true, 
+          orderNumber: true, 
+          orderDate: true, 
+          subtotal: true, 
+          totalValue: true, 
+          discount: true, 
+          orderStatus: true,
+          customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } } 
+        },
+        orderBy: { orderDate: 'desc' }
+      }) : Promise.resolve([]),
+      employee ? prisma.call.findMany({
+        where: {
+          employeeId: employee.id,
+          followUpDate: { not: null }
+        },
+        include: { customer: true },
+        orderBy: { followUpDate: 'asc' }
+      }) : Promise.resolve([])
+    ]);
 
-      if (attendanceRecord) {
-        isCheckedIn = true;
-        if (attendanceRecord.checkOut) {
-          isCheckedOut = true;
-        }
-      }
-    }
-
-    // Fetch all employee orders (for Daily / Weekly / Monthly interactive filtering)
-    const allEmployeeOrders = employee ? await prisma.order.findMany({
-      where: {
-        salespersonId: employee.id
-      },
-      select: { 
-        id: true, 
-        orderNumber: true,
-        orderDate: true,
-        subtotal: true, 
-        totalValue: true, 
-        discount: true, 
-        orderStatus: true,
-        customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } } 
-      },
-      orderBy: { orderDate: 'desc' }
-    }) : [];
+    const isCheckedIn = !!attendanceRecord;
+    const isCheckedOut = !!attendanceRecord?.checkOut;
 
     const formattedOrders: OrderData[] = allEmployeeOrders
       .filter(o => o.orderDate && new Date(o.orderDate) >= startOfMonth)
@@ -369,16 +356,6 @@ export default async function Home() {
 
     const targetGoal = employee?.target || 500000;
     const incentiveData = calculateIncentives(formattedOrders, targetGoal);
-
-    // Fetch all follow-ups for employee
-    const allFollowUps = employee ? await prisma.call.findMany({
-      where: {
-        employeeId: employee.id,
-        followUpDate: { not: null }
-      },
-      include: { customer: true },
-      orderBy: { followUpDate: 'asc' }
-    }) : [];
 
     const todayFollowUps = allFollowUps.filter(c => {
       if (!c.followUpDate) return false;

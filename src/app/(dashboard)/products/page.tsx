@@ -27,12 +27,14 @@ export default async function ProductsPage() {
     }
   }
 
-  const products = await prisma.product.findMany({
-    where: { organizationId: orgId },
-    orderBy: { createdAt: 'desc' }
-  });
+  const [products, categoriesData] = await Promise.all([
+    prisma.product.findMany({
+      where: { organizationId: orgId },
+      orderBy: { createdAt: 'desc' }
+    }),
+    getCategories()
+  ]);
 
-  const categoriesData = await getCategories();
   const uniqueCategories = categoriesData.map(c => c.name);
 
   return (

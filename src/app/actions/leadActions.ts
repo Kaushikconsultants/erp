@@ -18,7 +18,7 @@ export async function getPipelineData() {
   
   // If not admin, only show assigned leads
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
-    const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
+    const employee = await prisma.employee.findUnique({ where: { userId } });
     if (employee) {
       whereClause.assignedSalespersonId = employee.id;
     }

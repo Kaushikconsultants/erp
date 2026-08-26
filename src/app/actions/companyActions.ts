@@ -94,13 +94,22 @@ const fetchSettingsInternal = cache(async (orgId?: string) => {
   return settings;
 });
 
-export async function getCompanySettings() {
+let settingsCache: { data: any; timestamp: number } | null = null;
+const CACHE_TTL_MS = 30000; // 30s in-memory cache
+
+export const getCompanySettings = cache(async function getCompanySettings() {
+  const now = Date.now();
+  if (settingsCache && (now - settingsCache.timestamp) < CACHE_TTL_MS) {
+    return settingsCache.data;
+  }
+
   try {
     const session = await getServerSession(authOptions);
     const orgId = (session?.user as any)?.organizationId || (await getTenantOrgId());
     const settings = await fetchSettingsInternal(orgId);
-
-    return { success: true, settings: settings || FALLBACK_SETTINGS };
+    const result = { success: true, settings: settings || FALLBACK_SETTINGS };
+    settingsCache = { data: result, timestamp: now };
+    return result;
   } catch (error) {
     console.error("Error getting company settings:", error);
     return { 
@@ -108,7 +117,7 @@ export async function getCompanySettings() {
       settings: FALLBACK_SETTINGS
     };
   }
-}
+});
 
 export async function updateMonthlyTarget(target: number) {
   try {
@@ -121,6 +130,7 @@ export async function updateMonthlyTarget(target: number) {
       update: { monthlyTarget: target, organizationId: orgId },
       create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", monthlyTarget: target }
     });
+    settingsCache = null;
     revalidatePath("/");
     return { success: true, settings: updated };
   } catch (error) {
@@ -147,6 +157,7 @@ export async function updateCallOutcomes(outcomes: string[]) {
       update: { callOutcomes: cleanOutcomes, organizationId: orgId },
       create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", callOutcomes: cleanOutcomes }
     });
+    settingsCache = null;
     revalidatePath("/calls");
     revalidatePath("/settings");
     revalidatePath("/settings/organization");
@@ -175,6 +186,7 @@ export async function updateCallTypes(callTypes: string[]) {
       update: { callTypes: cleanTypes, organizationId: orgId },
       create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", callTypes: cleanTypes }
     });
+    settingsCache = null;
     revalidatePath("/calls");
     revalidatePath("/settings");
     revalidatePath("/settings/organization");
@@ -298,6 +310,7 @@ export async function updateCompanySettings(formData: FormData) {
       }).catch(() => {});
     }
 
+    settingsCache = null;
     revalidatePath("/settings");
     revalidatePath("/settings/organization");
     revalidatePath("/calls");

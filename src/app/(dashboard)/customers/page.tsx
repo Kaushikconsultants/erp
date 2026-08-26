@@ -27,37 +27,39 @@ export default async function CustomersPage() {
   }
 
   let customers: any[] = [];
-  try {
-    customers = await prisma.customer.findMany({
-      where: whereClause,
-      include: {
-        assignedSalesperson: {
-          include: {
-            user: true
-          }
-        }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-  } catch (err) {
-    console.error("Error fetching customers:", err);
-  }
-
   let allEmployees: { id: string; name: string }[] = [];
-  if (isAdmin) {
-    try {
-      const employeesData = await prisma.employee.findMany({
+
+  try {
+    const [custRes, empRes] = await Promise.allSettled([
+      prisma.customer.findMany({
+        where: whereClause,
+        include: {
+          assignedSalesperson: {
+            include: {
+              user: true
+            }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      isAdmin ? prisma.employee.findMany({
         where: { organizationId },
         include: { user: true },
         orderBy: { user: { name: 'asc' } }
-      });
-      allEmployees = employeesData.map(e => ({
+      }) : Promise.resolve([])
+    ]);
+
+    if (custRes.status === 'fulfilled') {
+      customers = custRes.value || [];
+    }
+    if (empRes.status === 'fulfilled' && empRes.value) {
+      allEmployees = empRes.value.map((e: any) => ({
         id: e.id,
         name: e.user?.name || 'Unknown'
       }));
-    } catch (err) {
-      console.error("Error fetching employees:", err);
     }
+  } catch (err) {
+    console.error("Error fetching customers/employees:", err);
   }
 
   return (

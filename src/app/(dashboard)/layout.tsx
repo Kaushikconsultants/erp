@@ -3,8 +3,6 @@ import DashboardShell from '@/components/layout/DashboardShell';
 import PresenceHeartbeat from '@/components/presence/PresenceHeartbeat';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-
 import { getTenantContext } from '@/lib/tenant';
 
 export default async function DashboardLayout({
@@ -15,31 +13,10 @@ export default async function DashboardLayout({
   const session = await getServerSession(authOptions);
   const tenantCtx = await getTenantContext();
   
-  let userRole = (session?.user as any)?.role || 'SALES';
-  let canManageSettings = (session?.user as any)?.canManageSettings || false;
-  let allowedSectionsList: string[] | null = null;
+  const userRole = tenantCtx?.userRole || (session?.user as any)?.role || 'SALES';
+  const canManageSettings = tenantCtx?.canManageSettings || (session?.user as any)?.canManageSettings || false;
+  const allowedSectionsList = tenantCtx?.allowedSections || null;
   const isPlatformOwner = tenantCtx?.isPlatformOwner || false;
-
-  if (session?.user) {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: (session.user as any).id },
-      select: { role: true, canManageSettings: true, allowedSections: true }
-    });
-
-    if (dbUser) {
-      userRole = dbUser.role;
-      canManageSettings = dbUser.canManageSettings;
-      if (dbUser.allowedSections) {
-        try {
-          if (dbUser.allowedSections.startsWith('[')) {
-            allowedSectionsList = JSON.parse(dbUser.allowedSections);
-          } else {
-            allowedSectionsList = dbUser.allowedSections.split(',').map(s => s.trim());
-          }
-        } catch {}
-      }
-    }
-  }
 
   const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
   const showSettings = isSuperOrAdmin || canManageSettings;

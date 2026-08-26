@@ -41,6 +41,8 @@ export interface TenantContext {
   subscriptionStatus: string;
   userId: string;
   userRole: string;
+  canManageSettings: boolean;
+  allowedSections: string[] | null;
   isPlatformOwner: boolean;
 }
 
@@ -88,6 +90,19 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
   }
 
   const effectiveRole = dbUser?.role || (session.user as any).role || "SALES";
+  const canManageSettings = dbUser?.canManageSettings ?? (session.user as any).canManageSettings ?? false;
+  
+  let allowedSectionsList: string[] | null = null;
+  if (dbUser?.allowedSections) {
+    try {
+      if (dbUser.allowedSections.startsWith('[')) {
+        allowedSectionsList = JSON.parse(dbUser.allowedSections);
+      } else {
+        allowedSectionsList = dbUser.allowedSections.split(',').map((s: string) => s.trim());
+      }
+    } catch {}
+  }
+
   const isPlatformOwner = isPlatformRootOwner(userEmail, org.slug, effectiveRole);
 
   return {
@@ -98,6 +113,8 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     subscriptionStatus: org.subscriptionStatus || "ACTIVE",
     userId: userId || dbUser?.id || "user-id",
     userRole: effectiveRole,
+    canManageSettings,
+    allowedSections: allowedSectionsList,
     isPlatformOwner,
   };
 });
