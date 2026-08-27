@@ -51,8 +51,9 @@ function LoginForm() {
         setError("Invalid email address or password. Please check your credentials.");
         setLoading(false);
       } else if (result?.ok) {
-        // Full page redirect ensures new auth cookies are passed to server components immediately
-        window.location.href = result.url || callbackUrl;
+        // Always redirect to relative clean path using current window origin
+        const dest = (callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")) ? callbackUrl : "/";
+        window.location.href = dest;
       } else {
         setLoading(false);
       }

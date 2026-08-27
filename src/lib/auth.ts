@@ -68,31 +68,18 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async redirect({ url, baseUrl }) {
-      // Allows relative callback URLs
       if (url.startsWith("/")) {
-        return `${baseUrl}${url}`;
-      }
-
-      try {
-        const targetUrl = new URL(url);
-        if (
-          targetUrl.origin === baseUrl ||
-          targetUrl.hostname.endsWith(".vercel.app") ||
-          targetUrl.hostname.endsWith(".railway.app") ||
-          targetUrl.hostname.endsWith("esponsports.com") ||
-          targetUrl.hostname.endsWith("espon.in")
-        ) {
-          return url;
-        }
-      } catch {
-        // ignore invalid URL
-      }
-
-      if (process.env.NODE_ENV === "development" && url.startsWith("http://localhost:")) {
         return url;
       }
-
-      return baseUrl;
+      try {
+        const targetUrl = new URL(url);
+        if (targetUrl.pathname) {
+          return targetUrl.pathname + targetUrl.search;
+        }
+      } catch {
+        // ignore
+      }
+      return "/";
     },
     async jwt({ token, user, trigger, session: updateSession }) {
       if (user) {
