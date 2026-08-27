@@ -21,23 +21,25 @@ interface EditUserModalProps {
 }
 
 const ALL_SECTIONS = [
-  { id: 'dashboard', label: '📊 Main Dashboard', desc: 'Overview metrics & executive summary' },
-  { id: 'customers', label: '👥 Customers & CRM', desc: 'Customer accounts, profiles & details' },
-  { id: 'calls_tasks', label: '📞 Calls & Tasks', desc: 'Call logs, follow-ups & task management' },
-  { id: 'orders', label: '🛒 Sales Orders', desc: 'Order creation, status & details' },
-  { id: 'quotations', label: '📋 Quotations', desc: 'Estimate pipeline & quote creation' },
-  { id: 'invoices', label: '🧾 Invoices & Billing', desc: 'Tax invoices & billing document section' },
-  { id: 'credit_notes', label: '📄 Credit Notes', desc: 'Credit notes & sales return management' },
-  { id: 'payments', label: '💳 Payments (Inward)', desc: 'Customer payment tracking & receipts' },
-  { id: 'products', label: '📦 Products Catalog', desc: 'Item pricing, SKU & product management' },
-  { id: 'dispatches', label: '🚚 Dispatches', desc: 'Shipping pipeline & delivery tracking' },
+  { id: 'dashboard', label: '📊 Main Dashboard', desc: 'Executive metrics & summary' },
+  { id: 'customers', label: '👥 Customers & CRM', desc: 'Customer accounts & Khata ledger' },
+  { id: 'calls_tasks', label: '📞 Calls & Tasks', desc: 'Call logs & task manager' },
+  { id: 'orders', label: '🛒 Sales Orders', desc: 'Order creation & approval' },
+  { id: 'quotations', label: '📋 Quotations', desc: 'Estimate pipeline & quotes' },
+  { id: 'invoices', label: '🧾 Invoices & Billing', desc: 'Tax invoices & receipts' },
+  { id: 'credit_notes', label: '📄 Credit Notes', desc: 'Credit notes & sales returns' },
+  { id: 'payments', label: '💳 Payments (Inward)', desc: 'Payment tracking & receipts' },
+  { id: 'accounting', label: '⚖️ Accounting & Ledgers', desc: 'P&L, Balance Sheet, COA, JV, Ageing & BRS' },
+  { id: 'products', label: '📦 Products Catalog', desc: 'Item pricing & inventory' },
+  { id: 'delivery-challans', label: '🚚 Delivery Challans', desc: 'Material dispatch & invoice converter' },
+  { id: 'dispatches', label: '📦 Dispatches', desc: 'Shipping & logistics tracking' },
   { id: 'eway_bills', label: '📜 E-Way Bills', desc: 'E-way bill generation & transport tracking' },
-  { id: 'purchases', label: '🛍️ Purchases & Vendors', desc: 'Vendors, purchase orders, bills, payments made, vendor credits' },
-  { id: 'hrms', label: '💼 HRMS & Employee Portal', desc: 'Payroll, attendance, expenses & leaves' },
-  { id: 'hiring', label: '👥 Hiring & Interviews', desc: 'Job postings, candidates & interview pipelines' },
-  { id: 'reports', label: '📈 Reports & Analytics', desc: 'Analytics charts, reports center & audit logs' },
-  { id: 'gst_filing', label: '🏛️ GST Filing & Compliances', desc: 'GSTR-1, GSTR-3B & GST returns' },
-  { id: 'settings', label: '⚙️ Settings & Admin', desc: 'System settings, roles & user management' }
+  { id: 'purchases', label: '🛍️ Purchases & Vendors', desc: 'Purchase orders, bills & vendors' },
+  { id: 'hrms', label: '💼 HRMS & Payroll', desc: 'Payroll, attendance, leaves & expenses' },
+  { id: 'hiring', label: '👥 Hiring & Interviews', desc: 'Job openings & candidates' },
+  { id: 'reports', label: '📈 Reports & Analytics', desc: 'Sales, inventory & financial reports' },
+  { id: 'gst_filing', label: '🏛️ GST Filing & Tax', desc: 'GSTR-1, GSTR-3B compliance' },
+  { id: 'settings', label: '⚙️ Settings & Admin', desc: 'System settings, roles & org profile' }
 ];
 
 const getDefaultSectionsForRole = (role: string): string[] => {
@@ -46,21 +48,21 @@ const getDefaultSectionsForRole = (role: string): string[] => {
     case 'ADMIN':
       return ALL_SECTIONS.map(s => s.id);
     case 'SALES':
-      return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'];
+      return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products', 'delivery-challans'];
     case 'PURCHASE':
-      return ['dashboard', 'purchases', 'products'];
+      return ['dashboard', 'purchases', 'products', 'delivery-challans'];
     case 'WAREHOUSE':
-      return ['dashboard', 'products', 'purchases', 'dispatches', 'eway_bills'];
+      return ['dashboard', 'products', 'purchases', 'dispatches', 'eway_bills', 'delivery-challans'];
     case 'DISPATCH':
-      return ['dashboard', 'dispatches', 'eway_bills'];
+      return ['dashboard', 'dispatches', 'eway_bills', 'delivery-challans'];
     case 'ACCOUNTS':
-      return ['dashboard', 'invoices', 'payments', 'orders', 'credit_notes', 'purchases', 'hrms', 'gst_filing'];
+      return ['dashboard', 'accounting', 'invoices', 'payments', 'orders', 'credit_notes', 'purchases', 'hrms', 'gst_filing', 'reports', 'delivery-challans'];
     case 'HR':
       return ['dashboard', 'hrms', 'hiring'];
     case 'SUPPORT':
       return ['dashboard', 'customers', 'calls_tasks'];
     case 'MANAGER':
-      return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products', 'reports'];
+      return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products', 'reports', 'accounting', 'delivery-challans'];
     default:
       return ['dashboard'];
   }
@@ -133,19 +135,98 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
   };
 
   return (
-    <div className="modal-backdrop" style={{ overflowY: 'auto', padding: '20px 10px', zIndex: 10000 }}>
-      <div className="modal-content glass-panel animate-in" style={{ maxWidth: '640px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-        
-        <div className="modal-header" style={{ paddingBottom: '16px', borderBottom: '1px solid #e2e8f0' }}>
+    <div 
+      className="modal-backdrop" 
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ 
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px 16px',
+        overflowY: 'auto'
+      }}
+    >
+      <div 
+        className="animate-in" 
+        style={{ 
+          maxWidth: '680px', 
+          width: '100%', 
+          maxHeight: '90vh', 
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+      >
+        <div 
+          style={{ 
+            padding: '18px 24px', 
+            borderBottom: '1px solid #e2e8f0', 
+            backgroundColor: '#ffffff',
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            flexShrink: 0
+          }}
+        >
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Edit Access & Password: {user.name}</h2>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>Configure department role, password reset, and section access permissions.</p>
+            <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>
+              Edit Access & Permissions: {user.name}
+            </h2>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+              Configure department role, password reset, and section access permissions.
+            </p>
           </div>
-          <button type="button" className="close-btn" onClick={onClose}>×</button>
+          <button 
+            type="button" 
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#94a3b8',
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            ×
+          </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: '16px' }}>
-          {error && <div className="error-message" style={{ padding: '10px', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '6px', fontSize: '0.85rem' }}>{error}</div>}
+        <form 
+          onSubmit={handleSubmit} 
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            flex: 1, 
+            overflow: 'hidden', 
+            minHeight: 0 
+          }}
+        >
+          <div 
+            style={{ 
+              padding: '20px 24px', 
+              overflowY: 'auto', 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '18px' 
+            }}
+          >
+            {error && <div className="error-message" style={{ padding: '10px', backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '6px', fontSize: '0.85rem' }}>{error}</div>}
           
           {/* ROLE SELECTOR */}
           <div className="form-group">
@@ -301,15 +382,16 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#16a34a' }}>Account Active</span>
             </label>
           </div>
+        </div>
 
-          <div className="modal-footer" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
-            <button type="submit" className="primary-btn" disabled={loading} style={{ padding: '8px 20px', borderRadius: '6px', backgroundColor: 'var(--accent-primary, #4f46e5)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
-              {loading ? "Saving Settings..." : "Save Role, Password & Permissions"}
-            </button>
-          </div>
-        </form>
-      </div>
+        <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px', flexShrink: 0 }}>
+          <button type="button" onClick={onClose} style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600, color: '#475569', fontSize: '0.875rem' }}>Cancel</button>
+          <button type="submit" disabled={loading} className="primary-btn" style={{ padding: '9px 20px', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 700 }}>
+            {loading ? "Saving Settings..." : "Save Role, Password & Permissions"}
+          </button>
+        </div>
+      </form>
     </div>
+  </div>
   );
 }
