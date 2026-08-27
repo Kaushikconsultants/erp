@@ -16,9 +16,9 @@ export default function BrandLogo({
   className = ""
 }: BrandLogoProps) {
   // Dimensions based on size
-  const iconSize = size === "sm" ? 32 : size === "lg" ? 48 : 40;
-  const titleSize = size === "sm" ? "1.1rem" : size === "lg" ? "1.65rem" : "1.4rem";
-  const subtitleSize = size === "sm" ? "0.6rem" : size === "lg" ? "0.72rem" : "0.65rem";
+  const iconSize = size === "sm" ? 30 : size === "lg" ? 48 : 38;
+  const titleSize = size === "sm" ? "1.15rem" : size === "lg" ? "1.75rem" : "1.42rem";
+  const signatureSize = size === "sm" ? "0.85rem" : size === "lg" ? "1.15rem" : "0.98rem";
 
   return (
     <div
@@ -26,7 +26,7 @@ export default function BrandLogo({
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: collapsed ? "0" : "16px",
+        gap: collapsed ? "0" : "14px",
         textDecoration: "none",
         userSelect: "none",
         position: "relative"
@@ -34,48 +34,50 @@ export default function BrandLogo({
     >
       <style>
         {`
-          @keyframes heartbeat {
+          @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Caveat:wght@600;700&family=Playfair+Display:ital,wght@1,500;1,600&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap');
+
+          @keyframes heartbeatPulse {
             0% { transform: scale(1); }
-            14% { transform: scale(1.1); }
+            14% { transform: scale(1.12); }
             28% { transform: scale(1); }
-            42% { transform: scale(1.1); }
+            42% { transform: scale(1.12); }
             70% { transform: scale(1); }
             100% { transform: scale(1); }
           }
-          @keyframes pulse-ring {
-            0% { transform: scale(0.8); opacity: 0.5; }
-            80% { transform: scale(1.4); opacity: 0; }
-            100% { transform: scale(0.8); opacity: 0; }
+          @keyframes softGlow {
+            0%, 100% { filter: drop-shadow(0 3px 8px rgba(239, 68, 68, 0.4)); }
+            50% { filter: drop-shadow(0 5px 16px rgba(239, 68, 68, 0.65)); }
           }
-          @keyframes gradientFlow {
+          @keyframes gradientShift {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
           }
-          .brand-identity:hover .heart-icon {
+          .brand-identity {
+            transition: all 0.3s ease;
+          }
+          .brand-identity:hover .brand-heart-svg {
             animation: none;
-            transform: scale(1.1) rotate(5deg);
-            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: scale(1.12) rotate(-3deg);
+            filter: drop-shadow(0 6px 18px rgba(239, 68, 68, 0.75));
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease;
           }
-          .brand-identity:hover .pulse-ring-circle {
-            animation: pulse-ring 1s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+          .brand-identity:hover .signature-accent-line {
+            width: 28px !important;
+            background: linear-gradient(90deg, #ef4444, #f43f5e) !important;
           }
-          .brand-identity:hover .subtitle-line {
-            width: 32px !important;
-            background: #ef4444 !important;
+          .brand-identity:hover .signature-author {
+            color: #1e293b !important;
+            transform: translateX(2px);
           }
-          .heart-icon {
-            animation: heartbeat 2.5s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+          .brand-heart-svg {
+            animation: heartbeatPulse 2.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1), softGlow 3s infinite ease-in-out;
             transform-origin: center;
-          }
-          .pulse-ring-circle {
-            transform-origin: center;
-            opacity: 0;
           }
         `}
       </style>
 
-      {/* Animated Red Heart Brand Icon */}
+      {/* Luminous Red Heart Icon */}
       <div
         className="brand-icon-wrapper"
         style={{
@@ -90,64 +92,59 @@ export default function BrandLogo({
       >
         <svg
           viewBox="0 0 100 100"
+          className="brand-heart-svg"
           style={{ 
             width: "100%", 
             height: "100%", 
-            filter: "drop-shadow(0 4px 8px rgba(239, 68, 68, 0.45))",
             overflow: "visible"
           }}
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <linearGradient id="redHeartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f87171" />
-              <stop offset="50%" stopColor="#ef4444" />
-              <stop offset="100%" stopColor="#dc2626" />
+            <linearGradient id="heartGradientVibrant" x1="10%" y1="0%" x2="90%" y2="100%">
+              <stop offset="0%" stopColor="#ff4d6d" />
+              <stop offset="45%" stopColor="#ef4444" />
+              <stop offset="100%" stopColor="#c1121f" />
             </linearGradient>
-            <linearGradient id="redRingGrad" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#fca5a5" />
-              <stop offset="100%" stopColor="#ef4444" />
-            </linearGradient>
+            <radialGradient id="heartHighlight" cx="35%" cy="30%" r="40%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.45" />
+              <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            </radialGradient>
           </defs>
 
-          {/* Background Pulse Ring */}
-          <circle 
-            cx="50" cy="50" r="35" 
-            fill="none" 
-            stroke="url(#redRingGrad)" 
-            strokeWidth="3" 
-            className="pulse-ring-circle" 
+          {/* Heart Body */}
+          <path
+            d="M 50 85 C 50 85, 15 55, 18 28 C 20 12, 42 12, 50 32 C 58 12, 80 12, 82 28 C 85 55, 50 85, 50 85 Z"
+            fill="url(#heartGradientVibrant)"
           />
 
-          {/* Clean Red Heart Path (NO Checkmark) */}
-          <g className="heart-icon">
-            <path
-              d="M 50 85 C 50 85, 15 55, 18 28 C 20 12, 42 12, 50 32 C 58 12, 80 12, 82 28 C 85 55, 50 85, 50 85 Z"
-              fill="url(#redHeartGrad)"
-              opacity="1"
-            />
-          </g>
+          {/* Subtle 3D Glass Light Reflection */}
+          <path
+            d="M 50 85 C 50 85, 15 55, 18 28 C 20 12, 42 12, 50 32 C 58 12, 80 12, 82 28 C 85 55, 50 85, 50 85 Z"
+            fill="url(#heartHighlight)"
+          />
         </svg>
       </div>
 
-      {/* Typography Column */}
+      {/* Modern & Stylish Typography */}
       {!collapsed && (
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-start",
-            gap: "2px"
+            gap: "0px",
+            lineHeight: 1
           }}
         >
-          {/* Main Title: Heart of Business */}
+          {/* Main Brand Title */}
           <div
             style={{
               display: "flex",
               alignItems: "baseline",
-              gap: "6px",
-              lineHeight: 1.1,
+              gap: "5px",
+              lineHeight: 1.15,
               whiteSpace: "nowrap"
             }}
           >
@@ -156,21 +153,20 @@ export default function BrandLogo({
                 fontSize: titleSize,
                 fontWeight: 800,
                 color: "#0f172a",
-                letterSpacing: "-0.5px",
-                fontFamily: "var(--font-family, -apple-system, sans-serif)",
-                transition: "color 0.3s ease"
+                letterSpacing: "-0.6px",
+                fontFamily: "'Plus Jakarta Sans', var(--font-inter), -apple-system, sans-serif"
               }}
             >
               Heart
             </span>
             <span
               style={{
-                fontSize: `calc(${titleSize} * 0.75)`,
+                fontSize: `calc(${titleSize} * 0.8)`,
                 fontWeight: 500,
-                color: "#64748b",
+                color: "#94a3b8",
                 fontStyle: "italic",
-                fontFamily: "var(--font-family, -apple-system, sans-serif)",
-                opacity: 0.8
+                fontFamily: "'Playfair Display', Georgia, serif",
+                margin: "0 1px"
               }}
             >
               of
@@ -179,51 +175,52 @@ export default function BrandLogo({
               style={{
                 fontSize: titleSize,
                 fontWeight: 900,
-                letterSpacing: "-0.5px",
-                background: "linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary, #0ea5e9) 100%)",
+                letterSpacing: "-0.6px",
+                background: "linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)",
                 backgroundSize: "200% auto",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
-                fontFamily: "var(--font-family, -apple-system, sans-serif)",
-                animation: "gradientFlow 3s ease infinite"
+                fontFamily: "'Plus Jakarta Sans', var(--font-inter), -apple-system, sans-serif",
+                animation: "gradientShift 4s ease infinite"
               }}
             >
               Business
             </span>
           </div>
 
-          {/* Subtitle */}
+          {/* Signature Tagline: By Ashish Goyal */}
           {showSubtitle && (
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                marginTop: "4px"
+                gap: "7px",
+                marginTop: "3px"
               }}
             >
               <div
-                className="subtitle-line"
+                className="signature-accent-line"
                 style={{
                   width: "16px",
                   height: "2px",
-                  background: "#ef4444",
-                  borderRadius: "2px",
-                  transition: "all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
+                  background: "linear-gradient(90deg, #ef4444, #f43f5e)",
+                  borderRadius: "999px",
+                  transition: "all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)"
                 }}
               />
               <span
+                className="signature-author"
                 style={{
-                  fontSize: subtitleSize,
+                  fontSize: signatureSize,
                   fontWeight: 700,
-                  color: "#64748b",
-                  letterSpacing: "1.5px",
-                  textTransform: "uppercase",
-                  fontFamily: "var(--font-family, sans-serif)",
-                  opacity: 0.85
+                  color: "#475569",
+                  fontFamily: "'Dancing Script', 'Caveat', cursive, sans-serif",
+                  letterSpacing: "0.4px",
+                  transition: "all 0.3s ease",
+                  display: "inline-block"
                 }}
               >
-                MADE BY ASHISH AGGARWAL
+                By Ashish Goyal
               </span>
             </div>
           )}

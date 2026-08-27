@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Heart Of Business - CRM & Sales ERP',
     short_name: 'HOB CRM',
-    description: 'Comprehensive Enterprise B2B CRM and Sales ERP Software by Ashish Aggarwal',
+    description: 'Comprehensive Enterprise B2B CRM and Sales ERP Software by Ashish Goyal',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',
