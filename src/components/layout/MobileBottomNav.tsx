@@ -171,13 +171,6 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
                 </Link>
               )}
 
-              <Link href="/whatsapp/inbox" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
-                <div className="tile-icon-box green">
-                  <MessageSquare size={20} />
-                </div>
-                <span>WhatsApp</span>
-              </Link>
-
               {canAccess('calls_tasks') && (
                 <Link href="/calls" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
                   <div className="tile-icon-box blue">

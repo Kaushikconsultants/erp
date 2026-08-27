@@ -113,7 +113,7 @@ const Sidebar = ({
   };
 
   // Active state indicators
-  const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups') || pathname.startsWith('/whatsapp');
+  const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups');
   const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/delivery-challans') || pathname.startsWith('/eway-bills');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
   const isAccountingActive = pathname.startsWith('/accounting');
@@ -168,12 +168,6 @@ const Sidebar = ({
 
             {openCategories.crm && (
               <div className="category-sub-list">
-                <Link href="/whatsapp/inbox" onClick={onClose} className={`category-sub-item ${isActive('/whatsapp') ? 'active' : ''}`}>
-                  <MessageSquare size={16} style={{ color: '#10b981' }} />
-                  <span>WhatsApp Inbox</span>
-                  <span style={{ marginLeft: 'auto', background: '#10b981', color: '#fff', fontSize: '9px', fontWeight: 600, padding: '1px 5px', borderRadius: '8px' }}>CRM</span>
-                </Link>
-
                 {canAccess('customers') && (
                   <>
                     <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>

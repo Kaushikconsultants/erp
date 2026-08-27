@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
       sendPushNotificationToAgents(
         `💬 ${customer.contactPerson || '+91 ' + cleanPhone}`,
         textContent.slice(0, 100),
-        `/whatsapp/inbox`
+        `/whatsapp/direct-messages`
       ).catch((e) => console.error("[Push] Failed:", e.message));
 
       // Feature 2: Chatbot Flow Engine — check if a flow should intercept

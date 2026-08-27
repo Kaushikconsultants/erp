@@ -514,7 +514,7 @@ export async function sendWhatsAppMessageAction(data: {
             const pushPayload = JSON.stringify({ 
               title: `🔔 Mentioned by ${data.senderName || 'Team'}`, 
               body: `You were tagged in a note for ${conversation.customer.contactPerson}: "${data.content.slice(0, 50)}"`, 
-              data: { url: `/whatsapp/inbox` } 
+              data: { url: `/whatsapp/direct-messages` } 
             });
             
             const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
@@ -558,7 +558,7 @@ export async function sendWhatsAppMessageAction(data: {
       }, 1500);
     }
 
-    revalidatePath(`/whatsapp/inbox`);
+    revalidatePath(`/whatsapp/direct-messages`);
     if (messageStatus === 'FAILED') {
       return { success: false, error: metaErrorMessage || "Failed to deliver message via Meta WhatsApp API." };
     }
@@ -619,7 +619,7 @@ export async function updateCRMProfileFromWhatsApp(data: {
       }
     });
 
-    revalidatePath(`/whatsapp/inbox`);
+    revalidatePath(`/whatsapp/direct-messages`);
     return { success: true, customer: updatedCustomer };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -1424,7 +1424,7 @@ export async function assignWhatsAppLeadAction(data: {
       }
     });
 
-    revalidatePath('/whatsapp/inbox');
+    revalidatePath('/whatsapp/direct-messages');
     revalidatePath('/whatsapp/team-inbox');
     return { success: true, assignedEmployeeId: targetEmployeeId };
   } catch (e: any) {
@@ -1586,7 +1586,7 @@ export async function toggleConversationAIAction(conversationId: string, enabled
       where: { id: conversationId },
       data: { aiHandled: enabled }
     });
-    revalidatePath('/whatsapp/inbox');
+    revalidatePath('/whatsapp/direct-messages');
     return { success: true, aiHandled: enabled };
   } catch (e: any) {
     return { success: false, error: e.message };

@@ -162,7 +162,7 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
         title: `WhatsApp Chat: ${wa.customer?.businessName || wa.customer?.contactPerson}`,
         subtitle: `Last msg: ${wa.lastMessageText?.slice(0, 50) || '-'}`,
         type: 'Lead',
-        url: `/whatsapp/inbox`,
+        url: `/whatsapp/direct-messages`,
         badgeColor: '#10b981'
       });
     });

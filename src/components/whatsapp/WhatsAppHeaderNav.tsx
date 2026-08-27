@@ -29,9 +29,8 @@ import {
 import "./WhatsAppHeaderNav.css";
 
 const subNavItems: Array<{name: string; path: string; icon: any; badge?: string; highlight?: boolean}> = [
-  { name: "WhatsApp Inbox", path: "/whatsapp/inbox", icon: MessageSquare },
-  { name: "Direct Messages", path: "/whatsapp/direct-messages", icon: Send },
   { name: "WhatsApp Dashboard", path: "/whatsapp/dashboard", icon: LayoutDashboard },
+  { name: "Direct Messages", path: "/whatsapp/direct-messages", icon: Send },
   { name: "WhatsApp Logs", path: "/whatsapp/logs", icon: Terminal },
   { name: "Contacts", path: "/whatsapp/contacts", icon: Users },
   { name: "AI Automation", path: "/whatsapp/ai-automation", icon: Bot, highlight: true },
@@ -77,7 +76,7 @@ export default function WhatsAppHeaderNav() {
   }, []);
 
   const isItemActive = (path: string) => {
-    if (path === "/whatsapp/inbox" && (pathname === "/whatsapp" || pathname === "/whatsapp/inbox")) {
+    if (path === "/whatsapp/dashboard" && (pathname === "/whatsapp" || pathname === "/whatsapp/dashboard")) {
       return true;
     }
     return pathname.startsWith(path);
