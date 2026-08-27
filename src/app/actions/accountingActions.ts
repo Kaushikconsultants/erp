@@ -18,7 +18,7 @@ export interface StandardGroupDef {
   sequence: number;
 }
 
-export const STANDARD_ACCOUNT_GROUPS: StandardGroupDef[] = [
+const STANDARD_ACCOUNT_GROUPS: StandardGroupDef[] = [
   // Primary Nature Groups
   { name: "Assets", code: "ASSET_ROOT", nature: "ASSET", sequence: 10 },
   { name: "Liabilities", code: "LIAB_ROOT", nature: "LIABILITY", sequence: 20 },
@@ -790,7 +790,7 @@ export async function getBalanceSheet(asOfDateStr?: string) {
 
     // Fetch P&L to incorporate Net Profit into Reserves & Surplus
     const plRes = await getProfitAndLossStatement(undefined, asOfDate.toISOString());
-    const netProfit = plRes.success ? plRes.incomeStatement.netProfit : 0;
+    const netProfit = (plRes.success && (plRes as any).incomeStatement) ? (plRes as any).incomeStatement.netProfit : 0;
 
     // 1. ASSETS
     // Current Assets: Sundry Debtors (Receivables)

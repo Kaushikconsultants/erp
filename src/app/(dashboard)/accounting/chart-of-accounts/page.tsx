@@ -13,7 +13,7 @@ export default async function ChartOfAccountsPage() {
   if (!session?.user) redirect("/login");
 
   const res = await getChartOfAccounts();
-  const groups = res.success ? res.groups : [];
+  const groups = (res.success && (res as any).groups) ? (res as any).groups : [];
 
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>

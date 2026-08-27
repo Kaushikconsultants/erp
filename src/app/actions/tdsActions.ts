@@ -9,7 +9,7 @@ export interface TdsSection {
   isTcs?: boolean;
 }
 
-export const INDIAN_TDS_TCS_SECTIONS: TdsSection[] = [
+const INDIAN_TDS_TCS_SECTIONS: TdsSection[] = [
   {
     code: "194C_INDV",
     section: "Section 194C",

@@ -17,8 +17,8 @@ export default async function AgeingPage() {
     getCreditorsAgeingReport()
   ]);
 
-  const debtorsReport = debtorsRes.success ? debtorsRes : { asOfDate: new Date().toISOString().split("T")[0], summary: {}, rows: [] };
-  const creditorsReport = creditorsRes.success ? creditorsRes : { asOfDate: new Date().toISOString().split("T")[0], summary: {}, rows: [] };
+  const debtorsReport = debtorsRes.success ? (debtorsRes as any) : { asOfDate: new Date().toISOString().split("T")[0], summary: {}, rows: [] };
+  const creditorsReport = creditorsRes.success ? (creditorsRes as any) : { asOfDate: new Date().toISOString().split("T")[0], summary: {}, rows: [] };
 
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>

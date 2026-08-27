@@ -13,7 +13,7 @@ export default async function BankReconciliationPage() {
   if (!session?.user) redirect("/login");
 
   const accountsRes = await getBankAccounts();
-  const bankAccounts = accountsRes.success ? accountsRes.accounts : [];
+  const bankAccounts = (accountsRes.success && (accountsRes as any).accounts) ? (accountsRes as any).accounts : [];
 
   let initialOverview = {
     ledger: null,

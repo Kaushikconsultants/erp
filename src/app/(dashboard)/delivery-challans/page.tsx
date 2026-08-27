@@ -23,7 +23,7 @@ export default async function DeliveryChallansPage() {
     prisma.product.findMany({ where: { organizationId }, select: { id: true, name: true, stockQuantity: true, sellingPrice: true, hsnCode: true } })
   ]);
 
-  const challans = challansRes.success ? challansRes.challans : [];
+  const challans = (challansRes.success && (challansRes as any).challans) ? (challansRes as any).challans : [];
 
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>

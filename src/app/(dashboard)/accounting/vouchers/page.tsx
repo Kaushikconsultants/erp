@@ -17,8 +17,8 @@ export default async function VouchersPage() {
     getLedgers()
   ]);
 
-  const vouchers = vouchersRes.success ? vouchersRes.vouchers : [];
-  const ledgers = ledgersRes.success ? ledgersRes.ledgers : [];
+  const vouchers = (vouchersRes.success && (vouchersRes as any).vouchers) ? (vouchersRes as any).vouchers : [];
+  const ledgers = (ledgersRes.success && (ledgersRes as any).ledgers) ? (ledgersRes as any).ledgers : [];
 
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>

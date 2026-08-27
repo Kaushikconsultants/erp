@@ -39,9 +39,9 @@ export default async function AccountingHubPage() {
     getTrialBalance()
   ]);
 
-  const balanceSheet = bsRes.success ? bsRes : null;
-  const pl = plRes.success ? plRes : null;
-  const tb = tbRes.success ? tbRes : null;
+  const balanceSheet = bsRes.success ? (bsRes as any) : null;
+  const pl = plRes.success ? (plRes as any) : null;
+  const tb = tbRes.success ? (tbRes as any) : null;
 
   const totalAssets = balanceSheet?.assets?.totalAssets || 0;
   const totalDebtors = balanceSheet?.assets?.currentAssets?.find((a: any) => a.name.includes("Debtors"))?.amount || 0;
