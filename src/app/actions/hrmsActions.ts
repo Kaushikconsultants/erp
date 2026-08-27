@@ -112,17 +112,42 @@ export async function getPayrollData(month: string) {
           },
           select: { 
             id: true, 
+            orderNumber: true,
+            orderDate: true,
+            orderStatus: true,
+            paymentStatus: true,
             subtotal: true, 
             totalValue: true, 
+            tax: true,
             discount: true, 
-            customer: { select: { status: true, preferredPaymentMethod: true } } 
+            customer: { 
+              select: { 
+                id: true,
+                businessName: true, 
+                contactPerson: true,
+                status: true, 
+                preferredPaymentMethod: true 
+              } 
+            } 
+          },
+          orderBy: { orderDate: 'desc' }
+        },
+        attendances: {
+          where: {
+            date: {
+              gte: startDate,
+              lt: endDate
+            }
           }
         }
       }
     });
 
-    const processedEmployees = employees.map(emp => {
-      const formattedOrders: OrderData[] = emp.orders.map((order: any) => ({
+    const processedEmployees = employees.map((emp: any) => {
+      const empOrders = emp.orders || [];
+      const empAttendances = emp.attendances || [];
+
+      const formattedOrders: OrderData[] = empOrders.map((order: any) => ({
         id: order.id,
         taxableValue: Number(order.subtotal) || Number(order.totalValue) || 0,
         discount: Number(order.discount) || 0,
@@ -132,9 +157,56 @@ export async function getPayrollData(month: string) {
       const targetGoal = emp.target || 500000;
       const calculatedIncentive = calculateIncentives(formattedOrders, targetGoal);
 
+      // Enriched orders with their incentive tier
+      const enrichedOrders = empOrders.map((order: any) => {
+        const taxable = Number(order.subtotal) || Number(order.totalValue) || 0;
+        const disc = Number(order.discount) || 0;
+        const isCredit = order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit';
+        
+        let tier = "SLAB_ELIGIBLE";
+        let rateApplied = calculatedIncentive.slabRate;
+        let orderIncentive = (taxable * rateApplied) / 100;
+        
+        if (disc > 15 || isCredit) {
+          tier = "FLAT_RATE";
+          rateApplied = 1;
+          orderIncentive = taxable * 0.01;
+        } else if (disc === 0) {
+          tier = "ZERO_DISCOUNT";
+          rateApplied = calculatedIncentive.slabRate + 2;
+          orderIncentive = (taxable * (calculatedIncentive.slabRate / 100)) + (taxable * 0.02);
+        }
+
+        return {
+          ...order,
+          taxableValue: taxable,
+          discount: disc,
+          isCreditCustomer: isCredit,
+          incentiveTier: tier,
+          incentiveRateApplied: rateApplied,
+          orderIncentiveAmount: parseFloat(orderIncentive.toFixed(2))
+        };
+      });
+
+      // Attendance summary
+      const presentDays = empAttendances.filter((a: any) => a.status === 'Present').length;
+      const halfDays = empAttendances.filter((a: any) => a.status === 'Half Day').length;
+      const leaveDays = empAttendances.filter((a: any) => a.status === 'Leave').length;
+      const absentDays = empAttendances.filter((a: any) => a.status === 'Absent').length;
+      const totalWorkingHours = empAttendances.reduce((acc: number, a: any) => acc + (a.workingHours || 0), 0);
+
       return {
         ...emp,
-        dynamicIncentive: calculatedIncentive.totalIncentive
+        dynamicIncentive: calculatedIncentive.totalIncentive,
+        incentiveDetails: calculatedIncentive,
+        enrichedOrders,
+        attendanceSummary: {
+          presentDays,
+          halfDays,
+          leaveDays,
+          absentDays,
+          totalWorkingHours
+        }
       };
     });
 

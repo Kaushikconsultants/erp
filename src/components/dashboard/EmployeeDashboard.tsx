@@ -24,7 +24,8 @@ import {
   Filter,
   X,
   ExternalLink,
-  DollarSign
+  DollarSign,
+  Calculator
 } from 'lucide-react';
 import Link from 'next/link';
 import { removeFollowUp, rescheduleFollowUp } from '@/app/actions/callActions';
@@ -609,6 +610,9 @@ export default function EmployeeDashboard({
                           <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', backgroundColor: o.status === 'DELIVERED' ? '#ecfdf5' : '#eff6ff', color: o.status === 'DELIVERED' ? '#059669' : '#2563eb', fontWeight: 600 }}>
                             {o.status || 'CONFIRMED'}
                           </span>
+                          <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: '4px', backgroundColor: (o.discount || 0) === 0 ? '#ecfdf5' : (o.discount || 0) > 15 ? '#fffbeb' : '#f1f5f9', color: (o.discount || 0) === 0 ? '#059669' : (o.discount || 0) > 15 ? '#d97706' : '#475569', fontWeight: 700 }}>
+                            {(o.discount || 0) === 0 ? '0% Disc (Bonus)' : `${o.discount}% Disc`}
+                          </span>
                         </div>
                         <span style={{ fontSize: '0.78rem', color: '#64748b' }}>{o.customer?.businessName || 'Customer'}</span>
                         <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
@@ -722,42 +726,110 @@ export default function EmployeeDashboard({
       {/* 4. PAYOUT & INCENTIVE MODAL */}
       {activeModal === "PAYOUT" && (
         <div className="modal-backdrop" onClick={() => setActiveModal(null)}>
-          <div className="modal-content glass-panel animate-in" style={{ maxWidth: '540px', width: '95%', padding: 0 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
+          <div className="modal-content glass-panel animate-in" style={{ maxWidth: '640px', width: '95%', maxHeight: '90vh', overflowY: 'auto', padding: 0 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '12px 12px 0 0' }}>
               <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Award size={18} color="#10b981" /> Estimated Payout & Incentive Breakdown
+                <Award size={18} color="#10b981" /> Estimated Payout & Incentive Computation
               </h3>
               <button onClick={() => setActiveModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', color: '#64748b' }}>×</button>
             </div>
 
-            <div style={{ padding: '20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
-                <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Base Salary</span>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>₹{(employee?.salary || 0).toLocaleString('en-IN')}</div>
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Top Summary Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>Base Salary</span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>₹{(employee?.salary || 0).toLocaleString('en-IN')}</div>
                 </div>
-                <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', textAlign: 'center' }}>
-                  <span style={{ fontSize: '0.7rem', color: '#047857' }}>Incentive Earned</span>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#059669' }}>₹{calculatedIncentive.totalIncentive.toLocaleString('en-IN')}</div>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#047857', fontWeight: 700 }}>Incentive Earned</span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#059669', marginTop: '2px' }}>₹{calculatedIncentive.totalIncentive.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
-                <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', textAlign: 'center' }}>
-                  <span style={{ fontSize: '0.7rem', color: '#1d4ed8' }}>Total Est. Payout</span>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#2563eb' }}>₹{totalPayout.toLocaleString('en-IN')}</div>
-                </div>
-              </div>
-
-              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '6px' }}>
-                  <span style={{ color: '#64748b' }}>Active Incentive Slab:</span>
-                  <strong style={{ color: '#059669' }}>{calculatedIncentive.currentSlab}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
-                  <span style={{ color: '#64748b' }}>Eligible Incentive Sales:</span>
-                  <strong>₹{calculatedIncentive.eligibleSales.toLocaleString('en-IN')}</strong>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', textAlign: 'center' }}>
+                  <span style={{ fontSize: '0.7rem', color: '#1d4ed8', fontWeight: 700 }}>Total Est. Payout</span>
+                  <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#2563eb', marginTop: '2px' }}>₹{totalPayout.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                 </div>
               </div>
 
-              <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              {/* Step-by-Step Calculation Breakdown */}
+              <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Calculator size={15} color="#4f46e5" /> Calculation Step-by-Step ({periodLabel})
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.8rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
+                    <span>
+                      <strong>1. Slab Incentive:</strong> ₹{calculatedIncentive.eligibleSales.toLocaleString('en-IN')} × {calculatedIncentive.slabRate}%
+                    </span>
+                    <strong style={{ color: '#0f172a' }}>
+                      ₹{calculatedIncentive.slabIncentive.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </strong>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
+                    <span>
+                      <strong>2. Zero-Disc Bonus (+2%):</strong> ₹{calculatedIncentive.zeroDiscountSales.toLocaleString('en-IN')} × 2%
+                    </span>
+                    <strong style={{ color: '#059669' }}>
+                      + ₹{calculatedIncentive.bonusIncentive.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </strong>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
+                    <span>
+                      <strong>3. Flat 1% Deals:</strong> ₹{calculatedIncentive.flatSales.toLocaleString('en-IN')} × 1%
+                    </span>
+                    <strong style={{ color: '#475569' }}>
+                      + ₹{calculatedIncentive.flatIncentive.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </strong>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', backgroundColor: '#eff6ff', borderRadius: '6px', border: '1px dashed #bfdbfe', fontWeight: 800 }}>
+                    <span style={{ color: '#1d4ed8' }}>Total Incentive Earned</span>
+                    <span style={{ color: '#1e40af' }}>
+                      = ₹{calculatedIncentive.totalIncentive.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Visual 5-Tier Slab Matrix */}
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden', fontSize: '0.78rem' }}>
+                <div style={{ padding: '8px 12px', backgroundColor: '#f1f5f9', fontWeight: 700, color: '#334155' }}>
+                  Company Monthly Incentive Slab Matrix
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {[
+                      { range: '₹0 – ₹2,49,999', rate: '1.0%', label: '1%' },
+                      { range: '₹2,50,000 – ₹4,99,999', rate: '1.75%', label: '1.75%' },
+                      { range: '₹5,00,000 – ₹6,99,999', rate: '2.5%', label: '2.5%' },
+                      { range: '₹7,00,000 – ₹8,99,999', rate: '3.5%', label: '3.5%' },
+                      { range: '₹9,00,000 and above', rate: '5.0%', label: '5%' },
+                    ].map((s) => {
+                      const isCurrent = calculatedIncentive.currentSlab === s.label;
+                      return (
+                        <tr key={s.range} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: isCurrent ? '#ecfdf5' : 'transparent' }}>
+                          <td style={{ padding: '8px 12px', fontWeight: isCurrent ? 700 : 400, color: isCurrent ? '#047857' : '#334155' }}>{s.range}</td>
+                          <td style={{ padding: '8px 12px', fontWeight: 800, color: isCurrent ? '#059669' : '#0f172a', textAlign: 'center' }}>{s.rate}</td>
+                          <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                            {isCurrent && <span style={{ backgroundColor: '#a7f3d0', color: '#065f46', fontWeight: 800, padding: '2px 8px', borderRadius: '8px', fontSize: '0.7rem' }}>Active Tier ✨</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {calculatedIncentive.nextSlabAt && calculatedIncentive.nextSlabAt > 0 ? (
+                <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#fffbeb', border: '1px solid #fef3c7', fontSize: '0.78rem', color: '#92400e', fontWeight: 600 }}>
+                  🚀 Sell <strong>₹{calculatedIncentive.nextSlabAt.toLocaleString('en-IN')}</strong> more to unlock the <strong>{calculatedIncentive.nextSlabPercent}%</strong> slab!
+                </div>
+              ) : null}
+
+              <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
                 * Note: Payout calculations reflect sales recorded for {periodLabel.toLowerCase()}. Final payroll disbursements are approved by accounts at month end.
               </div>
             </div>

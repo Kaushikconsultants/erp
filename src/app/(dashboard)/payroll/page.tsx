@@ -20,13 +20,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
   if (res.error) redirect('/');
 
   return (
-    <div className="page-container" style={{ padding: '24px' }}>
-      {/* Month Selector */}
-      <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <label style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Select Month:</label>
-        <MonthPicker defaultValue={month} />
-      </div>
-
+    <div className="page-container" style={{ padding: '24px', maxWidth: '1440px', margin: '0 auto' }}>
       <PayrollClient
         employees={JSON.parse(JSON.stringify(res.employees || []))}
         month={month}
