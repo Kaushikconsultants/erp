@@ -20,8 +20,10 @@ import {
   Landmark,
   ScrollText,
   Package,
-  Receipt
+  Receipt,
+  Mic
 } from "lucide-react";
+import { useVoiceStore } from "@/lib/stores/voiceStore";
 import "./MobileBottomNav.css";
 
 interface MobileBottomNavProps {
@@ -65,6 +67,8 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
       (sectionKey === 'procurement' && allowedSections.includes('purchases'))
     );
   };
+
+  const { openAssistant } = useVoiceStore();
 
   return (
     <>
@@ -141,6 +145,21 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
             </div>
 
             <div className="action-sheet-grid">
+              <button
+                type="button"
+                className="action-sheet-tile"
+                onClick={() => {
+                  setShowActionSheet(false);
+                  openAssistant();
+                }}
+                style={{ background: "none", border: "none", cursor: "pointer", textAlign: "center" }}
+              >
+                <div className="tile-icon-box indigo" style={{ background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)", color: "#fff" }}>
+                  <Mic size={20} />
+                </div>
+                <span>Voice AI</span>
+              </button>
+
               <Link href="/orders" className="action-sheet-tile" onClick={() => setShowActionSheet(false)}>
                 <div className="tile-icon-box orange">
                   <ShoppingCart size={20} />

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Mic, MicOff, Bot, Sparkles, User, FileText, ShoppingBag, Package, PlusCircle, Settings, BarChart2, Phone, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useVoiceStore } from '@/lib/stores/voiceStore';
 import { parseVoiceIntent } from '@/app/actions/voiceActions';
 import { searchAllModules, SearchResultItem } from '@/app/actions/searchActions';
 
@@ -84,67 +85,10 @@ export default function GlobalSearch() {
     }
   };
 
+  const { openAssistant } = useVoiceStore();
+
   const startVoiceSearch = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      alert("Voice search is not supported in this browser. Please use Chrome, Edge, or Safari.");
-      return;
-    }
-
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognitionRef.current = recognition;
-      recognition.lang = 'en-IN';
-      recognition.continuous = false;
-      recognition.interimResults = true;
-
-      recognition.onstart = () => {
-        setIsListening(true);
-        setShowDropdown(true);
-        setFeedbackMsg("🎙️ AI Listening... Speak any command or name");
-      };
-
-      recognition.onresult = (event: any) => {
-        const transcript = Array.from(event.results)
-          .map((result: any) => result[0].transcript)
-          .join('');
-        
-        setQuery(transcript);
-        latestQueryRef.current = transcript;
-        setFeedbackMsg(`🎙️ Heard: "${transcript}"`);
-
-        if (event.results[0] && event.results[0].isFinal) {
-          setIsListening(false);
-          executeSearch(transcript);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.error("Speech recognition error:", event.error);
-        setIsListening(false);
-        setFeedbackMsg(event.error === 'no-speech' ? "No speech heard." : "Voice error.");
-        setTimeout(() => setFeedbackMsg(''), 2500);
-      };
-
-      recognition.onend = () => {
-        setIsListening(false);
-        if (latestQueryRef.current.trim() && !isAiProcessing) {
-          executeSearch(latestQueryRef.current);
-        }
-      };
-
-      recognition.start();
-    } catch (err) {
-      console.error("Failed to start voice recognition:", err);
-      setIsListening(false);
-    }
+    openAssistant();
   };
 
   const handleSelectOption = (url: string) => {

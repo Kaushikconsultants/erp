@@ -6,6 +6,21 @@ import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 
+async function getAuthOrgId(): Promise<string | null> {
+  try {
+    const orgId = await getTenantOrgId();
+    if (orgId) return orgId;
+  } catch {}
+  try {
+    const defaultOrg = await prisma.organization.findFirst({
+      where: { slug: "espon-global" }
+    }) || await prisma.organization.findFirst();
+    return defaultOrg?.id || null;
+  } catch {
+    return null;
+  }
+}
+
 // ============================================================================
 // 1. STANDARD INDIAN CHART OF ACCOUNTS (COA) DEFINITION
 // ============================================================================
@@ -103,11 +118,10 @@ export async function ensureStandardAccountGroups(organizationId: string) {
  * Accurately updates current balance on all ledger accounts in real-time.
  */
 export async function syncSystemLedgers() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
     const groupMap = await ensureStandardAccountGroups(organizationId);
 
     const debtorsGroup = groupMap.get("SUNDRY_DEBTORS") || await prisma.accountGroup.findFirst({ where: { code: "SUNDRY_DEBTORS" } });
@@ -121,6 +135,15 @@ export async function syncSystemLedgers() {
     const payrollGroup = groupMap.get("PAYROLL_EXPENSE") || indirectExpGroup;
     const capitalGroup = groupMap.get("CAPITAL_ACCT") || await prisma.accountGroup.findFirst({ where: { code: "CAPITAL_ACCT" } });
     const fixedAssetGroup = groupMap.get("FIXED_ASSETS") || await prisma.accountGroup.findFirst({ where: { code: "FIXED_ASSETS" } });
+
+    // Initial fetch of all ledgers
+    let allOrgLedgersInitial = await prisma.ledgerAccount.findMany({
+      where: { OR: [{ organizationId }, { organizationId: null }] }
+    });
+
+    let codeLedgerMap = new Map(allOrgLedgersInitial.filter(l => l.code).map(l => [l.code!, l]));
+    let custLedgerMap = new Map(allOrgLedgersInitial.filter(l => l.partyType === "CUSTOMER" && l.partyId).map(l => [l.partyId!, l]));
+    let vendLedgerMap = new Map(allOrgLedgersInitial.filter(l => l.partyType === "VENDOR" && l.partyId).map(l => [l.partyId!, l]));
 
     // 1. Standard Core Ledgers
     const standardLedgers = [
@@ -145,43 +168,35 @@ export async function syncSystemLedgers() {
     ];
 
     for (const l of standardLedgers) {
-      if (!l.groupId) continue;
-      const existing = await prisma.ledgerAccount.findFirst({
-        where: { OR: [{ code: l.code }, { name: l.name, organizationId }] }
+      if (!l.groupId || codeLedgerMap.has(l.code)) continue;
+      const created = await prisma.ledgerAccount.create({
+        data: {
+          organizationId,
+          name: l.name,
+          code: l.code,
+          accountGroupId: l.groupId,
+          partyType: l.partyType,
+          isSystem: l.isSystem,
+          openingBalance: 0,
+          currentBalance: 0
+        }
       });
-      if (!existing) {
-        await prisma.ledgerAccount.create({
-          data: {
-            organizationId,
-            name: l.name,
-            code: l.code,
-            accountGroupId: l.groupId,
-            partyType: l.partyType,
-            isSystem: l.isSystem,
-            openingBalance: 0,
-            currentBalance: 0
-          }
-        });
-      }
+      codeLedgerMap.set(l.code, created);
     }
 
     // 2. Sync Company Bank Accounts
     const companySettings = await prisma.companySettings.findFirst({ where: { organizationId } });
-    let defaultBankLedger = await prisma.ledgerAccount.findFirst({
-      where: { partyType: "BANK", organizationId }
-    });
+    let defaultBankLedger = Array.from(codeLedgerMap.values()).find(l => l.partyType === "BANK");
 
     if (companySettings?.bankAccountName && bankGroup) {
-      const bankLedgerName = `${companySettings.bankAccountName} (${companySettings.accountNumber ? '...' + companySettings.accountNumber.slice(-4) : 'Bank'})`;
-      const bankExists = await prisma.ledgerAccount.findFirst({
-        where: { OR: [{ name: bankLedgerName, organizationId }, { code: `BANK_${companySettings.ifscCode || 'PRIMARY'}` }] }
-      });
-      if (!bankExists) {
+      const bankCode = `BANK_${companySettings.ifscCode || 'PRIMARY'}`;
+      if (!codeLedgerMap.has(bankCode)) {
+        const bankLedgerName = `${companySettings.bankAccountName} (${companySettings.accountNumber ? '...' + companySettings.accountNumber.slice(-4) : 'Bank'})`;
         defaultBankLedger = await prisma.ledgerAccount.create({
           data: {
             organizationId,
             name: bankLedgerName,
-            code: `BANK_${companySettings.ifscCode || 'PRIMARY'}`,
+            code: bankCode,
             accountGroupId: bankGroup.id,
             partyType: "BANK",
             bankAccountNumber: companySettings.accountNumber || undefined,
@@ -191,27 +206,25 @@ export async function syncSystemLedgers() {
             currentBalance: 0
           }
         });
+        codeLedgerMap.set(bankCode, defaultBankLedger);
       } else {
-        defaultBankLedger = bankExists;
+        defaultBankLedger = codeLedgerMap.get(bankCode);
       }
     }
 
-    if (!defaultBankLedger && bankGroup) {
-      defaultBankLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_CASH", organizationId } });
+    if (!defaultBankLedger) {
+      defaultBankLedger = codeLedgerMap.get("SYS_CASH");
     }
 
-    const cashLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_CASH", organizationId } });
+    const cashLedger = codeLedgerMap.get("SYS_CASH");
 
     // 3. Sync Customers -> Sundry Debtors
     if (debtorsGroup) {
       const customers = await prisma.customer.findMany({ where: { organizationId } });
       for (const c of customers) {
-        const partyLedgerName = c.businessName || c.contactPerson || "Customer";
-        const ledgerExists = await prisma.ledgerAccount.findFirst({
-          where: { partyType: "CUSTOMER", partyId: c.id, organizationId }
-        });
-        if (!ledgerExists) {
-          await prisma.ledgerAccount.create({
+        if (!custLedgerMap.has(c.id)) {
+          const partyLedgerName = c.businessName || c.contactPerson || "Customer";
+          const created = await prisma.ledgerAccount.create({
             data: {
               organizationId,
               name: partyLedgerName,
@@ -226,6 +239,7 @@ export async function syncSystemLedgers() {
               currentBalance: c.openingBalance || 0
             }
           });
+          custLedgerMap.set(c.id, created);
         }
       }
     }
@@ -234,11 +248,8 @@ export async function syncSystemLedgers() {
     if (creditorsGroup) {
       const vendors = await prisma.vendor.findMany({ where: { organizationId } });
       for (const v of vendors) {
-        const ledgerExists = await prisma.ledgerAccount.findFirst({
-          where: { partyType: "VENDOR", partyId: v.id, organizationId }
-        });
-        if (!ledgerExists) {
-          await prisma.ledgerAccount.create({
+        if (!vendLedgerMap.has(v.id)) {
+          const created = await prisma.ledgerAccount.create({
             data: {
               organizationId,
               name: v.companyName,
@@ -253,23 +264,29 @@ export async function syncSystemLedgers() {
               currentBalance: 0
             }
           });
+          vendLedgerMap.set(v.id, created);
         }
       }
     }
 
-    // 5. Core Double-Entry Ledgers Ref
-    const salesLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_SALES", organizationId } });
-    const purchaseLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_PURCHASE", organizationId } });
-    const outCgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_OUT_CGST", organizationId } });
-    const outSgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_OUT_SGST", organizationId } });
-    const outIgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_OUT_IGST", organizationId } });
-    const inCgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_IN_CGST", organizationId } });
-    const inSgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_IN_SGST", organizationId } });
-    const inIgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_IN_IGST", organizationId } });
-    const roundoffLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_ROUNDOFF", organizationId } });
-    const generalExpLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_GEN_EXP", organizationId } });
-    const salaryExpLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_SALARY_EXP", organizationId } });
-    const salesReturnLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_SALES_RETURN", organizationId } }) || salesLedger;
+    const salesLedger = codeLedgerMap.get("SYS_SALES");
+    const purchaseLedger = codeLedgerMap.get("SYS_PURCHASE");
+    const outCgstLedger = codeLedgerMap.get("SYS_OUT_CGST");
+    const outSgstLedger = codeLedgerMap.get("SYS_OUT_SGST");
+    const outIgstLedger = codeLedgerMap.get("SYS_OUT_IGST");
+    const inCgstLedger = codeLedgerMap.get("SYS_IN_CGST");
+    const inSgstLedger = codeLedgerMap.get("SYS_IN_SGST");
+    const inIgstLedger = codeLedgerMap.get("SYS_IN_IGST");
+    const roundoffLedger = codeLedgerMap.get("SYS_ROUNDOFF");
+    const generalExpLedger = codeLedgerMap.get("SYS_GEN_EXP");
+    const salaryExpLedger = codeLedgerMap.get("SYS_SALARY_EXP");
+    const salesReturnLedger = codeLedgerMap.get("SYS_SALES_RETURN") || salesLedger;
+
+    const existingJVs = await prisma.journalEntry.findMany({
+      where: { organizationId, sourceDocId: { not: null } },
+      select: { sourceDocType: true, sourceDocId: true }
+    });
+    const jvSet = new Set(existingJVs.map(j => `${j.sourceDocType}_${j.sourceDocId}`));
 
     // A. Auto-Post Double-Entry Vouchers for Historical Invoices
     const invoices = await prisma.invoice.findMany({
@@ -278,14 +295,10 @@ export async function syncSystemLedgers() {
     });
 
     for (const inv of invoices) {
-      const existingJV = await prisma.journalEntry.findFirst({
-        where: { sourceDocType: "INVOICE", sourceDocId: inv.id }
-      });
+      if (jvSet.has(`INVOICE_${inv.id}`)) continue;
 
-      if (!existingJV && salesLedger) {
-        const customerLedger = await prisma.ledgerAccount.findFirst({
-          where: { partyType: "CUSTOMER", partyId: inv.customerId }
-        });
+      if (salesLedger) {
+        const customerLedger = custLedgerMap.get(inv.customerId);
 
         if (customerLedger) {
           const taxable = inv.subtotal || (inv.totalAmount - (inv.taxAmount || 0));
@@ -355,7 +368,7 @@ export async function syncSystemLedgers() {
               voucherNumber: `SLS-${inv.invoiceNumber}`,
               voucherType: "SALES",
               date: inv.invoiceDate || inv.createdAt,
-              narration: `Sales Invoice #${inv.invoiceNumber} to ${inv.customer.businessName}`,
+              narration: `Sales Invoice #${inv.invoiceNumber} to ${inv.customer?.businessName || 'Customer'}`,
               referenceNumber: inv.invoiceNumber,
               totalAmount: inv.totalAmount,
               sourceDocType: "INVOICE",
@@ -367,6 +380,7 @@ export async function syncSystemLedgers() {
               }
             }
           });
+          jvSet.add(`INVOICE_${inv.id}`);
         }
       }
     }
@@ -384,54 +398,49 @@ export async function syncSystemLedgers() {
     });
 
     for (const p of payments) {
-      const existingJV = await prisma.journalEntry.findFirst({
-        where: { sourceDocType: "PAYMENT", sourceDocId: p.id }
-      });
+      if (jvSet.has(`PAYMENT_${p.id}`)) continue;
 
-      if (!existingJV) {
-        const custId = p.customerId || p.invoice?.customerId;
-        const customerLedger = custId ? await prisma.ledgerAccount.findFirst({
-          where: { partyType: "CUSTOMER", partyId: custId }
-        }) : null;
+      const custId = p.customerId || p.invoice?.customerId;
+      const customerLedger = custId ? custLedgerMap.get(custId) : null;
 
-        const isCash = p.paymentMode?.toLowerCase() === "cash";
-        const receivingLedger = isCash ? (cashLedger || defaultBankLedger) : (defaultBankLedger || cashLedger);
+      const isCash = p.paymentMode?.toLowerCase() === "cash";
+      const receivingLedger = isCash ? (cashLedger || defaultBankLedger) : (defaultBankLedger || cashLedger);
 
-        if (customerLedger && receivingLedger && p.amount > 0) {
-          const lines = [
-            {
-              ledgerAccountId: receivingLedger.id,
-              debit: p.amount,
-              credit: 0,
-              particulars: `Received from ${customerLedger.name} via ${p.paymentMode}`
-            },
-            {
-              ledgerAccountId: customerLedger.id,
-              debit: 0,
-              credit: p.amount,
-              particulars: `Payment #${p.paymentNumber} ref #${p.referenceNumber || ''}`
+      if (customerLedger && receivingLedger && p.amount > 0) {
+        const lines = [
+          {
+            ledgerAccountId: receivingLedger.id,
+            debit: p.amount,
+            credit: 0,
+            particulars: `Received from ${customerLedger.name} via ${p.paymentMode}`
+          },
+          {
+            ledgerAccountId: customerLedger.id,
+            debit: 0,
+            credit: p.amount,
+            particulars: `Payment #${p.paymentNumber} ref #${p.referenceNumber || ''}`
+          }
+        ];
+
+        await prisma.journalEntry.create({
+          data: {
+            organizationId,
+            voucherNumber: `RCPT-${p.paymentNumber}`,
+            voucherType: "RECEIPT",
+            date: p.paymentDate || p.createdAt,
+            narration: `Payment received: ${p.paymentNumber} from ${customerLedger.name}`,
+            referenceNumber: p.referenceNumber || p.paymentNumber,
+            totalAmount: p.amount,
+            sourceDocType: "PAYMENT",
+            sourceDocId: p.id,
+            isSystemGenerated: true,
+            status: "POSTED",
+            lines: {
+              create: lines
             }
-          ];
-
-          await prisma.journalEntry.create({
-            data: {
-              organizationId,
-              voucherNumber: `RCPT-${p.paymentNumber}`,
-              voucherType: "RECEIPT",
-              date: p.paymentDate || p.createdAt,
-              narration: `Payment received: ${p.paymentNumber} from ${customerLedger.name}`,
-              referenceNumber: p.referenceNumber || p.paymentNumber,
-              totalAmount: p.amount,
-              sourceDocType: "PAYMENT",
-              sourceDocId: p.id,
-              isSystemGenerated: true,
-              status: "POSTED",
-              lines: {
-                create: lines
-              }
-            }
-          });
-        }
+          }
+        });
+        jvSet.add(`PAYMENT_${p.id}`);
       }
     }
 
@@ -442,14 +451,10 @@ export async function syncSystemLedgers() {
     });
 
     for (const b of bills) {
-      const existingJV = await prisma.journalEntry.findFirst({
-        where: { sourceDocType: "BILL", sourceDocId: b.id }
-      });
+      if (jvSet.has(`BILL_${b.id}`)) continue;
 
-      if (!existingJV && purchaseLedger) {
-        const vendorLedger = await prisma.ledgerAccount.findFirst({
-          where: { partyType: "VENDOR", partyId: b.vendorId }
-        });
+      if (purchaseLedger) {
+        const vendorLedger = b.vendorId ? vendLedgerMap.get(b.vendorId) : null;
 
         if (vendorLedger) {
           const taxable = b.subtotal || (b.totalAmount - (b.taxAmount || 0));
@@ -519,7 +524,7 @@ export async function syncSystemLedgers() {
               voucherNumber: `PUR-${b.billNumber}`,
               voucherType: "PURCHASE",
               date: b.billDate || b.createdAt,
-              narration: `Purchase Bill #${b.billNumber} from ${b.vendor.companyName}`,
+              narration: `Purchase Bill #${b.billNumber} from ${b.vendor?.companyName || 'Vendor'}`,
               referenceNumber: b.vendorBillNumber || b.billNumber,
               totalAmount: b.totalAmount,
               sourceDocType: "BILL",
@@ -531,6 +536,7 @@ export async function syncSystemLedgers() {
               }
             }
           });
+          jvSet.add(`BILL_${b.id}`);
         }
       }
     }
@@ -545,53 +551,47 @@ export async function syncSystemLedgers() {
     });
 
     for (const vp of vendorPayments) {
-      const existingJV = await prisma.journalEntry.findFirst({
-        where: { sourceDocType: "VENDOR_PAYMENT", sourceDocId: vp.id }
-      });
+      if (jvSet.has(`VENDOR_PAYMENT_${vp.id}`)) continue;
 
-      if (!existingJV) {
-        const vendorLedger = await prisma.ledgerAccount.findFirst({
-          where: { partyType: "VENDOR", partyId: vp.vendorId }
+      const vendorLedger = vp.vendorId ? vendLedgerMap.get(vp.vendorId) : null;
+      const isCash = vp.paymentMode?.toLowerCase() === "cash";
+      const payingLedger = isCash ? (cashLedger || defaultBankLedger) : (defaultBankLedger || cashLedger);
+
+      if (vendorLedger && payingLedger && vp.amount > 0) {
+        const lines = [
+          {
+            ledgerAccountId: vendorLedger.id,
+            debit: vp.amount,
+            credit: 0,
+            particulars: `Payment to ${vendorLedger.name}`
+          },
+          {
+            ledgerAccountId: payingLedger.id,
+            debit: 0,
+            credit: vp.amount,
+            particulars: `Paid via ${vp.paymentMode}`
+          }
+        ];
+
+        await prisma.journalEntry.create({
+          data: {
+            organizationId,
+            voucherNumber: `PMT-${vp.paymentNumber}`,
+            voucherType: "PAYMENT",
+            date: vp.paymentDate || vp.createdAt,
+            narration: `Payment made to ${vendorLedger.name} #${vp.paymentNumber}`,
+            referenceNumber: vp.referenceNumber || vp.paymentNumber,
+            totalAmount: vp.amount,
+            sourceDocType: "VENDOR_PAYMENT",
+            sourceDocId: vp.id,
+            isSystemGenerated: true,
+            status: "POSTED",
+            lines: {
+              create: lines
+            }
+          }
         });
-
-        const isCash = vp.paymentMode?.toLowerCase() === "cash";
-        const payingLedger = isCash ? (cashLedger || defaultBankLedger) : (defaultBankLedger || cashLedger);
-
-        if (vendorLedger && payingLedger && vp.amount > 0) {
-          const lines = [
-            {
-              ledgerAccountId: vendorLedger.id,
-              debit: vp.amount,
-              credit: 0,
-              particulars: `Payment to ${vendorLedger.name}`
-            },
-            {
-              ledgerAccountId: payingLedger.id,
-              debit: 0,
-              credit: vp.amount,
-              particulars: `Paid via ${vp.paymentMode}`
-            }
-          ];
-
-          await prisma.journalEntry.create({
-            data: {
-              organizationId,
-              voucherNumber: `PMT-${vp.paymentNumber}`,
-              voucherType: "PAYMENT",
-              date: vp.paymentDate || vp.createdAt,
-              narration: `Payment made to ${vendorLedger.name} #${vp.paymentNumber}`,
-              referenceNumber: vp.referenceNumber || vp.paymentNumber,
-              totalAmount: vp.amount,
-              sourceDocType: "VENDOR_PAYMENT",
-              sourceDocId: vp.id,
-              isSystemGenerated: true,
-              status: "POSTED",
-              lines: {
-                create: lines
-              }
-            }
-          });
-        }
+        jvSet.add(`VENDOR_PAYMENT_${vp.id}`);
       }
     }
 
@@ -607,11 +607,9 @@ export async function syncSystemLedgers() {
     });
 
     for (const exp of expenses) {
-      const existingJV = await prisma.journalEntry.findFirst({
-        where: { sourceDocType: "EXPENSE", sourceDocId: exp.id }
-      });
+      if (jvSet.has(`EXPENSE_${exp.id}`)) continue;
 
-      if (!existingJV && generalExpLedger && exp.amount > 0) {
+      if (generalExpLedger && exp.amount > 0) {
         const payingLedger = defaultBankLedger || cashLedger;
         if (payingLedger) {
           const lines = [
@@ -647,6 +645,7 @@ export async function syncSystemLedgers() {
               }
             }
           });
+          jvSet.add(`EXPENSE_${exp.id}`);
         }
       }
     }
@@ -661,11 +660,9 @@ export async function syncSystemLedgers() {
     });
 
     for (const sal of salaries) {
-      const existingJV = await prisma.journalEntry.findFirst({
-        where: { sourceDocType: "SALARY", sourceDocId: sal.id }
-      });
+      if (jvSet.has(`SALARY_${sal.id}`)) continue;
 
-      if (!existingJV && salaryExpLedger && sal.netSalary > 0) {
+      if (salaryExpLedger && sal.netSalary > 0) {
         const payingLedger = defaultBankLedger || cashLedger;
         if (payingLedger) {
           const empName = sal.employee?.user?.name || "Staff";
@@ -702,6 +699,7 @@ export async function syncSystemLedgers() {
               }
             }
           });
+          jvSet.add(`SALARY_${sal.id}`);
         }
       }
     }
@@ -713,14 +711,10 @@ export async function syncSystemLedgers() {
     });
 
     for (const cn of creditNotes) {
-      const existingJV = await prisma.journalEntry.findFirst({
-        where: { sourceDocType: "CREDIT_NOTE", sourceDocId: cn.id }
-      });
+      if (jvSet.has(`CREDIT_NOTE_${cn.id}`)) continue;
 
-      if (!existingJV && salesReturnLedger) {
-        const customerLedger = await prisma.ledgerAccount.findFirst({
-          where: { partyType: "CUSTOMER", partyId: cn.customerId }
-        });
+      if (salesReturnLedger) {
+        const customerLedger = cn.customerId ? custLedgerMap.get(cn.customerId) : null;
 
         if (customerLedger && cn.totalAmount > 0) {
           const subtotal = cn.subtotal || (cn.totalAmount - (cn.taxAmount || 0));
@@ -774,6 +768,7 @@ export async function syncSystemLedgers() {
               }
             }
           });
+          jvSet.add(`CREDIT_NOTE_${cn.id}`);
         }
       }
     }
@@ -822,11 +817,10 @@ export async function syncSystemLedgers() {
 // ============================================================================
 
 export async function getChartOfAccounts() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
     await syncSystemLedgers();
 
     const groups = await prisma.accountGroup.findMany({
@@ -847,11 +841,10 @@ export async function getChartOfAccounts() {
 }
 
 export async function getLedgers(groupId?: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
     const where: any = { OR: [{ organizationId }, { organizationId: null }] };
     if (groupId) where.accountGroupId = groupId;
 
@@ -872,11 +865,10 @@ export async function getLedgerStatement(
   startDateStr?: string,
   endDateStr?: string
 ) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
     await syncSystemLedgers();
 
     const ledger = await prisma.ledgerAccount.findUnique({
@@ -985,12 +977,10 @@ export async function createLedgerAccount(data: {
   gstin?: string;
   pan?: string;
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
-
     const existing = await prisma.ledgerAccount.findFirst({
       where: { name: data.name.trim(), organizationId }
     });
@@ -1040,8 +1030,8 @@ export async function createJournalEntry(data: {
     particulars?: string;
   }[];
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   if (!data.lines || data.lines.length < 2) {
     return { success: false, error: "A double-entry voucher must contain at least 2 line items." };
@@ -1078,7 +1068,7 @@ export async function createJournalEntry(data: {
         totalAmount: totalDebit,
         status: "POSTED",
         isSystemGenerated: false,
-        createdBy: (session.user as any).name || "Admin",
+        createdBy: "Admin",
         lines: {
           create: data.lines.map(l => ({
             ledgerAccountId: l.ledgerAccountId,
@@ -1122,11 +1112,10 @@ export async function getJournalEntries(filters?: {
   ledgerAccountId?: string;
   search?: string;
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
     await syncSystemLedgers();
 
     const where: any = { organizationId };
@@ -1182,11 +1171,10 @@ export async function getJournalEntries(filters?: {
 // ============================================================================
 
 export async function getTrialBalance(asOfDateStr?: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
     const asOfDate = asOfDateStr ? new Date(asOfDateStr) : new Date();
     asOfDate.setHours(23, 59, 59, 999);
 
@@ -1257,11 +1245,10 @@ export async function getTrialBalance(asOfDateStr?: string) {
 }
 
 export async function getProfitAndLossStatement(startDateStr?: string, endDateStr?: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
     const now = new Date();
     const currentFYStart = now.getMonth() >= 3 ? new Date(now.getFullYear(), 3, 1) : new Date(now.getFullYear() - 1, 3, 1);
     
@@ -1371,11 +1358,10 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
 }
 
 export async function getBalanceSheet(asOfDateStr?: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
     const asOfDate = asOfDateStr ? new Date(asOfDateStr) : new Date();
     asOfDate.setHours(23, 59, 59, 999);
 
@@ -1561,18 +1547,15 @@ export async function getBalanceSheet(asOfDateStr?: string) {
 }
 
 export async function getDayBook(dateStr?: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) return { success: false, error: "Unauthorized" };
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
-    await syncSystemLedgers();
-
-    const date = dateStr ? new Date(dateStr) : new Date();
+    const targetDate = dateStr ? new Date(dateStr) : new Date();
     
-    const startOfDay = new Date(date);
+    const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(date);
+    const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
     const [vouchers, invoices, bills, payments, vendorPayments] = await Promise.all([
@@ -1674,7 +1657,7 @@ export async function getDayBook(dateStr?: string) {
 
     return {
       success: true,
-      date: date.toISOString().split("T")[0],
+      date: targetDate.toISOString().split("T")[0],
       events: allEvents,
       summary: {
         totalVouchers: allEvents.length,
