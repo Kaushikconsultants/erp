@@ -4,79 +4,74 @@ import React, { useState } from "react";
 import {
   FileText,
   Plus,
-  Trash2,
+  ArrowRightLeft,
+  Search,
   CheckCircle2,
   AlertCircle,
   Calendar,
-  Search,
-  Filter,
-  ArrowRightLeft,
-  DollarSign
+  Layers,
+  Trash2,
+  X
 } from "lucide-react";
 import { createJournalEntry } from "@/app/actions/accountingActions";
 
 interface Props {
-  initialVouchers: any[];
+  vouchers?: any[];
+  initialVouchers?: any[];
   ledgers: any[];
 }
 
-export default function VouchersClient({ initialVouchers, ledgers }: Props) {
-  const [vouchers, setVouchers] = useState<any[]>(initialVouchers);
+export default function VouchersClient({ vouchers, initialVouchers, ledgers }: Props) {
+  const allVouchers = vouchers || initialVouchers || [];
+  const [voucherList, setVoucherList] = useState<any[]>(allVouchers);
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [search, setSearch] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
 
-  // Voucher Form State
+  // Modal State
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [voucherType, setVoucherType] = useState<"JOURNAL" | "CONTRA" | "PAYMENT" | "RECEIPT">("JOURNAL");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [narration, setNarration] = useState("");
   const [referenceNumber, setReferenceNumber] = useState("");
-  const [lines, setLines] = useState([
-    { ledgerAccountId: ledgers[0]?.id || "", debit: 0, credit: 0, particulars: "" },
-    { ledgerAccountId: ledgers[1]?.id || ledgers[0]?.id || "", debit: 0, credit: 0, particulars: "" }
+  const [narration, setNarration] = useState("");
+  
+  const [lines, setLines] = useState<any[]>([
+    { ledgerAccountId: ledgers[0]?.id || "", debit: 0, credit: 0 },
+    { ledgerAccountId: ledgers[1]?.id || ledgers[0]?.id || "", debit: 0, credit: 0 }
   ]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [formError, setFormError] = useState("");
 
-  const totalDebit = lines.reduce((acc, l) => acc + (Number(l.debit) || 0), 0);
-  const totalCredit = lines.reduce((acc, l) => acc + (Number(l.credit) || 0), 0);
-  const difference = Number((totalDebit - totalCredit).toFixed(2));
-  const isBalanced = Math.abs(difference) < 0.01 && totalDebit > 0;
+  const [formError, setFormError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+
+  const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
+  const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
+  const difference = Math.abs(totalDebit - totalCredit).toFixed(2);
+  const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
 
   const handleLineChange = (index: number, field: string, value: any) => {
     const updated = [...lines];
-    (updated[index] as any)[field] = value;
-
-    // Auto-clear opposite side if entering debit or credit
-    if (field === "debit" && Number(value) > 0) {
-      updated[index].credit = 0;
-    } else if (field === "credit" && Number(value) > 0) {
-      updated[index].debit = 0;
-    }
-
+    updated[index] = { ...updated[index], [field]: value };
+    if (field === "debit" && value > 0) updated[index].credit = 0;
+    if (field === "credit" && value > 0) updated[index].debit = 0;
     setLines(updated);
   };
 
   const addLine = () => {
-    setLines([...lines, { ledgerAccountId: ledgers[0]?.id || "", debit: 0, credit: 0, particulars: "" }]);
+    setLines([...lines, { ledgerAccountId: ledgers[0]?.id || "", debit: 0, credit: 0 }]);
   };
 
   const removeLine = (index: number) => {
-    if (lines.length <= 2) {
-      alert("A double-entry voucher must have at least 2 lines.");
-      return;
-    }
+    if (lines.length <= 2) return;
     setLines(lines.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!narration.trim()) {
-      setFormError("Narration is required.");
+    if (!isBalanced) {
+      setFormError(`Debits (₹${totalDebit}) and Credits (₹${totalCredit}) must balance.`);
       return;
     }
-    if (!isBalanced) {
-      setFormError(`Debits (₹${totalDebit}) must equal Credits (₹${totalCredit}). Difference: ₹${difference}`);
+    if (!narration.trim()) {
+      setFormError("Narration / Remarks is required.");
       return;
     }
 
@@ -87,31 +82,31 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
       const res = await createJournalEntry({
         voucherType,
         date,
-        narration,
         referenceNumber,
-        lines: lines.filter(l => l.debit > 0 || l.credit > 0)
+        narration,
+        lines: lines.map(l => ({
+          ledgerAccountId: l.ledgerAccountId,
+          debit: parseFloat(l.debit) || 0,
+          credit: parseFloat(l.credit) || 0
+        }))
       });
 
       if (res.success) {
         setShowCreateModal(false);
         setNarration("");
         setReferenceNumber("");
-        setLines([
-          { ledgerAccountId: ledgers[0]?.id || "", debit: 0, credit: 0, particulars: "" },
-          { ledgerAccountId: ledgers[1]?.id || ledgers[0]?.id || "", debit: 0, credit: 0, particulars: "" }
-        ]);
         window.location.reload();
       } else {
-        setFormError(res.error || "Failed to post voucher");
+        setFormError(res.error || "Failed to create voucher");
       }
     } catch (err: any) {
-      setFormError(err.message || "An unexpected error occurred");
+      setFormError(err.message || "An error occurred");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const filteredVouchers = vouchers.filter(v => {
+  const filteredVouchers = voucherList.filter(v => {
     if (selectedType !== "ALL" && v.voucherType !== selectedType) return false;
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -123,51 +118,125 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
       {/* Top Header Controls */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", flex: 1, maxWidth: "450px" }}>
-          <div style={{ position: "relative", width: "100%" }}>
-            <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
-            <input
-              type="text"
-              placeholder="Search voucher #, narration, ref..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="form-input"
-              style={{ paddingLeft: "36px", width: "100%" }}
-            />
-          </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px" }}>
+        
+        {/* System Theme Search Box */}
+        <div 
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            backgroundColor: "#ffffff", 
+            border: "1px solid var(--border, #cbd5e1)", 
+            borderRadius: "9999px", 
+            padding: "9px 18px", 
+            width: "100%", 
+            maxWidth: "440px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+            transition: "all 0.2s ease"
+          }}
+          onFocusCapture={(e) => {
+            e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.15)";
+          }}
+          onBlurCapture={(e) => {
+            e.currentTarget.style.borderColor = "var(--border, #cbd5e1)";
+            e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03)";
+          }}
+        >
+          <Search size={17} style={{ color: "var(--text-muted, #94a3b8)", marginRight: "10px", flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Search voucher #, narration, ref..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              border: "none",
+              background: "transparent",
+              outline: "none",
+              width: "100%",
+              fontSize: "0.875rem",
+              color: "var(--text-primary, #0f172a)",
+              fontFamily: "inherit"
+            }}
+          />
+          {search && (
+            <button 
+              type="button" 
+              onClick={() => setSearch("")} 
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", display: "flex", alignItems: "center" }}
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
 
+        {/* Action Buttons */}
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <button
+            type="button"
             onClick={() => {
               setVoucherType("CONTRA");
               setShowCreateModal(true);
             }}
-            className="action-btn"
-            style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", padding: "8px 14px" }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 18px",
+              borderRadius: "10px",
+              backgroundColor: "#ffffff",
+              border: "1px solid var(--border, #cbd5e1)",
+              color: "var(--text-primary, #334155)",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+              transition: "all 0.15s ease"
+            }}
+            onMouseOver={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--accent-primary, #4f46e5)";
+              (e.currentTarget as HTMLElement).style.color = "var(--accent-primary, #4f46e5)";
+            }}
+            onMouseOut={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--border, #cbd5e1)";
+              (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #334155)";
+            }}
           >
             <ArrowRightLeft size={15} style={{ color: "#0284c7" }} />
             + Contra (Bank/Cash)
           </button>
           <button
+            type="button"
             onClick={() => {
               setVoucherType("JOURNAL");
               setShowCreateModal(true);
             }}
-            className="primary-btn"
-            style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", padding: "8px 16px" }}
+            className="primary-btn hover-lift"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              padding: "10px 20px",
+              borderRadius: "10px",
+              fontSize: "0.875rem",
+              fontWeight: 700,
+              backgroundColor: "var(--accent-primary, #4f46e5)",
+              color: "#ffffff",
+              border: "none",
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.12)"
+            }}
           >
-            <Plus size={16} />
+            <Plus size={17} />
             + Journal Voucher (JV)
           </button>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div style={{ display: "flex", gap: "8px" }}>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
         {[
           { id: "ALL", label: "All Vouchers" },
           { id: "JOURNAL", label: "Journal (JV)" },
@@ -176,61 +245,89 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
           { id: "PURCHASE", label: "Purchase" },
           { id: "RECEIPT", label: "Receipts" },
           { id: "PAYMENT", label: "Payments" }
-        ].map(t => (
-          <button
-            key={t.id}
-            onClick={() => setSelectedType(t.id)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: "20px",
-              border: "1px solid var(--border-color, #e2e8f0)",
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              background: selectedType === t.id ? "var(--primary, #4f46e5)" : "var(--bg-secondary, #f8fafc)",
-              color: selectedType === t.id ? "#fff" : "var(--text-secondary, #64748b)"
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+        ].map(t => {
+          const isSelected = selectedType === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setSelectedType(t.id)}
+              style={{
+                padding: "7px 18px",
+                borderRadius: "9999px",
+                border: `1px solid ${isSelected ? "var(--accent-primary, #4f46e5)" : "var(--border, #e2e8f0)"}`,
+                fontSize: "0.82rem",
+                fontWeight: isSelected ? 700 : 600,
+                cursor: "pointer",
+                background: isSelected ? "var(--accent-primary, #4f46e5)" : "#ffffff",
+                color: isSelected ? "#ffffff" : "var(--text-secondary, #64748b)",
+                boxShadow: isSelected ? "0 2px 5px rgba(0,0,0,0.12)" : "none",
+                transition: "all 0.15s ease"
+              }}
+              onMouseOver={(e) => {
+                if (!isSelected) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "var(--bg-primary, #f8fafc)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #0f172a)";
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!isSelected) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "#ffffff";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-secondary, #64748b)";
+                }
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Vouchers Table */}
-      <div className="glass-panel" style={{ padding: "20px" }}>
+      <div 
+        style={{ 
+          backgroundColor: "#ffffff",
+          border: "1px solid var(--border, #e2e8f0)",
+          borderRadius: "14px",
+          boxShadow: "0 2px 4px rgba(0, 0, 0, 0.03)",
+          overflow: "hidden"
+        }}
+      >
         <div className="table-responsive">
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "var(--bg-secondary, #f8fafc)", textAlign: "left" }}>
-                <th style={{ padding: "10px 12px" }}>Date</th>
-                <th style={{ padding: "10px 12px" }}>Voucher #</th>
-                <th style={{ padding: "10px 12px" }}>Type</th>
-                <th style={{ padding: "10px 12px" }}>Particulars & Splits</th>
-                <th style={{ padding: "10px 12px" }}>Narration</th>
-                <th style={{ padding: "10px 12px", textAlign: "right" }}>Amount (₹)</th>
+              <tr style={{ background: "var(--bg-secondary, #f8fafc)", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
+                <th style={{ padding: "12px 16px", fontSize: "0.82rem", fontWeight: 700, color: "#475569" }}>Date</th>
+                <th style={{ padding: "12px 16px", fontSize: "0.82rem", fontWeight: 700, color: "#475569" }}>Voucher #</th>
+                <th style={{ padding: "12px 16px", fontSize: "0.82rem", fontWeight: 700, color: "#475569" }}>Type</th>
+                <th style={{ padding: "12px 16px", fontSize: "0.82rem", fontWeight: 700, color: "#475569" }}>Particulars & Splits</th>
+                <th style={{ padding: "12px 16px", fontSize: "0.82rem", fontWeight: 700, color: "#475569" }}>Narration</th>
+                <th style={{ padding: "12px 16px", fontSize: "0.82rem", fontWeight: 700, color: "#475569", textAlign: "right" }}>Amount (₹)</th>
               </tr>
             </thead>
             <tbody>
               {filteredVouchers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "30px", color: "var(--text-secondary)" }}>
-                    No journal vouchers recorded yet.
+                  <td colSpan={6} style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-secondary, #64748b)" }}>
+                    <div style={{ fontSize: "1.5rem", marginBottom: "6px" }}>📑</div>
+                    <div style={{ fontWeight: 600 }}>No journal vouchers found.</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--text-muted, #94a3b8)" }}>Create a Journal or Contra voucher to record adjustment entries.</div>
                   </td>
                 </tr>
               ) : (
                 filteredVouchers.map(v => (
                   <tr key={v.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                    <td style={{ padding: "10px 12px", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px 16px", fontSize: "0.85rem", whiteSpace: "nowrap", color: "#334155" }}>
                       {new Date(v.date).toLocaleDateString("en-GB")}
                     </td>
-                    <td style={{ padding: "10px 12px", fontFamily: "monospace", fontWeight: 700, color: "#4f46e5" }}>
+                    <td style={{ padding: "12px 16px", fontFamily: "monospace", fontWeight: 700, color: "var(--accent-primary, #4f46e5)" }}>
                       {v.voucherNumber}
                     </td>
-                    <td style={{ padding: "10px 12px" }}>
+                    <td style={{ padding: "12px 16px" }}>
                       <span style={{
                         fontSize: "0.75rem",
                         fontWeight: 700,
-                        padding: "2px 8px",
+                        padding: "3px 9px",
                         borderRadius: "6px",
                         background: v.voucherType === "JOURNAL" ? "#f3e8ff" : v.voucherType === "CONTRA" ? "#e0f2fe" : v.voucherType === "SALES" ? "#dcfce7" : "#fee2e2",
                         color: v.voucherType === "JOURNAL" ? "#7e22ce" : v.voucherType === "CONTRA" ? "#0369a1" : v.voucherType === "SALES" ? "#15803d" : "#b91c1c"
@@ -238,10 +335,10 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                         {v.voucherType}
                       </span>
                     </td>
-                    <td style={{ padding: "10px 12px", fontSize: "0.85rem" }}>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <td style={{ padding: "12px 16px", fontSize: "0.85rem" }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                         {(v.lines || []).map((l: any, idx: number) => (
-                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", gap: "10px" }}>
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", gap: "12px" }}>
                             <span style={{ color: l.debit > 0 ? "#0f172a" : "#64748b" }}>
                               {l.debit > 0 ? "Dr " : "   To "} <strong>{l.ledgerAccount?.name}</strong>
                             </span>
@@ -252,10 +349,10 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                         ))}
                       </div>
                     </td>
-                    <td style={{ padding: "10px 12px", fontSize: "0.8rem", color: "var(--text-secondary)", maxWidth: "250px" }}>
+                    <td style={{ padding: "12px 16px", fontSize: "0.82rem", color: "var(--text-secondary, #64748b)", maxWidth: "260px" }}>
                       {v.narration || "-"}
                     </td>
-                    <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 800, fontSize: "0.95rem" }}>
+                    <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, fontSize: "0.95rem", color: "#0f172a" }}>
                       ₹{v.totalAmount.toLocaleString()}
                     </td>
                   </tr>
@@ -268,51 +365,77 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
 
       {/* CREATE JOURNAL / CONTRA VOUCHER MODAL */}
       {showCreateModal && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.55)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 1000,
-          padding: "20px"
-        }}>
-          <div className="glass-panel" style={{ width: "100%", maxWidth: "780px", padding: "24px", background: "#fff", maxHeight: "90vh", overflowY: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 700, margin: 0 }}>
-                Post Double-Entry {voucherType === "CONTRA" ? "Contra Voucher" : "Journal Voucher (JV)"}
-              </h2>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div 
+          className="modal-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px 16px"
+          }}
+        >
+          <div 
+            className="animate-in"
+            style={{ 
+              width: "100%", 
+              maxWidth: "800px", 
+              backgroundColor: "#ffffff", 
+              borderRadius: "16px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden"
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                  Post Double-Entry {voucherType === "CONTRA" ? "Contra Voucher" : "Journal Voucher (JV)"}
+                </h2>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 {isBalanced ? (
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "#ecfdf5", color: "#059669", padding: "3px 8px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 700 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "#ecfdf5", color: "#059669", padding: "4px 10px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: 700, border: "1px solid #bbf7d0" }}>
                     <CheckCircle2 size={13} /> BALANCED
                   </span>
                 ) : (
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "#fef2f2", color: "#dc2626", padding: "3px 8px", borderRadius: "12px", fontSize: "0.75rem", fontWeight: 700 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "4px", background: "#fef2f2", color: "#dc2626", padding: "4px 10px", borderRadius: "20px", fontSize: "0.75rem", fontWeight: 700, border: "1px solid #fecaca" }}>
                     <AlertCircle size={13} /> DIFF: ₹{difference}
                   </span>
                 )}
+                <button 
+                  type="button" 
+                  onClick={() => setShowCreateModal(false)}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: "4px" }}
+                >
+                  <X size={18} />
+                </button>
               </div>
             </div>
 
-            {formError && (
-              <div style={{ padding: "8px 12px", background: "#fef2f2", color: "#dc2626", borderRadius: "6px", marginBottom: "12px", fontSize: "0.85rem" }}>
-                {formError}
-              </div>
-            )}
+            <form onSubmit={handleSubmit} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "14px", overflowY: "auto", maxHeight: "calc(90vh - 130px)" }}>
+              {formError && (
+                <div style={{ padding: "10px 14px", background: "#fef2f2", color: "#dc2626", borderRadius: "8px", fontSize: "0.85rem", border: "1px solid #fecaca" }}>
+                  {formError}
+                </div>
+              )}
 
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Voucher Type</label>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Voucher Type</label>
                   <select
                     value={voucherType}
                     onChange={(e) => setVoucherType(e.target.value as any)}
-                    className="form-input"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none", fontWeight: 600 }}
                   >
                     <option value="JOURNAL">Journal Voucher (JV)</option>
                     <option value="CONTRA">Contra (Bank / Cash Deposit / Withdrawal)</option>
@@ -321,23 +444,23 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Voucher Date *</label>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Voucher Date *</label>
                   <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="form-input"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}
                     required
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Reference / Cheque #</label>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Reference / Cheque #</label>
                   <input
                     type="text"
                     placeholder="e.g. CHQ-99120"
                     value={referenceNumber}
                     onChange={(e) => setReferenceNumber(e.target.value)}
-                    className="form-input"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}
                   />
                 </div>
               </div>
@@ -345,14 +468,25 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
               {/* Line Items Split Table */}
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 700, margin: 0 }}>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", margin: 0 }}>
                     Debit & Credit Allocations
                   </label>
                   <button
                     type="button"
                     onClick={addLine}
-                    className="action-btn"
-                    style={{ padding: "4px 10px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "4px" }}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      color: "var(--accent-primary, #4f46e5)",
+                      cursor: "pointer"
+                    }}
                   >
                     <Plus size={13} /> Add Split Row
                   </button>
@@ -362,10 +496,10 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
                     <thead>
                       <tr style={{ background: "#f8fafc", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
-                        <th style={{ padding: "8px 10px" }}>Ledger Account *</th>
-                        <th style={{ padding: "8px 10px", width: "130px", textAlign: "right" }}>Debit (₹)</th>
-                        <th style={{ padding: "8px 10px", width: "130px", textAlign: "right" }}>Credit (₹)</th>
-                        <th style={{ padding: "8px 10px", width: "40px" }}></th>
+                        <th style={{ padding: "10px 12px", fontWeight: 700, color: "#475569" }}>Ledger Account *</th>
+                        <th style={{ padding: "10px 12px", width: "140px", textAlign: "right", fontWeight: 700, color: "#475569" }}>Debit (₹)</th>
+                        <th style={{ padding: "10px 12px", width: "140px", textAlign: "right", fontWeight: 700, color: "#475569" }}>Credit (₹)</th>
+                        <th style={{ padding: "10px 12px", width: "44px" }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -375,8 +509,7 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                             <select
                               value={line.ledgerAccountId}
                               onChange={(e) => handleLineChange(idx, "ledgerAccountId", e.target.value)}
-                              className="form-input"
-                              style={{ width: "100%", padding: "6px" }}
+                              style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: "#fff", outline: "none", fontSize: "0.85rem" }}
                               required
                             >
                               {ledgers.map(l => (
@@ -390,8 +523,7 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                               value={line.debit || ""}
                               onChange={(e) => handleLineChange(idx, "debit", parseFloat(e.target.value) || 0)}
                               placeholder="0.00"
-                              className="form-input"
-                              style={{ textAlign: "right", padding: "6px" }}
+                              style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", textAlign: "right", outline: "none", fontSize: "0.85rem" }}
                               step="0.01"
                             />
                           </td>
@@ -401,8 +533,7 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                               value={line.credit || ""}
                               onChange={(e) => handleLineChange(idx, "credit", parseFloat(e.target.value) || 0)}
                               placeholder="0.00"
-                              className="form-input"
-                              style={{ textAlign: "right", padding: "6px" }}
+                              style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", textAlign: "right", outline: "none", fontSize: "0.85rem" }}
                               step="0.01"
                             />
                           </td>
@@ -420,11 +551,11 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                     </tbody>
                     <tfoot>
                       <tr style={{ background: "#f8fafc", borderTop: "2px solid #e2e8f0", fontWeight: 700 }}>
-                        <td style={{ padding: "10px" }}>TOTALS</td>
-                        <td style={{ padding: "10px", textAlign: "right", color: "#4f46e5" }}>
+                        <td style={{ padding: "10px 12px" }}>TOTALS</td>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--accent-primary, #4f46e5)", fontWeight: 800 }}>
                           ₹{totalDebit.toFixed(2)}
                         </td>
-                        <td style={{ padding: "10px", textAlign: "right", color: "#4f46e5" }}>
+                        <td style={{ padding: "10px 12px", textAlign: "right", color: "var(--accent-primary, #4f46e5)", fontWeight: 800 }}>
                           ₹{totalCredit.toFixed(2)}
                         </td>
                         <td></td>
@@ -435,13 +566,13 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Narration / Remarks *</label>
+                <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Narration / Remarks *</label>
                 <textarea
                   rows={2}
-                  placeholder="e.g. Being cash deposited into ICICI Bank Current A/c against daily sales collection."
+                  placeholder="e.g. Being cash deposited into Bank against daily sales collection."
                   value={narration}
                   onChange={(e) => setNarration(e.target.value)}
-                  className="form-input"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none", fontFamily: "inherit" }}
                   required
                 />
               </div>
@@ -450,8 +581,7 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="action-btn"
-                  style={{ padding: "8px 16px" }}
+                  style={{ padding: "9px 18px", borderRadius: "8px", border: "1px solid #cbd5e1", backgroundColor: "#fff", cursor: "pointer", fontWeight: 600, color: "#475569" }}
                 >
                   Cancel
                 </button>
@@ -459,7 +589,7 @@ export default function VouchersClient({ initialVouchers, ledgers }: Props) {
                   type="submit"
                   disabled={isSaving || !isBalanced}
                   className="primary-btn"
-                  style={{ padding: "8px 22px", opacity: !isBalanced ? 0.6 : 1 }}
+                  style={{ padding: "9px 24px", borderRadius: "8px", fontWeight: 700, backgroundColor: "var(--accent-primary, #4f46e5)", color: "#fff", border: "none", cursor: isBalanced ? "pointer" : "not-allowed", opacity: !isBalanced ? 0.6 : 1 }}
                 >
                   {isSaving ? "Posting..." : "Post Voucher"}
                 </button>

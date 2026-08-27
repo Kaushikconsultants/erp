@@ -26,7 +26,7 @@ export default async function AgeingPage() {
       <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Clock className="text-indigo-600" /> Outstanding Ageing Analysis (0-30, 31-60, 61-90, &gt;90 Days)
+            <Clock style={{ color: "var(--accent-primary, #4f46e5)" }} /> Outstanding Ageing Analysis (0-30, 31-60, 61-90, &gt;90 Days)
           </h1>
           <p className="page-subtitle">
             Track receivables from sundry debtors and payables to sundry creditors with overdue timeframes and bill-by-bill drilldown.

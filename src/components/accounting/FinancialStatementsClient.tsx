@@ -160,11 +160,12 @@ export default function FinancialStatementsClient({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
       {/* Top Controls & Navigation */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-        <div style={{ display: "flex", gap: "8px", background: "var(--bg-secondary, #f1f5f9)", padding: "4px", borderRadius: "10px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px" }}>
+        <div style={{ display: "flex", gap: "6px", background: "#ffffff", padding: "6px", borderRadius: "12px", border: "1px solid var(--border, #e2e8f0)", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)" }}>
           <button
+            type="button"
             onClick={() => setActiveTab("bs")}
             style={{
               display: "flex",
@@ -174,17 +175,19 @@ export default function FinancialStatementsClient({
               borderRadius: "8px",
               border: "none",
               cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              background: activeTab === "bs" ? "var(--primary, #4f46e5)" : "transparent",
+              fontWeight: activeTab === "bs" ? 700 : 600,
+              fontSize: "0.85rem",
+              background: activeTab === "bs" ? "var(--accent-primary, #4f46e5)" : "transparent",
               color: activeTab === "bs" ? "#fff" : "var(--text-secondary, #64748b)",
-              transition: "all 0.2s"
+              boxShadow: activeTab === "bs" ? "0 2px 6px rgba(0, 0, 0, 0.12)" : "none",
+              transition: "all 0.15s ease"
             }}
           >
             <Scale size={16} />
             Balance Sheet
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("pl")}
             style={{
               display: "flex",
@@ -194,17 +197,19 @@ export default function FinancialStatementsClient({
               borderRadius: "8px",
               border: "none",
               cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              background: activeTab === "pl" ? "var(--primary, #4f46e5)" : "transparent",
+              fontWeight: activeTab === "pl" ? 700 : 600,
+              fontSize: "0.85rem",
+              background: activeTab === "pl" ? "var(--accent-primary, #4f46e5)" : "transparent",
               color: activeTab === "pl" ? "#fff" : "var(--text-secondary, #64748b)",
-              transition: "all 0.2s"
+              boxShadow: activeTab === "pl" ? "0 2px 6px rgba(0, 0, 0, 0.12)" : "none",
+              transition: "all 0.15s ease"
             }}
           >
             <TrendingUp size={16} />
             Profit & Loss
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab("tb")}
             style={{
               display: "flex",
@@ -214,11 +219,12 @@ export default function FinancialStatementsClient({
               borderRadius: "8px",
               border: "none",
               cursor: "pointer",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              background: activeTab === "tb" ? "var(--primary, #4f46e5)" : "transparent",
+              fontWeight: activeTab === "tb" ? 700 : 600,
+              fontSize: "0.85rem",
+              background: activeTab === "tb" ? "var(--accent-primary, #4f46e5)" : "transparent",
               color: activeTab === "tb" ? "#fff" : "var(--text-secondary, #64748b)",
-              transition: "all 0.2s"
+              boxShadow: activeTab === "tb" ? "0 2px 6px rgba(0, 0, 0, 0.12)" : "none",
+              transition: "all 0.15s ease"
             }}
           >
             <FileSpreadsheet size={16} />
@@ -228,19 +234,63 @@ export default function FinancialStatementsClient({
 
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <button
+            type="button"
             onClick={exportStatementCSV}
-            className="action-btn"
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", fontSize: "0.875rem" }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              padding: "9px 16px",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              backgroundColor: "#ffffff",
+              border: "1px solid var(--border, #cbd5e1)",
+              borderRadius: "10px",
+              color: "var(--text-primary, #334155)",
+              cursor: "pointer",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              transition: "all 0.15s ease"
+            }}
+            onMouseOver={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--accent-primary, #4f46e5)";
+              (e.currentTarget as HTMLElement).style.color = "var(--accent-primary, #4f46e5)";
+            }}
+            onMouseOut={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--border, #cbd5e1)";
+              (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #334155)";
+            }}
           >
-            <Download size={15} />
+            <Download size={15} style={{ color: "var(--accent-primary, #4f46e5)" }} />
             Export CSV
           </button>
           <button
+            type="button"
             onClick={() => window.print()}
-            className="action-btn"
-            style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", fontSize: "0.875rem" }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              padding: "9px 16px",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              backgroundColor: "#ffffff",
+              border: "1px solid var(--border, #cbd5e1)",
+              borderRadius: "10px",
+              color: "var(--text-primary, #334155)",
+              cursor: "pointer",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              transition: "all 0.15s ease"
+            }}
+            onMouseOver={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--accent-primary, #4f46e5)";
+              (e.currentTarget as HTMLElement).style.color = "var(--accent-primary, #4f46e5)";
+            }}
+            onMouseOut={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--border, #cbd5e1)";
+              (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #334155)";
+            }}
           >
-            <Printer size={15} />
+            <Printer size={15} style={{ color: "var(--accent-primary, #4f46e5)" }} />
             Print
           </button>
         </div>
@@ -288,7 +338,7 @@ export default function FinancialStatementsClient({
 
               {/* Capital & Reserves */}
               <div>
-                <div style={{ fontWeight: 700, color: "#4f46e5", marginBottom: "8px", fontSize: "0.9rem" }}>
+                <div style={{ fontWeight: 700, color: "var(--accent-primary, #4f46e5)", marginBottom: "8px", fontSize: "0.9rem" }}>
                   1. Shareholders' / Owner's Funds
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px", paddingLeft: "12px" }}>
@@ -300,7 +350,7 @@ export default function FinancialStatementsClient({
                   ))}
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.875rem", fontWeight: 700, paddingTop: "4px", borderTop: "1px dashed #cbd5e1" }}>
                     <span>Total Owner's Funds</span>
-                    <span style={{ color: "#4f46e5" }}>₹{balanceSheetData.liabilities.totalEquity.toLocaleString()}</span>
+                    <span style={{ color: "var(--accent-primary, #4f46e5)" }}>₹{balanceSheetData.liabilities.totalEquity.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -589,10 +639,10 @@ export default function FinancialStatementsClient({
                 <tfoot>
                   <tr style={{ background: "var(--bg-secondary, #f8fafc)", borderTop: "2px solid #334155", fontWeight: 800, fontSize: "0.95rem" }}>
                     <td colSpan={4} style={{ padding: "12px" }}>GRAND TOTAL</td>
-                    <td style={{ padding: "12px", textAlign: "right", color: "#4f46e5" }}>
+                    <td style={{ padding: "12px", textAlign: "right", color: "var(--accent-primary, #4f46e5)" }}>
                       ₹{trialBalanceData.totalDebit.toLocaleString()}
                     </td>
-                    <td style={{ padding: "12px", textAlign: "right", color: "#4f46e5" }}>
+                    <td style={{ padding: "12px", textAlign: "right", color: "var(--accent-primary, #4f46e5)" }}>
                       ₹{trialBalanceData.totalCredit.toLocaleString()}
                     </td>
                   </tr>

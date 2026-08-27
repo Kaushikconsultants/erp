@@ -181,16 +181,99 @@ button {
 }
 
 .primary-btn {
-  background-color: var(--accent-primary);
-  color: white;
+  background-color: var(--accent-primary, #4f46e5);
+  color: #ffffff;
   padding: 10px 20px;
-  border-radius: var(--radius-md);
-  font-weight: 600;
+  border-radius: 10px;
+  font-weight: 700;
   font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+  font-family: inherit;
 }
 
 .primary-btn:hover {
-  background-color: var(--accent-primary-hover);
+  background-color: var(--accent-primary-hover, #4338ca);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  transform: translateY(-1px);
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background-color: #ffffff;
+  border: 1px solid var(--border, #cbd5e1);
+  color: var(--text-primary, #334155);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent-primary, #4f46e5);
+  color: var(--accent-primary, #4f46e5);
+  background-color: var(--bg-primary, #f8fafc);
+  transform: translateY(-1px);
+}
+
+.search-box-theme {
+  display: flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: var(--radius-full, 9999px);
+  padding: 9px 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: var(--transition, all 0.2s ease);
+}
+
+.search-box-theme:focus-within {
+  border-color: var(--accent-primary, #4f46e5);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+  background-color: #ffffff;
+}
+
+.search-box-theme input {
+  border: none;
+  background: transparent;
+  outline: none;
+  width: 100%;
+  font-size: 0.875rem;
+  color: var(--text-primary, #0f172a);
+  font-family: inherit;
+}
+
+.search-box-theme .search-icon {
+  color: var(--text-muted, #94a3b8);
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.hover-lift {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .table-responsive {

@@ -21,7 +21,7 @@ export default async function ChartOfAccountsPage() {
       <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <FolderTree className="text-indigo-600" /> Chart of Accounts & General Ledgers
+            <FolderTree style={{ color: "var(--accent-primary, #4f46e5)" }} /> Chart of Accounts & General Ledgers
           </h1>
           <p className="page-subtitle">
             Hierarchical master of Assets, Liabilities, Incomes, and Expenses with real-time double-entry balances.

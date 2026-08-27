@@ -133,62 +133,68 @@ export default function CustomerLedgerClient({ initialData, customerId }: Custom
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
+            type="button"
             onClick={handleExportCSV}
             style={{
-              padding: '6px 12px',
-              borderRadius: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
               border: '1px solid #cbd5e1',
               backgroundColor: '#ffffff',
               color: '#334155',
-              fontSize: '0.78rem',
-              fontWeight: 500,
+              fontSize: '0.82rem',
+              fontWeight: 600,
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
             }}
           >
-            <FileSpreadsheet size={14} color="#059669" /> Export Excel/CSV
+            <FileSpreadsheet size={15} style={{ color: "var(--accent-primary, #4f46e5)" }} /> Export Excel/CSV
           </button>
 
           <button
+            type="button"
             onClick={handleWhatsAppShare}
             style={{
-              padding: '6px 12px',
-              borderRadius: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
               border: 'none',
               backgroundColor: '#25D366',
               color: '#ffffff',
-              fontSize: '0.78rem',
-              fontWeight: 500,
+              fontSize: '0.82rem',
+              fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(37, 211, 102, 0.2)'
             }}
           >
-            <MessageSquare size={14} /> Send on WhatsApp
+            <MessageSquare size={15} /> Send on WhatsApp
           </button>
 
           <button
+            type="button"
             onClick={handlePrint}
+            className="primary-btn hover-lift"
             style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
+              padding: '8px 16px',
+              borderRadius: '8px',
               border: 'none',
-              backgroundColor: '#1e293b',
+              backgroundColor: 'var(--accent-primary, #4f46e5)',
               color: '#ffffff',
-              fontSize: '0.78rem',
-              fontWeight: 500,
+              fontSize: '0.82rem',
+              fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
               cursor: 'pointer'
             }}
           >
-            <Printer size={14} /> Print / Save PDF
+            <Printer size={15} /> Print / Save PDF
           </button>
         </div>
       </div>
@@ -316,7 +322,7 @@ export default function CustomerLedgerClient({ initialData, customerId }: Custom
                     <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', color: '#475569' }}>
                       {new Date(tx.date).toLocaleDateString('en-IN')}
                     </td>
-                    <td style={{ padding: '9px 12px', fontWeight: 500, color: '#2563eb' }}>
+                    <td style={{ padding: '9px 12px', fontWeight: 600, color: 'var(--accent-primary, #4f46e5)' }}>
                       {tx.voucherNumber}
                     </td>
                     <td style={{ padding: '9px 12px', color: '#1e293b' }}>

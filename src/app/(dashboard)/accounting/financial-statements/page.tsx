@@ -46,7 +46,7 @@ export default async function FinancialStatementsPage() {
       <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Scale className="text-indigo-600" /> Statutory Financial Statements
+            <Scale style={{ color: "var(--accent-primary, #4f46e5)" }} /> Statutory Financial Statements
           </h1>
           <p className="page-subtitle">
             Schedule III Balance Sheet, Trading & Profit and Loss Account, and Double-Entry Trial Balance.

@@ -38,7 +38,7 @@ export default async function BankReconciliationPage() {
       <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Landmark className="text-indigo-600" /> Bank Reconciliation Statement (BRS)
+            <Landmark style={{ color: "var(--accent-primary, #4f46e5)" }} /> Bank Reconciliation Statement (BRS)
           </h1>
           <p className="page-subtitle">
             Match ledger book balances against bank statements, track unpresented cheques, and verify cleared deposits.

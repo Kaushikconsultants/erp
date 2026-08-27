@@ -15,7 +15,8 @@ import {
   FileText,
   ChevronRight,
   ChevronDown,
-  ExternalLink
+  ExternalLink,
+  X
 } from "lucide-react";
 import { createLedgerAccount, syncSystemLedgers } from "@/app/actions/accountingActions";
 
@@ -110,96 +111,202 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      {/* Action Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center", flex: 1, maxWidth: "500px" }}>
-          <div style={{ position: "relative", width: "100%" }}>
-            <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
-            <input
-              type="text"
-              placeholder="Search groups or ledger accounts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="form-input"
-              style={{ paddingLeft: "36px", width: "100%" }}
-            />
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
+      {/* Action Header & Search Bar */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px" }}>
+        
+        {/* System Theme Search Box */}
+        <div 
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            backgroundColor: "#ffffff", 
+            border: "1px solid var(--border, #cbd5e1)", 
+            borderRadius: "9999px", 
+            padding: "9px 18px", 
+            width: "100%", 
+            maxWidth: "460px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
+            transition: "all 0.2s ease"
+          }}
+          onFocusCapture={(e) => {
+            e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.15)";
+          }}
+          onBlurCapture={(e) => {
+            e.currentTarget.style.borderColor = "var(--border, #cbd5e1)";
+            e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03)";
+          }}
+        >
+          <Search size={17} style={{ color: "var(--text-muted, #94a3b8)", marginRight: "10px", flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Search groups or ledger accounts..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              border: "none",
+              background: "transparent",
+              outline: "none",
+              width: "100%",
+              fontSize: "0.875rem",
+              color: "var(--text-primary, #0f172a)",
+              fontFamily: "inherit"
+            }}
+          />
+          {searchTerm && (
+            <button 
+              type="button" 
+              onClick={() => setSearchTerm("")} 
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", display: "flex", alignItems: "center" }}
+            >
+              <X size={15} />
+            </button>
+          )}
         </div>
 
+        {/* Buttons */}
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
           <button
+            type="button"
             onClick={handleSync}
             disabled={isSyncing}
-            className="action-btn"
-            style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", padding: "8px 14px" }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 18px",
+              borderRadius: "10px",
+              backgroundColor: "#ffffff",
+              border: "1px solid var(--border, #cbd5e1)",
+              color: "var(--text-primary, #334155)",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+              transition: "all 0.15s ease"
+            }}
+            onMouseOver={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--accent-primary, #4f46e5)";
+              (e.currentTarget as HTMLElement).style.color = "var(--accent-primary, #4f46e5)";
+            }}
+            onMouseOut={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--border, #cbd5e1)";
+              (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #334155)";
+            }}
           >
-            <RefreshCw size={15} className={isSyncing ? "animate-spin" : ""} />
+            <RefreshCw size={15} className={isSyncing ? "animate-spin" : ""} style={{ color: "var(--accent-primary, #4f46e5)" }} />
             {isSyncing ? "Syncing..." : "Sync Ledgers with CRM/ERP"}
           </button>
 
           <button
+            type="button"
             onClick={() => setShowCreateModal(true)}
-            className="primary-btn"
-            style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.875rem", padding: "8px 16px" }}
+            className="primary-btn hover-lift"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              padding: "10px 20px",
+              borderRadius: "10px",
+              fontSize: "0.875rem",
+              fontWeight: 700,
+              backgroundColor: "var(--accent-primary, #4f46e5)",
+              color: "#ffffff",
+              border: "none",
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(0, 0, 0, 0.12)"
+            }}
           >
-            <Plus size={16} />
+            <Plus size={17} />
             Create Ledger
           </button>
         </div>
       </div>
 
       {syncMessage && (
-        <div style={{ padding: "10px 14px", background: "#ecfdf5", color: "#059669", borderRadius: "8px", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ padding: "12px 16px", background: "#ecfdf5", color: "#059669", borderRadius: "10px", border: "1px solid #bbf7d0", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "8px", fontWeight: 600 }}>
           <CheckCircle2 size={16} />
           {syncMessage}
         </div>
       )}
 
       {/* Nature Filter Pills */}
-      <div style={{ display: "flex", gap: "8px" }}>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
         {[
           { id: "ALL", label: "All Groups" },
           { id: "ASSET", label: "Assets" },
           { id: "LIABILITY", label: "Liabilities" },
           { id: "INCOME", label: "Income" },
           { id: "EXPENSE", label: "Expenses" }
-        ].map(pill => (
-          <button
-            key={pill.id}
-            onClick={() => setSelectedNature(pill.id)}
-            style={{
-              padding: "6px 14px",
-              borderRadius: "20px",
-              border: "1px solid var(--border-color, #e2e8f0)",
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              cursor: "pointer",
-              background: selectedNature === pill.id ? "var(--primary, #4f46e5)" : "var(--bg-secondary, #f8fafc)",
-              color: selectedNature === pill.id ? "#fff" : "var(--text-secondary, #64748b)"
-            }}
-          >
-            {pill.label}
-          </button>
-        ))}
+        ].map(pill => {
+          const isSelected = selectedNature === pill.id;
+          return (
+            <button
+              key={pill.id}
+              type="button"
+              onClick={() => setSelectedNature(pill.id)}
+              style={{
+                padding: "7px 18px",
+                borderRadius: "9999px",
+                border: `1px solid ${isSelected ? "var(--accent-primary, #4f46e5)" : "var(--border, #e2e8f0)"}`,
+                fontSize: "0.82rem",
+                fontWeight: isSelected ? 700 : 600,
+                cursor: "pointer",
+                background: isSelected ? "var(--accent-primary, #4f46e5)" : "#ffffff",
+                color: isSelected ? "#ffffff" : "var(--text-secondary, #64748b)",
+                boxShadow: isSelected ? "0 2px 5px rgba(0,0,0,0.12)" : "none",
+                transition: "all 0.15s ease"
+              }}
+              onMouseOver={(e) => {
+                if (!isSelected) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "var(--bg-primary, #f8fafc)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #0f172a)";
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!isSelected) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "#ffffff";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-secondary, #64748b)";
+                }
+              }}
+            >
+              {pill.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Groups & Ledgers Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: "16px" }}>
+      {/* Groups & Ledgers Cards Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: "18px" }}>
         {filteredGroups.map(group => (
-          <div key={group.id} className="glass-panel" style={{ padding: "18px", display: "flex", flexDirection: "column", gap: "12px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: "8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <FolderTree size={18} style={{ color: "var(--primary, #4f46e5)" }} />
+          <div 
+            key={group.id} 
+            style={{ 
+              backgroundColor: "#ffffff",
+              border: "1px solid var(--border, #e2e8f0)",
+              borderRadius: "14px",
+              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.03)",
+              padding: "20px", 
+              display: "flex", 
+              flexDirection: "column", 
+              gap: "14px" 
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ padding: "8px", borderRadius: "8px", backgroundColor: "var(--accent-light, #eef2ff)", color: "var(--accent-primary, #4f46e5)" }}>
+                  <FolderTree size={18} />
+                </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700 }}>{group.name}</h3>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Code: {group.code || "-"}</span>
+                  <h3 style={{ margin: 0, fontSize: "0.98rem", fontWeight: 700, color: "var(--text-primary, #0f172a)" }}>{group.name}</h3>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)" }}>Code: {group.code || "-"}</span>
                 </div>
               </div>
               <span style={{
                 fontSize: "0.75rem",
                 fontWeight: 700,
-                padding: "2px 8px",
+                padding: "3px 10px",
                 borderRadius: "6px",
                 background: group.nature === "ASSET" ? "#e0f2fe" : group.nature === "LIABILITY" ? "#fef3c7" : group.nature === "INCOME" ? "#dcfce7" : "#fee2e2",
                 color: group.nature === "ASSET" ? "#0369a1" : group.nature === "LIABILITY" ? "#92400e" : group.nature === "INCOME" ? "#15803d" : "#b91c1c"
@@ -211,7 +318,7 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
             {/* Ledgers inside this group */}
             <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "240px", overflowY: "auto" }}>
               {(!group.ledgers || group.ledgers.length === 0) ? (
-                <div style={{ color: "var(--text-secondary)", fontSize: "0.8rem", fontStyle: "italic", padding: "8px 0" }}>
+                <div style={{ color: "var(--text-muted, #94a3b8)", fontSize: "0.82rem", fontStyle: "italic", padding: "12px 0", textAlign: "center" }}>
                   No active ledgers in this group.
                 </div>
               ) : (
@@ -231,39 +338,42 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        padding: "6px 10px",
-                        background: "var(--bg-secondary, #f8fafc)",
-                        borderRadius: "6px",
-                        fontSize: "0.85rem"
+                        padding: "8px 12px",
+                        background: "var(--bg-primary, #f8fafc)",
+                        borderRadius: "8px",
+                        border: "1px solid #f1f5f9",
+                        fontSize: "0.85rem",
+                        transition: "all 0.15s ease"
                       }}
                     >
-                      <div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
                         {targetLink ? (
                           <Link
                             href={targetLink}
                             style={{
-                              fontWeight: 600,
-                              color: "#4f46e5",
+                              fontWeight: 700,
+                              color: "var(--accent-primary, #4f46e5)",
                               textDecoration: "none",
                               display: "inline-flex",
                               alignItems: "center",
                               gap: "4px"
                             }}
                           >
-                            {ledger.name} <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                            <span>{ledger.name}</span>
+                            <ExternalLink size={12} style={{ opacity: 0.7 }} />
                           </Link>
                         ) : (
-                          <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{ledger.name}</div>
+                          <div style={{ fontWeight: 700, color: "var(--text-primary, #0f172a)" }}>{ledger.name}</div>
                         )}
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                        <div style={{ fontSize: "0.74rem", color: "var(--text-secondary, #64748b)" }}>
                           {ledger.code} {ledger.partyType ? `• ${ledger.partyType}` : ""}
                         </div>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                      <div style={{ textAlign: "right", marginLeft: "12px", flexShrink: 0 }}>
+                        <div style={{ fontWeight: 800, color: "#0f172a" }}>
                           ₹{(ledger.currentBalance || ledger.openingBalance || 0).toLocaleString()}
                         </div>
-                        <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>
+                        <span style={{ fontSize: "0.72rem", fontWeight: 600, color: ledger.openingType === "CREDIT" ? "#16a34a" : "var(--accent-primary, #4f46e5)" }}>
                           {ledger.openingType === "CREDIT" ? "Cr" : "Dr"}
                         </span>
                       </div>
@@ -278,47 +388,76 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
 
       {/* CREATE LEDGER MODAL */}
       {showCreateModal && (
-        <div style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: "rgba(0,0,0,0.5)",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 1000,
-          padding: "20px"
-        }}>
-          <div className="glass-panel" style={{ width: "100%", maxWidth: "520px", padding: "24px", background: "#fff", maxHeight: "90vh", overflowY: "auto" }}>
-            <h2 style={{ fontSize: "1.25rem", fontWeight: 700, marginBottom: "16px" }}>Create New Ledger Account</h2>
-            
-            {formError && (
-              <div style={{ padding: "8px 12px", background: "#fef2f2", color: "#dc2626", borderRadius: "6px", marginBottom: "12px", fontSize: "0.85rem" }}>
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateLedger} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <div 
+          className="modal-backdrop"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px 16px"
+          }}
+        >
+          <div 
+            className="animate-in"
+            style={{ 
+              width: "100%", 
+              maxWidth: "560px", 
+              backgroundColor: "#ffffff", 
+              borderRadius: "16px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden"
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Ledger Name *</label>
+                <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0, color: "#0f172a" }}>Create New Ledger Account</h2>
+                <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#64748b" }}>Add a general ledger, customer/vendor account, or bank ledger.</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowCreateModal(false)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: "4px" }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreateLedger} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "14px", overflowY: "auto", maxHeight: "calc(90vh - 130px)" }}>
+              {formError && (
+                <div style={{ padding: "10px 14px", background: "#fef2f2", color: "#dc2626", borderRadius: "8px", fontSize: "0.85rem", border: "1px solid #fecaca" }}>
+                  {formError}
+                </div>
+              )}
+
+              <div>
+                <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Ledger Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. HDFC Bank Current A/c or Office Stationery"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="form-input"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}
                   required
                 />
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Parent Account Group *</label>
+                <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Parent Account Group *</label>
                 <select
                   value={formData.accountGroupId}
                   onChange={(e) => setFormData({ ...formData, accountGroupId: e.target.value })}
-                  className="form-input"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none", fontWeight: 600 }}
                   required
                 >
                   {groups.map(g => (
@@ -327,23 +466,23 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
                 </select>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Ledger Code</label>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Ledger Code</label>
                   <input
                     type="text"
                     placeholder="e.g. BANK_HDFC"
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    className="form-input"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Party / Account Type</label>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Party / Account Type</label>
                   <select
                     value={formData.partyType}
                     onChange={(e) => setFormData({ ...formData, partyType: e.target.value })}
-                    className="form-input"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none", fontWeight: 600 }}
                   >
                     <option value="GENERAL">General Ledger</option>
                     <option value="BANK">Bank Account</option>
@@ -356,23 +495,23 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "12px" }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Opening Balance (₹)</label>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Opening Balance (₹)</label>
                   <input
                     type="number"
                     value={formData.openingBalance}
                     onChange={(e) => setFormData({ ...formData, openingBalance: parseFloat(e.target.value) || 0 })}
-                    className="form-input"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}
                     step="0.01"
                   />
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Type</label>
+                  <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Type</label>
                   <select
                     value={formData.openingType}
                     onChange={(e) => setFormData({ ...formData, openingType: e.target.value as any })}
-                    className="form-input"
+                    style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none", fontWeight: 600 }}
                   >
                     <option value="DEBIT">Debit (Dr)</option>
                     <option value="CREDIT">Credit (Cr)</option>
@@ -381,36 +520,35 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
               </div>
 
               {formData.partyType === "BANK" && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                   <div>
-                    <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Bank Account No.</label>
+                    <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Bank Account No.</label>
                     <input
                       type="text"
                       placeholder="Account Number"
                       value={formData.bankAccountNumber}
                       onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
-                      className="form-input"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}
                     />
                   </div>
                   <div>
-                    <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>IFSC Code</label>
+                    <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>IFSC Code</label>
                     <input
                       type="text"
                       placeholder="e.g. HDFC0001234"
                       value={formData.ifscCode}
                       onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value })}
-                      className="form-input"
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}
                     />
                   </div>
                 </div>
               )}
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}>
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="action-btn"
-                  style={{ padding: "8px 16px" }}
+                  style={{ padding: "9px 18px", borderRadius: "8px", border: "1px solid #cbd5e1", backgroundColor: "#fff", cursor: "pointer", fontWeight: 600, color: "#475569" }}
                 >
                   Cancel
                 </button>
@@ -418,7 +556,7 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
                   type="submit"
                   disabled={isSaving}
                   className="primary-btn"
-                  style={{ padding: "8px 20px" }}
+                  style={{ padding: "9px 24px", borderRadius: "8px", fontWeight: 700, backgroundColor: "var(--accent-primary, #4f46e5)", color: "#fff", border: "none", cursor: "pointer" }}
                 >
                   {isSaving ? "Saving..." : "Create Ledger"}
                 </button>

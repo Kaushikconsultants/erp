@@ -57,11 +57,14 @@ export default function AccountingSubNav() {
         alignItems: "center",
         gap: "6px",
         overflowX: "auto",
-        padding: "4px",
-        background: "var(--bg-secondary, #f1f5f9)",
-        borderRadius: "10px",
-        marginBottom: "20px",
-        maxWidth: "100%"
+        padding: "6px",
+        background: "#ffffff",
+        border: "1px solid var(--border, #e2e8f0)",
+        borderRadius: "12px",
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.04)",
+        marginBottom: "22px",
+        maxWidth: "100%",
+        scrollbarWidth: "none"
       }}
     >
       {navItems.map(item => {
@@ -77,30 +80,43 @@ export default function AccountingSubNav() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "6px",
-              padding: "7px 14px",
+              gap: "7px",
+              padding: "8px 16px",
               borderRadius: "8px",
               textDecoration: "none",
-              fontSize: "0.825rem",
-              fontWeight: isActive ? 700 : 500,
+              fontSize: "0.84rem",
+              fontWeight: isActive ? 700 : 600,
               whiteSpace: "nowrap",
               transition: "all 0.15s ease",
-              background: isActive ? "var(--primary, #4f46e5)" : "transparent",
-              color: isActive ? "#ffffff" : "var(--text-secondary, #475569)",
-              boxShadow: isActive ? "0 1px 3px rgba(79, 70, 229, 0.25)" : "none"
+              background: isActive ? "var(--accent-primary, #4f46e5)" : "transparent",
+              color: isActive ? "#ffffff" : "var(--text-secondary, #64748b)",
+              boxShadow: isActive ? "0 2px 6px rgba(0, 0, 0, 0.12)" : "none"
+            }}
+            onMouseOver={(e) => {
+              if (!isActive) {
+                (e.currentTarget as HTMLElement).style.backgroundColor = "var(--bg-primary, #f8f9fc)";
+                (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #0f172a)";
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isActive) {
+                (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
+                (e.currentTarget as HTMLElement).style.color = "var(--text-secondary, #64748b)";
+              }
             }}
           >
-            <Icon size={15} />
+            <Icon size={16} />
             <span>{item.label}</span>
             {item.badge && (
               <span
                 style={{
                   fontSize: "9px",
-                  fontWeight: 700,
-                  padding: "1px 5px",
+                  fontWeight: 800,
+                  padding: "1px 6px",
                   borderRadius: "6px",
                   background: isActive ? "rgba(255, 255, 255, 0.25)" : "#e2e8f0",
-                  color: isActive ? "#ffffff" : "#475569"
+                  color: isActive ? "#ffffff" : "#475569",
+                  letterSpacing: "0.02em"
                 }}
               >
                 {item.badge}

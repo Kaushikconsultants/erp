@@ -26,7 +26,7 @@ export default async function VouchersPage() {
       <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <FileText className="text-indigo-600" /> Journal & Contra Vouchers
+            <FileText style={{ color: "var(--accent-primary, #4f46e5)" }} /> Journal & Contra Vouchers
           </h1>
           <p className="page-subtitle">
             Post double-entry journal vouchers, inter-bank contras, and view chronological audit trails.

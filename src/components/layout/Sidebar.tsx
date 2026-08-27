@@ -368,7 +368,7 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.accounting ? 'is-open' : ''} ${isAccountingActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <Scale size={18} style={{ color: isAccountingActive ? '#4f46e5' : '#64748b' }} />
+                <Scale size={18} style={{ color: isAccountingActive ? 'var(--accent-primary, #4f46e5)' : '#64748b' }} />
                 <span>ACCOUNTING & LEDGERS</span>
               </div>
               <div className="category-chevron">
@@ -379,14 +379,14 @@ const Sidebar = ({
             {openCategories.accounting && (
               <div className="category-sub-list">
                 <Link href="/accounting" onClick={onClose} className={`category-sub-item ${pathname === '/accounting' ? 'active' : ''}`}>
-                  <LayoutDashboard size={16} style={{ color: '#4f46e5' }} />
+                  <LayoutDashboard size={16} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
                   <span>Accounting Overview</span>
                 </Link>
 
                 <Link href="/accounting/financial-statements" onClick={onClose} className={`category-sub-item ${isActive('/accounting/financial-statements') ? 'active' : ''}`}>
-                  <Scale size={16} style={{ color: '#4f46e5' }} />
+                  <Scale size={16} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
                   <span>Financial Statements</span>
-                  <span style={{ marginLeft: 'auto', background: '#e0e7ff', color: '#4338ca', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>P&L/BS</span>
+                  <span style={{ marginLeft: 'auto', background: 'var(--accent-light, #e0e7ff)', color: 'var(--accent-primary, #4f46e5)', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>P&L/BS</span>
                 </Link>
 
                 <Link href="/accounting/chart-of-accounts" onClick={onClose} className={`category-sub-item ${isActive('/accounting/chart-of-accounts') ? 'active' : ''}`}>
@@ -422,7 +422,7 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.hrms ? 'is-open' : ''} ${isHrmsActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <Banknote size={18} style={{ color: isHrmsActive ? '#4f46e5' : '#64748b' }} />
+                <Banknote size={18} style={{ color: isHrmsActive ? 'var(--accent-primary, #4f46e5)' : '#64748b' }} />
                 <span>HRMS</span>
               </div>
               <div className="category-chevron">
