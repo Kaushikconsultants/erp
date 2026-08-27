@@ -26,18 +26,36 @@ export default async function PurchasesPage() {
 
   const vendors = await prisma.vendor.findMany({
     where: { organizationId: orgId, status: 'Active' },
-    select: { id: true, companyName: true },
+    select: { 
+      id: true, 
+      companyName: true, 
+      contactPerson: true, 
+      mobile: true, 
+      email: true, 
+      gstNumber: true, 
+      paymentTerms: true,
+      address: true,
+      city: true,
+      state: true
+    },
     orderBy: { companyName: 'asc' }
   });
 
   const products = await prisma.product.findMany({
     where: { organizationId: orgId, status: 'Active' },
-    select: { id: true, name: true, sku: true, sellingPrice: true },
+    select: { 
+      id: true, 
+      name: true, 
+      sku: true, 
+      sellingPrice: true, 
+      purchasePrice: true, 
+      category: true 
+    },
     orderBy: { name: 'asc' }
   });
 
   return (
-    <div className="page-container" style={{ padding: '24px' }}>
+    <div className="page-container" style={{ padding: '24px', maxWidth: '1440px', margin: '0 auto' }}>
       <PurchasesClient
         initialOrders={JSON.parse(JSON.stringify(orders))}
         vendors={vendors}

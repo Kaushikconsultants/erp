@@ -241,7 +241,7 @@ export default function ExpensesClient({
           }}
         >
           <Plus size={18} />
-          <span>+ Submit Expense Claim</span>
+          <span>Submit Expense Claim</span>
         </button>
       </div>
 

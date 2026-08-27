@@ -99,16 +99,18 @@
 
 .modal-body .form-group {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 12px;
 }
 
 .modal-body .form-group label {
-  width: 150px;
-  padding-top: 10px;
-  flex-shrink: 0;
-  font-weight: 500;
-  font-size: 0.875rem;
-  color: #475569;
+  width: auto;
+  padding-top: 0;
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #334155;
 }
 
 .modal-body .form-group input,
