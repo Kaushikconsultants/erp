@@ -20,6 +20,7 @@ import {
   KeyRound,
   ShieldCheck,
   MapPin,
+  Warehouse,
   Crown,
   ChevronRight,
   Sliders,
@@ -172,6 +173,15 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
       iconBg: "#ecfeff",
       iconColor: "#0891b2",
       href: "/settings/territories"
+    },
+    {
+      label: "Warehouse & Stock Locations",
+      desc: "Storage hubs, dispatch depots, stock points & inventory facilities",
+      icon: <Warehouse size={18} />,
+      iconBg: "#ecfdf5",
+      iconColor: "#059669",
+      href: "/settings/warehouses",
+      badge: "Storage Hubs"
     },
     ...(isPlatformOwner
       ? [
@@ -380,7 +390,7 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
         {renderSection(
           "Security, Access & Territory",
           "RBAC permissions, audit timeline & territory zones",
-          isPlatformOwner ? "4 Settings" : "3 Settings",
+          `${securitySettings.length} Settings`,
           "#fffbeb",
           "#d97706",
           securitySettings

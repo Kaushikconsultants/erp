@@ -78,11 +78,17 @@ export default function FinancialStatementsClient({
           "2. Current Assets",
           ""
         ],
-        ...balanceSheetData.liabilities.currentLiabilities.map((item: any, idx: number) => {
-          const assetItem = balanceSheetData.assets.currentAssets[idx];
+        ...Array.from({
+          length: Math.max(
+            (balanceSheetData.liabilities?.currentLiabilities || []).length,
+            (balanceSheetData.assets?.currentAssets || []).length
+          )
+        }).map((_, idx) => {
+          const liabItem = (balanceSheetData.liabilities?.currentLiabilities || [])[idx];
+          const assetItem = (balanceSheetData.assets?.currentAssets || [])[idx];
           return [
-            `  ${item.name}`,
-            item.amount,
+            liabItem ? `  ${liabItem.name}` : "",
+            liabItem ? liabItem.amount : "",
             assetItem ? `  ${assetItem.name}` : "",
             assetItem ? assetItem.amount : ""
           ];

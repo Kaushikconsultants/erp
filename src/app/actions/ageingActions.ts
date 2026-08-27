@@ -53,7 +53,7 @@ export async function getDebtorsAgeingReport(asOfDateStr?: string) {
       where: {
         organizationId,
         invoiceDate: { lte: asOfDate },
-        status: { in: ["Unpaid", "Partially Paid", "Overdue"] }
+        status: { notIn: ["Paid", "Cancelled"] }
       },
       include: {
         customer: true
@@ -189,7 +189,7 @@ export async function getCreditorsAgeingReport(asOfDateStr?: string) {
       where: {
         organizationId,
         billDate: { lte: asOfDate },
-        status: { in: ["Open", "Partially Paid", "Overdue"] }
+        status: { notIn: ["Paid", "Void"] }
       },
       include: {
         vendor: true

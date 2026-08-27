@@ -4,20 +4,19 @@ import WarehouseManagerClient from '@/components/warehouses/WarehouseManagerClie
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { canUserAccessSection } from '@/lib/authPermissions';
 
 export const dynamic = 'force-dynamic';
 
-export default async function WarehousesPage() {
+export default async function SettingsWarehousesPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
-  const hasAccess = await canUserAccessSection(session.user, 'purchases');
-  const role = (session.user as any).role;
+  const userRole = (session.user as any).role;
   const canManageSettings = (session.user as any).canManageSettings;
-  const isSuperOrAdmin = role === 'SUPER_ADMIN' || role === 'ADMIN' || canManageSettings;
 
-  if (!hasAccess && !isSuperOrAdmin) redirect('/');
+  if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && !canManageSettings) {
+    redirect('/settings');
+  }
 
   const [whRes, branchRes] = await Promise.all([
     getWarehouses(),
@@ -28,10 +27,12 @@ export default async function WarehousesPage() {
   const branches = branchRes?.success ? (branchRes.branches as any[]) : [];
 
   return (
-    <WarehouseManagerClient
-      initialWarehouses={warehouses}
-      branches={branches}
-      isSettingsContext={false}
-    />
+    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px' }}>
+      <WarehouseManagerClient
+        initialWarehouses={warehouses}
+        branches={branches}
+        isSettingsContext={true}
+      />
+    </div>
   );
 }

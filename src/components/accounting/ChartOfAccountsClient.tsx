@@ -16,9 +16,15 @@ import {
   ChevronRight,
   ChevronDown,
   ExternalLink,
-  X
+  X,
+  Calendar,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Loader2,
+  Eye,
+  Scale
 } from "lucide-react";
-import { createLedgerAccount, syncSystemLedgers } from "@/app/actions/accountingActions";
+import { createLedgerAccount, syncSystemLedgers, getLedgerStatement } from "@/app/actions/accountingActions";
 
 interface Props {
   initialGroups: any[];
@@ -31,7 +37,7 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
-  // Modal State
+  // Modal State - Create Ledger
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -47,13 +53,17 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
   const [formError, setFormError] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Statement Drawer State
+  const [activeLedgerStatement, setActiveLedgerStatement] = useState<any | null>(null);
+  const [loadingStatement, setLoadingStatement] = useState(false);
+
   const handleSync = async () => {
     setIsSyncing(true);
     setSyncMessage(null);
     try {
       const res = await syncSystemLedgers();
       if (res.success) {
-        setSyncMessage("Chart of Accounts synchronized successfully!");
+        setSyncMessage("Chart of Accounts synchronized with CRM/ERP records successfully!");
         window.location.reload();
       } else {
         setSyncMessage(res.error || "Sync failed");
@@ -62,6 +72,28 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
       setSyncMessage(e.message || "Error syncing");
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleViewStatement = async (ledger: any) => {
+    setLoadingStatement(true);
+    setActiveLedgerStatement({ ledger, transactions: [], loading: true });
+    try {
+      const res = await getLedgerStatement(ledger.id);
+      if (res.success) {
+        setActiveLedgerStatement({
+          ...res,
+          loading: false
+        });
+      } else {
+        alert(res.error || "Failed to load ledger statement");
+        setActiveLedgerStatement(null);
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to load statement");
+      setActiveLedgerStatement(null);
+    } finally {
+      setLoadingStatement(false);
     }
   };
 
@@ -115,7 +147,7 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
       {/* Action Header & Search Bar */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "14px" }}>
         
-        {/* System Theme Search Box */}
+        {/* Search Box */}
         <div 
           style={{ 
             display: "flex", 
@@ -128,14 +160,6 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
             maxWidth: "460px",
             boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
             transition: "all 0.2s ease"
-          }}
-          onFocusCapture={(e) => {
-            e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
-            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.15)";
-          }}
-          onBlurCapture={(e) => {
-            e.currentTarget.style.borderColor = "var(--border, #cbd5e1)";
-            e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03)";
           }}
         >
           <Search size={17} style={{ color: "var(--text-muted, #94a3b8)", marginRight: "10px", flexShrink: 0 }} />
@@ -183,16 +207,7 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
               fontSize: "0.85rem",
               fontWeight: 600,
               cursor: "pointer",
-              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
-              transition: "all 0.15s ease"
-            }}
-            onMouseOver={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--accent-primary, #4f46e5)";
-              (e.currentTarget as HTMLElement).style.color = "var(--accent-primary, #4f46e5)";
-            }}
-            onMouseOut={(e) => {
-              (e.currentTarget as HTMLElement).style.borderColor = "var(--border, #cbd5e1)";
-              (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #334155)";
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)"
             }}
           >
             <RefreshCw size={15} className={isSyncing ? "animate-spin" : ""} style={{ color: "var(--accent-primary, #4f46e5)" }} />
@@ -258,18 +273,6 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
                 boxShadow: isSelected ? "0 2px 5px rgba(0,0,0,0.12)" : "none",
                 transition: "all 0.15s ease"
               }}
-              onMouseOver={(e) => {
-                if (!isSelected) {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = "var(--bg-primary, #f8fafc)";
-                  (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #0f172a)";
-                }
-              }}
-              onMouseOut={(e) => {
-                if (!isSelected) {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = "#ffffff";
-                  (e.currentTarget as HTMLElement).style.color = "var(--text-secondary, #64748b)";
-                }
-              }}
             >
               {pill.label}
             </button>
@@ -279,112 +282,272 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
 
       {/* Groups & Ledgers Cards Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))", gap: "18px" }}>
-        {filteredGroups.map(group => (
-          <div 
-            key={group.id} 
-            style={{ 
-              backgroundColor: "#ffffff",
-              border: "1px solid var(--border, #e2e8f0)",
-              borderRadius: "14px",
-              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.03)",
-              padding: "20px", 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "14px" 
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <div style={{ padding: "8px", borderRadius: "8px", backgroundColor: "var(--accent-light, #eef2ff)", color: "var(--accent-primary, #4f46e5)" }}>
-                  <FolderTree size={18} />
+        {filteredGroups.map(group => {
+          const groupTotal = (group.ledgers || []).reduce((sum: number, l: any) => sum + (l.currentBalance || l.openingBalance || 0), 0);
+
+          return (
+            <div 
+              key={group.id} 
+              style={{ 
+                backgroundColor: "#ffffff",
+                border: "1px solid var(--border, #e2e8f0)",
+                borderRadius: "14px",
+                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.03)",
+                padding: "20px", 
+                display: "flex", 
+                flexDirection: "column", 
+                gap: "14px" 
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ padding: "8px", borderRadius: "8px", backgroundColor: "var(--accent-light, #eef2ff)", color: "var(--accent-primary, #4f46e5)" }}>
+                    <FolderTree size={18} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: "0.98rem", fontWeight: 700, color: "var(--text-primary, #0f172a)" }}>{group.name}</h3>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)" }}>Code: {group.code || "-"}</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: "0.98rem", fontWeight: 700, color: "var(--text-primary, #0f172a)" }}>{group.name}</h3>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)" }}>Code: {group.code || "-"}</span>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    padding: "3px 10px",
+                    borderRadius: "6px",
+                    background: group.nature === "ASSET" ? "#e0f2fe" : group.nature === "LIABILITY" ? "#fef3c7" : group.nature === "INCOME" ? "#dcfce7" : "#fee2e2",
+                    color: group.nature === "ASSET" ? "#0369a1" : group.nature === "LIABILITY" ? "#92400e" : group.nature === "INCOME" ? "#15803d" : "#b91c1c"
+                  }}>
+                    {group.nature}
+                  </span>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", marginTop: "3px" }}>
+                    Total: ₹{groupTotal.toLocaleString()}
+                  </div>
                 </div>
               </div>
-              <span style={{
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                padding: "3px 10px",
-                borderRadius: "6px",
-                background: group.nature === "ASSET" ? "#e0f2fe" : group.nature === "LIABILITY" ? "#fef3c7" : group.nature === "INCOME" ? "#dcfce7" : "#fee2e2",
-                color: group.nature === "ASSET" ? "#0369a1" : group.nature === "LIABILITY" ? "#92400e" : group.nature === "INCOME" ? "#15803d" : "#b91c1c"
-              }}>
-                {group.nature}
-              </span>
+
+              {/* Ledgers inside this group */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "240px", overflowY: "auto" }}>
+                {(!group.ledgers || group.ledgers.length === 0) ? (
+                  <div style={{ color: "var(--text-muted, #94a3b8)", fontSize: "0.82rem", fontStyle: "italic", padding: "12px 0", textAlign: "center" }}>
+                    No active ledgers in this group.
+                  </div>
+                ) : (
+                  group.ledgers.map((ledger: any) => {
+                    const balance = ledger.currentBalance !== undefined ? ledger.currentBalance : (ledger.openingBalance || 0);
+                    const isDebit = group.nature === "ASSET" || group.nature === "EXPENSE" ? (ledger.openingType !== "CREDIT") : (ledger.openingType === "DEBIT");
+
+                    return (
+                      <div
+                        key={ledger.id}
+                        onClick={() => handleViewStatement(ledger)}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          background: "var(--bg-primary, #f8fafc)",
+                          borderRadius: "8px",
+                          border: "1px solid #f1f5f9",
+                          fontSize: "0.85rem",
+                          cursor: "pointer",
+                          transition: "all 0.15s ease"
+                        }}
+                        onMouseOver={(e) => {
+                          (e.currentTarget as HTMLElement).style.backgroundColor = "#eef2ff";
+                          (e.currentTarget as HTMLElement).style.borderColor = "#c7d2fe";
+                        }}
+                        onMouseOut={(e) => {
+                          (e.currentTarget as HTMLElement).style.backgroundColor = "var(--bg-primary, #f8fafc)";
+                          (e.currentTarget as HTMLElement).style.borderColor = "#f1f5f9";
+                        }}
+                      >
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: "var(--accent-primary, #4f46e5)", display: "flex", alignItems: "center", gap: "5px" }}>
+                            <span>{ledger.name}</span>
+                            <Eye size={12} style={{ opacity: 0.6 }} />
+                          </div>
+                          <div style={{ fontSize: "0.74rem", color: "var(--text-secondary, #64748b)" }}>
+                            {ledger.code} {ledger.partyType ? `• ${ledger.partyType}` : ""}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right", marginLeft: "12px", flexShrink: 0 }}>
+                          <div style={{ fontWeight: 800, color: "#0f172a" }}>
+                            ₹{balance.toLocaleString()}
+                          </div>
+                          <span style={{ fontSize: "0.72rem", fontWeight: 700, color: (group.nature === "ASSET" || group.nature === "EXPENSE") ? "var(--accent-primary, #4f46e5)" : "#16a34a" }}>
+                            {(group.nature === "ASSET" || group.nature === "EXPENSE") ? "Dr" : "Cr"}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* GENERAL LEDGER STATEMENT DRAWER / MODAL */}
+      {activeLedgerStatement && (
+        <div 
+          className="modal-backdrop"
+          onClick={() => setActiveLedgerStatement(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.65)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px 16px"
+          }}
+        >
+          <div 
+            className="animate-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              width: "100%", 
+              maxWidth: "850px", 
+              backgroundColor: "#ffffff", 
+              borderRadius: "16px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              maxHeight: "90vh"
+            }}
+          >
+            {/* Drawer Header */}
+            <div style={{ padding: "18px 24px", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: 36, height: 36, borderRadius: "8px", background: "var(--accent-primary, #4f46e5)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                    {activeLedgerStatement.ledger?.name}
+                  </h2>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "#64748b" }}>
+                    General Ledger Statement & Chronological Journal Splits
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setActiveLedgerStatement(null)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: "4px" }}
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Ledgers inside this group */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "6px", maxHeight: "240px", overflowY: "auto" }}>
-              {(!group.ledgers || group.ledgers.length === 0) ? (
-                <div style={{ color: "var(--text-muted, #94a3b8)", fontSize: "0.82rem", fontStyle: "italic", padding: "12px 0", textAlign: "center" }}>
-                  No active ledgers in this group.
+            {/* Statement Content */}
+            <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+              {activeLedgerStatement.loading ? (
+                <div style={{ textAlign: "center", padding: "40px" }}>
+                  <Loader2 size={24} className="animate-spin" style={{ color: "var(--accent-primary, #4f46e5)", margin: "0 auto" }} />
+                  <div style={{ marginTop: "8px", fontSize: "0.85rem", color: "#64748b" }}>Loading transactions...</div>
                 </div>
               ) : (
-                group.ledgers.map((ledger: any) => {
-                  const getLedgerLink = () => {
-                    if (ledger.partyType === "CUSTOMER" && ledger.partyId) return `/customers/${ledger.partyId}/ledger`;
-                    if (ledger.partyType === "VENDOR") return `/vendors`;
-                    if (ledger.partyType === "BANK") return `/accounting/bank-reconciliation`;
-                    return null;
-                  };
-                  const targetLink = getLedgerLink();
-
-                  return (
-                    <div
-                      key={ledger.id}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        padding: "8px 12px",
-                        background: "var(--bg-primary, #f8fafc)",
-                        borderRadius: "8px",
-                        border: "1px solid #f1f5f9",
-                        fontSize: "0.85rem",
-                        transition: "all 0.15s ease"
-                      }}
-                    >
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        {targetLink ? (
-                          <Link
-                            href={targetLink}
-                            style={{
-                              fontWeight: 700,
-                              color: "var(--accent-primary, #4f46e5)",
-                              textDecoration: "none",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            <span>{ledger.name}</span>
-                            <ExternalLink size={12} style={{ opacity: 0.7 }} />
-                          </Link>
-                        ) : (
-                          <div style={{ fontWeight: 700, color: "var(--text-primary, #0f172a)" }}>{ledger.name}</div>
-                        )}
-                        <div style={{ fontSize: "0.74rem", color: "var(--text-secondary, #64748b)" }}>
-                          {ledger.code} {ledger.partyType ? `• ${ledger.partyType}` : ""}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right", marginLeft: "12px", flexShrink: 0 }}>
-                        <div style={{ fontWeight: 800, color: "#0f172a" }}>
-                          ₹{(ledger.currentBalance || ledger.openingBalance || 0).toLocaleString()}
-                        </div>
-                        <span style={{ fontSize: "0.72rem", fontWeight: 600, color: ledger.openingType === "CREDIT" ? "#16a34a" : "var(--accent-primary, #4f46e5)" }}>
-                          {ledger.openingType === "CREDIT" ? "Cr" : "Dr"}
-                        </span>
+                <div>
+                  {/* Summary Bar */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "16px", background: "#f8fafc", padding: "12px 16px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                    <div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>OPENING BALANCE</div>
+                      <div style={{ fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>
+                        ₹{(activeLedgerStatement.openingBalance || 0).toLocaleString()} <span style={{ fontSize: "0.75rem", color: "#64748b" }}>({activeLedgerStatement.openingType === 'CREDIT' ? 'Cr' : 'Dr'})</span>
                       </div>
                     </div>
-                  );
-                })
+                    <div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>TOTAL DEBIT (Dr)</div>
+                      <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--accent-primary, #4f46e5)" }}>
+                        ₹{(activeLedgerStatement.totalDebit || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>TOTAL CREDIT (Cr)</div>
+                      <div style={{ fontSize: "1rem", fontWeight: 700, color: "#16a34a" }}>
+                        ₹{(activeLedgerStatement.totalCredit || 0).toLocaleString()}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>CLOSING BALANCE</div>
+                      <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#0f172a" }}>
+                        ₹{(activeLedgerStatement.closingBalance || 0).toLocaleString()} <span style={{ fontSize: "0.75rem", color: activeLedgerStatement.closingType === 'Cr' ? '#16a34a' : 'var(--accent-primary, #4f46e5)' }}>({activeLedgerStatement.closingType})</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transactions Table */}
+                  <div className="table-responsive" style={{ border: "1px solid #e2e8f0", borderRadius: "10px", overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                      <thead>
+                        <tr style={{ background: "#f1f5f9", textAlign: "left", borderBottom: "1px solid #cbd5e1" }}>
+                          <th style={{ padding: "10px 12px", fontWeight: 700, color: "#334155" }}>Date</th>
+                          <th style={{ padding: "10px 12px", fontWeight: 700, color: "#334155" }}>Voucher #</th>
+                          <th style={{ padding: "10px 12px", fontWeight: 700, color: "#334155" }}>Particulars</th>
+                          <th style={{ padding: "10px 12px", fontWeight: 700, color: "#334155", textAlign: "right" }}>Debit (₹)</th>
+                          <th style={{ padding: "10px 12px", fontWeight: 700, color: "#334155", textAlign: "right" }}>Credit (₹)</th>
+                          <th style={{ padding: "10px 12px", fontWeight: 700, color: "#334155", textAlign: "right" }}>Balance (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(!activeLedgerStatement.transactions || activeLedgerStatement.transactions.length === 0) ? (
+                          <tr>
+                            <td colSpan={6} style={{ textAlign: "center", padding: "24px", color: "#64748b" }}>
+                              No double-entry transactions recorded for this ledger in the selected period.
+                            </td>
+                          </tr>
+                        ) : (
+                          activeLedgerStatement.transactions.map((tx: any) => (
+                            <tr key={tx.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                              <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#475569" }}>
+                                {new Date(tx.date).toLocaleDateString("en-GB")}
+                              </td>
+                              <td style={{ padding: "9px 12px", fontFamily: "monospace", fontWeight: 700, color: "var(--accent-primary, #4f46e5)" }}>
+                                {tx.voucherNumber}
+                              </td>
+                              <td style={{ padding: "9px 12px", color: "#1e293b" }}>
+                                {tx.particulars}
+                              </td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: tx.debit > 0 ? 700 : 400, color: tx.debit > 0 ? "var(--accent-primary, #4f46e5)" : "#94a3b8" }}>
+                                {tx.debit > 0 ? `₹${tx.debit.toLocaleString()}` : "-"}
+                              </td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: tx.credit > 0 ? 700 : 400, color: tx.credit > 0 ? "#16a34a" : "#94a3b8" }}>
+                                {tx.credit > 0 ? `₹${tx.credit.toLocaleString()}` : "-"}
+                              </td>
+                              <td style={{ padding: "9px 12px", textAlign: "right", fontWeight: 800, color: "#0f172a" }}>
+                                ₹{tx.runningBalance.toLocaleString()} {tx.balanceType}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               )}
             </div>
+
+            {/* Drawer Footer */}
+            <div style={{ padding: "14px 24px", borderTop: "1px solid #e2e8f0", display: "flex", justifyContent: "flex-end", background: "#f8fafc" }}>
+              <button 
+                type="button" 
+                onClick={() => setActiveLedgerStatement(null)}
+                style={{ padding: "8px 18px", borderRadius: "8px", border: "1px solid #cbd5e1", backgroundColor: "#fff", cursor: "pointer", fontWeight: 600, color: "#475569" }}
+              >
+                Close Statement
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {/* CREATE LEDGER MODAL */}
       {showCreateModal && (

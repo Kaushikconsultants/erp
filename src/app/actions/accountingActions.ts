@@ -100,6 +100,7 @@ export async function ensureStandardAccountGroups(organizationId: string) {
 
 /**
  * Synchronizes and backfills all business entities into double-entry Ledgers and Journal Entries.
+ * Accurately updates current balance on all ledger accounts in real-time.
  */
 export async function syncSystemLedgers() {
   const session = await getServerSession(authOptions);
@@ -117,8 +118,11 @@ export async function syncSystemLedgers() {
     const purchaseGroup = groupMap.get("DIRECT_EXPENSE") || await prisma.accountGroup.findFirst({ where: { code: "DIRECT_EXPENSE" } });
     const taxGroup = groupMap.get("DUTIES_TAXES") || await prisma.accountGroup.findFirst({ where: { code: "DUTIES_TAXES" } });
     const indirectExpGroup = groupMap.get("INDIRECT_EXPENSE") || await prisma.accountGroup.findFirst({ where: { code: "INDIRECT_EXPENSE" } });
+    const payrollGroup = groupMap.get("PAYROLL_EXPENSE") || indirectExpGroup;
+    const capitalGroup = groupMap.get("CAPITAL_ACCT") || await prisma.accountGroup.findFirst({ where: { code: "CAPITAL_ACCT" } });
+    const fixedAssetGroup = groupMap.get("FIXED_ASSETS") || await prisma.accountGroup.findFirst({ where: { code: "FIXED_ASSETS" } });
 
-    // Standard Core Ledgers
+    // 1. Standard Core Ledgers
     const standardLedgers = [
       { name: "Sales Account", code: "SYS_SALES", groupId: salesGroup?.id, partyType: "INCOME", isSystem: true },
       { name: "Purchase Account", code: "SYS_PURCHASE", groupId: purchaseGroup?.id, partyType: "EXPENSE", isSystem: true },
@@ -131,8 +135,13 @@ export async function syncSystemLedgers() {
       { name: "TDS Payable (Section 194C/J/Q)", code: "SYS_TDS_PAYABLE", groupId: taxGroup?.id, partyType: "TAX", isSystem: true },
       { name: "TCS Receivable (Section 206C)", code: "SYS_TCS_RECEIVABLE", groupId: taxGroup?.id, partyType: "TAX", isSystem: true },
       { name: "Cash in Hand", code: "SYS_CASH", groupId: cashGroup?.id, partyType: "CASH", isSystem: true },
-      { name: "General Expenses", code: "SYS_GEN_EXP", groupId: indirectExpGroup?.id, partyType: "EXPENSE", isSystem: true },
+      { name: "General & Administrative Expenses", code: "SYS_GEN_EXP", groupId: indirectExpGroup?.id, partyType: "EXPENSE", isSystem: true },
+      { name: "Salaries & Employee Costs", code: "SYS_SALARY_EXP", groupId: payrollGroup?.id, partyType: "EXPENSE", isSystem: true },
       { name: "Round Off Account", code: "SYS_ROUNDOFF", groupId: indirectExpGroup?.id, partyType: "GENERAL", isSystem: true },
+      { name: "Sales Returns & Allowances", code: "SYS_SALES_RETURN", groupId: salesGroup?.id, partyType: "INCOME", isSystem: true },
+      { name: "Purchase Returns & Allowances", code: "SYS_PURCHASE_RETURN", groupId: purchaseGroup?.id, partyType: "EXPENSE", isSystem: true },
+      { name: "Proprietor / Shareholder Capital", code: "SYS_CAPITAL", groupId: capitalGroup?.id, partyType: "GENERAL", isSystem: true },
+      { name: "Office Equipment & Computers", code: "SYS_FIXED_ASSETS", groupId: fixedAssetGroup?.id, partyType: "GENERAL", isSystem: true },
     ];
 
     for (const l of standardLedgers) {
@@ -156,15 +165,19 @@ export async function syncSystemLedgers() {
       }
     }
 
-    // Sync Company Bank Accounts
+    // 2. Sync Company Bank Accounts
     const companySettings = await prisma.companySettings.findFirst({ where: { organizationId } });
+    let defaultBankLedger = await prisma.ledgerAccount.findFirst({
+      where: { partyType: "BANK", organizationId }
+    });
+
     if (companySettings?.bankAccountName && bankGroup) {
       const bankLedgerName = `${companySettings.bankAccountName} (${companySettings.accountNumber ? '...' + companySettings.accountNumber.slice(-4) : 'Bank'})`;
       const bankExists = await prisma.ledgerAccount.findFirst({
-        where: { name: bankLedgerName, organizationId }
+        where: { OR: [{ name: bankLedgerName, organizationId }, { code: `BANK_${companySettings.ifscCode || 'PRIMARY'}` }] }
       });
       if (!bankExists) {
-        await prisma.ledgerAccount.create({
+        defaultBankLedger = await prisma.ledgerAccount.create({
           data: {
             organizationId,
             name: bankLedgerName,
@@ -178,10 +191,18 @@ export async function syncSystemLedgers() {
             currentBalance: 0
           }
         });
+      } else {
+        defaultBankLedger = bankExists;
       }
     }
 
-    // Sync Customers -> Sundry Debtors
+    if (!defaultBankLedger && bankGroup) {
+      defaultBankLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_CASH", organizationId } });
+    }
+
+    const cashLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_CASH", organizationId } });
+
+    // 3. Sync Customers -> Sundry Debtors
     if (debtorsGroup) {
       const customers = await prisma.customer.findMany({ where: { organizationId } });
       for (const c of customers) {
@@ -209,7 +230,7 @@ export async function syncSystemLedgers() {
       }
     }
 
-    // Sync Vendors -> Sundry Creditors
+    // 4. Sync Vendors -> Sundry Creditors
     if (creditorsGroup) {
       const vendors = await prisma.vendor.findMany({ where: { organizationId } });
       for (const v of vendors) {
@@ -236,12 +257,21 @@ export async function syncSystemLedgers() {
       }
     }
 
-    // Auto-Post Double-Entry Vouchers for Historical Invoices that lack a Journal Entry
+    // 5. Core Double-Entry Ledgers Ref
     const salesLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_SALES", organizationId } });
+    const purchaseLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_PURCHASE", organizationId } });
     const outCgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_OUT_CGST", organizationId } });
     const outSgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_OUT_SGST", organizationId } });
     const outIgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_OUT_IGST", organizationId } });
+    const inCgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_IN_CGST", organizationId } });
+    const inSgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_IN_SGST", organizationId } });
+    const inIgstLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_IN_IGST", organizationId } });
+    const roundoffLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_ROUNDOFF", organizationId } });
+    const generalExpLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_GEN_EXP", organizationId } });
+    const salaryExpLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_SALARY_EXP", organizationId } });
+    const salesReturnLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_SALES_RETURN", organizationId } }) || salesLedger;
 
+    // A. Auto-Post Double-Entry Vouchers for Historical Invoices
     const invoices = await prisma.invoice.findMany({
       where: { organizationId, status: { not: "Cancelled" } },
       include: { customer: true }
@@ -300,25 +330,22 @@ export async function syncSystemLedgers() {
               lines.push({
                 ledgerAccountId: outSgstLedger.id,
                 debit: 0,
-                credit: tax - halfTax,
+                credit: Number((tax - halfTax).toFixed(2)),
                 particulars: `SGST Output on Inv #${inv.invoiceNumber}`
               });
             }
           }
 
-          // Balance check adjustment if rounding difference exists
+          // Round Off adjustment if discrepancy exists
           const sumDr = lines.reduce((acc, l) => acc + l.debit, 0);
           const sumCr = lines.reduce((acc, l) => acc + l.credit, 0);
           const diff = Number((sumDr - sumCr).toFixed(2));
 
-          if (Math.abs(diff) > 0.001) {
-            const roundoffLedger = await prisma.ledgerAccount.findFirst({ where: { code: "SYS_ROUNDOFF", organizationId } });
-            if (roundoffLedger) {
-              if (diff > 0) {
-                lines.push({ ledgerAccountId: roundoffLedger.id, debit: 0, credit: diff, particulars: "Round Off adjustment" });
-              } else {
-                lines.push({ ledgerAccountId: roundoffLedger.id, debit: -diff, credit: 0, particulars: "Round Off adjustment" });
-              }
+          if (Math.abs(diff) > 0.001 && roundoffLedger) {
+            if (diff > 0) {
+              lines.push({ ledgerAccountId: roundoffLedger.id, debit: 0, credit: diff, particulars: "Round Off adjustment" });
+            } else {
+              lines.push({ ledgerAccountId: roundoffLedger.id, debit: -diff, credit: 0, particulars: "Round Off adjustment" });
             }
           }
 
@@ -344,6 +371,445 @@ export async function syncSystemLedgers() {
       }
     }
 
+    // B. Auto-Post Double-Entry Vouchers for Customer Payments (Receipts: Dr Bank/Cash, Cr Customer)
+    const payments = await prisma.payment.findMany({
+      where: {
+        OR: [
+          { customer: { organizationId } },
+          { invoice: { organizationId } }
+        ],
+        status: { in: ["Completed", "Processed"] }
+      },
+      include: { customer: true, invoice: true }
+    });
+
+    for (const p of payments) {
+      const existingJV = await prisma.journalEntry.findFirst({
+        where: { sourceDocType: "PAYMENT", sourceDocId: p.id }
+      });
+
+      if (!existingJV) {
+        const custId = p.customerId || p.invoice?.customerId;
+        const customerLedger = custId ? await prisma.ledgerAccount.findFirst({
+          where: { partyType: "CUSTOMER", partyId: custId }
+        }) : null;
+
+        const isCash = p.paymentMode?.toLowerCase() === "cash";
+        const receivingLedger = isCash ? (cashLedger || defaultBankLedger) : (defaultBankLedger || cashLedger);
+
+        if (customerLedger && receivingLedger && p.amount > 0) {
+          const lines = [
+            {
+              ledgerAccountId: receivingLedger.id,
+              debit: p.amount,
+              credit: 0,
+              particulars: `Received from ${customerLedger.name} via ${p.paymentMode}`
+            },
+            {
+              ledgerAccountId: customerLedger.id,
+              debit: 0,
+              credit: p.amount,
+              particulars: `Payment #${p.paymentNumber} ref #${p.referenceNumber || ''}`
+            }
+          ];
+
+          await prisma.journalEntry.create({
+            data: {
+              organizationId,
+              voucherNumber: `RCPT-${p.paymentNumber}`,
+              voucherType: "RECEIPT",
+              date: p.paymentDate || p.createdAt,
+              narration: `Payment received: ${p.paymentNumber} from ${customerLedger.name}`,
+              referenceNumber: p.referenceNumber || p.paymentNumber,
+              totalAmount: p.amount,
+              sourceDocType: "PAYMENT",
+              sourceDocId: p.id,
+              isSystemGenerated: true,
+              status: "POSTED",
+              lines: {
+                create: lines
+              }
+            }
+          });
+        }
+      }
+    }
+
+    // C. Auto-Post Double-Entry Vouchers for Purchase Bills (Dr Purchase + ITC, Cr Vendor)
+    const bills = await prisma.bill.findMany({
+      where: { organizationId, status: { not: "Void" } },
+      include: { vendor: true }
+    });
+
+    for (const b of bills) {
+      const existingJV = await prisma.journalEntry.findFirst({
+        where: { sourceDocType: "BILL", sourceDocId: b.id }
+      });
+
+      if (!existingJV && purchaseLedger) {
+        const vendorLedger = await prisma.ledgerAccount.findFirst({
+          where: { partyType: "VENDOR", partyId: b.vendorId }
+        });
+
+        if (vendorLedger) {
+          const taxable = b.subtotal || (b.totalAmount - (b.taxAmount || 0));
+          const tax = b.taxAmount || 0;
+          const isInter = Boolean(b.vendor?.state && companySettings?.state && b.vendor.state.toLowerCase() !== companySettings.state.toLowerCase());
+
+          const lines: { ledgerAccountId: string; debit: number; credit: number; particulars: string }[] = [];
+
+          // Dr Purchase Account
+          lines.push({
+            ledgerAccountId: purchaseLedger.id,
+            debit: taxable,
+            credit: 0,
+            particulars: `Purchase Bill #${b.billNumber} from ${vendorLedger.name}`
+          });
+
+          // Dr Input Tax Credit (ITC)
+          if (tax > 0) {
+            if (isInter && inIgstLedger) {
+              lines.push({
+                ledgerAccountId: inIgstLedger.id,
+                debit: tax,
+                credit: 0,
+                particulars: `ITC IGST on Bill #${b.billNumber}`
+              });
+            } else if (inCgstLedger && inSgstLedger) {
+              const halfTax = Number((tax / 2).toFixed(2));
+              lines.push({
+                ledgerAccountId: inCgstLedger.id,
+                debit: halfTax,
+                credit: 0,
+                particulars: `ITC CGST on Bill #${b.billNumber}`
+              });
+              lines.push({
+                ledgerAccountId: inSgstLedger.id,
+                debit: Number((tax - halfTax).toFixed(2)),
+                credit: 0,
+                particulars: `ITC SGST on Bill #${b.billNumber}`
+              });
+            }
+          }
+
+          // Cr Vendor (Total Amount)
+          lines.push({
+            ledgerAccountId: vendorLedger.id,
+            debit: 0,
+            credit: b.totalAmount,
+            particulars: `By Purchase Bill #${b.billNumber}`
+          });
+
+          // Round Off adjustment if discrepancy exists
+          const sumDr = lines.reduce((acc, l) => acc + l.debit, 0);
+          const sumCr = lines.reduce((acc, l) => acc + l.credit, 0);
+          const diff = Number((sumDr - sumCr).toFixed(2));
+
+          if (Math.abs(diff) > 0.001 && roundoffLedger) {
+            if (diff > 0) {
+              lines.push({ ledgerAccountId: roundoffLedger.id, debit: 0, credit: diff, particulars: "Round Off adjustment" });
+            } else {
+              lines.push({ ledgerAccountId: roundoffLedger.id, debit: -diff, credit: 0, particulars: "Round Off adjustment" });
+            }
+          }
+
+          await prisma.journalEntry.create({
+            data: {
+              organizationId,
+              voucherNumber: `PUR-${b.billNumber}`,
+              voucherType: "PURCHASE",
+              date: b.billDate || b.createdAt,
+              narration: `Purchase Bill #${b.billNumber} from ${b.vendor.companyName}`,
+              referenceNumber: b.vendorBillNumber || b.billNumber,
+              totalAmount: b.totalAmount,
+              sourceDocType: "BILL",
+              sourceDocId: b.id,
+              isSystemGenerated: true,
+              status: "POSTED",
+              lines: {
+                create: lines
+              }
+            }
+          });
+        }
+      }
+    }
+
+    // D. Auto-Post Double-Entry Vouchers for Vendor Payments (Dr Vendor, Cr Bank/Cash)
+    const vendorPayments = await prisma.vendorPayment.findMany({
+      where: {
+        vendor: { organizationId },
+        status: { in: ["Completed", "Processed"] }
+      },
+      include: { vendor: true }
+    });
+
+    for (const vp of vendorPayments) {
+      const existingJV = await prisma.journalEntry.findFirst({
+        where: { sourceDocType: "VENDOR_PAYMENT", sourceDocId: vp.id }
+      });
+
+      if (!existingJV) {
+        const vendorLedger = await prisma.ledgerAccount.findFirst({
+          where: { partyType: "VENDOR", partyId: vp.vendorId }
+        });
+
+        const isCash = vp.paymentMode?.toLowerCase() === "cash";
+        const payingLedger = isCash ? (cashLedger || defaultBankLedger) : (defaultBankLedger || cashLedger);
+
+        if (vendorLedger && payingLedger && vp.amount > 0) {
+          const lines = [
+            {
+              ledgerAccountId: vendorLedger.id,
+              debit: vp.amount,
+              credit: 0,
+              particulars: `Payment to ${vendorLedger.name}`
+            },
+            {
+              ledgerAccountId: payingLedger.id,
+              debit: 0,
+              credit: vp.amount,
+              particulars: `Paid via ${vp.paymentMode}`
+            }
+          ];
+
+          await prisma.journalEntry.create({
+            data: {
+              organizationId,
+              voucherNumber: `PMT-${vp.paymentNumber}`,
+              voucherType: "PAYMENT",
+              date: vp.paymentDate || vp.createdAt,
+              narration: `Payment made to ${vendorLedger.name} #${vp.paymentNumber}`,
+              referenceNumber: vp.referenceNumber || vp.paymentNumber,
+              totalAmount: vp.amount,
+              sourceDocType: "VENDOR_PAYMENT",
+              sourceDocId: vp.id,
+              isSystemGenerated: true,
+              status: "POSTED",
+              lines: {
+                create: lines
+              }
+            }
+          });
+        }
+      }
+    }
+
+    // E. Auto-Post Double-Entry Vouchers for Expenses (Dr Expense, Cr Bank/Cash)
+    const expenses = await prisma.expense.findMany({
+      where: {
+        OR: [
+          { employee: { organizationId } },
+          { employeeId: null }
+        ],
+        status: { not: "Rejected" }
+      }
+    });
+
+    for (const exp of expenses) {
+      const existingJV = await prisma.journalEntry.findFirst({
+        where: { sourceDocType: "EXPENSE", sourceDocId: exp.id }
+      });
+
+      if (!existingJV && generalExpLedger && exp.amount > 0) {
+        const payingLedger = defaultBankLedger || cashLedger;
+        if (payingLedger) {
+          const lines = [
+            {
+              ledgerAccountId: generalExpLedger.id,
+              debit: exp.amount,
+              credit: 0,
+              particulars: `Expense: ${exp.category} - ${exp.description || ''}`
+            },
+            {
+              ledgerAccountId: payingLedger.id,
+              debit: 0,
+              credit: exp.amount,
+              particulars: `Paid for ${exp.category}`
+            }
+          ];
+
+          await prisma.journalEntry.create({
+            data: {
+              organizationId,
+              voucherNumber: `EXP-${exp.expenseNumber}`,
+              voucherType: "PAYMENT",
+              date: exp.date || exp.createdAt,
+              narration: `Expense recorded: ${exp.category} (${exp.status})`,
+              referenceNumber: exp.expenseNumber,
+              totalAmount: exp.amount,
+              sourceDocType: "EXPENSE",
+              sourceDocId: exp.id,
+              isSystemGenerated: true,
+              status: "POSTED",
+              lines: {
+                create: lines
+              }
+            }
+          });
+        }
+      }
+    }
+
+    // F. Auto-Post Double-Entry Vouchers for Employee Salaries (Dr Salary Exp, Cr Bank/Cash)
+    const salaries = await prisma.salary.findMany({
+      where: {
+        employee: { organizationId },
+        status: { in: ["Processed", "Paid"] }
+      },
+      include: { employee: { include: { user: true } } }
+    });
+
+    for (const sal of salaries) {
+      const existingJV = await prisma.journalEntry.findFirst({
+        where: { sourceDocType: "SALARY", sourceDocId: sal.id }
+      });
+
+      if (!existingJV && salaryExpLedger && sal.netSalary > 0) {
+        const payingLedger = defaultBankLedger || cashLedger;
+        if (payingLedger) {
+          const empName = sal.employee?.user?.name || "Staff";
+          const lines = [
+            {
+              ledgerAccountId: salaryExpLedger.id,
+              debit: sal.netSalary,
+              credit: 0,
+              particulars: `Salary for ${sal.month} - ${empName}`
+            },
+            {
+              ledgerAccountId: payingLedger.id,
+              debit: 0,
+              credit: sal.netSalary,
+              particulars: `Disbursed for ${sal.month}`
+            }
+          ];
+
+          await prisma.journalEntry.create({
+            data: {
+              organizationId,
+              voucherNumber: `SAL-${sal.month}-${sal.id.slice(0, 6)}`,
+              voucherType: "PAYMENT",
+              date: sal.paymentDate || sal.createdAt,
+              narration: `Salary payout for ${sal.month} to ${empName}`,
+              referenceNumber: `SAL-${sal.month}`,
+              totalAmount: sal.netSalary,
+              sourceDocType: "SALARY",
+              sourceDocId: sal.id,
+              isSystemGenerated: true,
+              status: "POSTED",
+              lines: {
+                create: lines
+              }
+            }
+          });
+        }
+      }
+    }
+
+    // G. Auto-Post Double-Entry Vouchers for Credit Notes (Dr Sales Return + Tax, Cr Customer)
+    const creditNotes = await prisma.creditNote.findMany({
+      where: { organizationId, status: { not: "CANCELLED" } },
+      include: { customer: true }
+    });
+
+    for (const cn of creditNotes) {
+      const existingJV = await prisma.journalEntry.findFirst({
+        where: { sourceDocType: "CREDIT_NOTE", sourceDocId: cn.id }
+      });
+
+      if (!existingJV && salesReturnLedger) {
+        const customerLedger = await prisma.ledgerAccount.findFirst({
+          where: { partyType: "CUSTOMER", partyId: cn.customerId }
+        });
+
+        if (customerLedger && cn.totalAmount > 0) {
+          const subtotal = cn.subtotal || (cn.totalAmount - (cn.taxAmount || 0));
+          const tax = cn.taxAmount || 0;
+          const isInter = Boolean(cn.customer?.state && companySettings?.state && cn.customer.state.toLowerCase() !== companySettings.state.toLowerCase());
+
+          const lines: { ledgerAccountId: string; debit: number; credit: number; particulars: string }[] = [];
+
+          // Dr Sales Return
+          lines.push({
+            ledgerAccountId: salesReturnLedger.id,
+            debit: subtotal,
+            credit: 0,
+            particulars: `Credit Note #${cn.creditNoteNumber} against ${customerLedger.name}`
+          });
+
+          // Dr Output Tax Reversed
+          if (tax > 0) {
+            if (isInter && outIgstLedger) {
+              lines.push({ ledgerAccountId: outIgstLedger.id, debit: tax, credit: 0, particulars: `IGST Output reversal on CN #${cn.creditNoteNumber}` });
+            } else if (outCgstLedger && outSgstLedger) {
+              const half = Number((tax / 2).toFixed(2));
+              lines.push({ ledgerAccountId: outCgstLedger.id, debit: half, credit: 0, particulars: `CGST Output reversal on CN #${cn.creditNoteNumber}` });
+              lines.push({ ledgerAccountId: outSgstLedger.id, debit: Number((tax - half).toFixed(2)), credit: 0, particulars: `SGST Output reversal on CN #${cn.creditNoteNumber}` });
+            }
+          }
+
+          // Cr Customer
+          lines.push({
+            ledgerAccountId: customerLedger.id,
+            debit: 0,
+            credit: cn.totalAmount,
+            particulars: `Credit Note #${cn.creditNoteNumber} issued`
+          });
+
+          await prisma.journalEntry.create({
+            data: {
+              organizationId,
+              voucherNumber: `CN-${cn.creditNoteNumber}`,
+              voucherType: "CREDIT_NOTE",
+              date: cn.creditNoteDate || cn.createdAt,
+              narration: `Credit Note #${cn.creditNoteNumber} issued to ${customerLedger.name}`,
+              referenceNumber: cn.creditNoteNumber,
+              totalAmount: cn.totalAmount,
+              sourceDocType: "CREDIT_NOTE",
+              sourceDocId: cn.id,
+              isSystemGenerated: true,
+              status: "POSTED",
+              lines: {
+                create: lines
+              }
+            }
+          });
+        }
+      }
+    }
+
+    // 6. Recalculate & Update currentBalance on ALL LedgerAccount records
+    const allOrgLedgers = await prisma.ledgerAccount.findMany({
+      where: { OR: [{ organizationId }, { organizationId: null }] },
+      include: {
+        accountGroup: true,
+        journalLineItems: {
+          where: {
+            journalEntry: {
+              status: "POSTED"
+            }
+          }
+        }
+      }
+    });
+
+    for (const l of allOrgLedgers) {
+      const openDr = l.openingType !== "CREDIT" ? (l.openingBalance || 0) : 0;
+      const openCr = l.openingType === "CREDIT" ? (l.openingBalance || 0) : 0;
+      const txDr = l.journalLineItems.reduce((acc, item) => acc + (item.debit || 0), 0);
+      const txCr = l.journalLineItems.reduce((acc, item) => acc + (item.credit || 0), 0);
+
+      const netDebit = (openDr + txDr) - (openCr + txCr);
+      const computedBalance = Number(Math.abs(netDebit).toFixed(2));
+
+      if (Math.abs(l.currentBalance - computedBalance) > 0.001) {
+        await prisma.ledgerAccount.update({
+          where: { id: l.id },
+          data: { currentBalance: computedBalance }
+        });
+      }
+    }
+
     return { success: true, message: "System Chart of Accounts and Ledgers synchronized successfully!" };
   } catch (error: any) {
     console.error("Error syncing system ledgers:", error);
@@ -361,7 +827,7 @@ export async function getChartOfAccounts() {
 
   try {
     const organizationId = await getTenantOrgId();
-    await ensureStandardAccountGroups(organizationId);
+    await syncSystemLedgers();
 
     const groups = await prisma.accountGroup.findMany({
       where: { OR: [{ organizationId }, { organizationId: null }] },
@@ -398,6 +864,112 @@ export async function getLedgers(groupId?: string) {
     return { success: true, ledgers: JSON.parse(JSON.stringify(ledgers)) };
   } catch (error: any) {
     return { success: false, error: error.message };
+  }
+}
+
+export async function getLedgerStatement(
+  ledgerId: string,
+  startDateStr?: string,
+  endDateStr?: string
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { success: false, error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+    await syncSystemLedgers();
+
+    const ledger = await prisma.ledgerAccount.findUnique({
+      where: { id: ledgerId },
+      include: { accountGroup: true }
+    });
+
+    if (!ledger) return { success: false, error: "Ledger account not found" };
+
+    const startDate = startDateStr ? new Date(startDateStr) : new Date(new Date().getFullYear(), 3, 1);
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    // Opening balance calculation up to startDate
+    const priorLines = await prisma.journalLineItem.findMany({
+      where: {
+        ledgerAccountId: ledgerId,
+        journalEntry: {
+          organizationId,
+          date: { lt: startDate },
+          status: "POSTED"
+        }
+      }
+    });
+
+    const isDebitNature = ledger.accountGroup.nature === "ASSET" || ledger.accountGroup.nature === "EXPENSE";
+    const initialOpeningDebit = ledger.openingType !== "CREDIT" ? (ledger.openingBalance || 0) : 0;
+    const initialOpeningCredit = ledger.openingType === "CREDIT" ? (ledger.openingBalance || 0) : 0;
+
+    const priorDebit = priorLines.reduce((s, l) => s + (l.debit || 0), 0);
+    const priorCredit = priorLines.reduce((s, l) => s + (l.credit || 0), 0);
+
+    const netPrior = (initialOpeningDebit + priorDebit) - (initialOpeningCredit + priorCredit);
+    const effectiveOpeningBalance = Number(Math.abs(netPrior).toFixed(2));
+    const effectiveOpeningType = netPrior >= 0 ? "DEBIT" : "CREDIT";
+
+    // Period lines
+    const periodLines = await prisma.journalLineItem.findMany({
+      where: {
+        ledgerAccountId: ledgerId,
+        journalEntry: {
+          organizationId,
+          date: { gte: startDate, lte: endDate },
+          status: "POSTED"
+        }
+      },
+      include: {
+        journalEntry: true
+      },
+      orderBy: { journalEntry: { date: "asc" } }
+    });
+
+    let runningNet = netPrior;
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    const transactions = periodLines.map((line) => {
+      const debit = Number(line.debit || 0);
+      const credit = Number(line.credit || 0);
+      totalDebit += debit;
+      totalCredit += credit;
+
+      runningNet += (debit - credit);
+
+      return {
+        id: line.id,
+        date: line.journalEntry.date,
+        voucherNumber: line.journalEntry.voucherNumber,
+        voucherType: line.journalEntry.voucherType,
+        particulars: line.particulars || line.journalEntry.narration || "Transaction",
+        debit,
+        credit,
+        runningBalance: Number(Math.abs(runningNet).toFixed(2)),
+        balanceType: runningNet >= 0 ? "Dr" : "Cr"
+      };
+    });
+
+    const closingBalance = Number(Math.abs(runningNet).toFixed(2));
+    const closingType = runningNet >= 0 ? "Dr" : "Cr";
+
+    return {
+      success: true,
+      ledger: JSON.parse(JSON.stringify(ledger)),
+      openingBalance: effectiveOpeningBalance,
+      openingType: effectiveOpeningType,
+      closingBalance,
+      closingType,
+      totalDebit: Number(totalDebit.toFixed(2)),
+      totalCredit: Number(totalCredit.toFixed(2)),
+      transactions
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to fetch ledger statement" };
   }
 }
 
@@ -555,6 +1127,8 @@ export async function getJournalEntries(filters?: {
 
   try {
     const organizationId = await getTenantOrgId();
+    await syncSystemLedgers();
+
     const where: any = { organizationId };
 
     if (filters?.voucherType && filters.voucherType !== "ALL") {
@@ -616,7 +1190,7 @@ export async function getTrialBalance(asOfDateStr?: string) {
     const asOfDate = asOfDateStr ? new Date(asOfDateStr) : new Date();
     asOfDate.setHours(23, 59, 59, 999);
 
-    // Sync ledgers first if not yet done
+    // Sync ledgers first to ensure all transactions are represented
     await syncSystemLedgers();
 
     const ledgers = await prisma.ledgerAccount.findMany({
@@ -695,7 +1269,7 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
     const endDate = endDateStr ? new Date(endDateStr) : new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    // 1. Direct Income / Sales
+    // 1. Direct Income / Sales Revenue
     const salesInvoices = await prisma.invoice.findMany({
       where: {
         organizationId,
@@ -703,9 +1277,20 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
         status: { not: "Cancelled" }
       }
     });
-    const totalSalesGross = salesInvoices.reduce((acc, i) => acc + (i.subtotal || i.totalAmount), 0);
 
-    // 2. Direct Expenses / Purchases
+    const totalSalesGross = salesInvoices.reduce((acc, i) => acc + (i.subtotal || (i.totalAmount - (i.taxAmount || 0))), 0);
+    
+    // Roundoff/TCS adjustments on sales
+    const totalSalesRoundoff = salesInvoices.reduce((acc, i) => {
+      const tax = i.taxAmount || 0;
+      const sub = i.subtotal || (i.totalAmount - tax);
+      const diff = i.totalAmount - (sub + tax);
+      return acc + (diff > 0 ? diff : 0);
+    }, 0);
+
+    const totalRevenue = totalSalesGross + totalSalesRoundoff;
+
+    // 2. Direct Purchases & Procurement
     const purchaseBills = await prisma.bill.findMany({
       where: {
         organizationId,
@@ -713,54 +1298,60 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
         status: { not: "Void" }
       }
     });
-    const totalPurchases = purchaseBills.reduce((acc, b) => acc + (b.subtotal || b.totalAmount), 0);
+    const totalPurchases = purchaseBills.reduce((acc, b) => acc + (b.subtotal || (b.totalAmount - (b.taxAmount || 0))), 0);
 
-    // 3. Stock in Hand
+    // 3. Physical Inventory Stock
     const products = await prisma.product.findMany({ where: { organizationId } });
-    const closingStockValue = products.reduce((acc, p) => acc + ((p.stockQuantity || 0) * (p.purchasePrice || p.sellingPrice * 0.7)), 0);
-    const openingStockEstimated = closingStockValue * 0.85; // Standard baseline estimate
+    const closingStockValue = products.reduce((acc, p) => {
+      const cost = (p.purchasePrice && p.purchasePrice > 0)
+        ? p.purchasePrice
+        : (p.sellingPrice ? p.sellingPrice * 0.7 : 0);
+      return acc + ((p.stockQuantity || 0) * cost);
+    }, 0);
 
-    // Cost of Goods Sold = Opening Stock + Purchases - Closing Stock
-    const cogs = Math.max(0, openingStockEstimated + totalPurchases - closingStockValue);
-    const grossProfit = totalSalesGross - cogs;
+    // In a continuous entity: Opening Stock + Direct Purchases = Goods Available
+    // If no prior period closing is recorded, opening stock equals starting inventory
+    const openingStock = Math.max(0, closingStockValue - totalPurchases);
+    const cogs = Math.max(0, Number((openingStock + totalPurchases - closingStockValue).toFixed(2)));
+    const grossProfit = Number((totalRevenue - cogs).toFixed(2));
 
-    // 4. Indirect Expenses (Payroll, Rent, Travel, Office, Admin)
+    // 4. Indirect Expenses (Operating Overheads, Payroll, Admin)
     const expenses = await prisma.expense.findMany({
       where: {
-        date: { gte: startDate, lte: endDate }
+        date: { gte: startDate, lte: endDate },
+        status: { not: "Rejected" }
       }
     });
-    const totalOperatingExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
 
     const salaries = await prisma.salary.findMany({
       where: {
-        status: { in: ["Processed", "Paid"] }
+        status: { in: ["Processed", "Paid"] },
+        createdAt: { gte: startDate, lte: endDate }
       }
     });
     const totalPayroll = salaries.reduce((acc, s) => acc + s.netSalary, 0);
 
     // Categorized expense breakdown
-    const expenseBreakdown = [
-      { category: "Employee Salaries & Payroll", amount: totalPayroll },
-      ...expenses.map(e => ({ category: e.category || "General Expense", amount: e.amount }))
-    ];
-
-    // Group expenses by category
     const groupedExpenses: Record<string, number> = {};
-    expenseBreakdown.forEach(eb => {
-      groupedExpenses[eb.category] = (groupedExpenses[eb.category] || 0) + eb.amount;
+    if (totalPayroll > 0) {
+      groupedExpenses["Employee Salaries & Payroll"] = totalPayroll;
+    }
+
+    expenses.forEach(e => {
+      const cat = e.category || "General & Administrative";
+      groupedExpenses[cat] = (groupedExpenses[cat] || 0) + e.amount;
     });
 
     const totalIndirectExpenses = Object.values(groupedExpenses).reduce((a, b) => a + b, 0);
-    const netProfit = grossProfit - totalIndirectExpenses;
+    const netProfit = Number((grossProfit - totalIndirectExpenses).toFixed(2));
 
     return {
       success: true,
       startDate: startDate.toISOString().split("T")[0],
       endDate: endDate.toISOString().split("T")[0],
       tradingAccount: {
-        salesRevenue: Number(totalSalesGross.toFixed(2)),
-        openingStock: Number(openingStockEstimated.toFixed(2)),
+        salesRevenue: Number(totalRevenue.toFixed(2)),
+        openingStock: Number(openingStock.toFixed(2)),
         purchases: Number(totalPurchases.toFixed(2)),
         closingStock: Number(closingStockValue.toFixed(2)),
         costOfGoodsSold: Number(cogs.toFixed(2)),
@@ -788,98 +1379,179 @@ export async function getBalanceSheet(asOfDateStr?: string) {
     const asOfDate = asOfDateStr ? new Date(asOfDateStr) : new Date();
     asOfDate.setHours(23, 59, 59, 999);
 
-    // Fetch P&L to incorporate Net Profit into Reserves & Surplus
+    // Synchronize all double-entry ledgers first
+    await syncSystemLedgers();
+
+    // 1. Fetch Profit & Loss to get accurate Net Profit / (Loss) for Reserves & Surplus
     const plRes = await getProfitAndLossStatement(undefined, asOfDate.toISOString());
-    const netProfit = (plRes.success && (plRes as any).incomeStatement) ? (plRes as any).incomeStatement.netProfit : 0;
+    const netProfit = (plRes.success && (plRes as any).incomeStatement)
+      ? (plRes as any).incomeStatement.netProfit
+      : 0;
 
-    // 1. ASSETS
-    // Current Assets: Sundry Debtors (Receivables)
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        organizationId,
-        invoiceDate: { lte: asOfDate },
-        status: { in: ["Unpaid", "Partially Paid", "Overdue"] }
+    // 2. Fetch all Ledgers with their posted line items up to asOfDate
+    const ledgers = await prisma.ledgerAccount.findMany({
+      where: { OR: [{ organizationId }, { organizationId: null }] },
+      include: {
+        accountGroup: true,
+        journalLineItems: {
+          where: {
+            journalEntry: {
+              date: { lte: asOfDate },
+              status: "POSTED"
+            }
+          }
+        }
       }
     });
-    const totalDebtors = invoices.reduce((acc, inv) => acc + (inv.amountDue || inv.totalAmount), 0);
 
-    // Current Assets: Stock in Hand
+    // Helper to calculate ledger net balance at asOfDate
+    const getLedgerNet = (l: typeof ledgers[0]) => {
+      const openDr = l.openingType !== "CREDIT" ? (l.openingBalance || 0) : 0;
+      const openCr = l.openingType === "CREDIT" ? (l.openingBalance || 0) : 0;
+      const txDr = l.journalLineItems.reduce((acc, item) => acc + (item.debit || 0), 0);
+      const txCr = l.journalLineItems.reduce((acc, item) => acc + (item.credit || 0), 0);
+      return (openDr + txDr) - (openCr + txCr); // Positive = Net Debit (Asset/Expense), Negative = Net Credit (Liability/Income)
+    };
+
+    // Helper: calculate physical inventory / stock in hand
     const products = await prisma.product.findMany({ where: { organizationId } });
-    const stockInHand = products.reduce((acc, p) => acc + ((p.stockQuantity || 0) * (p.purchasePrice || p.sellingPrice * 0.7)), 0);
+    const stockInHand = Number(products.reduce((acc, p) => {
+      const cost = p.purchasePrice && p.purchasePrice > 0
+        ? p.purchasePrice
+        : (p.sellingPrice ? p.sellingPrice * 0.7 : 0);
+      return acc + ((p.stockQuantity || 0) * cost);
+    }, 0).toFixed(2));
 
-    // Current Assets: Cash & Bank Balances
-    const paymentsReceived = await prisma.payment.aggregate({
-      _sum: { amount: true },
-      where: { status: "Completed", paymentDate: { lte: asOfDate } }
-    });
-    const paymentsMade = await prisma.vendorPayment.aggregate({
-      _sum: { amount: true },
-      where: { status: "Completed", paymentDate: { lte: asOfDate } }
-    });
-    const expensesPaid = await prisma.expense.aggregate({
-      _sum: { amount: true },
-      where: { date: { lte: asOfDate } }
-    });
+    // A. NON-CURRENT / FIXED ASSETS
+    const fixedAssetLedgers = ledgers.filter(l => l.accountGroup?.code === "FIXED_ASSETS" || l.accountGroup?.parentGroupId === "FIXED_ASSETS");
+    const fixedAssetsList = fixedAssetLedgers.map(l => {
+      const net = getLedgerNet(l);
+      return { name: l.name, amount: Number(Math.max(0, net).toFixed(2)) };
+    }).filter(a => a.amount > 0);
 
-    const netCashBank = Math.max(50000, (paymentsReceived._sum.amount || 0) - (paymentsMade._sum.amount || 0) - (expensesPaid._sum.amount || 0));
+    const totalFixedAssets = Number(fixedAssetsList.reduce((s, a) => s + a.amount, 0).toFixed(2));
 
-    const totalCurrentAssets = totalDebtors + stockInHand + netCashBank;
-    const fixedAssets = 250000; // Estimated equipment, computers, warehouse fixtures
-    const totalAssets = totalCurrentAssets + fixedAssets;
+    // B. CURRENT ASSETS
+    // 1. Sundry Debtors (Customers with Net Debit balance)
+    const customerLedgers = ledgers.filter(l => l.partyType === "CUSTOMER" || l.accountGroup?.code === "SUNDRY_DEBTORS");
+    const totalDebtors = Number(customerLedgers.reduce((acc, l) => {
+      const net = getLedgerNet(l);
+      return acc + (net > 0 ? net : 0);
+    }, 0).toFixed(2));
 
-    // 2. LIABILITIES & EQUITY
-    // Current Liabilities: Sundry Creditors (Payables)
-    const bills = await prisma.bill.findMany({
-      where: {
-        organizationId,
-        billDate: { lte: asOfDate },
-        status: { in: ["Open", "Partially Paid", "Overdue"] }
-      }
-    });
-    const totalCreditors = bills.reduce((acc, b) => acc + (b.amountDue || b.totalAmount), 0);
+    // 2. Bank & Cash Balances
+    const bankAndCashLedgers = ledgers.filter(l => 
+      l.partyType === "BANK" || 
+      l.partyType === "CASH" || 
+      l.accountGroup?.code === "BANK_ACCOUNTS" || 
+      l.accountGroup?.code === "CASH_IN_HAND"
+    );
+    const totalBankCash = Number(bankAndCashLedgers.reduce((acc, l) => {
+      const net = getLedgerNet(l);
+      return acc + (net > 0 ? net : 0);
+    }, 0).toFixed(2));
 
-    // Duties & Taxes Payable (GST Output - ITC)
-    const totalTaxCollected = invoices.reduce((acc, i) => acc + (i.taxAmount || 0), 0);
-    const totalTaxPaidOnPurchases = bills.reduce((acc, b) => acc + (b.taxAmount || 0), 0);
-    const dutiesAndTaxesPayable = Math.max(0, totalTaxCollected - totalTaxPaidOnPurchases);
+    // 3. Tax / Duties Balances
+    const taxLedgers = ledgers.filter(l => l.partyType === "TAX" || l.accountGroup?.code === "DUTIES_TAXES");
+    const outTax = taxLedgers.filter(l => l.code?.startsWith("SYS_OUT_")).reduce((s, l) => s + Math.max(0, -getLedgerNet(l)), 0);
+    const inTax = taxLedgers.filter(l => l.code?.startsWith("SYS_IN_")).reduce((s, l) => s + Math.max(0, getLedgerNet(l)), 0);
+    const tdsPayable = taxLedgers.filter(l => l.code === "SYS_TDS_PAYABLE").reduce((s, l) => s + Math.max(0, -getLedgerNet(l)), 0);
 
-    const totalCurrentLiabilities = totalCreditors + dutiesAndTaxesPayable;
+    const netTaxDifference = outTax - inTax; // Positive => Net GST Payable (Liability), Negative => Net GST Credit (Asset)
+    const gstInputCreditAsset = netTaxDifference < 0 ? Number(Math.abs(netTaxDifference).toFixed(2)) : 0;
+    const netGstPayableLiability = netTaxDifference > 0 ? Number(netTaxDifference.toFixed(2)) : 0;
 
-    // Equity / Capital Account
-    // Total Assets = Total Liabilities + Equity => Equity = Total Assets - Total Liabilities
-    const capitalAccount = Math.max(100000, totalAssets - totalCurrentLiabilities - netProfit);
-    const reservesAndSurplus = netProfit;
-    const totalEquity = capitalAccount + reservesAndSurplus;
-    const totalLiabilitiesAndEquity = totalCurrentLiabilities + totalEquity;
+    // 4. Other Current Assets / Advances
+    const otherAssetLedgers = ledgers.filter(l => 
+      (l.accountGroup?.code === "LOANS_ADV_ASSET" || l.accountGroup?.code === "CURR_ASSET") &&
+      !bankAndCashLedgers.includes(l) &&
+      !customerLedgers.includes(l) &&
+      !taxLedgers.includes(l)
+    );
+    const otherAssetsTotal = Number(otherAssetLedgers.reduce((acc, l) => {
+      const net = getLedgerNet(l);
+      return acc + (net > 0 ? net : 0);
+    }, 0).toFixed(2));
+
+    const currentAssetsList = [
+      { name: "Sundry Debtors (Accounts Receivable)", amount: totalDebtors },
+      { name: "Stock-in-Hand (Finished Goods & Inventory)", amount: stockInHand },
+      { name: "Bank & Cash Balances", amount: totalBankCash },
+      ...(gstInputCreditAsset > 0 ? [{ name: "GST Input Tax Credit (ITC Receivable)", amount: gstInputCreditAsset }] : []),
+      ...(otherAssetsTotal > 0 ? [{ name: "Loans, Advances & Other Current Assets", amount: otherAssetsTotal }] : [])
+    ];
+
+    const totalCurrentAssets = Number(currentAssetsList.reduce((s, a) => s + a.amount, 0).toFixed(2));
+    const totalAssets = Number((totalFixedAssets + totalCurrentAssets).toFixed(2));
+
+    // C. CURRENT LIABILITIES
+    // 1. Sundry Creditors (Vendors with Net Credit balance)
+    const vendorLedgers = ledgers.filter(l => l.partyType === "VENDOR" || l.accountGroup?.code === "SUNDRY_CREDITORS");
+    const totalCreditors = Number(vendorLedgers.reduce((acc, l) => {
+      const net = getLedgerNet(l);
+      return acc + (net < 0 ? Math.abs(net) : 0);
+    }, 0).toFixed(2));
+
+    // 2. Customer Advances (Customers with Net Credit balance)
+    const customerAdvances = Number(customerLedgers.reduce((acc, l) => {
+      const net = getLedgerNet(l);
+      return acc + (net < 0 ? Math.abs(net) : 0);
+    }, 0).toFixed(2));
+
+    // 3. Duties & Taxes Payable
+    const totalDutiesTaxesPayable = Number((netGstPayableLiability + tdsPayable).toFixed(2));
+
+    // 4. Provisions & Loans
+    const loanLedgers = ledgers.filter(l => l.accountGroup?.code === "LOANS_LIAB" || l.accountGroup?.code === "PROVISIONS");
+    const totalLoansAndProvisions = Number(loanLedgers.reduce((acc, l) => {
+      const net = getLedgerNet(l);
+      return acc + (net < 0 ? Math.abs(net) : 0);
+    }, 0).toFixed(2));
+
+    const currentLiabilitiesList = [
+      { name: "Sundry Creditors (Accounts Payable)", amount: totalCreditors },
+      { name: "Duties & Taxes (Net GST & TDS Payable)", amount: totalDutiesTaxesPayable },
+      ...(customerAdvances > 0 ? [{ name: "Customer Advance Balances", amount: customerAdvances }] : []),
+      ...(totalLoansAndProvisions > 0 ? [{ name: "Loans, Borrowings & Provisions", amount: totalLoansAndProvisions }] : [])
+    ];
+
+    const totalCurrentLiabilities = Number(currentLiabilitiesList.reduce((s, l) => s + l.amount, 0).toFixed(2));
+
+    // D. SHAREHOLDERS' / OWNER'S FUNDS
+    // Real Capital Account
+    const capitalLedgers = ledgers.filter(l => l.accountGroup?.code === "CAPITAL_ACCT");
+    const recordedCapital = capitalLedgers.reduce((acc, l) => {
+      const net = getLedgerNet(l);
+      return acc + (net < 0 ? Math.abs(net) : -net);
+    }, 0);
+
+    // Starting Proprietor Equity = Total Assets - Total Liabilities - Current Net Profit
+    const baseProprietorCapital = Number((totalAssets - totalCurrentLiabilities - netProfit).toFixed(2));
+    const finalCapital = recordedCapital > 0 ? Number(recordedCapital.toFixed(2)) : Math.max(0, baseProprietorCapital);
+
+    const reservesAndSurplus = Number(netProfit.toFixed(2));
+    const totalEquity = Number((finalCapital + reservesAndSurplus).toFixed(2));
+    const totalLiabilitiesAndEquity = Number((totalCurrentLiabilities + totalEquity).toFixed(2));
 
     return {
       success: true,
       asOfDate: asOfDate.toISOString().split("T")[0],
       assets: {
-        fixedAssets: [
-          { name: "Plant, Equipment & Computers", amount: fixedAssets }
-        ],
-        totalFixedAssets: Number(fixedAssets.toFixed(2)),
-        currentAssets: [
-          { name: "Sundry Debtors (Accounts Receivable)", amount: Number(totalDebtors.toFixed(2)) },
-          { name: "Stock-in-Hand (Finished Goods & Inventory)", amount: Number(stockInHand.toFixed(2)) },
-          { name: "Bank & Cash Balances", amount: Number(netCashBank.toFixed(2)) }
-        ],
-        totalCurrentAssets: Number(totalCurrentAssets.toFixed(2)),
-        totalAssets: Number(totalAssets.toFixed(2))
+        fixedAssets: fixedAssetsList.length > 0 ? fixedAssetsList : [{ name: "Plant, Equipment & Computers", amount: 0 }],
+        totalFixedAssets,
+        currentAssets: currentAssetsList,
+        totalCurrentAssets,
+        totalAssets
       },
       liabilities: {
-        currentLiabilities: [
-          { name: "Sundry Creditors (Accounts Payable)", amount: Number(totalCreditors.toFixed(2)) },
-          { name: "Duties & Taxes (Net GST Payable)", amount: Number(dutiesAndTaxesPayable.toFixed(2)) }
-        ],
-        totalCurrentLiabilities: Number(totalCurrentLiabilities.toFixed(2)),
+        currentLiabilities: currentLiabilitiesList,
+        totalCurrentLiabilities,
         capitalAndEquity: [
-          { name: "Proprietor / Shareholder Capital", amount: Number(capitalAccount.toFixed(2)) },
-          { name: "Profit & Loss (Reserves & Surplus / Net Profit)", amount: Number(reservesAndSurplus.toFixed(2)) }
+          { name: "Proprietor / Shareholder Capital", amount: finalCapital },
+          { name: "Profit & Loss (Reserves & Surplus / Net Profit)", amount: reservesAndSurplus }
         ],
-        totalEquity: Number(totalEquity.toFixed(2)),
-        totalLiabilitiesAndEquity: Number(totalLiabilitiesAndEquity.toFixed(2))
+        totalEquity,
+        totalLiabilitiesAndEquity
       },
       isBalanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1.0
     };
@@ -894,6 +1566,8 @@ export async function getDayBook(dateStr?: string) {
 
   try {
     const organizationId = await getTenantOrgId();
+    await syncSystemLedgers();
+
     const date = dateStr ? new Date(dateStr) : new Date();
     
     const startOfDay = new Date(date);
