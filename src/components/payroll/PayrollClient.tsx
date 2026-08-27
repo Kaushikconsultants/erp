@@ -35,6 +35,9 @@ export interface EmployeeData {
     slabIncentive: number;
     bonusIncentive: number;
     flatIncentive: number;
+    newCustomerIncentive?: number;
+    quantityIncentive?: number;
+    marginIncentive?: number;
     eligibleSales: number;
     flatSales: number;
     zeroDiscountSales: number;
@@ -43,6 +46,7 @@ export interface EmployeeData {
     nextSlabAt: number | null;
     nextSlabPercent: number | null;
     targetAchievementPercentage: number;
+    appliedModelSummary?: string[];
   };
   enrichedOrders?: Array<{
     id: string;
@@ -1266,6 +1270,9 @@ export default function PayrollClient({
                   slabIncentive: selectedIncentiveEmp.dynamicIncentive || 0,
                   bonusIncentive: 0,
                   flatIncentive: 0,
+                  newCustomerIncentive: 0,
+                  quantityIncentive: 0,
+                  marginIncentive: 0,
                   eligibleSales: selectedIncentiveEmp.orders.reduce((s: number, o: any) => s + (o.subtotal || o.totalValue || 0), 0),
                   flatSales: 0,
                   zeroDiscountSales: 0,
@@ -1366,10 +1373,61 @@ export default function PayrollClient({
                           </div>
                         </div>
 
+                        {/* New Customer Incentive Step */}
+                        {(inc.newCustomerIncentive || 0) > 0 && (
+                          <div style={{ padding: "10px 14px", backgroundColor: "#ecfdf5", borderRadius: "8px", border: "1px solid #a7f3d0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <div style={{ fontWeight: 700, color: "#047857", fontSize: "0.84rem" }}>
+                                New Customer Acquisition Bounty
+                              </div>
+                              <div style={{ fontSize: "0.75rem", color: "#065f46" }}>
+                                Direct bonus reward for onboarding new verified clients
+                              </div>
+                            </div>
+                            <div style={{ fontWeight: 800, color: "#059669", fontSize: "0.95rem", fontVariantNumeric: "tabular-nums" }}>
+                              + ₹{(inc.newCustomerIncentive || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Volume / Quantity Incentive Step */}
+                        {(inc.quantityIncentive || 0) > 0 && (
+                          <div style={{ padding: "10px 14px", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <div style={{ fontWeight: 700, color: "#15803d", fontSize: "0.84rem" }}>
+                                Physical Volume & Quantity Slab Reward
+                              </div>
+                              <div style={{ fontSize: "0.75rem", color: "#166534" }}>
+                                Tiered per-unit / carton volume reward
+                              </div>
+                            </div>
+                            <div style={{ fontWeight: 800, color: "#16a34a", fontSize: "0.95rem", fontVariantNumeric: "tabular-nums" }}>
+                              + ₹{(inc.quantityIncentive || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Profit Margin Share Step */}
+                        {(inc.marginIncentive || 0) > 0 && (
+                          <div style={{ padding: "10px 14px", backgroundColor: "#fffbeb", borderRadius: "8px", border: "1px solid #fde68a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <div>
+                              <div style={{ fontWeight: 700, color: "#b45309", fontSize: "0.84rem" }}>
+                                Gross Profit Margin Split Share
+                              </div>
+                              <div style={{ fontSize: "0.75rem", color: "#92400e" }}>
+                                Profit sharing percentage on high-markup deals
+                              </div>
+                            </div>
+                            <div style={{ fontWeight: 800, color: "#d97706", fontSize: "0.95rem", fontVariantNumeric: "tabular-nums" }}>
+                              + ₹{(inc.marginIncentive || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Total Equation */}
                         <div style={{ padding: "12px 14px", backgroundColor: "#eff6ff", borderRadius: "8px", border: "1.5px dashed #bfdbfe", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span style={{ fontWeight: 800, color: "#1d4ed8", fontSize: "0.9rem" }}>
-                            Final Total = Slab (₹{inc.slabIncentive.toFixed(2)}) + Bonus (₹{inc.bonusIncentive.toFixed(2)}) + Flat (₹{inc.flatIncentive.toFixed(2)})
+                            Final Total = Slabs + Bonuses + Bounties
                           </span>
                           <span style={{ fontWeight: 900, color: "#1e40af", fontSize: "1.15rem", fontVariantNumeric: "tabular-nums" }}>
                             = ₹{inc.totalIncentive.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

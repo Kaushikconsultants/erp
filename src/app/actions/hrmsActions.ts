@@ -143,6 +143,24 @@ export async function getPayrollData(month: string) {
       }
     });
 
+    // Query saved policy for the organization
+    let activePolicy = undefined;
+    try {
+      const ruleRecord = await prisma.incentiveRule.findFirst({
+        where: { name: "ORGANIZATION_ACTIVE_INCENTIVE_POLICY" },
+        orderBy: { updatedAt: "desc" }
+      });
+      if (ruleRecord?.condition) {
+        activePolicy = JSON.parse(ruleRecord.condition);
+      }
+    } catch (e) {
+      console.error("Failed to load active incentive policy:", e);
+    }
+
+    const highDiscThreshold = activePolicy?.highDiscountThresholdPercent ?? 15;
+    const highDiscRate = (activePolicy?.highDiscountRatePercent ?? 1) / 100;
+    const zeroDiscBonus = (activePolicy?.zeroDiscountBonusPercent ?? 2) / 100;
+
     const processedEmployees = employees.map((emp: any) => {
       const empOrders = emp.orders || [];
       const empAttendances = emp.attendances || [];
@@ -155,7 +173,7 @@ export async function getPayrollData(month: string) {
       }));
       
       const targetGoal = emp.target || 500000;
-      const calculatedIncentive = calculateIncentives(formattedOrders, targetGoal);
+      const calculatedIncentive = calculateIncentives(formattedOrders, targetGoal, activePolicy);
 
       // Enriched orders with their incentive tier
       const enrichedOrders = empOrders.map((order: any) => {
@@ -167,14 +185,14 @@ export async function getPayrollData(month: string) {
         let rateApplied = calculatedIncentive.slabRate;
         let orderIncentive = (taxable * rateApplied) / 100;
         
-        if (disc > 15 || isCredit) {
+        if (disc > highDiscThreshold || isCredit) {
           tier = "FLAT_RATE";
-          rateApplied = 1;
-          orderIncentive = taxable * 0.01;
+          rateApplied = highDiscRate * 100;
+          orderIncentive = taxable * highDiscRate;
         } else if (disc === 0) {
           tier = "ZERO_DISCOUNT";
-          rateApplied = calculatedIncentive.slabRate + 2;
-          orderIncentive = (taxable * (calculatedIncentive.slabRate / 100)) + (taxable * 0.02);
+          rateApplied = calculatedIncentive.slabRate + (zeroDiscBonus * 100);
+          orderIncentive = (taxable * (calculatedIncentive.slabRate / 100)) + (taxable * zeroDiscBonus);
         }
 
         return {

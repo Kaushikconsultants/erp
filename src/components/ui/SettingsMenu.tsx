@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import SettingsModal from "./SettingsModal";
 import ThemeSettingsModal from "./ThemeSettingsModal";
+import IncentivePolicyModal from "./IncentivePolicyModal";
 import {
   Building2,
   FileSpreadsheet,
@@ -108,11 +109,12 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
     },
     {
       label: "Sales Incentive Policy Engine",
-      desc: "5-Tier slab ladder, 2% zero-discount bonus & credit deal rates",
+      desc: "Multi-industry turnover slabs, new client bounties, volume tiers & profit sharing",
       icon: <Award size={18} />,
       iconBg: "#ecfdf5",
       iconColor: "#047857",
-      modal: "Incentive Rules"
+      modal: "Incentive Rules",
+      badge: "Multi-Industry"
     }
   ];
 
@@ -387,6 +389,8 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
 
       {activeFeature === "Theme" ? (
         <ThemeSettingsModal onClose={() => setActiveFeature(null)} />
+      ) : activeFeature === "Incentive Rules" ? (
+        <IncentivePolicyModal onClose={() => setActiveFeature(null)} />
       ) : activeFeature ? (
         <SettingsModal
           featureName={activeFeature}

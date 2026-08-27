@@ -363,8 +363,19 @@ export default async function Home() {
         isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
       }));
 
+    let activePolicy = undefined;
+    try {
+      const ruleRecord = await prisma.incentiveRule.findFirst({
+        where: { name: "ORGANIZATION_ACTIVE_INCENTIVE_POLICY" },
+        orderBy: { updatedAt: "desc" }
+      });
+      if (ruleRecord?.condition) {
+        activePolicy = JSON.parse(ruleRecord.condition);
+      }
+    } catch (e) {}
+
     const targetGoal = employee?.target || 500000;
-    const incentiveData = calculateIncentives(formattedOrders, targetGoal);
+    const incentiveData = calculateIncentives(formattedOrders, targetGoal, activePolicy);
 
     const todayFollowUps = allFollowUps.filter(c => {
       if (!c.followUpDate) return false;
