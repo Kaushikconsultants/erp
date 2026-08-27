@@ -59,7 +59,7 @@ function LoginForm() {
       }
     } catch (err: any) {
       console.error("Sign-in exception:", err);
-      setError("An unexpected error occurred. Please try again.");
+      setError(err?.message || "An unexpected error occurred. Please try again.");
       setLoading(false);
     }
   };
