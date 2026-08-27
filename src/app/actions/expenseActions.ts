@@ -42,21 +42,39 @@ export async function submitExpense(formData: FormData) {
   if (!session?.user) return { error: "Unauthorized" };
 
   const userId = (session.user as any).id;
-  const employee = await prisma.employee.findUnique({ where: { userId } });
-  if (!employee) return { error: "Employee record not found" };
+  const organizationId = await getTenantOrgId();
+
+  let employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
+  if (!employee) {
+    employee = await prisma.employee.findUnique({ where: { userId } });
+  }
+  if (!employee) return { error: "Employee record not linked to your user account. Please contact an admin." };
 
   try {
     const count = await prisma.expense.count();
     const expenseNumber = `EXP-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`;
+    const category = formData.get("category") as string;
+    const amountStr = formData.get("amount") as string;
+    const description = (formData.get("description") as string) || null;
+    const dateStr = formData.get("date") as string;
+
+    if (!category || !amountStr) {
+      return { error: "Category and Amount are required fields." };
+    }
+
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) {
+      return { error: "Please provide a valid amount greater than 0." };
+    }
 
     await prisma.expense.create({
       data: {
         expenseNumber,
-        category: formData.get("category") as string,
-        amount: parseFloat(formData.get("amount") as string),
-        description: formData.get("description") as string || null,
+        category: category.trim(),
+        amount,
+        description: description?.trim() || null,
         employeeId: employee.id,
-        date: formData.get("date") ? new Date(formData.get("date") as string) : new Date(),
+        date: dateStr ? new Date(dateStr) : new Date(),
         status: "Pending",
       }
     });
@@ -65,6 +83,97 @@ export async function submitExpense(formData: FormData) {
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to submit expense: " + error.message };
+  }
+}
+
+export async function updateExpense(id: string, formData: FormData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const userId = (session.user as any).id;
+  const role = (session.user as any).role;
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+
+  try {
+    const existing = await prisma.expense.findUnique({
+      where: { id },
+      include: { employee: true }
+    });
+
+    if (!existing) return { error: "Expense record not found." };
+
+    // STRICT LOCK: "no changes will be made after approval"
+    if (existing.status !== "Pending") {
+      return {
+        error: `Expense claim #${existing.expenseNumber} is already "${existing.status}". No changes are permitted after approval or settlement.`
+      };
+    }
+
+    // Permission check: admin or creator
+    if (!isAdmin && existing.employee?.userId !== userId) {
+      return { error: "You can only edit your own pending expense claims." };
+    }
+
+    const category = formData.get("category") as string;
+    const amountStr = formData.get("amount") as string;
+    const description = (formData.get("description") as string) || null;
+    const dateStr = formData.get("date") as string;
+
+    if (!category || !amountStr) {
+      return { error: "Category and Amount are required fields." };
+    }
+
+    const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) {
+      return { error: "Please provide a valid amount greater than 0." };
+    }
+
+    await prisma.expense.update({
+      where: { id },
+      data: {
+        category: category.trim(),
+        amount,
+        description: description?.trim() || null,
+        date: dateStr ? new Date(dateStr) : existing.date
+      }
+    });
+
+    revalidatePath("/expenses");
+    return { success: true };
+  } catch (error: any) {
+    return { error: "Failed to update expense: " + error.message };
+  }
+}
+
+export async function deleteExpense(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const userId = (session.user as any).id;
+  const role = (session.user as any).role;
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+
+  try {
+    const existing = await prisma.expense.findUnique({
+      where: { id },
+      include: { employee: true }
+    });
+
+    if (!existing) return { error: "Expense record not found." };
+
+    if (existing.status !== "Pending") {
+      return { error: "Approved or finalized expenses cannot be deleted." };
+    }
+
+    if (!isAdmin && existing.employee?.userId !== userId) {
+      return { error: "You can only delete your own pending claims." };
+    }
+
+    await prisma.expense.delete({ where: { id } });
+    revalidatePath("/expenses");
+    return { success: true };
+  } catch (error: any) {
+    return { error: "Failed to delete expense: " + error.message };
   }
 }
 

@@ -15,10 +15,11 @@ export default async function ExpensesPage() {
   if (res.error) redirect('/');
 
   return (
-    <div className="page-container" style={{ padding: '24px' }}>
+    <div className="page-container" style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       <ExpensesClient
         initialExpenses={JSON.parse(JSON.stringify(res.expenses || []))}
         isAdmin={res.isAdmin || false}
+        currentUserId={(session.user as any)?.id}
       />
     </div>
   );
