@@ -323,7 +323,12 @@ export default async function Home() {
         }
       }) : Promise.resolve(null),
       employee ? prisma.order.findMany({
-        where: { salespersonId: employee.id },
+        where: {
+          OR: [
+            { salespersonId: employee.id },
+            { customer: { assignedSalespersonId: employee.id } }
+          ]
+        },
         select: { 
           id: true, 
           orderNumber: true, 

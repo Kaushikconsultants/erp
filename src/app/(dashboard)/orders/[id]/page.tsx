@@ -75,7 +75,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         }
       });
     }
-    if (!employee || order.customer?.assignedSalespersonId !== employee.id) {
+    if (!employee || (order.salespersonId !== employee.id && order.customer?.assignedSalespersonId !== employee.id)) {
       redirect('/orders');
     }
   }

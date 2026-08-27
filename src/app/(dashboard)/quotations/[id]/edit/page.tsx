@@ -24,9 +24,18 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
   let customerWhere: any = { organizationId: orgId };
   if (!isAdmin) {
     try {
-      const employee = await prisma.employee.findUnique({ where: { userId } });
+      let employee = await prisma.employee.findUnique({ where: { userId } });
+      if (!employee && orgId) {
+        employee = await prisma.employee.findFirst({ where: { organizationId: orgId, userId } });
+      }
       if (employee) {
-        customerWhere = { assignedSalespersonId: employee.id, organizationId: orgId };
+        customerWhere = { 
+          organizationId: orgId,
+          OR: [
+            { assignedSalespersonId: employee.id },
+            { quotations: { some: { id } } }
+          ]
+        };
       } else {
         customerWhere = { id: '00000000-0000-0000-0000-000000000000' };
       }
@@ -89,12 +98,18 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
     }).catch(() => {});
   }
 
+  // Ensure current quotation's customer is included in customer list
+  const customersList = [...customers];
+  if (quotation.customer && !customersList.some(c => c.id === quotation.customer.id)) {
+    customersList.push(quotation.customer as any);
+  }
+
   const employees = employeesRaw.map(e => ({ id: e.id, name: e.user?.name || 'Unknown' }));
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
       <CreateQuotationForm 
-        customers={customers} 
+        customers={customersList} 
         products={products} 
         employees={employees} 
         categoriesData={categoriesData} 

@@ -24,20 +24,30 @@ export default async function OrdersPage() {
   let customerWhereClause: any = { organizationId };
   let quotationWhereClause: any = { organizationId };
 
-  // Strict Scoping: Sales Candidate / Non-Admin can ONLY see orders & data for their assigned customers
+  // Strict Scoping: Sales Candidate / Non-Admin can ONLY see orders, quotations & customers assigned to them
   if (!isAdmin) {
     const empId = employeeId || 'unassigned';
     orderWhereClause = {
-      organizationId,
-      customer: { assignedSalespersonId: empId }
+      ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}),
+      OR: [
+        { salespersonId: empId },
+        { customer: { assignedSalespersonId: empId } }
+      ]
     };
     customerWhereClause = { 
-      organizationId, 
-      assignedSalespersonId: empId 
+      ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}),
+      OR: [
+        { assignedSalespersonId: empId },
+        { quotations: { some: { salespersonId: empId } } },
+        { orders: { some: { salespersonId: empId } } }
+      ]
     };
     quotationWhereClause = {
-      organizationId,
-      customer: { assignedSalespersonId: empId }
+      ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}),
+      OR: [
+        { salespersonId: empId },
+        { customer: { assignedSalespersonId: empId } }
+      ]
     };
   }
 

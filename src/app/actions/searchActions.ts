@@ -70,7 +70,12 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
         quotationWhere = {
           organizationId: orgId,
           AND: [
-            { salespersonId: employee.id },
+            {
+              OR: [
+                { salespersonId: employee.id },
+                { customer: { assignedSalespersonId: employee.id } }
+              ]
+            },
             {
               OR: [
                 { quotationNumber: { contains: cleanQuery, mode: 'insensitive' } },
@@ -82,7 +87,12 @@ export async function searchAllModules(query: string): Promise<SearchResultItem[
         orderWhere = {
           organizationId: orgId,
           AND: [
-            { salespersonId: employee.id },
+            {
+              OR: [
+                { salespersonId: employee.id },
+                { customer: { assignedSalespersonId: employee.id } }
+              ]
+            },
             {
               OR: [
                 { orderNumber: { contains: cleanQuery, mode: 'insensitive' } },

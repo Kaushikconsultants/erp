@@ -60,7 +60,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         }
       });
     }
-    if (!employee || order.customer?.assignedSalespersonId !== employee.id) {
+    if (!employee || (order.salespersonId !== employee.id && order.customer?.assignedSalespersonId !== employee.id)) {
       redirect('/orders');
     }
   }

@@ -401,8 +401,17 @@ export async function createQuotation(data: {
       console.warn("Could not advance next quotation number in company settings:", updateErr);
     }
 
+    if (resolvedSalespersonId) {
+      await prisma.customer.updateMany({
+        where: { id: data.customerId, assignedSalespersonId: null },
+        data: { assignedSalespersonId: resolvedSalespersonId }
+      }).catch(() => {});
+    }
+
     revalidatePath("/quotations");
     revalidatePath("/quotations", "page");
+    revalidatePath("/orders");
+    revalidatePath("/");
     return { success: true, quotation };
   } catch (error: any) {
     console.error("Error creating quotation:", error);
@@ -613,9 +622,19 @@ export async function updateQuotationFull(id: string, data: {
       }
     });
 
+    if (resolvedSalespersonId) {
+      await prisma.customer.updateMany({
+        where: { id: data.customerId, assignedSalespersonId: null },
+        data: { assignedSalespersonId: resolvedSalespersonId }
+      }).catch(() => {});
+    }
+
     revalidatePath("/quotations");
+    revalidatePath("/quotations", "page");
     revalidatePath(`/quotations/${id}`);
     revalidatePath(`/quotations/${id}/edit`);
+    revalidatePath("/orders");
+    revalidatePath("/");
     return { success: true, quotation };
   } catch (error: any) {
     console.error("Error updating quotation:", error);
@@ -634,7 +653,7 @@ export async function getQuotations() {
     const userId = (session.user as any).id;
     const isAdmin = normRole === "ADMIN" || normRole === "SUPER_ADMIN" || normRole === "MANAGER" || normRole === "ACCOUNTS" || normRole === "ACCOUNTANT";
 
-    let whereClause: any = { organizationId };
+    let whereClause: any = organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {};
     if (!isAdmin) {
       let employee = await prisma.employee.findUnique({ where: { userId } });
       if (!employee && organizationId) {
@@ -650,8 +669,11 @@ export async function getQuotations() {
       }
       if (employee) {
         whereClause = {
-          organizationId,
-          customer: { assignedSalespersonId: employee.id }
+          ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}),
+          OR: [
+            { salespersonId: employee.id },
+            { customer: { assignedSalespersonId: employee.id } }
+          ]
         };
       } else {
         return { success: true, quotations: [] };
