@@ -22,6 +22,8 @@ interface AdminDashboardProps {
   liveLeaderboard?: any[];
   isCheckedIn?: boolean;
   isCheckedOut?: boolean;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
 }
 
 export default function AdminDashboard({
@@ -37,7 +39,9 @@ export default function AdminDashboard({
   todayOrdersCount = 0,
   liveLeaderboard = [],
   isCheckedIn = false,
-  isCheckedOut = false
+  isCheckedOut = false,
+  checkInTime,
+  checkOutTime
 }: AdminDashboardProps) {
   
   const [activeModalType, setActiveModalType] = useState<'customers' | 'orders' | 'calls' | null>(null);
@@ -50,6 +54,12 @@ export default function AdminDashboard({
           <p className="page-subtitle">Overview of your entire business and team performance.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <CheckInButton 
+            isCheckedIn={isCheckedIn} 
+            isCheckedOut={isCheckedOut} 
+            checkInTime={checkInTime}
+            checkOutTime={checkOutTime}
+          />
           <Link href="/reports" className="primary-btn hover-lift">View Full Reports</Link>
         </div>
       </div>

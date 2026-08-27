@@ -200,6 +200,8 @@ export default async function Home() {
           liveLeaderboard={liveLeaderboard}
           isCheckedIn={adminCheckedIn}
           isCheckedOut={adminCheckedOut}
+          checkInTime={adminAtt?.checkIn ? adminAtt.checkIn.toISOString() : null}
+          checkOutTime={adminAtt?.checkOut ? adminAtt.checkOut.toISOString() : null}
         />
       </>
     );
@@ -289,6 +291,8 @@ export default async function Home() {
           employee={employee}
           isCheckedIn={isCheckedIn}
           isCheckedOut={isCheckedOut}
+          checkInTime={attendanceRecord?.checkIn ? attendanceRecord.checkIn.toISOString() : null}
+          checkOutTime={attendanceRecord?.checkOut ? attendanceRecord.checkOut.toISOString() : null}
           todayTasks={todayTasks}
           missedCalls={missedCalls}
           todayCallsCount={todayCallsCount}
@@ -390,6 +394,8 @@ export default async function Home() {
           employee={employee}
           isCheckedIn={isCheckedIn}
           isCheckedOut={isCheckedOut}
+          checkInTime={attendanceRecord?.checkIn ? attendanceRecord.checkIn.toISOString() : null}
+          checkOutTime={attendanceRecord?.checkOut ? attendanceRecord.checkOut.toISOString() : null}
           incentiveData={incentiveData}
           todayFollowUps={serializedTodayFollowUps}
           allOrders={serializedOrders}

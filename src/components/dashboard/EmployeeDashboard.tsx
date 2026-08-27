@@ -139,6 +139,8 @@ interface EmployeeDashboardProps {
   employee: any;
   isCheckedIn: boolean;
   isCheckedOut: boolean;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   incentiveData: IncentiveResult;
   todayFollowUps?: any[];
   allOrders?: any[];
@@ -151,6 +153,8 @@ export default function EmployeeDashboard({
   employee, 
   isCheckedIn, 
   isCheckedOut, 
+  checkInTime,
+  checkOutTime,
   incentiveData: initialIncentiveData,
   todayFollowUps = [],
   allOrders = [],
@@ -302,7 +306,12 @@ export default function EmployeeDashboard({
           </h1>
         </div>
         <div>
-          <CheckInButton isCheckedIn={isCheckedIn} isCheckedOut={isCheckedOut} />
+          <CheckInButton 
+            isCheckedIn={isCheckedIn} 
+            isCheckedOut={isCheckedOut} 
+            checkInTime={checkInTime}
+            checkOutTime={checkOutTime}
+          />
         </div>
       </div>
 

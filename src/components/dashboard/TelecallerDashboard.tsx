@@ -8,6 +8,8 @@ interface TelecallerDashboardProps {
   employee: any;
   isCheckedIn: boolean;
   isCheckedOut: boolean;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   todayTasks: any[];
   missedCalls: any[];
   todayCallsCount: number;
@@ -18,6 +20,8 @@ export default function TelecallerDashboard({
   employee, 
   isCheckedIn, 
   isCheckedOut, 
+  checkInTime,
+  checkOutTime,
   todayTasks,
   missedCalls,
   todayCallsCount,
@@ -170,7 +174,12 @@ export default function TelecallerDashboard({
           <CalendarRange size={18} /> Attendance
         </h3>
         <div className="attendance-content">
-          <CheckInButton isCheckedIn={isCheckedIn} isCheckedOut={isCheckedOut} />
+          <CheckInButton 
+            isCheckedIn={isCheckedIn} 
+            isCheckedOut={isCheckedOut} 
+            checkInTime={checkInTime}
+            checkOutTime={checkOutTime}
+          />
         </div>
       </div>
 
