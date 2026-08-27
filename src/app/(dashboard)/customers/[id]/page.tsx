@@ -70,6 +70,29 @@ export default async function CustomerProfilePage({ params }: { params: { id: st
     }).catch(() => {});
   }
 
+  const rawRole = (session.user as any).role || 'SALES';
+  const normRole = String(rawRole).trim().toUpperCase();
+  const userId = (session.user as any).id;
+  const isSuperOrAdmin = normRole === 'SUPER_ADMIN' || normRole === 'ADMIN' || normRole === 'ACCOUNTS' || normRole === 'MANAGER';
+
+  if (!isSuperOrAdmin) {
+    let employee = await prisma.employee.findUnique({ where: { userId } });
+    if (!employee && orgId) {
+      employee = await prisma.employee.findFirst({ where: { organizationId: orgId, userId } });
+    }
+    if (!employee && session.user.email) {
+      employee = await prisma.employee.findFirst({
+        where: {
+          organizationId: orgId,
+          user: { email: { equals: session.user.email.trim(), mode: 'insensitive' } }
+        }
+      });
+    }
+    if (!employee || customer.assignedSalespersonId !== employee.id) {
+      redirect('/customers');
+    }
+  }
+
   return (
     <div className="page-container">
       <div className="dashboard-header">

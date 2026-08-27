@@ -32,17 +32,40 @@ export async function createOrder(formData: FormData) {
       return { error: "Product not found" };
     }
     
+    const customer = await prisma.customer.findFirst({ where: { id: customerId, organizationId } });
+    if (!customer) return { error: "Customer not found" };
+
+    const session = await getServerSession(authOptions);
+    const rawRole = (session?.user as any)?.role || 'SALES';
+    const normRole = String(rawRole).trim().toUpperCase();
+    const isAdmin = normRole === 'ADMIN' || normRole === 'SUPER_ADMIN';
+
     let finalSalespersonId = providedSalespersonId;
 
-    if (!finalSalespersonId) {
-      const session = await getServerSession(authOptions);
-      if (session?.user) {
-        const userId = (session.user as any).id;
-        const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
-        if (employee) {
-          finalSalespersonId = employee.id;
-        }
+    if (!isAdmin && session?.user) {
+      const userId = (session.user as any).id;
+      let employee = await prisma.employee.findUnique({ where: { userId } });
+      if (!employee && organizationId) {
+        employee = await prisma.employee.findFirst({ where: { organizationId, userId } });
       }
+      if (!employee && session.user.email) {
+        employee = await prisma.employee.findFirst({
+          where: {
+            organizationId,
+            user: { email: { equals: session.user.email.trim(), mode: 'insensitive' } }
+          }
+        });
+      }
+      if (employee) {
+        if (customer.assignedSalespersonId && customer.assignedSalespersonId !== employee.id) {
+          return { error: "Permission Denied: You can only create orders for your assigned customers." };
+        }
+        finalSalespersonId = employee.id;
+      }
+    }
+
+    if (!finalSalespersonId && customer.assignedSalespersonId) {
+      finalSalespersonId = customer.assignedSalespersonId;
     }
 
     if (!finalSalespersonId) {
@@ -52,9 +75,6 @@ export async function createOrder(formData: FormData) {
       }
       finalSalespersonId = employee.id;
     }
-
-    const customer = await prisma.customer.findFirst({ where: { id: customerId, organizationId } });
-    if (!customer) return { error: "Customer not found" };
 
     const companyRes = await getCompanySettings();
     const companyState = companyRes.settings?.state || "Delhi";

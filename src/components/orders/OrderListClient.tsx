@@ -2,7 +2,23 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Edit, FileText, Trash2, Copy, Search, ChevronDown, CheckCircle2, Truck } from 'lucide-react';
+import { 
+  Calendar, 
+  Edit, 
+  FileText, 
+  Trash2, 
+  Copy, 
+  Search, 
+  ChevronDown, 
+  CheckCircle2, 
+  Truck, 
+  X, 
+  RotateCcw, 
+  UserCheck, 
+  ShoppingBag, 
+  Eye, 
+  ExternalLink 
+} from 'lucide-react';
 import OrderTrackingModal from '@/components/orders/OrderTrackingModal';
 
 type DocumentType = 'Order' | 'Quotation';
@@ -18,7 +34,7 @@ export interface UnifiedDocument {
   taxableAmount: number;
   paymentType: string;
   discountBadge: string;
-  discountColor: string; // e.g. '#22c55e'
+  discountColor: string;
   commissionValue: number;
   commissionAvg: string;
   documentNumber: string;
@@ -33,15 +49,32 @@ export interface UnifiedDocument {
 interface OrderListClientProps {
   documents: UnifiedDocument[];
   agents: { id: string; name: string }[];
+  isAdmin?: boolean;
+  currentUserEmployeeId?: string;
+  currentUserName?: string;
 }
 
 const TABS = ['All', 'Printed', 'AWB Assigned', 'In Transit', 'OFD', 'Delivered', 'Quotations'];
 
-export default function OrderListClient({ documents, agents }: OrderListClientProps) {
+export default function OrderListClient({ 
+  documents, 
+  agents, 
+  isAdmin = true, 
+  currentUserEmployeeId, 
+  currentUserName 
+}: OrderListClientProps) {
   const searchParams = useSearchParams();
   const initialSearch = searchParams?.get('search') || '';
   const [activeTab, setActiveTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState(initialSearch);
+
+  const [selectedAgent, setSelectedAgent] = useState('All Agents');
+  const [selectedPayment, setSelectedPayment] = useState('All Payment Types');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [copiedAwb, setCopiedAwb] = useState<string | null>(null);
+  const [commissionModal, setCommissionModal] = useState<UnifiedDocument | null>(null);
+  const [trackingOrder, setTrackingOrder] = useState<UnifiedDocument | null>(null);
 
   useEffect(() => {
     const s = searchParams?.get('search');
@@ -49,56 +82,94 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
       setSearchQuery(s);
     }
   }, [searchParams]);
-  const [selectedAgent, setSelectedAgent] = useState('All Agents');
-  const [selectedPayment, setSelectedPayment] = useState('All Payment Types');
-  const [copiedAwb, setCopiedAwb] = useState<string | null>(null);
-  const [commissionModal, setCommissionModal] = useState<UnifiedDocument | null>(null);
-  const [trackingOrder, setTrackingOrder] = useState<UnifiedDocument | null>(null);
+
+  // Tab Count Computation
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      'All': documents.length,
+      'Printed': 0,
+      'AWB Assigned': 0,
+      'In Transit': 0,
+      'OFD': 0,
+      'Delivered': 0,
+      'Quotations': 0
+    };
+
+    documents.forEach(doc => {
+      if (doc.type === 'Quotation') {
+        counts['Quotations'] = (counts['Quotations'] || 0) + 1;
+        return;
+      }
+      const s = (doc.status || '').toLowerCase();
+      if (s.includes('printed') || s.includes('processing')) counts['Printed'] = (counts['Printed'] || 0) + 1;
+      if (doc.awbNumber) counts['AWB Assigned'] = (counts['AWB Assigned'] || 0) + 1;
+      if (s.includes('transit')) counts['In Transit'] = (counts['In Transit'] || 0) + 1;
+      if (s.includes('out for delivery') || s.includes('ofd')) counts['OFD'] = (counts['OFD'] || 0) + 1;
+      if (s.includes('delivered') || s.includes('converted')) counts['Delivered'] = (counts['Delivered'] || 0) + 1;
+    });
+
+    return counts;
+  }, [documents]);
 
   const filteredDocs = useMemo(() => {
     return documents.filter(doc => {
-      // Tab filter
+      // 1. Tab filter
       if (activeTab === 'Quotations' && doc.type !== 'Quotation') return false;
       if (activeTab !== 'All' && activeTab !== 'Quotations') {
-        if (doc.type === 'Quotation') return false; // Hide quotations in order-specific tabs
+        if (doc.type === 'Quotation') return false;
         
-        // Map tab to status
         let tabMatch = false;
         const statusLower = (doc.status || '').toLowerCase();
-        if (activeTab === 'Printed' && statusLower.includes('printed')) tabMatch = true;
+        if (activeTab === 'Printed' && (statusLower.includes('printed') || statusLower.includes('processing'))) tabMatch = true;
         else if (activeTab === 'AWB Assigned' && doc.awbNumber) tabMatch = true;
         else if (activeTab === 'In Transit' && statusLower.includes('transit')) tabMatch = true;
         else if (activeTab === 'OFD' && (statusLower.includes('out for delivery') || statusLower.includes('ofd'))) tabMatch = true;
-        else if (activeTab === 'Delivered' && statusLower.includes('delivered')) tabMatch = true;
-        // fallback matching
+        else if (activeTab === 'Delivered' && (statusLower.includes('delivered') || statusLower.includes('converted'))) tabMatch = true;
         else if (statusLower === activeTab.toLowerCase()) tabMatch = true;
         
         if (!tabMatch) return false;
       }
 
-      // Search filter
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        if (!doc.customerName.toLowerCase().includes(q) && 
-            !doc.documentNumber.toLowerCase().includes(q) &&
-            !(doc.customerSub || '').toLowerCase().includes(q)) {
+      // 2. Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchCust = doc.customerName.toLowerCase().includes(q);
+        const matchSub = (doc.customerSub || '').toLowerCase().includes(q);
+        const matchDoc = doc.documentNumber.toLowerCase().includes(q);
+        const matchAgent = doc.agentName.toLowerCase().includes(q);
+        const matchAwb = (doc.awbNumber || '').toLowerCase().includes(q);
+        const matchNotes = (doc.notes || '').toLowerCase().includes(q);
+        const matchAmount = doc.totalAmount.toString().includes(q);
+
+        if (!matchCust && !matchSub && !matchDoc && !matchAgent && !matchAwb && !matchNotes && !matchAmount) {
           return false;
         }
       }
 
-      // Agent filter
-      if (selectedAgent !== 'All Agents' && doc.agentName !== selectedAgent) {
+      // 3. Agent filter (only for admins)
+      if (isAdmin && selectedAgent !== 'All Agents' && doc.agentName !== selectedAgent) {
         return false;
       }
 
-      // Payment filter
+      // 4. Payment filter
       if (selectedPayment !== 'All Payment Types' && doc.paymentType !== selectedPayment) {
         return false;
       }
 
+      // 5. Date filter
+      if (startDate || endDate) {
+        const docDate = new Date(doc.date);
+        if (startDate && docDate < new Date(startDate)) return false;
+        if (endDate) {
+          const eDate = new Date(endDate);
+          eDate.setHours(23, 59, 59, 999);
+          if (docDate > eDate) return false;
+        }
+      }
+
       return true;
     });
-  }, [documents, activeTab, searchQuery, selectedAgent, selectedPayment]);
+  }, [documents, activeTab, searchQuery, selectedAgent, selectedPayment, startDate, endDate, isAdmin]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -110,123 +181,291 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
     setSearchQuery('');
     setSelectedAgent('All Agents');
     setSelectedPayment('All Payment Types');
+    setStartDate('');
+    setEndDate('');
     setActiveTab('All');
   };
 
   return (
-    <div style={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+    <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
       
-      {/* ─── TABS ─── */}
-      <div style={{ display: 'flex', overflowX: 'auto', borderBottom: '2px solid #3b82f6', backgroundColor: '#f8fafc' }}>
-        {TABS.map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            style={{
-              padding: '16px 24px',
-              border: 'none',
-              background: 'transparent',
-              fontWeight: 600,
-              fontSize: '0.95rem',
-              color: activeTab === tab ? '#1e293b' : '#3b82f6',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              position: 'relative',
-              outline: 'none'
-            }}
-          >
-            {tab}
-            {activeTab === tab && (
-              <div style={{ position: 'absolute', bottom: '-2px', left: 0, right: 0, height: '3px', backgroundColor: '#1e293b', borderRadius: '3px 3px 0 0' }} />
-            )}
-          </button>
-        ))}
+      {/* ─── 1. MODERN THEME TABS (NO GLITCHY VERTICAL SCROLLBAR) ─── */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '8px', 
+        padding: '14px 18px', 
+        borderBottom: '1px solid #f1f5f9', 
+        backgroundColor: '#f8fafc',
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        msOverflowStyle: 'none'
+      }}>
+        {TABS.map(tab => {
+          const isSelected = activeTab === tab;
+          const count = tabCounts[tab] || 0;
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                borderRadius: '9999px',
+                fontSize: '0.84rem',
+                fontWeight: isSelected ? 700 : 600,
+                border: isSelected ? 'none' : '1px solid #e2e8f0',
+                backgroundColor: isSelected ? 'var(--accent-primary, #4f46e5)' : '#ffffff',
+                color: isSelected ? '#ffffff' : '#475569',
+                cursor: 'pointer',
+                boxShadow: isSelected ? '0 2px 6px rgba(0,0,0,0.12)' : '0 1px 2px rgba(0,0,0,0.02)',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <span>{tab}</span>
+              <span style={{
+                padding: '2px 7px',
+                borderRadius: '9999px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
+                color: isSelected ? '#ffffff' : '#64748b'
+              }}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ─── FILTERS ─── */}
-      <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* ─── 2. MODERN FILTERS & THEMED SEARCH BAR ─── */}
+      <div style={{ 
+        padding: '16px 20px', 
+        borderBottom: '1px solid #f1f5f9', 
+        display: 'flex', 
+        gap: '12px', 
+        flexWrap: 'wrap', 
+        alignItems: 'center',
+        backgroundColor: '#ffffff'
+      }}>
         
-        {/* Search */}
-        <div style={{ position: 'relative', flex: '1', minWidth: '250px' }}>
-          <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+        {/* Themed Pill Search Box */}
+        <div 
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            backgroundColor: '#f8fafc', 
+            border: '1px solid #cbd5e1', 
+            borderRadius: '9999px', 
+            padding: '8px 16px', 
+            flex: '1', 
+            minWidth: '240px',
+            maxWidth: '360px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+            transition: 'all 0.2s ease'
+          }}
+          onFocusCapture={(e) => {
+            e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
+            e.currentTarget.style.backgroundColor = "#ffffff";
+          }}
+          onBlurCapture={(e) => {
+            e.currentTarget.style.borderColor = "#cbd5e1";
+            e.currentTarget.style.boxShadow = "0 1px 2px rgba(0,0,0,0.03)";
+            e.currentTarget.style.backgroundColor = "#f8fafc";
+          }}
+        >
+          <Search size={15} style={{ color: '#94a3b8', marginRight: '10px', flexShrink: 0 }} />
           <input
             type="text"
-            placeholder="Search customer name..."
+            placeholder="Search customer, order #, AWB..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none' }}
+            style={{ 
+              width: '100%', 
+              border: 'none', 
+              background: 'transparent', 
+              outline: 'none', 
+              fontSize: '0.875rem', 
+              color: '#0f172a',
+              fontFamily: 'inherit'
+            }}
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', padding: '0 2px' }}
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        {/* Agent Dropdown */}
-        <div style={{ position: 'relative', width: '200px' }}>
-          <select 
-            value={selectedAgent} 
-            onChange={e => setSelectedAgent(e.target.value)}
-            style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', appearance: 'none', backgroundColor: '#fff', outline: 'none' }}
-          >
-            <option value="All Agents">All Agents</option>
-            {agents.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
-          </select>
-          <ChevronDown size={16} color="#64748b" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-        </div>
+        {/* Agent Dropdown (Admin Only) or Scoped Badge */}
+        {isAdmin ? (
+          <div style={{ position: 'relative', width: '180px' }}>
+            <select 
+              value={selectedAgent} 
+              onChange={e => setSelectedAgent(e.target.value)}
+              style={{ 
+                width: '100%', 
+                padding: '9px 34px 9px 14px', 
+                borderRadius: '10px', 
+                border: '1px solid #cbd5e1', 
+                fontSize: '0.85rem', 
+                fontWeight: 600,
+                appearance: 'none', 
+                backgroundColor: '#ffffff', 
+                color: '#334155',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="All Agents">All Sales Agents</option>
+              {agents.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
+            </select>
+            <ChevronDown size={15} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          </div>
+        ) : (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '8px 14px',
+            borderRadius: '10px',
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
+            color: '#475569',
+            fontSize: '0.82rem',
+            fontWeight: 600
+          }}>
+            <UserCheck size={14} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
+            <span>Rep: {currentUserName || 'You'}</span>
+          </div>
+        )}
 
         {/* Payment Dropdown */}
-        <div style={{ position: 'relative', width: '200px' }}>
+        <div style={{ position: 'relative', width: '170px' }}>
           <select 
             value={selectedPayment} 
             onChange={e => setSelectedPayment(e.target.value)}
-            style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', appearance: 'none', backgroundColor: '#fff', outline: 'none' }}
+            style={{ 
+              width: '100%', 
+              padding: '9px 34px 9px 14px', 
+              borderRadius: '10px', 
+              border: '1px solid #cbd5e1', 
+              fontSize: '0.85rem', 
+              fontWeight: 600,
+              appearance: 'none', 
+              backgroundColor: '#ffffff', 
+              color: '#334155',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
           >
-            <option value="All Payment Types">All Payment Types</option>
-            <option value="COD">COD</option>
+            <option value="All Payment Types">All Payments</option>
             <option value="Prepaid">Prepaid</option>
-            <option value="Credit">Credit</option>
+            <option value="COD">COD</option>
+            <option value="Credit">Credit Terms</option>
+            <option value="Quotation">Quotation</option>
           </select>
-          <ChevronDown size={16} color="#64748b" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <ChevronDown size={15} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
         </div>
 
-        {/* Date Range Placeholder */}
-        <div style={{ position: 'relative', width: '200px' }}>
+        {/* Interactive Date Range Filter */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#f8fafc', padding: '4px 8px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
+          <Calendar size={14} style={{ color: '#94a3b8' }} />
           <input
-            type="text"
-            placeholder="--------, ----"
-            style={{ width: '100%', padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', textAlign: 'center' }}
-            readOnly
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            title="Start Date"
+            style={{
+              border: 'none',
+              backgroundColor: 'transparent',
+              fontSize: '0.8rem',
+              color: '#334155',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
           />
-          <Calendar size={16} color="#64748b" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <span style={{ color: '#cbd5e1' }}>-</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            title="End Date"
+            style={{
+              border: 'none',
+              backgroundColor: 'transparent',
+              fontSize: '0.8rem',
+              color: '#334155',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
         </div>
 
-        <button 
-          onClick={handleReset}
-          style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 500, color: '#475569' }}
-        >
-          Reset
-        </button>
+        {/* Reset Filter Button */}
+        {(searchQuery || selectedAgent !== 'All Agents' || selectedPayment !== 'All Payment Types' || startDate || endDate || activeTab !== 'All') && (
+          <button 
+            type="button"
+            onClick={handleReset}
+            style={{ 
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px', 
+              borderRadius: '10px', 
+              border: '1px solid #cbd5e1', 
+              backgroundColor: '#ffffff', 
+              fontSize: '0.82rem', 
+              cursor: 'pointer', 
+              fontWeight: 600, 
+              color: '#475569',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f1f5f9';
+              e.currentTarget.style.color = '#0f172a';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#ffffff';
+              e.currentTarget.style.color = '#475569';
+            }}
+          >
+            <RotateCcw size={13} />
+            <span>Reset</span>
+          </button>
+        )}
       </div>
 
-      {/* ─── MOBILE ORDER CARDS VIEW (HIDDEN ON DESKTOP) ─── */}
-      <div className="mobile-order-cards" style={{ display: 'none', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+      {/* ─── 3. MOBILE ORDER CARDS VIEW (HIDDEN ON DESKTOP) ─── */}
+      <div className="mobile-order-cards" style={{ display: 'none', flexDirection: 'column', gap: '12px', padding: '16px' }}>
         {filteredDocs.map((doc) => (
           <div 
             key={doc.id}
             style={{
               backgroundColor: '#ffffff',
               borderRadius: '14px',
-              padding: '14px',
-              border: '1px solid #cbd5e1',
+              padding: '16px',
+              border: '1px solid #e2e8f0',
               boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '10px'
+              gap: '12px'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace' }}>
                   <FileText size={13} /> {doc.documentNumber} • {doc.date}
                 </span>
-                <h4 style={{ margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 800, color: 'var(--accent-primary, #2563eb)' }}>
+                <h4 style={{ margin: '4px 0 0 0', fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
                   {doc.customerName}
                 </h4>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
@@ -238,7 +477,7 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
                 backgroundColor: doc.statusBg, 
                 color: doc.statusColor, 
                 padding: '4px 10px', 
-                borderRadius: '12px', 
+                borderRadius: '9999px', 
                 fontSize: '0.75rem', 
                 fontWeight: 700 
               }}>
@@ -246,17 +485,17 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
               </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '10px 12px', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '10px 14px', borderRadius: '10px' }}>
               <div>
-                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Total Amount</span>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Amount</span>
                 <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>₹{doc.totalAmount.toLocaleString()}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Payment Method</span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569' }}>{doc.paymentType}</span>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Payment</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>{doc.paymentType}</span>
               </div>
               <div>
-                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block' }}>Commission</span>
+                <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Commission</span>
                 <button 
                   onClick={() => setCommissionModal(doc)}
                   style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}
@@ -270,8 +509,8 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', color: '#475569', backgroundColor: '#f0fdf4', padding: '6px 10px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
                 <span>AWB: <strong>{doc.awbNumber}</strong></span>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => copyToClipboard(doc.awbNumber!)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
-                    Copy
+                  <button onClick={() => copyToClipboard(doc.awbNumber!)} style={{ background: 'none', border: 'none', color: 'var(--accent-primary, #4f46e5)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                    {copiedAwb === doc.awbNumber ? 'Copied!' : 'Copy'}
                   </button>
                   <button onClick={() => setTrackingOrder(doc)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
                     <Truck size={13} /> Track
@@ -283,142 +522,229 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
             <div style={{ display: 'flex', gap: '8px', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
               <a 
                 href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}`} 
-                className="action-btn outline-primary" 
-                style={{ flex: 1, textAlign: 'center', textDecoration: 'none', justifyContent: 'center', fontSize: '0.78rem' }}
+                style={{ 
+                  flex: 1, 
+                  textAlign: 'center', 
+                  textDecoration: 'none', 
+                  fontSize: '0.82rem', 
+                  fontWeight: 600,
+                  padding: '8px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#334155'
+                }}
               >
-                View Order
+                View Details
               </a>
               <a 
                 href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}/invoice`} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="action-btn" 
-                style={{ flex: 1, textAlign: 'center', textDecoration: 'none', justifyContent: 'center', fontSize: '0.78rem', backgroundColor: '#4f46e5', color: '#fff' }}
+                style={{ 
+                  flex: 1, 
+                  textAlign: 'center', 
+                  textDecoration: 'none', 
+                  fontSize: '0.82rem', 
+                  fontWeight: 700,
+                  padding: '8px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--accent-primary, #4f46e5)', 
+                  color: '#ffffff'
+                }}
               >
-                Invoice PDF
+                Tax Invoice PDF
               </a>
             </div>
           </div>
         ))}
 
         {filteredDocs.length === 0 && (
-          <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', backgroundColor: '#ffffff', borderRadius: '12px' }}>
+          <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', backgroundColor: '#ffffff', borderRadius: '12px' }}>
             No records found matching your filters.
           </div>
         )}
       </div>
 
-      {/* ─── DESKTOP TABLE ─── */}
+      {/* ─── 4. MODERN DESKTOP DATA TABLE ─── */}
       <div className="desktop-order-table" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px', fontSize: '0.875rem' }}>
           <thead>
-            <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Date</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Customer</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Agent</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Amount</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Payment</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Discount</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Commission</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>QT No. / Status</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Notes</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', textAlign: 'center' }}>Actions</th>
+            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Date</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Customer</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Agent</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Amount</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Payment</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Discount</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Commission</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Doc # / Status</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Notes</th>
+              <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredDocs.map((doc) => (
-              <tr key={doc.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s ease' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+            {filteredDocs.map((doc, idx) => (
+              <tr 
+                key={doc.id} 
+                style={{ 
+                  borderBottom: '1px solid #f1f5f9', 
+                  backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa',
+                  transition: 'background-color 0.15s ease' 
+                }} 
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-light, #f8faff)'} 
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#fafafa'}
+              >
                 {/* Date */}
-                <td style={{ padding: '20px', fontSize: '0.9rem', color: '#475569', verticalAlign: 'top' }}>
+                <td style={{ padding: '14px 18px', color: '#475569', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                   {doc.date}
                 </td>
                 
                 {/* Customer */}
-                <td style={{ padding: '20px', verticalAlign: 'top' }}>
-                  <div style={{ color: 'var(--accent-primary, #2563eb)', fontWeight: 600, fontSize: '0.95rem', marginBottom: '4px' }}>{doc.customerName}</div>
-                  <div style={{ color: '#64748b', fontSize: '0.85rem' }}>{doc.customerSub}</div>
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                  <a 
+                    href={`/customers`} 
+                    style={{ 
+                      color: 'var(--accent-primary, #4f46e5)', 
+                      fontWeight: 700, 
+                      fontSize: '0.92rem', 
+                      textDecoration: 'none',
+                      display: 'block'
+                    }}
+                  >
+                    {doc.customerName}
+                  </a>
+                  {doc.customerSub && (
+                    <div style={{ color: '#64748b', fontSize: '0.78rem', marginTop: '2px' }}>
+                      {doc.customerSub}
+                    </div>
+                  )}
                 </td>
                 
                 {/* Agent */}
-                <td style={{ padding: '20px', fontWeight: 700, fontSize: '0.9rem', color: '#1e293b', verticalAlign: 'top' }}>
-                  {doc.agentName}
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ 
+                      width: '24px', 
+                      height: '24px', 
+                      borderRadius: '50%', 
+                      backgroundColor: 'var(--accent-light, #eff6ff)', 
+                      color: 'var(--accent-primary, #4f46e5)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700 
+                    }}>
+                      {doc.agentName.charAt(0).toUpperCase()}
+                    </div>
+                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.85rem' }}>{doc.agentName}</span>
+                  </div>
                 </td>
                 
                 {/* Amount */}
-                <td style={{ padding: '20px', verticalAlign: 'top' }}>
-                  <div style={{ color: '#0f172a', fontWeight: 700, fontSize: '1rem', marginBottom: '4px' }}>₹{doc.totalAmount.toLocaleString()}</div>
-                  <div style={{ color: '#94a3b8', fontSize: '0.8rem' }}>Taxable: ₹{doc.taxableAmount.toLocaleString()}</div>
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                  <div style={{ color: '#0f172a', fontWeight: 800, fontSize: '0.95rem' }}>
+                    ₹{doc.totalAmount.toLocaleString()}
+                  </div>
+                  <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '1px' }}>
+                    Taxable: ₹{doc.taxableAmount.toLocaleString()}
+                  </div>
                 </td>
                 
                 {/* Payment */}
-                <td style={{ padding: '20px', verticalAlign: 'top' }}>
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                   <span style={{ 
                     backgroundColor: '#f1f5f9', 
                     color: '#475569', 
                     padding: '4px 10px', 
-                    borderRadius: 'var(--radius-sm, 4px)', 
+                    borderRadius: '9999px', 
                     fontSize: '0.75rem', 
                     fontWeight: 600,
-                    border: '1px solid #e2e8f0'
+                    border: '1px solid #e2e8f0',
+                    display: 'inline-block'
                   }}>
                     {doc.paymentType}
                   </span>
                 </td>
 
                 {/* Discount */}
-                <td style={{ padding: '20px', verticalAlign: 'top' }}>
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                   <span style={{ 
-                    backgroundColor: 'var(--accent-light, #ede9fe)', 
-                    color: 'var(--accent-primary, #6d28d9)', 
+                    backgroundColor: 'var(--accent-light, #eff6ff)', 
+                    color: 'var(--accent-primary, #4f46e5)', 
                     padding: '4px 10px', 
-                    borderRadius: 'var(--radius-sm, 4px)', 
-                    border: '1px solid var(--accent-light, #ddd6fe)',
+                    borderRadius: '9999px', 
+                    border: '1px solid rgba(79, 70, 229, 0.2)',
                     fontSize: '0.75rem', 
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap'
+                    fontWeight: 700,
+                    whiteSpace: 'nowrap',
+                    display: 'inline-block'
                   }}>
                     {doc.discountBadge}
                   </span>
                 </td>
 
                 {/* Commission */}
-                <td style={{ padding: '20px', verticalAlign: 'top' }}>
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
                   <button 
+                    type="button"
                     onClick={() => setCommissionModal(doc)}
-                    style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#f8fafc', color: '#334155', padding: '4px 10px', borderRadius: '6px', fontWeight: 600, fontSize: '0.85rem', gap: '4px', marginBottom: '4px', border: '1px solid #e2e8f0', cursor: 'pointer', outline: 'none' }}
+                    style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      backgroundColor: '#f8fafc', 
+                      color: '#0f172a', 
+                      padding: '4px 10px', 
+                      borderRadius: '8px', 
+                      fontWeight: 700, 
+                      fontSize: '0.82rem', 
+                      gap: '4px', 
+                      border: '1px solid #e2e8f0', 
+                      cursor: 'pointer', 
+                      outline: 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-primary, #4f46e5)'}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
                   >
-                    ₹{doc.commissionValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    <div style={{ opacity: 0.5 }}><FileText size={13} /></div>
+                    <span>₹{doc.commissionValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                    <div style={{ opacity: 0.4 }}><FileText size={12} /></div>
                   </button>
-                  <div style={{ color: '#94a3b8', fontSize: '0.72rem', textAlign: 'center', fontWeight: 500 }}>{doc.commissionAvg}</div>
+                  <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginTop: '2px', fontWeight: 500 }}>
+                    {doc.commissionAvg}
+                  </div>
                 </td>
 
-                {/* QT No. / Status */}
-                <td style={{ padding: '20px', verticalAlign: 'top' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569', fontWeight: 600, fontSize: '0.9rem', marginBottom: '8px' }}>
-                    <FileText size={16} /> {doc.documentNumber}
+                {/* Doc # / Status */}
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary, #4f46e5)', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'monospace', marginBottom: '4px' }}>
+                    <FileText size={14} />
+                    <span>{doc.documentNumber}</span>
                   </div>
+                  
                   <span style={{ 
                     backgroundColor: doc.statusBg, 
                     color: doc.statusColor, 
-                    padding: '4px 12px', 
-                    borderRadius: '16px', 
-                    fontSize: '0.75rem', 
+                    padding: '3px 10px', 
+                    borderRadius: '9999px', 
+                    fontSize: '0.72rem', 
                     fontWeight: 700,
-                    display: 'inline-block',
-                    marginBottom: doc.awbNumber ? '8px' : '0'
+                    display: 'inline-block'
                   }}>
                     {doc.status}
                   </span>
+
                   {doc.awbNumber && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#64748b', fontSize: '0.85rem' }}>
-                      {doc.awbNumber} 
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748b', fontSize: '0.75rem', marginTop: '4px' }}>
+                      <span>AWB: {doc.awbNumber}</span>
                       <button 
+                        type="button"
                         onClick={() => copyToClipboard(doc.awbNumber!)}
                         title="Copy AWB"
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--accent-primary, #4f46e5)', display: 'flex', alignItems: 'center' }}
                       >
-                        {copiedAwb === doc.awbNumber ? <CheckCircle2 size={14} color="#10b981" /> : <Copy size={14} />}
+                        {copiedAwb === doc.awbNumber ? <CheckCircle2 size={13} color="#10b981" /> : <Copy size={13} />}
                       </button>
                       <button 
                         type="button"
@@ -427,45 +753,85 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
                           e.stopPropagation();
                           setTrackingOrder(doc);
                         }}
-                        title="Track Live"
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px' }}
+                        title="Track Shipment Live"
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', color: '#10b981', display: 'flex', alignItems: 'center' }}
                       >
-                        <Truck size={14} />
+                        <Truck size={13} />
                       </button>
                     </div>
                   )}
                 </td>
 
                 {/* Notes */}
-                <td style={{ padding: '20px', verticalAlign: 'top', color: doc.notes === 'NEW' ? '#94a3b8' : '#475569', fontSize: '0.85rem', fontWeight: 500 }}>
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle', color: '#64748b', fontSize: '0.82rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {doc.notes || '-'}
                 </td>
 
                 {/* Actions */}
-                <td style={{ padding: '20px', verticalAlign: 'top', textAlign: 'center' }}>
-                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                <td style={{ padding: '14px 18px', verticalAlign: 'middle', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                    
+                    {/* View Details */}
                     <a 
                       href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}`} 
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', backgroundColor: '#f1f5f9', color: '#475569', borderRadius: '6px', textDecoration: 'none', border: '1px solid #e2e8f0' }} 
-                      title="View Details"
+                      style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        width: '32px', 
+                        height: '32px', 
+                        backgroundColor: '#ffffff', 
+                        color: '#475569', 
+                        borderRadius: '8px', 
+                        textDecoration: 'none', 
+                        border: '1px solid #cbd5e1',
+                        transition: 'all 0.15s ease'
+                      }} 
+                      title="View Order Details"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+                        e.currentTarget.style.color = "var(--accent-primary, #4f46e5)";
+                        e.currentTarget.style.backgroundColor = "var(--accent-light, #eff6ff)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "#cbd5e1";
+                        e.currentTarget.style.color = "#475569";
+                        e.currentTarget.style.backgroundColor = "#ffffff";
+                      }}
                     >
-                      <Edit size={14} />
+                      <Eye size={14} />
                     </a>
+
+                    {/* Tax Invoice Action Button */}
                     <a 
                       href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}/invoice`} 
                       target="_blank" 
                       rel="noopener noreferrer" 
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px', gap: '3px', height: '30px', backgroundColor: '#4f46e5', border: 'none', color: '#fff', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 700, textDecoration: 'none' }} 
-                      title="View Invoice"
+                      style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        padding: '6px 12px', 
+                        gap: '5px', 
+                        height: '32px', 
+                        backgroundColor: 'var(--accent-primary, #4f46e5)', 
+                        border: 'none', 
+                        color: '#ffffff', 
+                        borderRadius: '8px', 
+                        fontSize: '0.78rem', 
+                        fontWeight: 700, 
+                        textDecoration: 'none',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                        transition: 'all 0.15s ease'
+                      }} 
+                      title="View & Print Tax Invoice"
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                     >
-                      <span style={{ fontSize: '11px' }}>$</span> INV
+                      <FileText size={13} />
+                      <span>Invoice</span>
                     </a>
-                    <button 
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', backgroundColor: '#f1f5f9', color: '#94a3b8', borderRadius: '6px', cursor: 'pointer', border: '1px solid #e2e8f0' }} 
-                      title="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+
                   </div>
                 </td>
               </tr>
@@ -473,8 +839,20 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
             
             {filteredDocs.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-                  No records found matching your filters.
+                <td colSpan={10} style={{ padding: '48px 24px', textAlign: 'center', color: '#64748b' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+                      <ShoppingBag size={24} />
+                    </div>
+                    <div style={{ fontWeight: 700, color: '#1e293b' }}>No orders found</div>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8' }}>
+                      {searchQuery || selectedAgent !== 'All Agents' || selectedPayment !== 'All Payment Types' || startDate || endDate || activeTab !== 'All'
+                        ? "Try adjusting or clearing your filters to see more results."
+                        : !isAdmin 
+                          ? "No orders have been recorded for your assigned customers yet."
+                          : "Create your first sales order using the + Create Order button above."}
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}
@@ -482,43 +860,91 @@ export default function OrderListClient({ documents, agents }: OrderListClientPr
         </table>
       </div>
 
-      {/* COMMISSION CALCULATION MODAL */}
+      {/* ─── 5. COMMISSION CALCULATION MODAL ─── */}
       {commissionModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', width: '90%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+        <div 
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            backgroundColor: 'rgba(15, 23, 42, 0.6)', 
+            backdropFilter: 'blur(4px)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 99999,
+            padding: '16px'
+          }}
+          onClick={() => setCommissionModal(null)}
+        >
+          <div 
+            style={{ 
+              backgroundColor: '#ffffff', 
+              borderRadius: '16px', 
+              padding: '24px', 
+              width: '100%', 
+              maxWidth: '420px', 
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #e2e8f0'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>Commission Breakdown</h2>
-              <button onClick={() => setCommissionModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
+              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>Commission Breakdown</h2>
+              <button 
+                type="button"
+                onClick={() => setCommissionModal(null)} 
+                style={{ 
+                  background: '#f1f5f9', 
+                  border: 'none', 
+                  borderRadius: '50%',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer', 
+                  color: '#64748b' 
+                }}
+              >
+                <X size={15} />
+              </button>
             </div>
             
-            <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Taxable Amount:</span>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>₹{commissionModal.taxableAmount.toLocaleString()}</span>
+            <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.875rem' }}>
+                <span style={{ color: '#64748b' }}>Order / Document:</span>
+                <span style={{ fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', fontFamily: 'monospace' }}>{commissionModal.documentNumber}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Discount Profile:</span>
-                <span style={{ fontWeight: 600, color: commissionModal.discountColor }}>{commissionModal.discountBadge}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.875rem' }}>
+                <span style={{ color: '#64748b' }}>Taxable Amount:</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>₹{commissionModal.taxableAmount.toLocaleString()}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                <span style={{ color: '#64748b', fontSize: '0.9rem' }}>Commission Slab:</span>
-                <span style={{ fontWeight: 600, color: '#3b82f6' }}>{commissionModal.commissionAvg}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.875rem' }}>
+                <span style={{ color: '#64748b' }}>Discount Profile:</span>
+                <span style={{ fontWeight: 700, color: commissionModal.discountColor }}>{commissionModal.discountBadge}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.875rem' }}>
+                <span style={{ color: '#64748b' }}>Commission Slab:</span>
+                <span style={{ fontWeight: 700, color: 'var(--accent-primary, #4f46e5)' }}>{commissionModal.commissionAvg}</span>
               </div>
               <div style={{ borderTop: '1px dashed #cbd5e1', margin: '12px 0' }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#0f172a', fontWeight: 700, fontSize: '1rem' }}>Final Commission:</span>
-                <span style={{ fontWeight: 700, color: '#10b981', fontSize: '1.1rem' }}>₹{commissionModal.commissionValue.toLocaleString()}</span>
+                <span style={{ color: '#0f172a', fontWeight: 800, fontSize: '0.95rem' }}>Calculated Commission:</span>
+                <span style={{ fontWeight: 800, color: '#10b981', fontSize: '1.25rem' }}>₹{commissionModal.commissionValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
               </div>
             </div>
 
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center', margin: 0 }}>
-              Calculated based on {commissionModal.isCreditCustomer ? 'credit terms and discount slabs' : 'standard discount slabs'}.
+            <p style={{ fontSize: '0.78rem', color: '#94a3b8', textAlign: 'center', margin: 0 }}>
+              Calculated based on {commissionModal.isCreditCustomer ? 'credit terms and discount slabs' : 'standard discount incentive rules'}.
             </p>
           </div>
         </div>
       )}
 
-      {/* TRACKING MODAL */}
+      {/* ─── 6. TRACKING MODAL ─── */}
       {trackingOrder && (
         <OrderTrackingModal
           orderId={trackingOrder.id}

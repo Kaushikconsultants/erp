@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { Plus } from "lucide-react";
 import CreateOrderModal from "./CreateOrderModal";
 
 interface CreateOrderButtonProps {
@@ -25,8 +26,23 @@ export default function CreateOrderButton({ customers, products, employees = [] 
       <button 
         className="primary-btn hover-lift" 
         onClick={() => setIsModalOpen(true)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "10px 22px",
+          borderRadius: "10px",
+          fontWeight: 700,
+          fontSize: "0.9rem",
+          backgroundColor: "var(--accent-primary, #4f46e5)",
+          color: "#ffffff",
+          border: "none",
+          cursor: "pointer",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+        }}
       >
-        + Create Order
+        <Plus size={18} />
+        <span>+ Create Order</span>
       </button>
 
       {isModalOpen && (

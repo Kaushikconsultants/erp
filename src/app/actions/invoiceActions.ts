@@ -24,14 +24,36 @@ export async function getInvoices(filters?: { status?: string; customerId?: stri
 
   try {
     const organizationId = await getTenantOrgId();
+    const rawRole = (session.user as any).role || 'SALES';
+    const normRole = String(rawRole).trim().toUpperCase();
+    const userId = (session.user as any).id;
+    const isSuperOrAdmin = normRole === 'ADMIN' || normRole === 'SUPER_ADMIN' || normRole === 'ACCOUNTS' || normRole === 'MANAGER';
+
     const where: any = {
-      OR: [
-        { organizationId },
-        { organizationId: null }
-      ]
+      organizationId
     };
     if (filters?.status && filters.status !== 'All') where.status = filters.status;
     if (filters?.customerId) where.customerId = filters.customerId;
+
+    if (!isSuperOrAdmin) {
+      let employee = await prisma.employee.findUnique({ where: { userId } });
+      if (!employee && organizationId) {
+        employee = await prisma.employee.findFirst({ where: { organizationId, userId } });
+      }
+      if (!employee && session.user.email) {
+        employee = await prisma.employee.findFirst({
+          where: {
+            organizationId,
+            user: { email: { equals: session.user.email.trim(), mode: 'insensitive' } }
+          }
+        });
+      }
+      if (employee) {
+        where.customer = { assignedSalespersonId: employee.id };
+      } else {
+        return { success: true, invoices: [] };
+      }
+    }
 
     const invoices = await prisma.invoice.findMany({
       where,

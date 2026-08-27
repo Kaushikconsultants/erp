@@ -57,13 +57,25 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     }).catch(() => {});
   }
 
-  const userRole = (session.user as any).role || 'SALES';
+  const rawRole = (session.user as any).role || 'SALES';
+  const userRole = String(rawRole).trim().toUpperCase();
   const userId = (session.user as any).id;
-  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN' || userRole === 'ACCOUNTS' || userRole === 'MANAGER';
 
   if (!isSuperOrAdmin) {
-    const employee = await prisma.employee.findUnique({ where: { userId } });
-    if (employee && order.salespersonId !== employee.id && order.customer?.assignedSalespersonId !== employee.id) {
+    let employee = await prisma.employee.findUnique({ where: { userId } });
+    if (!employee && orgId) {
+      employee = await prisma.employee.findFirst({ where: { organizationId: orgId, userId } });
+    }
+    if (!employee && session.user.email) {
+      employee = await prisma.employee.findFirst({
+        where: {
+          organizationId: orgId,
+          user: { email: { equals: session.user.email.trim(), mode: 'insensitive' } }
+        }
+      });
+    }
+    if (!employee || order.customer?.assignedSalespersonId !== employee.id) {
       redirect('/orders');
     }
   }

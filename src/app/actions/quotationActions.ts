@@ -452,20 +452,29 @@ export async function getQuotations() {
     if (!session?.user) return { error: "Unauthorized" };
 
     const organizationId = await getTenantOrgId();
-    const role = (session.user as any).role;
+    const rawRole = (session.user as any).role || 'SALES';
+    const normRole = String(rawRole).trim().toUpperCase();
     const userId = (session.user as any).id;
-    const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN" || role === "MANAGER" || role === "ACCOUNTANT";
+    const isAdmin = normRole === "ADMIN" || normRole === "SUPER_ADMIN" || normRole === "MANAGER" || normRole === "ACCOUNTS" || normRole === "ACCOUNTANT";
 
     let whereClause: any = { organizationId };
     if (!isAdmin) {
-      const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
+      let employee = await prisma.employee.findUnique({ where: { userId } });
+      if (!employee && organizationId) {
+        employee = await prisma.employee.findFirst({ where: { organizationId, userId } });
+      }
+      if (!employee && session.user.email) {
+        employee = await prisma.employee.findFirst({
+          where: {
+            organizationId,
+            user: { email: { equals: session.user.email.trim(), mode: 'insensitive' } }
+          }
+        });
+      }
       if (employee) {
         whereClause = {
           organizationId,
-          OR: [
-            { salespersonId: employee.id },
-            { customer: { assignedSalespersonId: employee.id } }
-          ]
+          customer: { assignedSalespersonId: employee.id }
         };
       } else {
         return { success: true, quotations: [] };

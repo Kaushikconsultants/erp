@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureDefaultOrganization } from "./ensureDefaultOrg";
+import { getOrCreateEmployee } from "./employeeHelper";
 
 export const PLATFORM_ROOT_ORG_SLUG = "espon-global";
 export const PLATFORM_ROOT_ADMIN_EMAILS = [
@@ -143,20 +144,39 @@ export const getTenantScope = cache(async function getTenantScope() {
       isAdmin: false,
       employeeId: null,
       userId: null,
-      role: "ANONYMOUS"
+      role: "ANONYMOUS",
+      userName: "Anonymous"
     };
   }
 
   const orgId = await getTenantOrgId();
-  const userRole = (session.user as any).role || "SALES";
+  const rawRole = (session.user as any).role || "SALES";
+  const userRole = String(rawRole).trim().toUpperCase();
   const userId = (session.user as any).id;
+  const userName = session.user.name || "Sales Candidate";
   const isAdmin = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
 
   let employeeId: string | null = null;
   if (!isAdmin && userId) {
-    const employee = await prisma.employee.findUnique({
+    let employee = await prisma.employee.findUnique({
       where: { userId }
     });
+    if (!employee && orgId) {
+      employee = await prisma.employee.findFirst({
+        where: { organizationId: orgId, userId }
+      });
+    }
+    if (!employee && session.user.email) {
+      employee = await prisma.employee.findFirst({
+        where: {
+          organizationId: orgId,
+          user: { email: { equals: session.user.email.trim(), mode: 'insensitive' } }
+        }
+      });
+    }
+    if (!employee && userId) {
+      employee = await getOrCreateEmployee(userId, session.user);
+    }
     employeeId = employee?.id || null;
   }
 
@@ -165,6 +185,7 @@ export const getTenantScope = cache(async function getTenantScope() {
     isAdmin,
     employeeId,
     userId,
+    userName,
     role: userRole
   };
 });

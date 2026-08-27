@@ -59,6 +59,29 @@ export async function getCustomerLedgerStatement(
       return { success: false, error: "Customer not found", openingBalance: 0, totalDebit: 0, totalCredit: 0, closingBalance: 0, transactions: [] };
     }
 
+    const rawRole = (session.user as any).role || 'SALES';
+    const normRole = String(rawRole).trim().toUpperCase();
+    const userId = (session.user as any).id;
+    const isSuperOrAdmin = normRole === 'SUPER_ADMIN' || normRole === 'ADMIN' || normRole === 'ACCOUNTS' || normRole === 'MANAGER';
+
+    if (!isSuperOrAdmin) {
+      let employee = await prisma.employee.findUnique({ where: { userId } });
+      if (!employee && organizationId) {
+        employee = await prisma.employee.findFirst({ where: { organizationId, userId } });
+      }
+      if (!employee && session.user.email) {
+        employee = await prisma.employee.findFirst({
+          where: {
+            organizationId,
+            user: { email: { equals: session.user.email.trim(), mode: 'insensitive' } }
+          }
+        });
+      }
+      if (!employee || customer.assignedSalespersonId !== employee.id) {
+        return { success: false, error: "Permission Denied: You can only view ledger for your assigned customers.", openingBalance: 0, totalDebit: 0, totalCredit: 0, closingBalance: 0, transactions: [] };
+      }
+    }
+
     const startDate = startDateStr ? new Date(startDateStr) : new Date(new Date().getFullYear(), 3, 1); // Default from April 1st (Indian Financial Year)
     const endDate = endDateStr ? new Date(endDateStr) : new Date();
     endDate.setHours(23, 59, 59, 999);
