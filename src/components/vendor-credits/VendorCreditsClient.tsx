@@ -776,24 +776,26 @@ export default function VendorCreditsClient({
               backgroundColor: '#ffffff',
               borderRadius: '16px',
               border: '1px solid #e2e8f0',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
-              padding: '20px 24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
               maxHeight: '92vh',
               overflowY: 'auto',
-              position: 'relative'
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '8px', background: '#dc2626', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <FileMinus size={16} />
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff', position: 'sticky', top: 0, zIndex: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'linear-gradient(135deg, #f43f5e 0%, #be123c 100%)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(244, 63, 94, 0.25)', flexShrink: 0 }}>
+                  <FileMinus size={20} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f172a', letterSpacing: '-0.01em' }}>
                     Record Vendor Debit Note / Credit
                   </h2>
-                  <p style={{ fontSize: '0.75rem', margin: 0, color: 'var(--text-secondary)' }}>
+                  <p style={{ fontSize: '0.8rem', margin: '2px 0 0 0', color: '#64748b' }}>
                     Issue purchase returns or supplier price credit adjustment
                   </p>
                 </div>
@@ -802,251 +804,379 @@ export default function VendorCreditsClient({
               <button
                 type="button"
                 onClick={() => setCreateModalOpen(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.4rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ 
+                  width: 32, 
+                  height: 32, 
+                  borderRadius: '8px', 
+                  border: '1px solid #e2e8f0', 
+                  backgroundColor: '#f8fafc', 
+                  color: '#64748b', 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fee2e2';
+                  e.currentTarget.style.color = '#dc2626';
+                  e.currentTarget.style.borderColor = '#fca5a5';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                  e.currentTarget.style.color = '#64748b';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                }}
               >
-                ×
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitCredit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, marginBottom: '3px' }}>
-                    Select Vendor *
-                  </label>
-                  <ModernSearchableSelect
-                    options={modalVendorOptions}
-                    value={creditVendorId}
-                    onChange={handleVendorSelect}
-                    placeholder="-- Choose Vendor --"
-                    searchPlaceholder="Search vendor name, contact..."
-                    icon={<Building2 size={13} />}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, marginBottom: '3px' }}>
-                    Link Vendor Bill (Optional)
-                  </label>
-                  <select
-                    className="form-input"
-                    style={{ width: '100%', height: '36px', fontSize: '0.82rem' }}
-                    value={creditBillId}
-                    onChange={e => setCreditBillId(e.target.value)}
-                  >
-                    <option value="">-- Standalone / General Credit --</option>
-                    {vendorBillsForCreate.map(b => (
-                      <option key={b.id} value={b.id}>
-                        {b.billNumber} (Total: ₹{b.totalAmount.toLocaleString('en-IN')})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, marginBottom: '3px' }}>
-                    Credit / Debit Note Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    className="form-input"
-                    style={{ width: '100%', height: '34px', fontSize: '0.8rem' }}
-                    value={creditDate}
-                    onChange={e => setCreditDate(e.target.value)}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, marginBottom: '3px' }}>
-                    Reason for Debit Note *
-                  </label>
-                  <select
-                    className="form-input"
-                    style={{ width: '100%', height: '34px', fontSize: '0.8rem' }}
-                    value={reason}
-                    onChange={e => setReason(e.target.value)}
-                  >
-                    <option>Goods Return</option>
-                    <option>Rate Difference</option>
-                    <option>Quality Rejection / Damaged Goods</option>
-                    <option>Post-Purchase Discount</option>
-                    <option>Shortage in Shipment</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Items Table */}
-              <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '10px', marginBottom: '14px', backgroundColor: 'var(--bg-primary)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' }}>
-                    Returned / Adjusted Items
-                  </span>
-                  <button
-                    type="button"
-                    onClick={addItemRow}
-                    style={{ fontSize: '0.75rem', color: '#dc2626', background: 'none', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-                  >
-                    <Plus size={13} /> Add Item
-                  </button>
-                </div>
-
-                <div className="table-responsive">
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '6px', width: '28%' }}>Item / Product</th>
-                        <th style={{ padding: '6px', width: '12%' }}>HSN</th>
-                        <th style={{ padding: '6px', width: '12%' }}>Qty</th>
-                        <th style={{ padding: '6px', width: '16%' }}>Rate (₹)</th>
-                        <th style={{ padding: '6px', width: '12%' }}>GST %</th>
-                        <th style={{ padding: '6px', width: '14%', textAlign: 'right' }}>Total (₹)</th>
-                        <th style={{ padding: '6px', width: '6%' }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {creditItems.map((item, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '6px' }}>
-                            <ModernSearchableSelect
-                              options={productSelectOptions}
-                              value={item.productId || ''}
-                              onChange={(val) => handleItemChange(idx, 'productId', val)}
-                              placeholder="Select Product"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Description"
-                              value={item.description}
-                              onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
-                              style={{ width: '100%', fontSize: '0.75rem', marginTop: '4px', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: '4px' }}
-                            />
-                          </td>
-                          <td style={{ padding: '6px' }}>
-                            <input
-                              type="text"
-                              value={item.hsnCode}
-                              onChange={(e) => handleItemChange(idx, 'hsnCode', e.target.value)}
-                              style={{ width: '100%', fontSize: '0.78rem', padding: '4px', border: '1px solid var(--border)', borderRadius: '4px' }}
-                            />
-                          </td>
-                          <td style={{ padding: '6px' }}>
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => handleItemChange(idx, 'quantity', parseInt(e.target.value) || 0)}
-                              style={{ width: '100%', fontSize: '0.78rem', padding: '4px', border: '1px solid var(--border)', borderRadius: '4px' }}
-                            />
-                          </td>
-                          <td style={{ padding: '6px' }}>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.rate}
-                              onChange={(e) => handleItemChange(idx, 'rate', parseFloat(e.target.value) || 0)}
-                              style={{ width: '100%', fontSize: '0.78rem', padding: '4px', border: '1px solid var(--border)', borderRadius: '4px' }}
-                            />
-                          </td>
-                          <td style={{ padding: '6px' }}>
-                            <select
-                              value={item.gstRate}
-                              onChange={(e) => handleItemChange(idx, 'gstRate', parseFloat(e.target.value))}
-                              style={{ width: '100%', fontSize: '0.78rem', padding: '4px', border: '1px solid var(--border)', borderRadius: '4px' }}
-                            >
-                              <option value="0">0%</option>
-                              <option value="5">5%</option>
-                              <option value="12">12%</option>
-                              <option value="18">18%</option>
-                              <option value="28">28%</option>
-                            </select>
-                          </td>
-                          <td style={{ padding: '6px', textAlign: 'right', fontWeight: 600 }}>
-                            ₹{item.total.toFixed(2)}
-                          </td>
-                          <td style={{ padding: '6px', textAlign: 'center' }}>
-                            {creditItems.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeItemRow(idx)}
-                                style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Bottom Notes & Totals */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px', marginBottom: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, marginBottom: '3px' }}>
-                    Notes & Remarks
-                  </label>
-                  <textarea
-                    rows={2}
-                    placeholder="e.g. Return of 10 defective units against batch #412"
-                    className="form-input"
-                    style={{ width: '100%', fontSize: '0.8rem', resize: 'vertical' }}
-                    value={creditNotes}
-                    onChange={e => setCreditNotes(e.target.value)}
-                  />
-
-                  <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <input
-                      type="checkbox"
-                      id="deductStock"
-                      checked={deductStock}
-                      onChange={e => setDeductStock(e.target.checked)}
-                    />
-                    <label htmlFor="deductStock" style={{ fontSize: '0.76rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
-                      Deduct warehouse stock for returned products (Outward Return)
+            <form onSubmit={handleSubmitCredit} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                
+                {/* Row 1: Vendor & Link Bill */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Select Vendor <span style={{ color: '#ef4444' }}>*</span>
                     </label>
+                    <ModernSearchableSelect
+                      options={modalVendorOptions}
+                      value={creditVendorId}
+                      onChange={handleVendorSelect}
+                      placeholder="-- Choose Vendor --"
+                      searchPlaceholder="Search vendor name, contact..."
+                      icon={<Building2 size={15} />}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Link Vendor Bill <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+                    </label>
+                    <select
+                      style={{ 
+                        width: '100%', 
+                        height: '38px', 
+                        fontSize: '0.84rem', 
+                        padding: '0 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #cbd5e1', 
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none'
+                      }}
+                      value={creditBillId}
+                      onChange={e => setCreditBillId(e.target.value)}
+                    >
+                      <option value="">-- Standalone / General Credit --</option>
+                      {vendorBillsForCreate.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.billNumber} (Total: ₹{b.totalAmount.toLocaleString('en-IN')})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                <div style={{ background: 'var(--bg-primary)', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.82rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span>Subtotal:</span>
-                    <span>₹{creditSubtotal.toFixed(2)}</span>
+                {/* Row 2: Date & Reason */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Credit / Debit Note Date <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      style={{ 
+                        width: '100%', 
+                        height: '38px', 
+                        fontSize: '0.84rem', 
+                        padding: '0 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #cbd5e1', 
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none'
+                      }}
+                      value={creditDate}
+                      onChange={e => setCreditDate(e.target.value)}
+                    />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', color: 'var(--text-muted)' }}>
-                    <span>Tax Adjustment:</span>
-                    <span>+ ₹{creditTaxTotal.toFixed(2)}</span>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Reason for Debit Note <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <select
+                      style={{ 
+                        width: '100%', 
+                        height: '38px', 
+                        fontSize: '0.84rem', 
+                        padding: '0 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #cbd5e1', 
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none'
+                      }}
+                      value={reason}
+                      onChange={e => setReason(e.target.value)}
+                    >
+                      <option>Goods Return</option>
+                      <option>Rate Difference</option>
+                      <option>Quality Rejection / Damaged Goods</option>
+                      <option>Post-Purchase Discount</option>
+                      <option>Shortage in Shipment</option>
+                      <option>Other</option>
+                    </select>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '6px', fontWeight: 700, fontSize: '0.95rem', color: '#dc2626' }}>
-                    <span>Total Debit Note Value:</span>
-                    <span>₹{creditGrandTotal.toFixed(2)}</span>
+                </div>
+
+                {/* Items Table Card */}
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', backgroundColor: '#f8fafc' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Returned / Adjusted Items
+                      </span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', backgroundColor: '#fee2e2', color: '#b91c1c' }}>
+                        {creditItems.length} {creditItems.length === 1 ? 'Item' : 'Items'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addItemRow}
+                      style={{ 
+                        fontSize: '0.78rem', 
+                        color: '#dc2626', 
+                        backgroundColor: '#fef2f2', 
+                        border: '1px solid #fca5a5', 
+                        padding: '6px 12px', 
+                        borderRadius: '6px', 
+                        fontWeight: 600, 
+                        cursor: 'pointer', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '5px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#fee2e2';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#fef2f2';
+                      }}
+                    >
+                      <Plus size={14} /> Add Item
+                    </button>
+                  </div>
+
+                  <div className="table-responsive" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#f1f5f9', color: '#475569', textAlign: 'left' }}>
+                          <th style={{ padding: '10px 10px', fontWeight: 700, width: '32%', borderRadius: '6px 0 0 6px' }}>Item / Product</th>
+                          <th style={{ padding: '10px 8px', fontWeight: 700, width: '12%', textAlign: 'center' }}>HSN</th>
+                          <th style={{ padding: '10px 8px', fontWeight: 700, width: '10%', textAlign: 'center' }}>Qty</th>
+                          <th style={{ padding: '10px 8px', fontWeight: 700, width: '16%', textAlign: 'right' }}>Rate (₹)</th>
+                          <th style={{ padding: '10px 8px', fontWeight: 700, width: '12%', textAlign: 'center' }}>GST %</th>
+                          <th style={{ padding: '10px 10px', fontWeight: 700, width: '14%', textAlign: 'right' }}>Total (₹)</th>
+                          <th style={{ padding: '10px 6px', fontWeight: 700, width: '4%', textAlign: 'center', borderRadius: '0 6px 6px 0' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {creditItems.map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+                            <td style={{ padding: '10px 8px' }}>
+                              <ModernSearchableSelect
+                                options={productSelectOptions}
+                                value={item.productId || ''}
+                                onChange={(val) => handleItemChange(idx, 'productId', val)}
+                                placeholder="Select Product"
+                              />
+                              <input
+                                type="text"
+                                placeholder="Return reason / Item details..."
+                                value={item.description}
+                                onChange={(e) => handleItemChange(idx, 'description', e.target.value)}
+                                style={{ width: '100%', fontSize: '0.78rem', marginTop: '6px', padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#f8fafc', color: '#0f172a', outline: 'none' }}
+                              />
+                            </td>
+                            <td style={{ padding: '10px 6px', verticalAlign: 'top', paddingTop: '10px' }}>
+                              <input
+                                type="text"
+                                value={item.hsnCode}
+                                onChange={(e) => handleItemChange(idx, 'hsnCode', e.target.value)}
+                                style={{ width: '100%', fontSize: '0.82rem', padding: '8px 6px', border: '1px solid #cbd5e1', borderRadius: '6px', textAlign: 'center', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none' }}
+                              />
+                            </td>
+                            <td style={{ padding: '10px 6px', verticalAlign: 'top', paddingTop: '10px' }}>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => handleItemChange(idx, 'quantity', parseInt(e.target.value) || 0)}
+                                style={{ width: '100%', fontSize: '0.84rem', fontWeight: 600, padding: '8px 6px', border: '1px solid #cbd5e1', borderRadius: '6px', textAlign: 'center', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none' }}
+                              />
+                            </td>
+                            <td style={{ padding: '10px 6px', verticalAlign: 'top', paddingTop: '10px' }}>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.rate}
+                                onChange={(e) => handleItemChange(idx, 'rate', parseFloat(e.target.value) || 0)}
+                                style={{ width: '100%', fontSize: '0.84rem', fontWeight: 600, padding: '8px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', textAlign: 'right', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none' }}
+                              />
+                            </td>
+                            <td style={{ padding: '10px 6px', verticalAlign: 'top', paddingTop: '10px' }}>
+                              <select
+                                value={item.gstRate}
+                                onChange={(e) => handleItemChange(idx, 'gstRate', parseFloat(e.target.value))}
+                                style={{ width: '100%', height: '36px', fontSize: '0.82rem', padding: '0 4px', border: '1px solid #cbd5e1', borderRadius: '6px', textAlign: 'center', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none' }}
+                              >
+                                <option value="0">0%</option>
+                                <option value="5">5%</option>
+                                <option value="12">12%</option>
+                                <option value="18">18%</option>
+                                <option value="28">28%</option>
+                              </select>
+                            </td>
+                            <td style={{ padding: '10px 8px', textAlign: 'right', verticalAlign: 'top', paddingTop: '18px', fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums', fontSize: '0.9rem' }}>
+                              ₹{item.total.toFixed(2)}
+                            </td>
+                            <td style={{ padding: '10px 4px', textAlign: 'center', verticalAlign: 'top', paddingTop: '14px' }}>
+                              {creditItems.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeItemRow(idx)}
+                                  style={{ 
+                                    width: 28, 
+                                    height: 28, 
+                                    borderRadius: '6px', 
+                                    border: '1px solid #fecaca', 
+                                    backgroundColor: '#fef2f2', 
+                                    color: '#dc2626', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#fee2e2';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#fef2f2';
+                                  }}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Bottom Notes & Totals */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Notes & Remarks
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Return of defective / excess units against purchase bill"
+                      style={{ 
+                        width: '100%', 
+                        fontSize: '0.82rem', 
+                        padding: '10px 12px', 
+                        borderRadius: '8px', 
+                        border: '1px solid #cbd5e1', 
+                        backgroundColor: '#ffffff',
+                        color: '#0f172a',
+                        resize: 'vertical',
+                        outline: 'none'
+                      }}
+                      value={creditNotes}
+                      onChange={e => setCreditNotes(e.target.value)}
+                    />
+
+                    <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', backgroundColor: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '8px' }}>
+                      <input
+                        type="checkbox"
+                        id="deductStock"
+                        checked={deductStock}
+                        onChange={e => setDeductStock(e.target.checked)}
+                        style={{ width: '16px', height: '16px', accentColor: '#e11d48', cursor: 'pointer' }}
+                      />
+                      <label htmlFor="deductStock" style={{ fontSize: '0.78rem', color: '#9f1239', cursor: 'pointer', fontWeight: 500 }}>
+                        📤 Automatically deduct warehouse stock for returned products (Outward Return)
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style={{ background: '#fef2f2', padding: '14px 18px', borderRadius: '12px', border: '1px solid #fecaca', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#475569' }}>
+                      <span>Subtotal</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>₹{creditSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#475569' }}>
+                      <span>Tax Adjustment (GST)</span>
+                      <span style={{ fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>+ ₹{creditTaxTotal.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1.5px dashed #fca5a5', paddingTop: '10px', marginTop: '2px' }}>
+                      <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#991b1b' }}>Total Debit Note Value</span>
+                      <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>
+                        ₹{creditGrandTotal.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+              {/* Actions Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
                 <button
                   type="button"
                   onClick={() => setCreateModalOpen(false)}
-                  className="action-btn"
-                  style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+                  style={{ 
+                    fontSize: '0.84rem', 
+                    padding: '8px 18px', 
+                    borderRadius: '8px', 
+                    border: '1px solid #cbd5e1', 
+                    backgroundColor: '#ffffff', 
+                    color: '#475569', 
+                    fontWeight: 600, 
+                    cursor: 'pointer' 
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingCredit}
-                  className="primary-btn"
-                  style={{ fontSize: '0.82rem', padding: '6px 18px', backgroundColor: '#dc2626', fontWeight: 600 }}
+                  style={{ 
+                    fontSize: '0.86rem', 
+                    padding: '8px 22px', 
+                    borderRadius: '8px', 
+                    border: 'none', 
+                    backgroundColor: '#dc2626', 
+                    color: '#ffffff', 
+                    fontWeight: 700, 
+                    cursor: submittingCredit ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.28)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
                 >
-                  <Check size={14} /> {submittingCredit ? 'Saving...' : 'Confirm & Save Debit Note'}
+                  <Check size={16} /> {submittingCredit ? 'Saving...' : 'Confirm & Save Debit Note'}
                 </button>
               </div>
 
@@ -1068,9 +1198,9 @@ export default function VendorCreditsClient({
             bottom: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1084,98 +1214,117 @@ export default function VendorCreditsClient({
           <div
             style={{
               width: '100%',
-              maxWidth: '480px',
+              maxWidth: '520px',
               backgroundColor: '#ffffff',
               borderRadius: '16px',
               border: '1px solid #e2e8f0',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
-              padding: '20px 24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+              overflow: 'hidden',
               position: 'relative'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '12px' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                Apply Credit {applyModalCredit.creditNoteNumber} to Bill
-              </h3>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)' }}>
+                  <Receipt size={18} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                    Apply Credit Note #{applyModalCredit.creditNoteNumber}
+                  </h3>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>
+                    {applyModalCredit.vendor?.companyName}
+                  </div>
+                </div>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setApplyModalCredit(null)}
-                style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ width: 30, height: 30, borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ×
+                <X size={15} />
               </button>
             </div>
 
             <form onSubmit={handleApplySubmit}>
-              <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '0.8rem' }}>
-                <div>Vendor: <strong>{applyModalCredit.vendor?.companyName}</strong></div>
-                <div>Available Credit Balance: <strong style={{ color: '#059669' }}>₹{applyModalCredit.balanceAmount.toLocaleString('en-IN')}</strong></div>
-              </div>
-
-              <div style={{ marginBottom: '12px' }}>
-                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, marginBottom: '3px' }}>
-                  Select Open Vendor Bill *
-                </label>
-                {openBillsForApply.length > 0 ? (
-                  <select
-                    required
-                    className="form-input"
-                    style={{ width: '100%', height: '36px', fontSize: '0.82rem' }}
-                    value={applyBillId}
-                    onChange={e => {
-                      setApplyBillId(e.target.value);
-                      const b = openBillsForApply.find(bill => bill.id === e.target.value);
-                      if (b) {
-                        setApplyAmount(String(Math.min(applyModalCredit.balanceAmount, b.amountDue)));
-                      }
-                    }}
-                  >
-                    <option value="">-- Choose Bill --</option>
-                    {openBillsForApply.map(b => (
-                      <option key={b.id} value={b.id}>
-                        {b.billNumber} (Due: ₹{b.amountDue.toLocaleString('en-IN')})
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div style={{ fontSize: '0.75rem', color: '#dc2626', padding: '6px' }}>
-                    No unpaid bills found for this vendor.
+              <div style={{ padding: '20px' }}>
+                <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Vendor</div>
+                    <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>{applyModalCredit.vendor?.companyName}</div>
                   </div>
-                )}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Available Credit</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#059669' }}>₹{applyModalCredit.balanceAmount.toLocaleString('en-IN')}</div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    Select Open Vendor Bill <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  {openBillsForApply.length > 0 ? (
+                    <select
+                      required
+                      style={{ width: '100%', height: '38px', fontSize: '0.84rem', padding: '0 12px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none' }}
+                      value={applyBillId}
+                      onChange={e => {
+                        setApplyBillId(e.target.value);
+                        const b = openBillsForApply.find(bill => bill.id === e.target.value);
+                        if (b) {
+                          setApplyAmount(String(Math.min(applyModalCredit.balanceAmount, b.amountDue)));
+                        }
+                      }}
+                    >
+                      <option value="">-- Choose Bill --</option>
+                      {openBillsForApply.map(b => (
+                        <option key={b.id} value={b.id}>
+                          {b.billNumber} (Due: ₹{b.amountDue.toLocaleString('en-IN')})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div style={{ fontSize: '0.8rem', color: '#dc2626', backgroundColor: '#fef2f2', padding: '10px 12px', borderRadius: '8px', border: '1px solid #fecaca', fontWeight: 500 }}>
+                      No unpaid bills found for this vendor.
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    Adjustment / Set-Off Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#2563eb', fontWeight: 700, fontSize: '0.9rem' }}>₹</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="1"
+                      max={applyModalCredit.balanceAmount}
+                      required
+                      style={{ width: '100%', height: '38px', paddingLeft: '24px', paddingRight: '10px', fontSize: '0.9rem', fontWeight: 700, borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none', color: '#0f172a' }}
+                      value={applyAmount}
+                      onChange={e => setApplyAmount(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, marginBottom: '3px' }}>
-                  Adjustment Amount (₹) *
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  max={applyModalCredit.balanceAmount}
-                  required
-                  className="form-input"
-                  style={{ width: '100%', height: '34px', fontSize: '0.85rem', fontWeight: 600 }}
-                  value={applyAmount}
-                  onChange={e => setApplyAmount(e.target.value)}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 20px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
                 <button
                   type="button"
                   onClick={() => setApplyModalCredit(null)}
-                  className="action-btn"
-                  style={{ fontSize: '0.8rem' }}
+                  style={{ fontSize: '0.84rem', padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={applyingCredit || openBillsForApply.length === 0}
-                  className="primary-btn"
-                  style={{ fontSize: '0.82rem', backgroundColor: '#2563eb', fontWeight: 600 }}
+                  style={{ fontSize: '0.86rem', padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#2563eb', color: '#ffffff', fontWeight: 700, cursor: (applyingCredit || openBillsForApply.length === 0) ? 'not-allowed' : 'pointer', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.28)' }}
                 >
                   {applyingCredit ? 'Applying...' : 'Confirm Set-Off'}
                 </button>
@@ -1198,9 +1347,9 @@ export default function VendorCreditsClient({
             bottom: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1214,77 +1363,82 @@ export default function VendorCreditsClient({
           <div
             style={{
               width: '100%',
-              maxWidth: '680px',
+              maxWidth: '720px',
               backgroundColor: '#ffffff',
               borderRadius: '16px',
               border: '1px solid #e2e8f0',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
-              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+              overflow: 'hidden',
               position: 'relative'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#dc2626' }}>Vendor Debit Note Voucher</span>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileMinus size={18} color="#dc2626" />
+                <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>Vendor Debit Note Voucher #{viewCredit.creditNoteNumber}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
                   onClick={() => window.print()}
-                  className="action-btn"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  <Printer size={13} /> Print
+                  <Printer size={14} /> Print Voucher
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewCredit(null)}
-                  style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  style={{ width: 30, height: 30, borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  ×
+                  <X size={15} />
                 </button>
               </div>
             </div>
 
-            <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '12px' }}>
-                <div>
-                  <h3 style={{ margin: '0 0 2px 0', fontSize: '1rem', fontWeight: 700 }}>{viewCredit.vendor?.companyName}</h3>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GSTIN: {viewCredit.vendor?.gstNumber || 'Unregistered'}</div>
+            <div style={{ padding: '24px' }}>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px', backgroundColor: '#ffffff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '14px' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 3px 0', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{viewCredit.vendor?.companyName}</h3>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>GSTIN: <strong style={{ color: '#0f172a' }}>{viewCredit.vendor?.gstNumber || 'Unregistered'}</strong></div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 800, color: '#dc2626', fontSize: '1.05rem' }}>{viewCredit.creditNoteNumber}</div>
+                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Date: {new Date(viewCredit.creditDate).toLocaleDateString('en-GB')}</div>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, color: '#dc2626' }}>{viewCredit.creditNoteNumber}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Date: {new Date(viewCredit.creditDate).toLocaleDateString('en-GB')}</div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '0.8rem', marginBottom: '14px', backgroundColor: '#f8fafc', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div><span style={{ color: '#64748b' }}>Reason:</span> <div style={{ fontWeight: 600, color: '#0f172a' }}>{viewCredit.reason}</div></div>
+                  <div><span style={{ color: '#64748b' }}>Status:</span> <div><span style={{ fontWeight: 700, color: viewCredit.status === 'Open' ? '#2563eb' : '#16a34a' }}>{viewCredit.status}</span></div></div>
+                  <div><span style={{ color: '#64748b' }}>Allocated:</span> <div style={{ fontWeight: 600, color: '#0f172a' }}>₹{viewCredit.allocatedAmount.toLocaleString('en-IN')}</div></div>
                 </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.78rem', marginBottom: '12px' }}>
-                <div><strong>Reason:</strong> {viewCredit.reason}</div>
-                <div><strong>Status:</strong> {viewCredit.status}</div>
-              </div>
-
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem', marginBottom: '12px' }}>
-                <thead>
-                  <tr style={{ background: 'var(--bg-primary)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '6px', textAlign: 'left' }}>Item Description</th>
-                    <th style={{ padding: '6px', textAlign: 'center' }}>Qty</th>
-                    <th style={{ padding: '6px', textAlign: 'right' }}>Rate</th>
-                    <th style={{ padding: '6px', textAlign: 'right' }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewCredit.items?.map((it: any, i: number) => (
-                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '6px' }}>{it.description}</td>
-                      <td style={{ padding: '6px', textAlign: 'center' }}>{it.quantity}</td>
-                      <td style={{ padding: '6px', textAlign: 'right' }}>₹{it.rate}</td>
-                      <td style={{ padding: '6px', textAlign: 'right' }}>₹{it.total}</td>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', marginBottom: '14px' }}>
+                  <thead>
+                    <tr style={{ background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
+                      <th style={{ padding: '8px 10px', textAlign: 'left', borderRadius: '6px 0 0 6px' }}>Item Description</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'center' }}>Qty</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right' }}>Rate</th>
+                      <th style={{ padding: '8px 10px', textAlign: 'right', borderRadius: '0 6px 6px 0' }}>Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {viewCredit.items?.map((it: any, i: number) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '10px 10px', fontWeight: 500, color: '#0f172a' }}>{it.description}</td>
+                        <td style={{ padding: '10px 10px', textAlign: 'center', color: '#475569' }}>{it.quantity}</td>
+                        <td style={{ padding: '10px 10px', textAlign: 'right', color: '#475569', fontVariantNumeric: 'tabular-nums' }}>₹{it.rate}</td>
+                        <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>₹{it.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: '8px', fontSize: '0.85rem' }}>
-                <div><strong>Allocated to Bills:</strong> ₹{viewCredit.allocatedAmount.toLocaleString('en-IN')}</div>
-                <div><strong>Available Credit:</strong> <span style={{ color: '#059669', fontWeight: 700 }}>₹{viewCredit.balanceAmount.toLocaleString('en-IN')}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1.5px dashed #cbd5e1', paddingTop: '12px', fontSize: '0.9rem' }}>
+                  <div>Allocated to Bills: <strong style={{ color: '#0f172a' }}>₹{viewCredit.allocatedAmount.toLocaleString('en-IN')}</strong></div>
+                  <div>Available Credit Balance: <strong style={{ color: '#059669', fontSize: '1.05rem' }}>₹{viewCredit.balanceAmount.toLocaleString('en-IN')}</strong></div>
+                </div>
               </div>
             </div>
           </div>

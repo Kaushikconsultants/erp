@@ -90,27 +90,27 @@ export default function ModernSearchableSelect({
         style={{
           width: "100%",
           minWidth: 0,
-          height: "36px",
+          height: "38px",
           boxSizing: "border-box",
-          padding: "0 10px",
-          backgroundColor: "#ffffff",
-          border: isOpen ? "1px solid var(--accent-primary)" : "1px solid var(--border)",
+          padding: "0 12px",
+          backgroundColor: disabled ? "#f1f5f9" : "#ffffff",
+          border: isOpen ? "1.5px solid var(--accent-primary, #4f46e5)" : "1px solid #cbd5e1",
           borderRadius: "8px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: "6px",
+          gap: "8px",
           textAlign: "left",
           cursor: disabled ? "not-allowed" : "pointer",
-          boxShadow: isOpen ? "0 0 0 3px rgba(79, 70, 229, 0.12)" : "var(--shadow-sm)",
+          boxShadow: isOpen ? "0 0 0 3px rgba(79, 70, 229, 0.14)" : "0 1px 2px rgba(0, 0, 0, 0.03)",
           transition: "all 0.15s ease",
-          fontSize: "0.82rem",
-          color: selectedOption ? "var(--text-primary)" : "var(--text-muted)"
+          fontSize: "0.84rem",
+          color: selectedOption ? "#0f172a" : "#64748b"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", minWidth: 0, flex: 1 }}>
-          {icon && <span style={{ color: "var(--text-muted)", display: "flex", alignItems: "center", flexShrink: 0 }}>{icon}</span>}
-          <span style={{ fontWeight: selectedOption ? 500 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: selectedOption ? "var(--text-primary)" : "var(--text-muted)", display: "block" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", overflow: "hidden", minWidth: 0, flex: 1 }}>
+          {icon && <span style={{ color: "#64748b", display: "flex", alignItems: "center", flexShrink: 0 }}>{icon}</span>}
+          <span style={{ fontWeight: selectedOption ? 500 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: selectedOption ? "#0f172a" : "#94a3b8", display: "block" }}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
         </div>
@@ -122,15 +122,15 @@ export default function ModernSearchableSelect({
                 e.stopPropagation();
                 onChange("");
               }}
-              style={{ color: "var(--text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
+              style={{ color: "#94a3b8", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}
             >
-              <X size={12} />
+              <X size={13} />
             </span>
           )}
           <ChevronDown
-            size={13}
+            size={14}
             style={{
-              color: "var(--text-muted)",
+              color: "#94a3b8",
               transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
               transition: "transform 0.2s ease",
               flexShrink: 0
@@ -149,17 +149,16 @@ export default function ModernSearchableSelect({
             right: 0,
             backgroundColor: "#ffffff",
             borderRadius: "10px",
-            border: "1px solid #e2e8f0",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.12), 0 8px 10px -6px rgba(0, 0, 0, 0.08)",
-            zIndex: 99999,
-            overflow: "hidden",
-            animation: "fadeIn 0.15s ease-out"
+            border: "1px solid #cbd5e1",
+            boxShadow: "0 12px 30px -4px rgba(0, 0, 0, 0.16), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+            zIndex: 999999,
+            overflow: "hidden"
           }}
         >
           {/* Search Field (if more than 5 options) */}
           {options.length > 5 && (
-            <div style={{ padding: "8px", borderBottom: "1px solid #f1f5f9", position: "relative" }}>
-              <Search size={13} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+            <div style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9", position: "relative", backgroundColor: "#f8fafc" }}>
+              <Search size={14} style={{ position: "absolute", left: "20px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -168,13 +167,13 @@ export default function ModernSearchableSelect({
                 placeholder={searchPlaceholder}
                 style={{
                   width: "100%",
-                  padding: "6px 8px 6px 28px",
-                  fontSize: "0.78rem",
+                  padding: "7px 10px 7px 32px",
+                  fontSize: "0.82rem",
                   borderRadius: "6px",
-                  border: "1px solid #e2e8f0",
-                  backgroundColor: "#f8fafc",
+                  border: "1px solid #cbd5e1",
+                  backgroundColor: "#ffffff",
                   outline: "none",
-                  color: "#1e293b"
+                  color: "#0f172a"
                 }}
               />
             </div>

@@ -734,9 +734,9 @@ export default function PaymentsMadeClient({
             bottom: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -750,27 +750,29 @@ export default function PaymentsMadeClient({
           <div
             style={{
               width: '100%',
-              maxWidth: '860px',
+              maxWidth: '880px',
               backgroundColor: '#ffffff',
               borderRadius: '16px',
               border: '1px solid #e2e8f0',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
-              padding: '18px 24px',
-              position: 'relative'
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+              overflow: 'hidden',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column'
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ width: 30, height: 30, borderRadius: '8px', background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff' }}>
-                  <Plus size={16} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#ffffff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: 40, height: 40, borderRadius: '10px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', boxShadow: '0 4px 10px rgba(16, 185, 129, 0.25)', flexShrink: 0 }}>
+                  <CreditCard size={20} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.01em' }}>
                     Record Vendor Payment
                   </h2>
-                  <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '2px 0 0 0' }}>
                     Settle unpaid vendor bills or issue advance deposit
                   </p>
                 </div>
@@ -779,234 +781,346 @@ export default function PaymentsMadeClient({
               <button
                 type="button"
                 onClick={() => setRecordModalOpen(false)}
-                style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ 
+                  width: 32, 
+                  height: 32, 
+                  borderRadius: '8px', 
+                  border: '1px solid #e2e8f0', 
+                  backgroundColor: '#f8fafc', 
+                  color: '#64748b', 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#fee2e2';
+                  e.currentTarget.style.color = '#dc2626';
+                  e.currentTarget.style.borderColor = '#fca5a5';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f8fafc';
+                  e.currentTarget.style.color = '#64748b';
+                  e.currentTarget.style.borderColor = '#e2e8f0';
+                }}
               >
-                ×
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmitPayment}>
-              {/* Tabs */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', backgroundColor: 'var(--bg-primary)', padding: '3px', borderRadius: '8px', marginBottom: '12px', border: '1px solid var(--border)' }}>
-                <button
-                  type="button"
-                  onClick={() => setModalTab('bill')}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.78rem',
-                    fontWeight: modalTab === 'bill' ? 600 : 400,
-                    backgroundColor: modalTab === 'bill' ? '#059669' : 'transparent',
-                    color: modalTab === 'bill' ? '#ffffff' : 'var(--text-secondary)',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Receipt size={13} /> Settle Unpaid Bill
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setModalTab('advance')}
-                  style={{
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.78rem',
-                    fontWeight: modalTab === 'advance' ? 600 : 400,
-                    backgroundColor: modalTab === 'advance' ? '#0f766e' : 'transparent',
-                    color: modalTab === 'advance' ? '#ffffff' : 'var(--text-secondary)',
-                    border: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '5px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Building2 size={13} /> Vendor Advance / On-Account
-                </button>
-              </div>
-
-              {/* 2 Columns */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+            <form onSubmit={handleSubmitPayment} style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+              <div style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 
-                {/* Left Column: Vendor & Bill */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>
-                      Select Vendor *
-                    </label>
-                    <ModernSearchableSelect
-                      options={modalVendorOptions}
-                      value={payVendorId}
-                      onChange={handleVendorSelect}
-                      placeholder="-- Choose Vendor --"
-                      searchPlaceholder="Search vendor name, contact..."
-                      icon={<Building2 size={13} />}
-                    />
-                  </div>
+                {/* Tabs */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('bill')}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '0.84rem',
+                      fontWeight: modalTab === 'bill' ? 700 : 500,
+                      backgroundColor: modalTab === 'bill' ? '#ffffff' : 'transparent',
+                      color: modalTab === 'bill' ? '#065f46' : '#64748b',
+                      border: modalTab === 'bill' ? '1px solid #a7f3d0' : '1px solid transparent',
+                      boxShadow: modalTab === 'bill' ? '0 2px 6px rgba(0, 0, 0, 0.06)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Receipt size={15} color={modalTab === 'bill' ? '#059669' : '#64748b'} /> Settle Unpaid Bill
+                  </button>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>
-                      {modalTab === 'bill' ? 'Select Bill to Settle *' : 'Allocation Type'}
-                    </label>
-                    {modalTab === 'bill' ? (
-                      !payVendorId ? (
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: '#ffffff', padding: '8px', borderRadius: '6px', border: '1px dashed var(--border)' }}>
-                          Select a vendor to pick unpaid bills
-                        </div>
-                      ) : vendorBills.length > 0 ? (
-                        <ModernSearchableSelect
-                          options={modalBillOptions}
-                          value={selectedBillId}
-                          onChange={handleBillSelect}
-                          placeholder="Select Bill"
-                          searchPlaceholder="Search bill #..."
-                          icon={<Receipt size={13} />}
-                        />
-                      ) : (
-                        <div style={{ fontSize: '0.74rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '7px 10px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
-                          ✓ No pending bills for this vendor.
-                        </div>
-                      )
-                    ) : (
-                      <div style={{ fontSize: '0.75rem', color: '#0f766e', backgroundColor: '#f0fdfa', padding: '7px 10px', borderRadius: '6px', border: '1px solid #99f6e4' }}>
-                        Advance will be credited to vendor balance
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>
-                      Remarks / Notes
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Cleared via online banking"
-                      className="form-input"
-                      style={{ width: '100%', height: '34px', fontSize: '0.8rem' }}
-                      value={payNotes}
-                      onChange={e => setPayNotes(e.target.value)}
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('advance')}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontSize: '0.84rem',
+                      fontWeight: modalTab === 'advance' ? 700 : 500,
+                      backgroundColor: modalTab === 'advance' ? '#ffffff' : 'transparent',
+                      color: modalTab === 'advance' ? '#0f766e' : '#64748b',
+                      border: modalTab === 'advance' ? '1px solid #99f6e4' : '1px solid transparent',
+                      boxShadow: modalTab === 'advance' ? '0 2px 6px rgba(0, 0, 0, 0.06)' : 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Building2 size={15} color={modalTab === 'advance' ? '#0d9488' : '#64748b'} /> Vendor Advance / On-Account
+                  </button>
                 </div>
 
-                {/* Right Column: Amount, Mode & Bank */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                {/* 2 Columns */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>
-                        Amount (₹) *
-                      </label>
-                      <div style={{ position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: '9px', top: '50%', transform: 'translateY(-50%)', color: '#059669', fontWeight: 700, fontSize: '0.85rem' }}>
-                          ₹
-                        </span>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="1"
-                          required
-                          placeholder="0.00"
-                          className="form-input"
-                          style={{ width: '100%', paddingLeft: '22px', height: '34px', fontSize: '0.85rem', fontWeight: 600 }}
-                          value={payAmount}
-                          onChange={e => setPayAmount(e.target.value)}
-                        />
-                      </div>
+                  {/* Left Column: Vendor & Bill Allocation */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', background: '#f8fafc', padding: '16px 18px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Vendor & Allocation
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>
-                        Payment Date *
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                        Select Vendor <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <ModernSearchableSelect
+                        options={modalVendorOptions}
+                        value={payVendorId}
+                        onChange={handleVendorSelect}
+                        placeholder="-- Choose Vendor --"
+                        searchPlaceholder="Search vendor name, contact..."
+                        icon={<Building2 size={15} />}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                        {modalTab === 'bill' ? 'Select Bill to Settle *' : 'Allocation Type'}
+                      </label>
+                      {modalTab === 'bill' ? (
+                        !payVendorId ? (
+                          <div style={{ fontSize: '0.8rem', color: '#64748b', backgroundColor: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                            Select a vendor to view and pick unpaid bills
+                          </div>
+                        ) : vendorBills.length > 0 ? (
+                          <ModernSearchableSelect
+                            options={modalBillOptions}
+                            value={selectedBillId}
+                            onChange={handleBillSelect}
+                            placeholder="Select Bill"
+                            searchPlaceholder="Search bill #..."
+                            icon={<Receipt size={15} />}
+                          />
+                        ) : (
+                          <div style={{ fontSize: '0.8rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '10px 12px', borderRadius: '8px', border: '1px solid #a7f3d0', fontWeight: 500 }}>
+                            ✓ No pending unpaid bills found for this vendor.
+                          </div>
+                        )
+                      ) : (
+                        <div style={{ fontSize: '0.8rem', color: '#0f766e', backgroundColor: '#f0fdfa', padding: '10px 12px', borderRadius: '8px', border: '1px solid #99f6e4', fontWeight: 500 }}>
+                          💡 Advance deposit will be directly credited to vendor balance account
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                        Remarks / Notes
                       </label>
                       <input
-                        type="date"
-                        required
-                        className="form-input"
-                        style={{ width: '100%', height: '34px', fontSize: '0.78rem' }}
-                        value={payDate}
-                        onChange={e => setPayDate(e.target.value)}
+                        type="text"
+                        placeholder="e.g. Cleared via online netbanking"
+                        style={{ 
+                          width: '100%', 
+                          height: '38px', 
+                          fontSize: '0.84rem', 
+                          padding: '0 12px', 
+                          borderRadius: '8px', 
+                          border: '1px solid #cbd5e1', 
+                          backgroundColor: '#ffffff',
+                          color: '#0f172a',
+                          outline: 'none'
+                        }}
+                        value={payNotes}
+                        onChange={e => setPayNotes(e.target.value)}
                       />
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>
-                        Payment Mode
-                      </label>
-                      <select
-                        className="form-input"
-                        style={{ width: '100%', height: '34px', fontSize: '0.78rem' }}
-                        value={payMode}
-                        onChange={e => setPayMode(e.target.value)}
-                      >
-                        <option>Bank Transfer (NEFT/RTGS)</option>
-                        <option>UPI (GPay / PhonePe / Paytm)</option>
-                        <option>Cheque</option>
-                        <option>Cash in Hand</option>
-                        <option>Debit Card</option>
-                      </select>
+                  {/* Right Column: Amount, Mode & Bank */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', background: '#f8fafc', padding: '16px 18px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Payment & Accounts
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                          Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#059669', fontWeight: 700, fontSize: '0.9rem' }}>
+                            ₹
+                          </span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="1"
+                            required
+                            placeholder="0.00"
+                            style={{ 
+                              width: '100%', 
+                              paddingLeft: '26px', 
+                              paddingRight: '12px', 
+                              height: '38px', 
+                              fontSize: '0.9rem', 
+                              fontWeight: 700, 
+                              borderRadius: '8px', 
+                              border: '1px solid #cbd5e1', 
+                              backgroundColor: '#ffffff',
+                              color: '#0f172a',
+                              outline: 'none'
+                            }}
+                            value={payAmount}
+                            onChange={e => setPayAmount(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                          Payment Date <span style={{ color: '#ef4444' }}>*</span>
+                        </label>
+                        <input
+                          type="date"
+                          required
+                          style={{ 
+                            width: '100%', 
+                            height: '38px', 
+                            fontSize: '0.84rem', 
+                            padding: '0 12px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #cbd5e1', 
+                            backgroundColor: '#ffffff',
+                            color: '#0f172a',
+                            outline: 'none'
+                          }}
+                          value={payDate}
+                          onChange={e => setPayDate(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                          Payment Mode
+                        </label>
+                        <select
+                          style={{ 
+                            width: '100%', 
+                            height: '38px', 
+                            fontSize: '0.84rem', 
+                            padding: '0 10px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #cbd5e1', 
+                            backgroundColor: '#ffffff',
+                            color: '#0f172a',
+                            outline: 'none'
+                          }}
+                          value={payMode}
+                          onChange={e => setPayMode(e.target.value)}
+                        >
+                          <option>Bank Transfer (NEFT/RTGS)</option>
+                          <option>UPI (GPay / PhonePe / Paytm)</option>
+                          <option>Cheque</option>
+                          <option>Cash in Hand</option>
+                          <option>Debit Card</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                          Paid From Account
+                        </label>
+                        <select
+                          style={{ 
+                            width: '100%', 
+                            height: '38px', 
+                            fontSize: '0.84rem', 
+                            padding: '0 10px', 
+                            borderRadius: '8px', 
+                            border: '1px solid #cbd5e1', 
+                            backgroundColor: '#ffffff',
+                            color: '#0f172a',
+                            outline: 'none'
+                          }}
+                          value={payAccount}
+                          onChange={e => setPayAccount(e.target.value)}
+                        >
+                          <option>HDFC Bank Current A/c - 016805006415</option>
+                          <option>SBI Current Account</option>
+                          <option>Petty Cash Box</option>
+                        </select>
+                      </div>
                     </div>
 
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>
-                        Paid From Account
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                        UTR / Cheque Ref #
                       </label>
-                      <select
-                        className="form-input"
-                        style={{ width: '100%', height: '34px', fontSize: '0.78rem' }}
-                        value={payAccount}
-                        onChange={e => setPayAccount(e.target.value)}
-                      >
-                        <option>HDFC Bank Current A/c - 016805006415</option>
-                        <option>SBI Current Account</option>
-                        <option>Petty Cash Box</option>
-                      </select>
+                      <input
+                        type="text"
+                        placeholder="e.g. UTR-9876543210"
+                        style={{ 
+                          width: '100%', 
+                          height: '38px', 
+                          fontSize: '0.84rem', 
+                          padding: '0 12px', 
+                          borderRadius: '8px', 
+                          border: '1px solid #cbd5e1', 
+                          backgroundColor: '#ffffff',
+                          color: '#0f172a',
+                          outline: 'none'
+                        }}
+                        value={refNumber}
+                        onChange={e => setRefNumber(e.target.value)}
+                      />
                     </div>
-                  </div>
 
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '3px' }}>
-                      UTR / Cheque Ref #
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. UTR-9876543210"
-                      className="form-input"
-                      style={{ width: '100%', height: '34px', fontSize: '0.8rem' }}
-                      value={refNumber}
-                      onChange={e => setRefNumber(e.target.value)}
-                    />
                   </div>
 
                 </div>
-
               </div>
 
               {/* Footer */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
                 <button
                   type="button"
                   onClick={() => setRecordModalOpen(false)}
-                  className="action-btn"
-                  style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+                  style={{ 
+                    fontSize: '0.84rem', 
+                    padding: '8px 18px', 
+                    borderRadius: '8px', 
+                    border: '1px solid #cbd5e1', 
+                    backgroundColor: '#ffffff', 
+                    color: '#475569', 
+                    fontWeight: 600, 
+                    cursor: 'pointer' 
+                  }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submittingPayment}
-                  className="primary-btn"
-                  style={{ fontSize: '0.82rem', padding: '6px 18px', backgroundColor: '#059669', fontWeight: 600 }}
+                  style={{ 
+                    fontSize: '0.86rem', 
+                    padding: '8px 22px', 
+                    borderRadius: '8px', 
+                    border: 'none', 
+                    backgroundColor: '#059669', 
+                    color: '#ffffff', 
+                    fontWeight: 700, 
+                    cursor: submittingPayment ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(5, 150, 105, 0.28)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
                 >
-                  <Check size={14} /> {submittingPayment ? 'Recording...' : 'Confirm & Save Payment'}
+                  <Check size={16} /> {submittingPayment ? 'Recording...' : 'Confirm & Save Payment'}
                 </button>
               </div>
 
@@ -1028,9 +1142,9 @@ export default function PaymentsMadeClient({
             bottom: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1044,46 +1158,57 @@ export default function PaymentsMadeClient({
           <div
             style={{
               width: '100%',
-              maxWidth: '420px',
+              maxWidth: '460px',
               backgroundColor: '#ffffff',
-              borderRadius: '14px',
+              borderRadius: '16px',
               border: '1px solid #e2e8f0',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
-              padding: '20px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+              overflow: 'hidden',
               position: 'relative'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--danger)', marginBottom: '6px' }}>
-              Cancel & Reverse Vendor Payment
-            </h3>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              Are you sure you want to cancel payment <strong>{cancelModalPay.paymentNumber}</strong> of <strong>₹{cancelModalPay.amount.toLocaleString('en-IN')}</strong>? This will restore the unpaid balance on the vendor bill.
-            </p>
-
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, marginBottom: '4px' }}>
-                Cancellation Reason
-              </label>
-              <select
-                className="form-input"
-                style={{ width: '100%', fontSize: '0.82rem' }}
-                value={cancelReason}
-                onChange={e => setCancelReason(e.target.value)}
-              >
-                <option>Entered in Error</option>
-                <option>Bank Transaction Failed</option>
-                <option>Vendor Refund</option>
-                <option>Duplicate Entry</option>
-              </select>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #fee2e2', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ width: 36, height: 36, borderRadius: '8px', backgroundColor: '#fee2e2', border: '1px solid #fca5a5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626', flexShrink: 0 }}>
+                <Ban size={18} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#b91c1c', margin: 0 }}>
+                  Cancel & Reverse Payment
+                </h3>
+                <div style={{ fontSize: '0.75rem', color: '#991b1b', margin: '2px 0 0 0' }}>
+                  Voucher #{cancelModalPay.paymentNumber}
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+            <div style={{ padding: '20px 24px' }}>
+              <p style={{ fontSize: '0.85rem', color: '#334155', lineHeight: 1.5, margin: '0 0 14px 0' }}>
+                Are you sure you want to cancel payment <strong>{cancelModalPay.paymentNumber}</strong> of <strong style={{ color: '#059669' }}>₹{cancelModalPay.amount.toLocaleString('en-IN')}</strong>? This will automatically restore the unpaid balance on the vendor bill.
+              </p>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Cancellation Reason
+                </label>
+                <select
+                  style={{ width: '100%', height: '38px', fontSize: '0.84rem', padding: '0 10px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none' }}
+                  value={cancelReason}
+                  onChange={e => setCancelReason(e.target.value)}
+                >
+                  <option>Entered in Error</option>
+                  <option>Bank Transaction Failed</option>
+                  <option>Vendor Refund</option>
+                  <option>Duplicate Entry</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '14px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
               <button
                 type="button"
                 onClick={() => setCancelModalPay(null)}
-                className="action-btn"
-                style={{ fontSize: '0.8rem' }}
+                style={{ fontSize: '0.84rem', padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', fontWeight: 600, cursor: 'pointer' }}
               >
                 Back
               </button>
@@ -1091,7 +1216,7 @@ export default function PaymentsMadeClient({
                 type="button"
                 onClick={handleCancelPayment}
                 disabled={cancelling}
-                style={{ backgroundColor: 'var(--danger)', color: '#ffffff', fontWeight: 600, padding: '6px 14px', borderRadius: '6px', border: 'none', fontSize: '0.8rem', cursor: 'pointer' }}
+                style={{ backgroundColor: '#dc2626', color: '#ffffff', fontWeight: 700, padding: '8px 18px', borderRadius: '8px', border: 'none', fontSize: '0.84rem', cursor: cancelling ? 'not-allowed' : 'pointer', boxShadow: '0 4px 12px rgba(220, 38, 38, 0.28)' }}
               >
                 {cancelling ? 'Reversing...' : 'Confirm Cancellation'}
               </button>
@@ -1113,9 +1238,9 @@ export default function PaymentsMadeClient({
             bottom: 0,
             width: '100vw',
             height: '100vh',
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(6px)',
-            WebkitBackdropFilter: 'blur(6px)',
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1129,64 +1254,68 @@ export default function PaymentsMadeClient({
           <div
             style={{
               width: '100%',
-              maxWidth: '640px',
+              maxWidth: '680px',
               backgroundColor: '#ffffff',
               borderRadius: '16px',
               border: '1px solid #e2e8f0',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
-              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05)',
+              overflow: 'hidden',
               position: 'relative'
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#059669' }}>Vendor Remittance Advice Voucher</span>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CreditCard size={18} color="#059669" />
+                <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>Vendor Remittance Advice Voucher</span>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
                   onClick={() => window.print()}
-                  className="action-btn"
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  <Printer size={13} /> Print
+                  <Printer size={14} /> Print Advice
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewVoucher(null)}
-                  style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  style={{ width: 30, height: 30, borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#ffffff', color: '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                 >
-                  ×
+                  <X size={15} />
                 </button>
               </div>
             </div>
 
-            <div style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '16px' }}>
-              <div style={{ textAlign: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '10px', marginBottom: '12px' }}>
-                <h3 style={{ margin: '0 0 2px 0', fontSize: '1.1rem', fontWeight: 700 }}>ESPON CLOTHING PRIVATE LIMITED</h3>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>OUTWARD VENDOR REMITTANCE ADVICE</div>
-              </div>
+            <div style={{ padding: '24px' }}>
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', backgroundColor: '#ffffff' }}>
+                <div style={{ textAlign: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '14px' }}>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>ESPON CLOTHING PRIVATE LIMITED</h3>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, letterSpacing: '0.04em' }}>OUTWARD VENDOR REMITTANCE ADVICE</div>
+                </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '10px' }}>
-                <div><strong>Voucher #:</strong> {viewVoucher.paymentNumber}</div>
-                <div><strong>Date:</strong> {new Date(viewVoucher.paymentDate).toLocaleDateString('en-GB')}</div>
-              </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.84rem', marginBottom: '12px', backgroundColor: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div><span style={{ color: '#64748b' }}>Voucher #:</span> <strong style={{ color: '#0f172a' }}>{viewVoucher.paymentNumber}</strong></div>
+                  <div><span style={{ color: '#64748b' }}>Date:</span> <strong style={{ color: '#0f172a' }}>{new Date(viewVoucher.paymentDate).toLocaleDateString('en-GB')}</strong></div>
+                </div>
 
-              <div style={{ backgroundColor: 'var(--bg-primary)', padding: '10px', borderRadius: '6px', fontSize: '0.8rem', marginBottom: '12px' }}>
-                <div><strong>Paid To:</strong> {viewVoucher.vendor?.companyName}</div>
-                <div><strong>Contact:</strong> {viewVoucher.vendor?.contactPerson} ({viewVoucher.vendor?.mobile})</div>
-                {viewVoucher.vendor?.gstNumber && <div><strong>GSTIN:</strong> {viewVoucher.vendor.gstNumber}</div>}
-              </div>
+                <div style={{ backgroundColor: '#f0fdf4', padding: '12px 14px', borderRadius: '8px', fontSize: '0.82rem', marginBottom: '14px', border: '1px solid #bbf7d0' }}>
+                  <div><span style={{ color: '#166534' }}>Paid To:</span> <strong style={{ color: '#14532d' }}>{viewVoucher.vendor?.companyName}</strong></div>
+                  <div style={{ marginTop: '2px' }}><span style={{ color: '#166534' }}>Contact:</span> <span style={{ color: '#14532d' }}>{viewVoucher.vendor?.contactPerson} ({viewVoucher.vendor?.mobile})</span></div>
+                  {viewVoucher.vendor?.gstNumber && <div style={{ marginTop: '2px' }}><span style={{ color: '#166534' }}>GSTIN:</span> <strong style={{ color: '#14532d' }}>{viewVoucher.vendor.gstNumber}</strong></div>}
+                </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', borderBottom: '1px solid var(--border)', paddingBottom: '8px', marginBottom: '10px' }}>
-                <span><strong>Payment Type:</strong> {viewVoucher.paymentType}</span>
-                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#059669' }}>
-                  ₹{viewVoucher.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', borderBottom: '1.5px dashed #cbd5e1', paddingBottom: '12px', marginBottom: '12px' }}>
+                  <span><span style={{ color: '#64748b' }}>Payment Type:</span> <strong style={{ color: '#0f172a' }}>{viewVoucher.paymentType}</strong></span>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#059669', fontVariantNumeric: 'tabular-nums' }}>
+                    ₹{viewVoucher.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
 
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                <div>Paid via: <strong>{viewVoucher.paymentMode}</strong> ({viewVoucher.paidFromAccount})</div>
-                <div>UTR / Ref: <strong>{viewVoucher.referenceNumber || '-'}</strong></div>
-                <div>Recorded by: {viewVoucher.recordedBy || 'Accounts Team'}</div>
+                <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div>Paid via: <strong style={{ color: '#0f172a' }}>{viewVoucher.paymentMode}</strong> ({viewVoucher.paidFromAccount})</div>
+                  <div>UTR / Reference: <strong style={{ color: '#0f172a' }}>{viewVoucher.referenceNumber || '-'}</strong></div>
+                  <div>Recorded by: <strong style={{ color: '#0f172a' }}>{viewVoucher.recordedBy || 'Accounts Team'}</strong></div>
+                </div>
               </div>
             </div>
           </div>
