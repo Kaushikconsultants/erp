@@ -20,7 +20,12 @@ import {
   TrendingUp,
   FileText,
   Boxes,
-  ShieldCheck
+  ShieldCheck,
+  ChevronDown,
+  CreditCard,
+  Percent,
+  Receipt,
+  FileSpreadsheet
 } from "lucide-react";
 
 export interface VendorOption {
@@ -71,7 +76,7 @@ export default function PurchasesClient({
   // Create Form State
   const [vendorId, setVendorId] = useState<string>("");
   const [expectedDate, setExpectedDate] = useState<string>("");
-  const [paymentTerms, setPaymentTerms] = useState<string>("Net 30");
+  const [paymentTerms, setPaymentTerms] = useState<string>("Net 30 Days");
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<POItemForm[]>([
     { productId: "", quantity: 1, rate: 0, gstRate: 18 }
@@ -90,7 +95,7 @@ export default function PurchasesClient({
       subLabel: v.contactPerson
         ? `Contact: ${v.contactPerson}${v.mobile ? ` • ${v.mobile}` : ""}`
         : v.gstNumber
-        ? `GST: ${v.gstNumber}`
+        ? `GSTIN: ${v.gstNumber}`
         : undefined,
       badge: v.gstNumber ? "GST Registered" : undefined
     }));
@@ -164,7 +169,7 @@ export default function PurchasesClient({
   function resetCreateForm() {
     setVendorId("");
     setExpectedDate("");
-    setPaymentTerms("Net 30");
+    setPaymentTerms("Net 30 Days");
     setNotes("");
     setItems([{ productId: "", quantity: 1, rate: 0, gstRate: 18 }]);
     setError("");
@@ -211,7 +216,7 @@ export default function PurchasesClient({
   async function handleCreatePO(e: React.FormEvent) {
     e.preventDefault();
     if (!vendorId) {
-      setError("Please select a vendor.");
+      setError("Please select a vendor / supplier.");
       return;
     }
     const validItems = items.filter((it) => it.productId && it.quantity > 0);
@@ -281,7 +286,7 @@ export default function PurchasesClient({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-      {/* ─── 1. TOP HEADER ─── */}
+      {/* ─── 1. TOP COMMAND HEADER ─── */}
       <div
         style={{
           display: "flex",
@@ -297,12 +302,12 @@ export default function PurchasesClient({
               width: 44,
               height: 44,
               borderRadius: "12px",
-              background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+              background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
               color: "#ffffff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(5, 150, 105, 0.25)",
+              boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
               flexShrink: 0
             }}
           >
@@ -332,15 +337,15 @@ export default function PurchasesClient({
             borderRadius: "10px",
             fontWeight: 700,
             fontSize: "0.88rem",
-            backgroundColor: "var(--accent-primary, #4f46e5)",
+            background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)",
             color: "#ffffff",
             border: "none",
             cursor: "pointer",
-            boxShadow: "0 2px 8px rgba(79, 70, 229, 0.25)",
+            boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
             transition: "all 0.15s ease"
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.opacity = "0.92";
+            e.currentTarget.style.opacity = "0.94";
             e.currentTarget.style.transform = "translateY(-1px)";
           }}
           onMouseLeave={(e) => {
@@ -379,11 +384,11 @@ export default function PurchasesClient({
               width: 42,
               height: 42,
               borderRadius: "10px",
-              background: "#ecfdf5",
+              background: "#eff6ff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#059669"
+              color: "#2563eb"
             }}
           >
             <TrendingUp size={20} />
@@ -419,11 +424,11 @@ export default function PurchasesClient({
               width: 42,
               height: 42,
               borderRadius: "10px",
-              background: "#eff6ff",
+              background: "#e0e7ff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#2563eb"
+              color: "#4f46e5"
             }}
           >
             <Clock size={20} />
@@ -432,7 +437,7 @@ export default function PurchasesClient({
             <div style={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
               Active Supplier Orders
             </div>
-            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#2563eb", marginTop: "1px" }}>
+            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#4f46e5", marginTop: "1px" }}>
               {totals.issuedCount} {totals.issuedCount === 1 ? "Order" : "Orders"}
             </div>
             <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "1px" }}>
@@ -704,11 +709,11 @@ export default function PurchasesClient({
                         style={{
                           fontWeight: 700,
                           fontSize: "0.85rem",
-                          color: "#1d4ed8",
-                          backgroundColor: "#eff6ff",
+                          color: "#4f46e5",
+                          backgroundColor: "#eef2ff",
                           padding: "3px 8px",
                           borderRadius: "6px",
-                          border: "1px solid #bfdbfe",
+                          border: "1px solid #c7d2fe",
                           display: "inline-block"
                         }}
                       >
@@ -899,7 +904,7 @@ export default function PurchasesClient({
                         gap: "6px",
                         padding: "8px 16px",
                         borderRadius: "8px",
-                        backgroundColor: "var(--accent-primary, #4f46e5)",
+                        background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)",
                         color: "#ffffff",
                         border: "none",
                         fontSize: "0.82rem",
@@ -918,7 +923,7 @@ export default function PurchasesClient({
       </div>
 
       {/* ─────────────────────────────────────────────────────────────
-          5. CREATE PURCHASE ORDER MODAL (Overhauled Modern Form)
+          5. CREATE PURCHASE ORDER MODAL (Modernized & Theme Aligned)
       ───────────────────────────────────────────────────────────── */}
       {createOpen && (
         <div
@@ -941,12 +946,12 @@ export default function PurchasesClient({
           <div
             style={{
               width: "100%",
-              maxWidth: "840px",
+              maxWidth: "860px",
               backgroundColor: "#ffffff",
-              borderRadius: "16px",
+              borderRadius: "18px",
               border: "1px solid #e2e8f0",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-              maxHeight: "90vh",
+              boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.3)",
+              maxHeight: "92vh",
               overflowY: "auto",
               display: "flex",
               flexDirection: "column"
@@ -959,7 +964,7 @@ export default function PurchasesClient({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "18px 24px",
+                padding: "20px 26px",
                 borderBottom: "1px solid #e2e8f0",
                 backgroundColor: "#ffffff",
                 position: "sticky",
@@ -970,26 +975,26 @@ export default function PurchasesClient({
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "10px",
-                    background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                    width: 42,
+                    height: 42,
+                    borderRadius: "11px",
+                    background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
                     color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    boxShadow: "0 4px 10px rgba(5, 150, 105, 0.25)",
+                    boxShadow: "0 4px 12px rgba(79, 70, 229, 0.28)",
                     flexShrink: 0
                   }}
                 >
-                  <ShoppingBag size={20} />
+                  <ShoppingBag size={21} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                  <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0, color: "#0f172a" }}>
                     Create Purchase Order
                   </h2>
                   <p style={{ fontSize: "0.8rem", margin: "2px 0 0 0", color: "#64748b" }}>
-                    Issue a procurement order to your supplier with line items and delivery terms.
+                    Issue an official procurement order to your registered supplier with line items and delivery terms.
                   </p>
                 </div>
               </div>
@@ -998,28 +1003,41 @@ export default function PurchasesClient({
                 type="button"
                 onClick={() => setCreateOpen(false)}
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "8px",
+                  width: 34,
+                  height: 34,
+                  borderRadius: "9px",
                   border: "1px solid #e2e8f0",
                   backgroundColor: "#f8fafc",
                   color: "#64748b",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center"
+                  justifyContent: "center",
+                  transition: "all 0.15s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#fee2e2";
+                  e.currentTarget.style.color = "#dc2626";
+                  e.currentTarget.style.borderColor = "#fecaca";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f8fafc";
+                  e.currentTarget.style.color = "#64748b";
+                  e.currentTarget.style.borderColor = "#e2e8f0";
                 }}
               >
-                <X size={16} />
+                <X size={17} />
               </button>
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleCreatePO} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              {/* Row 1: Vendor Selection (Full Width) */}
+            <form onSubmit={handleCreatePO} style={{ padding: "22px 26px", display: "flex", flexDirection: "column", gap: "18px" }}>
+              {/* Row 1: Vendor Selection */}
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
-                  Vendor / Supplier <span style={{ color: "#ef4444" }}>*</span>
+                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <Building2 size={14} color="#4f46e5" />
+                  <span>Vendor / Supplier</span>
+                  <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <ModernSearchableSelect
                   options={vendorSelectOptions}
@@ -1029,46 +1047,122 @@ export default function PurchasesClient({
                     const sel = vendors.find((v) => v.id === val);
                     if (sel?.paymentTerms) setPaymentTerms(sel.paymentTerms);
                   }}
-                  placeholder="-- Select Supplier / Vendor --"
+                  placeholder="-- Choose Supplier / Vendor --"
                   searchPlaceholder="Search vendor by company or contact..."
                   required
                 />
               </div>
 
               {/* Row 2: Metadata Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 {/* Expected Date */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
-                    Expected Delivery Date
+                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <Calendar size={14} color="#4f46e5" />
+                    <span>Expected Delivery Date</span>
                   </label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    style={{ height: "38px", fontSize: "0.85rem" }}
-                    value={expectedDate}
-                    onChange={(e) => setExpectedDate(e.target.value)}
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      type="date"
+                      value={expectedDate}
+                      onChange={(e) => setExpectedDate(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 12px 0 38px",
+                        backgroundColor: "#f8fafc",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "10px",
+                        fontSize: "0.85rem",
+                        color: "#0f172a",
+                        outline: "none",
+                        fontFamily: "inherit",
+                        transition: "all 0.15s ease",
+                        boxSizing: "border-box"
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+                        e.currentTarget.style.backgroundColor = "#ffffff";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#cbd5e1";
+                        e.currentTarget.style.backgroundColor = "#f8fafc";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    />
+                    <Calendar
+                      size={16}
+                      style={{
+                        position: "absolute",
+                        left: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#94a3b8",
+                        pointerEvents: "none"
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {/* Payment Terms */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
-                    Payment Terms
+                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <CreditCard size={14} color="#4f46e5" />
+                    <span>Payment Terms</span>
                   </label>
-                  <select
-                    className="form-input"
-                    style={{ height: "38px", fontSize: "0.85rem" }}
-                    value={paymentTerms}
-                    onChange={(e) => setPaymentTerms(e.target.value)}
-                  >
-                    <option value="Net 30">Net 30 Days</option>
-                    <option value="Net 15">Net 15 Days</option>
-                    <option value="Net 45">Net 45 Days</option>
-                    <option value="Immediate COD">Immediate / Cash on Delivery (COD)</option>
-                    <option value="100% Advance">100% Advance Payment</option>
-                    <option value="50% Advance / 50% on Delivery">50% Advance / 50% on Delivery</option>
-                  </select>
+                  <div style={{ position: "relative" }}>
+                    <select
+                      value={paymentTerms}
+                      onChange={(e) => setPaymentTerms(e.target.value)}
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 34px 0 14px",
+                        backgroundColor: "#f8fafc",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "10px",
+                        fontSize: "0.85rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        outline: "none",
+                        appearance: "none",
+                        WebkitAppearance: "none",
+                        fontFamily: "inherit",
+                        transition: "all 0.15s ease",
+                        boxSizing: "border-box",
+                        cursor: "pointer"
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+                        e.currentTarget.style.backgroundColor = "#ffffff";
+                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = "#cbd5e1";
+                        e.currentTarget.style.backgroundColor = "#f8fafc";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <option value="Net 30 Days">Net 30 Days</option>
+                      <option value="Net 15 Days">Net 15 Days</option>
+                      <option value="Net 45 Days">Net 45 Days</option>
+                      <option value="Immediate COD">Immediate / Cash on Delivery (COD)</option>
+                      <option value="100% Advance">100% Advance Payment</option>
+                      <option value="50% Advance / 50% on Delivery">50% Advance / 50% on Delivery</option>
+                    </select>
+                    <ChevronDown
+                      size={15}
+                      style={{
+                        position: "absolute",
+                        right: "12px",
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        color: "#64748b",
+                        pointerEvents: "none"
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1076,43 +1170,57 @@ export default function PurchasesClient({
               <div
                 style={{
                   border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
+                  borderRadius: "14px",
                   backgroundColor: "#f8fafc",
-                  padding: "16px",
+                  padding: "16px 18px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "12px"
+                  gap: "14px"
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontWeight: 700, fontSize: "0.86rem", color: "#0f172a", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <FileSpreadsheet size={16} color="#4f46e5" />
                     <span>Order Line Items</span>
-                    <span style={{ fontSize: "0.72rem", backgroundColor: "#e2e8f0", padding: "2px 8px", borderRadius: "10px", color: "#475569" }}>
+                    <span style={{ fontSize: "0.72rem", backgroundColor: "#e2e8f0", padding: "2px 8px", borderRadius: "10px", color: "#475569", fontWeight: 700 }}>
                       {items.length} {items.length === 1 ? "Item" : "Items"}
                     </span>
                   </div>
+
                   <button
                     type="button"
                     onClick={handleAddItem}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
-                      gap: "4px",
-                      padding: "5px 12px",
-                      borderRadius: "6px",
+                      gap: "5px",
+                      padding: "6px 14px",
+                      borderRadius: "8px",
                       backgroundColor: "#eef2ff",
                       color: "var(--accent-primary, #4f46e5)",
                       border: "1px solid #c7d2fe",
-                      fontSize: "0.78rem",
+                      fontSize: "0.8rem",
                       fontWeight: 700,
-                      cursor: "pointer"
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      boxShadow: "0 1px 2px rgba(79, 70, 229, 0.08)"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = "var(--accent-primary, #4f46e5)";
+                      e.currentTarget.style.color = "#ffffff";
+                      e.currentTarget.style.borderColor = "transparent";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = "#eef2ff";
+                      e.currentTarget.style.color = "var(--accent-primary, #4f46e5)";
+                      e.currentTarget.style.borderColor = "#c7d2fe";
                     }}
                   >
-                    <Plus size={13} /> Add Line Item
+                    <Plus size={14} /> Add Line Item
                   </button>
                 </div>
 
-                {/* Line Items Table */}
+                {/* Line Items List */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {items.map((item, idx) => {
                     const lineSubtotal = item.quantity * item.rate;
@@ -1125,17 +1233,18 @@ export default function PurchasesClient({
                         style={{
                           backgroundColor: "#ffffff",
                           border: "1px solid #e2e8f0",
-                          borderRadius: "10px",
-                          padding: "12px",
+                          borderRadius: "12px",
+                          padding: "14px 16px",
                           display: "grid",
-                          gridTemplateColumns: "minmax(220px, 3fr) 90px 120px 80px 110px 36px",
-                          gap: "10px",
-                          alignItems: "center"
+                          gridTemplateColumns: "minmax(220px, 3.2fr) 95px 130px 90px 115px 36px",
+                          gap: "12px",
+                          alignItems: "center",
+                          boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
                         }}
                       >
                         {/* Product Select */}
                         <div>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600 }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
                             Product #{idx + 1}
                           </label>
                           <ModernSearchableSelect
@@ -1150,7 +1259,7 @@ export default function PurchasesClient({
 
                         {/* Quantity */}
                         <div>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600, textAlign: "center" }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "center" }}>
                             Qty
                           </label>
                           <input
@@ -1158,58 +1267,157 @@ export default function PurchasesClient({
                             min="1"
                             value={item.quantity}
                             onChange={(e) => handleItemQuantityChange(idx, parseInt(e.target.value, 10))}
-                            className="form-input"
-                            style={{ height: "38px", textAlign: "center", fontSize: "0.85rem", fontWeight: 700 }}
+                            style={{
+                              width: "100%",
+                              height: "38px",
+                              backgroundColor: "#f8fafc",
+                              border: "1px solid #cbd5e1",
+                              borderRadius: "8px",
+                              textAlign: "center",
+                              fontSize: "0.88rem",
+                              fontWeight: 800,
+                              color: "#0f172a",
+                              outline: "none",
+                              boxSizing: "border-box",
+                              transition: "all 0.15s ease"
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+                              e.currentTarget.style.backgroundColor = "#ffffff";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = "#cbd5e1";
+                              e.currentTarget.style.backgroundColor = "#f8fafc";
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
                             required
                           />
                         </div>
 
                         {/* Unit Rate */}
                         <div>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600, textAlign: "right" }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "right" }}>
                             Unit Rate (₹)
                           </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.rate}
-                            onChange={(e) => handleItemRateChange(idx, parseFloat(e.target.value))}
-                            className="form-input"
-                            style={{ height: "38px", textAlign: "right", fontSize: "0.85rem", fontWeight: 700 }}
-                            required
-                          />
+                          <div style={{ position: "relative" }}>
+                            <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 700, fontSize: "0.8rem", pointerEvents: "none" }}>₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.rate}
+                              onChange={(e) => handleItemRateChange(idx, parseFloat(e.target.value))}
+                              style={{
+                                width: "100%",
+                                height: "38px",
+                                paddingLeft: "24px",
+                                paddingRight: "10px",
+                                backgroundColor: "#f8fafc",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "8px",
+                                textAlign: "right",
+                                fontSize: "0.88rem",
+                                fontWeight: 800,
+                                color: "#0f172a",
+                                outline: "none",
+                                boxSizing: "border-box",
+                                fontVariantNumeric: "tabular-nums",
+                                transition: "all 0.15s ease"
+                              }}
+                              onFocus={(e) => {
+                                e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+                                e.currentTarget.style.backgroundColor = "#ffffff";
+                                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
+                              }}
+                              onBlur={(e) => {
+                                e.currentTarget.style.borderColor = "#cbd5e1";
+                                e.currentTarget.style.backgroundColor = "#f8fafc";
+                                e.currentTarget.style.boxShadow = "none";
+                              }}
+                              required
+                            />
+                          </div>
                         </div>
 
                         {/* GST % */}
                         <div>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600, textAlign: "center" }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "center" }}>
                             GST %
                           </label>
-                          <select
-                            value={item.gstRate}
-                            onChange={(e) => {
-                              const n = [...items];
-                              n[idx].gstRate = parseFloat(e.target.value);
-                              setItems(n);
-                            }}
-                            className="form-input"
-                            style={{ height: "38px", textAlign: "center", fontSize: "0.8rem" }}
-                          >
-                            <option value="0">0%</option>
-                            <option value="5">5%</option>
-                            <option value="12">12%</option>
-                            <option value="18">18%</option>
-                            <option value="28">28%</option>
-                          </select>
+                          <div style={{ position: "relative" }}>
+                            <select
+                              value={item.gstRate}
+                              onChange={(e) => {
+                                const n = [...items];
+                                n[idx].gstRate = parseFloat(e.target.value);
+                                setItems(n);
+                              }}
+                              style={{
+                                width: "100%",
+                                height: "38px",
+                                padding: "0 22px 0 8px",
+                                backgroundColor: "#f8fafc",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: "8px",
+                                textAlign: "center",
+                                fontSize: "0.82rem",
+                                fontWeight: 700,
+                                color: "#0f172a",
+                                outline: "none",
+                                appearance: "none",
+                                WebkitAppearance: "none",
+                                boxSizing: "border-box",
+                                cursor: "pointer"
+                              }}
+                              onFocus={(e) => {
+                                e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+                                e.currentTarget.style.backgroundColor = "#ffffff";
+                                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
+                              }}
+                              onBlur={(e) => {
+                                e.currentTarget.style.borderColor = "#cbd5e1";
+                                e.currentTarget.style.backgroundColor = "#f8fafc";
+                                e.currentTarget.style.boxShadow = "none";
+                              }}
+                            >
+                              <option value="0">0%</option>
+                              <option value="5">5%</option>
+                              <option value="12">12%</option>
+                              <option value="18">18%</option>
+                              <option value="28">28%</option>
+                            </select>
+                            <ChevronDown
+                              size={12}
+                              style={{
+                                position: "absolute",
+                                right: "6px",
+                                top: "50%",
+                                transform: "translateY(-50%)",
+                                color: "#64748b",
+                                pointerEvents: "none"
+                              }}
+                            />
+                          </div>
                         </div>
 
                         {/* Line Total */}
                         <div style={{ textAlign: "right" }}>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600 }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
                             Total (₹)
                           </label>
-                          <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "#0f172a", height: "38px", display: "flex", alignItems: "center", justifyContent: "flex-end", fontVariantNumeric: "tabular-nums" }}>
+                          <div
+                            style={{
+                              fontWeight: 900,
+                              fontSize: "0.95rem",
+                              color: "#0f172a",
+                              height: "38px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "flex-end",
+                              fontVariantNumeric: "tabular-nums"
+                            }}
+                          >
                             ₹{lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         </div>
@@ -1223,14 +1431,27 @@ export default function PurchasesClient({
                             style={{
                               width: 32,
                               height: 32,
-                              borderRadius: "7px",
+                              borderRadius: "8px",
                               border: "1px solid #fee2e2",
                               backgroundColor: items.length <= 1 ? "#f8fafc" : "#fef2f2",
                               color: items.length <= 1 ? "#cbd5e1" : "#ef4444",
                               cursor: items.length <= 1 ? "not-allowed" : "pointer",
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: "center"
+                              justifyContent: "center",
+                              transition: "all 0.15s ease"
+                            }}
+                            onMouseEnter={(e) => {
+                              if (items.length > 1) {
+                                e.currentTarget.style.backgroundColor = "#fee2e2";
+                                e.currentTarget.style.transform = "scale(1.05)";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (items.length > 1) {
+                                e.currentTarget.style.backgroundColor = "#fef2f2";
+                                e.currentTarget.style.transform = "none";
+                              }
                             }}
                           >
                             <Trash2 size={15} />
@@ -1243,44 +1464,68 @@ export default function PurchasesClient({
               </div>
 
               {/* Row 4: Notes and Calculation Card */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: "16px" }}>
                 {/* Notes Textarea */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b" }}>
                     Purchase Order Remarks & Instructions
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="Enter delivery location, transporter terms, or warehouse dock notes..."
+                    placeholder="Enter delivery location, transporter terms, dock notes, or special handling instructions..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="form-input"
-                    style={{ fontSize: "0.82rem", resize: "vertical" }}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "10px",
+                      fontSize: "0.84rem",
+                      fontFamily: "inherit",
+                      color: "#0f172a",
+                      outline: "none",
+                      resize: "vertical",
+                      minHeight: "94px",
+                      boxSizing: "border-box",
+                      transition: "all 0.15s ease"
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
+                      e.currentTarget.style.backgroundColor = "#ffffff";
+                      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(79, 70, 229, 0.12)";
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = "#cbd5e1";
+                      e.currentTarget.style.backgroundColor = "#f8fafc";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
                   />
                 </div>
 
                 {/* Calculation Summary Card */}
                 <div
                   style={{
-                    backgroundColor: "#eff6ff",
-                    border: "1px solid #bfdbfe",
+                    background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)",
+                    border: "1.5px solid #bfdbfe",
                     borderRadius: "12px",
-                    padding: "14px 18px",
+                    padding: "16px 20px",
                     display: "flex",
                     flexDirection: "column",
                     justifyContent: "space-between",
-                    gap: "8px"
+                    gap: "10px",
+                    boxShadow: "0 2px 6px rgba(37, 99, 235, 0.05)"
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#1e40af" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.84rem", color: "#475569" }}>
                     <span>Taxable Subtotal</span>
-                    <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontWeight: 700, color: "#1e293b", fontVariantNumeric: "tabular-nums" }}>
                       ₹{createSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82rem", color: "#1e40af" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.84rem", color: "#475569" }}>
                     <span>Estimated Tax / GST</span>
-                    <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontWeight: 700, color: "#2563eb", fontVariantNumeric: "tabular-nums" }}>
                       + ₹{createTaxAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -1289,9 +1534,9 @@ export default function PurchasesClient({
                       display: "flex",
                       justifyContent: "space-between",
                       borderTop: "1.5px dashed #93c5fd",
-                      paddingTop: "8px",
+                      paddingTop: "10px",
                       marginTop: "2px",
-                      fontSize: "1.05rem",
+                      fontSize: "1.15rem",
                       fontWeight: 900,
                       color: "#1e3a8a"
                     }}
@@ -1305,8 +1550,22 @@ export default function PurchasesClient({
               </div>
 
               {error && (
-                <div style={{ padding: "10px 14px", backgroundColor: "#fef2f2", color: "#b91c1c", borderRadius: "8px", fontSize: "0.82rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-                  <AlertCircle size={15} /> {error}
+                <div
+                  style={{
+                    padding: "11px 16px",
+                    backgroundColor: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    color: "#b91c1c",
+                    borderRadius: "10px",
+                    fontSize: "0.84rem",
+                    fontWeight: 600,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
+                  <AlertCircle size={16} />
+                  <span>{error}</span>
                 </div>
               )}
 
@@ -1315,9 +1574,9 @@ export default function PurchasesClient({
                 style={{
                   display: "flex",
                   justifyContent: "flex-end",
-                  gap: "10px",
+                  gap: "12px",
                   marginTop: "6px",
-                  paddingTop: "14px",
+                  paddingTop: "16px",
                   borderTop: "1px solid #e2e8f0"
                 }}
               >
@@ -1325,14 +1584,23 @@ export default function PurchasesClient({
                   type="button"
                   onClick={() => setCreateOpen(false)}
                   style={{
-                    padding: "9px 18px",
-                    borderRadius: "8px",
+                    padding: "10px 22px",
+                    borderRadius: "10px",
                     border: "1px solid #cbd5e1",
                     backgroundColor: "#ffffff",
                     color: "#475569",
                     fontWeight: 600,
                     cursor: "pointer",
-                    fontSize: "0.84rem"
+                    fontSize: "0.88rem",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f1f5f9";
+                    e.currentTarget.style.color = "#0f172a";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#ffffff";
+                    e.currentTarget.style.color = "#475569";
                   }}
                 >
                   Cancel
@@ -1341,18 +1609,35 @@ export default function PurchasesClient({
                   type="submit"
                   disabled={loading}
                   style={{
-                    padding: "9px 22px",
-                    borderRadius: "8px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 24px",
+                    borderRadius: "10px",
                     border: "none",
-                    background: "linear-gradient(135deg, #059669 0%, #047857 100%)",
+                    background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)",
                     color: "#ffffff",
                     fontWeight: 700,
                     cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "0.86rem",
-                    boxShadow: "0 2px 6px rgba(5, 150, 105, 0.25)"
+                    fontSize: "0.88rem",
+                    boxShadow: "0 4px 14px rgba(79, 70, 229, 0.3)",
+                    transition: "all 0.15s ease"
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!loading) {
+                      e.currentTarget.style.boxShadow = "0 6px 20px rgba(79, 70, 229, 0.4)";
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!loading) {
+                      e.currentTarget.style.boxShadow = "0 4px 14px rgba(79, 70, 229, 0.3)";
+                      e.currentTarget.style.transform = "none";
+                    }
                   }}
                 >
-                  {loading ? "Generating PO..." : "Confirm & Create PO"}
+                  <CheckCircle2 size={16} />
+                  <span>{loading ? "Generating PO..." : "Confirm & Create PO"}</span>
                 </button>
               </div>
             </form>
@@ -1384,11 +1669,11 @@ export default function PurchasesClient({
           <div
             style={{
               width: "100%",
-              maxWidth: "700px",
+              maxWidth: "720px",
               backgroundColor: "#ffffff",
-              borderRadius: "16px",
+              borderRadius: "18px",
               border: "1px solid #e2e8f0",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.3)",
               maxHeight: "90vh",
               overflowY: "auto",
               display: "flex",
@@ -1402,7 +1687,7 @@ export default function PurchasesClient({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "18px 24px",
+                padding: "20px 26px",
                 borderBottom: "1px solid #e2e8f0",
                 backgroundColor: "#ffffff",
                 position: "sticky",
@@ -1413,22 +1698,22 @@ export default function PurchasesClient({
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "10px",
+                    width: 42,
+                    height: 42,
+                    borderRadius: "11px",
                     background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                     color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    boxShadow: "0 4px 10px rgba(16, 185, 129, 0.25)",
+                    boxShadow: "0 4px 12px rgba(16, 185, 129, 0.28)",
                     flexShrink: 0
                   }}
                 >
-                  <PackageCheck size={20} />
+                  <PackageCheck size={21} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                  <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0, color: "#0f172a" }}>
                     Receive Inward Goods (GRN) — {selectedPO.poNumber}
                   </h2>
                   <p style={{ fontSize: "0.8rem", margin: "2px 0 0 0", color: "#64748b" }}>
@@ -1441,26 +1726,37 @@ export default function PurchasesClient({
                 type="button"
                 onClick={() => setGrnOpen(null)}
                 style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "8px",
+                  width: 34,
+                  height: 34,
+                  borderRadius: "9px",
                   border: "1px solid #e2e8f0",
                   backgroundColor: "#f8fafc",
                   color: "#64748b",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center"
+                  justifyContent: "center",
+                  transition: "all 0.15s ease"
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#fee2e2";
+                  e.currentTarget.style.color = "#dc2626";
+                  e.currentTarget.style.borderColor = "#fecaca";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f8fafc";
+                  e.currentTarget.style.color = "#64748b";
+                  e.currentTarget.style.borderColor = "#e2e8f0";
                 }}
               >
-                <X size={16} />
+                <X size={17} />
               </button>
             </div>
 
             {/* GRN Body */}
-            <form onSubmit={handleGRN} style={{ padding: "20px 24px", display: "flex", flexDirection: "column", gap: "14px" }}>
-              <div style={{ padding: "10px 14px", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.8rem", color: "#475569" }}>
-                Enter the exact quantity physically verified at warehouse dock. Inward inventory will be updated immediately.
+            <form onSubmit={handleGRN} style={{ padding: "22px 26px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ padding: "12px 16px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0", fontSize: "0.82rem", color: "#475569" }}>
+                Enter the exact quantity physically verified at the warehouse dock. Inward inventory will be updated immediately.
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -1473,37 +1769,38 @@ export default function PurchasesClient({
                       style={{
                         display: "grid",
                         gridTemplateColumns: "3fr 1fr 1fr 120px",
-                        gap: "12px",
+                        gap: "14px",
                         alignItems: "center",
-                        padding: "12px 14px",
+                        padding: "14px 16px",
                         backgroundColor: pendingQty > 0 ? "#ffffff" : "#f8fafc",
                         border: "1px solid #e2e8f0",
-                        borderRadius: "10px"
+                        borderRadius: "12px",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.86rem" }}>
+                        <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem" }}>
                           {item.product?.name || "Product Item"}
                         </div>
-                        <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
+                        <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "1px" }}>
                           SKU: {item.product?.sku || "N/A"}
                         </div>
                       </div>
 
                       <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase" }}>Ordered</div>
-                        <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.85rem" }}>{item.quantity}</div>
+                        <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>Ordered</div>
+                        <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "0.9rem" }}>{item.quantity}</div>
                       </div>
 
                       <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase" }}>Pending</div>
-                        <div style={{ fontWeight: 800, color: pendingQty > 0 ? "#d97706" : "#059669", fontSize: "0.9rem" }}>
+                        <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>Pending</div>
+                        <div style={{ fontWeight: 800, color: pendingQty > 0 ? "#d97706" : "#059669", fontSize: "0.95rem" }}>
                           {pendingQty}
                         </div>
                       </div>
 
                       <div>
-                        <label style={{ fontSize: "0.7rem", color: "#047857", fontWeight: 700, display: "block", marginBottom: "2px" }}>
+                        <label style={{ fontSize: "0.7rem", color: "#047857", fontWeight: 700, display: "block", marginBottom: "3px" }}>
                           Receive Now
                         </label>
                         <input
@@ -1513,13 +1810,25 @@ export default function PurchasesClient({
                           max={pendingQty}
                           defaultValue={pendingQty}
                           disabled={pendingQty <= 0}
-                          className="form-input"
                           style={{
-                            height: "36px",
+                            width: "100%",
+                            height: "38px",
                             textAlign: "center",
                             fontWeight: 800,
-                            fontSize: "0.9rem",
-                            backgroundColor: pendingQty <= 0 ? "#f1f5f9" : "#ffffff"
+                            fontSize: "0.95rem",
+                            backgroundColor: pendingQty <= 0 ? "#f1f5f9" : "#ffffff",
+                            border: "1px solid #cbd5e1",
+                            borderRadius: "8px",
+                            outline: "none",
+                            boxSizing: "border-box"
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = "#059669";
+                            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(16, 185, 129, 0.15)";
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = "#cbd5e1";
+                            e.currentTarget.style.boxShadow = "none";
                           }}
                         />
                       </div>
@@ -1529,33 +1838,33 @@ export default function PurchasesClient({
               </div>
 
               {/* Stock Auto Update Notice */}
-              <div style={{ padding: "10px 14px", backgroundColor: "#ecfdf5", borderRadius: "8px", border: "1px solid #a7f3d0", fontSize: "0.78rem", color: "#065f46", display: "flex", alignItems: "center", gap: "8px" }}>
-                <ShieldCheck size={16} />
+              <div style={{ padding: "12px 16px", backgroundColor: "#ecfdf5", borderRadius: "10px", border: "1px solid #a7f3d0", fontSize: "0.8rem", color: "#065f46", display: "flex", alignItems: "center", gap: "10px" }}>
+                <ShieldCheck size={18} />
                 <span>
-                  <strong>Inventory Update:</strong> Verified quantities will instantly increment product stock levels and generate an audited GRN transaction reference.
+                  <strong>Audited Inventory Update:</strong> Verified quantities will instantly increment product stock levels and generate an audited GRN transaction reference.
                 </span>
               </div>
 
               {error && (
-                <div style={{ padding: "10px 14px", backgroundColor: "#fef2f2", color: "#b91c1c", borderRadius: "8px", fontSize: "0.82rem", fontWeight: 600 }}>
+                <div style={{ padding: "11px 16px", backgroundColor: "#fef2f2", color: "#b91c1c", borderRadius: "10px", fontSize: "0.84rem", fontWeight: 600 }}>
                   {error}
                 </div>
               )}
 
               {/* Footer */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "8px", paddingTop: "14px", borderTop: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "8px", paddingTop: "16px", borderTop: "1px solid #e2e8f0" }}>
                 <button
                   type="button"
                   onClick={() => setGrnOpen(null)}
                   style={{
-                    padding: "8px 18px",
-                    borderRadius: "8px",
+                    padding: "10px 20px",
+                    borderRadius: "10px",
                     border: "1px solid #cbd5e1",
                     backgroundColor: "#ffffff",
                     color: "#475569",
                     fontWeight: 600,
                     cursor: "pointer",
-                    fontSize: "0.84rem"
+                    fontSize: "0.86rem"
                   }}
                 >
                   Cancel
@@ -1564,18 +1873,22 @@ export default function PurchasesClient({
                   type="submit"
                   disabled={loading}
                   style={{
-                    padding: "8px 22px",
-                    borderRadius: "8px",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 24px",
+                    borderRadius: "10px",
                     border: "none",
                     background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                     color: "#ffffff",
                     fontWeight: 700,
                     cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "0.86rem",
-                    boxShadow: "0 2px 6px rgba(16, 185, 129, 0.25)"
+                    fontSize: "0.88rem",
+                    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)"
                   }}
                 >
-                  {loading ? "Confirming GRN..." : "Confirm GRN Receipt"}
+                  <PackageCheck size={16} />
+                  <span>{loading ? "Confirming GRN..." : "Confirm GRN Receipt"}</span>
                 </button>
               </div>
             </form>
@@ -1609,9 +1922,9 @@ export default function PurchasesClient({
               width: "100%",
               maxWidth: "760px",
               backgroundColor: "#ffffff",
-              borderRadius: "16px",
+              borderRadius: "18px",
               border: "1px solid #e2e8f0",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+              boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.3)",
               maxHeight: "90vh",
               overflowY: "auto",
               display: "flex",
@@ -1624,15 +1937,15 @@ export default function PurchasesClient({
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                padding: "16px 24px",
+                padding: "18px 26px",
                 borderBottom: "1px solid #e2e8f0",
                 backgroundColor: "#f8fafc",
-                borderRadius: "16px 16px 0 0"
+                borderRadius: "18px 18px 0 0"
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <FileText size={18} color="#059669" />
-                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <FileText size={20} color="#4f46e5" />
+                <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
                   Purchase Order Voucher — {voucherPO.poNumber}
                 </h3>
               </div>
@@ -1640,23 +1953,28 @@ export default function PurchasesClient({
                 type="button"
                 onClick={() => setVoucherPO(null)}
                 style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: "1.3rem",
+                  width: 32,
+                  height: 32,
+                  borderRadius: "8px",
+                  border: "1px solid #e2e8f0",
+                  backgroundColor: "#ffffff",
+                  color: "#64748b",
                   cursor: "pointer",
-                  color: "#64748b"
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
                 }}
               >
-                ×
+                <X size={16} />
               </button>
             </div>
 
             {/* Printable Content */}
-            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #059669", paddingBottom: "14px" }}>
+            <div style={{ padding: "26px", display: "flex", flexDirection: "column", gap: "18px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #4f46e5", paddingBottom: "16px" }}>
                 <div>
-                  <div style={{ fontSize: "1.25rem", fontWeight: 900, color: "#065f46" }}>PURCHASE ORDER</div>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
+                  <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#4f46e5" }}>PURCHASE ORDER</div>
+                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
                     PO #: {voucherPO.poNumber}
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
@@ -1667,14 +1985,14 @@ export default function PurchasesClient({
                   <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Status</div>
                   <span
                     style={{
-                      fontSize: "0.8rem",
+                      fontSize: "0.82rem",
                       fontWeight: 800,
-                      color: voucherPO.status === "Received" ? "#059669" : "#2563eb",
-                      backgroundColor: voucherPO.status === "Received" ? "#ecfdf5" : "#eff6ff",
-                      padding: "3px 10px",
+                      color: voucherPO.status === "Received" ? "#059669" : "#4f46e5",
+                      backgroundColor: voucherPO.status === "Received" ? "#ecfdf5" : "#eef2ff",
+                      padding: "4px 12px",
                       borderRadius: "10px",
                       display: "inline-block",
-                      marginTop: "2px"
+                      marginTop: "3px"
                     }}
                   >
                     {voucherPO.status}
@@ -1683,10 +2001,10 @@ export default function PurchasesClient({
               </div>
 
               {/* Vendor Details */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", backgroundColor: "#f8fafc", padding: "14px", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", backgroundColor: "#f8fafc", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
                 <div>
                   <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Supplier / Vendor</div>
-                  <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "0.92rem", marginTop: "2px" }}>
+                  <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem", marginTop: "2px" }}>
                     {voucherPO.vendor?.companyName}
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "#475569" }}>{voucherPO.vendor?.contactPerson || ""}</div>
@@ -1694,11 +2012,11 @@ export default function PurchasesClient({
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Expected Delivery</div>
-                  <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem", marginTop: "2px" }}>
+                  <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem", marginTop: "2px" }}>
                     {voucherPO.expectedDate ? new Date(voucherPO.expectedDate).toLocaleDateString("en-IN") : "Standard Delivery"}
                   </div>
                   {voucherPO.notes && (
-                    <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "4px" }}>
+                    <div style={{ fontSize: "0.76rem", color: "#64748b", marginTop: "4px" }}>
                       {voucherPO.notes}
                     </div>
                   )}
@@ -1706,32 +2024,32 @@ export default function PurchasesClient({
               </div>
 
               {/* Items Table */}
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.84rem" }}>
                 <thead>
                   <tr style={{ backgroundColor: "#f1f5f9", borderBottom: "1px solid #cbd5e1", textAlign: "left", color: "#334155" }}>
-                    <th style={{ padding: "8px 10px" }}>#</th>
-                    <th style={{ padding: "8px 10px" }}>Item Description</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center" }}>Qty Ordered</th>
-                    <th style={{ padding: "8px 10px", textAlign: "center" }}>Qty Received</th>
-                    <th style={{ padding: "8px 10px", textAlign: "right" }}>Rate (₹)</th>
-                    <th style={{ padding: "8px 10px", textAlign: "right" }}>Total (₹)</th>
+                    <th style={{ padding: "10px 12px" }}>#</th>
+                    <th style={{ padding: "10px 12px" }}>Item Description</th>
+                    <th style={{ padding: "10px 12px", textAlign: "center" }}>Qty Ordered</th>
+                    <th style={{ padding: "10px 12px", textAlign: "center" }}>Qty Received</th>
+                    <th style={{ padding: "10px 12px", textAlign: "right" }}>Rate (₹)</th>
+                    <th style={{ padding: "10px 12px", textAlign: "right" }}>Total (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {voucherPO.items?.map((it: any, i: number) => (
                     <tr key={it.id || i} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "8px 10px" }}>{i + 1}</td>
-                      <td style={{ padding: "8px 10px", fontWeight: 600, color: "#0f172a" }}>
+                      <td style={{ padding: "10px 12px" }}>{i + 1}</td>
+                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "#0f172a" }}>
                         {it.product?.name || "Product"} {it.product?.sku ? `(${it.product.sku})` : ""}
                       </td>
-                      <td style={{ padding: "8px 10px", textAlign: "center", fontWeight: 700 }}>{it.quantity}</td>
-                      <td style={{ padding: "8px 10px", textAlign: "center", color: it.receivedQty >= it.quantity ? "#059669" : "#d97706", fontWeight: 700 }}>
+                      <td style={{ padding: "10px 12px", textAlign: "center", fontWeight: 700 }}>{it.quantity}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center", color: it.receivedQty >= it.quantity ? "#059669" : "#d97706", fontWeight: 700 }}>
                         {it.receivedQty || 0}
                       </td>
-                      <td style={{ padding: "8px 10px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                      <td style={{ padding: "10px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                         ₹{it.rate?.toLocaleString("en-IN")}
                       </td>
-                      <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
                         ₹{(it.quantity * it.rate).toLocaleString("en-IN")}
                       </td>
                     </tr>
@@ -1740,10 +2058,10 @@ export default function PurchasesClient({
               </table>
 
               {/* Grand Total */}
-              <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "2px solid #059669", paddingTop: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "2px solid #4f46e5", paddingTop: "12px" }}>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Total Purchase Amount</div>
-                  <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#065f46" }}>
+                  <div style={{ fontSize: "1.45rem", fontWeight: 900, color: "#4f46e5" }}>
                     ₹{voucherPO.totalValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
@@ -1751,20 +2069,20 @@ export default function PurchasesClient({
             </div>
 
             {/* Footer */}
-            <div style={{ padding: "14px 24px", borderTop: "1px solid #e2e8f0", backgroundColor: "#f8fafc", display: "flex", justifyContent: "flex-end", gap: "10px", borderRadius: "0 0 16px 16px" }}>
+            <div style={{ padding: "16px 26px", borderTop: "1px solid #e2e8f0", backgroundColor: "#f8fafc", display: "flex", justifyContent: "flex-end", gap: "12px", borderRadius: "0 0 18px 18px" }}>
               <button
                 type="button"
                 onClick={() => setVoucherPO(null)}
-                style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.84rem" }}
+                style={{ padding: "9px 18px", borderRadius: "9px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.86rem" }}
               >
                 Close
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                style={{ padding: "8px 20px", borderRadius: "8px", border: "none", backgroundColor: "#059669", color: "#ffffff", fontWeight: 700, cursor: "pointer", fontSize: "0.84rem", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                style={{ padding: "9px 22px", borderRadius: "9px", border: "none", background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)", color: "#ffffff", fontWeight: 700, cursor: "pointer", fontSize: "0.86rem", display: "inline-flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)" }}
               >
-                <Printer size={14} /> Print PO Voucher
+                <Printer size={15} /> Print PO Voucher
               </button>
             </div>
           </div>
