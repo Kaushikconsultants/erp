@@ -417,6 +417,7 @@ export async function updateQuotationFull(id: string, data: {
   quoteDate?: string;
   expiryDate?: string;
   salespersonId?: string;
+  status?: string;
   subject?: string;
   billingAddress?: string;
   shippingAddress?: string;
@@ -537,20 +538,30 @@ export async function updateQuotationFull(id: string, data: {
     const roundOff = data.roundOff !== undefined ? data.roundOff : Math.round(totalValue) - totalValue;
     const existingQuotation = await prisma.quotation.findUnique({
       where: { id },
-      select: { receivedAmount: true, status: true }
+      select: { receivedAmount: true, status: true, salespersonId: true }
     });
 
     const receivedAmount = data.receivedAmount !== undefined 
       ? data.receivedAmount 
       : (existingQuotation?.receivedAmount || 0);
 
+    let resolvedSalespersonId: string | undefined = existingQuotation?.salespersonId;
+    if (data.salespersonId && data.salespersonId.trim() !== '') {
+      resolvedSalespersonId = data.salespersonId.trim();
+    } else if (customer.assignedSalespersonId) {
+      resolvedSalespersonId = customer.assignedSalespersonId;
+    }
+
     await prisma.quotationItem.deleteMany({ where: { quotationId: id } });
 
     const quotation = await prisma.quotation.update({
       where: { id },
       data: {
+        ...(data.quotationNumber ? { quotationNumber: data.quotationNumber.trim() } : {}),
+        ...(resolvedSalespersonId ? { salespersonId: resolvedSalespersonId } : {}),
         referenceNumber: data.referenceNumber || null,
         customerId: data.customerId,
+        ...(data.status ? { status: data.status } : {}),
         date: data.quoteDate ? new Date(data.quoteDate) : new Date(),
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
         placeOfSupply: `${customerState} (${customer.pincode ? customer.pincode.slice(0, 2) : '27'})`,
@@ -604,6 +615,7 @@ export async function updateQuotationFull(id: string, data: {
 
     revalidatePath("/quotations");
     revalidatePath(`/quotations/${id}`);
+    revalidatePath(`/quotations/${id}/edit`);
     return { success: true, quotation };
   } catch (error: any) {
     console.error("Error updating quotation:", error);

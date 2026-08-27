@@ -1288,15 +1288,20 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             </div>
           </div>
 
-          {/* SUMMARY TOTALS BOX WITH CGST / SGST / IGST BREAKDOWN */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '20px 24px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ fontSize: '0.85rem', fontWeight: 700, margin: '0 0 14px 0', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-              Summary & Calculations
-            </h3>
+          {/* SUMMARY TOTALS BOX WITH CLEAN ALIGNMENT */}
+          <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Summary & Calculations
+              </h3>
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: totals.isIntrastate ? '#059669' : '#4f46e5', backgroundColor: totals.isIntrastate ? '#ecfdf5' : '#eef2ff', padding: '2px 8px', borderRadius: '9999px', border: totals.isIntrastate ? '1px solid #a7f3d0' : '1px solid #c7d2fe' }}>
+                {totals.isIntrastate ? 'Intra-State (GST)' : 'Inter-State (IGST)'}
+              </span>
+            </div>
 
             {/* TOTAL WEIGHT DISPLAY SECTION */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', fontSize: '0.85rem', backgroundColor: '#eef2ff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#3730a3' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#eef2ff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#3730a3', fontSize: '0.84rem' }}>
                 <Scale size={16} color="#4f46e5" /> Total Weight:
               </span>
               <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#4f46e5' }}>
@@ -1304,75 +1309,129 @@ export default function CreateQuotationForm({ customers, products, employees, ca
               </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem', color: '#475569' }}>
-              <span>Subtotal</span>
-              <span style={{ fontWeight: 600, color: '#0f172a' }}>₹{totals.subtotal.toFixed(2)}</span>
-            </div>
-
-            {totals.itemDiscount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem', color: '#dc2626' }}>
-                <span>Line Discounts</span>
-                <span>- ₹{totals.itemDiscount.toFixed(2)}</span>
+            {/* ROWS TABLE / KEY-VALUE LIST WITH UNIFORM ALIGNMENT */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              
+              {/* Subtotal */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '32px' }}>
+                <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Subtotal</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                  ₹{totals.subtotal.toFixed(2)}
+                </span>
               </div>
-            )}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.85rem', alignItems: 'center' }}>
-              <span style={{ color: '#475569' }}>Additional Discount (₹)</span>
-              <input type="number" step="0.01" value={formData.additionalDiscount} onChange={e => setFormData({...formData, additionalDiscount: Number(e.target.value)})} style={{ width: '80px', padding: '4px 6px', textAlign: 'right', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }} />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', alignItems: 'center' }}>
-                <span style={{ color: '#475569', fontWeight: 600 }}>Shipping / Freight (₹)</span>
-                <input type="number" step="0.01" value={formData.shippingCharges} onChange={e => setFormData({...formData, shippingCharges: Number(e.target.value)})} style={{ width: '85px', padding: '4px 6px', textAlign: 'right', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600 }} />
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowShippingCalculator(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid #6366f1',
-                  backgroundColor: '#eef2ff',
-                  color: '#4f46e5',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  width: '100%',
-                  transition: 'background-color 0.15s ease'
-                }}
-              >
-                <Truck size={14} color="#4f46e5" /> Calculate Shipping via Shipmozo
-              </button>
-            </div>
-
-            {/* DYNAMIC GST / IGST METRICS */}
-            {totals.isIntrastate ? (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.82rem', color: '#475569' }}>
-                  <span>CGST (Central Tax)</span>
-                  <span style={{ fontWeight: 600, color: '#0f172a' }}>₹{totals.cgst.toFixed(2)}</span>
+              {/* Line Discounts */}
+              {totals.itemDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '28px' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: 500 }}>Line Discounts</span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>
+                    - ₹{totals.itemDiscount.toFixed(2)}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '0.82rem', color: '#475569', borderBottom: '1px dashed #cbd5e1', paddingBottom: '14px' }}>
-                  <span>SGST (State Tax)</span>
-                  <span style={{ fontWeight: 600, color: '#0f172a' }}>₹{totals.sgst.toFixed(2)}</span>
+              )}
+
+              {/* Additional Discount Input */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '34px' }}>
+                <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Additional Discount (₹)</span>
+                <div style={{ display: 'flex', alignItems: 'center', width: '130px', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
+                  <span style={{ padding: '0 8px', fontSize: '0.8rem', color: '#64748b', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', height: '32px' }}>₹</span>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    min="0"
+                    placeholder="0.00"
+                    value={formData.additionalDiscount === 0 ? '' : formData.additionalDiscount} 
+                    onChange={e => setFormData({...formData, additionalDiscount: Number(e.target.value) || 0})} 
+                    style={{ width: '100%', height: '32px', padding: '0 8px', textAlign: 'right', border: 'none', outline: 'none', fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', backgroundColor: 'transparent' }} 
+                  />
                 </div>
-              </>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', fontSize: '0.85rem', color: '#475569', borderBottom: '1px dashed #cbd5e1', paddingBottom: '14px' }}>
-                <span>IGST (Integrated Tax)</span>
-                <span style={{ fontWeight: 600, color: '#0f172a' }}>₹{totals.igst.toFixed(2)}</span>
               </div>
-            )}
-            
-            <div style={{ backgroundColor: '#eff6ff', padding: '14px 16px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+
+              {/* Shipping / Freight with integrated Shipmozo rate calculator */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '34px' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Shipping / Freight (₹)</span>
+                  <div style={{ display: 'flex', alignItems: 'center', width: '130px', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
+                    <span style={{ padding: '0 8px', fontSize: '0.8rem', color: '#64748b', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', height: '32px' }}>₹</span>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      min="0"
+                      placeholder="0.00"
+                      value={formData.shippingCharges === 0 ? '' : formData.shippingCharges} 
+                      onChange={e => setFormData({...formData, shippingCharges: Number(e.target.value) || 0})} 
+                      style={{ width: '100%', height: '32px', padding: '0 8px', textAlign: 'right', border: 'none', outline: 'none', fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', backgroundColor: 'transparent' }} 
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowShippingCalculator(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '7px 10px',
+                    borderRadius: '6px',
+                    border: '1px dashed #6366f1',
+                    backgroundColor: '#f5f3ff',
+                    color: '#4f46e5',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    width: '100%',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <Truck size={14} color="#6366f1" /> Calculate Shipping via Shipmozo
+                </button>
+              </div>
+
+              {/* Tax Divider */}
+              <div style={{ borderTop: '1px dashed #cbd5e1', margin: '4px 0' }} />
+
+              {/* DYNAMIC GST / IGST METRICS */}
+              {totals.isIntrastate ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#475569' }}>CGST (Central Tax)</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                      ₹{totals.cgst.toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#475569' }}>SGST (State Tax)</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                      ₹{totals.sgst.toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#475569' }}>IGST (Integrated Tax)</span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                    ₹{totals.igst.toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {/* Total Tax summary row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
+                <span>Total Tax Amount</span>
+                <span style={{ fontWeight: 600, color: '#475569', fontVariantNumeric: 'tabular-nums' }}>
+                  ₹{totals.taxTotal.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* GRAND TOTAL BLUE BOX */}
+            <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '8px', border: '1px solid #bfdbfe', marginTop: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>Grand Total</span>
-                <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2563eb' }}>₹{totals.finalTotal.toFixed(2)}</span>
+                <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2563eb', fontVariantNumeric: 'tabular-nums' }}>
+                  ₹{totals.finalTotal.toFixed(2)}
+                </span>
               </div>
               <div style={{ fontSize: '0.72rem', color: '#3b82f6', textAlign: 'right', marginTop: '4px', fontStyle: 'italic', fontWeight: 500 }}>
                 {numberToWords(Math.round(totals.finalTotal))}

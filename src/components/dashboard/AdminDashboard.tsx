@@ -5,7 +5,6 @@ import TopProductsChart from '@/components/dashboard/TopProductsChart';
 import Link from 'next/link';
 import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy } from 'lucide-react';
 import KPIDetailsModal from './KPIDetailsModal';
-import CheckInButton from '@/components/ui/CheckInButton';
 import { useState } from 'react';
 
 interface AdminDashboardProps {
@@ -54,12 +53,6 @@ export default function AdminDashboard({
           <p className="page-subtitle">Overview of your entire business and team performance.</p>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <CheckInButton 
-            isCheckedIn={isCheckedIn} 
-            isCheckedOut={isCheckedOut} 
-            checkInTime={checkInTime}
-            checkOutTime={checkOutTime}
-          />
           <Link href="/reports" className="primary-btn hover-lift">View Full Reports</Link>
         </div>
       </div>
