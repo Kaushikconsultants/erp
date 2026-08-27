@@ -5,8 +5,82 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { calculateItemGst } from "@/lib/gstUtils";
-import { getCompanySettings } from "./companyActions";
+import { getCompanySettings, invalidateCompanySettingsCache } from "./companyActions";
 import { getTenantOrgId } from "@/lib/tenant";
+
+export async function getNextQuotationNumber(orgId?: string | null): Promise<string> {
+  try {
+    const organizationId = orgId || (await getTenantOrgId());
+
+    // 1. Get company configured starting/next quotation format
+    const companyRes = await getCompanySettings();
+    const configuredFormat = (companyRes.settings?.nextQuotationNumber || "QT-1001").trim();
+
+    // Parse prefix and digits
+    const configMatch = configuredFormat.match(/^(.*?)(\d+)$/);
+    const prefix = configMatch ? configMatch[1] : "QT-";
+    const padLength = configMatch ? configMatch[2].length : 4;
+    const configuredStartNum = configMatch ? parseInt(configMatch[2], 10) : 1001;
+
+    // 2. Fetch all existing quotation numbers in this organization (or global)
+    const existingQuotes = await prisma.quotation.findMany({
+      where: organizationId ? {
+        OR: [
+          { organizationId },
+          { organizationId: null }
+        ]
+      } : undefined,
+      select: { quotationNumber: true }
+    });
+
+    let highestNum = configuredStartNum - 1;
+    const usedNumbers = new Set<string>();
+
+    for (const q of existingQuotes) {
+      if (!q.quotationNumber) continue;
+      const numStr = q.quotationNumber.trim();
+      usedNumbers.add(numStr.toUpperCase());
+
+      const match = numStr.match(/^(.*?)(\d+)$/);
+      if (match) {
+        const qPrefix = match[1];
+        const qNum = parseInt(match[2], 10);
+        if (qPrefix.toUpperCase() === prefix.toUpperCase() && !isNaN(qNum)) {
+          if (qNum > highestNum) {
+            highestNum = qNum;
+          }
+        }
+      }
+    }
+
+    let nextNum = highestNum + 1;
+    let candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+
+    // Ensure candidate is not already in used numbers
+    while (usedNumbers.has(candidate.toUpperCase())) {
+      nextNum++;
+      candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+    }
+
+    // Direct DB lookup verification
+    let dbExists = await prisma.quotation.findUnique({
+      where: { quotationNumber: candidate }
+    });
+
+    while (dbExists) {
+      nextNum++;
+      candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+      dbExists = await prisma.quotation.findUnique({
+        where: { quotationNumber: candidate }
+      });
+    }
+
+    return candidate;
+  } catch (err) {
+    console.error("Failed to generate next quotation number:", err);
+    return `QT-${Date.now().toString().slice(-4)}`;
+  }
+}
 
 export async function createQuotation(data: {
   customerId: string;
@@ -157,83 +231,174 @@ export async function createQuotation(data: {
     totalValue = totalValue + roundOff;
 
     const receivedAmount = data.receivedAmount || 0;
-    const qNumber = data.quotationNumber || `QT-${Date.now().toString().slice(-6)}`;
     const finalStatus = data.status || "Draft";
-
     const organizationId = await getTenantOrgId();
 
-    const quotation = await prisma.quotation.create({
-      data: {
-        organizationId,
-        quotationNumber: qNumber,
-        referenceNumber: data.referenceNumber || null,
-        customerId: data.customerId,
-        salespersonId: resolvedSalespersonId,
-        date: data.quoteDate ? new Date(data.quoteDate) : new Date(),
-        expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
-        placeOfSupply: `${customerState} (${customer.pincode ? customer.pincode.slice(0, 2) : '27'})`,
-        subject: data.subject || null,
-        billingAddress: data.billingAddress || customer.billingAddress || null,
-        shippingAddress: data.shippingAddress || customer.shippingAddress || customer.billingAddress || null,
-        
-        currency: data.currency || "INR",
-        paymentTerms: data.paymentTerms || null,
-        priceList: data.priceList || null,
-        warehouse: data.warehouse || null,
-        deliveryTerms: data.deliveryTerms || null,
-        shippingMethod: data.shippingMethod || null,
-        expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
-        
-        isInterstate,
-        
-        subtotal,
-        itemDiscount: itemDiscountTotal,
-        additionalDiscount,
-        taxableAmount,
-        shippingCharges,
-        adjustment,
-        roundOff,
-        receivedAmount,
-        taxTotal,
-        cgst: totalCgst,
-        sgst: totalSgst,
-        igst: totalIgst,
-        totalValue,
-        totalQuantity,
-        totalItems: preparedItems.length,
-        totalWeight: finalTotalWeight,
-        
-        status: finalStatus,
-        approvalStatus: "Approved",
-        
-        notes: data.notes || "Additional Details -",
-        internalNotes: data.internalNotes || null,
-        termsConditions: data.termsConditions || "1. Goods once sold cannot be taken back or exchanged.\n2. Full payment is due upon receipt of this invoice.\n3. Subject to Haryana Jurisdiction.",
-        
-        items: {
-          create: preparedItems
-        },
-        activities: {
-          create: [{
-            userId: userId,
-            userName: userName,
-            action: "Created",
-            details: `Quotation created as ${finalStatus}`
-          }]
-        }
+    // Dynamically resolve guaranteed unique quotation number
+    let qNumber = data.quotationNumber?.trim();
+    if (!qNumber) {
+      qNumber = await getNextQuotationNumber(organizationId);
+    } else {
+      const existingQuote = await prisma.quotation.findUnique({
+        where: { quotationNumber: qNumber }
+      });
+      if (existingQuote) {
+        // If user submitted an already used number, allocate the true next unique number
+        qNumber = await getNextQuotationNumber(organizationId);
       }
-    });
+    }
 
-    const match = qNumber.match(/^(.*?)(\d+)$/);
-    if (match) {
-      const prefix = match[1];
-      const numStr = match[2];
-      const nextNum = (parseInt(numStr, 10) + 1).toString().padStart(numStr.length, '0');
-      const nextQuotationNumber = `${prefix}${nextNum}`;
-      await prisma.companySettings.updateMany({
-        where: { id: "default" },
-        data: { nextQuotationNumber }
-      }).catch(() => {});
+    let quotation;
+    try {
+      quotation = await prisma.quotation.create({
+        data: {
+          organizationId,
+          quotationNumber: qNumber,
+          referenceNumber: data.referenceNumber || null,
+          customerId: data.customerId,
+          salespersonId: resolvedSalespersonId,
+          date: data.quoteDate ? new Date(data.quoteDate) : new Date(),
+          expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+          placeOfSupply: `${customerState} (${customer.pincode ? customer.pincode.slice(0, 2) : '27'})`,
+          subject: data.subject || null,
+          billingAddress: data.billingAddress || customer.billingAddress || null,
+          shippingAddress: data.shippingAddress || customer.shippingAddress || customer.billingAddress || null,
+          
+          currency: data.currency || "INR",
+          paymentTerms: data.paymentTerms || null,
+          priceList: data.priceList || null,
+          warehouse: data.warehouse || null,
+          deliveryTerms: data.deliveryTerms || null,
+          shippingMethod: data.shippingMethod || null,
+          expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
+          
+          isInterstate,
+          
+          subtotal,
+          itemDiscount: itemDiscountTotal,
+          additionalDiscount,
+          taxableAmount,
+          shippingCharges,
+          adjustment,
+          roundOff,
+          receivedAmount,
+          taxTotal,
+          cgst: totalCgst,
+          sgst: totalSgst,
+          igst: totalIgst,
+          totalValue,
+          totalQuantity,
+          totalItems: preparedItems.length,
+          totalWeight: finalTotalWeight,
+          
+          status: finalStatus,
+          approvalStatus: "Approved",
+          
+          notes: data.notes || "Additional Details -",
+          internalNotes: data.internalNotes || null,
+          termsConditions: data.termsConditions || "1. Goods once sold cannot be taken back or exchanged.\n2. Full payment is due upon receipt of this invoice.\n3. Subject to Haryana Jurisdiction.",
+          
+          items: {
+            create: preparedItems
+          },
+          activities: {
+            create: [{
+              userId: userId,
+              userName: userName,
+              action: "Created",
+              details: `Quotation created as ${finalStatus}`
+            }]
+          }
+        }
+      });
+    } catch (createErr: any) {
+      if (createErr?.code === "P2002" || createErr?.message?.includes("quotationNumber")) {
+        // Fallback retry with fresh unique number
+        const freshQNumber = await getNextQuotationNumber(organizationId);
+        quotation = await prisma.quotation.create({
+          data: {
+            organizationId,
+            quotationNumber: freshQNumber,
+            referenceNumber: data.referenceNumber || null,
+            customerId: data.customerId,
+            salespersonId: resolvedSalespersonId,
+            date: data.quoteDate ? new Date(data.quoteDate) : new Date(),
+            expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
+            placeOfSupply: `${customerState} (${customer.pincode ? customer.pincode.slice(0, 2) : '27'})`,
+            subject: data.subject || null,
+            billingAddress: data.billingAddress || customer.billingAddress || null,
+            shippingAddress: data.shippingAddress || customer.shippingAddress || customer.billingAddress || null,
+            currency: data.currency || "INR",
+            paymentTerms: data.paymentTerms || null,
+            priceList: data.priceList || null,
+            warehouse: data.warehouse || null,
+            deliveryTerms: data.deliveryTerms || null,
+            shippingMethod: data.shippingMethod || null,
+            expectedDeliveryDate: data.expectedDeliveryDate ? new Date(data.expectedDeliveryDate) : null,
+            isInterstate,
+            subtotal,
+            itemDiscount: itemDiscountTotal,
+            additionalDiscount,
+            taxableAmount,
+            shippingCharges,
+            adjustment,
+            roundOff,
+            receivedAmount,
+            taxTotal,
+            cgst: totalCgst,
+            sgst: totalSgst,
+            igst: totalIgst,
+            totalValue,
+            totalQuantity,
+            totalItems: preparedItems.length,
+            totalWeight: finalTotalWeight,
+            status: finalStatus,
+            approvalStatus: "Approved",
+            notes: data.notes || "Additional Details -",
+            internalNotes: data.internalNotes || null,
+            termsConditions: data.termsConditions || "1. Goods once sold cannot be taken back or exchanged.\n2. Full payment is due upon receipt of this invoice.\n3. Subject to Haryana Jurisdiction.",
+            items: { create: preparedItems },
+            activities: {
+              create: [{
+                userId: userId,
+                userName: userName,
+                action: "Created",
+                details: `Quotation created as ${finalStatus}`
+              }]
+            }
+          }
+        });
+        qNumber = freshQNumber;
+      } else {
+        throw createErr;
+      }
+    }
+
+    // Advance next quotation number in CompanySettings for this organization
+    try {
+      const match = qNumber.match(/^(.*?)(\d+)$/);
+      if (match) {
+        const prefix = match[1];
+        const numStr = match[2];
+        const nextNum = (parseInt(numStr, 10) + 1).toString().padStart(numStr.length, '0');
+        const nextQuotationNumber = `${prefix}${nextNum}`;
+
+        const settingId = companyRes.settings?.id;
+        if (settingId) {
+          await prisma.companySettings.update({
+            where: { id: settingId },
+            data: { nextQuotationNumber }
+          });
+        } else if (organizationId) {
+          await prisma.companySettings.updateMany({
+            where: { organizationId },
+            data: { nextQuotationNumber }
+          });
+        }
+        await invalidateCompanySettingsCache();
+      }
+    } catch (updateErr) {
+      console.warn("Could not advance next quotation number in company settings:", updateErr);
     }
 
     revalidatePath("/quotations");

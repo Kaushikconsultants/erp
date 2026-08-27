@@ -37,6 +37,15 @@ export default function CreateQuotationForm({ customers, products, employees, ca
     }
   }, [customers]);
 
+  useEffect(() => {
+    if (!initialQuotation && defaultQuotationNumber) {
+      setFormData(prev => ({
+        ...prev,
+        quotationNumber: defaultQuotationNumber
+      }));
+    }
+  }, [defaultQuotationNumber, initialQuotation]);
+
   const getDestinationPincode = () => {
     if (selectedCustomer?.pincode) return selectedCustomer.pincode;
     const addr = formData.shippingAddress || formData.billingAddress || "";
@@ -897,8 +906,11 @@ export default function CreateQuotationForm({ customers, products, employees, ca
           <div style={{ backgroundColor: '#f8fafc', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Quotation #</label>
-                <input type="text" placeholder="Auto-generated" value={formData.quotationNumber} onChange={e => setFormData({...formData, quotationNumber: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600 }} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', margin: 0 }}>Quotation #</label>
+                  <span style={{ fontSize: '0.68rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, border: '1px solid #a7f3d0' }}>Auto-increment</span>
+                </div>
+                <input type="text" placeholder="Auto-generated (e.g. QT-1001)" value={formData.quotationNumber} onChange={e => setFormData({...formData, quotationNumber: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600, color: '#0f172a' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Reference #</label>

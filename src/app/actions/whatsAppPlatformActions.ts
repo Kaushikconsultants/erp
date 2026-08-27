@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { seedWhatsAppPlatformData } from "@/lib/seedWhatsApp";
 import { revalidatePath } from "next/cache";
+import { getNextQuotationNumber } from "./quotationActions";
 
 // Ensure seed data is initialized automatically if database is fresh
 async function ensureSeeded() {
@@ -646,7 +647,7 @@ export async function createWhatsAppQuotation(data: {
     const subtotal = data.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
     const taxTotal = subtotal * 0.12; // 12% GST
     const totalValue = subtotal + taxTotal;
-    const qNum = `QT-WA-${Math.floor(1000 + Math.random() * 9000)}`;
+    const qNum = await getNextQuotationNumber(customer.organizationId || null);
 
     const firstProduct = await prisma.product.findFirst();
     if (!firstProduct) {

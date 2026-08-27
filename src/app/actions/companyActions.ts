@@ -97,6 +97,10 @@ const fetchSettingsInternal = cache(async (orgId?: string) => {
 let settingsCache: { data: any; timestamp: number } | null = null;
 const CACHE_TTL_MS = 30000; // 30s in-memory cache
 
+export async function invalidateCompanySettingsCache() {
+  settingsCache = null;
+}
+
 export const getCompanySettings = cache(async function getCompanySettings() {
   const now = Date.now();
   if (settingsCache && (now - settingsCache.timestamp) < CACHE_TTL_MS) {

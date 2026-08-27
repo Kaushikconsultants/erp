@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import CreateQuotationForm from '@/components/quotations/CreateQuotationForm';
 import { getCategories } from '@/app/actions/categoryActions';
 import { getCompanySettings } from '@/app/actions/companyActions';
+import { getNextQuotationNumber } from '@/app/actions/quotationActions';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
 
 import { getTenantOrgId } from '@/lib/tenant';
@@ -34,6 +35,7 @@ export default async function NewQuotationPage() {
   let employeesRaw: any[] = [];
   let categoriesData: any[] = [];
   let companyRes: any = { settings: null };
+  let defaultQuotationNumber = 'QT-1001';
 
   try {
     const results = await Promise.allSettled([
@@ -65,7 +67,8 @@ export default async function NewQuotationPage() {
         include: { user: true }
       }),
       getCategories(),
-      getCompanySettings()
+      getCompanySettings(),
+      getNextQuotationNumber(orgId)
     ]);
 
     if (results[0].status === 'fulfilled') customers = results[0].value;
@@ -73,12 +76,12 @@ export default async function NewQuotationPage() {
     if (results[2].status === 'fulfilled') employeesRaw = results[2].value;
     if (results[3].status === 'fulfilled') categoriesData = results[3].value;
     if (results[4].status === 'fulfilled') companyRes = results[4].value;
+    if (results[5].status === 'fulfilled') defaultQuotationNumber = results[5].value;
   } catch (err) {
     console.error("Failed to load page data:", err);
   }
 
   const employees = employeesRaw.map(e => ({ id: e.id, name: e.user?.name || 'Unknown' }));
-  const defaultQuotationNumber = companyRes.settings?.nextQuotationNumber || 'QT-1001';
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
