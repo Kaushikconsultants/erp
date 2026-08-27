@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Scale } from "lucide-react";
 import { getBalanceSheet, getProfitAndLossStatement, getTrialBalance } from "@/app/actions/accountingActions";
 import FinancialStatementsClient from "@/components/accounting/FinancialStatementsClient";
+import AccountingSubNav from "@/components/accounting/AccountingSubNav";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function FinancialStatementsPage() {
 
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
-      <div className="dashboard-header mb-6">
+      <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <Scale className="text-indigo-600" /> Statutory Financial Statements
@@ -52,6 +53,8 @@ export default async function FinancialStatementsPage() {
           </p>
         </div>
       </div>
+
+      <AccountingSubNav />
 
       <FinancialStatementsClient
         balanceSheetData={JSON.parse(JSON.stringify(balanceSheetData))}

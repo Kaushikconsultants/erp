@@ -24,6 +24,8 @@ import {
   syncSystemLedgers
 } from "@/app/actions/accountingActions";
 
+import AccountingSubNav from "@/components/accounting/AccountingSubNav";
+
 export const dynamic = "force-dynamic";
 
 export default async function AccountingHubPage() {
@@ -51,7 +53,7 @@ export default async function AccountingHubPage() {
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
       {/* Header */}
-      <div className="dashboard-header mb-6">
+      <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <Scale className="text-indigo-600" /> Accounting & Double-Entry Ledger Suite
@@ -61,6 +63,8 @@ export default async function AccountingHubPage() {
           </p>
         </div>
       </div>
+
+      <AccountingSubNav />
 
       {/* KPI Overview Strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "24px" }}>

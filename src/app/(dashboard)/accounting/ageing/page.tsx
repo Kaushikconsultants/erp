@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Clock } from "lucide-react";
 import { getCreditorsAgeingReport, getDebtorsAgeingReport } from "@/app/actions/ageingActions";
 import AgeingReportClient from "@/components/accounting/AgeingReportClient";
+import AccountingSubNav from "@/components/accounting/AccountingSubNav";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function AgeingPage() {
 
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
-      <div className="dashboard-header mb-6">
+      <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <Clock className="text-indigo-600" /> Outstanding Ageing Analysis (0-30, 31-60, 61-90, &gt;90 Days)
@@ -32,6 +33,8 @@ export default async function AgeingPage() {
           </p>
         </div>
       </div>
+
+      <AccountingSubNav />
 
       <AgeingReportClient
         debtorsReport={JSON.parse(JSON.stringify(debtorsReport))}

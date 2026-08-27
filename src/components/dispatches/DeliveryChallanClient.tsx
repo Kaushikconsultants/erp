@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Truck,
   Plus,
@@ -10,7 +11,9 @@ import {
   User,
   ArrowRight,
   Printer,
-  FileText
+  FileText,
+  Receipt,
+  ExternalLink
 } from "lucide-react";
 import { createDeliveryChallan, convertChallanToInvoice } from "@/app/actions/deliveryChallanActions";
 
@@ -234,7 +237,25 @@ export default function DeliveryChallanClient({
                       </span>
                     </td>
                     <td style={{ padding: "10px 12px", fontSize: "0.85rem" }}>
-                      <div style={{ fontWeight: 600 }}>{c.customer?.businessName || c.vendor?.companyName || "Internal Godown"}</div>
+                      <div style={{ fontWeight: 600 }}>
+                        {c.customerId && c.customer?.businessName ? (
+                          <Link
+                            href={`/customers/${c.customerId}/ledger`}
+                            style={{ color: "#4f46e5", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                          >
+                            {c.customer.businessName} <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                          </Link>
+                        ) : c.vendorId && c.vendor?.companyName ? (
+                          <Link
+                            href="/vendors"
+                            style={{ color: "#4f46e5", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                          >
+                            {c.vendor.companyName} <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                          </Link>
+                        ) : (
+                          c.customer?.businessName || c.vendor?.companyName || "Internal Godown"
+                        )}
+                      </div>
                       {c.vehicleNumber && (
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                           Vehicle: {c.vehicleNumber} {c.lrNumber ? `• LR: ${c.lrNumber}` : ""}
@@ -278,6 +299,24 @@ export default function DeliveryChallanClient({
                           <FileCheck size={13} />
                           {isConverting === c.id ? "Converting..." : "Convert to Inv"}
                         </button>
+                      )}
+                      {c.status === "CONVERTED_TO_INVOICE" && (
+                        <Link
+                          href="/invoices"
+                          className="action-btn"
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "4px 10px",
+                            fontSize: "0.75rem",
+                            color: "#059669",
+                            textDecoration: "none",
+                            fontWeight: 600
+                          }}
+                        >
+                          <Receipt size={13} /> View Inv
+                        </Link>
                       )}
                     </td>
                   </tr>

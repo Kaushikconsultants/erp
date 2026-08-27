@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   FolderTree,
   Plus,
@@ -13,7 +14,8 @@ import {
   CheckCircle2,
   FileText,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  ExternalLink
 } from "lucide-react";
 import { createLedgerAccount, syncSystemLedgers } from "@/app/actions/accountingActions";
 
@@ -213,35 +215,61 @@ export default function ChartOfAccountsClient({ initialGroups }: Props) {
                   No active ledgers in this group.
                 </div>
               ) : (
-                group.ledgers.map((ledger: any) => (
-                  <div
-                    key={ledger.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "6px 10px",
-                      background: "var(--bg-secondary, #f8fafc)",
-                      borderRadius: "6px",
-                      fontSize: "0.85rem"
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{ledger.name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                        {ledger.code} {ledger.partyType ? `• ${ledger.partyType}` : ""}
+                group.ledgers.map((ledger: any) => {
+                  const getLedgerLink = () => {
+                    if (ledger.partyType === "CUSTOMER" && ledger.partyId) return `/customers/${ledger.partyId}/ledger`;
+                    if (ledger.partyType === "VENDOR") return `/vendors`;
+                    if (ledger.partyType === "BANK") return `/accounting/bank-reconciliation`;
+                    return null;
+                  };
+                  const targetLink = getLedgerLink();
+
+                  return (
+                    <div
+                      key={ledger.id}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "6px 10px",
+                        background: "var(--bg-secondary, #f8fafc)",
+                        borderRadius: "6px",
+                        fontSize: "0.85rem"
+                      }}
+                    >
+                      <div>
+                        {targetLink ? (
+                          <Link
+                            href={targetLink}
+                            style={{
+                              fontWeight: 600,
+                              color: "#4f46e5",
+                              textDecoration: "none",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px"
+                            }}
+                          >
+                            {ledger.name} <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                          </Link>
+                        ) : (
+                          <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{ledger.name}</div>
+                        )}
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                          {ledger.code} {ledger.partyType ? `• ${ledger.partyType}` : ""}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 700, color: "#0f172a" }}>
+                          ₹{(ledger.currentBalance || ledger.openingBalance || 0).toLocaleString()}
+                        </div>
+                        <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>
+                          {ledger.openingType === "CREDIT" ? "Cr" : "Dr"}
+                        </span>
                       </div>
                     </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontWeight: 700, color: "#0f172a" }}>
-                        ₹{(ledger.currentBalance || ledger.openingBalance || 0).toLocaleString()}
-                      </div>
-                      <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)" }}>
-                        {ledger.openingType === "CREDIT" ? "Cr" : "Dr"}
-                      </span>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

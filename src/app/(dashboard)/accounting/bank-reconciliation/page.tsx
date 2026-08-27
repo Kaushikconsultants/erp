@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Landmark } from "lucide-react";
 import { getBankAccounts, getBankReconciliationOverview } from "@/app/actions/bankReconciliationActions";
 import BankReconciliationClient from "@/components/accounting/BankReconciliationClient";
+import AccountingSubNav from "@/components/accounting/AccountingSubNav";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function BankReconciliationPage() {
 
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
-      <div className="dashboard-header mb-6">
+      <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <Landmark className="text-indigo-600" /> Bank Reconciliation Statement (BRS)
@@ -44,6 +45,8 @@ export default async function BankReconciliationPage() {
           </p>
         </div>
       </div>
+
+      <AccountingSubNav />
 
       <BankReconciliationClient
         bankAccounts={JSON.parse(JSON.stringify(bankAccounts))}

@@ -73,9 +73,9 @@ const Sidebar = ({
       if (userRole === 'DISPATCH') return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
       if (userRole === 'SALES') return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
       if (userRole === 'HR') return ['dashboard', 'hrms', 'hiring'].includes(sectionKey);
-      if (userRole === 'ACCOUNTS') return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing'].includes(sectionKey);
-      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
-      if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products'].includes(sectionKey);
+      if (userRole === 'ACCOUNTS') return ['dashboard', 'accounting', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
+      if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches', 'eway_bills', 'eway-bills', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
+      if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
       if (userRole === 'SUPPORT') return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);
       return false;
     }
@@ -87,6 +87,9 @@ const Sidebar = ({
       (sectionKey === 'eway-bills' && (allowedSections.includes('eway_bills') || allowedSections.includes('eway'))) ||
       (sectionKey === 'gst_filing' && (allowedSections.includes('gst-filing') || allowedSections.includes('gst') || allowedSections.includes('gst_filings'))) ||
       (sectionKey === 'gst-filing' && (allowedSections.includes('gst_filing') || allowedSections.includes('gst') || allowedSections.includes('gst_filings'))) ||
+      (sectionKey === 'delivery_challans' && (allowedSections.includes('delivery-challans') || allowedSections.includes('dispatches'))) ||
+      (sectionKey === 'delivery-challans' && (allowedSections.includes('delivery_challans') || allowedSections.includes('dispatches'))) ||
+      (sectionKey === 'accounting' && (allowedSections.includes('invoices') || allowedSections.includes('payments') || allowedSections.includes('accounting'))) ||
       (sectionKey === 'purchases' && allowedSections.includes('procurement')) ||
       (sectionKey === 'procurement' && allowedSections.includes('purchases'))
     );
@@ -357,51 +360,58 @@ const Sidebar = ({
         )}
 
         {/* 4. ACCOUNTING & LEDGERS CATEGORY DROPDOWN */}
-        <div className="nav-section">
-          <button
-            type="button"
-            onClick={() => toggleCategory('accounting')}
-            className={`category-dropdown-header ${openCategories.accounting ? 'is-open' : ''} ${isAccountingActive ? 'has-active-child' : ''}`}
-          >
-            <div className="category-header-title">
-              <Scale size={18} style={{ color: isAccountingActive ? '#4f46e5' : '#64748b' }} />
-              <span>ACCOUNTING & LEDGERS</span>
-            </div>
-            <div className="category-chevron">
-              <ChevronRight size={15} />
-            </div>
-          </button>
+        {(canAccess('accounting') || canAccess('invoices') || canAccess('payments') || isSuperOrAdmin) && (
+          <div className="nav-section">
+            <button
+              type="button"
+              onClick={() => toggleCategory('accounting')}
+              className={`category-dropdown-header ${openCategories.accounting ? 'is-open' : ''} ${isAccountingActive ? 'has-active-child' : ''}`}
+            >
+              <div className="category-header-title">
+                <Scale size={18} style={{ color: isAccountingActive ? '#4f46e5' : '#64748b' }} />
+                <span>ACCOUNTING & LEDGERS</span>
+              </div>
+              <div className="category-chevron">
+                <ChevronRight size={15} />
+              </div>
+            </button>
 
-          {openCategories.accounting && (
-            <div className="category-sub-list">
-              <Link href="/accounting/financial-statements" onClick={onClose} className={`category-sub-item ${isActive('/accounting/financial-statements') ? 'active' : ''}`}>
-                <Scale size={16} style={{ color: '#4f46e5' }} />
-                <span>Financial Statements</span>
-                <span style={{ marginLeft: 'auto', background: '#e0e7ff', color: '#4338ca', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>P&L/BS</span>
-              </Link>
+            {openCategories.accounting && (
+              <div className="category-sub-list">
+                <Link href="/accounting" onClick={onClose} className={`category-sub-item ${pathname === '/accounting' ? 'active' : ''}`}>
+                  <LayoutDashboard size={16} style={{ color: '#4f46e5' }} />
+                  <span>Accounting Overview</span>
+                </Link>
 
-              <Link href="/accounting/chart-of-accounts" onClick={onClose} className={`category-sub-item ${isActive('/accounting/chart-of-accounts') ? 'active' : ''}`}>
-                <FolderTree size={16} />
-                <span>Chart of Accounts</span>
-              </Link>
+                <Link href="/accounting/financial-statements" onClick={onClose} className={`category-sub-item ${isActive('/accounting/financial-statements') ? 'active' : ''}`}>
+                  <Scale size={16} style={{ color: '#4f46e5' }} />
+                  <span>Financial Statements</span>
+                  <span style={{ marginLeft: 'auto', background: '#e0e7ff', color: '#4338ca', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>P&L/BS</span>
+                </Link>
 
-              <Link href="/accounting/vouchers" onClick={onClose} className={`category-sub-item ${isActive('/accounting/vouchers') ? 'active' : ''}`}>
-                <FileText size={16} style={{ color: '#8b5cf6' }} />
-                <span>Journal Vouchers (JV)</span>
-              </Link>
+                <Link href="/accounting/chart-of-accounts" onClick={onClose} className={`category-sub-item ${isActive('/accounting/chart-of-accounts') ? 'active' : ''}`}>
+                  <FolderTree size={16} />
+                  <span>Chart of Accounts</span>
+                </Link>
 
-              <Link href="/accounting/ageing" onClick={onClose} className={`category-sub-item ${isActive('/accounting/ageing') ? 'active' : ''}`}>
-                <Clock size={16} style={{ color: '#ea580c' }} />
-                <span>Ageing Analysis (0-90D)</span>
-              </Link>
+                <Link href="/accounting/vouchers" onClick={onClose} className={`category-sub-item ${isActive('/accounting/vouchers') ? 'active' : ''}`}>
+                  <FileText size={16} style={{ color: '#8b5cf6' }} />
+                  <span>Journal Vouchers (JV)</span>
+                </Link>
 
-              <Link href="/accounting/bank-reconciliation" onClick={onClose} className={`category-sub-item ${isActive('/accounting/bank-reconciliation') ? 'active' : ''}`}>
-                <Landmark size={16} style={{ color: '#059669' }} />
-                <span>Bank Reconciliation (BRS)</span>
-              </Link>
-            </div>
-          )}
-        </div>
+                <Link href="/accounting/ageing" onClick={onClose} className={`category-sub-item ${isActive('/accounting/ageing') ? 'active' : ''}`}>
+                  <Clock size={16} style={{ color: '#ea580c' }} />
+                  <span>Ageing Analysis (0-90D)</span>
+                </Link>
+
+                <Link href="/accounting/bank-reconciliation" onClick={onClose} className={`category-sub-item ${isActive('/accounting/bank-reconciliation') ? 'active' : ''}`}>
+                  <Landmark size={16} style={{ color: '#059669' }} />
+                  <span>Bank Reconciliation (BRS)</span>
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 5. HRMS CATEGORY DROPDOWN */}
         {canAccess('hrms') && (

@@ -25,6 +25,12 @@ export const canUserAccessSection = cache(async function canUserAccessSection(se
           if (sectionKey === 'eway_bills' || sectionKey === 'eway-bills') return lower.includes('eway') || lower.includes('e-way');
           if (sectionKey === 'gst_filing' || sectionKey === 'gst-filing') return lower.includes('gst');
           if (sectionKey === 'hiring') return lower.includes('hiring') || lower.includes('interview');
+          if (sectionKey === 'accounting') {
+            return lower.includes('account') || lower.includes('invoice') || lower.includes('ledger') || lower.includes('voucher') || lower.includes('financial');
+          }
+          if (sectionKey === 'delivery_challans' || sectionKey === 'delivery-challans') {
+            return lower.includes('dispatch') || lower.includes('challan') || lower.includes('shipment') || lower.includes('delivery');
+          }
           if (sectionKey === 'purchases' || sectionKey === 'procurement') {
             return lower.includes("purchase") || lower.includes("procurement") || lower.includes("bill") || lower.includes("vendor");
           }
@@ -52,6 +58,9 @@ export const canUserAccessSection = cache(async function canUserAccessSection(se
         (sectionKey === 'eway-bills' && (allowed.includes('eway_bills') || allowed.includes('eway'))) ||
         (sectionKey === 'gst_filing' && (allowed.includes('gst-filing') || allowed.includes('gst') || allowed.includes('gst_filings'))) ||
         (sectionKey === 'gst-filing' && (allowed.includes('gst_filing') || allowed.includes('gst') || allowed.includes('gst_filings'))) ||
+        (sectionKey === 'delivery_challans' && (allowed.includes('delivery-challans') || allowed.includes('dispatches'))) ||
+        (sectionKey === 'delivery-challans' && (allowed.includes('delivery_challans') || allowed.includes('dispatches'))) ||
+        (sectionKey === 'accounting' && (allowed.includes('invoices') || allowed.includes('payments') || allowed.includes('accounting'))) ||
         (sectionKey === 'purchases' && allowed.includes('procurement')) ||
         (sectionKey === 'procurement' && allowed.includes('purchases'))
       );
@@ -60,17 +69,17 @@ export const canUserAccessSection = cache(async function canUserAccessSection(se
 
   // Fallback defaults for standard roles
   if (dbUser.role === 'PURCHASE' || dbUser.role === 'WAREHOUSE') {
-    return ['purchases', 'procurement', 'products', 'dashboard', 'eway_bills', 'eway-bills'].includes(sectionKey);
+    return ['purchases', 'procurement', 'products', 'dashboard', 'eway_bills', 'eway-bills', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
   }
   if (dbUser.role === 'SALES') {
     // Sales person ONLY has access to standard sales workflow (NO credit_notes, eway, gst_filing, hiring)
-    return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
+    return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
   }
   if (dbUser.role === 'DISPATCH') {
-    return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
+    return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
   }
   if (dbUser.role === 'ACCOUNTS') {
-    return ['dashboard', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing', 'reports'].includes(sectionKey);
+    return ['dashboard', 'accounting', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing', 'reports', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
   }
   if (dbUser.role === 'HR') {
     return ['dashboard', 'hrms', 'hiring'].includes(sectionKey);

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { FileText } from "lucide-react";
 import { getJournalEntries, getLedgers } from "@/app/actions/accountingActions";
 import VouchersClient from "@/components/accounting/VouchersClient";
+import AccountingSubNav from "@/components/accounting/AccountingSubNav";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function VouchersPage() {
 
   return (
     <div className="page-container" style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto" }}>
-      <div className="dashboard-header mb-6">
+      <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <FileText className="text-indigo-600" /> Journal & Contra Vouchers
@@ -32,6 +33,8 @@ export default async function VouchersPage() {
           </p>
         </div>
       </div>
+
+      <AccountingSubNav />
 
       <VouchersClient
         initialVouchers={JSON.parse(JSON.stringify(vouchers))}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Clock,
   Download,
@@ -11,7 +12,8 @@ import {
   ChevronRight,
   TrendingDown,
   User,
-  Building2
+  Building2,
+  ExternalLink
 } from "lucide-react";
 
 interface Props {
@@ -237,7 +239,25 @@ export default function AgeingReportClient({ debtorsReport, creditorsReport }: P
                         <td style={{ padding: "12px", fontWeight: 700, display: "flex", alignItems: "center", gap: "8px" }}>
                           {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                           <div>
-                            <div style={{ color: "var(--text-primary)" }}>{row.partyName}</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              {activeTab === "debtors" ? (
+                                <Link
+                                  href={`/customers/${row.partyId}/ledger`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ color: "#4f46e5", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                >
+                                  {row.partyName} <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                                </Link>
+                              ) : (
+                                <Link
+                                  href="/vendors"
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ color: "#4f46e5", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "4px" }}
+                                >
+                                  {row.partyName} <ExternalLink size={11} style={{ opacity: 0.7 }} />
+                                </Link>
+                              )}
+                            </div>
                             <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 400 }}>
                               {row.city || "Rohtak"} {row.mobile ? `• ${row.mobile}` : ""} • {row.totalInvoicesOrBills} {activeTab === "debtors" ? "invoices" : "bills"}
                             </div>
@@ -296,7 +316,23 @@ export default function AgeingReportClient({ debtorsReport, creditorsReport }: P
                                 <tbody>
                                   {row.invoicesOrBills.map((doc: any) => (
                                     <tr key={doc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                                      <td style={{ padding: "6px 10px", fontWeight: 600, color: "#4f46e5" }}>{doc.docNumber}</td>
+                                      <td style={{ padding: "6px 10px", fontWeight: 600 }}>
+                                        {activeTab === "debtors" ? (
+                                          <Link
+                                            href={`/invoices`}
+                                            style={{ color: "#4f46e5", textDecoration: "none" }}
+                                          >
+                                            {doc.docNumber}
+                                          </Link>
+                                        ) : (
+                                          <Link
+                                            href={`/bills`}
+                                            style={{ color: "#4f46e5", textDecoration: "none" }}
+                                          >
+                                            {doc.docNumber}
+                                          </Link>
+                                        )}
+                                      </td>
                                       <td style={{ padding: "6px 10px" }}>{doc.date}</td>
                                       <td style={{ padding: "6px 10px" }}>{doc.dueDate || "-"}</td>
                                       <td style={{ padding: "6px 10px" }}>

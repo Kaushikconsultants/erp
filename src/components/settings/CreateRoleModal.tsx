@@ -22,6 +22,17 @@ export const PERMISSION_GROUPS = [
     ]
   },
   {
+    category: "⚖️ Accounting & Ledgers",
+    permissions: [
+      { id: "Manage Accounting", desc: "Full access to Balance Sheet, P&L, Trial Balance & Hub" },
+      { id: "Manage Chart of Accounts", desc: "Create & configure account groups and general ledgers" },
+      { id: "Manage Journal Vouchers", desc: "Create & post double-entry journal & contra vouchers" },
+      { id: "Manage Bank Reconciliation", desc: "Reconcile bank statements and clear transactions (BRS)" },
+      { id: "View Ageing Reports", desc: "Access 0-90+ day debtor & creditor ageing reports" },
+      { id: "Manage Delivery Challans", desc: "Issue material delivery challans and convert to invoices" }
+    ]
+  },
+  {
     category: "🛒 Sales & CRM",
     permissions: [
       { id: "Manage Orders", desc: "Create, process & manage customer sales orders" },

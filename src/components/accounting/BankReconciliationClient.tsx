@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Landmark,
   CheckCircle2,
@@ -81,12 +82,19 @@ export default function BankReconciliationClient({ bankAccounts, initialOverview
 
   if (!bankAccounts || bankAccounts.length === 0) {
     return (
-      <div className="glass-panel" style={{ padding: "30px", textAlign: "center" }}>
+      <div className="glass-panel" style={{ padding: "36px", textAlign: "center" }}>
         <Landmark size={36} style={{ color: "var(--text-secondary)", margin: "0 auto 12px" }} />
-        <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>No Bank Accounts Configured</h3>
-        <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
-          Please create a Bank Account in the Chart of Accounts to start Bank Reconciliation.
+        <h3 style={{ fontSize: "1.15rem", fontWeight: 700 }}>No Bank Accounts Configured</h3>
+        <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", maxWidth: "450px", margin: "8px auto 16px" }}>
+          Please add a Bank Account (e.g. ICICI, HDFC, SBI) in the Chart of Accounts to begin bank passbook reconciliation.
         </p>
+        <Link
+          href="/accounting/chart-of-accounts"
+          className="primary-btn"
+          style={{ display: "inline-flex", alignItems: "center", gap: "6px", textDecoration: "none", padding: "8px 18px" }}
+        >
+          Open Chart of Accounts
+        </Link>
       </div>
     );
   }
