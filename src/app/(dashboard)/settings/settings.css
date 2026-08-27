@@ -25,7 +25,7 @@
 
 .settings-card h3 {
   font-size: 1.05rem;
-  font-weight: 700;
+  font-weight: 600;
   margin-bottom: 6px;
   color: #0f172a;
 }
@@ -54,11 +54,11 @@
 }
 
 .data-table th {
-  font-weight: 700;
+  font-weight: 600;
   color: #475569;
   text-transform: uppercase;
   font-size: 0.74rem;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
   background-color: #f8fafc;
 }
 
@@ -71,7 +71,7 @@
   padding: 3px 10px;
   border-radius: 20px;
   font-size: 0.74rem;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: capitalize;
 }
 

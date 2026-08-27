@@ -69,10 +69,10 @@ export default async function SettingsPage() {
             <Sliders size={22} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 800, color: '#0f172a' }}>
+            <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 600, color: '#0f172a', letterSpacing: '-0.015em' }}>
               Administration, HR & Company Settings
             </h1>
-            <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', fontWeight: 400, color: '#64748b' }}>
               Configure company identity, GST tax rules, document templates, employee roles, workflows, and system access.
             </p>
           </div>
@@ -117,13 +117,13 @@ export default async function SettingsPage() {
             <Users size={20} />
           </div>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Total Organization Users
             </div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginTop: '1px' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', marginTop: '1px' }}>
               {totalUsers} {totalUsers === 1 ? 'User' : 'Users'}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 400, color: '#94a3b8', marginTop: '1px' }}>
               Registered on tenant workspace
             </div>
           </div>
@@ -157,13 +157,13 @@ export default async function SettingsPage() {
             <ShieldCheck size={20} />
           </div>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Active Login Accounts
             </div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#059669', marginTop: '1px' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#059669', marginTop: '1px' }}>
               {activeUsers} Active
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 400, color: '#94a3b8', marginTop: '1px' }}>
               {totalUsers - activeUsers} inactive or suspended
             </div>
           </div>
@@ -197,13 +197,13 @@ export default async function SettingsPage() {
             <KeyRound size={20} />
           </div>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Administrative Privileges
             </div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#d97706', marginTop: '1px' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#d97706', marginTop: '1px' }}>
               {adminUsers} {adminUsers === 1 ? 'Admin' : 'Admins'}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 400, color: '#94a3b8', marginTop: '1px' }}>
               Full system configuration access
             </div>
           </div>
@@ -237,13 +237,13 @@ export default async function SettingsPage() {
             <Building2 size={20} />
           </div>
           <div>
-            <div style={{ color: '#64748b', fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+            <div style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               Security & RBAC
             </div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#7c3aed', marginTop: '1px' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 600, color: '#7c3aed', marginTop: '1px' }}>
               RBAC Enforced
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 400, color: '#94a3b8', marginTop: '1px' }}>
               Multi-tenant isolated storage
             </div>
           </div>
@@ -266,14 +266,14 @@ export default async function SettingsPage() {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>
               User Directory & Access Control
             </h2>
-            <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', fontWeight: 400, color: '#64748b' }}>
               Grant section access, assign roles (Super Admin, Sales, HR, Accounts, Dispatch, Warehouse), and reset security credentials.
             </p>
           </div>
-          <div style={{ fontSize: '0.78rem', backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '4px 10px', borderRadius: '20px', fontWeight: 700 }}>
+          <div style={{ fontSize: '0.75rem', backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '3px 10px', borderRadius: '20px', fontWeight: 500 }}>
             {totalUsers} Members
           </div>
         </div>

@@ -209,18 +209,18 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
       {/* Category Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #f1f5f9", paddingBottom: "10px" }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: "0.98rem", fontWeight: 800, color: "#0f172a" }}>
+          <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#0f172a" }}>
             {title}
           </h3>
-          <p style={{ margin: "2px 0 0 0", fontSize: "0.74rem", color: "#64748b" }}>
+          <p style={{ margin: "2px 0 0 0", fontSize: "0.74rem", fontWeight: 400, color: "#64748b" }}>
             {subtitle}
           </p>
         </div>
         <span
           style={{
             fontSize: "0.68rem",
-            fontWeight: 700,
-            padding: "3px 8px",
+            fontWeight: 500,
+            padding: "2px 8px",
             borderRadius: "12px",
             backgroundColor: badgeBg,
             color: badgeColor
@@ -277,14 +277,14 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
                 </div>
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ fontWeight: 700, fontSize: "0.86rem", color: "#0f172a" }}>
+                    <span style={{ fontWeight: 500, fontSize: "0.85rem", color: "#1e293b" }}>
                       {item.label}
                     </span>
                     {item.badge && (
                       <span
                         style={{
                           fontSize: "0.65rem",
-                          fontWeight: 800,
+                          fontWeight: 500,
                           padding: "1px 6px",
                           borderRadius: "6px",
                           backgroundColor: "#f3e8ff",
@@ -295,7 +295,7 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "1px" }}>
+                  <div style={{ fontSize: "0.74rem", fontWeight: 400, color: "#64748b", marginTop: "1px" }}>
                     {item.desc}
                   </div>
                 </div>

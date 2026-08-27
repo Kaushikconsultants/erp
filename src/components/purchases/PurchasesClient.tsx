@@ -314,10 +314,10 @@ export default function PurchasesClient({
             <ShoppingBag size={22} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.45rem", fontWeight: 800, color: "#0f172a" }}>
+            <h1 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 600, color: "#0f172a", letterSpacing: "-0.015em" }}>
               Purchase Orders & Inward GRN
             </h1>
-            <p style={{ margin: "3px 0 0 0", fontSize: "0.82rem", color: "#64748b" }}>
+            <p style={{ margin: "3px 0 0 0", fontSize: "0.82rem", fontWeight: 400, color: "#64748b" }}>
               Manage supplier procurement, issue PO orders, and verify warehouse Goods Received Notes (GRN).
             </p>
           </div>
@@ -333,10 +333,10 @@ export default function PurchasesClient({
             display: "inline-flex",
             alignItems: "center",
             gap: "8px",
-            padding: "10px 20px",
+            padding: "9px 18px",
             borderRadius: "10px",
-            fontWeight: 700,
-            fontSize: "0.88rem",
+            fontWeight: 600,
+            fontSize: "0.86rem",
             background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)",
             color: "#ffffff",
             border: "none",
@@ -394,13 +394,13 @@ export default function PurchasesClient({
             <TrendingUp size={20} />
           </div>
           <div>
-            <div style={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+            <div style={{ color: "#64748b", fontSize: "0.72rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Total Procurement Value
             </div>
-            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#0f172a", marginTop: "1px" }}>
+            <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "#0f172a", marginTop: "1px" }}>
               ₹{totals.totalProcurement.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
             </div>
-            <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "1px" }}>
+            <div style={{ fontSize: "0.72rem", fontWeight: 400, color: "#94a3b8", marginTop: "1px" }}>
               Across {totals.totalOrders} total purchase orders
             </div>
           </div>
@@ -434,13 +434,13 @@ export default function PurchasesClient({
             <Clock size={20} />
           </div>
           <div>
-            <div style={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+            <div style={{ color: "#64748b", fontSize: "0.72rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Active Supplier Orders
             </div>
-            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#4f46e5", marginTop: "1px" }}>
+            <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "#4f46e5", marginTop: "1px" }}>
               {totals.issuedCount} {totals.issuedCount === 1 ? "Order" : "Orders"}
             </div>
-            <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "1px" }}>
+            <div style={{ fontSize: "0.72rem", fontWeight: 400, color: "#94a3b8", marginTop: "1px" }}>
               Issued & awaiting fulfillment
             </div>
           </div>
@@ -474,13 +474,13 @@ export default function PurchasesClient({
             <Boxes size={20} />
           </div>
           <div>
-            <div style={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+            <div style={{ color: "#64748b", fontSize: "0.72rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Pending Inward Qty
             </div>
-            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: totals.pendingItemsCount > 0 ? "#d97706" : "#059669", marginTop: "1px" }}>
+            <div style={{ fontSize: "1.25rem", fontWeight: 600, color: totals.pendingItemsCount > 0 ? "#d97706" : "#059669", marginTop: "1px" }}>
               {totals.pendingItemsCount.toLocaleString("en-IN")} Units
             </div>
-            <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "1px" }}>
+            <div style={{ fontSize: "0.72rem", fontWeight: 400, color: "#94a3b8", marginTop: "1px" }}>
               Pending GRN warehouse entry
             </div>
           </div>
@@ -514,13 +514,13 @@ export default function PurchasesClient({
             <CheckCircle2 size={20} />
           </div>
           <div>
-            <div style={{ color: "#64748b", fontSize: "0.74rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+            <div style={{ color: "#64748b", fontSize: "0.72rem", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Completed Receipts
             </div>
-            <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#059669", marginTop: "1px" }}>
+            <div style={{ fontSize: "1.25rem", fontWeight: 600, color: "#059669", marginTop: "1px" }}>
               {totals.receivedCount} {totals.receivedCount === 1 ? "Order" : "Orders"}
             </div>
-            <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "1px" }}>
+            <div style={{ fontSize: "0.72rem", fontWeight: 400, color: "#94a3b8", marginTop: "1px" }}>
               100% Inward stock received
             </div>
           </div>
@@ -562,10 +562,10 @@ export default function PurchasesClient({
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
-                  padding: "6px 12px",
+                  padding: "5px 12px",
                   borderRadius: "20px",
                   fontSize: "0.78rem",
-                  fontWeight: isActive ? 700 : 500,
+                  fontWeight: isActive ? 600 : 450,
                   backgroundColor: isActive ? "var(--accent-primary, #4f46e5)" : "#f8fafc",
                   color: isActive ? "#ffffff" : "#64748b",
                   border: isActive ? "1px solid transparent" : "1px solid #e2e8f0",
@@ -581,7 +581,7 @@ export default function PurchasesClient({
                     borderRadius: "10px",
                     backgroundColor: isActive ? "rgba(255,255,255,0.25)" : "#e2e8f0",
                     color: isActive ? "#ffffff" : "#475569",
-                    fontWeight: 700
+                    fontWeight: 500
                   }}
                 >
                   {tab.count}
@@ -657,28 +657,28 @@ export default function PurchasesClient({
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ padding: "12px 14px", fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   PO Number
                 </th>
-                <th style={{ padding: "12px 14px", fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Vendor / Supplier
                 </th>
-                <th style={{ padding: "12px 14px", fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Order Date
                 </th>
-                <th style={{ padding: "12px 14px", fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Expected Delivery
                 </th>
-                <th style={{ padding: "12px 14px", fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Items & Products
                 </th>
-                <th style={{ padding: "12px 14px", fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", textAlign: "right" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "right" }}>
                   Total Value (₹)
                 </th>
-                <th style={{ padding: "12px 14px", fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", textAlign: "center" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center" }}>
                   Status
                 </th>
-                <th style={{ padding: "12px 14px", fontSize: "0.76rem", fontWeight: 700, color: "#475569", textTransform: "uppercase", textAlign: "right" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "right" }}>
                   Actions
                 </th>
               </tr>
@@ -707,8 +707,8 @@ export default function PurchasesClient({
                     <td style={{ padding: "14px" }}>
                       <span
                         style={{
-                          fontWeight: 700,
-                          fontSize: "0.85rem",
+                          fontWeight: 600,
+                          fontSize: "0.84rem",
                           color: "#4f46e5",
                           backgroundColor: "#eef2ff",
                           padding: "3px 8px",
@@ -723,10 +723,10 @@ export default function PurchasesClient({
 
                     {/* Vendor */}
                     <td style={{ padding: "14px" }}>
-                      <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem" }}>
+                      <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.86rem" }}>
                         {po.vendor?.companyName || "Vendor"}
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                      <div style={{ fontSize: "0.74rem", fontWeight: 400, color: "#64748b" }}>
                         {po.vendor?.contactPerson || (po.vendor?.email ? po.vendor.email : "Supplier")}
                       </div>
                     </td>
@@ -761,8 +761,8 @@ export default function PurchasesClient({
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span
                           style={{
-                            fontSize: "0.75rem",
-                            fontWeight: 700,
+                            fontSize: "0.74rem",
+                            fontWeight: 500,
                             padding: "2px 8px",
                             borderRadius: "10px",
                             backgroundColor: isFullyReceived ? "#ecfdf5" : "#f1f5f9",
@@ -781,7 +781,7 @@ export default function PurchasesClient({
                     </td>
 
                     {/* Total Value */}
-                    <td style={{ padding: "14px", textAlign: "right", fontWeight: 800, color: "#0f172a", fontSize: "0.92rem", fontVariantNumeric: "tabular-nums" }}>
+                    <td style={{ padding: "14px", textAlign: "right", fontWeight: 650, color: "#0f172a", fontSize: "0.9rem", fontVariantNumeric: "tabular-nums" }}>
                       ₹{po.totalValue.toLocaleString("en-IN")}
                     </td>
 
@@ -790,7 +790,7 @@ export default function PurchasesClient({
                       <span
                         style={{
                           fontSize: "0.74rem",
-                          fontWeight: 700,
+                          fontWeight: 500,
                           padding: "3px 10px",
                           borderRadius: "12px",
                           display: "inline-flex",
@@ -851,7 +851,7 @@ export default function PurchasesClient({
                               await updatePOStatus(po.id, "Issued");
                               window.location.reload();
                             }}
-                            style={{ padding: "4px 10px", fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "4px", fontWeight: 700 }}
+                            style={{ padding: "4px 10px", fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "4px", fontWeight: 600 }}
                           >
                             <Send size={12} /> Issue
                           </button>
@@ -863,7 +863,7 @@ export default function PurchasesClient({
                             type="button"
                             className="action-btn text-green"
                             onClick={() => setGrnOpen(po.id)}
-                            style={{ padding: "4px 10px", fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "4px", fontWeight: 700 }}
+                            style={{ padding: "4px 10px", fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "4px", fontWeight: 600 }}
                           >
                             <PackageCheck size={13} /> Receive GRN
                           </button>
@@ -888,7 +888,7 @@ export default function PurchasesClient({
                 <tr>
                   <td colSpan={8} style={{ textAlign: "center", padding: "48px 20px", color: "var(--text-muted)" }}>
                     <ShoppingBag size={40} style={{ margin: "0 auto 10px auto", opacity: 0.4 }} />
-                    <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>No Purchase Orders Found</div>
+                    <div style={{ fontWeight: 600, fontSize: "0.95rem", color: "#0f172a" }}>No Purchase Orders Found</div>
                     <p style={{ margin: "4px 0 14px 0", fontSize: "0.8rem", color: "#64748b" }}>
                       {searchTerm ? "No orders match your search criteria." : "Get started by generating your first supplier purchase order."}
                     </p>
@@ -908,7 +908,7 @@ export default function PurchasesClient({
                         color: "#ffffff",
                         border: "none",
                         fontSize: "0.82rem",
-                        fontWeight: 700,
+                        fontWeight: 600,
                         cursor: "pointer"
                       }}
                     >
@@ -990,10 +990,10 @@ export default function PurchasesClient({
                   <ShoppingBag size={21} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0, color: "#0f172a" }}>
+                  <h2 style={{ fontSize: "1.15rem", fontWeight: 600, margin: 0, color: "#0f172a" }}>
                     Create Purchase Order
                   </h2>
-                  <p style={{ fontSize: "0.8rem", margin: "2px 0 0 0", color: "#64748b" }}>
+                  <p style={{ fontSize: "0.8rem", fontWeight: 400, margin: "2px 0 0 0", color: "#64748b" }}>
                     Issue an official procurement order to your registered supplier with line items and delivery terms.
                   </p>
                 </div>
@@ -1034,7 +1034,7 @@ export default function PurchasesClient({
             <form onSubmit={handleCreatePO} style={{ padding: "22px 26px", display: "flex", flexDirection: "column", gap: "18px" }}>
               {/* Row 1: Vendor Selection */}
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
                   <Building2 size={14} color="#4f46e5" />
                   <span>Vendor / Supplier</span>
                   <span style={{ color: "#ef4444" }}>*</span>
@@ -1057,7 +1057,7 @@ export default function PurchasesClient({
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                 {/* Expected Date */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
                     <Calendar size={14} color="#4f46e5" />
                     <span>Expected Delivery Date</span>
                   </label>
@@ -1107,7 +1107,7 @@ export default function PurchasesClient({
 
                 {/* Payment Terms */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b", display: "flex", alignItems: "center", gap: "4px" }}>
                     <CreditCard size={14} color="#4f46e5" />
                     <span>Payment Terms</span>
                   </label>
@@ -1123,7 +1123,7 @@ export default function PurchasesClient({
                         border: "1px solid #cbd5e1",
                         borderRadius: "10px",
                         fontSize: "0.85rem",
-                        fontWeight: 600,
+                        fontWeight: 500,
                         color: "#0f172a",
                         outline: "none",
                         appearance: "none",
@@ -1179,10 +1179,10 @@ export default function PurchasesClient({
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontWeight: 800, fontSize: "0.9rem", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ fontWeight: 600, fontSize: "0.9rem", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
                     <FileSpreadsheet size={16} color="#4f46e5" />
                     <span>Order Line Items</span>
-                    <span style={{ fontSize: "0.72rem", backgroundColor: "#e2e8f0", padding: "2px 8px", borderRadius: "10px", color: "#475569", fontWeight: 700 }}>
+                    <span style={{ fontSize: "0.72rem", backgroundColor: "#e2e8f0", padding: "2px 8px", borderRadius: "10px", color: "#475569", fontWeight: 500 }}>
                       {items.length} {items.length === 1 ? "Item" : "Items"}
                     </span>
                   </div>
@@ -1200,7 +1200,7 @@ export default function PurchasesClient({
                       color: "var(--accent-primary, #4f46e5)",
                       border: "1px solid #c7d2fe",
                       fontSize: "0.8rem",
-                      fontWeight: 700,
+                      fontWeight: 600,
                       cursor: "pointer",
                       transition: "all 0.15s ease",
                       boxShadow: "0 1px 2px rgba(79, 70, 229, 0.08)"
@@ -1244,7 +1244,7 @@ export default function PurchasesClient({
                       >
                         {/* Product Select */}
                         <div>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                             Product #{idx + 1}
                           </label>
                           <ModernSearchableSelect
@@ -1259,7 +1259,7 @@ export default function PurchasesClient({
 
                         {/* Quantity */}
                         <div>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "center" }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center" }}>
                             Qty
                           </label>
                           <input
@@ -1275,7 +1275,7 @@ export default function PurchasesClient({
                               borderRadius: "8px",
                               textAlign: "center",
                               fontSize: "0.88rem",
-                              fontWeight: 800,
+                              fontWeight: 600,
                               color: "#0f172a",
                               outline: "none",
                               boxSizing: "border-box",
@@ -1297,11 +1297,11 @@ export default function PurchasesClient({
 
                         {/* Unit Rate */}
                         <div>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "right" }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "right" }}>
                             Unit Rate (₹)
                           </label>
                           <div style={{ position: "relative" }}>
-                            <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 700, fontSize: "0.8rem", pointerEvents: "none" }}>₹</span>
+                            <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 600, fontSize: "0.8rem", pointerEvents: "none" }}>₹</span>
                             <input
                               type="number"
                               min="0"
@@ -1318,7 +1318,7 @@ export default function PurchasesClient({
                                 borderRadius: "8px",
                                 textAlign: "right",
                                 fontSize: "0.88rem",
-                                fontWeight: 800,
+                                fontWeight: 600,
                                 color: "#0f172a",
                                 outline: "none",
                                 boxSizing: "border-box",
@@ -1342,7 +1342,7 @@ export default function PurchasesClient({
 
                         {/* GST % */}
                         <div>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "center" }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center" }}>
                             GST %
                           </label>
                           <div style={{ position: "relative" }}>
@@ -1362,7 +1362,7 @@ export default function PurchasesClient({
                                 borderRadius: "8px",
                                 textAlign: "center",
                                 fontSize: "0.82rem",
-                                fontWeight: 700,
+                                fontWeight: 500,
                                 color: "#0f172a",
                                 outline: "none",
                                 appearance: "none",
@@ -1403,13 +1403,13 @@ export default function PurchasesClient({
 
                         {/* Line Total */}
                         <div style={{ textAlign: "right" }}>
-                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                          <label style={{ fontSize: "0.72rem", color: "#64748b", display: "block", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                             Total (₹)
                           </label>
                           <div
                             style={{
-                              fontWeight: 900,
-                              fontSize: "0.95rem",
+                              fontWeight: 700,
+                              fontSize: "0.92rem",
                               color: "#0f172a",
                               height: "38px",
                               display: "flex",
@@ -1467,7 +1467,7 @@ export default function PurchasesClient({
               <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: "16px" }}>
                 {/* Notes Textarea */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b" }}>
+                  <label style={{ fontSize: "0.82rem", fontWeight: 600, color: "#1e293b" }}>
                     Purchase Order Remarks & Instructions
                   </label>
                   <textarea
@@ -1519,13 +1519,13 @@ export default function PurchasesClient({
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.84rem", color: "#475569" }}>
                     <span>Taxable Subtotal</span>
-                    <span style={{ fontWeight: 700, color: "#1e293b", fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontWeight: 600, color: "#1e293b", fontVariantNumeric: "tabular-nums" }}>
                       ₹{createSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.84rem", color: "#475569" }}>
                     <span>Estimated Tax / GST</span>
-                    <span style={{ fontWeight: 700, color: "#2563eb", fontVariantNumeric: "tabular-nums" }}>
+                    <span style={{ fontWeight: 600, color: "#2563eb", fontVariantNumeric: "tabular-nums" }}>
                       + ₹{createTaxAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
@@ -1537,7 +1537,7 @@ export default function PurchasesClient({
                       paddingTop: "10px",
                       marginTop: "2px",
                       fontSize: "1.15rem",
-                      fontWeight: 900,
+                      fontWeight: 700,
                       color: "#1e3a8a"
                     }}
                   >
@@ -1558,7 +1558,7 @@ export default function PurchasesClient({
                     color: "#b91c1c",
                     borderRadius: "10px",
                     fontSize: "0.84rem",
-                    fontWeight: 600,
+                    fontWeight: 500,
                     display: "flex",
                     alignItems: "center",
                     gap: "8px"
@@ -1584,14 +1584,14 @@ export default function PurchasesClient({
                   type="button"
                   onClick={() => setCreateOpen(false)}
                   style={{
-                    padding: "10px 22px",
+                    padding: "9px 20px",
                     borderRadius: "10px",
                     border: "1px solid #cbd5e1",
                     backgroundColor: "#ffffff",
                     color: "#475569",
-                    fontWeight: 600,
+                    fontWeight: 500,
                     cursor: "pointer",
-                    fontSize: "0.88rem",
+                    fontSize: "0.86rem",
                     transition: "all 0.15s ease"
                   }}
                   onMouseEnter={(e) => {
@@ -1612,14 +1612,14 @@ export default function PurchasesClient({
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "8px",
-                    padding: "10px 24px",
+                    padding: "9px 22px",
                     borderRadius: "10px",
                     border: "none",
                     background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)",
                     color: "#ffffff",
-                    fontWeight: 700,
+                    fontWeight: 600,
                     cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "0.88rem",
+                    fontSize: "0.86rem",
                     boxShadow: "0 4px 14px rgba(79, 70, 229, 0.3)",
                     transition: "all 0.15s ease"
                   }}
@@ -1713,10 +1713,10 @@ export default function PurchasesClient({
                   <PackageCheck size={21} />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: "1.2rem", fontWeight: 800, margin: 0, color: "#0f172a" }}>
+                  <h2 style={{ fontSize: "1.15rem", fontWeight: 600, margin: 0, color: "#0f172a" }}>
                     Receive Inward Goods (GRN) — {selectedPO.poNumber}
                   </h2>
-                  <p style={{ fontSize: "0.8rem", margin: "2px 0 0 0", color: "#64748b" }}>
+                  <p style={{ fontSize: "0.8rem", fontWeight: 400, margin: "2px 0 0 0", color: "#64748b" }}>
                     Vendor: {selectedPO.vendor?.companyName}
                   </p>
                 </div>
@@ -1779,7 +1779,7 @@ export default function PurchasesClient({
                       }}
                     >
                       <div>
-                        <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem" }}>
+                        <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.86rem" }}>
                           {item.product?.name || "Product Item"}
                         </div>
                         <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "1px" }}>
@@ -1788,19 +1788,19 @@ export default function PurchasesClient({
                       </div>
 
                       <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>Ordered</div>
-                        <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "0.9rem" }}>{item.quantity}</div>
+                        <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Ordered</div>
+                        <div style={{ fontWeight: 650, color: "#0f172a", fontSize: "0.88rem" }}>{item.quantity}</div>
                       </div>
 
                       <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>Pending</div>
-                        <div style={{ fontWeight: 800, color: pendingQty > 0 ? "#d97706" : "#059669", fontSize: "0.95rem" }}>
+                        <div style={{ fontSize: "0.7rem", color: "#64748b", textTransform: "uppercase", fontWeight: 600 }}>Pending</div>
+                        <div style={{ fontWeight: 650, color: pendingQty > 0 ? "#d97706" : "#059669", fontSize: "0.88rem" }}>
                           {pendingQty}
                         </div>
                       </div>
 
                       <div>
-                        <label style={{ fontSize: "0.7rem", color: "#047857", fontWeight: 700, display: "block", marginBottom: "3px" }}>
+                        <label style={{ fontSize: "0.7rem", color: "#047857", fontWeight: 600, display: "block", marginBottom: "3px" }}>
                           Receive Now
                         </label>
                         <input
@@ -1814,8 +1814,8 @@ export default function PurchasesClient({
                             width: "100%",
                             height: "38px",
                             textAlign: "center",
-                            fontWeight: 800,
-                            fontSize: "0.95rem",
+                            fontWeight: 650,
+                            fontSize: "0.9rem",
                             backgroundColor: pendingQty <= 0 ? "#f1f5f9" : "#ffffff",
                             border: "1px solid #cbd5e1",
                             borderRadius: "8px",
@@ -1846,7 +1846,7 @@ export default function PurchasesClient({
               </div>
 
               {error && (
-                <div style={{ padding: "11px 16px", backgroundColor: "#fef2f2", color: "#b91c1c", borderRadius: "10px", fontSize: "0.84rem", fontWeight: 600 }}>
+                <div style={{ padding: "11px 16px", backgroundColor: "#fef2f2", color: "#b91c1c", borderRadius: "10px", fontSize: "0.84rem", fontWeight: 500 }}>
                   {error}
                 </div>
               )}
@@ -1857,12 +1857,12 @@ export default function PurchasesClient({
                   type="button"
                   onClick={() => setGrnOpen(null)}
                   style={{
-                    padding: "10px 20px",
+                    padding: "9px 18px",
                     borderRadius: "10px",
                     border: "1px solid #cbd5e1",
                     backgroundColor: "#ffffff",
                     color: "#475569",
-                    fontWeight: 600,
+                    fontWeight: 500,
                     cursor: "pointer",
                     fontSize: "0.86rem"
                   }}
@@ -1876,14 +1876,14 @@ export default function PurchasesClient({
                     display: "inline-flex",
                     alignItems: "center",
                     gap: "8px",
-                    padding: "10px 24px",
+                    padding: "9px 22px",
                     borderRadius: "10px",
                     border: "none",
                     background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                     color: "#ffffff",
-                    fontWeight: 700,
+                    fontWeight: 600,
                     cursor: loading ? "not-allowed" : "pointer",
-                    fontSize: "0.88rem",
+                    fontSize: "0.86rem",
                     boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)"
                   }}
                 >
@@ -1945,7 +1945,7 @@ export default function PurchasesClient({
             >
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <FileText size={20} color="#4f46e5" />
-                <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 800, color: "#0f172a" }}>
+                <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 600, color: "#0f172a" }}>
                   Purchase Order Voucher — {voucherPO.poNumber}
                 </h3>
               </div>
@@ -1973,8 +1973,8 @@ export default function PurchasesClient({
             <div style={{ padding: "26px", display: "flex", flexDirection: "column", gap: "18px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "2px solid #4f46e5", paddingBottom: "16px" }}>
                 <div>
-                  <div style={{ fontSize: "1.3rem", fontWeight: 900, color: "#4f46e5" }}>PURCHASE ORDER</div>
-                  <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0f172a", marginTop: "2px" }}>
+                  <div style={{ fontSize: "1.2rem", fontWeight: 700, color: "#4f46e5" }}>PURCHASE ORDER</div>
+                  <div style={{ fontSize: "0.86rem", fontWeight: 600, color: "#0f172a", marginTop: "2px" }}>
                     PO #: {voucherPO.poNumber}
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "#64748b" }}>
@@ -1985,8 +1985,8 @@ export default function PurchasesClient({
                   <div style={{ fontSize: "0.78rem", color: "#64748b" }}>Status</div>
                   <span
                     style={{
-                      fontSize: "0.82rem",
-                      fontWeight: 800,
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
                       color: voucherPO.status === "Received" ? "#059669" : "#4f46e5",
                       backgroundColor: voucherPO.status === "Received" ? "#ecfdf5" : "#eef2ff",
                       padding: "4px 12px",
@@ -2003,16 +2003,16 @@ export default function PurchasesClient({
               {/* Vendor Details */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", backgroundColor: "#f8fafc", padding: "16px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
                 <div>
-                  <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Supplier / Vendor</div>
-                  <div style={{ fontWeight: 800, color: "#0f172a", fontSize: "0.95rem", marginTop: "2px" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, textTransform: "uppercase" }}>Supplier / Vendor</div>
+                  <div style={{ fontWeight: 650, color: "#0f172a", fontSize: "0.92rem", marginTop: "2px" }}>
                     {voucherPO.vendor?.companyName}
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "#475569" }}>{voucherPO.vendor?.contactPerson || ""}</div>
                   <div style={{ fontSize: "0.78rem", color: "#64748b" }}>{voucherPO.vendor?.email || voucherPO.vendor?.mobile || ""}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Expected Delivery</div>
-                  <div style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.9rem", marginTop: "2px" }}>
+                  <div style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, textTransform: "uppercase" }}>Expected Delivery</div>
+                  <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.88rem", marginTop: "2px" }}>
                     {voucherPO.expectedDate ? new Date(voucherPO.expectedDate).toLocaleDateString("en-IN") : "Standard Delivery"}
                   </div>
                   {voucherPO.notes && (
@@ -2039,17 +2039,17 @@ export default function PurchasesClient({
                   {voucherPO.items?.map((it: any, i: number) => (
                     <tr key={it.id || i} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "10px 12px" }}>{i + 1}</td>
-                      <td style={{ padding: "10px 12px", fontWeight: 600, color: "#0f172a" }}>
+                      <td style={{ padding: "10px 12px", fontWeight: 500, color: "#0f172a" }}>
                         {it.product?.name || "Product"} {it.product?.sku ? `(${it.product.sku})` : ""}
                       </td>
-                      <td style={{ padding: "10px 12px", textAlign: "center", fontWeight: 700 }}>{it.quantity}</td>
-                      <td style={{ padding: "10px 12px", textAlign: "center", color: it.receivedQty >= it.quantity ? "#059669" : "#d97706", fontWeight: 700 }}>
+                      <td style={{ padding: "10px 12px", textAlign: "center", fontWeight: 600 }}>{it.quantity}</td>
+                      <td style={{ padding: "10px 12px", textAlign: "center", color: it.receivedQty >= it.quantity ? "#059669" : "#d97706", fontWeight: 600 }}>
                         {it.receivedQty || 0}
                       </td>
                       <td style={{ padding: "10px 12px", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                         ₹{it.rate?.toLocaleString("en-IN")}
                       </td>
-                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
+                      <td style={{ padding: "10px 12px", textAlign: "right", fontWeight: 650, fontVariantNumeric: "tabular-nums" }}>
                         ₹{(it.quantity * it.rate).toLocaleString("en-IN")}
                       </td>
                     </tr>
@@ -2061,7 +2061,7 @@ export default function PurchasesClient({
               <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "2px solid #4f46e5", paddingTop: "12px" }}>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Total Purchase Amount</div>
-                  <div style={{ fontSize: "1.45rem", fontWeight: 900, color: "#4f46e5" }}>
+                  <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "#4f46e5" }}>
                     ₹{voucherPO.totalValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </div>
                 </div>
@@ -2073,14 +2073,14 @@ export default function PurchasesClient({
               <button
                 type="button"
                 onClick={() => setVoucherPO(null)}
-                style={{ padding: "9px 18px", borderRadius: "9px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontWeight: 600, cursor: "pointer", fontSize: "0.86rem" }}
+                style={{ padding: "9px 18px", borderRadius: "9px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontWeight: 500, cursor: "pointer", fontSize: "0.86rem" }}
               >
                 Close
               </button>
               <button
                 type="button"
                 onClick={() => window.print()}
-                style={{ padding: "9px 22px", borderRadius: "9px", border: "none", background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)", color: "#ffffff", fontWeight: 700, cursor: "pointer", fontSize: "0.86rem", display: "inline-flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)" }}
+                style={{ padding: "9px 22px", borderRadius: "9px", border: "none", background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)", color: "#ffffff", fontWeight: 600, cursor: "pointer", fontSize: "0.86rem", display: "inline-flex", alignItems: "center", gap: "8px", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)" }}
               >
                 <Printer size={15} /> Print PO Voucher
               </button>
