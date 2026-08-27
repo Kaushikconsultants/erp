@@ -36,18 +36,30 @@ function LoginForm() {
     setLoading(true);
     setError("");
 
-    const result = await signIn("credentials", {
-      redirect: false,
-      email: email.trim().toLowerCase(),
-      password,
-    });
+    try {
+      const cleanEmail = email.trim().toLowerCase();
+      const callbackUrl = searchParams.get("callbackUrl") || "/";
 
-    if (result?.error) {
-      setError("Invalid email address or password. Please check your credentials.");
+      const result = await signIn("credentials", {
+        redirect: false,
+        email: cleanEmail,
+        password,
+        callbackUrl,
+      });
+
+      if (result?.error) {
+        setError("Invalid email address or password. Please check your credentials.");
+        setLoading(false);
+      } else if (result?.ok) {
+        // Full page redirect ensures new auth cookies are passed to server components immediately
+        window.location.href = result.url || callbackUrl;
+      } else {
+        setLoading(false);
+      }
+    } catch (err: any) {
+      console.error("Sign-in exception:", err);
+      setError("An unexpected error occurred. Please try again.");
       setLoading(false);
-    } else {
-      router.push("/");
-      router.refresh();
     }
   };
 

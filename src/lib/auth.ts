@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { ensureDefaultOrganization } from "@/lib/ensureDefaultOrg";
 import bcrypt from "bcryptjs";
 
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "4f8b9e2c1a7d6e5f3b2a1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f";
+
 export const authOptions: NextAuthOptions = {
+  secret: NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -65,23 +68,19 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async redirect({ url, baseUrl }) {
-      const isLocalhost = baseUrl.includes("localhost");
-      const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
-      const effectiveBaseUrl = (isLocalhost && vercelHost)
-        ? `https://${vercelHost}`
-        : baseUrl;
-
       // Allows relative callback URLs
       if (url.startsWith("/")) {
-        return `${effectiveBaseUrl}${url}`;
+        return `${baseUrl}${url}`;
       }
 
       try {
         const targetUrl = new URL(url);
         if (
           targetUrl.origin === baseUrl ||
-          targetUrl.origin === effectiveBaseUrl ||
-          targetUrl.hostname.endsWith(".vercel.app")
+          targetUrl.hostname.endsWith(".vercel.app") ||
+          targetUrl.hostname.endsWith(".railway.app") ||
+          targetUrl.hostname.endsWith("esponsports.com") ||
+          targetUrl.hostname.endsWith("espon.in")
         ) {
           return url;
         }
@@ -93,7 +92,7 @@ export const authOptions: NextAuthOptions = {
         return url;
       }
 
-      return effectiveBaseUrl;
+      return baseUrl;
     },
     async jwt({ token, user, trigger, session: updateSession }) {
       if (user) {
@@ -137,8 +136,10 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: "/login",
+    error: "/login",
   },
 };
