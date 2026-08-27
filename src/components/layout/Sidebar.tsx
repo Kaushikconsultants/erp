@@ -30,7 +30,10 @@ import {
   ChevronRight,
   Landmark,
   TrendingUp,
-  Clock
+  Clock,
+  Scale,
+  FolderTree,
+  FileText
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -94,6 +97,7 @@ const Sidebar = ({
     crm: false,
     sales: false,
     purchases: false,
+    accounting: false,
     hrms: false,
     reports: false
   });
@@ -107,8 +111,9 @@ const Sidebar = ({
 
   // Active state indicators
   const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups') || pathname.startsWith('/whatsapp');
-  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/eway-bills');
+  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/delivery-challans') || pathname.startsWith('/eway-bills');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
+  const isAccountingActive = pathname.startsWith('/accounting');
   const isHrmsActive = pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || (pathname.startsWith('/expenses') && !isPurchasesActive) || pathname.startsWith('/leaves') || pathname.startsWith('/hiring');
   const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs') || pathname.startsWith('/gst-filing');
 
@@ -268,6 +273,12 @@ const Sidebar = ({
                   </Link>
                 )}
 
+                <Link href="/delivery-challans" onClick={onClose} className={`category-sub-item ${isActive('/delivery-challans') ? 'active' : ''}`}>
+                  <Truck size={16} style={{ color: '#0284c7' }} />
+                  <span>Delivery Challans</span>
+                  <span style={{ marginLeft: 'auto', background: '#e0f2fe', color: '#0369a1', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>DC</span>
+                </Link>
+
                 {canAccess('eway_bills') && (
                   <Link href="/eway-bills" onClick={onClose} className={`category-sub-item ${isActive('/eway-bills') ? 'active' : ''}`}>
                     <ScrollText size={16} style={{ color: '#0d9488' }} />
@@ -345,7 +356,54 @@ const Sidebar = ({
           </div>
         )}
 
-        {/* 4. HRMS CATEGORY DROPDOWN */}
+        {/* 4. ACCOUNTING & LEDGERS CATEGORY DROPDOWN */}
+        <div className="nav-section">
+          <button
+            type="button"
+            onClick={() => toggleCategory('accounting')}
+            className={`category-dropdown-header ${openCategories.accounting ? 'is-open' : ''} ${isAccountingActive ? 'has-active-child' : ''}`}
+          >
+            <div className="category-header-title">
+              <Scale size={18} style={{ color: isAccountingActive ? '#4f46e5' : '#64748b' }} />
+              <span>ACCOUNTING & LEDGERS</span>
+            </div>
+            <div className="category-chevron">
+              <ChevronRight size={15} />
+            </div>
+          </button>
+
+          {openCategories.accounting && (
+            <div className="category-sub-list">
+              <Link href="/accounting/financial-statements" onClick={onClose} className={`category-sub-item ${isActive('/accounting/financial-statements') ? 'active' : ''}`}>
+                <Scale size={16} style={{ color: '#4f46e5' }} />
+                <span>Financial Statements</span>
+                <span style={{ marginLeft: 'auto', background: '#e0e7ff', color: '#4338ca', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>P&L/BS</span>
+              </Link>
+
+              <Link href="/accounting/chart-of-accounts" onClick={onClose} className={`category-sub-item ${isActive('/accounting/chart-of-accounts') ? 'active' : ''}`}>
+                <FolderTree size={16} />
+                <span>Chart of Accounts</span>
+              </Link>
+
+              <Link href="/accounting/vouchers" onClick={onClose} className={`category-sub-item ${isActive('/accounting/vouchers') ? 'active' : ''}`}>
+                <FileText size={16} style={{ color: '#8b5cf6' }} />
+                <span>Journal Vouchers (JV)</span>
+              </Link>
+
+              <Link href="/accounting/ageing" onClick={onClose} className={`category-sub-item ${isActive('/accounting/ageing') ? 'active' : ''}`}>
+                <Clock size={16} style={{ color: '#ea580c' }} />
+                <span>Ageing Analysis (0-90D)</span>
+              </Link>
+
+              <Link href="/accounting/bank-reconciliation" onClick={onClose} className={`category-sub-item ${isActive('/accounting/bank-reconciliation') ? 'active' : ''}`}>
+                <Landmark size={16} style={{ color: '#059669' }} />
+                <span>Bank Reconciliation (BRS)</span>
+              </Link>
+            </div>
+          )}
+        </div>
+
+        {/* 5. HRMS CATEGORY DROPDOWN */}
         {canAccess('hrms') && (
           <div className="nav-section">
             <button

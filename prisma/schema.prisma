@@ -76,6 +76,10 @@ model Organization {
   invoicesIssued        SubscriptionInvoice[]
   gstFilingReturns      GstFilingReturn[]
   eWayBills             EWayBill[]
+  accountGroups         AccountGroup[]
+  ledgerAccounts        LedgerAccount[]
+  journalEntries        JournalEntry[]
+  deliveryChallans      DeliveryChallan[]
 }
 
 model SubscriptionHistory {
@@ -328,6 +332,8 @@ model Customer {
   whatsAppConversations WhatsAppConversation[]
   whatsAppPaymentLinks  WhatsAppPaymentLink[]
   whatsAppFormSubmissions WhatsAppFormSubmission[]
+  deliveryChallans      DeliveryChallan[]
+  billAllocations       BillAllocation[]
 
   @@index([organizationId])
   @@index([assignedSalespersonId])
@@ -445,6 +451,9 @@ model Product {
   creditNoteItems CreditNoteItem[]
   billItems       BillItem[]
   vendorCreditItems VendorCreditItem[]
+  productUnits    ProductUnit[]
+  productBatches  ProductBatch[]
+  deliveryChallanItems DeliveryChallanItem[]
 
   @@index([organizationId])
   @@index([category])
@@ -892,6 +901,7 @@ model Warehouse {
   updatedAt       DateTime @updatedAt
 
   inventoryTransactions InventoryTransaction[]
+  productBatches        ProductBatch[]
 }
 
 model Vendor {
@@ -917,6 +927,7 @@ model Vendor {
   bills           Bill[]
   payments        VendorPayment[]
   vendorCredits   VendorCredit[]
+  deliveryChallans DeliveryChallan[]
 
   @@index([organizationId])
 }
@@ -986,6 +997,7 @@ model Bill {
   items            BillItem[]
   payments         VendorPayment[]
   vendorCredits    VendorCredit[]
+  billAllocations  BillAllocation[]
 
   @@index([organizationId])
   @@index([vendorId])
@@ -1029,6 +1041,8 @@ model VendorPayment {
   
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  billAllocations  BillAllocation[]
 
   @@index([vendorId])
   @@index([billId])
@@ -1103,6 +1117,7 @@ model Invoice {
 
   payments        Payment[]
   creditNotes     CreditNote[]
+  billAllocations BillAllocation[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -1265,6 +1280,8 @@ model Payment {
   recordedBy       String?   // Staff name who recorded payment
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  billAllocations  BillAllocation[]
 
   @@index([customerId])
   @@index([orderId])
@@ -1887,5 +1904,264 @@ model GstPortalLog {
   message         String
   createdAt       DateTime @default(now())
 }
+
+// ---------------------------------------------------------
+// Tally & Busy Double-Entry Accounting Core
+// ---------------------------------------------------------
+
+model AccountGroup {
+  id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  name            String   // e.g. "Current Assets", "Sundry Debtors", "Direct Expenses", "Duties & Taxes"
+  code            String?  // e.g. "CA", "SD", "DE", "DT"
+  nature          String   // "ASSET", "LIABILITY", "INCOME", "EXPENSE"
+  parentGroupId   String?
+  parentGroup     AccountGroup? @relation("GroupHierarchy", fields: [parentGroupId], references: [id])
+  subGroups       AccountGroup[] @relation("GroupHierarchy")
+  isStandard      Boolean  @default(true)
+  sequence        Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  ledgers         LedgerAccount[]
+
+  @@index([organizationId])
+  @@index([nature])
+}
+
+model LedgerAccount {
+  id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  name            String   // e.g. "HDFC Bank Current A/c", "Sales A/c", "Mohan Garments", "Printing & Stationery"
+  code            String?  @unique
+  accountGroupId  String
+  accountGroup    AccountGroup @relation(fields: [accountGroupId], references: [id])
+  
+  partyType       String?  // "CUSTOMER", "VENDOR", "BANK", "CASH", "TAX", "EXPENSE", "INCOME", "GENERAL"
+  partyId         String?  // References customerId or vendorId if applicable
+  
+  openingBalance  Float    @default(0)
+  openingType     String   @default("DEBIT") // "DEBIT" or "CREDIT"
+  currentBalance  Float    @default(0)
+  
+  bankAccountNumber String?
+  ifscCode          String?
+  gstin             String?
+  pan               String?
+  isSystem          Boolean  @default(false)
+  status            String   @default("Active") // Active, Inactive
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  journalLineItems    JournalLineItem[]
+  bankReconciliations BankReconciliation[]
+
+  @@index([organizationId])
+  @@index([accountGroupId])
+  @@index([partyType, partyId])
+}
+
+model JournalEntry {
+  id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  voucherNumber   String   @unique // e.g. JV-2026-0001, CONTRA-0001, RCPT-0001
+  voucherType     String   // "JOURNAL", "CONTRA", "PAYMENT", "RECEIPT", "SALES", "PURCHASE", "CREDIT_NOTE", "DEBIT_NOTE"
+  date            DateTime @default(now())
+  narration       String?
+  referenceNumber String?  // Cheque #, Inv #, UTR #
+  totalAmount     Float    @default(0)
+  
+  sourceDocType   String?  // "INVOICE", "PAYMENT", "BILL", "VENDOR_PAYMENT", "EXPENSE", "CREDIT_NOTE", "MANUAL"
+  sourceDocId     String?
+  
+  status          String   @default("POSTED") // "DRAFT", "POSTED", "CANCELLED"
+  isSystemGenerated Boolean @default(false)
+  createdBy       String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lines           JournalLineItem[]
+  bankReconciledItems BankStatementItem[]
+
+  @@index([organizationId])
+  @@index([voucherType])
+  @@index([date])
+}
+
+model JournalLineItem {
+  id              String        @id @default(uuid())
+  journalEntryId  String
+  journalEntry    JournalEntry  @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  ledgerAccountId String
+  ledgerAccount   LedgerAccount @relation(fields: [ledgerAccountId], references: [id])
+  
+  debit           Float         @default(0)
+  credit          Float         @default(0)
+  particulars     String?
+  
+  bankClearanceDate DateTime?
+  isReconciled      Boolean     @default(false)
+
+  @@index([journalEntryId])
+  @@index([ledgerAccountId])
+}
+
+model BillAllocation {
+  id               String    @id @default(uuid())
+  organizationId   String?
+  paymentId        String?
+  payment          Payment?  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId        String?
+  invoice          Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  billId           String?
+  bill             Bill?     @relation(fields: [billId], references: [id], onDelete: Cascade)
+  vendorPaymentId  String?
+  vendorPayment    VendorPayment? @relation(fields: [vendorPaymentId], references: [id], onDelete: Cascade)
+  
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id])
+  
+  allocatedAmount  Float
+  allocationType   String    @default("AGAINST_REF") // "AGAINST_REF", "ADVANCE", "ON_ACCOUNT", "NEW_REF"
+  notes            String?
+  createdAt        DateTime  @default(now())
+
+  @@index([invoiceId])
+  @@index([billId])
+  @@index([paymentId])
+  @@index([vendorPaymentId])
+}
+
+model BankReconciliation {
+  id                 String        @id @default(uuid())
+  organizationId     String?
+  ledgerAccountId    String
+  ledgerAccount      LedgerAccount @relation(fields: [ledgerAccountId], references: [id])
+  statementDate      DateTime      @default(now())
+  statementBalance   Float         @default(0)
+  bookBalance        Float         @default(0)
+  unreconciledAmount Float         @default(0)
+  reconciledAt       DateTime?
+  status             String        @default("DRAFT") // DRAFT, COMPLETED
+  notes              String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  items              BankStatementItem[]
+
+  @@index([ledgerAccountId])
+}
+
+model BankStatementItem {
+  id                 String             @id @default(uuid())
+  reconciliationId   String
+  reconciliation     BankReconciliation @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  transactionDate    DateTime
+  clearingDate       DateTime?
+  description        String
+  referenceNumber    String?
+  withdrawal         Float              @default(0) // Dr from bank
+  deposit            Float              @default(0) // Cr into bank
+  matchedJournalId   String?
+  matchedJournal     JournalEntry?      @relation(fields: [matchedJournalId], references: [id])
+  status             String             @default("UNMATCHED") // UNMATCHED, MATCHED, CLEARED
+}
+
+// ---------------------------------------------------------
+// Advanced Trade & Parameterized Inventory (Busy Parity)
+// ---------------------------------------------------------
+
+model ProductUnit {
+  id               String   @id @default(uuid())
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  baseUnit         String   // e.g. "PCS", "MTR", "KG"
+  alternateUnit    String   // e.g. "BOX", "CARTON", "ROLL"
+  conversionFactor Float    // e.g. 1 BOX = 12 PCS (factor: 12)
+  isDefaultBilling Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([productId])
+}
+
+model ProductBatch {
+  id            String    @id @default(uuid())
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batchNumber   String    // e.g. "LOT-2026-08A"
+  mfgDate       DateTime?
+  expiryDate    DateTime?
+  mrp           Float     @default(0)
+  costPrice     Float     @default(0)
+  stockQuantity Int       @default(0)
+  warehouseId   String?
+  warehouse     Warehouse? @relation(fields: [warehouseId], references: [id])
+  status        String    @default("ACTIVE") // ACTIVE, EXPIRED, DEPLETED
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([productId])
+  @@index([batchNumber])
+}
+
+model DeliveryChallan {
+  id               String    @id @default(uuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  challanNumber    String    @unique // e.g. DC-2026-0001
+  challanDate      DateTime  @default(now())
+  challanType      String    @default("JOB_WORK_OUT") // JOB_WORK_OUT, SAMPLE_OUT, BRANCH_TRANSFER, CONSIGNMENT, SALE_ON_APPROVAL
+  
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id])
+  vendorId         String?
+  vendor           Vendor?   @relation(fields: [vendorId], references: [id])
+  
+  fromWarehouse    String?
+  toWarehouse      String?
+  transporterName  String?
+  vehicleNumber    String?
+  lrNumber         String?
+  
+  totalQuantity    Float     @default(0)
+  totalValue       Float     @default(0)
+  status           String    @default("ISSUED") // ISSUED, IN_TRANSIT, RECEIVED, PARTIALLY_RETURNED, CLOSED, CONVERTED_TO_INVOICE
+  convertedInvoiceId String?
+  
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  items            DeliveryChallanItem[]
+
+  @@index([organizationId])
+  @@index([challanType])
+  @@index([status])
+}
+
+model DeliveryChallanItem {
+  id               String          @id @default(uuid())
+  challanId        String
+  challan          DeliveryChallan @relation(fields: [challanId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product         @relation(fields: [productId], references: [id])
+  
+  description      String?
+  hsnCode          String?         @default("6109")
+  quantity         Float           @default(1)
+  unit             String?         @default("pcs")
+  rate             Float           @default(0)
+  total            Float           @default(0)
+
+  @@index([challanId])
+  @@index([productId])
+}
+
 
 

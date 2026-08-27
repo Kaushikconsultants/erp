@@ -9,6 +9,7 @@ import EditProductModal from '@/components/ui/EditProductModal';
 import BarcodeLabelModal from '@/components/products/BarcodeLabelModal';
 import ArticleHistoryModal from '@/components/products/ArticleHistoryModal';
 import ProductCatalogModal from '@/components/products/ProductCatalogModal';
+import ProductMatrixModal from '@/components/inventory/ProductMatrixModal';
 import { deleteProduct } from '@/app/actions/productActions';
 
 interface Product {
@@ -43,6 +44,7 @@ export default function ProductListClient({ products, categories, categoriesData
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
+  const [showMatrixModal, setShowMatrixModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [printLabelProduct, setPrintLabelProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -225,6 +227,28 @@ export default function ProductListClient({ products, categories, categoriesData
                 >
                   <Scale size={15} color="#4f46e5" />
                   Manage Categories & Weights
+                </button>
+                <button
+                  onClick={() => setShowMatrixModal(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #c7d2fe',
+                    backgroundColor: '#eef2ff',
+                    color: '#4338ca',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(79, 70, 229, 0.08)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Apparel Size x Color Variant Generator (Busy Matrix Parity)"
+                >
+                  <Layers size={15} color="#4338ca" />
+                  + Size/Color Matrix
                 </button>
                 <AddProductButton categories={categories} />
               </>
@@ -711,6 +735,14 @@ export default function ProductListClient({ products, categories, categoriesData
             />
           </div>
         </div>
+      )}
+
+      {showMatrixModal && (
+        <ProductMatrixModal
+          isOpen={showMatrixModal}
+          onClose={() => setShowMatrixModal(false)}
+          categories={categories}
+        />
       )}
     </div>
   );

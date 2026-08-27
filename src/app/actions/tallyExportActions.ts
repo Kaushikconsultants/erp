@@ -203,3 +203,177 @@ export async function exportTallyCustomerMasters() {
     return { success: false, error: error.message || "Failed to export customer masters" };
   }
 }
+
+export async function exportTallyPurchaseBills(startDateStr?: string, endDateStr?: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, error: "Unauthorized" };
+
+    const organizationId = await getTenantOrgId();
+    const startDate = startDateStr ? new Date(startDateStr) : new Date(new Date().getFullYear(), 3, 1);
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    const bills = await prisma.bill.findMany({
+      where: {
+        organizationId,
+        billDate: { gte: startDate, lte: endDate }
+      },
+      include: {
+        vendor: true,
+        items: true
+      },
+      orderBy: { billDate: 'asc' }
+    });
+
+    const csvRows = [
+      [
+        "Voucher Date",
+        "Voucher Type",
+        "Voucher Number",
+        "Supplier Invoice #",
+        "Party Ledger Name",
+        "State",
+        "GSTIN / UIN",
+        "Item Description",
+        "HSN Code",
+        "Quantity",
+        "Rate",
+        "Taxable Amount",
+        "GST Rate (%)",
+        "Tax Amount (₹)",
+        "Total Voucher Amount",
+        "Payment Status",
+        "Narration"
+      ]
+    ];
+
+    bills.forEach(b => {
+      const bDate = new Date(b.billDate || b.createdAt).toLocaleDateString('en-GB');
+      const party = b.vendor?.companyName || 'Vendor';
+      const state = b.vendor?.state || 'Haryana';
+      const gstin = b.vendor?.gstNumber || 'URP';
+
+      if (b.items && b.items.length > 0) {
+        b.items.forEach(it => {
+          csvRows.push([
+            bDate,
+            "Purchase",
+            b.billNumber,
+            b.vendorBillNumber || "",
+            `"${party}"`,
+            state,
+            gstin,
+            `"${it.description || 'Raw Materials / Goods'}"`,
+            it.hsnCode || "6109",
+            String(it.quantity || 1),
+            String(it.rate || 0),
+            String(it.total || 0),
+            String(it.gstRate || 0),
+            String(it.taxAmount || 0),
+            String(b.totalAmount),
+            b.status,
+            `"Purchase Bill #${b.billNumber}"`
+          ]);
+        });
+      } else {
+        csvRows.push([
+          bDate,
+          "Purchase",
+          b.billNumber,
+          b.vendorBillNumber || "",
+          `"${party}"`,
+          state,
+          gstin,
+          "Purchase Account",
+          "6109",
+          "1",
+          String(b.subtotal),
+          String(b.subtotal),
+          "12",
+          String(b.taxAmount),
+          String(b.totalAmount),
+          b.status,
+          `"Purchase Bill #${b.billNumber}"`
+        ]);
+      }
+    });
+
+    const csvContent = csvRows.map(r => r.join(",")).join("\n");
+    return {
+      success: true,
+      csvContent,
+      filename: `Tally_Purchase_Bills_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.csv`,
+      totalCount: bills.length
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to export purchase bills" };
+  }
+}
+
+export async function exportTallyJournalVouchers(startDateStr?: string, endDateStr?: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, error: "Unauthorized" };
+
+    const organizationId = await getTenantOrgId();
+    const startDate = startDateStr ? new Date(startDateStr) : new Date(new Date().getFullYear(), 3, 1);
+    const endDate = endDateStr ? new Date(endDateStr) : new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    const vouchers = await prisma.journalEntry.findMany({
+      where: {
+        organizationId,
+        date: { gte: startDate, lte: endDate }
+      },
+      include: {
+        lines: {
+          include: { ledgerAccount: true }
+        }
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    const csvRows = [
+      [
+        "Voucher Date",
+        "Voucher Type",
+        "Voucher Number",
+        "Reference #",
+        "Ledger Name",
+        "Debit Amount (₹)",
+        "Credit Amount (₹)",
+        "Particulars",
+        "Narration"
+      ]
+    ];
+
+    vouchers.forEach(v => {
+      const vDate = new Date(v.date).toLocaleDateString('en-GB');
+      v.lines.forEach(l => {
+        csvRows.push([
+          vDate,
+          v.voucherType,
+          v.voucherNumber,
+          v.referenceNumber || "",
+          `"${l.ledgerAccount?.name || 'Ledger'}"`,
+          String(l.debit || 0),
+          String(l.credit || 0),
+          `"${l.particulars || ''}"`,
+          `"${(v.narration || '').replace(/"/g, '""')}"`
+        ]);
+      });
+    });
+
+    const csvContent = csvRows.map(r => r.join(",")).join("\n");
+    return {
+      success: true,
+      csvContent,
+      filename: `Tally_Journal_Vouchers_${startDate.toISOString().split('T')[0]}_${endDate.toISOString().split('T')[0]}.csv`,
+      totalCount: vouchers.length
+    };
+  } catch (error: any) {
+    return { success: false, error: error.message || "Failed to export journal vouchers" };
+  }
+}
+
