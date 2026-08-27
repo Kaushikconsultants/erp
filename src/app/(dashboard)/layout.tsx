@@ -4,6 +4,7 @@ import PresenceHeartbeat from '@/components/presence/PresenceHeartbeat';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getTenantContext } from '@/lib/tenant';
+import './dashboard.css';
 
 export default async function DashboardLayout({
   children,

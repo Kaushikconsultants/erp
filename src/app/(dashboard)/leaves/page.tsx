@@ -38,13 +38,21 @@ export default async function LeavesPage() {
       orderBy: { createdAt: 'desc' }
     });
 
-    return <AdminLeavePanel leaves={allLeaves} />;
+    return (
+      <div className="page-container" style={{ padding: '24px' }}>
+        <AdminLeavePanel leaves={allLeaves} />
+      </div>
+    );
   } else {
     const myLeaves = employee ? await prisma.leave.findMany({
       where: { employeeId: employee.id },
       orderBy: { createdAt: 'desc' }
     }) : [];
 
-    return <EmployeeLeavePanel employeeId={employee?.id || "default"} leaves={myLeaves} />;
+    return (
+      <div className="page-container" style={{ padding: '24px' }}>
+        <EmployeeLeavePanel employeeId={employee?.id || "default"} leaves={myLeaves} />
+      </div>
+    );
   }
 }
