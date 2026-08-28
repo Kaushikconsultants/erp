@@ -33,8 +33,10 @@ export async function getBills() {
             contactPerson: true,
             mobile: true,
             gstNumber: true,
+            address: true,
             city: true,
             state: true,
+            pincode: true,
             paymentTerms: true
           }
         },
@@ -100,6 +102,7 @@ export async function createBill(data: {
   paymentTerms?: string;
   notes?: string;
   discountAmount?: number;
+  allowDuplicate?: boolean;
   items: {
     productId?: string;
     description: string;
@@ -108,6 +111,8 @@ export async function createBill(data: {
     unit?: string;
     rate: number;
     gstRate: number;
+    taxAmount?: number;
+    total?: number;
   }[];
   autoRestock?: boolean;
 }) {
@@ -123,6 +128,26 @@ export async function createBill(data: {
 
     const organizationId = await getTenantOrgId();
 
+    // Check for duplicate bill number from the same vendor
+    if (data.vendorBillNumber && !data.allowDuplicate) {
+      const existing = await prisma.bill.findFirst({
+        where: {
+          organizationId,
+          vendorId: data.vendorId,
+          vendorBillNumber: { equals: data.vendorBillNumber.trim() }
+        },
+        include: {
+          vendor: { select: { companyName: true } }
+        }
+      });
+
+      if (existing) {
+        return {
+          error: `Duplicate Bill: Bill #${existing.billNumber} already exists for ${existing.vendor?.companyName || 'this vendor'} with Vendor Invoice #${data.vendorBillNumber}.`
+        };
+      }
+    }
+
     // Generate unique Bill Number e.g. BILL-0001
     const count = await prisma.bill.count({ where: { organizationId } });
     const billNumber = `BILL-${String(count + 1).padStart(4, '0')}`;
@@ -133,8 +158,8 @@ export async function createBill(data: {
 
     const processedItems = data.items.map(it => {
       const lineSubtotal = it.quantity * it.rate;
-      const lineTax = (lineSubtotal * (it.gstRate || 0)) / 100;
-      const lineTotal = lineSubtotal + lineTax;
+      const lineTax = it.taxAmount !== undefined ? it.taxAmount : (lineSubtotal * (it.gstRate || 0)) / 100;
+      const lineTotal = it.total !== undefined ? it.total : lineSubtotal + lineTax;
       subtotal += lineSubtotal;
       taxAmount += lineTax;
       return {
@@ -159,7 +184,7 @@ export async function createBill(data: {
         data: {
           organizationId,
           billNumber,
-          vendorBillNumber: data.vendorBillNumber || null,
+          vendorBillNumber: data.vendorBillNumber?.trim() || null,
           vendorId: data.vendorId,
           purchaseOrderId: data.purchaseOrderId || null,
           billDate: data.billDate ? new Date(data.billDate) : new Date(),
@@ -210,10 +235,92 @@ export async function createBill(data: {
     revalidatePath("/vendors");
     revalidatePath("/purchases");
     revalidatePath("/products");
-    return { success: true, bill };
+    return { success: true, bill: JSON.parse(JSON.stringify(bill)) };
   } catch (error: any) {
     console.error("Failed to create bill:", error);
     return { error: "Failed to create bill: " + error.message };
+  }
+}
+
+export async function deleteBill(id: string) {
+  if (!await canManagePurchases()) return { error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+    const bill = await prisma.bill.findFirst({
+      where: { id, organizationId },
+      include: {
+        items: true,
+        payments: true,
+        vendorCredits: true,
+        billAllocations: true
+      }
+    });
+
+    if (!bill) return { error: "Bill not found." };
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Reverse stock quantities if products were linked
+      for (const item of bill.items) {
+        if (item.productId) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stockQuantity: { decrement: item.quantity } }
+          });
+
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: item.productId,
+              type: 'OUT',
+              quantity: item.quantity,
+              reference: `REV-${bill.billNumber}`,
+              notes: `Stock reversed due to deletion of Bill ${bill.billNumber}`
+            }
+          });
+        }
+      }
+
+      // 2. Delete bill allocations if any
+      if (bill.billAllocations && bill.billAllocations.length > 0) {
+        await tx.billAllocation.deleteMany({
+          where: { billId: id }
+        });
+      }
+
+      // 3. Delete payments associated with this bill
+      if (bill.payments && bill.payments.length > 0) {
+        await tx.vendorPayment.deleteMany({
+          where: { billId: id }
+        });
+      }
+
+      // 4. Delete vendor credits linked to this bill
+      if (bill.vendorCredits && bill.vendorCredits.length > 0) {
+        await tx.vendorCredit.deleteMany({
+          where: { billId: id }
+        });
+      }
+
+      // 5. Delete bill items
+      await tx.billItem.deleteMany({
+        where: { billId: id }
+      });
+
+      // 6. Delete the bill itself
+      await tx.bill.delete({
+        where: { id }
+      });
+    });
+
+    revalidatePath("/bills");
+    revalidatePath("/vendors");
+    revalidatePath("/purchases");
+    revalidatePath("/accounting");
+    revalidatePath("/products");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to delete bill:", error);
+    return { error: "Failed to delete bill: " + error.message };
   }
 }
 

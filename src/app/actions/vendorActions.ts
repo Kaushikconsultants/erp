@@ -148,7 +148,26 @@ export async function quickCreateVendorFromScan(data: {
     });
 
     if (existing) {
-      return { success: true, vendor: existing, existed: true };
+      // If the vendor already exists, update missing address, contact, or GST details
+      const updateData: any = {};
+      if (!existing.address && data.address) updateData.address = data.address.trim();
+      if (!existing.city && data.city) updateData.city = data.city.trim();
+      if (!existing.state && data.state) updateData.state = data.state.trim();
+      if (!existing.pincode && data.pincode) updateData.pincode = data.pincode.trim();
+      if (!existing.mobile && data.mobile) updateData.mobile = data.mobile.trim();
+      if (!existing.gstNumber && data.gstNumber) updateData.gstNumber = data.gstNumber.trim();
+      if (!existing.pan && data.pan) updateData.pan = data.pan.trim();
+
+      let updatedVendor = existing;
+      if (Object.keys(updateData).length > 0) {
+        updatedVendor = await prisma.vendor.update({
+          where: { id: existing.id },
+          data: updateData
+        });
+        revalidatePath("/vendors");
+        revalidatePath("/bills");
+      }
+      return { success: true, vendor: updatedVendor, existed: true };
     }
 
     const vendor = await prisma.vendor.create({

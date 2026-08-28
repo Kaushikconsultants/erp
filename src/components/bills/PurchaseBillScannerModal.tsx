@@ -17,7 +17,13 @@ import {
   ArrowRight,
   UserPlus,
   Check,
-  Edit2
+  Edit2,
+  Download,
+  Printer,
+  ShieldAlert,
+  MapPin,
+  Phone,
+  Hash
 } from "lucide-react";
 import { scanPurchaseBillWithAI, ExtractedBillData, ExtractedBillItem } from "@/app/actions/billScannerActions";
 import { quickCreateVendorFromScan } from "@/app/actions/vendorActions";
@@ -29,8 +35,10 @@ interface VendorOption {
   contactPerson?: string | null;
   mobile?: string | null;
   gstNumber?: string | null;
+  address?: string | null;
   city?: string | null;
   state?: string | null;
+  pincode?: string | null;
   paymentTerms?: string | null;
 }
 
@@ -92,6 +100,7 @@ export default function PurchaseBillScannerModal({
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<ExtractedBillItem[]>([]);
   const [isCreatingDirectly, setIsCreatingDirectly] = useState(false);
+  const [allowDuplicateBypass, setAllowDuplicateBypass] = useState(false);
 
   // Quick Add Vendor State
   const [isAddingVendor, setIsAddingVendor] = useState(false);
@@ -99,9 +108,10 @@ export default function PurchaseBillScannerModal({
   const [customVendorName, setCustomVendorName] = useState("");
   const [customVendorGst, setCustomVendorGst] = useState("");
   const [customVendorPhone, setCustomVendorPhone] = useState("");
+  const [customVendorAddress, setCustomVendorAddress] = useState("");
   const [customVendorCity, setCustomVendorCity] = useState("");
   const [customVendorState, setCustomVendorState] = useState("");
-  const [customVendorAddress, setCustomVendorAddress] = useState("");
+  const [customVendorPincode, setCustomVendorPincode] = useState("");
   const [vendorCreatedSuccess, setVendorCreatedSuccess] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +120,7 @@ export default function PurchaseBillScannerModal({
     setError(null);
     setFile(selectedFile);
     setVendorCreatedSuccess(null);
+    setAllowDuplicateBypass(false);
 
     const isPdfFile = selectedFile.type === "application/pdf" || selectedFile.name.endsWith(".pdf");
     setIsPdf(isPdfFile);
@@ -131,9 +142,9 @@ export default function PurchaseBillScannerModal({
 
     const stepInterval = setInterval(() => {
       setScanStep(prev => {
-        if (prev.includes("Uploading")) return "Deciphering vendor letterhead, GSTIN & bill header...";
+        if (prev.includes("Uploading")) return "Deciphering vendor letterhead, address, GSTIN & bill header...";
         if (prev.includes("Deciphering")) return "Reading handwritten articles, quantities & rates...";
-        if (prev.includes("Reading")) return "Extracting GST tax slabs (CGST / SGST) & round off...";
+        if (prev.includes("Reading")) return "Extracting GST tax slabs (CGST / SGST) & checking duplicate history...";
         return "Calculating totals and verifying vendor matching...";
       });
     }, 1200);
@@ -146,13 +157,14 @@ export default function PurchaseBillScannerModal({
         const d = res.data;
         setExtractedData(d);
 
-        // Pre-fill vendor fields for quick registration
+        // Pre-fill vendor fields for quick registration including full address
         setCustomVendorName(d.vendorName || "");
         setCustomVendorGst(d.vendorGstNumber || "");
         setCustomVendorPhone(d.vendorPhone || "");
+        setCustomVendorAddress(d.vendorAddress || "");
         setCustomVendorCity(d.vendorCity || "");
         setCustomVendorState(d.vendorState || "");
-        setCustomVendorAddress(d.vendorAddress || "");
+        setCustomVendorPincode(d.vendorPincode || "");
 
         // Set matched vendor or leave unselected to allow 1-click registration
         setSelectedVendorId(d.matchedVendorId || "");
@@ -161,7 +173,7 @@ export default function PurchaseBillScannerModal({
         setBillDate(d.billDate || new Date().toISOString().split("T")[0]);
         setDueDate(d.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0]);
         setPaymentTerms(d.paymentTerms || "Net 30 Days");
-        setNotes(d.notes || `AI Scanned: Bill #${d.vendorBillNumber || '181'} from ${d.vendorName}`);
+        setNotes(d.notes || `AI Scanned: Bill #${d.vendorBillNumber || ''} from ${d.vendorName}`);
         setItems(d.items || []);
         setScanning(false);
       } else {
@@ -189,9 +201,10 @@ export default function PurchaseBillScannerModal({
         companyName: nameToUse,
         gstNumber: customVendorGst.trim() || extractedData?.vendorGstNumber || undefined,
         mobile: customVendorPhone.trim() || extractedData?.vendorPhone || undefined,
+        address: customVendorAddress.trim() || extractedData?.vendorAddress || undefined,
         city: customVendorCity.trim() || extractedData?.vendorCity || undefined,
         state: customVendorState.trim() || extractedData?.vendorState || undefined,
-        address: customVendorAddress.trim() || extractedData?.vendorAddress || undefined,
+        pincode: customVendorPincode.trim() || extractedData?.vendorPincode || undefined,
         paymentTerms: paymentTerms || "Net 30 Days"
       });
 
@@ -203,20 +216,24 @@ export default function PurchaseBillScannerModal({
           companyName: res.vendor.companyName,
           gstNumber: res.vendor.gstNumber,
           mobile: res.vendor.mobile,
+          address: res.vendor.address,
           city: res.vendor.city,
           state: res.vendor.state,
+          pincode: res.vendor.pincode,
           paymentTerms: res.vendor.paymentTerms
         };
 
         // Add to local vendor list if not already present
         setVendorList(prev => {
-          if (prev.some(v => v.id === newVendor.id)) return prev;
+          if (prev.some(v => v.id === newVendor.id)) {
+            return prev.map(v => v.id === newVendor.id ? newVendor : v);
+          }
           return [newVendor, ...prev];
         });
 
         // Auto select newly created vendor
         setSelectedVendorId(newVendor.id);
-        setVendorCreatedSuccess(`Vendor "${newVendor.companyName}" successfully registered & linked!`);
+        setVendorCreatedSuccess(`Vendor "${newVendor.companyName}" successfully saved & linked!`);
         setShowVendorEditForm(false);
       } else {
         alert("Failed to create vendor: " + (res.error || "Unknown error"));
@@ -268,6 +285,163 @@ export default function PurchaseBillScannerModal({
     }
   };
 
+  // Download uploaded original file
+  const handleDownloadOriginal = () => {
+    if (!file && !filePreview) return;
+    if (file) {
+      const url = URL.createObjectURL(file);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name || "scanned_bill_original.jpg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (filePreview) {
+      const a = document.createElement("a");
+      a.href = filePreview;
+      a.download = "scanned_bill_original.jpg";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  };
+
+  // Print/Download styled Bill Voucher PDF
+  const handlePrintVoucher = () => {
+    const currentVendor = vendorList.find(v => v.id === selectedVendorId);
+    const vendorNameDisplay = currentVendor?.companyName || customVendorName || extractedData?.vendorName || "Vendor";
+    const vendorGstDisplay = currentVendor?.gstNumber || customVendorGst || extractedData?.vendorGstNumber || "-";
+    const vendorAddressDisplay = currentVendor?.address || customVendorAddress || extractedData?.vendorAddress || "";
+    const vendorCityDisplay = currentVendor?.city || customVendorCity || extractedData?.vendorCity || "";
+    const vendorStateDisplay = currentVendor?.state || customVendorState || extractedData?.vendorState || "";
+    const vendorPinDisplay = currentVendor?.pincode || customVendorPincode || extractedData?.vendorPincode || "";
+    const vendorPhoneDisplay = currentVendor?.mobile || customVendorPhone || extractedData?.vendorPhone || "-";
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Please allow popups to download or print the bill voucher.");
+      return;
+    }
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Purchase Bill Voucher - ${vendorBillNumber || 'Draft'}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 24px; color: #0f172a; }
+    .header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .title { font-size: 20px; font-weight: 800; text-transform: uppercase; color: #1e293b; margin: 0; }
+    .badge { background: #ecfdf5; color: #059669; font-weight: 700; font-size: 11px; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; }
+    .card-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th { background: #f1f5f9; padding: 8px 10px; text-align: left; font-size: 12px; font-weight: 700; border-bottom: 1px solid #cbd5e1; }
+    td { padding: 8px 10px; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .totals { width: 280px; margin-left: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+    .total-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+    .grand-total { border-top: 1.5px solid #0f172a; padding-top: 8px; font-size: 15px; font-weight: 800; color: #059669; }
+    .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 16px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="title">PURCHASE BILL VOUCHER</h1>
+      <div style="font-size: 12px; color: #64748b; margin-top: 2px;">AI Verified Document & Stock Inward Record</div>
+      <span class="badge">POSTED & RECORDED</span>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 14px; font-weight: 700; color: #2563eb;">BILL REF: ${vendorBillNumber || 'N/A'}</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Date: ${billDate || new Date().toISOString().split("T")[0]}</div>
+      <div style="font-size: 12px; color: #64748b;">Due Date: ${dueDate || 'On Receipt'}</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">SUPPLIER / VENDOR DETAILS</div>
+      <div style="font-size: 14px; font-weight: 800; color: #0f172a;">${vendorNameDisplay}</div>
+      ${vendorAddressDisplay ? `<div style="font-size: 12px; color: #334155; margin-top: 2px;">${vendorAddressDisplay}</div>` : ''}
+      <div style="font-size: 12px; color: #334155;">${vendorCityDisplay} ${vendorStateDisplay ? ', ' + vendorStateDisplay : ''} ${vendorPinDisplay ? '- ' + vendorPinDisplay : ''}</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 4px;">GSTIN: <strong style="color: #0f172a;">${vendorGstDisplay}</strong></div>
+      <div style="font-size: 12px; color: #64748b;">Phone: <strong>${vendorPhoneDisplay}</strong></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">BILLED TO (BUYER)</div>
+      <div style="font-size: 14px; font-weight: 800; color: #0f172a;">ESPON CLOTHING PVT LTD</div>
+      <div style="font-size: 12px; color: #334155; margin-top: 2px;">Garment Manufacturing & Apparel Hub</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Terms: <strong>${paymentTerms}</strong></div>
+      <div style="font-size: 12px; color: #64748b;">Notes: <strong>${notes || 'AI Verified Purchase'}</strong></div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Description / Goods</th>
+        <th class="text-center">HSN</th>
+        <th class="text-center">Qty</th>
+        <th class="text-right">Rate (₹)</th>
+        <th class="text-center">GST %</th>
+        <th class="text-right">Tax (₹)</th>
+        <th class="text-right">Total (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${items.map((it, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td style="font-weight: 600;">${it.description}</td>
+          <td class="text-center">${it.hsnCode || '-'}</td>
+          <td class="text-center" style="font-weight: 700;">${it.quantity} ${it.unit}</td>
+          <td class="text-right">₹${it.rate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td class="text-center">${it.gstRate}%</td>
+          <td class="text-right">₹${it.taxAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td class="text-right" style="font-weight: 700;">₹${it.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="total-row">
+      <span style="color: #64748b;">Taxable Subtotal:</span>
+      <strong style="color: #0f172a;">₹${computedSubtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+    </div>
+    <div class="total-row">
+      <span style="color: #64748b;">Total GST Tax:</span>
+      <strong style="color: #0f172a;">₹${computedTotalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+    </div>
+    <div class="total-row grand-total">
+      <span>Grand Total:</span>
+      <span>₹${computedGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>Prepared by: System ERP / AI Inward Agent</div>
+    <div>Authorized Signatory: _________________________</div>
+  </div>
+
+  <script>
+    window.onload = function() { window.print(); }
+  </script>
+</body>
+</html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   // Compute live financial totals
   const computedSubtotal = items.reduce((acc, it) => acc + (it.quantity * it.rate), 0);
   const computedTotalTax = items.reduce((acc, it) => acc + it.taxAmount, 0);
@@ -276,6 +450,11 @@ export default function PurchaseBillScannerModal({
   const handleApply = () => {
     if (!selectedVendorId) {
       alert("Please select or register the vendor first.");
+      return;
+    }
+
+    if (extractedData?.isDuplicate && !allowDuplicateBypass) {
+      alert("This bill is already recorded as " + extractedData.existingBill?.billNumber + ". Please check the duplicate bypass box if you intentionally want to create it again.");
       return;
     }
 
@@ -310,6 +489,10 @@ export default function PurchaseBillScannerModal({
       alert("Please provide the Vendor Bill/Invoice number.");
       return;
     }
+    if (extractedData?.isDuplicate && !allowDuplicateBypass) {
+      alert("Duplicate Bill Blocked: A bill with Vendor Invoice #" + vendorBillNumber + " is already in the database (" + extractedData.existingBill?.billNumber + "). Check the bypass box below if you want to proceed anyway.");
+      return;
+    }
     if (items.some(it => !it.description || it.quantity <= 0 || it.rate < 0)) {
       alert("Please ensure all line items have a valid description, quantity, and rate.");
       return;
@@ -326,6 +509,7 @@ export default function PurchaseBillScannerModal({
         paymentTerms,
         notes: notes || "AI Scanned Purchase Bill",
         autoRestock: true,
+        allowDuplicate: allowDuplicateBypass,
         items: items.map(it => ({
           productId: it.matchedProductId,
           description: it.description,
@@ -342,7 +526,7 @@ export default function PurchaseBillScannerModal({
       setIsCreatingDirectly(false);
 
       if (res.error) {
-        alert("Error creating bill: " + res.error);
+        alert("Error: " + res.error);
       } else {
         alert("Purchase Bill created and posted to ledgers successfully!");
         if (onBillCreatedSuccess) onBillCreatedSuccess();
@@ -354,6 +538,8 @@ export default function PurchaseBillScannerModal({
       alert("Failed to create bill: " + err.message);
     }
   };
+
+  const currentMatchedVendor = vendorList.find(v => v.id === selectedVendorId);
 
   return (
     <div
@@ -418,7 +604,7 @@ export default function PurchaseBillScannerModal({
                 AI Purchase Bill & Handwritten Invoice Scanner
               </h3>
               <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#64748b" }}>
-                Instant multimodal extraction from PDF invoices, camera photos & handwritten mandi slips
+                Instant extraction of complete vendor address, GSTIN, handwritten lines, and duplicate detection
               </p>
             </div>
           </div>
@@ -473,7 +659,7 @@ export default function PurchaseBillScannerModal({
                   Upload Supplier Bill, PDF, or Photo
                 </h4>
                 <p style={{ margin: "0 0 16px", fontSize: "0.82rem", color: "#64748b" }}>
-                  Supports digital tax invoices, camera photos, and handwritten wholesale slips
+                  Extracts complete vendor details, address, line items, and detects duplicate invoices
                 </p>
 
                 <button
@@ -521,18 +707,40 @@ export default function PurchaseBillScannerModal({
           {extractedData && (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: "22px", alignItems: "flex-start" }}>
               
-              {/* LEFT: LIVE DOCUMENT PREVIEW */}
+              {/* LEFT: LIVE DOCUMENT PREVIEW & ATTACHMENT ACTIONS */}
               <div style={{ backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#334155" }}>
                     Scanned Document Preview
                   </span>
-                  <span style={{ padding: "3px 8px", borderRadius: "4px", backgroundColor: "#dcfce7", color: "#166534", fontSize: "0.72rem", fontWeight: 700 }}>
-                    {extractedData.confidenceScore}% Confidence
-                  </span>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    <button
+                      type="button"
+                      onClick={handleDownloadOriginal}
+                      title="Download uploaded original image / PDF"
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "5px",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #cbd5e1",
+                        color: "#334155",
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      <Download size={12} /> Download Original
+                    </button>
+                    <span style={{ padding: "3px 8px", borderRadius: "4px", backgroundColor: "#dcfce7", color: "#166534", fontSize: "0.72rem", fontWeight: 700 }}>
+                      {extractedData.confidenceScore}% Confidence
+                    </span>
+                  </div>
                 </div>
 
-                <div style={{ height: "540px", overflow: "auto", backgroundColor: "#0f172a", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ height: "520px", overflow: "auto", backgroundColor: "#0f172a", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   {isPdf && filePreview ? (
                     <iframe src={filePreview} style={{ width: "100%", height: "100%", border: "none" }} title="PDF Bill Preview" />
                   ) : filePreview ? (
@@ -550,6 +758,7 @@ export default function PurchaseBillScannerModal({
                       setExtractedData(null);
                       setFile(null);
                       setFilePreview(null);
+                      setAllowDuplicateBypass(false);
                     }}
                     style={{
                       background: "none",
@@ -574,7 +783,48 @@ export default function PurchaseBillScannerModal({
               {/* RIGHT: EDITABLE BILL & VENDOR FORM */}
               <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                 
-                {/* VENDOR SELECTION & QUICK REGISTRATION */}
+                {/* DUPLICATE BILL WARNING BANNER */}
+                {extractedData.isDuplicate && (
+                  <div
+                    style={{
+                      backgroundColor: "#fef2f2",
+                      border: "1.5px solid #f87171",
+                      borderRadius: "10px",
+                      padding: "12px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                      boxShadow: "0 2px 6px rgba(239, 68, 68, 0.1)"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                      <ShieldAlert size={22} color="#dc2626" style={{ flexShrink: 0, marginTop: "2px" }} />
+                      <div>
+                        <div style={{ fontSize: "0.86rem", fontWeight: 800, color: "#991b1b" }}>
+                          🚨 DUPLICATE BILL DETECTED: Bill #{extractedData.existingBill?.billNumber} Already Exists!
+                        </div>
+                        <div style={{ fontSize: "0.76rem", color: "#7f1d1d", marginTop: "2px" }}>
+                          This Vendor Invoice <strong>#{extractedData.vendorBillNumber}</strong> from <strong>{extractedData.existingBill?.vendorName}</strong> was already saved on <strong>{extractedData.existingBill?.billDate}</strong> for <strong>₹{extractedData.existingBill?.totalAmount.toLocaleString('en-IN')}</strong> (Status: {extractedData.existingBill?.status}).
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "2px", borderTop: "1px dashed #fca5a5", paddingTop: "8px" }}>
+                      <input
+                        type="checkbox"
+                        id="bypassDuplicate"
+                        checked={allowDuplicateBypass}
+                        onChange={e => setAllowDuplicateBypass(e.target.checked)}
+                        style={{ width: "15px", height: "15px", cursor: "pointer" }}
+                      />
+                      <label htmlFor="bypassDuplicate" style={{ fontSize: "0.75rem", fontWeight: 700, color: "#991b1b", cursor: "pointer" }}>
+                        Allow duplicate entry (I intentionally want to create a second copy of this bill)
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* VENDOR SELECTION & COMPLETE ADDRESS CARD */}
                 <div>
                   <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "12px" }}>
                     <div>
@@ -634,54 +884,67 @@ export default function PurchaseBillScannerModal({
                     </div>
                   </div>
 
-                  {/* QUICK ADD VENDOR BANNER (If vendor not in DB or unselected) */}
-                  {!selectedVendorId && extractedData.vendorName && (
-                    <div
-                      style={{
-                        marginTop: "10px",
-                        backgroundColor: "#fffbeb",
-                        border: "1.5px solid #fde68a",
-                        borderRadius: "10px",
-                        padding: "12px 14px",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                        boxShadow: "0 2px 4px rgba(245, 158, 11, 0.05)"
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
-                        <div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span style={{ fontSize: "0.82rem", color: "#92400e", fontWeight: 800 }}>
-                              ✨ Scanned New Vendor: &ldquo;{customVendorName || extractedData.vendorName}&rdquo;
-                            </span>
-                          </div>
-                          <span style={{ fontSize: "0.74rem", color: "#78350f", marginTop: "2px", display: "block" }}>
-                            GSTIN: <strong>{customVendorGst || extractedData.vendorGstNumber || "N/A"}</strong> • Phone: <strong>{customVendorPhone || extractedData.vendorPhone || "N/A"}</strong> • City: <strong>{customVendorCity || extractedData.vendorCity || "N/A"}</strong>
+                  {/* VENDOR ADDRESS DETAILS BADGE / CARD */}
+                  <div
+                    style={{
+                      marginTop: "10px",
+                      backgroundColor: selectedVendorId ? "#f0fdf4" : "#fffbeb",
+                      border: `1.5px solid ${selectedVendorId ? '#bbf7d0' : '#fde68a'}`,
+                      borderRadius: "10px",
+                      padding: "12px 14px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                      boxShadow: "0 2px 4px rgba(0, 0, 0, 0.02)"
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px" }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ fontSize: "0.84rem", color: selectedVendorId ? "#166534" : "#92400e", fontWeight: 800 }}>
+                            {selectedVendorId ? `🏢 Linked Vendor: ${currentMatchedVendor?.companyName}` : `✨ Scanned Supplier: "${customVendorName || extractedData.vendorName}"`}
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                          <button
-                            type="button"
-                            onClick={() => setShowVendorEditForm(!showVendorEditForm)}
-                            style={{
-                              padding: "6px 12px",
-                              borderRadius: "7px",
-                              border: "1px solid #fcd34d",
-                              backgroundColor: "#ffffff",
-                              color: "#92400e",
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            <Edit2 size={13} /> {showVendorEditForm ? "Hide Details" : "Edit Details"}
-                          </button>
+                        {/* Full Vendor Address Line */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.75rem", color: selectedVendorId ? "#14532d" : "#78350f", marginTop: "3px" }}>
+                          <MapPin size={13} style={{ flexShrink: 0 }} />
+                          <span>
+                            {currentMatchedVendor?.address || customVendorAddress || extractedData.vendorAddress || "Address not provided"}
+                            {` • ${currentMatchedVendor?.city || customVendorCity || extractedData.vendorCity || ''}`}
+                            {` ${currentMatchedVendor?.state || customVendorState || extractedData.vendorState || ''}`}
+                            {` ${currentMatchedVendor?.pincode || customVendorPincode || extractedData.vendorPincode ? `(${currentMatchedVendor?.pincode || customVendorPincode || extractedData.vendorPincode})` : ''}`}
+                          </span>
+                        </div>
 
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.74rem", color: selectedVendorId ? "#14532d" : "#78350f", marginTop: "2px" }}>
+                          <span>GSTIN: <strong>{currentMatchedVendor?.gstNumber || customVendorGst || extractedData.vendorGstNumber || "Unregistered"}</strong></span>
+                          <span>Phone: <strong>{currentMatchedVendor?.mobile || customVendorPhone || extractedData.vendorPhone || "N/A"}</strong></span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowVendorEditForm(!showVendorEditForm)}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: "7px",
+                            border: `1px solid ${selectedVendorId ? '#86efac' : '#fcd34d'}`,
+                            backgroundColor: "#ffffff",
+                            color: selectedVendorId ? "#166534" : "#92400e",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <Edit2 size={13} /> {showVendorEditForm ? "Hide Details" : "Edit Address & Details"}
+                        </button>
+
+                        {!selectedVendorId && (
                           <button
                             type="button"
                             onClick={handleQuickAddVendor}
@@ -701,25 +964,69 @@ export default function PurchaseBillScannerModal({
                               boxShadow: "0 2px 5px rgba(217, 119, 6, 0.25)"
                             }}
                           >
-                            <UserPlus size={14} /> {isAddingVendor ? "Saving..." : "+ Add & Register Vendor (1-Click)"}
+                            <UserPlus size={14} /> {isAddingVendor ? "Saving..." : "+ Register & Link Vendor (1-Click)"}
                           </button>
-                        </div>
+                        )}
                       </div>
+                    </div>
 
-                      {/* Expandable Vendor Mini Editor */}
-                      {showVendorEditForm && (
-                        <div style={{ backgroundColor: "#ffffff", border: "1px solid #fde68a", borderRadius: "8px", padding: "10px 12px", display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: "8px", marginTop: "4px" }}>
+                    {/* Expandable Vendor Full Address Editor */}
+                    {showVendorEditForm && (
+                      <div style={{ backgroundColor: "#ffffff", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "12px 14px", display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "10px", marginTop: "6px" }}>
+                        <div>
+                          <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "2px" }}>Company / Vendor Name *</label>
+                          <input
+                            type="text"
+                            value={customVendorName}
+                            onChange={e => setCustomVendorName(e.target.value)}
+                            style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "2px" }}>Vendor Street Address / Market / Road</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Laxmi Market, Nai Godam Road"
+                            value={customVendorAddress}
+                            onChange={e => setCustomVendorAddress(e.target.value)}
+                            style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                          />
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
                           <div>
-                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "2px" }}>Vendor Name</label>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "2px" }}>City</label>
                             <input
                               type="text"
-                              value={customVendorName}
-                              onChange={e => setCustomVendorName(e.target.value)}
+                              value={customVendorCity}
+                              onChange={e => setCustomVendorCity(e.target.value)}
                               style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
                             />
                           </div>
                           <div>
-                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "2px" }}>GSTIN</label>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "2px" }}>State</label>
+                            <input
+                              type="text"
+                              value={customVendorState}
+                              onChange={e => setCustomVendorState(e.target.value)}
+                              style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "2px" }}>Pincode</label>
+                            <input
+                              type="text"
+                              value={customVendorPincode}
+                              onChange={e => setCustomVendorPincode(e.target.value)}
+                              style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                          <div>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "2px" }}>GSTIN</label>
                             <input
                               type="text"
                               value={customVendorGst}
@@ -728,7 +1035,7 @@ export default function PurchaseBillScannerModal({
                             />
                           </div>
                           <div>
-                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "2px" }}>Mobile</label>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 700, display: "block", marginBottom: "2px" }}>Mobile / Phone</label>
                             <input
                               type="text"
                               value={customVendorPhone}
@@ -736,19 +1043,30 @@ export default function PurchaseBillScannerModal({
                               style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
                             />
                           </div>
-                          <div>
-                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "2px" }}>City</label>
-                            <input
-                              type="text"
-                              value={customVendorCity}
-                              onChange={e => setCustomVendorCity(e.target.value)}
-                              style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
-                            />
-                          </div>
                         </div>
-                      )}
-                    </div>
-                  )}
+
+                        <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
+                          <button
+                            type="button"
+                            onClick={handleQuickAddVendor}
+                            disabled={isAddingVendor}
+                            style={{
+                              padding: "6px 14px",
+                              borderRadius: "6px",
+                              backgroundColor: "#059669",
+                              color: "#ffffff",
+                              border: "none",
+                              fontSize: "0.76rem",
+                              fontWeight: 700,
+                              cursor: "pointer"
+                            }}
+                          >
+                            {isAddingVendor ? "Saving Details..." : "Save Updated Details to Vendor"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {vendorCreatedSuccess && (
                     <div style={{ marginTop: "8px", backgroundColor: "#f0fdf4", border: "1.5px solid #bbf7d0", padding: "8px 12px", borderRadius: "8px", color: "#166534", fontSize: "0.78rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
@@ -1073,17 +1391,17 @@ export default function PurchaseBillScannerModal({
                 </div>
 
                 {/* ACTION BUTTONS ROW */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: "10px", marginTop: "6px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.3fr", gap: "10px", marginTop: "6px" }}>
                   <button
                     type="button"
-                    onClick={handleApply}
+                    onClick={handlePrintVoucher}
                     style={{
                       padding: "11px",
                       borderRadius: "8px",
                       border: "1.5px solid #cbd5e1",
                       backgroundColor: "#ffffff",
                       color: "#334155",
-                      fontSize: "0.84rem",
+                      fontSize: "0.82rem",
                       fontWeight: 700,
                       cursor: "pointer",
                       display: "flex",
@@ -1093,27 +1411,50 @@ export default function PurchaseBillScannerModal({
                       boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
                     }}
                   >
-                    <ArrowRight size={15} /> Transfer to Bill Form
+                    <Printer size={15} /> Download PDF / Print
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleApply}
+                    disabled={extractedData.isDuplicate && !allowDuplicateBypass}
+                    style={{
+                      padding: "11px",
+                      borderRadius: "8px",
+                      border: "1.5px solid #cbd5e1",
+                      backgroundColor: (extractedData.isDuplicate && !allowDuplicateBypass) ? "#f1f5f9" : "#ffffff",
+                      color: (extractedData.isDuplicate && !allowDuplicateBypass) ? "#94a3b8" : "#334155",
+                      fontSize: "0.82rem",
+                      fontWeight: 700,
+                      cursor: (extractedData.isDuplicate && !allowDuplicateBypass) ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
+                    }}
+                  >
+                    <ArrowRight size={15} /> Transfer to Form
                   </button>
 
                   <button
                     type="button"
                     onClick={handleDirectCreate}
-                    disabled={isCreatingDirectly}
+                    disabled={isCreatingDirectly || (extractedData.isDuplicate && !allowDuplicateBypass)}
                     style={{
                       padding: "11px",
                       borderRadius: "8px",
                       border: "none",
-                      backgroundColor: "#059669",
+                      backgroundColor: (extractedData.isDuplicate && !allowDuplicateBypass) ? "#94a3b8" : "#059669",
                       color: "#ffffff",
                       fontSize: "0.86rem",
                       fontWeight: 700,
-                      cursor: isCreatingDirectly ? "wait" : "pointer",
+                      cursor: (isCreatingDirectly || (extractedData.isDuplicate && !allowDuplicateBypass)) ? "not-allowed" : "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       gap: "6px",
-                      boxShadow: "0 2px 8px rgba(5, 150, 105, 0.3)"
+                      boxShadow: (extractedData.isDuplicate && !allowDuplicateBypass) ? "none" : "0 2px 8px rgba(5, 150, 105, 0.3)"
                     }}
                   >
                     <CheckCircle2 size={17} /> {isCreatingDirectly ? "Posting Bill..." : "Create & Post Bill (1-Click)"}

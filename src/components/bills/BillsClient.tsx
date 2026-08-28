@@ -27,7 +27,7 @@ import {
   Wallet,
   Sparkles
 } from 'lucide-react';
-import { createBill, updateBillStatus } from '@/app/actions/billActions';
+import { createBill, updateBillStatus, deleteBill } from '@/app/actions/billActions';
 import { recordVendorPayment } from '@/app/actions/vendorPaymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
 import PurchaseBillScannerModal from '@/components/bills/PurchaseBillScannerModal';
@@ -38,8 +38,10 @@ interface VendorOption {
   contactPerson?: string | null;
   mobile?: string | null;
   gstNumber?: string | null;
+  address?: string | null;
   city?: string | null;
   state?: string | null;
+  pincode?: string | null;
   paymentTerms?: string | null;
 }
 
@@ -158,6 +160,184 @@ export default function BillsClient({
 
   // View Voucher Modal
   const [viewBill, setViewBill] = useState<BillRecord | null>(null);
+  const [deletingBillId, setDeletingBillId] = useState<string | null>(null);
+
+  // Delete Bill Handler
+  const handleDeleteBill = async (bill: BillRecord) => {
+    const confirmed = window.confirm(
+      `⚠️ Delete Bill #${bill.billNumber}?\n\nVendor: ${bill.vendor?.companyName || 'Vendor'}\nAmount: ₹${bill.totalAmount.toLocaleString('en-IN')}\n\nThis will permanently delete the purchase bill, adjust vendor ledgers, and reverse any inward inventory stocks.`
+    );
+    if (!confirmed) return;
+
+    setDeletingBillId(bill.id);
+    try {
+      const res = await deleteBill(bill.id);
+      setDeletingBillId(null);
+
+      if (res.error) {
+        alert("Error deleting bill: " + res.error);
+      } else {
+        setBills(prev => prev.filter(b => b.id !== bill.id));
+        setSummary((prev: any) => ({
+          ...prev,
+          totalBills: Math.max(0, prev.totalBills - 1),
+          totalAmount: Math.max(0, prev.totalAmount - (bill.totalAmount || 0)),
+          totalPaid: Math.max(0, prev.totalPaid - (bill.amountPaid || 0)),
+          totalDue: Math.max(0, prev.totalDue - (bill.amountDue || 0)),
+          unpaidCount: (bill.status === 'Open' || bill.status === 'Partially Paid') ? Math.max(0, prev.unpaidCount - 1) : prev.unpaidCount,
+          paidCount: bill.status === 'Paid' ? Math.max(0, prev.paidCount - 1) : prev.paidCount
+        }));
+        if (viewBill?.id === bill.id) {
+          setViewBill(null);
+        }
+        alert(`Bill #${bill.billNumber} deleted successfully.`);
+      }
+    } catch (err: any) {
+      setDeletingBillId(null);
+      alert("Failed to delete bill: " + err.message);
+    }
+  };
+
+  // Direct PDF / Print Voucher Handler
+  const handlePrintBill = (bill: BillRecord) => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Please allow popups to download or print the bill voucher.");
+      return;
+    }
+
+    const vendorAddress = bill.vendor?.address ? `${bill.vendor.address}, ` : '';
+    const vendorCity = bill.vendor?.city ? `${bill.vendor.city} ` : '';
+    const vendorState = bill.vendor?.state ? `${bill.vendor.state} ` : '';
+    const vendorPin = bill.vendor?.pincode ? `(${bill.vendor.pincode})` : '';
+    const fullAddress = `${vendorAddress}${vendorCity}${vendorState}${vendorPin}`.trim() || 'Address not registered';
+
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Purchase Bill Voucher - ${bill.billNumber}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 28px; color: #0f172a; }
+    .header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .title { font-size: 20px; font-weight: 800; text-transform: uppercase; color: #1e293b; margin: 0; }
+    .badge { background: ${bill.status === 'Paid' ? '#ecfdf5' : '#eff6ff'}; color: ${bill.status === 'Paid' ? '#059669' : '#2563eb'}; font-weight: 700; font-size: 11px; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 4px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; }
+    .card-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th { background: #f1f5f9; padding: 8px 10px; text-align: left; font-size: 12px; font-weight: 700; border-bottom: 1px solid #cbd5e1; }
+    td { padding: 8px 10px; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .totals { width: 300px; margin-left: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+    .total-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; }
+    .grand-total { border-top: 1.5px solid #0f172a; padding-top: 8px; font-size: 15px; font-weight: 800; color: #059669; }
+    .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 16px; display: flex; justify-content: space-between; font-size: 11px; color: #64748b; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="title">PURCHASE BILL VOUCHER</h1>
+      <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Official Stock Inward & Accounts Payable Record</div>
+      <span class="badge">${bill.status.toUpperCase()}</span>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 16px; font-weight: 800; color: #2563eb;">${bill.billNumber}</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Vendor Inv Ref: <strong>${bill.vendorBillNumber || '-'}</strong></div>
+      <div style="font-size: 12px; color: #64748b;">Bill Date: ${new Date(bill.billDate).toLocaleDateString('en-GB')}</div>
+      <div style="font-size: 12px; color: #64748b;">Due Date: ${bill.dueDate ? new Date(bill.dueDate).toLocaleDateString('en-GB') : '-'}</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="card-title">SUPPLIER / VENDOR DETAILS</div>
+      <div style="font-size: 14px; font-weight: 800; color: #0f172a;">${bill.vendor?.companyName}</div>
+      <div style="font-size: 12px; color: #334155; margin-top: 3px;">${fullAddress}</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 4px;">GSTIN: <strong style="color: #0f172a;">${bill.vendor?.gstNumber || 'Unregistered'}</strong></div>
+      <div style="font-size: 12px; color: #64748b;">Phone: <strong>${bill.vendor?.mobile || '-'}</strong></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">BILLED TO (BUYER)</div>
+      <div style="font-size: 14px; font-weight: 800; color: #0f172a;">ESPON CLOTHING PVT LTD</div>
+      <div style="font-size: 12px; color: #334155; margin-top: 3px;">Garment Manufacturing & Apparel Hub</div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Payment Terms: <strong>${bill.paymentTerms || 'Net 30'}</strong></div>
+      ${bill.notes ? `<div style="font-size: 12px; color: #64748b;">Notes: <strong>${bill.notes}</strong></div>` : ''}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Item Description</th>
+        <th class="text-center">HSN</th>
+        <th class="text-center">Qty</th>
+        <th class="text-right">Rate (₹)</th>
+        <th class="text-center">GST %</th>
+        <th class="text-right">Tax (₹)</th>
+        <th class="text-right">Total (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${(bill.items || []).map((it: any, idx: number) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td style="font-weight: 600;">${it.description}</td>
+          <td class="text-center">${it.hsnCode || '-'}</td>
+          <td class="text-center" style="font-weight: 700;">${it.quantity} ${it.unit || 'pcs'}</td>
+          <td class="text-right">₹${Number(it.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td class="text-center">${it.gstRate || 0}%</td>
+          <td class="text-right">₹${Number(it.taxAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td class="text-right" style="font-weight: 700;">₹${Number(it.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="total-row">
+      <span style="color: #64748b;">Taxable Subtotal:</span>
+      <strong style="color: #0f172a;">₹${Number(bill.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+    </div>
+    <div class="total-row">
+      <span style="color: #64748b;">Total GST Tax:</span>
+      <strong style="color: #0f172a;">₹${Number(bill.taxAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+    </div>
+    <div class="total-row grand-total">
+      <span>Total Amount:</span>
+      <span>₹${Number(bill.totalAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+    </div>
+    <div class="total-row" style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 6px;">
+      <span style="color: #16a34a; font-weight: 600;">Amount Settled:</span>
+      <strong style="color: #16a34a;">₹${Number(bill.amountPaid).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+    </div>
+    <div class="total-row">
+      <span style="color: #e11d48; font-weight: 700;">Balance Due:</span>
+      <strong style="color: #e11d48; font-size: 13px;">₹${Number(bill.amountDue).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>Recorded & Verified via Antigravity ERP</div>
+    <div>Authorized Signatory: _________________________</div>
+  </div>
+
+  <script>
+    window.onload = function() { window.print(); }
+  </script>
+</body>
+</html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
 
   // Vendor options for Select
   const vendorSelectOptions: SelectOption[] = useMemo(() => [
@@ -785,9 +965,19 @@ export default function BillsClient({
                         type="button"
                         onClick={() => setViewBill(bill)}
                         title="View Bill Details"
-                        style={{ padding: '4px', border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                        style={{ padding: '5px', border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--text-secondary)', cursor: 'pointer' }}
                       >
-                        <Eye size={13} />
+                        <Eye size={14} />
+                      </button>
+
+                      {/* Download / Print PDF */}
+                      <button
+                        type="button"
+                        onClick={() => handlePrintBill(bill)}
+                        title="Download PDF / Print Voucher"
+                        style={{ padding: '5px', border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: '#2563eb', cursor: 'pointer' }}
+                      >
+                        <Printer size={14} />
                       </button>
 
                       {/* Record Payment if open */}
@@ -799,11 +989,29 @@ export default function BillsClient({
                             setPayAmount(String(bill.amountDue));
                           }}
                           className="primary-btn"
-                          style={{ fontSize: '0.72rem', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '3px', backgroundColor: '#059669' }}
+                          style={{ fontSize: '0.72rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '3px', backgroundColor: '#059669' }}
                         >
                           <Wallet size={12} /> Pay
                         </button>
                       )}
+
+                      {/* Delete Bill */}
+                      <button
+                        type="button"
+                        disabled={deletingBillId === bill.id}
+                        onClick={() => handleDeleteBill(bill)}
+                        title="Delete Purchase Bill"
+                        style={{
+                          padding: '5px',
+                          border: '1px solid #fecdd3',
+                          borderRadius: '6px',
+                          background: '#fff1f2',
+                          color: '#e11d48',
+                          cursor: deletingBillId === bill.id ? 'wait' : 'pointer'
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1557,10 +1765,19 @@ export default function BillsClient({
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <button
-                  onClick={() => window.print()}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontWeight: 600, cursor: 'pointer' }}
+                  type="button"
+                  onClick={() => handlePrintBill(viewBill)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#2563eb', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  <Printer size={14} /> Print Voucher
+                  <Printer size={14} /> Download PDF / Print
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteBill(viewBill)}
+                  disabled={deletingBillId === viewBill.id}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', padding: '6px 10px', borderRadius: '6px', border: '1px solid #fecdd3', backgroundColor: '#fff1f2', color: '#e11d48', fontWeight: 600, cursor: deletingBillId === viewBill.id ? 'wait' : 'pointer' }}
+                >
+                  <Trash2 size={14} /> Delete
                 </button>
                 <button
                   type="button"
@@ -1577,7 +1794,15 @@ export default function BillsClient({
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '14px' }}>
                   <div>
                     <h3 style={{ margin: '0 0 3px 0', fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{viewBill.vendor?.companyName}</h3>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b' }}>GSTIN: <strong style={{ color: '#0f172a' }}>{viewBill.vendor?.gstNumber || 'Unregistered'}</strong></div>
+                    {viewBill.vendor?.address && (
+                      <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '2px' }}>
+                        {viewBill.vendor.address}, {viewBill.vendor.city || ''} {viewBill.vendor.state || ''} {viewBill.vendor.pincode ? `(${viewBill.vendor.pincode})` : ''}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                      GSTIN: <strong style={{ color: '#0f172a' }}>{viewBill.vendor?.gstNumber || 'Unregistered'}</strong>
+                      {viewBill.vendor?.mobile && <span> • Phone: <strong>{viewBill.vendor.mobile}</strong></span>}
+                    </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 800, color: '#2563eb', fontSize: '1.05rem' }}>{viewBill.billNumber}</div>
@@ -1605,7 +1830,7 @@ export default function BillsClient({
                     {viewBill.items?.map((it: any, i: number) => (
                       <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '10px 10px', fontWeight: 500, color: '#0f172a' }}>{it.description}</td>
-                        <td style={{ padding: '10px 10px', textAlign: 'center', color: '#475569' }}>{it.quantity} {it.unit}</td>
+                        <td style={{ padding: '10px 10px', textAlign: 'center', color: '#475569' }}>{it.quantity} {it.unit || 'pcs'}</td>
                         <td style={{ padding: '10px 10px', textAlign: 'right', color: '#475569', fontVariantNumeric: 'tabular-nums' }}>₹{it.rate}</td>
                         <td style={{ padding: '10px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>₹{it.total}</td>
                       </tr>

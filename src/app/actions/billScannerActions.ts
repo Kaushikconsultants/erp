@@ -42,6 +42,15 @@ export interface ExtractedBillData {
   notes?: string;
   confidenceScore: number;
   isHandwritten: boolean;
+  isDuplicate?: boolean;
+  existingBill?: {
+    id: string;
+    billNumber: string;
+    billDate: string;
+    totalAmount: number;
+    status: string;
+    vendorName: string;
+  };
 }
 
 export async function scanPurchaseBillWithAI(
@@ -56,7 +65,7 @@ export async function scanPurchaseBillWithAI(
     const [existingVendors, existingProducts] = await Promise.all([
       prisma.vendor.findMany({
         where: { organizationId },
-        select: { id: true, companyName: true, gstNumber: true, mobile: true, city: true, state: true, paymentTerms: true }
+        select: { id: true, companyName: true, gstNumber: true, mobile: true, address: true, city: true, state: true, pincode: true, paymentTerms: true }
       }),
       prisma.product.findMany({
         where: { organizationId },
@@ -72,7 +81,7 @@ export async function scanPurchaseBillWithAI(
     cleanBase64 = cleanBase64.replace(/\s+/g, "");
 
     const vendorContext = existingVendors.map(v => 
-      `- ID: "${v.id}" | Name: "${v.companyName}" | GSTIN: "${v.gstNumber || 'N/A'}" | Phone: "${v.mobile || 'N/A'}" | City: "${v.city || 'N/A'}"`
+      `- ID: "${v.id}" | Name: "${v.companyName}" | GSTIN: "${v.gstNumber || 'N/A'}" | Phone: "${v.mobile || 'N/A'}" | Address: "${v.address || 'N/A'}" | City: "${v.city || 'N/A'}" | State: "${v.state || 'N/A'}"`
     ).join("\n");
 
     const productContext = existingProducts.slice(0, 100).map(p => 
@@ -91,9 +100,16 @@ ${vendorContext || "No existing vendors."}
 ${productContext || "No existing products."}
 
 ### CRITICAL EXTRACTION GUIDELINES:
-1. **SUPPLIER / VENDOR (The Seller)**:
+1. **SUPPLIER / VENDOR (The Seller) & COMPLETE ADDRESS**:
    - Identify the top header/letterhead/stamp of the SELLER (e.g. "APS SPORTS INDIA", "Shree Ganesh Textiles", etc.).
-   - Extract vendorName, vendorGstNumber (15-character GSTIN e.g. "06ABJHS2211P1ZV"), vendorPhone (e.g. "9416657744"), vendorAddress, vendorCity (e.g. "Rohtak"), vendorState (e.g. "Haryana"), vendorPincode (e.g. "124001").
+   - Extract vendorName (Exact full business name).
+   - Extract vendorGstNumber (15-character GSTIN e.g. "06ABJHS2211P1ZV").
+   - Extract vendorPhone (e.g. "9416657744", "01262-255000").
+   - **VERY IMPORTANT - VENDOR ADDRESS**: Extract the complete physical address printed on the bill/memo header (e.g. "Laxmi Market, Nai Godam Road, Rohtak - 124001, Haryana").
+     - vendorAddress: Street address, shop/plot number, market/road name.
+     - vendorCity: City or town (e.g. "Rohtak", "Ludhiana", "Surat", "Delhi", "Tirupur", "Ahmedabad", "Jaipur").
+     - vendorState: State name (e.g. "Haryana", "Punjab", "Gujarat", "Delhi", "Tamil Nadu", "Rajasthan").
+     - vendorPincode: 6-digit postal code (e.g. "124001", "141008", "395002").
    - NOTE: The party listed under "To M/s", "Buyer", or "Billed To" (e.g. "Espon Clothing Pvt Ltd") is the BUYER, NOT the Vendor!
    - If this seller matches any of the DATABASE VENDORS above (by GSTIN or similar company name), populate 'matchedVendorId'. Otherwise set 'matchedVendorId' to null.
 
@@ -214,6 +230,38 @@ Return ONLY valid JSON matching this schema:
           total: parsed.totalAmount || 0
         }
       ];
+    }
+
+    // DUPLICATE BILL CHECK: Verify if this bill already exists in the database
+    if (parsed.vendorBillNumber) {
+      const cleanBillNo = parsed.vendorBillNumber.trim();
+      const duplicate = await prisma.bill.findFirst({
+        where: {
+          organizationId,
+          OR: [
+            ...(parsed.matchedVendorId ? [{ vendorId: parsed.matchedVendorId, vendorBillNumber: { equals: cleanBillNo } }] : []),
+            { 
+              vendorBillNumber: { equals: cleanBillNo },
+              vendor: { companyName: { contains: parsed.vendorName?.trim() || '___' } }
+            }
+          ]
+        },
+        include: {
+          vendor: { select: { companyName: true } }
+        }
+      });
+
+      if (duplicate) {
+        parsed.isDuplicate = true;
+        parsed.existingBill = {
+          id: duplicate.id,
+          billNumber: duplicate.billNumber,
+          billDate: duplicate.billDate.toISOString().split("T")[0],
+          totalAmount: duplicate.totalAmount,
+          status: duplicate.status,
+          vendorName: duplicate.vendor?.companyName || parsed.vendorName
+        };
+      }
     }
 
     return { success: true, data: parsed, rawText: text };
