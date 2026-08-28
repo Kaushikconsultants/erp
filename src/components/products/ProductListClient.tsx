@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Search, ChevronDown, Edit, Trash2, Scale, Tag, History, Image as ImageIcon, Eye, Layers, RotateCcw, X, Filter, BookOpen } from 'lucide-react';
+import { Search, ChevronDown, Edit, Trash2, Scale, Tag, History, Image as ImageIcon, Eye, Layers, RotateCcw, X, Filter, BookOpen, Sparkles, Flame } from 'lucide-react';
 import AddProductButton from '@/components/ui/AddProductButton';
 import ManageCategoriesModal from '@/components/products/ManageCategoriesModal';
 import EditProductModal from '@/components/ui/EditProductModal';
@@ -10,6 +10,7 @@ import BarcodeLabelModal from '@/components/products/BarcodeLabelModal';
 import ArticleHistoryModal from '@/components/products/ArticleHistoryModal';
 import ProductCatalogModal from '@/components/products/ProductCatalogModal';
 import ProductMatrixModal from '@/components/inventory/ProductMatrixModal';
+import DeadStockInsightsModal from '@/components/products/DeadStockInsightsModal';
 import { deleteProduct } from '@/app/actions/productActions';
 
 interface Product {
@@ -45,6 +46,7 @@ export default function ProductListClient({ products, categories, categoriesData
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showMatrixModal, setShowMatrixModal] = useState(false);
+  const [showDeadStockModal, setShowDeadStockModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [printLabelProduct, setPrintLabelProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -146,6 +148,32 @@ export default function ProductListClient({ products, categories, categoriesData
 
           {/* Action Buttons Group */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {/* AI Dead Stock & Liquidation Insights Button */}
+            <button
+              onClick={() => setShowDeadStockModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid #fecaca',
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                fontSize: '0.85rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(220, 38, 38, 0.08)',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+              title="AI Dead Stock & Inventory Liquidation Insights (Clearance Campaigns & Locked Capital)"
+            >
+              <Flame size={15} color="#dc2626" />
+              AI Dead Stock Insights
+            </button>
+
             {/* 1-Click Wholesale Catalog / Lookbook Generator Button */}
             <button
               onClick={() => setShowCatalogModal(true)}
@@ -688,6 +716,13 @@ export default function ProductListClient({ products, categories, categoriesData
           products={products}
           categories={categories}
           onClose={() => setShowCatalogModal(false)}
+        />
+      )}
+
+      {/* AI Dead Stock & Liquidation Insights Modal */}
+      {showDeadStockModal && (
+        <DeadStockInsightsModal
+          onClose={() => setShowDeadStockModal(false)}
         />
       )}
 

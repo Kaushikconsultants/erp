@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 import CreateOrderModal from "./CreateOrderModal";
+import OrderSlipScannerModal from "@/components/orders/OrderSlipScannerModal";
 
 interface CreateOrderButtonProps {
   customers: { id: string; companyName: string }[];
@@ -13,6 +14,7 @@ interface CreateOrderButtonProps {
 
 export default function CreateOrderButton({ customers, products, employees = [] }: CreateOrderButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAiScanOpen, setIsAiScanOpen] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -22,7 +24,32 @@ export default function CreateOrderButton({ customers, products, employees = [] 
   }, [searchParams]);
 
   return (
-    <>
+    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      {/* AI Order Slip Scanner Button */}
+      <button
+        type="button"
+        onClick={() => setIsAiScanOpen(true)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "8px",
+          padding: "10px 18px",
+          borderRadius: "10px",
+          fontWeight: 700,
+          fontSize: "0.88rem",
+          backgroundColor: "#eff6ff",
+          color: "#1d4ed8",
+          border: "1px solid #bfdbfe",
+          cursor: "pointer",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          transition: "all 0.15s ease"
+        }}
+      >
+        <Sparkles size={17} color="#2563eb" />
+        <span>AI Scan Order Slip</span>
+      </button>
+
+      {/* Manual Create Order Button */}
       <button 
         className="primary-btn hover-lift" 
         onClick={() => setIsModalOpen(true)}
@@ -53,6 +80,14 @@ export default function CreateOrderButton({ customers, products, employees = [] 
           employees={employees}
         />
       )}
-    </>
+
+      {isAiScanOpen && (
+        <OrderSlipScannerModal
+          customers={customers}
+          products={products}
+          onClose={() => setIsAiScanOpen(false)}
+        />
+      )}
+    </div>
   );
 }

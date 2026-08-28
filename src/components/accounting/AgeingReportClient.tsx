@@ -14,8 +14,10 @@ import {
   User,
   Building2,
   ExternalLink,
-  X
+  X,
+  Sparkles
 } from "lucide-react";
+import SmartPaymentRecoveryModal from "@/components/accounting/SmartPaymentRecoveryModal";
 
 interface Props {
   debtorsReport: any;
@@ -26,6 +28,7 @@ export default function AgeingReportClient({ debtorsReport, creditorsReport }: P
   const [activeTab, setActiveTab] = useState<"debtors" | "creditors">("debtors");
   const [expandedParties, setExpandedParties] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
+  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
 
   const toggleParty = (id: string) => {
     setExpandedParties(prev => ({ ...prev, [id]: !prev[id] }));
@@ -191,6 +194,29 @@ export default function AgeingReportClient({ debtorsReport, creditorsReport }: P
               </button>
             )}
           </div>
+
+          <button
+            type="button"
+            onClick={() => setShowRecoveryModal(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              padding: "9px 18px",
+              fontSize: "0.85rem",
+              fontWeight: 700,
+              backgroundColor: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              borderRadius: "10px",
+              color: "#166534",
+              cursor: "pointer",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+              transition: "all 0.15s ease"
+            }}
+          >
+            <Sparkles size={16} color="#16a34a" />
+            AI Payment Recovery Agent
+          </button>
 
           <button
             type="button"
@@ -455,6 +481,11 @@ export default function AgeingReportClient({ debtorsReport, creditorsReport }: P
           </table>
         </div>
       </div>
+
+      {/* AI SMART PAYMENT RECOVERY MODAL */}
+      {showRecoveryModal && (
+        <SmartPaymentRecoveryModal onClose={() => setShowRecoveryModal(false)} />
+      )}
     </div>
   );
 }

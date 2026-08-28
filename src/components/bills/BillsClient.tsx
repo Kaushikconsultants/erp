@@ -24,11 +24,13 @@ import {
   Eye,
   Check,
   Ban,
-  Wallet
+  Wallet,
+  Sparkles
 } from 'lucide-react';
 import { createBill, updateBillStatus } from '@/app/actions/billActions';
 import { recordVendorPayment } from '@/app/actions/vendorPaymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
+import PurchaseBillScannerModal from '@/components/bills/PurchaseBillScannerModal';
 
 interface VendorOption {
   id: string;
@@ -126,6 +128,7 @@ export default function BillsClient({
 
   // Create Bill Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [showAiScanner, setShowAiScanner] = useState(false);
   const [billVendorId, setBillVendorId] = useState('');
   const [billPoId, setBillPoId] = useState('');
   const [vendorBillNumber, setVendorBillNumber] = useState('');
@@ -430,7 +433,7 @@ export default function BillsClient({
           </p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={exportToExcel}
@@ -438,6 +441,28 @@ export default function BillsClient({
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 500 }}
           >
             <FileSpreadsheet size={15} /> Export Excel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowAiScanner(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: '#eff6ff',
+              color: '#1d4ed8',
+              border: '1px solid #bfdbfe',
+              fontWeight: 600,
+              fontSize: '0.84rem',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Sparkles size={16} color="#2563eb" /> AI Scan Bill (PDF / Photo)
           </button>
 
           <button
@@ -854,35 +879,57 @@ export default function BillsClient({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setCreateModalOpen(false)}
-                style={{ 
-                  width: 32, 
-                  height: 32, 
-                  borderRadius: '8px', 
-                  border: '1px solid #e2e8f0', 
-                  backgroundColor: '#f8fafc', 
-                  color: '#64748b', 
-                  cursor: 'pointer', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#fee2e2';
-                  e.currentTarget.style.color = '#dc2626';
-                  e.currentTarget.style.borderColor = '#fca5a5';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f8fafc';
-                  e.currentTarget.style.color = '#64748b';
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                }}
-              >
-                <X size={16} />
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAiScanner(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    border: '1px solid #bfdbfe',
+                    fontWeight: 600,
+                    fontSize: '0.78rem',
+                    padding: '6px 12px',
+                    borderRadius: '7px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Sparkles size={14} /> Scan with AI
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCreateModalOpen(false)}
+                  style={{ 
+                    width: 32, 
+                    height: 32, 
+                    borderRadius: '8px', 
+                    border: '1px solid #e2e8f0', 
+                    backgroundColor: '#f8fafc', 
+                    color: '#64748b', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#fee2e2';
+                    e.currentTarget.style.color = '#dc2626';
+                    e.currentTarget.style.borderColor = '#fca5a5';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f8fafc';
+                    e.currentTarget.style.color = '#64748b';
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Form */}
@@ -1575,6 +1622,35 @@ export default function BillsClient({
           </div>
         </div>,
         document.body
+      )}
+
+      {/* AI PURCHASE BILL SCANNER MODAL */}
+      {showAiScanner && (
+        <PurchaseBillScannerModal
+          vendors={vendors}
+          products={products}
+          onClose={() => setShowAiScanner(false)}
+          onApplyToBillForm={(extracted) => {
+            setBillVendorId(extracted.vendorId);
+            setVendorBillNumber(extracted.vendorBillNumber);
+            setBillDate(extracted.billDate);
+            setDueDate(extracted.dueDate);
+            setPaymentTerms(extracted.paymentTerms);
+            setBillNotes(extracted.notes);
+            setBillItems(extracted.items.map(it => ({
+              productId: it.productId,
+              description: it.description,
+              hsnCode: it.hsnCode,
+              quantity: it.quantity,
+              unit: it.unit,
+              rate: it.rate,
+              gstRate: it.gstRate,
+              taxAmount: it.taxAmount,
+              total: it.total
+            })));
+            setCreateModalOpen(true);
+          }}
+        />
       )}
 
     </div>
