@@ -117,3 +117,63 @@ export async function deleteVendor(id: string) {
     return { error: "Cannot delete vendor with associated purchase orders." };
   }
 }
+
+export async function quickCreateVendorFromScan(data: {
+  companyName: string;
+  contactPerson?: string;
+  mobile?: string;
+  email?: string;
+  gstNumber?: string;
+  pan?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  paymentTerms?: string;
+}) {
+  if (!data.companyName) return { error: "Company name is required" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+    
+    // Check if vendor already exists with this GSTIN or company name
+    const existing = await prisma.vendor.findFirst({
+      where: {
+        organizationId,
+        OR: [
+          ...(data.gstNumber ? [{ gstNumber: { equals: data.gstNumber.trim(), mode: 'insensitive' as const } }] : []),
+          { companyName: { equals: data.companyName.trim(), mode: 'insensitive' as const } }
+        ]
+      }
+    });
+
+    if (existing) {
+      return { success: true, vendor: existing, existed: true };
+    }
+
+    const vendor = await prisma.vendor.create({
+      data: {
+        organizationId,
+        companyName: data.companyName.trim(),
+        contactPerson: data.contactPerson?.trim() || null,
+        email: data.email?.trim() || null,
+        mobile: data.mobile?.trim() || null,
+        gstNumber: data.gstNumber?.trim() || null,
+        pan: data.pan?.trim() || (data.gstNumber && data.gstNumber.length >= 12 ? data.gstNumber.substring(2, 12) : null),
+        address: data.address?.trim() || null,
+        city: data.city?.trim() || null,
+        state: data.state?.trim() || null,
+        pincode: data.pincode?.trim() || null,
+        paymentTerms: data.paymentTerms || "Net 30 Days",
+        status: "Active"
+      }
+    });
+
+    revalidatePath("/vendors");
+    revalidatePath("/bills");
+    return { success: true, vendor, existed: false };
+  } catch (error: any) {
+    return { error: "Failed to create vendor: " + error.message };
+  }
+}
+

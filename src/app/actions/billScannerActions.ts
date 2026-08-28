@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { GoogleGenAI } from "@google/genai";
 import { getTenantOrgId } from "@/lib/tenant";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
+const apiKey = process.env.GEMINI_API_KEY || "00000000000000000000000000000000000000000000000000000";
+const ai = new GoogleGenAI({ apiKey });
 
 export interface ExtractedBillItem {
   matchedProductId?: string;
@@ -24,6 +25,9 @@ export interface ExtractedBillData {
   vendorGstNumber?: string;
   vendorPhone?: string;
   vendorAddress?: string;
+  vendorCity?: string;
+  vendorState?: string;
+  vendorPincode?: string;
   vendorBillNumber: string;
   billDate: string;
   dueDate: string;
@@ -52,7 +56,7 @@ export async function scanPurchaseBillWithAI(
     const [existingVendors, existingProducts] = await Promise.all([
       prisma.vendor.findMany({
         where: { organizationId },
-        select: { id: true, companyName: true, gstNumber: true, mobile: true, paymentTerms: true }
+        select: { id: true, companyName: true, gstNumber: true, mobile: true, city: true, state: true, paymentTerms: true }
       }),
       prisma.product.findMany({
         where: { organizationId },
@@ -61,96 +65,65 @@ export async function scanPurchaseBillWithAI(
     ]);
 
     // Clean base64 data prefix if present (e.g. data:image/png;base64,...)
-    const cleanBase64 = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
-
-    if (!process.env.GEMINI_API_KEY) {
-      // Fallback deterministic extractor for offline / test environments
-      const today = new Date().toISOString().split("T")[0];
-      const fallbackVendor = existingVendors[0];
-      const fallbackProduct = existingProducts[0];
-
-      const mockData: ExtractedBillData = {
-        matchedVendorId: fallbackVendor?.id,
-        vendorName: fallbackVendor?.companyName || "Supplier / Vendor Textiles",
-        vendorGstNumber: fallbackVendor?.gstNumber || "06AAHCE7721Q1Z4",
-        vendorPhone: fallbackVendor?.mobile || "+91 9876543210",
-        vendorBillNumber: `BILL-${Math.floor(100000 + Math.random() * 900000)}`,
-        billDate: today,
-        dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
-        paymentTerms: "Net 30 Days",
-        items: [
-          {
-            matchedProductId: fallbackProduct?.id,
-            description: fallbackProduct?.name || "Cotton Single Jersey Fabric 180 GSM",
-            hsnCode: "5407",
-            quantity: 240,
-            unit: "mtr",
-            rate: 185,
-            gstRate: 5,
-            taxAmount: 2220,
-            total: 46620
-          },
-          {
-            description: "Spun Polyester Sewing Thread (White)",
-            hsnCode: "5508",
-            quantity: 50,
-            unit: "rolls",
-            rate: 45,
-            gstRate: 12,
-            taxAmount: 270,
-            total: 2520
-          }
-        ],
-        subtotal: 46650,
-        cgstAmount: 1245,
-        sgstAmount: 1245,
-        igstAmount: 0,
-        totalTax: 2490,
-        totalAmount: 49140,
-        notes: "Auto-extracted with Gemini Vision fallback parser.",
-        confidenceScore: 88,
-        isHandwritten: false
-      };
-
-      return { success: true, data: mockData };
+    let cleanBase64 = base64Data;
+    if (cleanBase64.includes(",")) {
+      cleanBase64 = cleanBase64.split(",")[1];
     }
+    cleanBase64 = cleanBase64.replace(/\s+/g, "");
 
-    const vendorContext = existingVendors.map(v => `- ID: "${v.id}" | Name: "${v.companyName}" | GSTIN: "${v.gstNumber || 'N/A'}"`).join("\n");
-    const productContext = existingProducts.slice(0, 100).map(p => `- ID: "${p.id}" | Name: "${p.name}" | SKU: "${p.sku || 'N/A'}"`).join("\n");
+    const vendorContext = existingVendors.map(v => 
+      `- ID: "${v.id}" | Name: "${v.companyName}" | GSTIN: "${v.gstNumber || 'N/A'}" | Phone: "${v.mobile || 'N/A'}" | City: "${v.city || 'N/A'}"`
+    ).join("\n");
+
+    const productContext = existingProducts.slice(0, 100).map(p => 
+      `- ID: "${p.id}" | Name: "${p.name}" | SKU: "${p.sku || 'N/A'}"`
+    ).join("\n");
 
     const prompt = `
-You are an expert Document Intelligence AI specializing in Indian B2B Supplier Invoices, Tax Invoices, Delivery Challans, and Handwritten Wholesale Purchase Slips for the Garment & Textile Manufacturing Industry.
+You are an expert Document Intelligence and OCR AI specializing in Indian Garment, Textile & Apparel B2B Supplier Invoices, Cash/Credit Memos, Hand-written Mandi Slips, and Printed GST Tax Invoices.
 
-Analyze the uploaded document (image or PDF). Extract all purchase information with precision.
-If the document is handwritten, decipher article numbers, quantities, and rates carefully.
+Analyze the uploaded document image/PDF very carefully. Extract the EXACT details from the paper/document without hallucinating.
 
-### EXISTING VENDORS IN DATABASE:
+### DATABASE VENDORS:
 ${vendorContext || "No existing vendors."}
 
-### EXISTING PRODUCTS IN DATABASE:
+### DATABASE PRODUCTS:
 ${productContext || "No existing products."}
 
-### EXTRACTION INSTRUCTIONS:
-1. Identify the Supplier / Vendor (Business name, GSTIN, Phone, Address). If it matches or is very similar to one of the EXISTING VENDORS above, return that vendor's ID in 'matchedVendorId'.
-2. Identify the Vendor Invoice Number (Bill # / Memo # / Challan #). If none is found, generate a plausible one like "INV-UNKNOWN".
-3. Extract the Invoice Date (Format: YYYY-MM-DD). If missing, use today's date (${new Date().toISOString().split("T")[0]}).
-4. Extract Due Date (Format: YYYY-MM-DD) or calculate from Payment Terms (e.g. Net 30 days).
-5. Extract Line Items:
-   - description: item name, fabric description, article number, or raw material.
-   - hsnCode: 4-to-8 digit HSN code (e.g., 6109 for T-shirts, 6203 for Trousers/Trackpants, 5407 for Fabric, 5508 for Thread).
-   - quantity: numeric quantity.
-   - unit: 'pcs', 'mtr', 'kg', 'sets', 'rolls', 'boxes', etc.
-   - rate: rate per unit in INR (exclude tax).
-   - gstRate: GST tax percentage (0, 5, 12, 18, 28). Default to 12% for garments or 5% for fabrics if unspecified.
-   - taxAmount: calculated GST tax for this line item.
-   - total: total line item amount including tax (or quantity * rate + taxAmount).
-   - matchedProductId: if this item matches one of the EXISTING PRODUCTS above, include its ID.
-6. Extract or compute Financial Totals:
-   - subtotal (sum of taxable amounts before GST)
-   - cgstAmount, sgstAmount, igstAmount
-   - totalTax
-   - totalAmount (final gross payable amount)
-7. Determine if the document is handwritten (true/false) and estimate an overall extraction confidence score (0 to 100).
+### CRITICAL EXTRACTION GUIDELINES:
+1. **SUPPLIER / VENDOR (The Seller)**:
+   - Identify the top header/letterhead/stamp of the SELLER (e.g. "APS SPORTS INDIA", "Shree Ganesh Textiles", etc.).
+   - Extract vendorName, vendorGstNumber (15-character GSTIN e.g. "06ABJHS2211P1ZV"), vendorPhone (e.g. "9416657744"), vendorAddress, vendorCity (e.g. "Rohtak"), vendorState (e.g. "Haryana"), vendorPincode (e.g. "124001").
+   - NOTE: The party listed under "To M/s", "Buyer", or "Billed To" (e.g. "Espon Clothing Pvt Ltd") is the BUYER, NOT the Vendor!
+   - If this seller matches any of the DATABASE VENDORS above (by GSTIN or similar company name), populate 'matchedVendorId'. Otherwise set 'matchedVendorId' to null.
+
+2. **BILL NUMBER & DATES**:
+   - Extract the Bill No. / Invoice No. / Memo No. (e.g., "181", "APS-181", "INV-1024"). Look in the top right or memo header.
+   - Extract the Bill Date. Convert Indian handwritten date formats (e.g. "30-5-26" or "30/05/2026") into valid ISO format "YYYY-MM-DD" (e.g. "2026-05-30").
+   - Due Date: Set according to payment terms (e.g. 30 days after Bill Date).
+   - Payment Terms: e.g. "Net 30 Days", "Due on Receipt", etc.
+
+3. **LINE ITEMS**:
+   - Read every item row from the goods description table:
+     - description: Item name or fabric description (e.g. "Nikkar Jali wali", "Sports Shorts", "Trackpant Fabric", etc.).
+     - hsnCode: 4 to 8 digit HSN/SAC code (e.g. "6107", "6109", "6203", "5407"). If missing, infer appropriate 4-digit apparel HSN.
+     - quantity: Numeric quantity (e.g. 155, 240, 12).
+     - unit: Unit of measurement ('pcs', 'mtr', 'kg', 'rolls', 'sets', etc.). Default to 'pcs' for garments.
+     - rate: Price per unit in INR (e.g. 137).
+     - gstRate: Tax rate percentage for this row (e.g. 5, 12, 18). If 2.5% CGST + 2.5% SGST is mentioned at the bottom, the gstRate is 5.
+     - taxAmount: Calculated GST amount for this line (quantity * rate * (gstRate / 100)).
+     - total: Total line amount including GST.
+     - matchedProductId: If this product matches one in the DATABASE PRODUCTS list, include its ID.
+
+4. **FINANCIAL TAX SUMMARY**:
+   - subtotal: Total amount before tax (taxable value, e.g. 21235).
+   - cgstAmount: CGST tax amount (e.g. 530.87).
+   - sgstAmount: SGST tax amount (e.g. 530.87).
+   - igstAmount: IGST tax amount (if interstate).
+   - totalTax: Total tax sum (e.g. 1061.74).
+   - totalAmount: Final gross invoice total (including round off, e.g. 22297).
+   - isHandwritten: true if any handwritten text or signature is present, false if fully computer printed.
+   - confidenceScore: 0 to 100 based on legibility.
 
 Return ONLY valid JSON matching this schema:
 {
@@ -159,6 +132,9 @@ Return ONLY valid JSON matching this schema:
   "vendorGstNumber": string,
   "vendorPhone": string,
   "vendorAddress": string,
+  "vendorCity": string,
+  "vendorState": string,
+  "vendorPincode": string,
   "vendorBillNumber": string,
   "billDate": "YYYY-MM-DD",
   "dueDate": "YYYY-MM-DD",
@@ -209,27 +185,31 @@ Return ONLY valid JSON matching this schema:
 
     // Secondary Fuzzy Match Verification for Vendor if not matched by LLM
     if (!parsed.matchedVendorId && parsed.vendorName) {
-      const vName = parsed.vendorName.toLowerCase();
-      const matched = existingVendors.find(v => 
-        v.companyName.toLowerCase().includes(vName) || 
-        vName.includes(v.companyName.toLowerCase()) ||
-        (parsed.vendorGstNumber && v.gstNumber && v.gstNumber.toUpperCase() === parsed.vendorGstNumber.toUpperCase())
-      );
+      const vName = parsed.vendorName.toLowerCase().trim();
+      const matched = existingVendors.find(v => {
+        const dbName = v.companyName.toLowerCase().trim();
+        return (
+          dbName === vName ||
+          dbName.includes(vName) ||
+          vName.includes(dbName) ||
+          (parsed.vendorGstNumber && v.gstNumber && v.gstNumber.trim().toUpperCase() === parsed.vendorGstNumber.trim().toUpperCase())
+        );
+      });
       if (matched) {
         parsed.matchedVendorId = matched.id;
       }
     }
 
-    // Ensure items array is valid
+    // Default item fallback if empty
     if (!parsed.items || !Array.isArray(parsed.items) || parsed.items.length === 0) {
       parsed.items = [
         {
-          description: parsed.notes || "General Purchase",
+          description: "Garment Purchase",
           hsnCode: "6109",
           quantity: 1,
           unit: "pcs",
           rate: parsed.totalAmount || 0,
-          gstRate: 12,
+          gstRate: 5,
           taxAmount: 0,
           total: parsed.totalAmount || 0
         }
