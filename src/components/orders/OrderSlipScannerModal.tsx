@@ -407,22 +407,25 @@ export default function OrderSlipScannerModal({
               {/* RIGHT: EDITABLE SALES ORDER FIELDS */}
               <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                 
-                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "10px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "12px" }}>
                   <div>
-                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>
-                      BUYER / CUSTOMER *
+                    <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
+                      BUYER / CUSTOMER <span style={{ color: "#ef4444" }}>*</span>
                     </label>
                     <select
                       value={selectedCustomerId}
                       onChange={e => setSelectedCustomerId(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "7px 10px",
-                        borderRadius: "6px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "0.82rem",
+                        height: "40px",
+                        padding: "0 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        fontSize: "0.84rem",
                         fontWeight: 600,
-                        color: "#0f172a"
+                        color: "#0f172a",
+                        outline: "none"
                       }}
                     >
                       <option value="">Select Customer...</option>
@@ -433,28 +436,39 @@ export default function OrderSlipScannerModal({
                       ))}
                     </select>
                     {extractedData.customerName && !extractedData.matchedCustomerId && (
-                      <span style={{ fontSize: "0.7rem", color: "#d97706", marginTop: "2px", display: "block" }}>
+                      <span style={{ fontSize: "0.72rem", color: "#d97706", marginTop: "3px", display: "block", fontWeight: 600 }}>
                         Scanned Name: &ldquo;{extractedData.customerName}&rdquo;
                       </span>
                     )}
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       ORDER DATE
                     </label>
                     <input
                       type="date"
                       value={orderDate}
                       onChange={e => setOrderDate(e.target.value)}
-                      style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        fontSize: "0.84rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        outline: "none"
+                      }}
                     />
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                   <div>
-                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       TRANSPORT / DISPATCH VIA
                     </label>
                     <input
@@ -462,12 +476,23 @@ export default function OrderSlipScannerModal({
                       placeholder="e.g. Jaipur Golden / Trackon"
                       value={transportDetails}
                       onChange={e => setTransportDetails(e.target.value)}
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.78rem" }}
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        fontSize: "0.84rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        outline: "none"
+                      }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       DELIVERY REMARKS
                     </label>
                     <input
@@ -475,103 +500,117 @@ export default function OrderSlipScannerModal({
                       placeholder="e.g. Urgent festive delivery"
                       value={deliveryRemarks}
                       onChange={e => setDeliveryRemarks(e.target.value)}
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.78rem" }}
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        fontSize: "0.84rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        outline: "none"
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* Line Items Table */}
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                    <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#334155" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "0.82rem", fontWeight: 800, color: "#0f172a" }}>
                       BOOKED ARTICLES ({items.length})
                     </label>
                     <button
                       type="button"
                       onClick={handleAddItem}
                       style={{
-                        padding: "3px 8px",
-                        borderRadius: "4px",
+                        padding: "5px 12px",
+                        borderRadius: "7px",
                         border: "1px solid #cbd5e1",
-                        backgroundColor: "#f8fafc",
+                        backgroundColor: "#ffffff",
                         color: "#334155",
-                        fontSize: "0.72rem",
+                        fontSize: "0.76rem",
+                        fontWeight: 700,
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px"
+                        gap: "5px"
                       }}
                     >
-                      <Plus size={13} /> Add Item
+                      <Plus size={14} /> Add Item
                     </button>
                   </div>
 
-                  <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden", maxHeight: "200px", overflowY: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-                      <thead style={{ backgroundColor: "#f8fafc", color: "#64748b", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0, zIndex: 5 }}>
+                  <div style={{ border: "1.5px solid #e2e8f0", borderRadius: "10px", overflow: "hidden", maxHeight: "240px", overflowY: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+                      <thead style={{ background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)", color: "#475569", borderBottom: "1.5px solid #e2e8f0", position: "sticky", top: 0, zIndex: 5 }}>
                         <tr>
-                          <th style={{ padding: "6px 8px", textAlign: "left", width: "80px" }}>Art #</th>
-                          <th style={{ padding: "6px 8px", textAlign: "left" }}>Description</th>
-                          <th style={{ padding: "6px 8px", textAlign: "left", width: "90px" }}>Sizes</th>
-                          <th style={{ padding: "6px 8px", textAlign: "right", width: "65px" }}>Qty (Pcs)</th>
-                          <th style={{ padding: "6px 8px", textAlign: "right", width: "75px" }}>Rate (₹)</th>
-                          <th style={{ padding: "6px 8px", textAlign: "right", width: "85px" }}>Total (₹)</th>
-                          <th style={{ padding: "6px 8px", width: "30px" }}></th>
+                          <th style={{ padding: "8px 10px", textAlign: "left", width: "90px", fontWeight: 700 }}>Art #</th>
+                          <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 700 }}>Description</th>
+                          <th style={{ padding: "8px 8px", textAlign: "center", width: "100px", fontWeight: 700 }}>Sizes</th>
+                          <th style={{ padding: "8px 8px", textAlign: "center", width: "88px", fontWeight: 700 }}>Qty (Pcs)</th>
+                          <th style={{ padding: "8px 8px", textAlign: "right", width: "95px", fontWeight: 700 }}>Rate (₹)</th>
+                          <th style={{ padding: "8px 10px", textAlign: "right", width: "110px", fontWeight: 700 }}>Total (₹)</th>
+                          <th style={{ padding: "8px 6px", width: "32px" }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {items.map((it, idx) => (
-                          <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                            <td style={{ padding: "4px 8px" }}>
+                          <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: "#ffffff" }}>
+                            <td style={{ padding: "6px 6px" }}>
                               <input
                                 type="text"
                                 value={it.articleNumber}
                                 onChange={e => handleItemChange(idx, "articleNumber", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem", fontWeight: 600 }}
+                                style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.8rem", fontWeight: 700, outline: "none" }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 6px" }}>
                               <input
                                 type="text"
                                 value={it.description}
                                 onChange={e => handleItemChange(idx, "description", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem" }}
+                                style={{ width: "100%", height: "34px", padding: "0 10px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.82rem", fontWeight: 600, outline: "none" }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 4px" }}>
                               <input
                                 type="text"
                                 value={it.size || ""}
                                 onChange={e => handleItemChange(idx, "size", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.72rem" }}
+                                style={{ width: "100%", height: "34px", padding: "0 6px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.78rem", textAlign: "center", outline: "none" }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 4px" }}>
                               <input
                                 type="number"
                                 value={it.quantity}
                                 onChange={e => handleItemChange(idx, "quantity", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem", textAlign: "right", fontWeight: 600 }}
+                                style={{ width: "100%", height: "34px", padding: "0 6px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.85rem", textAlign: "center", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "#0f172a", outline: "none" }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 4px" }}>
                               <input
                                 type="number"
                                 value={it.rate}
                                 onChange={e => handleItemChange(idx, "rate", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem", textAlign: "right", fontWeight: 600 }}
+                                style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.85rem", textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: "#0f172a", outline: "none" }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 700, color: "#0f172a" }}>
-                              ₹{it.total.toLocaleString("en-IN")}
+                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 800, fontSize: "0.9rem", color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
+                              ₹{it.total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
-                            <td style={{ padding: "4px 8px", textAlign: "center" }}>
+                            <td style={{ padding: "6px 4px", textAlign: "center" }}>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveItem(idx)}
-                                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "2px" }}
+                                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "4px", borderRadius: "4px" }}
+                                onMouseEnter={e => e.currentTarget.style.color = "#dc2626"}
+                                onMouseLeave={e => e.currentTarget.style.color = "#94a3b8"}
                               >
-                                <Trash2 size={13} />
+                                <Trash2 size={15} />
                               </button>
                             </td>
                           </tr>

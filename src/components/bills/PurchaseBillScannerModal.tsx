@@ -578,24 +578,28 @@ export default function PurchaseBillScannerModal({
                 <div>
                   <div style={{ display: "grid", gridTemplateColumns: "1.3fr 1fr", gap: "12px" }}>
                     <div>
-                      <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>
-                        VENDOR / SUPPLIER *
+                      <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
+                        VENDOR / SUPPLIER <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <select
                         value={selectedVendorId}
                         onChange={e => setSelectedVendorId(e.target.value)}
                         style={{
                           width: "100%",
-                          padding: "8px 10px",
-                          borderRadius: "7px",
-                          border: "1px solid #cbd5e1",
-                          fontSize: "0.85rem",
+                          height: "40px",
+                          padding: "0 12px",
+                          borderRadius: "8px",
+                          border: "1.5px solid #cbd5e1",
+                          backgroundColor: "#ffffff",
+                          fontSize: "0.84rem",
                           fontWeight: 600,
                           color: "#0f172a",
-                          outline: "none"
+                          outline: "none",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+                          transition: "border-color 0.15s ease"
                         }}
                       >
-                        <option value="">Select Vendor...</option>
+                        <option value="">-- Choose or Register Vendor --</option>
                         {vendorList.map(v => (
                           <option key={v.id} value={v.id}>
                             {v.companyName} {v.gstNumber ? `(${v.gstNumber})` : v.city ? `(${v.city})` : ""}
@@ -605,8 +609,8 @@ export default function PurchaseBillScannerModal({
                     </div>
 
                     <div>
-                      <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>
-                        VENDOR BILL / INVOICE # *
+                      <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
+                        VENDOR BILL / INVOICE # <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <input
                         type="text"
@@ -615,13 +619,16 @@ export default function PurchaseBillScannerModal({
                         placeholder="e.g. 181 / INV-1001"
                         style={{
                           width: "100%",
-                          padding: "8px 10px",
-                          borderRadius: "7px",
-                          border: "1px solid #cbd5e1",
-                          fontSize: "0.85rem",
+                          height: "40px",
+                          padding: "0 12px",
+                          borderRadius: "8px",
+                          border: "1.5px solid #cbd5e1",
+                          backgroundColor: "#ffffff",
+                          fontSize: "0.86rem",
                           fontWeight: 700,
                           color: "#0f172a",
-                          outline: "none"
+                          outline: "none",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
                         }}
                       />
                     </div>
@@ -631,37 +638,40 @@ export default function PurchaseBillScannerModal({
                   {!selectedVendorId && extractedData.vendorName && (
                     <div
                       style={{
-                        marginTop: "8px",
+                        marginTop: "10px",
                         backgroundColor: "#fffbeb",
-                        border: "1px solid #fef3c7",
-                        borderRadius: "8px",
-                        padding: "10px 12px",
+                        border: "1.5px solid #fde68a",
+                        borderRadius: "10px",
+                        padding: "12px 14px",
                         display: "flex",
                         flexDirection: "column",
-                        gap: "8px"
+                        gap: "8px",
+                        boxShadow: "0 2px 4px rgba(245, 158, 11, 0.05)"
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                         <div>
-                          <span style={{ fontSize: "0.72rem", color: "#92400e", fontWeight: 700, display: "block" }}>
-                            ✨ SCANNED NEW VENDOR: &ldquo;{customVendorName || extractedData.vendorName}&rdquo;
-                          </span>
-                          <span style={{ fontSize: "0.72rem", color: "#78350f" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ fontSize: "0.82rem", color: "#92400e", fontWeight: 800 }}>
+                              ✨ Scanned New Vendor: &ldquo;{customVendorName || extractedData.vendorName}&rdquo;
+                            </span>
+                          </div>
+                          <span style={{ fontSize: "0.74rem", color: "#78350f", marginTop: "2px", display: "block" }}>
                             GSTIN: <strong>{customVendorGst || extractedData.vendorGstNumber || "N/A"}</strong> • Phone: <strong>{customVendorPhone || extractedData.vendorPhone || "N/A"}</strong> • City: <strong>{customVendorCity || extractedData.vendorCity || "N/A"}</strong>
                           </span>
                         </div>
 
-                        <div style={{ display: "flex", gap: "6px" }}>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                           <button
                             type="button"
                             onClick={() => setShowVendorEditForm(!showVendorEditForm)}
                             style={{
-                              padding: "5px 9px",
-                              borderRadius: "6px",
-                              border: "1px solid #fde68a",
+                              padding: "6px 12px",
+                              borderRadius: "7px",
+                              border: "1px solid #fcd34d",
                               backgroundColor: "#ffffff",
                               color: "#92400e",
-                              fontSize: "0.72rem",
+                              fontSize: "0.75rem",
                               fontWeight: 600,
                               cursor: "pointer",
                               display: "flex",
@@ -669,7 +679,7 @@ export default function PurchaseBillScannerModal({
                               gap: "4px"
                             }}
                           >
-                            <Edit2 size={12} /> {showVendorEditForm ? "Hide" : "Edit"}
+                            <Edit2 size={13} /> {showVendorEditForm ? "Hide Details" : "Edit Details"}
                           </button>
 
                           <button
@@ -677,62 +687,62 @@ export default function PurchaseBillScannerModal({
                             onClick={handleQuickAddVendor}
                             disabled={isAddingVendor}
                             style={{
-                              padding: "5px 12px",
-                              borderRadius: "6px",
+                              padding: "7px 14px",
+                              borderRadius: "7px",
                               border: "none",
                               backgroundColor: "#d97706",
                               color: "#ffffff",
-                              fontSize: "0.75rem",
+                              fontSize: "0.78rem",
                               fontWeight: 700,
                               cursor: isAddingVendor ? "wait" : "pointer",
                               display: "flex",
                               alignItems: "center",
-                              gap: "4px",
-                              boxShadow: "0 1px 3px rgba(217, 119, 6, 0.25)"
+                              gap: "5px",
+                              boxShadow: "0 2px 5px rgba(217, 119, 6, 0.25)"
                             }}
                           >
-                            <UserPlus size={13} /> {isAddingVendor ? "Adding..." : "+ Add & Link Vendor (1-Click)"}
+                            <UserPlus size={14} /> {isAddingVendor ? "Saving..." : "+ Add & Register Vendor (1-Click)"}
                           </button>
                         </div>
                       </div>
 
                       {/* Expandable Vendor Mini Editor */}
                       {showVendorEditForm && (
-                        <div style={{ backgroundColor: "#ffffff", border: "1px solid #fde68a", borderRadius: "6px", padding: "8px 10px", display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: "6px", marginTop: "4px" }}>
+                        <div style={{ backgroundColor: "#ffffff", border: "1px solid #fde68a", borderRadius: "8px", padding: "10px 12px", display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: "8px", marginTop: "4px" }}>
                           <div>
-                            <label style={{ fontSize: "0.68rem", color: "#64748b", display: "block" }}>Vendor Name</label>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "2px" }}>Vendor Name</label>
                             <input
                               type="text"
                               value={customVendorName}
                               onChange={e => setCustomVendorName(e.target.value)}
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                              style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
                             />
                           </div>
                           <div>
-                            <label style={{ fontSize: "0.68rem", color: "#64748b", display: "block" }}>GSTIN</label>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "2px" }}>GSTIN</label>
                             <input
                               type="text"
                               value={customVendorGst}
                               onChange={e => setCustomVendorGst(e.target.value)}
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                              style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
                             />
                           </div>
                           <div>
-                            <label style={{ fontSize: "0.68rem", color: "#64748b", display: "block" }}>Mobile</label>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "2px" }}>Mobile</label>
                             <input
                               type="text"
                               value={customVendorPhone}
                               onChange={e => setCustomVendorPhone(e.target.value)}
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                              style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
                             />
                           </div>
                           <div>
-                            <label style={{ fontSize: "0.68rem", color: "#64748b", display: "block" }}>City</label>
+                            <label style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600, display: "block", marginBottom: "2px" }}>City</label>
                             <input
                               type="text"
                               value={customVendorCity}
                               onChange={e => setCustomVendorCity(e.target.value)}
-                              style={{ width: "100%", padding: "4px 6px", fontSize: "0.75rem", border: "1px solid #cbd5e1", borderRadius: "4px" }}
+                              style={{ width: "100%", height: "32px", padding: "0 8px", fontSize: "0.78rem", fontWeight: 600, border: "1px solid #cbd5e1", borderRadius: "6px" }}
                             />
                           </div>
                         </div>
@@ -741,140 +751,249 @@ export default function PurchaseBillScannerModal({
                   )}
 
                   {vendorCreatedSuccess && (
-                    <div style={{ marginTop: "6px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", padding: "6px 10px", borderRadius: "6px", color: "#166534", fontSize: "0.74rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Check size={14} /> {vendorCreatedSuccess}
+                    <div style={{ marginTop: "8px", backgroundColor: "#f0fdf4", border: "1.5px solid #bbf7d0", padding: "8px 12px", borderRadius: "8px", color: "#166534", fontSize: "0.78rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Check size={16} /> {vendorCreatedSuccess}
                     </div>
                   )}
                 </div>
 
                 {/* ROW 2: DATES & TERMS */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
                   <div>
-                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       BILL DATE
                     </label>
                     <input
                       type="date"
                       value={billDate}
                       onChange={e => setBillDate(e.target.value)}
-                      style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        fontSize: "0.84rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        outline: "none"
+                      }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       DUE DATE
                     </label>
                     <input
                       type="date"
                       value={dueDate}
                       onChange={e => setDueDate(e.target.value)}
-                      style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        fontSize: "0.84rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        outline: "none"
+                      }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#475569", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       PAYMENT TERMS
                     </label>
                     <input
                       type="text"
                       value={paymentTerms}
                       onChange={e => setPaymentTerms(e.target.value)}
-                      style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.82rem" }}
+                      placeholder="e.g. Net 30 Days"
+                      style={{
+                        width: "100%",
+                        height: "40px",
+                        padding: "0 12px",
+                        borderRadius: "8px",
+                        border: "1.5px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        fontSize: "0.84rem",
+                        fontWeight: 600,
+                        color: "#0f172a",
+                        outline: "none"
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* ROW 3: PURCHASE LINE ITEMS */}
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                    <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#334155" }}>
-                      PURCHASE LINE ITEMS ({items.length})
-                    </label>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: "0.82rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.01em" }}>
+                        PURCHASE LINE ITEMS ({items.length})
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={handleAddItem}
                       style={{
-                        padding: "3px 8px",
-                        borderRadius: "4px",
+                        padding: "5px 12px",
+                        borderRadius: "7px",
                         border: "1px solid #cbd5e1",
-                        backgroundColor: "#f8fafc",
+                        backgroundColor: "#ffffff",
                         color: "#334155",
-                        fontSize: "0.72rem",
-                        fontWeight: 600,
+                        fontSize: "0.76rem",
+                        fontWeight: 700,
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px"
+                        gap: "5px",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
                       }}
                     >
-                      <Plus size={13} /> Add Line Item
+                      <Plus size={14} /> Add Line Item
                     </button>
                   </div>
 
-                  <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden", maxHeight: "210px", overflowY: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
-                      <thead style={{ backgroundColor: "#f8fafc", color: "#64748b", borderBottom: "1px solid #e2e8f0", position: "sticky", top: 0, zIndex: 5 }}>
+                  <div style={{ border: "1.5px solid #e2e8f0", borderRadius: "10px", overflow: "hidden", maxHeight: "240px", overflowY: "auto", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem" }}>
+                      <thead style={{ background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)", color: "#475569", borderBottom: "1.5px solid #e2e8f0", position: "sticky", top: 0, zIndex: 5 }}>
                         <tr>
-                          <th style={{ padding: "6px 8px", textAlign: "left" }}>Item Description</th>
-                          <th style={{ padding: "6px 8px", textAlign: "left", width: "65px" }}>HSN</th>
-                          <th style={{ padding: "6px 8px", textAlign: "right", width: "55px" }}>Qty</th>
-                          <th style={{ padding: "6px 8px", textAlign: "left", width: "55px" }}>Unit</th>
-                          <th style={{ padding: "6px 8px", textAlign: "right", width: "70px" }}>Rate (₹)</th>
-                          <th style={{ padding: "6px 8px", textAlign: "right", width: "65px" }}>GST %</th>
-                          <th style={{ padding: "6px 8px", textAlign: "right", width: "85px" }}>Total (₹)</th>
-                          <th style={{ padding: "6px 8px", width: "26px" }}></th>
+                          <th style={{ padding: "8px 10px", textAlign: "left", fontWeight: 700 }}>Item Description</th>
+                          <th style={{ padding: "8px 8px", textAlign: "center", width: "80px", fontWeight: 700 }}>HSN</th>
+                          <th style={{ padding: "8px 8px", textAlign: "center", width: "88px", fontWeight: 700 }}>Qty</th>
+                          <th style={{ padding: "8px 8px", textAlign: "center", width: "70px", fontWeight: 700 }}>Unit</th>
+                          <th style={{ padding: "8px 8px", textAlign: "right", width: "95px", fontWeight: 700 }}>Rate (₹)</th>
+                          <th style={{ padding: "8px 8px", textAlign: "center", width: "80px", fontWeight: 700 }}>GST %</th>
+                          <th style={{ padding: "8px 10px", textAlign: "right", width: "115px", fontWeight: 700 }}>Total (₹)</th>
+                          <th style={{ padding: "8px 6px", width: "32px" }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {items.map((it, idx) => (
-                          <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                            <td style={{ padding: "4px 8px" }}>
+                          <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9", backgroundColor: "#ffffff" }}>
+                            <td style={{ padding: "6px 8px" }}>
                               <input
                                 type="text"
                                 value={it.description}
                                 onChange={e => handleItemChange(idx, "description", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem", fontWeight: 600 }}
+                                placeholder="Article / item name..."
+                                style={{
+                                  width: "100%",
+                                  height: "34px",
+                                  padding: "0 10px",
+                                  borderRadius: "6px",
+                                  border: "1.5px solid #cbd5e1",
+                                  backgroundColor: "#ffffff",
+                                  fontSize: "0.82rem",
+                                  fontWeight: 600,
+                                  color: "#0f172a",
+                                  outline: "none"
+                                }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 4px" }}>
                               <input
                                 type="text"
                                 value={it.hsnCode}
                                 onChange={e => handleItemChange(idx, "hsnCode", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem" }}
+                                style={{
+                                  width: "100%",
+                                  height: "34px",
+                                  padding: "0 6px",
+                                  borderRadius: "6px",
+                                  border: "1.5px solid #cbd5e1",
+                                  backgroundColor: "#ffffff",
+                                  fontSize: "0.82rem",
+                                  fontWeight: 600,
+                                  textAlign: "center",
+                                  color: "#334155",
+                                  outline: "none"
+                                }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 4px" }}>
                               <input
                                 type="number"
                                 value={it.quantity}
                                 onChange={e => handleItemChange(idx, "quantity", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem", textAlign: "right", fontWeight: 600 }}
+                                style={{
+                                  width: "100%",
+                                  height: "34px",
+                                  padding: "0 6px",
+                                  borderRadius: "6px",
+                                  border: "1.5px solid #cbd5e1",
+                                  backgroundColor: "#ffffff",
+                                  fontSize: "0.85rem",
+                                  textAlign: "center",
+                                  fontWeight: 700,
+                                  fontVariantNumeric: "tabular-nums",
+                                  color: "#0f172a",
+                                  outline: "none"
+                                }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 4px" }}>
                               <input
                                 type="text"
                                 value={it.unit}
                                 onChange={e => handleItemChange(idx, "unit", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.72rem" }}
+                                style={{
+                                  width: "100%",
+                                  height: "34px",
+                                  padding: "0 6px",
+                                  borderRadius: "6px",
+                                  border: "1.5px solid #cbd5e1",
+                                  backgroundColor: "#ffffff",
+                                  fontSize: "0.8rem",
+                                  textAlign: "center",
+                                  color: "#475569",
+                                  outline: "none"
+                                }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 4px" }}>
                               <input
                                 type="number"
                                 value={it.rate}
                                 onChange={e => handleItemChange(idx, "rate", e.target.value)}
-                                style={{ width: "100%", padding: "4px 6px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem", textAlign: "right", fontWeight: 600 }}
+                                style={{
+                                  width: "100%",
+                                  height: "34px",
+                                  padding: "0 8px",
+                                  borderRadius: "6px",
+                                  border: "1.5px solid #cbd5e1",
+                                  backgroundColor: "#ffffff",
+                                  fontSize: "0.85rem",
+                                  textAlign: "right",
+                                  fontWeight: 700,
+                                  fontVariantNumeric: "tabular-nums",
+                                  color: "#0f172a",
+                                  outline: "none"
+                                }}
                               />
                             </td>
-                            <td style={{ padding: "4px 8px" }}>
+                            <td style={{ padding: "6px 4px" }}>
                               <select
                                 value={it.gstRate}
                                 onChange={e => handleItemChange(idx, "gstRate", e.target.value)}
-                                style={{ width: "100%", padding: "4px 4px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.75rem" }}
+                                style={{
+                                  width: "100%",
+                                  height: "34px",
+                                  padding: "0 6px",
+                                  borderRadius: "6px",
+                                  border: "1.5px solid #cbd5e1",
+                                  backgroundColor: "#ffffff",
+                                  fontSize: "0.8rem",
+                                  fontWeight: 600,
+                                  color: "#0f172a",
+                                  outline: "none"
+                                }}
                               >
                                 <option value={0}>0%</option>
                                 <option value={5}>5%</option>
@@ -883,16 +1002,28 @@ export default function PurchaseBillScannerModal({
                                 <option value={28}>28%</option>
                               </select>
                             </td>
-                            <td style={{ padding: "4px 8px", textAlign: "right", fontWeight: 700, color: "#0f172a" }}>
-                              ₹{it.total.toLocaleString("en-IN")}
+                            <td style={{ padding: "6px 10px", textAlign: "right", fontWeight: 800, fontSize: "0.9rem", color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
+                              ₹{it.total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
-                            <td style={{ padding: "4px 8px", textAlign: "center" }}>
+                            <td style={{ padding: "6px 4px", textAlign: "center" }}>
                               <button
                                 type="button"
                                 onClick={() => handleRemoveItem(idx)}
-                                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "2px" }}
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  color: "#94a3b8",
+                                  cursor: "pointer",
+                                  padding: "4px",
+                                  borderRadius: "4px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = "#dc2626"}
+                                onMouseLeave={e => e.currentTarget.style.color = "#94a3b8"}
                               >
-                                <Trash2 size={13} />
+                                <Trash2 size={15} />
                               </button>
                             </td>
                           </tr>
@@ -903,37 +1034,63 @@ export default function PurchaseBillScannerModal({
                 </div>
 
                 {/* FINANCIAL TOTALS BOX */}
-                <div style={{ backgroundColor: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.8rem" }}>
-                  <div>
-                    <span style={{ color: "#64748b" }}>Taxable Subtotal: </span>
-                    <strong style={{ color: "#0f172a" }}>₹{computedSubtotal.toLocaleString("en-IN")}</strong>
-                    <span style={{ color: "#64748b", marginLeft: "14px" }}>Total Tax: </span>
-                    <strong style={{ color: "#0f172a" }}>₹{computedTotalTax.toLocaleString("en-IN")}</strong>
+                <div
+                  style={{
+                    backgroundColor: "#f8fafc",
+                    padding: "14px 18px",
+                    borderRadius: "10px",
+                    border: "1.5px solid #e2e8f0",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
+                  }}
+                >
+                  <div style={{ display: "flex", gap: "18px", alignItems: "center" }}>
+                    <div>
+                      <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block" }}>TAXABLE VALUE</span>
+                      <strong style={{ color: "#0f172a", fontSize: "0.95rem", fontVariantNumeric: "tabular-nums" }}>
+                        ₹{computedSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </strong>
+                    </div>
+
+                    <div style={{ height: "24px", width: "1px", backgroundColor: "#cbd5e1" }} />
+
+                    <div>
+                      <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600, display: "block" }}>TOTAL GST TAX</span>
+                      <strong style={{ color: "#0f172a", fontSize: "0.95rem", fontVariantNumeric: "tabular-nums" }}>
+                        ₹{computedTotalTax.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </strong>
+                    </div>
                   </div>
 
-                  <div style={{ fontSize: "1.15rem", fontWeight: 800, color: "#059669" }}>
-                    Total: ₹{computedGrandTotal.toLocaleString("en-IN")}
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{ fontSize: "0.72rem", color: "#059669", fontWeight: 700, display: "block" }}>GROSS PAYABLE TOTAL</span>
+                    <span style={{ fontSize: "1.3rem", fontWeight: 800, color: "#059669", fontVariantNumeric: "tabular-nums" }}>
+                      ₹{computedGrandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
                   </div>
                 </div>
 
                 {/* ACTION BUTTONS ROW */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: "10px", marginTop: "4px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: "10px", marginTop: "6px" }}>
                   <button
                     type="button"
                     onClick={handleApply}
                     style={{
-                      padding: "10px",
+                      padding: "11px",
                       borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
+                      border: "1.5px solid #cbd5e1",
                       backgroundColor: "#ffffff",
                       color: "#334155",
-                      fontSize: "0.82rem",
+                      fontSize: "0.84rem",
                       fontWeight: 700,
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "6px"
+                      gap: "6px",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
                     }}
                   >
                     <ArrowRight size={15} /> Transfer to Bill Form
@@ -944,12 +1101,12 @@ export default function PurchaseBillScannerModal({
                     onClick={handleDirectCreate}
                     disabled={isCreatingDirectly}
                     style={{
-                      padding: "10px",
+                      padding: "11px",
                       borderRadius: "8px",
                       border: "none",
                       backgroundColor: "#059669",
                       color: "#ffffff",
-                      fontSize: "0.85rem",
+                      fontSize: "0.86rem",
                       fontWeight: 700,
                       cursor: isCreatingDirectly ? "wait" : "pointer",
                       display: "flex",
@@ -959,7 +1116,7 @@ export default function PurchaseBillScannerModal({
                       boxShadow: "0 2px 8px rgba(5, 150, 105, 0.3)"
                     }}
                   >
-                    <CheckCircle2 size={16} /> {isCreatingDirectly ? "Posting Bill..." : "Create & Post Bill (1-Click)"}
+                    <CheckCircle2 size={17} /> {isCreatingDirectly ? "Posting Bill..." : "Create & Post Bill (1-Click)"}
                   </button>
                 </div>
 
