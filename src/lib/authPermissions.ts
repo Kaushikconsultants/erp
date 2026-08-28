@@ -34,6 +34,9 @@ export const canUserAccessSection = cache(async function canUserAccessSection(se
           if (sectionKey === 'purchases' || sectionKey === 'procurement') {
             return lower.includes("purchase") || lower.includes("procurement") || lower.includes("bill") || lower.includes("vendor");
           }
+          if (sectionKey === 'production' || sectionKey === 'manufacturing') {
+            return lower.includes('production') || lower.includes('manufacturing') || lower.includes('workshop') || lower.includes('factory');
+          }
           return lower.includes(sectionKey.toLowerCase());
         });
         if (match) return true;

@@ -33,7 +33,8 @@ import {
   Clock,
   Scale,
   FolderTree,
-  FileText
+  FileText,
+  Factory
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -119,6 +120,7 @@ const Sidebar = ({
   const isAccountingActive = pathname.startsWith('/accounting');
   const isHrmsActive = pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || (pathname.startsWith('/expenses') && !isPurchasesActive) || pathname.startsWith('/leaves') || pathname.startsWith('/hiring');
   const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs') || pathname.startsWith('/gst-filing');
+  const isProductionActive = pathname.startsWith('/production');
 
   return (
     <aside className="sidebar">
@@ -457,7 +459,28 @@ const Sidebar = ({
           </div>
         )}
 
-        {/* 5. REPORTS & INTELLIGENCE CATEGORY DROPDOWN */}
+        {/* 5.5 PRODUCTION & WORKSHOP SECTION */}
+        {(isSuperOrAdmin || canAccess('production')) && (
+          <div className="nav-section">
+            <Link
+              href="/production"
+              onClick={onClose}
+              className={`nav-item ${isProductionActive ? 'active' : ''}`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '9px',
+                borderLeft: isProductionActive ? '3px solid #7c3aed' : '3px solid transparent',
+                paddingLeft: isProductionActive ? '13px' : '16px',
+                background: isProductionActive ? 'linear-gradient(90deg, #ede9fe22, transparent)' : 'none'
+              }}
+            >
+              <Factory size={18} style={{ color: isProductionActive ? '#7c3aed' : '#64748b' }} />
+              <span>PRODUCTION & WORKSHOP</span>
+              <span style={{ marginLeft: 'auto', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '10px' }}>MFG</span>
+            </Link>
+          </div>
+        )}
+
+        {/* 6. REPORTS & INTELLIGENCE CATEGORY DROPDOWN */}
         {canAccess('reports') && (
           <div className="nav-section">
             <button

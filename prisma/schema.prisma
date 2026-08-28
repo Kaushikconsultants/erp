@@ -80,6 +80,8 @@ model Organization {
   ledgerAccounts        LedgerAccount[]
   journalEntries        JournalEntry[]
   deliveryChallans      DeliveryChallan[]
+  workOrders            WorkOrder[]
+  billsOfMaterials      BillOfMaterials[]
 }
 
 model SubscriptionHistory {
@@ -239,6 +241,7 @@ model Employee {
   round2Candidates Candidate[] @relation("CandidateRound2Interviewer")
   round3Candidates Candidate[] @relation("CandidateRound3Interviewer")
   assignedWhatsAppConversations WhatsAppConversation[] @relation("AssignedAgent")
+  workerProductionLogs WorkerProductionLog[]
 
   @@index([organizationId])
   @@index([userId])
@@ -454,6 +457,10 @@ model Product {
   productUnits    ProductUnit[]
   productBatches  ProductBatch[]
   deliveryChallanItems DeliveryChallanItem[]
+  workOrders      WorkOrder[]
+  workOrderMaterials WorkOrderMaterial[]
+  bomItems        BomItem[]
+  billsOfMaterials BillOfMaterials[]
 
   @@index([organizationId])
   @@index([category])
@@ -2163,5 +2170,190 @@ model DeliveryChallanItem {
   @@index([productId])
 }
 
+// ---------------------------------------------------------
+// PRODUCTION & WORKSHOP (Universal Manufacturing Suite)
+// Works across Apparel, Electronics, FMCG, Engineering, etc.
+// ---------------------------------------------------------
 
+model WorkOrder {
+  id               String    @id @default(uuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
 
+  woNumber         String    @unique // WO-2026-0001
+  title            String    // e.g. "Men's Trackpants Lot 081 - 500 pcs"
+  sector           String    @default("General") // Apparel, Electronics, FMCG, Fabrication, General
+  
+  // Finished Product to be manufactured
+  productId        String?
+  product          Product?  @relation(fields: [productId], references: [id])
+  finishedGoodsName String   // Product name (fallback if not linked)
+  targetQty        Float     @default(0)  // Total pieces / units to produce
+  completedQty     Float     @default(0)  // Units passing QA
+  rejectedQty      Float     @default(0)  // Defective / rejected units
+  
+  // Variant / Size breakdown (JSON string for flexibility)
+  // e.g. {"S":50,"M":150,"L":200,"XL":100} for Apparel
+  // or {"Unit":500} for general
+  variantMatrix    String?   // JSON
+
+  // BOM Reference
+  bomId            String?
+  bom              BillOfMaterials? @relation(fields: [bomId], references: [id])
+
+  // Dates
+  plannedStartDate DateTime?
+  plannedEndDate   DateTime?
+  actualStartDate  DateTime?
+  actualEndDate    DateTime?
+
+  // Status lifecycle
+  status           String    @default("Draft")
+  // Draft | In Planning | Material Allocated | In Production | QA & Packing | Completed | Cancelled
+
+  currentStage     String    @default("Not Started")
+  // e.g. Cutting, Stitching, Washing, QA, Packing (or custom per sector)
+
+  priority         String    @default("Normal") // Low, Normal, High, Urgent
+  
+  // Costing
+  estimatedCost    Float     @default(0)
+  actualCost       Float     @default(0)
+  
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  materials        WorkOrderMaterial[]
+  stages           WorkOrderStage[]
+  workerLogs       WorkerProductionLog[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([sector])
+  @@index([productId])
+}
+
+model WorkOrderMaterial {
+  id             String    @id @default(uuid())
+  workOrderId    String
+  workOrder      WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  
+  productId      String?
+  product        Product?  @relation(fields: [productId], references: [id])
+  materialName   String    // Raw material / component name
+  unit           String    @default("pcs") // pcs, mtr, kg, ltr, roll, box
+  
+  requiredQty    Float     @default(0)
+  allocatedQty   Float     @default(0)
+  consumedQty    Float     @default(0)
+  
+  unitCost       Float     @default(0)
+  totalCost      Float     @default(0)
+  
+  status         String    @default("Pending") // Pending, Allocated, Partially Consumed, Consumed
+  notes          String?
+  
+  @@index([workOrderId])
+  @@index([productId])
+}
+
+model WorkOrderStage {
+  id             String    @id @default(uuid())
+  workOrderId    String
+  workOrder      WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  
+  stageName      String    // e.g. Cutting, Assembly, QA, Packing
+  stageOrder     Int       @default(0)
+  
+  targetQty      Float     @default(0)
+  completedQty   Float     @default(0)
+  rejectedQty    Float     @default(0)
+  
+  assignedTo     String?   // Operator / Team name
+  startedAt      DateTime?
+  completedAt    DateTime?
+  
+  status         String    @default("Pending") // Pending, In Progress, Completed, Skipped
+  remarks        String?
+  
+  @@index([workOrderId])
+}
+
+model WorkerProductionLog {
+  id             String    @id @default(uuid())
+  workOrderId    String
+  workOrder      WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  
+  employeeId     String?
+  employee       Employee? @relation(fields: [employeeId], references: [id])
+  workerName     String    // Name (fallback for external contractors)
+  
+  logDate        DateTime  @default(now())
+  operation      String    // e.g. "Front Pocket Stitching", "PCB Soldering", "Filling"
+  qtyProduced    Float     @default(0)
+  qtyRejected    Float     @default(0)
+  
+  pieceRate      Float     @default(0) // Rate per unit
+  earnedAmount   Float     @default(0) // qtyProduced * pieceRate
+  
+  notes          String?
+  createdAt      DateTime  @default(now())
+  
+  @@index([workOrderId])
+  @@index([employeeId])
+  @@index([logDate])
+}
+
+model BillOfMaterials {
+  id             String    @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  
+  bomCode        String    @unique // BOM-001
+  name           String    // e.g. "Men's Trackpant - Standard", "PCB Assembly v2.1"
+  sector         String    @default("General")
+  
+  productId      String?
+  product        Product?  @relation(fields: [productId], references: [id])
+  finishedGoodsName String // Name of end product
+  
+  outputQty      Float     @default(1)   // How many units does one BOM produce?
+  outputUnit     String    @default("pcs")
+  
+  estimatedCostPerUnit Float @default(0)
+  laborCostPerUnit     Float @default(0)
+  overheadPerUnit      Float @default(0)
+  
+  isActive       Boolean   @default(true)
+  notes          String?
+  
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  
+  items          BomItem[]
+  workOrders     WorkOrder[]
+
+  @@index([organizationId])
+  @@index([sector])
+  @@index([productId])
+}
+
+model BomItem {
+  id             String          @id @default(uuid())
+  bomId          String
+  bom            BillOfMaterials @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  
+  productId      String?
+  product        Product?        @relation(fields: [productId], references: [id])
+  materialName   String
+  unit           String          @default("pcs")
+  quantity       Float           @default(1)    // per BOM batch output
+  wastagePercent Float           @default(0)    // % wastage to add
+  unitCost       Float           @default(0)
+  totalCost      Float           @default(0)
+  notes          String?
+  
+  @@index([bomId])
+  @@index([productId])
+}
