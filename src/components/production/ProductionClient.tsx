@@ -176,7 +176,7 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
             <Factory size={26} color="#fff" />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary, #0f172a)" }}>
+            <h1 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 600, color: "var(--text-primary, #0f172a)", letterSpacing: "-0.2px" }}>
               Production & Workshop
             </h1>
             <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "var(--text-muted, #64748b)" }}>
@@ -186,10 +186,10 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
         </div>
 
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <button onClick={() => setShowBomManager(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "8px", border: "1.5px solid #cbd5e1", backgroundColor: "#ffffff", color: "#334155", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={() => setShowBomManager(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer" }}>
             <BookOpen size={15} /> Bill of Materials
           </button>
-          <button onClick={() => setShowCreateWO(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 18px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", color: "#ffffff", fontSize: "0.86rem", fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 12px rgba(79,70,229,0.25)" }}>
+          <button onClick={() => setShowCreateWO(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 18px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", color: "#ffffff", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(79,70,229,0.2)" }}>
             <Plus size={17} /> New Work Order
           </button>
         </div>
@@ -200,12 +200,12 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
         {kpis.map((kpi) => (
           <div key={kpi.label} style={{ backgroundColor: "#ffffff", border: "1px solid var(--border, #e2e8f0)", borderRadius: "12px", padding: "16px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-muted, #64748b)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{kpi.label}</span>
+              <span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{kpi.label}</span>
               <div style={{ width: "30px", height: "30px", borderRadius: "8px", backgroundColor: kpi.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <kpi.icon size={16} color={kpi.color} />
               </div>
             </div>
-            <span style={{ fontSize: "1.4rem", fontWeight: 800, color: kpi.color, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</span>
+            <span style={{ fontSize: "1.375rem", fontWeight: 700, color: kpi.color, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</span>
           </div>
         ))}
       </div>
@@ -223,7 +223,7 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
                 padding: "7px 14px", borderRadius: "8px", border: `1.5px solid ${active ? s.color : "#e2e8f0"}`,
                 backgroundColor: active ? s.color : "#ffffff",
                 color: active ? "#ffffff" : "#475569",
-                fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+                fontSize: "0.8rem", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
                 boxShadow: active ? `0 4px 12px ${s.color}30` : "none", transition: "all 0.15s ease"
               }}
             >
@@ -248,7 +248,7 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "0.84rem", fontWeight: 600, color: "#0f172a", backgroundColor: "#ffffff", outline: "none" }}
+          style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.84rem", fontWeight: 400, color: "var(--text-primary, #0f172a)", backgroundColor: "#ffffff", outline: "none" }}
         >
           <option value="All">All Statuses</option>
           {Object.keys(STATUS_CONFIG).map(s => <option key={s} value={s}>{s}</option>)}
@@ -262,7 +262,7 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
             <thead>
               <tr style={{ background: "linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)", borderBottom: "1.5px solid #e2e8f0" }}>
                 {["Work Order", "Title / Product", "Sector", "Progress", "Stage", "Dates", "Est. Cost", "Status", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: "#475569", fontSize: "0.74rem", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 500, color: "var(--text-secondary, #64748b)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -271,8 +271,8 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
                 <tr>
                   <td colSpan={9} style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>
                     <Factory size={40} style={{ margin: "0 auto 12px", opacity: 0.3, display: "block" }} />
-                    <p style={{ margin: 0, fontWeight: 600 }}>No Work Orders found</p>
-                    <p style={{ margin: "4px 0 0", fontSize: "0.78rem" }}>Click "New Work Order" to create your first manufacturing job</p>
+                    <p style={{ margin: 0, fontWeight: 500, color: "var(--text-secondary, #64748b)" }}>No Work Orders found</p>
+                    <p style={{ margin: "4px 0 0", fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)" }}>Click "New Work Order" to create your first manufacturing job</p>
                   </td>
                 </tr>
               ) : filteredOrders.map(wo => {
@@ -283,40 +283,40 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
 
                 return (
                   <tr key={wo.id} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.12s" }} onMouseEnter={e => e.currentTarget.style.background = "#fafafa"} onMouseLeave={e => e.currentTarget.style.background = ""}>
-                    <td style={{ padding: "12px", fontWeight: 800, color: "#2563eb", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px", fontWeight: 600, color: "var(--accent-primary, #4f46e5)", whiteSpace: "nowrap" }}>
                       {wo.woNumber}
-                      <div style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 500, marginTop: "1px" }}>P:{wo.priority}</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", fontWeight: 400, marginTop: "1px" }}>P: {wo.priority}</div>
                     </td>
                     <td style={{ padding: "12px", maxWidth: "200px" }}>
-                      <div style={{ fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wo.finishedGoodsName}</div>
-                      <div style={{ fontSize: "0.72rem", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wo.title}</div>
+                      <div style={{ fontWeight: 500, color: "var(--text-primary, #0f172a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wo.finishedGoodsName}</div>
+                      <div style={{ fontSize: "0.72rem", color: "var(--text-secondary, #64748b)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wo.title}</div>
                     </td>
                     <td style={{ padding: "12px" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "5px", backgroundColor: sectorCfg.color + "18", color: sectorCfg.color, fontSize: "0.72rem", fontWeight: 700 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "5px", backgroundColor: sectorCfg.color + "15", color: sectorCfg.color, fontSize: "0.72rem", fontWeight: 500 }}>
                         <sectorCfg.icon size={11} /> {wo.sector}
                       </span>
                     </td>
                     <td style={{ padding: "12px", minWidth: "120px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#64748b", marginBottom: "4px" }}>
                         <span>{wo.completedQty}/{wo.targetQty}</span>
-                        <span style={{ fontWeight: 700, color: progress >= 100 ? "#059669" : "#d97706" }}>{progress.toFixed(0)}%</span>
+                        <span style={{ fontWeight: 500, color: progress >= 100 ? "#059669" : "#d97706" }}>{progress.toFixed(0)}%</span>
                       </div>
                       <div style={{ height: "6px", backgroundColor: "#f1f5f9", borderRadius: "99px", overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${progress}%`, borderRadius: "99px", background: progress >= 100 ? "linear-gradient(90deg,#059669,#10b981)" : "linear-gradient(90deg,#4f46e5,#7c3aed)", transition: "width 0.3s" }} />
                       </div>
                     </td>
-                    <td style={{ padding: "12px", color: "#475569", fontWeight: 600, whiteSpace: "nowrap", fontSize: "0.78rem" }}>
+                    <td style={{ padding: "12px", color: "var(--text-secondary, #475569)", fontWeight: 400, whiteSpace: "nowrap", fontSize: "0.82rem" }}>
                       {wo.currentStage}
                     </td>
                     <td style={{ padding: "12px", fontSize: "0.72rem", color: "#64748b", whiteSpace: "nowrap" }}>
                       {wo.plannedStartDate ? new Date(wo.plannedStartDate).toLocaleDateString("en-GB") : "–"}
                       <div>{wo.plannedEndDate ? new Date(wo.plannedEndDate).toLocaleDateString("en-GB") : "–"}</div>
                     </td>
-                    <td style={{ padding: "12px", fontWeight: 700, color: "#0f172a", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px", fontWeight: 500, color: "var(--text-primary, #0f172a)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                       ₹{Number(wo.estimatedCost).toLocaleString("en-IN")}
                     </td>
                     <td style={{ padding: "12px" }}>
-                      <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: "5px", backgroundColor: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.border}`, fontSize: "0.72rem", fontWeight: 700, whiteSpace: "nowrap" }}>
+                      <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: "5px", backgroundColor: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.border}`, fontSize: "0.72rem", fontWeight: 500, whiteSpace: "nowrap" }}>
                         {wo.status}
                       </span>
                     </td>
@@ -332,7 +332,7 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
                           <Users size={14} />
                         </button>
                         {wo.status !== "Completed" && wo.status !== "Cancelled" && (
-                          <button title="Complete Work Order" onClick={() => handleComplete(wo)} style={{ padding: "5px 8px", borderRadius: "6px", border: "none", background: "#059669", color: "#fff", fontSize: "0.7rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "3px" }}>
+                          <button title="Complete Work Order" onClick={() => handleComplete(wo)} style={{ padding: "5px 8px", borderRadius: "6px", border: "none", background: "#059669", color: "#fff", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: "3px" }}>
                             <CheckCircle2 size={13} /> Done
                           </button>
                         )}

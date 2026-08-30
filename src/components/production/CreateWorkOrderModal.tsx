@@ -137,7 +137,7 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
 
   const inputStyle = {
     width: "100%", height: "38px", padding: "0 12px", borderRadius: "8px",
-    border: "1.5px solid #cbd5e1", fontSize: "0.84rem", fontWeight: 600, color: "#0f172a",
+    border: "1px solid #e2e8f0", fontSize: "0.84rem", fontWeight: 400, color: "var(--text-primary, #0f172a)",
     outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" as const
   };
 
@@ -152,7 +152,7 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
               <Factory size={20} color="#fff" />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a" }}>New Work Order / Job Card</h3>
+              <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "var(--text-primary, #0f172a)" }}>New Work Order / Job Card</h3>
               <p style={{ margin: 0, fontSize: "0.72rem", color: "#64748b" }}>Universal manufacturing — works for Apparel, Electronics, FMCG, Fabrication & General</p>
             </div>
           </div>
@@ -164,13 +164,13 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
 
           {/* Sector Selector */}
           <div style={{ marginBottom: "18px" }}>
-            <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "8px", textTransform: "uppercase" }}>Manufacturing Sector *</label>
+            <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "8px" }}>Manufacturing Sector</label>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               {sectorOptions.map(s => (
                 <button
                   key={s.key} type="button" onClick={() => handleSectorChange(s.key)}
                   style={{
-                    padding: "7px 14px", borderRadius: "8px", fontSize: "0.8rem", fontWeight: 700, cursor: "pointer",
+                    padding: "7px 14px", borderRadius: "8px", fontSize: "0.8rem", fontWeight: 500, cursor: "pointer",
                     border: `1.5px solid ${sector === s.key ? "#4f46e5" : "#e2e8f0"}`,
                     backgroundColor: sector === s.key ? "#4f46e5" : "#ffffff",
                     color: sector === s.key ? "#ffffff" : "#475569",
@@ -186,18 +186,18 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
           {/* Row 1 */}
           <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "14px", marginBottom: "14px" }}>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>FINISHED GOODS / PRODUCT NAME *</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Finished Goods / Product Name *</label>
               <input type="text" value={finishedGoodsName} onChange={e => setFinishedGoodsName(e.target.value)} placeholder="e.g. Men's Trackpants / PCB v2.1" required style={inputStyle} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>LINK TO PRODUCT CATALOG (OPTIONAL)</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Link to Product Catalog (Optional)</label>
               <select value={productId} onChange={e => handleProductChange(e.target.value)} style={inputStyle}>
                 <option value="">— Select Product —</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name} {p.sku ? `(${p.sku})` : ""}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>USE BILL OF MATERIALS (OPTIONAL)</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Use Bill of Materials (Optional)</label>
               <select value={bomId} onChange={e => handleBomChange(e.target.value)} style={inputStyle}>
                 <option value="">— Select BOM —</option>
                 {boms.map(b => <option key={b.id} value={b.id}>{b.bomCode}: {b.name}</option>)}
@@ -208,31 +208,31 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
           {/* Row 2 */}
           <div style={{ display: "grid", gridTemplateColumns: "1.5fr 0.8fr 0.8fr 1fr 0.8fr", gap: "14px", marginBottom: "14px" }}>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>JOB TITLE (OPTIONAL)</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Job Title (Optional)</label>
               <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Lot 081 — Sports Trackpants Q3" style={inputStyle} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>TARGET QTY *</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Target Qty *</label>
               <input type="number" value={targetQty} onChange={e => setTargetQty(e.target.value)} min="1" required style={{ ...inputStyle, textAlign: "center", fontVariantNumeric: "tabular-nums" }} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>PRIORITY</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Priority</label>
               <select value={priority} onChange={e => setPriority(e.target.value)} style={inputStyle}>
                 {["Low","Normal","High","Urgent"].map(p => <option key={p}>{p}</option>)}
               </select>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>START DATE</label>
+                <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Start Date</label>
                 <input type="date" value={plannedStart} onChange={e => setPlannedStart(e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>DUE DATE</label>
+                <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Due Date</label>
                 <input type="date" value={plannedEnd} onChange={e => setPlannedEnd(e.target.value)} style={inputStyle} />
               </div>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>EST. COST (₹)</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Est. Cost (₹)</label>
               <input type="number" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} placeholder="0.00" style={{ ...inputStyle, textAlign: "right" }} />
             </div>
           </div>
@@ -241,8 +241,8 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
           {showVariants && (
             <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "14px", marginBottom: "14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#1e40af" }}>📐 Size / Variant Matrix (Apparel)</span>
-                <button type="button" onClick={() => setVariantRows([...variantRows, { label: "", qty: 0 }])} style={{ padding: "3px 8px", borderRadius: "5px", border: "1px solid #bfdbfe", backgroundColor: "#fff", color: "#2563eb", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}>+ Add Size</button>
+                <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1e40af" }}>📐 Size / Variant Matrix (Apparel)</span>
+                <button type="button" onClick={() => setVariantRows([...variantRows, { label: "", qty: 0 }])} style={{ padding: "3px 8px", borderRadius: "5px", border: "1px solid #bfdbfe", backgroundColor: "#fff", color: "#2563eb", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer" }}>+ Add Size</button>
               </div>
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 {variantRows.map((v, i) => (
@@ -252,14 +252,14 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
                       placeholder="Size"
                       value={v.label}
                       onChange={e => setVariantRows(prev => prev.map((r, idx) => idx === i ? { ...r, label: e.target.value } : r))}
-                      style={{ width: "50px", height: "34px", padding: "0 6px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.8rem", fontWeight: 700, textAlign: "center" }}
+                      style={{ width: "50px", height: "34px", padding: "0 6px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", fontWeight: 400, textAlign: "center" }}
                     />
                     <input
                       type="number"
                       placeholder="0"
                       value={v.qty || ""}
                       onChange={e => setVariantRows(prev => prev.map((r, idx) => idx === i ? { ...r, qty: parseInt(e.target.value) || 0 } : r))}
-                      style={{ width: "60px", height: "34px", padding: "0 6px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.8rem", fontWeight: 700, textAlign: "center" }}
+                      style={{ width: "60px", height: "34px", padding: "0 6px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", fontWeight: 400, textAlign: "center" }}
                     />
                     <button type="button" onClick={() => setVariantRows(prev => prev.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><Trash2 size={13} /></button>
                   </div>
@@ -271,21 +271,21 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
           {/* Stage Routing */}
           <div style={{ marginBottom: "14px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 800, color: "#0f172a" }}>PRODUCTION STAGES & ROUTING</label>
-              <button type="button" onClick={() => { setStages([...stages, ""]); setStageAssignees([...stageAssignees, ""]); }} style={{ padding: "3px 10px", borderRadius: "5px", border: "1px solid #cbd5e1", backgroundColor: "#fff", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", color: "#334155", display: "flex", alignItems: "center", gap: "4px" }}>
+              <label style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)" }}>Production Stages & Routing</label>
+              <button type="button" onClick={() => { setStages([...stages, ""]); setStageAssignees([...stageAssignees, ""]); }} style={{ padding: "3px 10px", borderRadius: "5px", border: "1px solid #e2e8f0", backgroundColor: "#fff", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", color: "#475569", display: "flex", alignItems: "center", gap: "4px" }}>
                 <Plus size={12} /> Add Stage
               </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "8px" }}>
               {stages.map((stage, i) => (
                 <div key={i} style={{ display: "flex", gap: "6px", alignItems: "center", backgroundColor: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0", padding: "8px 10px" }}>
-                  <span style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#4f46e5", color: "#fff", fontSize: "0.7rem", fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
+                  <span style={{ width: "22px", height: "22px", borderRadius: "50%", backgroundColor: "#4f46e5", color: "#fff", fontSize: "0.7rem", fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
                   <input
                     type="text"
                     value={stage}
                     onChange={e => setStages(prev => prev.map((s, idx) => idx === i ? e.target.value : s))}
                     placeholder="Stage name..."
-                    style={{ flex: 1, height: "30px", padding: "0 8px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.78rem", fontWeight: 600, color: "#0f172a" }}
+                    style={{ flex: 1, height: "30px", padding: "0 8px", borderRadius: "5px", border: "1px solid #e2e8f0", fontSize: "0.78rem", fontWeight: 400, color: "var(--text-primary, #0f172a)" }}
                   />
                   <input
                     type="text"
@@ -305,8 +305,8 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
           {/* Raw Materials / BOM */}
           <div style={{ marginBottom: "14px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 800, color: "#0f172a" }}>RAW MATERIALS / COMPONENTS</label>
-              <button type="button" onClick={() => setMaterials([...materials, { productId: "", materialName: "", unit: "pcs", requiredQty: 1, unitCost: 0 }])} style={{ padding: "3px 10px", borderRadius: "5px", border: "1px solid #cbd5e1", backgroundColor: "#fff", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", color: "#334155", display: "flex", alignItems: "center", gap: "4px" }}>
+              <label style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)" }}>Raw Materials / Components</label>
+              <button type="button" onClick={() => setMaterials([...materials, { productId: "", materialName: "", unit: "pcs", requiredQty: 1, unitCost: 0 }])} style={{ padding: "3px 10px", borderRadius: "5px", border: "1px solid #e2e8f0", backgroundColor: "#fff", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", color: "#475569", display: "flex", alignItems: "center", gap: "4px" }}>
                 <Plus size={12} /> Add Material
               </button>
             </div>
@@ -315,7 +315,7 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
                 <thead style={{ background: "linear-gradient(180deg,#f8fafc,#f1f5f9)", borderBottom: "1.5px solid #e2e8f0" }}>
                   <tr>
                     {["Material / Component", "Link to Product", "Unit", "Required Qty", "Unit Cost (₹)", ""].map(h => (
-                      <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 700, color: "#475569", fontSize: "0.7rem" }}>{h}</th>
+                      <th key={h} style={{ padding: "8px 10px", textAlign: "left", fontWeight: 500, color: "var(--text-secondary, #64748b)", fontSize: "0.72rem" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -323,7 +323,7 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
                   {materials.map((m, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "6px 8px" }}>
-                        <input type="text" value={m.materialName} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, materialName: e.target.value } : mat))} placeholder="e.g. Lycra Fabric / Resistor 10kΩ" style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.8rem", fontWeight: 600 }} />
+                        <input type="text" value={m.materialName} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, materialName: e.target.value } : mat))} placeholder="e.g. Lycra Fabric / Resistor 10kΩ" style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", fontWeight: 400 }} />
                       </td>
                       <td style={{ padding: "6px 8px" }}>
                         <select value={m.productId} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, productId: e.target.value } : mat))} style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.76rem" }}>
@@ -337,10 +337,10 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
                         </select>
                       </td>
                       <td style={{ padding: "6px 6px", width: "90px" }}>
-                        <input type="number" value={m.requiredQty} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, requiredQty: parseFloat(e.target.value) || 0 } : mat))} style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.84rem", fontWeight: 700, textAlign: "center" }} />
+                        <input type="number" value={m.requiredQty} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, requiredQty: parseFloat(e.target.value) || 0 } : mat))} style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.84rem", fontWeight: 400, textAlign: "center" }} />
                       </td>
                       <td style={{ padding: "6px 6px", width: "100px" }}>
-                        <input type="number" value={m.unitCost} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, unitCost: parseFloat(e.target.value) || 0 } : mat))} style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.84rem", fontWeight: 700, textAlign: "right" }} />
+                        <input type="number" value={m.unitCost} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, unitCost: parseFloat(e.target.value) || 0 } : mat))} style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.84rem", fontWeight: 400, textAlign: "right" }} />
                       </td>
                       <td style={{ padding: "6px", textAlign: "center" }}>
                         <button type="button" onClick={() => setMaterials(prev => prev.filter((_, idx) => idx !== i))} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}><Trash2 size={14} /></button>
@@ -362,14 +362,14 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
 
           {/* Notes */}
           <div style={{ marginBottom: "18px" }}>
-            <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, color: "#334155", marginBottom: "4px" }}>NOTES / SPECIAL INSTRUCTIONS</label>
+            <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Notes / Special Instructions</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Any special quality specs, order reference, client requirements..." style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "0.82rem", color: "#0f172a", resize: "vertical", outline: "none", boxSizing: "border-box" }} />
           </div>
 
           {/* Footer Actions */}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
             <button type="button" onClick={onClose} style={{ padding: "10px 18px", borderRadius: "8px", border: "1.5px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.84rem", fontWeight: 600, cursor: "pointer" }}>Cancel</button>
-            <button type="submit" disabled={saving} style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "#ffffff", fontSize: "0.86rem", fontWeight: 700, cursor: saving ? "wait" : "pointer", boxShadow: "0 4px 12px rgba(79,70,229,0.3)", display: "flex", alignItems: "center", gap: "6px" }}>
+            <button type="submit" disabled={saving} style={{ padding: "10px 24px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg,#4f46e5,#7c3aed)", color: "#ffffff", fontSize: "0.86rem", fontWeight: 600, cursor: saving ? "wait" : "pointer", boxShadow: "0 2px 8px rgba(79,70,229,0.2)", display: "flex", alignItems: "center", gap: "6px" }}>
               <Factory size={16} /> {saving ? "Creating Work Order..." : "Create Work Order"}
             </button>
           </div>
