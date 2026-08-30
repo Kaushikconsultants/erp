@@ -35,12 +35,12 @@ export async function getPipelineData() {
           quotations: {
             select: { id: true, quotationNumber: true, totalValue: true, status: true, date: true },
             orderBy: { createdAt: 'desc' },
-            take: 3
+            take: 10
           },
           orders: {
             select: { id: true, orderNumber: true, totalValue: true, paymentStatus: true, orderDate: true },
             orderBy: { createdAt: 'desc' },
-            take: 3
+            take: 10
           },
           calls: {
             select: { id: true, callType: true, outcome: true, followUpDate: true, notes: true, createdAt: true },
@@ -57,16 +57,33 @@ export async function getPipelineData() {
       })
     ]);
     
-    // Normalize deal values: If expectedValue is 0 or null, check quotations / orders or default
+    // Normalize deal values & auto-mark confirmed/converted quotations or orders as Won
     const formattedCustomers = (customers as any[]).map(c => {
+      const confirmedQuote = (c.quotations || []).find((q: any) => ['Confirmed', 'Converted', 'Accepted'].includes(q.status));
+      const hasConfirmedQuote = !!confirmedQuote;
+      const hasOrders = (c.orders || []).length > 0 || (c.totalPurchaseValue || 0) > 0;
+      const isMatureWon = hasConfirmedQuote || hasOrders || c.leadStage === 'Won';
+
+      const effectiveStage = isMatureWon ? 'Won' : (c.leadStage || 'New Lead');
+
+      // Auto-sync in background if DB is not updated
+      if (c.leadStage !== 'Won' && isMatureWon) {
+        prisma.customer.update({
+          where: { id: c.id },
+          data: { leadStage: 'Won', status: 'Active Lead' }
+        }).catch(() => {});
+      }
+
       let dealVal = c.expectedValue || 0;
       if (!dealVal || dealVal === 0) {
-        const latestQuote = c.quotations?.[0]?.totalValue;
-        const latestOrder = c.orders?.[0]?.totalValue;
-        dealVal = latestQuote || latestOrder || (c.totalPurchaseValue > 0 ? c.totalPurchaseValue : 15000);
+        const latestOrderVal = c.orders?.[0]?.totalValue;
+        const latestQuoteVal = c.quotations?.[0]?.totalValue;
+        dealVal = confirmedQuote?.totalValue || latestOrderVal || latestQuoteVal || (c.totalPurchaseValue > 0 ? c.totalPurchaseValue : 15000);
       }
+
       return {
         ...c,
+        leadStage: effectiveStage,
         computedDealValue: dealVal
       };
     });

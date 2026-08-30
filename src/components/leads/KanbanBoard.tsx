@@ -42,6 +42,10 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRepFilter, setSelectedRepFilter] = useState('ALL');
   
+  React.useEffect(() => {
+    setLeads(initialLeads || []);
+  }, [initialLeads]);
+  
   // Advance Modal State
   const [advancingLead, setAdvancingLead] = useState<any | null>(null);
   const [advanceNextStage, setAdvanceNextStage] = useState('');
@@ -66,14 +70,14 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   };
 
   // Pipeline Metrics Calculation
+  const totalLeadsCount = leads.length;
   const openLeads = leads.filter(l => l.leadStage !== 'Lost' && l.leadStage !== 'Won');
   const totalOpenValue = openLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
   const wonLeads = leads.filter(l => l.leadStage === 'Won');
   const wonValue = wonLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
   const lostLeads = leads.filter(l => l.leadStage === 'Lost');
   
-  const closedCount = wonLeads.length + lostLeads.length;
-  const winRate = closedCount > 0 ? Math.round((wonLeads.length / closedCount) * 100) : (wonLeads.length > 0 ? 100 : 0);
+  const winRate = totalLeadsCount > 0 ? Math.round((wonLeads.length / totalLeadsCount) * 100) : 0;
   const avgDealSize = openLeads.length > 0 ? Math.round(totalOpenValue / openLeads.length) : 0;
 
   // Filtered Leads
