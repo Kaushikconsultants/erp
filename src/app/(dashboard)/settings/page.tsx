@@ -56,23 +56,23 @@ export default async function SettingsPage() {
             style={{
               width: 44,
               height: 44,
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+              borderRadius: 'var(--radius-lg, 12px)',
+              background: 'var(--accent-gradient, linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%))',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
+              boxShadow: '0 4px 12px var(--accent-light, rgba(79, 70, 229, 0.25))',
               flexShrink: 0
             }}
           >
             <Sliders size={22} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 600, color: '#0f172a', letterSpacing: '-0.015em' }}>
+            <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 600, color: 'var(--text-primary, #0f172a)', letterSpacing: '-0.015em' }}>
               Administration, HR & Company Settings
             </h1>
-            <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', fontWeight: 400, color: '#64748b' }}>
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', fontWeight: 400, color: 'var(--text-secondary, #64748b)' }}>
               Configure company identity, GST tax rules, document templates, employee roles, workflows, and system access.
             </p>
           </div>

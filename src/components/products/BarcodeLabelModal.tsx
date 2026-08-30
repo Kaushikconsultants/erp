@@ -395,11 +395,11 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
           {/* Header */}
           <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)" }}>
+              <div style={{ width: "38px", height: "38px", borderRadius: "var(--radius-md, 10px)", background: "var(--accent-gradient, linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #7c3aed 100%))", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", boxShadow: "0 4px 12px var(--accent-light, rgba(79, 70, 229, 0.25))" }}>
                 <Tag size={20} />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "var(--text-primary)" }}>Barcode & QR Label Generator Studio</h2>
+                <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 600, color: "var(--text-primary)" }}>Barcode & QR Label Generator Studio</h2>
                 <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "var(--text-secondary)" }}>Design, size, align logos & text manually, and print barcode stickers</p>
               </div>
             </div>
@@ -421,12 +421,12 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                 borderTopLeftRadius: "6px",
                 borderTopRightRadius: "6px",
                 fontSize: "0.83rem",
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: "pointer",
                 border: "1px solid #cbd5e1",
-                borderBottom: activeTab === "format" ? "2px solid #4f46e5" : "none",
+                borderBottom: activeTab === "format" ? "2px solid var(--accent-primary, #4f46e5)" : "none",
                 background: activeTab === "format" ? "#ffffff" : "transparent",
-                color: activeTab === "format" ? "#4f46e5" : "#64748b"
+                color: activeTab === "format" ? "var(--accent-primary, #4f46e5)" : "var(--text-secondary, #64748b)"
               }}
             >
               <LayoutGrid size={15} /> 1. Format & Printer Settings
@@ -443,12 +443,12 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                 borderTopLeftRadius: "6px",
                 borderTopRightRadius: "6px",
                 fontSize: "0.83rem",
-                fontWeight: 700,
+                fontWeight: 600,
                 cursor: "pointer",
                 border: "1px solid #cbd5e1",
-                borderBottom: activeTab === "designer" ? "2px solid #4f46e5" : "none",
+                borderBottom: activeTab === "designer" ? "2px solid var(--accent-primary, #4f46e5)" : "none",
                 background: activeTab === "designer" ? "#ffffff" : "transparent",
-                color: activeTab === "designer" ? "#4f46e5" : "#64748b"
+                color: activeTab === "designer" ? "var(--accent-primary, #4f46e5)" : "var(--text-secondary, #64748b)"
               }}
             >
               <Palette size={15} /> 2. Manual Alignment & Branding ✨

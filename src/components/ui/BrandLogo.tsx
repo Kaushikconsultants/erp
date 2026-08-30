@@ -176,7 +176,7 @@ export default function BrandLogo({
                 fontSize: titleSize,
                 fontWeight: 900,
                 letterSpacing: "-0.6px",
-                background: "linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%)",
+                background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #06b6d4 100%)",
                 backgroundSize: "200% auto",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",

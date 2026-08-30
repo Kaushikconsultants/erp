@@ -265,8 +265,8 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
         <div style={{ 
           backgroundColor: '#ffffff', 
           padding: '18px 20px', 
-          borderRadius: '12px', 
-          border: '1px solid #e2e8f0', 
+          borderRadius: 'var(--radius-lg, 12px)', 
+          border: '1px solid var(--border, #e2e8f0)', 
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           display: 'flex',
           alignItems: 'center',
@@ -275,9 +275,9 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           <div style={{ 
             width: '42px', 
             height: '42px', 
-            borderRadius: '10px', 
-            backgroundColor: '#eef2ff', 
-            color: '#4f46e5', 
+            borderRadius: 'var(--radius-md, 10px)', 
+            backgroundColor: 'var(--accent-light, #eef2ff)', 
+            color: 'var(--accent-primary, #4f46e5)', 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center' 
@@ -285,10 +285,10 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             <TrendingUp size={20} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary, #64748b)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Open Pipeline Value
             </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#4f46e5', lineHeight: 1.2, marginTop: '2px' }}>
+            <div style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', lineHeight: 1.2, marginTop: '2px' }}>
               {formatCurrency(totalOpenValue)}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '2px' }}>
@@ -301,8 +301,8 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
         <div style={{ 
           backgroundColor: '#ffffff', 
           padding: '18px 20px', 
-          borderRadius: '12px', 
-          border: '1px solid #e2e8f0', 
+          borderRadius: 'var(--radius-lg, 12px)', 
+          border: '1px solid var(--border, #e2e8f0)', 
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           display: 'flex',
           alignItems: 'center',
@@ -311,7 +311,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           <div style={{ 
             width: '42px', 
             height: '42px', 
-            borderRadius: '10px', 
+            borderRadius: 'var(--radius-md, 10px)', 
             backgroundColor: '#ecfdf5', 
             color: '#10b981', 
             display: 'flex', 
@@ -321,7 +321,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             <Award size={20} />
           </div>
           <div>
-            <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary, #64748b)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               Sales Win Rate
             </div>
             <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#10b981', lineHeight: 1.2, marginTop: '2px' }}>
@@ -338,8 +338,8 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
       <div style={{ 
         backgroundColor: '#ffffff', 
         padding: '14px 18px', 
-        borderRadius: '12px', 
-        border: '1px solid #e2e8f0', 
+        borderRadius: 'var(--radius-lg, 12px)', 
+        border: '1px solid var(--border, #e2e8f0)', 
         display: 'flex', 
         flexDirection: 'column', 
         gap: '12px',
@@ -366,10 +366,10 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 onClick={() => setActiveStage(stage.id)}
                 style={{
                   padding: '7px 14px',
-                  borderRadius: '8px',
-                  border: isSelected ? '1px solid #4f46e5' : '1px solid #e2e8f0',
-                  backgroundColor: isSelected ? '#eef2ff' : '#ffffff',
-                  color: isSelected ? '#4f46e5' : '#475569',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  border: isSelected ? '1px solid var(--accent-primary, #4f46e5)' : '1px solid var(--border, #e2e8f0)',
+                  backgroundColor: isSelected ? 'var(--accent-light, #eef2ff)' : '#ffffff',
+                  color: isSelected ? 'var(--accent-primary, #4f46e5)' : 'var(--text-secondary, #475569)',
                   fontSize: '0.82rem',
                   fontWeight: isSelected ? 600 : 500,
                   whiteSpace: 'nowrap',
@@ -384,7 +384,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 
                 {/* Count Badge */}
                 <span style={{ 
-                  backgroundColor: isSelected ? '#4f46e5' : '#f1f5f9', 
+                  backgroundColor: isSelected ? 'var(--accent-primary, #4f46e5)' : '#f1f5f9', 
                   color: isSelected ? '#ffffff' : '#64748b',
                   padding: '1px 7px', 
                   borderRadius: '10px', 
@@ -398,7 +398,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 {stageVal > 0 && (
                   <span style={{ 
                     fontSize: '0.72rem', 
-                    color: isSelected ? '#4f46e5' : '#94a3b8', 
+                    color: isSelected ? 'var(--accent-primary, #4f46e5)' : '#94a3b8', 
                     fontWeight: 500 
                   }}>
                     • {formatCurrency(stageVal)}

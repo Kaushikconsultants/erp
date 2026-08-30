@@ -413,18 +413,18 @@ export default function ShippingRateCalculator({
         style={{ 
           width: '100%', 
           padding: '12px', 
-          background: 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)', 
+          background: 'var(--accent-gradient, linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, var(--accent-primary-hover, #6366f1) 100%))', 
           color: '#ffffff', 
           border: 'none', 
-          borderRadius: '8px', 
-          fontSize: '1rem', 
-          fontWeight: 700, 
+          borderRadius: 'var(--radius-md, 8px)', 
+          fontSize: '0.95rem', 
+          fontWeight: 600, 
           cursor: 'pointer', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center', 
           gap: '8px',
-          boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
+          boxShadow: '0 4px 12px var(--accent-light, rgba(79, 70, 229, 0.25))',
           transition: 'transform 0.15s ease'
         }}
       >

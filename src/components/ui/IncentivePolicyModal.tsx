@@ -315,13 +315,13 @@ export default function IncentivePolicyModal({ onClose }: IncentivePolicyModalPr
               style={{
                 width: 42,
                 height: 42,
-                borderRadius: "11px",
-                background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
+                borderRadius: "var(--radius-lg, 11px)",
+                background: "var(--accent-gradient, linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%))",
                 color: "#ffffff",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(79, 70, 229, 0.28)",
+                boxShadow: "0 4px 12px var(--accent-light, rgba(79, 70, 229, 0.28))",
                 flexShrink: 0
               }}
             >

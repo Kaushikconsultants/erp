@@ -167,12 +167,12 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
   ];
 
   return (
-    <div style={{ padding: "24px", maxWidth: "100%", fontFamily: "var(--font-sans, system-ui)" }}>
+    <div style={{ padding: "24px", maxWidth: "100%", fontFamily: "var(--font-family, inherit)" }}>
 
       {/* PAGE HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "12px", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(79,70,229,0.3)" }}>
+          <div style={{ width: "48px", height: "48px", borderRadius: "var(--radius-lg, 12px)", background: "var(--accent-gradient, linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #7c3aed 100%))", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px var(--accent-light, rgba(79,70,229,0.3))" }}>
             <Factory size={26} color="#fff" />
           </div>
           <div>
@@ -186,10 +186,10 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
         </div>
 
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <button onClick={() => setShowBomManager(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer" }}>
+          <button onClick={() => setShowBomManager(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "var(--radius-md, 8px)", border: "1px solid var(--border, #e2e8f0)", backgroundColor: "#ffffff", color: "var(--text-secondary, #475569)", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer" }}>
             <BookOpen size={15} /> Bill of Materials
           </button>
-          <button onClick={() => setShowCreateWO(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 18px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", color: "#ffffff", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(79,70,229,0.2)" }}>
+          <button onClick={() => setShowCreateWO(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 18px", borderRadius: "var(--radius-md, 8px)", border: "none", background: "var(--accent-primary, #4f46e5)", color: "#ffffff", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
             <Plus size={17} /> New Work Order
           </button>
         </div>

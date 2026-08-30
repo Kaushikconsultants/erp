@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Heart Of Business",
-  description: "Comprehensive CRM for Sportswear B2B",
+  description: "Comprehensive CRM & ERP Suite",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -43,7 +43,7 @@ export default async function RootLayout({
   }
   
   // Map font name to actual CSS font-family string
-  let fontFamilyString = "var(--font-inter), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  let fontFamilyString = "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
   if (settings?.fontFamily === 'Roboto') { fontFamilyString = "'Roboto', var(--font-inter), sans-serif"; }
   else if (settings?.fontFamily === 'Outfit') { fontFamilyString = "'Outfit', var(--font-inter), sans-serif"; }
   else if (settings?.fontFamily === 'Poppins') { fontFamilyString = "'Poppins', var(--font-inter), sans-serif"; }
@@ -61,18 +61,30 @@ export default async function RootLayout({
   const themeStyles = {
     '--accent-primary': primaryColor,
     '--accent-primary-hover': `${primaryColor}dd`,
-    '--accent-light': `${primaryColor}1a`,
+    '--accent-light': `${primaryColor}14`,
+    '--accent-subtle': `${primaryColor}0a`,
+    '--accent-border': `${primaryColor}33`,
+    '--accent-gradient': `linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%)`,
     '--font-family': fontFamilyString,
     '--app-base-font-size': baseFontSize,
     '--base-font-weight': settings?.useBoldText ? '700' : '400',
     '--radius-md': settings?.buttonRadius || '8px',
     '--radius-sm': settings?.buttonRadius === '9999px' ? '9999px' : settings?.buttonRadius === '0px' ? '0px' : '4px',
     '--radius-lg': settings?.buttonRadius === '9999px' ? '9999px' : settings?.buttonRadius === '0px' ? '0px' : '12px',
+    '--radius-full': '9999px',
     fontSize: baseFontSize,
   } as React.CSSProperties;
 
   return (
     <html lang="en" className={fontClasses} style={themeStyles}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Lato:wght@400;700;900&family=Montserrat:wght@400;500;600;700;800;900&family=Open+Sans:wght@400;600;700;800&family=Oswald:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&family=Roboto:wght@400;500;700;900&display=swap" 
+          rel="stylesheet" 
+        />
+      </head>
       <body className={settings?.useBoldText ? 'global-bold-text' : ''}>
         <AuthProvider>
           {children}

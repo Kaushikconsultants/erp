@@ -301,23 +301,23 @@ export default function PurchasesClient({
             style={{
               width: 44,
               height: 44,
-              borderRadius: "12px",
-              background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
+              borderRadius: "var(--radius-lg, 12px)",
+              background: "var(--accent-gradient, linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%))",
               color: "#ffffff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
+              boxShadow: "0 4px 12px var(--accent-light, rgba(79, 70, 229, 0.25))",
               flexShrink: 0
             }}
           >
             <ShoppingBag size={22} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 600, color: "#0f172a", letterSpacing: "-0.015em" }}>
+            <h1 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 600, color: "var(--text-primary, #0f172a)", letterSpacing: "-0.015em" }}>
               Purchase Orders & Inward GRN
             </h1>
-            <p style={{ margin: "3px 0 0 0", fontSize: "0.82rem", fontWeight: 400, color: "#64748b" }}>
+            <p style={{ margin: "3px 0 0 0", fontSize: "0.82rem", fontWeight: 400, color: "var(--text-secondary, #64748b)" }}>
               Manage supplier procurement, issue PO orders, and verify warehouse Goods Received Notes (GRN).
             </p>
           </div>
@@ -334,14 +334,14 @@ export default function PurchasesClient({
             alignItems: "center",
             gap: "8px",
             padding: "9px 18px",
-            borderRadius: "10px",
+            borderRadius: "var(--radius-md, 8px)",
             fontWeight: 600,
             fontSize: "0.86rem",
-            background: "linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%)",
+            background: "var(--accent-gradient, linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #3730a3 100%))",
             color: "#ffffff",
             border: "none",
             cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)",
+            boxShadow: "0 4px 12px var(--accent-light, rgba(79, 70, 229, 0.25))",
             transition: "all 0.15s ease"
           }}
           onMouseEnter={(e) => {
