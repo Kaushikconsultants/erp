@@ -6,8 +6,6 @@ import Topbar from './Topbar';
 import MobileBottomNav from './MobileBottomNav';
 import { usePathname } from 'next/navigation';
 
-import VoiceAIAssistant from '@/components/voice/VoiceAIAssistant';
-
 interface DashboardShellProps {
   children: React.ReactNode;
   showSettings: boolean;
@@ -62,9 +60,6 @@ export default function DashboardShell({
           {children}
         </main>
       </div>
-
-      {/* Omnipresent Voice AI Assistant */}
-      <VoiceAIAssistant />
 
       {/* Native App-Style Bottom Navigation Bar & Action Sheet */}
       <MobileBottomNav 
