@@ -9,9 +9,10 @@ import "@/components/ui/modal.css";
 interface AddCustomerModalProps {
   onClose: (newCustomer?: any) => void;
   employees?: { id: string; name: string }[];
+  zIndex?: number;
 }
 
-export default function AddCustomerModal({ onClose, employees = [] }: AddCustomerModalProps) {
+export default function AddCustomerModal({ onClose, employees = [], zIndex = 100050 }: AddCustomerModalProps) {
   const searchParams = useSearchParams();
   const initialName = searchParams?.get('name') || searchParams?.get('customer') || '';
   
@@ -201,8 +202,8 @@ export default function AddCustomerModal({ onClose, employees = [] }: AddCustome
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-content animate-in" style={{ maxWidth: '780px', backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+    <div className="modal-backdrop" style={{ zIndex }}>
+      <div className="modal-content animate-in" style={{ maxWidth: '780px', backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', zIndex: zIndex + 1 }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderRadius: '14px 14px 0 0' }}>

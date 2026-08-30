@@ -67,7 +67,7 @@ export default function CreateTaskModal({ onClose, employees, customers: initial
 
   return (
     <>
-      <div className="modal-backdrop">
+      <div className="modal-backdrop" style={{ display: showAddCustomer ? 'none' : 'flex' }}>
         <div className="modal-content glass-panel animate-in">
           <div className="modal-header">
             <h2>Create New Task</h2>

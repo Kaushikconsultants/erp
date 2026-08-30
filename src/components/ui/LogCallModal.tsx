@@ -267,7 +267,7 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
 
   return (
     <>
-      <div className="modal-backdrop">
+      <div className="modal-backdrop" style={{ display: showAddCustomer ? 'none' : 'flex' }}>
         <div
           className="modal-content glass-panel animate-in"
           style={{ width: "100%", maxWidth: "560px" }}
@@ -765,31 +765,31 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
             </div>
           </form>
         </div>
-
-        {showAddCustomer && (
-          <AddCustomerModal
-            onClose={(newCustomer) => {
-              setShowAddCustomer(false);
-              if (newCustomer && newCustomer.id) {
-                const cName = newCustomer.businessName || newCustomer.companyName || "New Customer";
-                const cPerson = newCustomer.contactPerson && newCustomer.contactPerson !== cName ? newCustomer.contactPerson : "";
-                const formattedCustomer = {
-                  id: newCustomer.id,
-                  companyName: cName,
-                  contactPerson: cPerson || cName
-                };
-                setCustomers((prev) => [formattedCustomer, ...prev.filter(c => c.id !== newCustomer.id)]);
-                const label = cPerson ? `${cName} (${cPerson})` : cName;
-                setSelectedCustomerId(formattedCustomer.id);
-                setSelectedCustomerLabel(label);
-                setCustomerSearch("");
-                setDropdownOpen(false);
-              }
-            }}
-            employees={[]}
-          />
-        )}
       </div>
+
+      {showAddCustomer && (
+        <AddCustomerModal
+          onClose={(newCustomer) => {
+            setShowAddCustomer(false);
+            if (newCustomer && newCustomer.id) {
+              const cName = newCustomer.businessName || newCustomer.companyName || "New Customer";
+              const cPerson = newCustomer.contactPerson && newCustomer.contactPerson !== cName ? newCustomer.contactPerson : "";
+              const formattedCustomer = {
+                id: newCustomer.id,
+                companyName: cName,
+                contactPerson: cPerson || cName
+              };
+              setCustomers((prev) => [formattedCustomer, ...prev.filter(c => c.id !== newCustomer.id)]);
+              const label = cPerson ? `${cName} (${cPerson})` : cName;
+              setSelectedCustomerId(formattedCustomer.id);
+              setSelectedCustomerLabel(label);
+              setCustomerSearch("");
+              setDropdownOpen(false);
+            }
+          }}
+          employees={[]}
+        />
+      )}
 
       {/* ADMIN OPTIONS MANAGEMENT MODAL */}
       {manageModal && userIsAdmin && (

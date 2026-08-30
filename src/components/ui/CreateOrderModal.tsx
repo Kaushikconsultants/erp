@@ -125,8 +125,9 @@ export default function CreateOrderModal({ onClose, customers: initialCustomers,
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal-content glass-panel animate-in">
+    <>
+      <div className="modal-backdrop" style={{ display: showAddCustomer ? 'none' : 'flex' }}>
+        <div className="modal-content glass-panel animate-in">
         <div className="modal-header">
           <h2>Create New Order</h2>
           <button className="close-btn" onClick={onClose}>×</button>
@@ -272,13 +273,14 @@ export default function CreateOrderModal({ onClose, customers: initialCustomers,
             </div>
           )}
 
-          <div className="modal-footer">
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="primary-btn" disabled={loading}>
-              {loading ? "Creating..." : "Create Order"}
-            </button>
-          </div>
-        </form>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+              <button type="submit" className="primary-btn" disabled={loading}>
+                {loading ? "Creating..." : "Create Order"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
 
       {showAddCustomer && (
@@ -298,6 +300,6 @@ export default function CreateOrderModal({ onClose, customers: initialCustomers,
           employees={employees}
         />
       )}
-    </div>
+    </>
   );
 }
