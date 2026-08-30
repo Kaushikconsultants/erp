@@ -14,7 +14,7 @@ export default function AddCustomerButton({ employees = [] }: { employees?: { id
 
   React.useEffect(() => {
     const action = searchParams?.get('action') || searchParams?.get('modal');
-    if (action === 'add' || searchParams?.get('openAddModal') === 'true') {
+    if (action === 'add' || action === 'new' || searchParams?.get('openAddModal') === 'true') {
       setIsModalOpen(true);
     }
   }, [searchParams]);

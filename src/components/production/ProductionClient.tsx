@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Factory, Plus, Search, Filter, Layers, Cpu, Package2, Wrench, Leaf,
   ChevronRight, Clock, CheckCircle2, AlertCircle, PlayCircle, XCircle,
@@ -80,11 +81,21 @@ export default function ProductionClient({
   const [statusFilter, setStatusFilter] = useState("All");
   const [activeTab, setActiveTab] = useState<"workorders" | "bom">("workorders");
 
+  const searchParams = useSearchParams();
   const [showCreateWO, setShowCreateWO] = useState(false);
   const [showBomManager, setShowBomManager] = useState(false);
   const [viewWorkOrder, setViewWorkOrder] = useState<WorkOrder | null>(null);
   const [showPieceRateModal, setShowPieceRateModal] = useState<WorkOrder | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const act = searchParams?.get('action');
+    if (act === 'new' || act === 'create') {
+      setShowCreateWO(true);
+    } else if (act === 'bom') {
+      setShowBomManager(true);
+    }
+  }, [searchParams]);
 
   const filteredOrders = useMemo(() => {
     return workOrders.filter(wo => {

@@ -11,7 +11,7 @@ export default function AddProductButton({ categories = [] }: { categories?: str
 
   React.useEffect(() => {
     const action = searchParams?.get('action');
-    if (action === 'add' || searchParams?.get('openAddModal') === 'true') {
+    if (action === 'add' || action === 'new' || searchParams?.get('openAddModal') === 'true') {
       setIsModalOpen(true);
     }
   }, [searchParams]);

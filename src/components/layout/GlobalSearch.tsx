@@ -81,17 +81,20 @@ export default function GlobalSearch() {
 
     try {
       const intentResult = await parseVoiceIntent(rawQuery);
-      setFeedbackMsg(`✨ AI: ${intentResult.aiExplanation}`);
-      
+      setFeedbackMsg(`✨ ${intentResult.aiExplanation}`);
+
       setTimeout(() => {
         setIsAiProcessing(false);
         setFeedbackMsg('');
-        router.push(intentResult.route);
-      }, 400);
+        setQuery('');
+        // Use window.location.href so ?action= params properly trigger page useEffects
+        window.location.href = intentResult.route;
+      }, 500);
     } catch (err) {
       console.error("AI Voice intent error:", err);
       setIsAiProcessing(false);
-      router.push(`/customers?search=${encodeURIComponent(rawQuery)}`);
+      setFeedbackMsg('');
+      window.location.href = `/customers?search=${encodeURIComponent(rawQuery)}`;
     }
   };
 

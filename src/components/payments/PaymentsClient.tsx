@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import {
   IndianRupee,
@@ -123,6 +124,7 @@ const MODE_COLORS: Record<string, { bg: string; text: string; border: string }> 
 };
 
 export default function PaymentsClient({ initialPayments, summary, customers }: Props) {
+  const searchParams = useSearchParams();
   const [payments, setPayments] = useState<PaymentRecord[]>(initialPayments);
 
   // Filters State
@@ -137,6 +139,14 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
 
   // Record Payment Modal State
   const [showModal, setShowModal] = useState(false);
+  
+  useEffect(() => {
+    const act = searchParams?.get('action');
+    if (act === 'new' || act === 'record' || act === 'add') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
+
   const [modalTab, setModalTab] = useState<'invoice' | 'advance'>('invoice');
   const [modalCustomer, setModalCustomer] = useState('');
   const [customerInvoices, setCustomerInvoices] = useState<any[]>([]);

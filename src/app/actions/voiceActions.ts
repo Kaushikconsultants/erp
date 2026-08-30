@@ -26,7 +26,8 @@ export interface VoiceAssistantResponse {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
 
 /**
- * Main Universal Voice AI Command Processor
+ * Universal Voice AI Command & Navigation Engine
+ * Handles every screen, action, search, creation, and financial query in the ERP.
  */
 export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssistantResponse> {
   if (!spokenText || !spokenText.trim()) {
@@ -54,10 +55,275 @@ export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssi
     }
 
     // ========================================================================
-    // 1. FAST-PATH DETERMINISTIC ENGINE (Instant response <50ms)
+    // 1. PRIMARY CREATION & ACTION INTENTS (Highest Priority)
     // ========================================================================
 
-    // A. BALANCE SHEET & FINANCIAL POSITION
+    // A. QUOTATION CREATION: "create quotation", "new quote", "make quotation for Sonu Garments"
+    if (
+      (lower.includes("quotation") || lower.includes("quote") || lower.includes("estimate")) &&
+      (lower.includes("create") || lower.includes("new") || lower.includes("make") || lower.includes("issue") || lower.includes("banao") || lower.includes("naya") || lower.includes("generate") || lower.includes("add"))
+    ) {
+      // Check if customer name mentioned e.g. "for Sonu Garments" or "Sonu Garments ka quotation"
+      let customerQuery = "";
+      const forMatch = raw.match(/(?:for|to|ka|ki|ke|customer)\s+([A-Za-z0-9\s&]+)/i);
+      if (forMatch && forMatch[1]) {
+        customerQuery = forMatch[1].replace(/quotation|quote|estimate|new|create|banao/gi, '').trim();
+      }
+
+      if (customerQuery && organizationId) {
+        const foundCust = await prisma.customer.findFirst({
+          where: {
+            organizationId,
+            OR: [
+              { businessName: { contains: customerQuery, mode: 'insensitive' } },
+              { contactPerson: { contains: customerQuery, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (foundCust) {
+          return {
+            success: true,
+            spokenText: `Opening new quotation creator for ${foundCust.businessName}...`,
+            actionText: `New Quotation: ${foundCust.businessName}`,
+            route: `/quotations/new?customer=${encodeURIComponent(foundCust.businessName)}`,
+            cardType: "NAVIGATION",
+            cardData: { customer: foundCust.businessName }
+          };
+        }
+      }
+
+      return {
+        success: true,
+        spokenText: "Opening New Quotation generator form...",
+        actionText: "Create New Quotation",
+        route: "/quotations/new",
+        cardType: "NAVIGATION",
+        cardData: { destination: "New Quotation" }
+      };
+    }
+
+    // B. SALES ORDER CREATION: "create order", "new order", "book order", "order place karo"
+    if (
+      (lower.includes("order") || lower.includes("sales order")) &&
+      (lower.includes("create") || lower.includes("new") || lower.includes("place") || lower.includes("book") || lower.includes("banao") || lower.includes("naya") || lower.includes("add"))
+    ) {
+      return {
+        success: true,
+        spokenText: "Opening Orders screen...",
+        actionText: "Create Sales Order",
+        route: "/orders?action=new",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // C. CUSTOMER CREATION: "add customer", "new customer", "register client", "naya customer"
+    if (
+      (lower.includes("customer") || lower.includes("client") || lower.includes("party")) &&
+      (lower.includes("add") || lower.includes("new") || lower.includes("create") || lower.includes("register") || lower.includes("naya") || lower.includes("jodo"))
+    ) {
+      return {
+        success: true,
+        spokenText: "Opening Add Customer registration modal...",
+        actionText: "Add New Customer",
+        route: "/customers?action=new",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // D. PRODUCT CREATION: "add product", "new product", "add stock item", "naya product"
+    if (
+      (lower.includes("product") || lower.includes("item") || lower.includes("article")) &&
+      (lower.includes("add") || lower.includes("new") || lower.includes("create") || lower.includes("naya") || lower.includes("jodo"))
+    ) {
+      return {
+        success: true,
+        spokenText: "Opening Add Product modal...",
+        actionText: "Add New Product",
+        route: "/products?action=new",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // E. PAYMENT RECORDING: "record payment", "receive payment", "collect payment", "paisa aaya"
+    if (
+      lower.includes("payment") || lower.includes("receipt") || lower.includes("paisa aaya") || lower.includes("collect money") || lower.includes("receive money")
+    ) {
+      if (lower.includes("record") || lower.includes("receive") || lower.includes("new") || lower.includes("add") || lower.includes("collect") || lower.includes("entry")) {
+        return {
+          success: true,
+          spokenText: "Opening Record Customer Payment form...",
+          actionText: "Record Payment Entry",
+          route: "/payments?action=new",
+          cardType: "NAVIGATION"
+        };
+      }
+    }
+
+    // F. WORK ORDER / PRODUCTION: "create work order", "start production", "job card", "bom manager"
+    if (lower.includes("work order") || lower.includes("production") || lower.includes("manufacturing") || lower.includes("job card") || lower.includes("bom") || lower.includes("cutting") || lower.includes("stitching")) {
+      if (lower.includes("bom") || lower.includes("recipe") || lower.includes("bill of material")) {
+        return {
+          success: true,
+          spokenText: "Opening Bill of Materials (BOM) Manager...",
+          actionText: "Bill of Materials",
+          route: "/production?action=bom",
+          cardType: "NAVIGATION"
+        };
+      }
+      if (lower.includes("create") || lower.includes("new") || lower.includes("start") || lower.includes("banao")) {
+        return {
+          success: true,
+          spokenText: "Opening Create Work Order form...",
+          actionText: "Create Work Order",
+          route: "/production?action=new",
+          cardType: "NAVIGATION"
+        };
+      }
+      return {
+        success: true,
+        spokenText: "Opening Manufacturing & Production Studio...",
+        actionText: "Production & Work Orders",
+        route: "/production",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // G. PURCHASE ORDER / PROCUREMENT / VENDORS
+    if (lower.includes("purchase order") || lower.includes("po") || lower.includes("procurement") || lower.includes("raw material") || lower.includes("vendor") || lower.includes("supplier")) {
+      if (lower.includes("vendor") && (lower.includes("add") || lower.includes("new") || lower.includes("create"))) {
+        return {
+          success: true,
+          spokenText: "Opening Add Vendor modal...",
+          actionText: "Add Vendor",
+          route: "/vendors?action=new",
+          cardType: "NAVIGATION"
+        };
+      }
+      if (lower.includes("create") || lower.includes("new") || lower.includes("issue") || lower.includes("order")) {
+        return {
+          success: true,
+          spokenText: "Opening Create Purchase Order...",
+          actionText: "Create Purchase Order",
+          route: "/purchases?action=new",
+          cardType: "NAVIGATION"
+        };
+      }
+      if (lower.includes("vendor") || lower.includes("supplier")) {
+        return {
+          success: true,
+          spokenText: "Opening Vendors & Suppliers directory...",
+          actionText: "Vendors Directory",
+          route: "/vendors",
+          cardType: "NAVIGATION"
+        };
+      }
+      return {
+        success: true,
+        spokenText: "Opening Purchases & PO module...",
+        actionText: "Purchases & Inward",
+        route: "/purchases",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // H. BARCODE & STICKER GENERATOR: "barcode generator", "print barcode", "qr code", "print label"
+    if (lower.includes("barcode") || lower.includes("qr label") || lower.includes("sticker") || lower.includes("print label")) {
+      return {
+        success: true,
+        spokenText: "Opening Barcode & QR Label Generator Studio...",
+        actionText: "Barcode & QR Studio",
+        route: "/products?action=barcode",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // I. DEAD STOCK & LIQUIDATION: "dead stock", "slow moving stock", "liquidation"
+    if (lower.includes("dead stock") || lower.includes("slow moving") || lower.includes("liquidation") || lower.includes("non moving")) {
+      return {
+        success: true,
+        spokenText: "Opening Dead Stock & Liquidation Insights...",
+        actionText: "Dead Stock Insights",
+        route: "/products?action=deadstock",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // J. DISPATCHES, CHALLANS & SHIPPING
+    if (lower.includes("dispatch") || lower.includes("challan") || lower.includes("shipping") || lower.includes("courier") || lower.includes("freight")) {
+      return {
+        success: true,
+        spokenText: "Opening Delivery Challans & Shipping...",
+        actionText: "Dispatches & Challans",
+        route: "/delivery-challans",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // K. LOG CALLS, FOLLOW-UPS & TASKS
+    if (lower.includes("call") || lower.includes("follow up") || lower.includes("task") || lower.includes("reminder")) {
+      if (lower.includes("log") || lower.includes("add") || lower.includes("record") || lower.includes("new")) {
+        return {
+          success: true,
+          spokenText: "Opening Log a Call modal...",
+          actionText: "Log a Call",
+          route: "/calls?action=new",
+          cardType: "NAVIGATION"
+        };
+      }
+      return {
+        success: true,
+        spokenText: "Opening Calls & Follow-ups tracker...",
+        actionText: "Calls & Follow-ups",
+        route: "/calls",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // L. SALES PIPELINE, LEADERBOARD, TARGETS & WIN RATE
+    if (lower.includes("pipeline") || lower.includes("kanban") || lower.includes("target") || lower.includes("leaderboard") || lower.includes("win rate") || lower.includes("sales rep") || lower.includes("conversion")) {
+      return {
+        success: true,
+        spokenText: "Opening Sales Pipeline & Target Leaderboard...",
+        actionText: "Sales Pipeline & Kanban",
+        route: "/leads",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // M. QUICK ACTIONS: CREATE EXPENSE
+    if ((lower.includes("expense") || lower.includes("kharcha")) && (lower.includes("add") || lower.includes("log") || lower.includes("create") || /\d+/.test(lower))) {
+      const matchAmount = raw.match(/(\d+(?:,\d+)*(?:\.\d+)?)/);
+      const amount = matchAmount ? parseFloat(matchAmount[1].replace(/,/g, '')) : 0;
+
+      if (amount > 0) {
+        const expenseNumber = `EXP-${Date.now().toString().slice(-6)}`;
+        let category = "General & Administrative";
+        if (lower.includes("travel") || lower.includes("cab") || lower.includes("petrol")) category = "Travel & Conveyance";
+        else if (lower.includes("food") || lower.includes("tea") || lower.includes("snack") || lower.includes("lunch")) category = "Meals & Refreshments";
+        else if (lower.includes("courier") || lower.includes("shipping") || lower.includes("freight")) category = "Freight & Shipping";
+        else if (lower.includes("stationery") || lower.includes("office")) category = "Office Supplies";
+
+        return {
+          success: true,
+          spokenText: `Opening expense entry for ₹${amount.toLocaleString('en-IN')} under ${category}...`,
+          actionText: `Log Expense: ₹${amount.toLocaleString('en-IN')}`,
+          route: `/expenses?action=new&amount=${amount}&category=${encodeURIComponent(category)}`,
+          cardType: "EXPENSE",
+          cardData: {
+            expenseNumber,
+            category,
+            amount,
+            description: raw
+          }
+        };
+      }
+    }
+
+    // ========================================================================
+    // 2. FINANCIAL STATEMENTS & ACCOUNTING REPORTS
+    // ========================================================================
+
+    // A. BALANCE SHEET
     if (lower.includes("balance sheet") || lower.includes("total assets") || lower.includes("total liabilities") || lower.includes("balance match")) {
       const bsRes = await getBalanceSheet();
       if (bsRes.success) {
@@ -89,62 +355,56 @@ export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssi
     }
 
     // B. PROFIT & LOSS / NET PROFIT / REVENUE
-    if (lower.includes("profit") || lower.includes("revenue") || lower.includes("income") || lower.includes("turnover") || lower.includes("munafa") || lower.includes("kamai")) {
+    if (lower.includes("profit") || lower.includes("revenue") || lower.includes("income statement") || lower.includes("turnover") || lower.includes("munafa") || lower.includes("kamai") || lower.includes("p&l")) {
       const plRes = await getProfitAndLossStatement();
       if (plRes.success) {
         const pl = plRes as any;
         const netProfit = pl.incomeStatement?.netProfit || 0;
         const grossSales = pl.tradingAccount?.salesRevenue || 0;
         const grossProfit = pl.tradingAccount?.grossProfit || 0;
-        const expenses = pl.incomeStatement?.totalIndirectExpenses || 0;
 
         return {
           success: true,
-          spokenText: `Your Net Profit is ₹${netProfit.toLocaleString('en-IN')}. Gross sales revenue is ₹${grossSales.toLocaleString('en-IN')} with gross profit of ₹${grossProfit.toLocaleString('en-IN')} and expenses of ₹${expenses.toLocaleString('en-IN')}.`,
-          actionText: "Profit & Loss Statement",
+          spokenText: `Your Net Profit is ₹${netProfit.toLocaleString('en-IN')} on Gross Revenue of ₹${grossSales.toLocaleString('en-IN')}, with Gross Profit of ₹${grossProfit.toLocaleString('en-IN')}.`,
+          actionText: "Profit & Loss (P&L)",
           route: "/accounting/profit-loss",
           cardType: "GENERAL",
           cardData: {
-            title: "Profit & Loss Summary",
+            title: "Profit & Loss Statement",
             metrics: [
-              { label: "Gross Sales", value: `₹${grossSales.toLocaleString('en-IN')}` },
-              { label: "Gross Profit", value: `₹${grossProfit.toLocaleString('en-IN')}` },
-              { label: "Total Overheads", value: `₹${expenses.toLocaleString('en-IN')}` },
-              { label: "Net Profit", value: `₹${netProfit.toLocaleString('en-IN')}`, highlight: true }
+              { label: "Net Profit", value: `₹${netProfit.toLocaleString('en-IN')}`, highlight: true },
+              { label: "Gross Sales Revenue", value: `₹${grossSales.toLocaleString('en-IN')}` },
+              { label: "Gross Profit", value: `₹${grossProfit.toLocaleString('en-IN')}` }
             ]
           }
         };
       }
     }
 
-    // C. BANK & CASH BALANCES
-    if (lower.includes("bank") || lower.includes("cash") || lower.includes("paisa") || lower.includes("khata")) {
-      await syncSystemLedgers();
-      const bankLedgers = organizationId ? await prisma.ledgerAccount.findMany({
-        where: {
-          organizationId,
-          OR: [{ partyType: "BANK" }, { partyType: "CASH" }, { code: "SYS_CASH" }]
-        }
-      }) : [];
-
-      const totalCashBank = bankLedgers.reduce((s, l) => s + (l.currentBalance || 0), 0);
-      const accountsSummary = bankLedgers.map(l => `${l.name}: ₹${(l.currentBalance || 0).toLocaleString('en-IN')}`).join(", ");
-
+    // C. TRIAL BALANCE
+    if (lower.includes("trial balance") || lower.includes("ledger trial")) {
       return {
         success: true,
-        spokenText: `You have a total of ₹${totalCashBank.toLocaleString('en-IN')} in liquid funds across your bank and cash accounts. ${accountsSummary}.`,
-        actionText: "Bank & Cash Accounts",
-        route: "/accounting/chart-of-accounts",
-        cardType: "GENERAL",
-        cardData: {
-          title: "Bank & Cash Ledgers",
-          metrics: bankLedgers.map(l => ({ label: l.name, value: `₹${(l.currentBalance || 0).toLocaleString('en-IN')}` }))
-        }
+        spokenText: "Opening Trial Balance statement...",
+        actionText: "Trial Balance",
+        route: "/accounting/trial-balance",
+        cardType: "NAVIGATION"
       };
     }
 
-    // D. SUNDRY DEBTORS (CUSTOMERS WHO OWE MONEY)
-    if (lower.includes("debtor") || lower.includes("receivable") || lower.includes("who owes") || lower.includes("lena hai") || lower.includes("customer balance")) {
+    // D. DAY BOOK & VOUCHERS
+    if (lower.includes("day book") || lower.includes("daybook") || lower.includes("journal voucher") || lower.includes("voucher") || lower.includes("chart of account") || lower.includes("general ledger")) {
+      return {
+        success: true,
+        spokenText: "Opening Accounting Day Book & Ledgers...",
+        actionText: "Day Book & Ledger",
+        route: "/accounting",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // E. RECEIVABLES / DEBTORS / AGEING
+    if (lower.includes("debtor") || lower.includes("receivable") || lower.includes("who owes") || lower.includes("lena hai") || lower.includes("ageing") || lower.includes("outstanding")) {
       if (organizationId) {
         const invoices = await prisma.invoice.findMany({
           where: { organizationId, status: { notIn: ["Paid", "Cancelled"] }, amountDue: { gt: 0 } },
@@ -155,8 +415,8 @@ export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssi
 
         return {
           success: true,
-          spokenText: `Total outstanding receivables from Sundry Debtors are ₹${totalDue.toLocaleString('en-IN')}. ${invoices.length > 0 ? `Top pending invoice is from ${invoices[0].customer?.businessName} for ₹${invoices[0].amountDue}.` : 'All customer accounts are clear.'}`,
-          actionText: "Receivables & Debtors Ageing",
+          spokenText: `Total outstanding receivables are ₹${totalDue.toLocaleString('en-IN')}. ${invoices.length > 0 ? `Top pending is ${invoices[0].customer?.businessName} for ₹${invoices[0].amountDue}.` : 'All customer accounts are clear.'}`,
+          actionText: "Receivables & Ageing",
           route: "/accounting/ageing",
           cardType: "CUSTOMER",
           cardData: {
@@ -172,226 +432,286 @@ export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssi
       }
     }
 
-    // E. SUNDRY CREDITORS (VENDORS TO PAY)
-    if (lower.includes("creditor") || lower.includes("payable") || lower.includes("who do we owe") || lower.includes("dena hai") || lower.includes("vendor balance")) {
-      if (organizationId) {
-        const bills = await prisma.bill.findMany({
-          where: { organizationId, status: { notIn: ["Paid", "Void"] }, amountDue: { gt: 0 } },
-          include: { vendor: true },
-          take: 5
-        });
-        const totalPayable = bills.reduce((s, b) => s + (b.amountDue || (b.totalAmount - (b.amountPaid || 0))), 0);
+    // F. GST FILING & TAXES
+    if (lower.includes("gst") || lower.includes("gstr") || lower.includes("tax filing") || lower.includes("tax report")) {
+      return {
+        success: true,
+        spokenText: "Opening GST Filing & Tax Returns dashboard...",
+        actionText: "GST Filing & Returns",
+        route: "/gst-filing",
+        cardType: "NAVIGATION"
+      };
+    }
 
+    // ========================================================================
+    // 3. WHATSAPP MARKETING & CHATBOTS
+    // ========================================================================
+    if (lower.includes("whatsapp") || lower.includes("broadcast") || lower.includes("campaign") || lower.includes("chatbot")) {
+      if (lower.includes("campaign") || lower.includes("broadcast") || lower.includes("bulk")) {
         return {
           success: true,
-          spokenText: `Total outstanding payables to Sundry Creditors are ₹${totalPayable.toLocaleString('en-IN')}.`,
-          actionText: "Payables & Creditors Ageing",
-          route: "/accounting/ageing",
-          cardType: "GENERAL",
+          spokenText: "Opening WhatsApp Broadcast Campaigns...",
+          actionText: "WhatsApp Campaigns",
+          route: "/whatsapp/campaigns",
+          cardType: "NAVIGATION"
+        };
+      }
+      if (lower.includes("bot") || lower.includes("chatbot") || lower.includes("flow") || lower.includes("builder")) {
+        return {
+          success: true,
+          spokenText: "Opening WhatsApp Chatbot Flow Builder...",
+          actionText: "Chatbot Builder",
+          route: "/whatsapp/chatbot-builder",
+          cardType: "NAVIGATION"
+        };
+      }
+      return {
+        success: true,
+        spokenText: "Opening WhatsApp Conversations & Inbox...",
+        actionText: "WhatsApp Inbox",
+        route: "/whatsapp/inbox",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // ========================================================================
+    // 4. HRMS, PAYROLL & HIRING
+    // ========================================================================
+    if (lower.includes("payroll") || lower.includes("salary") || lower.includes("salaries") || lower.includes("tankhwah")) {
+      return {
+        success: true,
+        spokenText: "Opening Payroll & Payouts dashboard...",
+        actionText: "Staff Payroll",
+        route: "/payroll",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    if (lower.includes("leave") || lower.includes("attendance") || lower.includes("hrms") || lower.includes("employee")) {
+      return {
+        success: true,
+        spokenText: "Opening HRMS & Staff Attendance...",
+        actionText: "HRMS & Attendance",
+        route: "/hrms",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    if (lower.includes("hiring") || lower.includes("candidate") || lower.includes("applicant") || lower.includes("interview") || lower.includes("recruitment")) {
+      return {
+        success: true,
+        spokenText: "Opening Hiring & Candidate Pipeline...",
+        actionText: "Hiring & Recruitment",
+        route: "/hiring",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // ========================================================================
+    // 5. SETTINGS, THEME & CUSTOMIZATION
+    // ========================================================================
+    if (lower.includes("theme") || lower.includes("appearance") || lower.includes("change color") || lower.includes("change font") || lower.includes("styling")) {
+      return {
+        success: true,
+        spokenText: "Opening Appearance & Software Theme settings...",
+        actionText: "Theme Settings",
+        route: "/settings?action=theme",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    if (lower.includes("tax setting") || lower.includes("gst setting") || lower.includes("tax rate")) {
+      return {
+        success: true,
+        spokenText: "Opening Tax & GST Configuration...",
+        actionText: "Tax Settings",
+        route: "/settings/taxes",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    if (lower.includes("template") || lower.includes("pdf layout") || lower.includes("quotation design")) {
+      return {
+        success: true,
+        spokenText: "Opening Document Templates & Print Designer...",
+        actionText: "Document Templates",
+        route: "/settings/templates",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    if (lower.includes("warehouse") || lower.includes("godown location") || lower.includes("stock location")) {
+      return {
+        success: true,
+        spokenText: "Opening Warehouse & Godown locations...",
+        actionText: "Warehouses",
+        route: "/settings/warehouses",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    if (lower.includes("role") || lower.includes("permission") || lower.includes("user management") || lower.includes("add user")) {
+      return {
+        success: true,
+        spokenText: "Opening User Roles & Permissions...",
+        actionText: "User Roles & Permissions",
+        route: "/settings/roles",
+        cardType: "NAVIGATION"
+      };
+    }
+
+    // ========================================================================
+    // 6. DIRECT DATABASE SEARCH (CUSTOMERS / PRODUCTS / QUOTATIONS / ORDERS)
+    // ========================================================================
+    if (organizationId) {
+      // Check customer match
+      const matchedCust = await prisma.customer.findFirst({
+        where: {
+          organizationId,
+          OR: [
+            { businessName: { contains: raw, mode: 'insensitive' } },
+            { contactPerson: { contains: raw, mode: 'insensitive' } }
+          ]
+        }
+      });
+
+      if (matchedCust) {
+        return {
+          success: true,
+          spokenText: `Opening profile for ${matchedCust.businessName}...`,
+          actionText: `Customer: ${matchedCust.businessName}`,
+          route: `/customers/${matchedCust.id}`,
+          cardType: "CUSTOMER",
           cardData: {
-            title: "Outstanding Vendor Payables",
-            metrics: [
-              { label: "Total Payable", value: `₹${totalPayable.toLocaleString('en-IN')}` },
-              ...bills.map(b => ({ label: b.vendor?.companyName || "Vendor", value: `₹${b.amountDue.toLocaleString('en-IN')}` }))
-            ]
+            title: matchedCust.businessName,
+            contactPerson: matchedCust.contactPerson,
+            mobile: matchedCust.mobile
           }
         };
       }
-    }
 
-    // F. INVENTORY & STOCK LEVELS
-    if (lower.includes("stock") || lower.includes("inventory") || lower.includes("mal") || lower.includes("quantity") || lower.includes("godown")) {
-      if (organizationId) {
-        const products = await prisma.product.findMany({ where: { organizationId } });
-        const lowStock = products.filter(p => (p.stockQuantity || 0) <= (p.minimumStock || 10));
-        const totalQty = products.reduce((s, p) => s + (p.stockQuantity || 0), 0);
-
-        // Check if specific product mentioned
-        const specificProd = products.find(p => lower.includes(p.name.toLowerCase()) || (p.sku && lower.includes(p.sku.toLowerCase())));
-
-        if (specificProd) {
-          return {
-            success: true,
-            spokenText: `We have ${specificProd.stockQuantity} units of ${specificProd.name} in stock at ₹${specificProd.sellingPrice} selling price.`,
-            actionText: `Stock Details: ${specificProd.name}`,
-            route: `/products?search=${encodeURIComponent(specificProd.name)}`,
-            cardType: "STOCK",
-            cardData: {
-              productName: specificProd.name,
-              sku: specificProd.sku || "N/A",
-              stockQuantity: specificProd.stockQuantity,
-              sellingPrice: specificProd.sellingPrice,
-              purchasePrice: specificProd.purchasePrice
-            }
-          };
+      // Check product match
+      const matchedProd = await prisma.product.findFirst({
+        where: {
+          organizationId,
+          OR: [
+            { name: { contains: raw, mode: 'insensitive' } },
+            { articleNumber: { contains: raw, mode: 'insensitive' } },
+            { sku: { contains: raw, mode: 'insensitive' } }
+          ]
         }
+      });
 
+      if (matchedProd) {
         return {
           success: true,
-          spokenText: `You have ${totalQty} total units in stock across ${products.length} products. ${lowStock.length > 0 ? `Warning: ${lowStock.length} items are at or below minimum reorder level.` : 'All stock levels are healthy.'}`,
-          actionText: "Inventory & Stock Levels",
-          route: "/products",
+          spokenText: `Found product ${matchedProd.name} with stock quantity of ${matchedProd.stockQuantity} units.`,
+          actionText: `Product: ${matchedProd.name}`,
+          route: `/products?search=${encodeURIComponent(matchedProd.name)}`,
           cardType: "STOCK",
           cardData: {
-            totalProducts: products.length,
-            totalUnits: totalQty,
-            lowStockCount: lowStock.length,
-            lowStockItems: lowStock.slice(0, 5).map(p => ({ name: p.name, stock: p.stockQuantity, min: p.minimumStock }))
+            name: matchedProd.name,
+            sku: matchedProd.sku,
+            stockQuantity: matchedProd.stockQuantity,
+            sellingPrice: matchedProd.sellingPrice
           }
         };
       }
-    }
 
-    // G. PAYROLL & SALARIES
-    if (lower.includes("payroll") || lower.includes("salary") || lower.includes("salaries") || lower.includes("incentive") || lower.includes("tankhwah")) {
-      if (organizationId) {
-        const employees = await prisma.employee.findMany({
-          where: { organizationId },
-          include: { user: true, salaries: { take: 1, orderBy: { createdAt: "desc" } } }
-        });
-        const totalBase = employees.reduce((s, e) => s + (e.salary || 0), 0);
-
+      // Check quotation number match (e.g. QT-1002)
+      const matchedQuote = await prisma.quotation.findFirst({
+        where: {
+          organizationId,
+          quotationNumber: { contains: raw, mode: 'insensitive' }
+        }
+      });
+      if (matchedQuote) {
         return {
           success: true,
-          spokenText: `You have ${employees.length} active employees with an estimated base payroll of ₹${totalBase.toLocaleString('en-IN')}.`,
-          actionText: "Staff Payroll & Incentives",
-          route: "/payroll",
-          cardType: "PAYROLL",
-          cardData: {
-            employeeCount: employees.length,
-            totalBase,
-            employees: employees.map(e => ({ name: e.user?.name || "Staff", salary: e.salary || 0, designation: e.designation || "Staff" }))
-          }
+          spokenText: `Opening Quotation ${matchedQuote.quotationNumber}...`,
+          actionText: `Quotation ${matchedQuote.quotationNumber}`,
+          route: `/quotations/${matchedQuote.id}`,
+          cardType: "NAVIGATION"
         };
       }
-    }
 
-    // H. WAREHOUSES
-    if (lower.includes("warehouse") || lower.includes("godown location") || lower.includes("stock location")) {
-      if (organizationId) {
-        const warehouses = await prisma.warehouse.findMany({
-          where: { organizationId },
-          include: { branch: true }
-        });
-
+      // Check order number match (e.g. ORD-1002)
+      const matchedOrder = await prisma.order.findFirst({
+        where: {
+          organizationId,
+          orderNumber: { contains: raw, mode: 'insensitive' }
+        }
+      });
+      if (matchedOrder) {
         return {
           success: true,
-          spokenText: `You have ${warehouses.length} active warehouses and stock locations. ${warehouses.map(w => w.name).join(", ")}.`,
-          actionText: "Warehouse & Stock Locations",
-          route: "/settings/warehouses",
-          cardType: "GENERAL",
-          cardData: {
-            title: "Warehouse Locations",
-            metrics: warehouses.map(w => ({
-              label: w.name,
-              value: w.branch?.city ? `${w.branch.city}, ${w.branch.state || ''}` : (w.address || "Active")
-            }))
-          }
-        };
-      }
-    }
-
-    // I. QUICK ACTIONS: CREATE EXPENSE
-    if ((lower.includes("expense") || lower.includes("kharcha")) && (lower.includes("add") || lower.includes("log") || lower.includes("create") || /\d+/.test(lower))) {
-      const matchAmount = raw.match(/(\d+(?:,\d+)*(?:\.\d+)?)/);
-      const amount = matchAmount ? parseFloat(matchAmount[1].replace(/,/g, '')) : 0;
-
-      if (amount > 0 && organizationId) {
-        const expenseNumber = `EXP-${Date.now().toString().slice(-6)}`;
-        let category = "General & Administrative";
-        if (lower.includes("travel") || lower.includes("cab") || lower.includes("petrol")) category = "Travel & Conveyance";
-        else if (lower.includes("food") || lower.includes("tea") || lower.includes("snack") || lower.includes("lunch")) category = "Meals & Refreshments";
-        else if (lower.includes("courier") || lower.includes("shipping") || lower.includes("freight")) category = "Freight & Shipping";
-        else if (lower.includes("stationery") || lower.includes("office")) category = "Office Supplies";
-
-        const created = await prisma.expense.create({
-          data: {
-            expenseNumber,
-            category,
-            amount,
-            description: `Voice logged: ${raw}`,
-            status: "Approved"
-          }
-        });
-
-        // Sync with double entry
-        await syncSystemLedgers();
-
-        return {
-          success: true,
-          spokenText: `Logged expense of ₹${amount.toLocaleString('en-IN')} for ${category} successfully under voucher #${expenseNumber}.`,
-          actionText: `Expense Logged: ₹${amount.toLocaleString('en-IN')}`,
-          route: "/accounting",
-          cardType: "EXPENSE",
-          cardData: {
-            expenseNumber,
-            category,
-            amount,
-            description: raw
-          }
-        };
-      }
-    }
-
-    // J. DIRECT NAVIGATION COMMANDS
-    const navMap: Record<string, { route: string; label: string; text: string }> = {
-      "dashboard": { route: "/", label: "Dashboard", text: "Opening Dashboard..." },
-      "customer": { route: "/customers", label: "Customers Directory", text: "Opening Customers..." },
-      "lead": { route: "/leads", label: "Sales Leads", text: "Opening Leads..." },
-      "order": { route: "/orders", label: "Orders Registry", text: "Opening Orders..." },
-      "invoice": { route: "/invoices", label: "Tax Invoices", text: "Opening Invoices..." },
-      "quote": { route: "/quotations", label: "Quotations", text: "Opening Quotations..." },
-      "quotation": { route: "/quotations", label: "Quotations", text: "Opening Quotations..." },
-      "daybook": { route: "/accounting", label: "Day Book & Ledger", text: "Opening Day Book..." },
-      "day book": { route: "/accounting", label: "Day Book", text: "Opening Day Book..." },
-      "trial balance": { route: "/accounting/trial-balance", label: "Trial Balance", text: "Opening Trial Balance..." },
-      "chart of account": { route: "/accounting/chart-of-accounts", label: "Chart of Accounts", text: "Opening Chart of Accounts..." },
-      "general ledger": { route: "/accounting/chart-of-accounts", label: "General Ledgers", text: "Opening General Ledgers..." },
-      "voucher": { route: "/accounting/vouchers", label: "Journal Vouchers", text: "Opening Journal Vouchers..." },
-      "ageing": { route: "/accounting/ageing", label: "Ageing Analysis", text: "Opening Ageing Analysis..." },
-      "product": { route: "/products", label: "Products Catalog", text: "Opening Products..." },
-      "call": { route: "/calls", label: "Call Logs", text: "Opening Calls..." },
-      "follow up": { route: "/follow-ups", label: "Follow-ups", text: "Opening Follow-ups..." },
-      "dispatch": { route: "/dispatches", label: "Dispatches & Challans", text: "Opening Dispatches..." },
-      "delivery challan": { route: "/delivery-challans", label: "Delivery Challans", text: "Opening Delivery Challans..." },
-      "vendor": { route: "/vendors", label: "Vendors & Suppliers", text: "Opening Vendors..." },
-      "purchase": { route: "/purchases", label: "Purchases", text: "Opening Purchases..." },
-      "bill": { route: "/purchases", label: "Purchase Bills", text: "Opening Bills..." },
-      "setting": { route: "/settings/organization", label: "Settings", text: "Opening Settings..." },
-      "tax setting": { route: "/settings/tax", label: "GST & Tax Settings", text: "Opening Tax Settings..." }
-    };
-
-    for (const [key, dest] of Object.entries(navMap)) {
-      if (lower.includes(key)) {
-        return {
-          success: true,
-          spokenText: dest.text,
-          actionText: dest.label,
-          route: dest.route,
-          cardType: "NAVIGATION",
-          cardData: { destination: dest.label, route: dest.route }
+          spokenText: `Opening Sales Order ${matchedOrder.orderNumber}...`,
+          actionText: `Order ${matchedOrder.orderNumber}`,
+          route: `/orders/${matchedOrder.id}`,
+          cardType: "NAVIGATION"
         };
       }
     }
 
     // ========================================================================
-    // 2. GEMINI LLM NATURAL LANGUAGE REASONING (For complex/Hinglish queries)
+    // 7. GEMINI LLM NATURAL LANGUAGE REASONING (For complex Hinglish / natural queries)
     // ========================================================================
-    if (process.env.GEMINI_API_KEY) {
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "dummy") {
       const prompt = `
-        You are Antigravity ERP & CRM Voice Assistant for an enterprise B2B company in India.
+        You are Antigravity ERP & CRM Universal Voice Router for an Indian B2B enterprise.
         User Command: "${raw}"
 
-        Understand their intent across ERP modules (Accounting, Sales, Customers, Invoices, Inventory, Warehouses, HRMS, Payroll).
-        Provide a clean JSON response with:
-        - "spokenText": Concise, friendly, natural answer to speak aloud (under 40 words, use ₹ / rupees).
-        - "actionText": Short UI label of the action performed.
-        - "route": Appropriate URL route in the application (e.g. /customers, /orders, /invoices, /accounting/balance-sheet, /accounting/profit-loss, /products, /payroll, /settings/warehouses).
-        - "cardType": One of ["BALANCE_SHEET", "CUSTOMER", "ORDER", "STOCK", "PAYROLL", "EXPENSE", "NAVIGATION", "GENERAL"].
-        - "cardData": Structured data object to display in the UI.
+        Determine user intent and route to the most accurate route in the application:
+        Available Routes:
+        - /quotations/new (Create new quotation / estimate)
+        - /quotations (View all quotations)
+        - /orders?action=new (Create new sales order)
+        - /orders (View all orders & shipping status)
+        - /invoices (Invoices & billing)
+        - /payments?action=new (Record payment / receive customer money)
+        - /payments (View payment receipts)
+        - /customers?action=new (Add new customer / client)
+        - /customers (Customers directory)
+        - /products?action=new (Add new product)
+        - /products?action=barcode (Barcode & QR label designer)
+        - /products?action=deadstock (Dead stock & inventory liquidation)
+        - /products (Products & stock inventory)
+        - /production?action=new (Create work order / production)
+        - /production?action=bom (Bill of Materials recipes)
+        - /production (Manufacturing workshop status)
+        - /purchases?action=new (Create purchase order / PO)
+        - /purchases (View purchases & inward GRN)
+        - /vendors?action=new (Add vendor / supplier)
+        - /vendors (Vendors directory)
+        - /delivery-challans (Dispatches & delivery challans)
+        - /calls?action=new (Log a call)
+        - /calls (Calls & follow-ups)
+        - /leads (Sales pipeline & target leaderboard)
+        - /accounting/balance-sheet (Balance sheet)
+        - /accounting/profit-loss (Profit & loss P&L)
+        - /accounting/trial-balance (Trial balance)
+        - /accounting (Day book & general ledger)
+        - /accounting/ageing (Receivables & debtors ageing)
+        - /gst-filing (GST Filing & tax reports)
+        - /payroll (Staff payroll & salaries)
+        - /hrms (Staff leaves & attendance)
+        - /hiring (Hiring & candidate recruitment)
+        - /whatsapp/inbox (WhatsApp chat)
+        - /whatsapp/campaigns (WhatsApp broadcast campaigns)
+        - /whatsapp/chatbot-builder (WhatsApp chatbot builder)
+        - /settings?action=theme (Appearance & software theme)
+        - /settings/organization (Company profile)
+        - /settings/taxes (Tax settings)
+        - /settings/templates (Document templates)
+        - /settings/warehouses (Warehouses)
+        - /settings/roles (User roles & permissions)
+        - / (Dashboard home)
 
-        Handle Hindi and Hinglish phrases (e.g., "batao", "dikhao", "naya banao", "balance kitna hai").
-        Return strictly valid JSON.
+        Provide JSON response:
+        - "spokenText": Friendly concise confirmation in English or Hindi (under 20 words).
+        - "actionText": Short title of the screen or action.
+        - "route": Exact route chosen from above.
+        - "cardType": "NAVIGATION"
       `;
 
       const response = await ai.models.generateContent({
@@ -404,20 +724,22 @@ export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssi
       text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
       const parsed = JSON.parse(text);
 
-      return {
-        success: true,
-        spokenText: parsed.spokenText || "Here is what I found for your request.",
-        actionText: parsed.actionText || "Voice Action Executed",
-        route: parsed.route || "/customers",
-        cardType: parsed.cardType || "GENERAL",
-        cardData: parsed.cardData || {}
-      };
+      if (parsed.route) {
+        return {
+          success: true,
+          spokenText: parsed.spokenText || `Opening ${parsed.actionText || 'screen'}...`,
+          actionText: parsed.actionText || "Voice Navigation",
+          route: parsed.route,
+          cardType: "NAVIGATION",
+          cardData: parsed.cardData || {}
+        };
+      }
     }
 
     // Default Fallback
     return {
       success: true,
-      spokenText: `Searching the system for "${raw}"...`,
+      spokenText: `Searching software for "${raw}"...`,
       actionText: `Search for "${raw}"`,
       route: `/customers?search=${encodeURIComponent(raw)}`,
       cardType: "NAVIGATION",
@@ -427,8 +749,8 @@ export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssi
     console.error("Voice AI execution error:", err);
     return {
       success: false,
-      spokenText: `I encountered an issue processing that: ${err.message || 'Please try again.'}`,
-      actionText: "Processing Error",
+      spokenText: `Processing voice command: ${raw}`,
+      actionText: `Search for "${raw}"`,
       route: `/customers?search=${encodeURIComponent(raw)}`
     };
   }

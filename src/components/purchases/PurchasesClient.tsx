@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { createPurchaseOrder, updatePOStatus, receiveGRN } from "@/app/actions/purchaseActions";
 import ModernSearchableSelect, { SelectOption } from "@/components/ui/ModernSearchableSelect";
 import {
@@ -66,6 +67,7 @@ export default function PurchasesClient({
   vendors: VendorOption[];
   products: ProductOption[];
 }) {
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState(initialOrders);
   const [createOpen, setCreateOpen] = useState(false);
   const [grnOpen, setGrnOpen] = useState<string | null>(null);
@@ -84,6 +86,13 @@ export default function PurchasesClient({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const act = searchParams?.get('action');
+    if (act === 'new' || act === 'create') {
+      setCreateOpen(true);
+    }
+  }, [searchParams]);
 
   const selectedPO = orders.find((o) => o.id === grnOpen);
 

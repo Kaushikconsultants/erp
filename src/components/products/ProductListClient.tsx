@@ -61,7 +61,21 @@ export default function ProductListClient({ products, categories, categoriesData
     if (art) {
       setSelectedHistoryArticle(art);
     }
-  }, [searchParams]);
+    const act = searchParams?.get('action');
+    if (act === 'barcode' && products.length > 0) {
+      setPrintLabelProduct(products[0]);
+    } else if (act === 'deadstock') {
+      setShowDeadStockModal(true);
+    } else if (act === 'catalog') {
+      setShowCatalogModal(true);
+    } else if (act === 'matrix') {
+      setShowMatrixModal(true);
+    }
+    const flt = searchParams?.get('filter');
+    if (flt === 'low_stock') {
+      setSelectedStatus('Low Stock');
+    }
+  }, [searchParams, products]);
 
   const handleDeleteProduct = async (product: Product) => {
     if (!confirm(`Are you sure you want to delete product "${product.name}"?`)) return;

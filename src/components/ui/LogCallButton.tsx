@@ -16,7 +16,7 @@ export default function LogCallButton({ customers, isAdmin }: LogCallButtonProps
 
   React.useEffect(() => {
     const action = searchParams?.get('action') || searchParams?.get('modal');
-    if (action === 'log' || action === 'add' || searchParams?.get('openLogModal') === 'true') {
+    if (action === 'log' || action === 'add' || action === 'new' || searchParams?.get('openLogModal') === 'true') {
       setIsModalOpen(true);
     }
   }, [searchParams]);
