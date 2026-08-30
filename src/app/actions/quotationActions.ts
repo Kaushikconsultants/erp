@@ -942,6 +942,20 @@ export async function convertQuotationToOrder(
       }
     }
 
+    // ── Mark customer as WON in the Sales Pipeline on conversion ─────────
+    try {
+      await prisma.customer.update({
+        where: { id: quotation.customerId },
+        data: {
+          leadStage: "Won",
+          status: "Active Lead",
+          totalPurchaseValue: { increment: quotation.totalValue }
+        }
+      });
+    } catch (cErr) {
+      console.warn("Could not update customer lead stage on convert:", cErr);
+    }
+
     revalidatePath("/quotations");
     revalidatePath(`/quotations/${quotationId}`);
     revalidatePath("/orders");
@@ -950,6 +964,8 @@ export async function convertQuotationToOrder(
     revalidatePath("/invoices");
     revalidatePath("/payments");
     revalidatePath("/products");
+    revalidatePath("/leads");
+    revalidatePath("/customers");
     revalidatePath("/", "layout");
 
     return { 
@@ -1036,7 +1052,33 @@ export async function confirmQuotation(
       }
     });
 
+    // ── Mark customer as MATURED / WON in the Sales Pipeline ──────────────
+    // A confirmed quotation (token, credit, or full) = committed sale intent.
+    // Advance leadStage → "Won" and update totalPurchaseValue.
+    try {
+      const currentCustomer = await prisma.customer.findUnique({
+        where: { id: quotation.customerId },
+        select: { leadStage: true, totalPurchaseValue: true }
+      });
+      // Only advance if not already Won or beyond
+      const alreadyWon = ["Won", "Converted"].includes(currentCustomer?.leadStage || "");
+      await prisma.customer.update({
+        where: { id: quotation.customerId },
+        data: {
+          leadStage: alreadyWon ? currentCustomer!.leadStage : "Won",
+          status: "Active Lead",
+          totalPurchaseValue: {
+            increment: paymentOption === "CREDIT" ? 0 : effectiveReceived
+          }
+        }
+      });
+    } catch (cErr) {
+      console.warn("Could not update customer lead stage on confirm:", cErr);
+    }
+
     revalidatePath("/quotations");
+    revalidatePath("/leads");
+    revalidatePath("/customers");
     revalidatePath("/", "layout");
 
     return { success: true };

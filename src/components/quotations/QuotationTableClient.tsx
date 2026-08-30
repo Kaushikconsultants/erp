@@ -51,7 +51,10 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
   const draftQuotesList = quotations.filter(q => q.status === 'Draft');
   const draftCount = draftQuotesList.length;
   
-  const acceptedQuotesList = quotations.filter(q => q.status === 'Accepted' || q.status === 'Converted');
+  // "Confirmed" = customer committed (token/credit/full) — counts as a matured/confirmed sale
+  const acceptedQuotesList = quotations.filter(q =>
+    q.status === 'Accepted' || q.status === 'Converted' || q.status === 'Confirmed'
+  );
   const acceptedCount = acceptedQuotesList.length;
   
   const totalPipelineValue = quotations.reduce((sum, q) => sum + (q.totalValue || 0), 0);
@@ -85,7 +88,7 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
   const filteredQuotations = (quotations || []).filter(q => {
     // 1. KPI Card Status Filter
     if (activeKpiFilter === 'ACCEPTED_CONVERTED') {
-      if (q.status !== 'Converted' && q.status !== 'Accepted') return false;
+      if (q.status !== 'Converted' && q.status !== 'Accepted' && q.status !== 'Confirmed') return false;
     } else if (activeKpiFilter === 'DRAFT') {
       if (q.status !== 'Draft') return false;
     }
