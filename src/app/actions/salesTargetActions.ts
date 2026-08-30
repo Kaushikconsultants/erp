@@ -32,7 +32,7 @@ export async function getSalesTargetLeaderboard() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    // 1. Fetch active sales reps with assigned customers, orders and calls
+    // 1. Fetch active sales reps with assigned customers, orders, quotations and calls
     const employees = await prisma.employee.findMany({
       where: {
         organizationId,
@@ -45,10 +45,19 @@ export async function getSalesTargetLeaderboard() {
             id: true,
             leadStage: true,
             status: true,
+            // Orders created this month (fully converted quotations)
             orders: {
               where: {
                 createdAt: { gte: startOfMonth, lte: endOfMonth },
                 paymentStatus: { not: 'CANCELLED' }
+              },
+              select: { totalValue: true }
+            },
+            // Confirmed quotations this month — token/credit/full = committed mature sale
+            quotations: {
+              where: {
+                createdAt: { gte: startOfMonth, lte: endOfMonth },
+                status: 'Confirmed'   // Only 'Confirmed'; 'Converted' are already counted via orders
               },
               select: { totalValue: true }
             }
@@ -76,22 +85,28 @@ export async function getSalesTargetLeaderboard() {
         if (cust.leadStage === 'Won') wonDeals++;
         else if (cust.leadStage !== 'Lost') activeLeads++;
 
+        // Count fully converted sales orders
         (cust.orders || []).forEach((o: any) => {
           achievedSales += (o.totalValue || 0);
         });
+
+        // ── Count Confirmed quotations as mature sales ──────────────────────
+        // A confirmed quotation (token / credit / full) = committed sale intent.
+        // These are NOT yet converted to orders but represent real won deals.
+        // Only 'Confirmed' status here — 'Converted' is already in orders above.
+        (cust.quotations || []).forEach((q: any) => {
+          achievedSales += (q.totalValue || 0);
+        });
       });
 
-      // If no orders found, calculate from won customers as fallback
-      if (achievedSales === 0 && wonDeals > 0) {
-        achievedSales = wonDeals * 25000;
-      }
+      const percentAchieved = monthlyTarget > 0
+        ? Math.min(200, Math.round((achievedSales / monthlyTarget) * 100))
+        : 0;
 
-      const percentAchieved = monthlyTarget > 0 ? Math.min(200, Math.round((achievedSales / monthlyTarget) * 100)) : 0;
-      
-      // Commission: 2.5% of achieved sales
+      // Commission: 2.5% of achieved sales (confirmed + converted)
       const estimatedCommission = Math.round(achievedSales * 0.025);
 
-      const status: 'AHEAD' | 'ON_TRACK' | 'BEHIND' = 
+      const status: 'AHEAD' | 'ON_TRACK' | 'BEHIND' =
         percentAchieved >= 100 ? 'AHEAD' : percentAchieved >= 60 ? 'ON_TRACK' : 'BEHIND';
 
       return {
