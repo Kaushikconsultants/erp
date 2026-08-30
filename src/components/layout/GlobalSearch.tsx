@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Mic, MicOff, Bot, Sparkles, User, FileText, ShoppingBag, Package, PlusCircle, Settings, BarChart2, Phone, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useVoiceStore } from '@/lib/stores/voiceStore';
 import { parseVoiceIntent } from '@/app/actions/voiceActions';
 import { searchAllModules, SearchResultItem } from '@/app/actions/searchActions';
 
@@ -61,6 +60,17 @@ export default function GlobalSearch() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Cleanup speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.abort();
+        } catch (e) {}
+      }
+    };
+  }, []);
+
   const executeSearch = async (searchQuery: string) => {
     setShowDropdown(false);
     const rawQuery = searchQuery.trim();
@@ -77,7 +87,7 @@ export default function GlobalSearch() {
         setIsAiProcessing(false);
         setFeedbackMsg('');
         router.push(intentResult.route);
-      }, 350);
+      }, 400);
     } catch (err) {
       console.error("AI Voice intent error:", err);
       setIsAiProcessing(false);
@@ -85,10 +95,85 @@ export default function GlobalSearch() {
     }
   };
 
-  const { openAssistant } = useVoiceStore();
+  const toggleVoiceSearch = () => {
+    if (isListening) {
+      // Stop listening
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {}
+      }
+      setIsListening(false);
+      setFeedbackMsg('');
+      return;
+    }
 
-  const startVoiceSearch = () => {
-    openAssistant();
+    // Check browser speech recognition support
+    const SpeechRecognition =
+      typeof window !== 'undefined'
+        ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+        : null;
+
+    if (!SpeechRecognition) {
+      setFeedbackMsg('⚠️ Speech recognition is not supported in this browser. Please type your search.');
+      setTimeout(() => setFeedbackMsg(''), 4000);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setFeedbackMsg('🎙️ Listening... speak now (e.g. "Create quotation", "Sonu Garments", "Pending orders")...');
+        setShowDropdown(false);
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setQuery(transcript);
+        latestQueryRef.current = transcript;
+        if (event.results[0] && event.results[0].isFinal) {
+          setFeedbackMsg(`✨ Voice captured: "${transcript}"`);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Speech recognition error:', event.error);
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setFeedbackMsg('⚠️ Microphone permission was denied. Please allow microphone access in your browser.');
+        } else if (event.error !== 'aborted') {
+          setFeedbackMsg(`⚠️ Voice error (${event.error}). Please try again.`);
+        }
+        setTimeout(() => setFeedbackMsg(''), 4000);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        const finalSpeech = latestQueryRef.current.trim();
+        if (finalSpeech) {
+          setFeedbackMsg(`🤖 Processing: "${finalSpeech}"...`);
+          executeSearch(finalSpeech);
+        } else {
+          setFeedbackMsg('');
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err: any) {
+      console.error('Failed to start voice recognition:', err);
+      setIsListening(false);
+      setFeedbackMsg('⚠️ Failed to start microphone. Please check your mic settings.');
+      setTimeout(() => setFeedbackMsg(''), 4000);
+    }
   };
 
   const handleSelectOption = (url: string) => {
@@ -99,7 +184,16 @@ export default function GlobalSearch() {
 
   return (
     <div ref={containerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-      <div className="search-container" style={{ position: 'relative', paddingRight: '40px', width: '360px' }}>
+      <div 
+        className="search-container" 
+        style={{ 
+          position: 'relative', 
+          paddingRight: '42px', 
+          width: '380px',
+          borderColor: isListening ? '#10b981' : undefined,
+          boxShadow: isListening ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : undefined
+        }}
+      >
         <button
           type="button"
           onClick={() => executeSearch(query)}
@@ -125,41 +219,42 @@ export default function GlobalSearch() {
           style={{ width: '100%', paddingLeft: 0, color: '#0f172a', fontWeight: 500 }}
         />
 
-        {query && (
+        {query && !isListening && (
           <button
             type="button"
-            onClick={() => setQuery('')}
-            style={{ position: 'absolute', right: '36px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+            onClick={() => { setQuery(''); latestQueryRef.current = ''; }}
+            style={{ position: 'absolute', right: '40px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+            title="Clear search"
           >
             <X size={14} />
           </button>
         )}
 
-        {/* AI Voice Microphone Button */}
+        {/* Direct AI Voice Microphone Button */}
         <button
           type="button"
-          onClick={startVoiceSearch}
-          title={isListening ? "Stop Listening" : "AI Voice Search (Click & Speak)"}
+          onClick={toggleVoiceSearch}
+          title={isListening ? "Listening... Click to stop" : "AI Voice Search (Click & Speak)"}
           style={{
             position: 'absolute',
             right: '8px',
             top: '50%',
             transform: 'translateY(-50%)',
-            background: isListening ? '#ef4444' : isAiProcessing ? '#8b5cf6' : 'transparent',
-            border: 'none',
+            background: isListening ? '#10b981' : isAiProcessing ? 'var(--accent-primary, #4f46e5)' : 'transparent',
+            border: isListening ? 'none' : 'none',
             borderRadius: '50%',
-            width: '28px',
-            height: '28px',
+            width: '30px',
+            height: '30px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: (isListening || isAiProcessing) ? '#ffffff' : '#6366f1',
+            color: (isListening || isAiProcessing) ? '#ffffff' : 'var(--accent-primary, #6366f1)',
             transition: 'all 0.2s ease',
-            boxShadow: isListening ? '0 0 0 4px rgba(239, 68, 68, 0.3)' : isAiProcessing ? '0 0 0 4px rgba(139, 92, 246, 0.3)' : 'none',
+            boxShadow: isListening ? '0 0 0 4px rgba(16, 185, 129, 0.35)' : isAiProcessing ? '0 0 0 4px rgba(79, 70, 229, 0.25)' : 'none',
           }}
         >
-          {isAiProcessing ? <Sparkles size={16} /> : isListening ? <MicOff size={16} /> : <Mic size={16} />}
+          {isAiProcessing ? <Sparkles size={16} /> : isListening ? <MicOff size={16} /> : <Mic size={18} />}
         </button>
       </div>
 
@@ -167,29 +262,30 @@ export default function GlobalSearch() {
       {feedbackMsg && (
         <div style={{
           position: 'absolute',
-          top: '110%',
+          top: '115%',
           left: 0,
           right: 0,
           backgroundColor: '#0f172a',
           color: '#ffffff',
-          padding: '8px 12px',
+          padding: '9px 14px',
           borderRadius: '8px',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          zIndex: 101,
-          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.3)',
+          fontSize: '0.82rem',
+          fontWeight: 500,
+          zIndex: 1001,
+          boxShadow: '0 10px 20px -3px rgba(0,0,0,0.35)',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          border: '1px solid #334155'
+          border: '1px solid #334155',
+          animation: 'fadeIn 0.2s ease'
         }}>
-          {isAiProcessing ? <Bot size={16} color="#a855f7" /> : isListening ? <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ef4444', display: 'inline-block' }} /> : null}
-          {feedbackMsg}
+          {isAiProcessing ? <Bot size={16} color="#a855f7" /> : isListening ? <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', boxShadow: '0 0 6px #10b981' }} /> : null}
+          <span>{feedbackMsg}</span>
         </div>
       )}
 
       {/* LIVE ALL-OPTIONS DROPDOWN MENU */}
-      {showDropdown && (
+      {showDropdown && !isListening && (
         <div style={{
           position: 'absolute',
           top: '115%',
@@ -231,7 +327,7 @@ export default function GlobalSearch() {
 
               <div 
                 onClick={() => executeSearch(query)}
-                style={{ padding: '12px 16px', textAlign: 'center', backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ padding: '12px 16px', textAlign: 'center', backgroundColor: '#eef2ff', color: 'var(--accent-primary, #4f46e5)', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
                 <Sparkles size={16} /> Run AI Search for "{query}"
               </div>
