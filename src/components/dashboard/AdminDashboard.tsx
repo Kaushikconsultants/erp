@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import SalesChart from '@/components/dashboard/SalesChart';
 import TopProductsChart from '@/components/dashboard/TopProductsChart';
