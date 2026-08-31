@@ -1,1 +1,1 @@
-fix: mobile scanner session resilience - auto-recreate sessions on timeout and retry push
+feat: count confirmed quotations as orders in Total Orders metric and live leaderboard

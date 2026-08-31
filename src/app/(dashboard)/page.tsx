@@ -45,6 +45,7 @@ export default async function Home() {
     const [
       totalCustomers,
       totalOrders,
+      totalConfirmedQuotationsCount,
       totalRevenueResult,
       confirmedQuotationsRevenue,
       confirmedQuotationsThisMonth,
@@ -59,6 +60,8 @@ export default async function Home() {
     ] = await Promise.all([
       prisma.customer.count({ where: { organizationId: orgId } }),
       prisma.order.count({ where: { organizationId: orgId } }),
+      // Count of confirmed quotations (treated as confirmed orders)
+      prisma.quotation.count({ where: { organizationId: orgId, status: 'Confirmed' } }),
       prisma.order.aggregate({
         where: { organizationId: orgId },
         _sum: { totalValue: true }
@@ -89,9 +92,11 @@ export default async function Home() {
           date: { gte: todayStartOfDay }
         }
       }) : Promise.resolve(null),
-      prisma.order.count({
-        where: { organizationId: orgId, orderDate: { gte: todayStartOfDay } }
-      }),
+      // Today orders count includes confirmed quotations created today
+      Promise.all([
+        prisma.order.count({ where: { organizationId: orgId, orderDate: { gte: todayStartOfDay } } }),
+        prisma.quotation.count({ where: { organizationId: orgId, status: 'Confirmed', date: { gte: todayStartOfDay } } })
+      ]).then(([o, q]) => o + q),
       prisma.attendance.findMany({
         where: {
           date: { gte: todayStartOfDay },
@@ -131,6 +136,8 @@ export default async function Home() {
     const ordersRevenue = totalRevenueResult._sum.totalValue || 0;
     const quotRevenue = confirmedQuotationsRevenue._sum.totalValue || 0;
     const totalRevenue = ordersRevenue + quotRevenue;
+    // Total Orders = real orders + confirmed quotations (confirmed quote = confirmed order)
+    const combinedTotalOrders = totalOrders + totalConfirmedQuotationsCount;
     const adminCheckedIn = !!adminAtt;
     const adminCheckedOut = !!adminAtt?.checkOut;
 
@@ -149,13 +156,29 @@ export default async function Home() {
       isShiftActive: !a.checkOut
     }));
 
+    // Also fetch today's confirmed quotations for the leaderboard
+    const todayConfirmedQuots = await prisma.quotation.findMany({
+      where: { organizationId: orgId, status: 'Confirmed', date: { gte: todayStartOfDay } },
+      include: { salesperson: { include: { user: true } } }
+    });
+
     const salesMap: Record<string, { name: string, total: number, orders: number }> = {};
+    // Real orders
     todayOrdersList.forEach(o => {
       const spId = o.salespersonId;
       if (!salesMap[spId]) {
         salesMap[spId] = { name: o.salesperson?.user?.name || 'Unknown', total: 0, orders: 0 };
       }
       salesMap[spId].total += o.totalValue;
+      salesMap[spId].orders += 1;
+    });
+    // Confirmed quotations from today count as orders on the leaderboard
+    todayConfirmedQuots.forEach(q => {
+      const spId = q.salespersonId;
+      if (!salesMap[spId]) {
+        salesMap[spId] = { name: q.salesperson?.user?.name || 'Unknown', total: 0, orders: 0 };
+      }
+      salesMap[spId].total += q.totalValue || 0;
       salesMap[spId].orders += 1;
     });
 
@@ -222,7 +245,7 @@ export default async function Home() {
         <AdminDashboard 
           totalRevenue={totalRevenue}
           totalCustomers={totalCustomers}
-          totalOrders={totalOrders}
+          totalOrders={combinedTotalOrders}
           pendingCalls={pendingCalls}
           salesData={salesData}
           topProductsData={topProductsData}

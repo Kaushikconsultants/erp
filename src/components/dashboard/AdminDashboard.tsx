@@ -156,7 +156,7 @@ export default function AdminDashboard({
             <ArrowUpRight size={18} className="kpi-icon positive" />
           </div>
           <div className="kpi-value">{totalOrders}</div>
-          <div className="kpi-trend neutral">All-time</div>
+          <div className="kpi-trend neutral">Orders + Confirmed Quotes</div>
         </div>
         <div className="kpi-card glass-panel hover-lift" onClick={() => setActiveModalType('calls')} style={{ cursor: 'pointer' }}>
           <div className="kpi-icon-header">
