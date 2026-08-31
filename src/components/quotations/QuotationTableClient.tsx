@@ -20,7 +20,9 @@ import {
 import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
 import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
 import EditQuotationModal from '@/components/quotations/EditQuotationModal';
+import EditTokenAmountModal from '@/components/quotations/EditTokenAmountModal';
 import { deleteQuotation } from '@/app/actions/quotationActions';
+import { Coins } from 'lucide-react';
 
 export default function QuotationTableClient({ initialQuotations = [] }: { initialQuotations: any[] }) {
   const searchParams = useSearchParams();
@@ -35,6 +37,7 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
   const [isAnalyticsModalOpen, setIsAnalyticsModalOpen] = useState(false);
 
   const [editingQuotation, setEditingQuotation] = useState<any | null>(null);
+  const [tokenModalQuote, setTokenModalQuote] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -341,19 +344,30 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                       )}
                     </td>
                     <td style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>
-                      <span style={{ 
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '4px 10px', 
-                        borderRadius: 'var(--radius-sm, 6px)', 
-                        fontSize: '0.75rem', 
-                        fontWeight: 600,
-                        whiteSpace: 'nowrap',
-                        backgroundColor: q.status === 'Converted' || q.status === 'Accepted' ? '#dcfce7' : q.status === 'Confirmed' ? '#dbeafe' : q.status === 'Sent' ? 'var(--accent-light, #e0e7ff)' : '#f1f5f9',
-                        color: q.status === 'Converted' || q.status === 'Accepted' ? '#166534' : q.status === 'Confirmed' ? '#1d4ed8' : q.status === 'Sent' ? 'var(--accent-primary, #3730a3)' : '#475569'
-                      }}>
+                      <span 
+                        onClick={() => {
+                          if (q.status === 'Confirmed') {
+                            setTokenModalQuote(q);
+                          }
+                        }}
+                        style={{ 
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 10px', 
+                          borderRadius: 'var(--radius-sm, 6px)', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          backgroundColor: q.status === 'Converted' || q.status === 'Accepted' ? '#dcfce7' : q.status === 'Confirmed' ? '#dbeafe' : q.status === 'Sent' ? 'var(--accent-light, #e0e7ff)' : '#f1f5f9',
+                          color: q.status === 'Converted' || q.status === 'Accepted' ? '#166534' : q.status === 'Confirmed' ? '#1d4ed8' : q.status === 'Sent' ? 'var(--accent-primary, #3730a3)' : '#475569',
+                          cursor: q.status === 'Confirmed' ? 'pointer' : 'default',
+                          border: q.status === 'Confirmed' ? '1px dashed #93c5fd' : 'none'
+                        }}
+                        title={q.status === 'Confirmed' ? "Click to edit token amount" : undefined}
+                      >
                         {q.status === 'Confirmed' && q.receivedAmount > 0 ? `Confirmed (₹${q.receivedAmount.toLocaleString('en-IN')})` : q.status}
+                        {q.status === 'Confirmed' && <Pencil size={10} style={{ marginLeft: '2px', opacity: 0.8 }} />}
                       </span>
                     </td>
                     <td style={{ padding: '14px 20px' }}>
@@ -369,6 +383,30 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                         >
                           <Pencil size={13} /> Edit
                         </Link>
+
+                        {q.status === 'Confirmed' && (
+                          <button
+                            type="button"
+                            onClick={() => setTokenModalQuote(q)}
+                            style={{
+                              padding: '5px 10px',
+                              border: '1px solid #86efac',
+                              backgroundColor: '#f0fdf4',
+                              borderRadius: 'var(--radius-sm, 6px)',
+                              color: '#15803d',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Edit Token / Advance Payment Amount"
+                          >
+                            <Coins size={13} /> Token
+                          </button>
+                        )}
 
                         <button 
                           onClick={() => handleDelete(q.id, q.quotationNumber)} 
@@ -396,6 +434,26 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
         </div>
 
       </div>
+
+      {/* ─── EDIT TOKEN / ADVANCE AMOUNT MODAL ─── */}
+      {tokenModalQuote && (
+        <EditTokenAmountModal
+          isOpen={!!tokenModalQuote}
+          quotationId={tokenModalQuote.id}
+          quotationNumber={tokenModalQuote.quotationNumber}
+          customerName={tokenModalQuote.customer?.businessName || tokenModalQuote.customer?.contactPerson}
+          totalValue={Number(tokenModalQuote.totalValue || 0)}
+          currentReceivedAmount={Number(tokenModalQuote.receivedAmount || 0)}
+          onClose={() => setTokenModalQuote(null)}
+          onSuccess={(newAmt) => {
+            setQuotations(prev => prev.map(item => 
+              item.id === tokenModalQuote.id 
+                ? { ...item, receivedAmount: newAmt }
+                : item
+            ));
+          }}
+        />
+      )}
 
       {/* ─── CARD 4 ANALYTICS BREAKDOWN MODAL ─── */}
       {isAnalyticsModalOpen && (

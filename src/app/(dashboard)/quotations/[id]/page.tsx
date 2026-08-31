@@ -8,6 +8,7 @@ import DownloadPdfButton from '@/components/orders/DownloadPdfButton';
 import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
 import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
 import SendQuotationWhatsAppBtn from '@/components/quotations/SendQuotationWhatsAppBtn';
+import EditTokenActionBtn from '@/components/quotations/EditTokenActionBtn';
 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -84,7 +85,16 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             ✏️ Edit Quotation
           </a>
           {quotation.status === 'Confirmed' && (
-            <ConvertToInvoiceBtn quotationId={quotation.id} />
+            <>
+              <EditTokenActionBtn
+                quotationId={quotation.id}
+                quotationNumber={quotation.quotationNumber}
+                customerName={quotation.customer?.businessName || quotation.customer?.contactPerson}
+                totalValue={Number(quotation.totalValue || 0)}
+                receivedAmount={Number(quotation.receivedAmount || 0)}
+              />
+              <ConvertToInvoiceBtn quotationId={quotation.id} />
+            </>
           )}
           {quotation.status !== 'Converted' && quotation.status !== 'Confirmed' && (
             <ConvertQuotationBtn quotationId={quotation.id} />

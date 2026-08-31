@@ -1088,3 +1088,68 @@ export async function confirmQuotation(
   }
 }
 
+// ─── Update Token / Advance Amount for Confirmed Quotation ──────────────
+export async function updateQuotationTokenAmount(
+  quotationId: string,
+  newTokenAmount: number,
+  paymentOption?: 'FULL' | 'TOKEN' | 'CREDIT'
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id || null;
+    const userName = (session?.user as any)?.name || "System";
+
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: { customer: true }
+    });
+
+    if (!quotation) return { error: "Quotation not found" };
+
+    const prevReceived = Number(quotation.receivedAmount || 0);
+    const newReceived = Math.max(0, Number(newTokenAmount || 0));
+    const delta = newReceived - prevReceived;
+
+    await prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        receivedAmount: newReceived,
+        activities: {
+          create: {
+            userId,
+            userName,
+            action: "Token Amount Updated",
+            details: `Token amount updated from ₹${prevReceived.toLocaleString('en-IN')} to ₹${newReceived.toLocaleString('en-IN')}`
+          }
+        }
+      }
+    });
+
+    // Adjust customer total purchase value
+    if (delta !== 0 && quotation.customerId) {
+      try {
+        await prisma.customer.update({
+          where: { id: quotation.customerId },
+          data: {
+            totalPurchaseValue: {
+              increment: delta
+            }
+          }
+        });
+      } catch (cErr) {
+        console.warn("Could not adjust customer totalPurchaseValue:", cErr);
+      }
+    }
+
+    revalidatePath("/quotations");
+    revalidatePath(`/quotations/${quotationId}`);
+    revalidatePath("/customers");
+    revalidatePath("/", "layout");
+
+    return { success: true, receivedAmount: newReceived };
+  } catch (error: any) {
+    console.error("Error updating quotation token amount:", error);
+    return { error: error?.message || "Failed to update token amount" };
+  }
+}
+

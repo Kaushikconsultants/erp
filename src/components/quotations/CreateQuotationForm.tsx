@@ -74,6 +74,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
     shippingCharges: initialQuotation?.shippingCharges || 0,
     additionalDiscount: initialQuotation?.additionalDiscount || 0,
     adjustment: initialQuotation?.adjustment || 0,
+    receivedAmount: initialQuotation?.receivedAmount !== undefined ? Number(initialQuotation.receivedAmount) : 0,
     notes: initialQuotation?.notes || 'Thank you for your business! Please reach out if you have any questions regarding this quotation.',
     internalNotes: initialQuotation?.internalNotes || '',
     termsConditions: initialQuotation?.termsConditions || "1. Goods once sold cannot be taken back or exchanged.\n2. 50% advance payment required for custom orders.\n3. Quotation valid for 15 days from date of issue.\n4. Subject to local jurisdiction."
@@ -483,6 +484,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
         shippingCharges: Number(formData.shippingCharges) || 0,
         additionalDiscount: Number(formData.additionalDiscount) || 0,
         adjustment: Number(formData.adjustment) || 0,
+        receivedAmount: Number(formData.receivedAmount || 0),
         totalWeight: totals.totalWeight,
         notes: formData.notes,
         internalNotes: formData.internalNotes,
@@ -1671,6 +1673,59 @@ export default function CreateQuotationForm({ customers, products, employees, ca
               </div>
               <div style={{ fontSize: '0.72rem', color: '#3b82f6', textAlign: 'right', marginTop: '4px', fontStyle: 'italic', fontWeight: 500 }}>
                 {numberToWords(Math.round(totals.finalTotal))}
+              </div>
+            </div>
+
+            {/* TOKEN / ADVANCE PAYMENT SECTION */}
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              padding: '16px',
+              borderRadius: '8px',
+              border: '1px solid #86efac',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#065f46', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  🪙 Token / Advance Received (₹)
+                </span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, receivedAmount: totals.finalTotal })}
+                    style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', border: '1px solid #86efac', backgroundColor: '#ffffff', color: '#059669', cursor: 'pointer', fontWeight: 700 }}
+                  >
+                    100% Full
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, receivedAmount: 0 })}
+                    style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#64748b', cursor: 'pointer', fontWeight: 700 }}
+                  >
+                    ₹0 Credit
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #86efac', borderRadius: '6px', backgroundColor: '#ffffff', overflow: 'hidden' }}>
+                <span style={{ padding: '0 10px', fontSize: '0.85rem', color: '#059669', backgroundColor: '#ecfdf5', borderRight: '1px solid #86efac', display: 'flex', alignItems: 'center', height: '36px', fontWeight: 700 }}>₹</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={formData.receivedAmount === 0 ? '' : formData.receivedAmount}
+                  onChange={e => setFormData({ ...formData, receivedAmount: Number(e.target.value) || 0 })}
+                  style={{ width: '100%', height: '36px', padding: '0 10px', textAlign: 'right', border: 'none', outline: 'none', fontSize: '1rem', fontWeight: 800, color: '#0f172a', backgroundColor: 'transparent' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', paddingTop: '4px', borderTop: '1px dashed #a7f3d0' }}>
+                <span style={{ color: '#065f46', fontWeight: 600 }}>Remaining Due Balance:</span>
+                <span style={{ color: Math.max(0, totals.finalTotal - (Number(formData.receivedAmount) || 0)) > 0 ? '#b45309' : '#059669', fontWeight: 800, fontSize: '0.9rem' }}>
+                  ₹{Math.max(0, totals.finalTotal - (Number(formData.receivedAmount) || 0)).toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
