@@ -972,7 +972,8 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             placeholder="Scan product barcode / SKU to auto-add item into quotation..."
           />
 
-          <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto', overflowY: 'visible', WebkitOverflowScrolling: 'touch' }}>
+          {/* ── DESKTOP TABLE ── hidden on mobile via CSS */}
+          <div className="quot-items-desktop" style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto', overflowY: 'visible' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
@@ -1238,6 +1239,227 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             </table>
           </div>
 
+          {/* ── MOBILE ITEM CARDS ── shown only on mobile, hidden on desktop via CSS */}
+          <div className="quot-items-mobile" style={{ display: 'none', flexDirection: 'column', gap: '12px' }}>
+            {items.map((item, index) => {
+              const gross = (item.rate || 0) * (item.quantity || 1);
+              let disc = 0;
+              if (item.discountType === 'amount') {
+                disc = Number(item.discountAmount) || 0;
+              } else {
+                disc = gross * ((Number(item.discountPercent) || 0) / 100);
+              }
+              const taxable = Math.max(0, gross - disc);
+              const tax = taxable * ((Number(item.gstRate) || 0) / 100);
+              const lineAmount = taxable + tax;
+
+              return (
+                <div key={index} style={{
+                  backgroundColor: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  position: 'relative'
+                }}>
+                  {/* Item header: number + delete */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <span style={{
+                      width: '24px', height: '24px', borderRadius: '50%',
+                      backgroundColor: '#f1f5f9', color: '#475569',
+                      fontSize: '0.78rem', fontWeight: 700,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>{index + 1}</span>
+                    <button type="button" onClick={() => removeItem(index)} style={{
+                      background: '#fee2e2', border: 'none', color: '#ef4444',
+                      cursor: 'pointer', padding: '6px 10px', borderRadius: '8px',
+                      fontSize: '0.75rem', fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: '4px'
+                    }}>
+                      <Trash2 size={14} /> Remove
+                    </button>
+                  </div>
+
+                  {/* Product selector / selected product */}
+                  {!item.productId ? (
+                    <div style={{ marginBottom: '12px' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '5px', textTransform: 'uppercase' }}>Product</label>
+                      <div
+                        style={{
+                          display: 'flex', alignItems: 'center',
+                          border: showProductSearch === index ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                          borderRadius: '8px', padding: '10px 12px',
+                          backgroundColor: '#ffffff',
+                          boxShadow: showProductSearch === index ? '0 0 0 3px rgba(37, 99, 235, 0.12)' : 'none',
+                        }}
+                        onClick={() => {
+                          setShowProductSearch(index);
+                          updateDropdownCoords(index);
+                          searchInputRefs.current[index]?.focus();
+                        }}
+                      >
+                        <Search size={16} color={showProductSearch === index ? "#2563eb" : "#94a3b8"} style={{ flexShrink: 0 }} />
+                        <input
+                          ref={(el) => { searchInputRefs.current[index] = el; }}
+                          type="text"
+                          placeholder="Search product..."
+                          value={showProductSearch === index ? productSearchTerm : ''}
+                          onChange={(e) => {
+                            setProductSearchTerm(e.target.value);
+                            setShowProductSearch(index);
+                            updateDropdownCoords(index);
+                          }}
+                          onFocus={() => {
+                            setShowProductSearch(index);
+                            updateDropdownCoords(index);
+                          }}
+                          style={{ border: 'none', outline: 'none', marginLeft: '8px', width: '100%', fontSize: '0.9rem', color: '#0f172a', backgroundColor: 'transparent' }}
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ marginBottom: '12px', padding: '10px 12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#0f172a' }}>{item.productName}</div>
+                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                            <span style={{ fontSize: '0.72rem', backgroundColor: '#f1f5f9', padding: '2px 7px', borderRadius: '4px', color: '#475569', fontWeight: 500 }}>
+                              SKU: {item.sku || 'N/A'}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: item.availableStock > 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+                              Stock: {item.availableStock} pcs
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newItems = [...items];
+                            newItems[index].productId = '';
+                            setItems(newItems);
+                            setShowProductSearch(index);
+                            setProductSearchTerm('');
+                            setTimeout(() => {
+                              updateDropdownCoords(index);
+                              searchInputRefs.current[index]?.focus();
+                            }, 50);
+                          }}
+                          style={{
+                            fontSize: '0.72rem', color: '#2563eb',
+                            backgroundColor: '#eff6ff', border: '1px solid #bfdbfe',
+                            borderRadius: '6px', padding: '4px 10px',
+                            cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Change
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Description (optional)..."
+                        value={item.description || ''}
+                        onChange={e => handleItemChange(index, 'description', e.target.value)}
+                        style={{ marginTop: '8px', width: '100%', fontSize: '0.82rem', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Qty + Rate row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>Quantity</label>
+                      <input
+                        type="number" min="1"
+                        value={item.quantity}
+                        onChange={e => handleItemChange(index, 'quantity', e.target.value)}
+                        style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>Rate (₹)</label>
+                      <input
+                        type="number" step="0.01"
+                        value={item.rate}
+                        onChange={e => handleItemChange(index, 'rate', e.target.value)}
+                        style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', fontWeight: 600 }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Discount + GST row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>Discount</label>
+                      <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '8px', overflow: 'hidden' }}>
+                        <select
+                          value={item.discountType || 'percent'}
+                          onChange={e => handleItemChange(index, 'discountType', e.target.value)}
+                          style={{ padding: '9px 6px', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc', fontWeight: 700, color: '#334155', cursor: 'pointer' }}
+                        >
+                          <option value="percent">%</option>
+                          <option value="amount">₹</option>
+                        </select>
+                        <input
+                          type="number" step="0.01"
+                          value={item.discountType === 'amount' ? (item.discountAmount || 0) : (item.discountPercent || 0)}
+                          onChange={e => {
+                            const val = Number(e.target.value) || 0;
+                            if (item.discountType === 'amount') {
+                              handleItemChange(index, 'discountAmount', val);
+                            } else {
+                              handleItemChange(index, 'discountPercent', val);
+                            }
+                          }}
+                          style={{ width: '100%', padding: '9px 8px', border: 'none', outline: 'none', fontSize: '0.95rem', backgroundColor: '#ffffff', fontWeight: 600 }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>GST %</label>
+                      <select
+                        value={item.gstRate}
+                        onChange={e => handleItemChange(index, 'gstRate', e.target.value)}
+                        style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', backgroundColor: '#ffffff' }}
+                      >
+                        <option value="0">0%</option>
+                        <option value="5">5%</option>
+                        <option value="12">12%</option>
+                        <option value="18">18%</option>
+                        <option value="28">28%</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Line total */}
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    paddingTop: '10px', borderTop: '1px dashed #e2e8f0'
+                  }}>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Line Total (incl. GST)</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>₹{lineAmount.toFixed(2)}</span>
+                  </div>
+
+                  {/* Garment matrix button */}
+                  {item.productId && (
+                    <button
+                      type="button"
+                      onClick={() => { setMatrixTargetIndex(index); setShowGarmentMatrix(true); }}
+                      style={{
+                        marginTop: '10px', width: '100%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                        padding: '8px', borderRadius: '8px',
+                        backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe',
+                        color: '#7c3aed', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer'
+                      }}
+                    >
+                      📦 Open Size / Color Matrix
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
           <div style={{ marginTop: '14px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <button 
               type="button" 
@@ -1253,6 +1475,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             </button>
           </div>
         </div>
+
 
         {/* BOTTOM SECTION: NOTES & DYNAMIC GST / IGST SUMMARY BREAKDOWN */}
         <div className="quotation-bottom-grid" style={{ marginTop: '36px', display: 'grid', gridTemplateColumns: '1fr 380px', gap: '40px', paddingTop: '28px', borderTop: '1px solid #e2e8f0' }}>
