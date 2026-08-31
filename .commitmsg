@@ -1,1 +1,1 @@
-fix: anchor product search dropdown directly below input box preventing top-left jump
+fix: mobile scanner session resilience - auto-recreate sessions on timeout and retry push

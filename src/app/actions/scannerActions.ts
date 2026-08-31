@@ -218,9 +218,10 @@ export async function createMobileScanSession(mode: string = "INVENTORY", orderI
 
 export async function getMobileScanUpdate(sessionCode: string) {
   if (!sessionCode) return { error: "Session code required" };
+  const cleanSession = sessionCode.trim().toUpperCase();
   try {
     const session = await prisma.mobileScanSession.findUnique({
-      where: { sessionCode }
+      where: { sessionCode: cleanSession }
     });
 
     if (!session) return { error: "Session not found" };
@@ -249,17 +250,31 @@ export async function getMobileScanUpdate(sessionCode: string) {
 
 export async function pushMobileScan(sessionCode: string, code: string) {
   if (!sessionCode || !code) return { error: "Session code and scanned code required" };
+  const cleanSession = sessionCode.trim().toUpperCase();
+  const cleanCode = code.trim();
+
   try {
     const session = await prisma.mobileScanSession.findUnique({
-      where: { sessionCode }
+      where: { sessionCode: cleanSession }
     });
 
-    if (!session) return { error: "Session not found or expired" };
+    if (!session) {
+      // Resilient Auto-Reactivate: Never reject a valid mobile scan
+      await prisma.mobileScanSession.create({
+        data: {
+          sessionCode: cleanSession,
+          scannedCode: cleanCode,
+          status: "CONNECTED",
+          mode: "INVENTORY"
+        }
+      });
+      return { success: true };
+    }
 
     await prisma.mobileScanSession.update({
       where: { id: session.id },
       data: {
-        scannedCode: code.trim(),
+        scannedCode: cleanCode,
         status: "CONNECTED",
         updatedAt: new Date()
       }
@@ -274,12 +289,24 @@ export async function pushMobileScan(sessionCode: string, code: string) {
 
 export async function pingMobileConnect(sessionCode: string) {
   if (!sessionCode) return { error: "Session code required" };
+  const cleanSession = sessionCode.trim().toUpperCase();
+
   try {
     const session = await prisma.mobileScanSession.findUnique({
-      where: { sessionCode: sessionCode.trim().toUpperCase() }
+      where: { sessionCode: cleanSession }
     });
 
-    if (!session) return { error: "Session not found or expired" };
+    if (!session) {
+      // Auto-register session if missing so pairing never times out or fails
+      const created = await prisma.mobileScanSession.create({
+        data: {
+          sessionCode: cleanSession,
+          status: "CONNECTED",
+          mode: "INVENTORY"
+        }
+      });
+      return { success: true, mode: created.mode, orderId: created.orderId };
+    }
 
     await prisma.mobileScanSession.update({
       where: { id: session.id },
@@ -298,9 +325,11 @@ export async function pingMobileConnect(sessionCode: string) {
 
 export async function closeMobileScanSession(sessionCode: string) {
   if (!sessionCode) return { error: "Session code required" };
+  const cleanSession = sessionCode.trim().toUpperCase();
   try {
-    await prisma.mobileScanSession.deleteMany({
-      where: { sessionCode }
+    await prisma.mobileScanSession.updateMany({
+      where: { sessionCode: cleanSession },
+      data: { status: "COMPLETED" }
     });
     return { success: true };
   } catch (error) {
@@ -308,3 +337,4 @@ export async function closeMobileScanSession(sessionCode: string) {
     return { error: "Failed to close session." };
   }
 }
+

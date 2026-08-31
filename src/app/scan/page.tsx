@@ -33,6 +33,7 @@ function MobileScanClient() {
 
   const [sessionCode, setSessionCode] = useState(initialSession);
   const [isPaired, setIsPaired] = useState(false);
+  const [pingFails, setPingFails] = useState(0);
   const [manualCode, setManualCode] = useState("");
   const [lastScanned, setLastScanned] = useState<string | null>(null);
   const [sentItems, setSentItems] = useState<Array<{ code: string; time: string }>>([]);
@@ -47,6 +48,8 @@ function MobileScanClient() {
   }, [initialSession]);
 
   // Immediate connect & heartbeat ping to desktop
+  // If the session row was deleted/expired, pingMobileConnect now auto-recreates it,
+  // so the phone will always remain paired as long as the URL has the correct session code.
   useEffect(() => {
     if (!sessionCode || !sessionCode.trim()) {
       setIsPaired(false);
@@ -60,14 +63,20 @@ function MobileScanClient() {
       if (isMounted) {
         if (res.success) {
           setIsPaired(true);
+          setPingFails(0);
         } else {
-          setIsPaired(false);
+          // Allow up to 3 consecutive failures before showing unpaired
+          setPingFails(prev => {
+            const next = prev + 1;
+            if (next >= 3) setIsPaired(false);
+            return next;
+          });
         }
       }
     }
 
     sendPing();
-    const interval = setInterval(sendPing, 5000);
+    const interval = setInterval(sendPing, 4000);
 
     return () => {
       isMounted = false;
@@ -90,9 +99,17 @@ function MobileScanClient() {
     if (sessionCode.trim()) {
       // Transmit to desktop session
       setSending(true);
-      const res = await pushMobileScan(sessionCode.trim(), cleanCode);
+      let res = await pushMobileScan(sessionCode.trim(), cleanCode);
+
+      // If push failed (e.g. session was briefly missing), retry once after 800ms
+      if (!res.success) {
+        await new Promise(r => setTimeout(r, 800));
+        res = await pushMobileScan(sessionCode.trim(), cleanCode);
+      }
+
       if (res.success) {
         playSuccessSound();
+        setIsPaired(true); // confirm we're still paired after a successful push
         const newEntry = {
           code: cleanCode,
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
@@ -106,7 +123,7 @@ function MobileScanClient() {
         playErrorSound();
         setStatusMessage({
           type: "error",
-          text: res.error || "Failed to transmit to desktop."
+          text: "Could not reach desktop. Please ensure the quotation form is still open."
         });
       }
       setSending(false);
@@ -137,6 +154,7 @@ function MobileScanClient() {
       setManualCode("");
     }
   };
+
 
   return (
     <div

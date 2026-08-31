@@ -4,8 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import {
   createMobileScanSession,
-  getMobileScanUpdate,
-  closeMobileScanSession
+  getMobileScanUpdate
 } from "@/app/actions/scannerActions";
 import { playSuccessSound } from "@/lib/soundUtils";
 import { Smartphone, X, CheckCircle, Copy, Check, Radio, Sparkles } from "lucide-react";
@@ -32,6 +31,11 @@ export default function MobileConnectModal({
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const activeSessionRef = useRef<string | null>(null);
+  const onScanRef = useRef(onScan);
+
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
 
   // Initialize Session
   useEffect(() => {
@@ -65,9 +69,6 @@ export default function MobileConnectModal({
     return () => {
       unmounted = true;
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-      if (activeSessionRef.current) {
-        closeMobileScanSession(activeSessionRef.current);
-      }
     };
   }, [mode, orderId]);
 
@@ -85,15 +86,15 @@ export default function MobileConnectModal({
         if (res.scannedCode) {
           setLastReceivedCode(res.scannedCode);
           playSuccessSound();
-          onScan(res.scannedCode);
+          onScanRef.current(res.scannedCode);
         }
       }
-    }, 1200);
+    }, 1000);
 
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, [sessionCode, onScan]);
+  }, [sessionCode]);
 
   const handleCopy = () => {
     if (scanUrl) {
