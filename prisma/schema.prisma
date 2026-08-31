@@ -208,6 +208,11 @@ model Employee {
   employmentStatus String  @default("Active")
   salary          Float?
   target          Float?
+  dailyCallsTarget Int?    @default(15)
+  dailyFollowUpsTarget Int? @default(5)
+  dailyQuotesTarget Int?   @default(2)
+  dailyDealsTarget Int?    @default(1)
+  sprintWeightsJson String? // JSON string for custom sprint percentages or targets
   bankDetails     String?
   address         String?
   emergencyContact String?

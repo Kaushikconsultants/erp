@@ -1,11 +1,12 @@
-"use client";
-import React from 'react';
+import React, { useState } from 'react';
 import SalesChart from '@/components/dashboard/SalesChart';
 import TopProductsChart from '@/components/dashboard/TopProductsChart';
 import Link from 'next/link';
-import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy, Zap, Rocket, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy, Zap, Rocket, AlertCircle, ShieldCheck, Target, ClipboardList, Sparkles, Plus, Pencil } from 'lucide-react';
 import KPIDetailsModal from './KPIDetailsModal';
-import { useState } from 'react';
+import EditSalespersonTargetsModal from './EditSalespersonTargetsModal';
+import AssignTaskModal from './AssignTaskModal';
+import AISprintCoachModal from './AISprintCoachModal';
 
 interface AdminDashboardProps {
   totalRevenue: number;
@@ -46,6 +47,11 @@ export default function AdminDashboard({
 }: AdminDashboardProps) {
   
   const [activeModalType, setActiveModalType] = useState<'customers' | 'orders' | 'calls' | null>(null);
+
+  // Target & Task Delegation Modals
+  const [editingTargetsEmployee, setEditingTargetsEmployee] = useState<any | null>(null);
+  const [assigningTaskEmployee, setAssigningTaskEmployee] = useState<any | null>(null);
+  const [aiCoachEmployee, setAiCoachEmployee] = useState<any | null>(null);
 
   return (
     <div className="dashboard-container admin-dashboard">
@@ -192,13 +198,15 @@ export default function AdminDashboard({
       <div className="dashboard-details-grid">
         
         {/* Team Leaderboard with Sprint Health Velocity */}
-        <div className="detail-card glass-panel">
+        <div className="detail-card glass-panel" style={{ gridColumn: 'span 2' }}>
           <div className="detail-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Users size={18} color="#4f46e5"/>
-              <h3 style={{ margin: 0 }}>Team Performance & Sprint Velocity</h3>
+              <h3 style={{ margin: 0 }}>Team Performance, Sprint Targets & AI Delegation</h3>
             </div>
-            <Link href="/payroll" className="view-all-link">View All</Link>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <Link href="/payroll" className="view-all-link">Payroll & Team</Link>
+            </div>
           </div>
           <div className="table-responsive">
             <table className="dashboard-table">
@@ -208,6 +216,7 @@ export default function AdminDashboard({
                   <th>Sales (MTD)</th>
                   <th>Target %</th>
                   <th>Sprint Health</th>
+                  <th style={{ textAlign: 'right' }}>Target & Task Management</th>
                 </tr>
               </thead>
               <tbody>
@@ -217,19 +226,36 @@ export default function AdminDashboard({
                   const healthStatus = sprintInfo?.healthStatus ?? "ON_TRACK";
                   const streak = sprintInfo?.streakDays ?? 0;
 
+                  const employeeTargetObj = {
+                    employeeId: emp.id,
+                    name: emp.name,
+                    email: sprintInfo?.email,
+                    monthlyTarget: sprintInfo?.monthlyTarget || 500000,
+                    dailyCallsTarget: sprintInfo?.dailyCallsTarget,
+                    dailyFollowUpsTarget: sprintInfo?.dailyFollowUpsTarget,
+                    dailyQuotesTarget: sprintInfo?.dailyQuotesTarget,
+                    dailyDealsTarget: sprintInfo?.dailyDealsTarget,
+                    sprintWeightsJson: sprintInfo?.sprintWeightsJson,
+                    currentSprintTarget: sprintInfo?.currentSprintTarget,
+                    currentSprintRevenue: sprintInfo?.currentSprintRevenue,
+                    sprintProgressPercent: sprintInfo?.sprintProgressPercent,
+                    sprintHealthScore: healthScore,
+                    healthStatus
+                  };
+
                   return (
                     <tr key={emp.id}>
                       <td className="font-medium">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span>{emp.name}</span>
+                          <span style={{ fontWeight: 600 }}>{emp.name}</span>
                           {streak > 0 && (
-                            <span style={{ fontSize: '10px', fontWeight: 800, backgroundColor: '#fef08a', color: '#854d0e', padding: '1px 5px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                            <span style={{ fontSize: '10px', fontWeight: 700, backgroundColor: '#fef08a', color: '#854d0e', padding: '1px 5px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                               <Flame size={10} color="#d97706" /> {streak}d
                             </span>
                           )}
                         </div>
                       </td>
-                      <td>₹{emp.sales.toLocaleString('en-IN')}</td>
+                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>₹{emp.sales.toLocaleString('en-IN')}</td>
                       <td>
                         <div className="mini-progress-bar">
                           <div 
@@ -244,7 +270,7 @@ export default function AdminDashboard({
                           padding: '3px 8px',
                           borderRadius: '6px',
                           fontSize: '11px',
-                          fontWeight: 700,
+                          fontWeight: 600,
                           backgroundColor: healthStatus === 'EXCELLENT' ? '#dcfce7' : healthStatus === 'ON_TRACK' ? '#e0e7ff' : '#fee2e2',
                           color: healthStatus === 'EXCELLENT' ? '#15803d' : healthStatus === 'ON_TRACK' ? '#4338ca' : '#b91c1c',
                           display: 'inline-flex',
@@ -260,11 +286,88 @@ export default function AdminDashboard({
                           {healthScore}% {healthStatus === 'EXCELLENT' ? 'Strong' : healthStatus === 'ON_TRACK' ? 'On Track' : 'At Risk'}
                         </span>
                       </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          
+                          {/* Edit Targets */}
+                          <button
+                            type="button"
+                            onClick={() => setEditingTargetsEmployee(employeeTargetObj)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 9px',
+                              borderRadius: '6px',
+                              border: '1px solid #cbd5e1',
+                              backgroundColor: '#ffffff',
+                              color: '#334155',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Edit Monthly Target and Daily Action Goals"
+                          >
+                            <Target size={13} color="#4f46e5" />
+                            <span>Targets</span>
+                          </button>
+
+                          {/* Assign Task */}
+                          <button
+                            type="button"
+                            onClick={() => setAssigningTaskEmployee(employeeTargetObj)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 9px',
+                              borderRadius: '6px',
+                              border: '1px solid #cbd5e1',
+                              backgroundColor: '#ffffff',
+                              color: '#334155',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="Assign a Sales Task to this Employee"
+                          >
+                            <ClipboardList size={13} color="#16a34a" />
+                            <span>Task</span>
+                          </button>
+
+                          {/* AI Sprint Coach */}
+                          <button
+                            type="button"
+                            onClick={() => setAiCoachEmployee(employeeTargetObj)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              border: '1px solid #ddd6fe',
+                              backgroundColor: '#f5f3ff',
+                              color: '#7c3aed',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            title="AI Target Recovery & Action Plan"
+                          >
+                            <Sparkles size={13} color="#7c3aed" />
+                            <span>AI Coach</span>
+                          </button>
+
+                        </div>
+                      </td>
                     </tr>
                   );
                 }) : (
                   <tr>
-                    <td colSpan={4} className="text-center text-muted py-4">No team data available</td>
+                    <td colSpan={5} className="text-center text-muted py-4">No team data available</td>
                   </tr>
                 )}
               </tbody>
@@ -273,7 +376,7 @@ export default function AdminDashboard({
         </div>
 
         {/* Hot Customers Pipeline */}
-        <div className="detail-card glass-panel">
+        <div className="detail-card glass-panel" style={{ gridColumn: 'span 2' }}>
           <div className="detail-header">
             <h3><Flame size={18} className="text-danger"/> Hot Customers (Negotiation)</h3>
             <Link href="/customers" className="view-all-link">View All</Link>
@@ -303,6 +406,34 @@ export default function AdminDashboard({
         <KPIDetailsModal 
           type={activeModalType} 
           onClose={() => setActiveModalType(null)} 
+        />
+      )}
+
+      {/* Edit Targets Modal */}
+      {editingTargetsEmployee && (
+        <EditSalespersonTargetsModal
+          salesperson={editingTargetsEmployee}
+          onClose={() => setEditingTargetsEmployee(null)}
+          onSuccess={() => window.location.reload()}
+        />
+      )}
+
+      {/* Assign Task Modal */}
+      {assigningTaskEmployee && (
+        <AssignTaskModal
+          salesperson={assigningTaskEmployee}
+          customers={hotCustomers.map(c => ({ id: c.id, name: c.businessName }))}
+          onClose={() => setAssigningTaskEmployee(null)}
+          onSuccess={() => window.location.reload()}
+        />
+      )}
+
+      {/* AI Sprint Coach Modal */}
+      {aiCoachEmployee && (
+        <AISprintCoachModal
+          salesperson={aiCoachEmployee}
+          onClose={() => setAiCoachEmployee(null)}
+          onSuccess={() => window.location.reload()}
         />
       )}
     </div>

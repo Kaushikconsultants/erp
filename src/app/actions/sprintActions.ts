@@ -85,12 +85,28 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
     else if (dayOfMonth >= 8) currentWeek = 2;
     else currentWeek = 1;
 
-    const sprintRanges = [
+    let sprintRanges = [
       { week: 1, startDay: 1, endDay: 7, weight: 0.20, title: "Sprint 1: Pipeline & Prospecting" },
       { week: 2, startDay: 8, endDay: 14, weight: 0.25, title: "Sprint 2: Warm Conversions" },
       { week: 3, startDay: 15, endDay: 21, weight: 0.30, title: "Sprint 3: Peak Volume" },
       { week: 4, startDay: 22, endDay: totalDaysInMonth, weight: 0.25, title: "Sprint 4: Deal Closing & Buffer" }
     ];
+
+    if (employee.sprintWeightsJson) {
+      try {
+        const customWeights: number[] = JSON.parse(employee.sprintWeightsJson);
+        if (Array.isArray(customWeights) && customWeights.length === 4) {
+          sprintRanges = [
+            { week: 1, startDay: 1, endDay: 7, weight: customWeights[0], title: "Sprint 1: Pipeline & Prospecting" },
+            { week: 2, startDay: 8, endDay: 14, weight: customWeights[1], title: "Sprint 2: Warm Conversions" },
+            { week: 3, startDay: 15, endDay: 21, weight: customWeights[2], title: "Sprint 3: Peak Volume" },
+            { week: 4, startDay: 22, endDay: totalDaysInMonth, weight: customWeights[3], title: "Sprint 4: Deal Closing & Buffer" }
+          ];
+        }
+      } catch (e) {
+        console.error("Invalid sprintWeightsJson:", e);
+      }
+    }
 
     const currentSprintDef = sprintRanges[currentWeek - 1];
     const currentSprintStart = new Date(year, month, currentSprintDef.startDay, 0, 0, 0, 0);
@@ -190,19 +206,19 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
     const mtdProgressPercent = monthlyTarget > 0 ? Math.min(200, Math.round((mtdRevenue / monthlyTarget) * 100)) : 0;
     const mtdGap = Math.max(0, monthlyTarget - mtdRevenue);
 
-    // Today's Activity
+    // Today's Activity (Using dynamic employee targets)
     const manualCalls = todayDailyLog?.callsMade || 0;
     const todayCalls = todayCallsCount + manualCalls;
-    const todayCallsTarget = 15;
+    const todayCallsTarget = employee.dailyCallsTarget ?? 15;
 
     const todayFollowUps = todayFollowUpsCalls;
-    const todayFollowUpsTarget = 5;
+    const todayFollowUpsTarget = employee.dailyFollowUpsTarget ?? 5;
 
     const todayQuotesSent = todayQuotations.length;
-    const todayQuotesSentTarget = 2;
+    const todayQuotesSentTarget = employee.dailyQuotesTarget ?? 2;
 
     const todayQuotesConfirmed = todayQuotations.filter(q => q.status === "Confirmed" || q.status === "Converted").length;
-    const todayQuotesConfirmedTarget = 1;
+    const todayQuotesConfirmedTarget = employee.dailyDealsTarget ?? 1;
     const todayVisits = todayDailyLog?.visitsDone || 0;
 
     // Sprint Health Score (0 - 100)
@@ -379,6 +395,11 @@ export async function getAdminSprintTeamHealth(organizationId: string | null) {
           name: emp.user?.name || "Team Member",
           email: emp.user?.email,
           monthlyTarget: emp.target || 500000,
+          dailyCallsTarget: emp.dailyCallsTarget ?? 15,
+          dailyFollowUpsTarget: emp.dailyFollowUpsTarget ?? 5,
+          dailyQuotesTarget: emp.dailyQuotesTarget ?? 2,
+          dailyDealsTarget: emp.dailyDealsTarget ?? 1,
+          sprintWeightsJson: emp.sprintWeightsJson,
           sprintHealthScore: sprint?.sprintHealthScore || 0,
           healthStatus: sprint?.healthStatus || "ON_TRACK",
           healthMessage: sprint?.healthMessage || "No activity yet",
@@ -398,3 +419,95 @@ export async function getAdminSprintTeamHealth(organizationId: string | null) {
     return [];
   }
 }
+
+export async function updateSalespersonTargets(data: {
+  employeeId: string;
+  monthlyTarget: number;
+  dailyCallsTarget?: number;
+  dailyFollowUpsTarget?: number;
+  dailyQuotesTarget?: number;
+  dailyDealsTarget?: number;
+  sprintWeights?: number[]; // Array of 4 decimals summing to 1.0 (e.g. [0.2, 0.25, 0.3, 0.25])
+}) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, error: "Unauthorized" };
+
+    const role = (session.user as any).role;
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
+      return { success: false, error: "Only administrators can modify targets" };
+    }
+
+    const updateData: any = {
+      target: data.monthlyTarget,
+      dailyCallsTarget: data.dailyCallsTarget !== undefined ? data.dailyCallsTarget : undefined,
+      dailyFollowUpsTarget: data.dailyFollowUpsTarget !== undefined ? data.dailyFollowUpsTarget : undefined,
+      dailyQuotesTarget: data.dailyQuotesTarget !== undefined ? data.dailyQuotesTarget : undefined,
+      dailyDealsTarget: data.dailyDealsTarget !== undefined ? data.dailyDealsTarget : undefined,
+    };
+
+    if (data.sprintWeights && data.sprintWeights.length === 4) {
+      updateData.sprintWeightsJson = JSON.stringify(data.sprintWeights);
+    }
+
+    const updated = await prisma.employee.update({
+      where: { id: data.employeeId },
+      data: updateData,
+      include: { user: true }
+    });
+
+    revalidatePath("/");
+    revalidatePath("/tasks");
+    revalidatePath("/payroll");
+
+    return { 
+      success: true, 
+      employee: {
+        id: updated.id,
+        name: updated.user.name,
+        target: updated.target,
+        dailyCallsTarget: updated.dailyCallsTarget,
+        dailyFollowUpsTarget: updated.dailyFollowUpsTarget,
+        dailyQuotesTarget: updated.dailyQuotesTarget,
+        dailyDealsTarget: updated.dailyDealsTarget,
+        sprintWeightsJson: updated.sprintWeightsJson
+      } 
+    };
+  } catch (error: any) {
+    console.error("Error in updateSalespersonTargets:", error);
+    return { success: false, error: error.message || "Failed to update targets" };
+  }
+}
+
+export async function getSalespersonTargetDetails(employeeId: string) {
+  try {
+    const emp = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true }
+    });
+
+    if (!emp) return { success: false, error: "Employee not found" };
+
+    const sprint = await getSprintData(employeeId);
+
+    return {
+      success: true,
+      data: {
+        employeeId: emp.id,
+        name: emp.user.name,
+        email: emp.user.email,
+        monthlyTarget: emp.target || 500000,
+        dailyCallsTarget: emp.dailyCallsTarget ?? 15,
+        dailyFollowUpsTarget: emp.dailyFollowUpsTarget ?? 5,
+        dailyQuotesTarget: emp.dailyQuotesTarget ?? 2,
+        dailyDealsTarget: emp.dailyDealsTarget ?? 1,
+        sprintWeightsJson: emp.sprintWeightsJson,
+        sprint
+      }
+    };
+  } catch (error: any) {
+    console.error("Error in getSalespersonTargetDetails:", error);
+    return { success: false, error: error.message || "Failed to load target details" };
+  }
+}
+

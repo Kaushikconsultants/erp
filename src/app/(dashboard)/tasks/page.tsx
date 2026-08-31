@@ -4,8 +4,9 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import CreateTaskButton from '@/components/ui/CreateTaskButton';
+import TaskListClient from '@/components/tasks/TaskListClient';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
-
+import { CheckSquare } from 'lucide-react';
 import { getTenantOrgId } from '@/lib/tenant';
 
 export default async function TasksPage() {
@@ -18,6 +19,7 @@ export default async function TasksPage() {
   const orgId = await getTenantOrgId();
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
+  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
   let taskWhereClause: any = {
     assignee: { organizationId: orgId }
@@ -64,71 +66,27 @@ export default async function TasksPage() {
   const mappedCustomers = customers.map(c => ({ id: c.id, name: c.businessName }));
 
   return (
-    <div className="page-container">
-      <div className="dashboard-header">
+    <div className="page-container" style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 className="page-title">Tasks & Assignments</h1>
-          <p className="page-subtitle">Track employee to-dos and follow-ups.</p>
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.5rem', fontWeight: 600, color: '#0f172a' }}>
+            <CheckSquare style={{ color: "var(--accent-primary, #4f46e5)" }} size={26} />
+            Tasks & Action Assignments
+          </h1>
+          <p className="page-subtitle" style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.875rem', fontWeight: 400 }}>
+            Assign, track, and manage salesperson sales tasks and closing to-dos.
+          </p>
         </div>
         <CreateTaskButton employees={mappedEmployees} customers={mappedCustomers} />
       </div>
 
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <div className="table-responsive">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Assignee</th>
-                <th>Customer</th>
-                <th>Due Date</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map(task => (
-                <tr key={task.id}>
-                  <td>
-                    <strong>{task.title}</strong>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{task.description || 'No description'}</div>
-                  </td>
-                  <td>{task.assignee?.user?.name || 'Unassigned'}</td>
-                  <td>{task.customer?.businessName || '-'}</td>
-                  <td>
-                    {task.dueDate ? (
-                      <span style={{ color: new Date(task.dueDate) < new Date() && task.status !== 'Completed' ? 'var(--danger)' : 'inherit' }}>
-                        {new Date(task.dueDate).toLocaleDateString()}
-                      </span>
-                    ) : '-'}
-                  </td>
-                  <td>
-                    <span style={{ color: task.priority === 'High' ? 'var(--danger)' : task.priority === 'Medium' ? 'var(--warning)' : 'var(--text-muted)' }}>
-                      {task.priority}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`status-badge ${task.status === 'Completed' ? 'active' : task.status === 'In Progress' ? 'warning' : 'inactive'}`}>
-                      {task.status}
-                    </span>
-                  </td>
-                  <td>
-                    <button className="action-btn text-blue">Update Status</button>
-                  </td>
-                </tr>
-              ))}
-              {tasks.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                    No tasks found. Click "+ Create Task" to assign one.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <TaskListClient 
+        initialTasks={tasks} 
+        employees={mappedEmployees} 
+        customers={mappedCustomers} 
+        isAdmin={isAdmin} 
+      />
     </div>
   );
 }
+
