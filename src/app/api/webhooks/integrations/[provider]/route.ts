@@ -3,9 +3,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
-  const provider = params.provider;
+  const { provider } = await params;
   const searchParams = req.nextUrl.searchParams;
   const orgId = searchParams.get("org");
 
@@ -139,11 +139,12 @@ export async function POST(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
+  const { provider } = await params;
   return NextResponse.json({
     status: "active",
-    provider: params.provider,
+    provider,
     message: "Integrations Webhook Endpoint is ready to receive POST events.",
     documentation: "Send POST payload with header signatures or URL ?org=<ORG_ID>"
   });
