@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { MessageCircle, Edit, RefreshCw, Trash2 } from 'lucide-react';
+import { MessageCircle, Edit, RefreshCw, Trash2, Sparkles } from 'lucide-react';
 import { deleteCustomer } from '@/app/actions/customerActions';
 import EditCustomerModal from './EditCustomerModal';
 import ReassignCustomerModal from './ReassignCustomerModal';
+import AIReorderPredictorModal from '../ai/AIReorderPredictorModal';
 
 interface Customer {
   id: string;
@@ -42,6 +43,7 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [reassigningCustomer, setReassigningCustomer] = useState<Customer | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [showReorderModal, setShowReorderModal] = useState(false);
 
   const handleDelete = async (id: string, name: string) => {
     if (confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
@@ -84,18 +86,18 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
 
   return (
     <>
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
         <input 
           type="text" 
           placeholder="Search name or phone..." 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ flex: 1, minWidth: '200px', padding: '10px 16px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+          style={{ flex: 1, minWidth: '200px', padding: '9px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
         />
         <select 
           value={stateFilter} 
           onChange={(e) => setStateFilter(e.target.value)}
-          style={{ padding: '10px 16px', borderRadius: '4px', border: '1px solid #cbd5e1', minWidth: '150px' }}
+          style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', minWidth: '130px', fontSize: '0.85rem', backgroundColor: '#fff' }}
         >
           <option value="All States">All States</option>
           {uniqueStates.map(st => <option key={st} value={st}>{st}</option>)}
@@ -103,7 +105,7 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
         <select 
           value={statusFilter} 
           onChange={(e) => setStatusFilter(e.target.value)}
-          style={{ padding: '10px 16px', borderRadius: '4px', border: '1px solid #cbd5e1', minWidth: '150px' }}
+          style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', minWidth: '130px', fontSize: '0.85rem', backgroundColor: '#fff' }}
         >
           <option value="All Statuses">All Statuses</option>
           <option value="New Lead">New Lead</option>
@@ -115,16 +117,38 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
         <select 
           value={agentFilter} 
           onChange={(e) => setAgentFilter(e.target.value)}
-          style={{ padding: '10px 16px', borderRadius: '4px', border: '1px solid #cbd5e1', minWidth: '150px' }}
+          style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', minWidth: '130px', fontSize: '0.85rem', backgroundColor: '#fff' }}
         >
           <option value="All Agents">All Agents</option>
           {allEmployees.map(emp => <option key={emp.id} value={emp.name}>{emp.name}</option>)}
         </select>
         <button 
           onClick={handleReset}
-          style={{ padding: '10px 24px', borderRadius: '4px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+          style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer', fontSize: '0.85rem', color: '#475569' }}
         >
           Reset
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowReorderModal(true)}
+          style={{
+            padding: '9px 16px',
+            borderRadius: '8px',
+            border: '1px solid #bfdbfe',
+            backgroundColor: '#eff6ff',
+            color: '#2563eb',
+            cursor: 'pointer',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+          title="Analyze customer order cycles and predict overdue restocks"
+        >
+          <Sparkles size={14} color="#2563eb" />
+          <span>AI Re-Order Predictor</span>
         </button>
       </div>
 
@@ -232,6 +256,12 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
           currentAgent={reassigningCustomer.assignedSalesperson?.user?.name || null}
           employees={allEmployees}
           onClose={() => setReassigningCustomer(null)}
+        />
+      )}
+
+      {showReorderModal && (
+        <AIReorderPredictorModal
+          onClose={() => setShowReorderModal(false)}
         />
       )}
     </>

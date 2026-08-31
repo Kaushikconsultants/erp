@@ -3,8 +3,20 @@
 import { prisma } from "@/lib/prisma";
 import { GoogleGenAI } from "@google/genai";
 import { getTenantOrgId } from "@/lib/tenant";
+import { revalidatePath } from "next/cache";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getOrCreateEmployee } from "@/lib/employeeHelper";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
+
+export interface MatchedBuyer {
+  customerId: string;
+  businessName: string;
+  contactPerson: string;
+  mobile: string;
+  totalCategorySpend: number;
+}
 
 export interface DeadStockSKU {
   productId: string;
@@ -23,6 +35,7 @@ export interface DeadStockSKU {
   recommendedClearancePrice: number;
   aiStrategy: string;
   whatsappCampaignText: string;
+  matchedBuyers: MatchedBuyer[];
 }
 
 export interface DeadStockReport {
@@ -51,10 +64,12 @@ export async function getDeadStockLiquidationInsights(): Promise<{
       }),
       prisma.orderItem.findMany({
         where: { order: { organizationId } },
-        select: {
-          productId: true,
-          quantity: true,
-          order: { select: { createdAt: true, orderDate: true } }
+        include: {
+          order: {
+            include: {
+              customer: true
+            }
+          }
         }
       })
     ]);
@@ -115,12 +130,33 @@ export async function getDeadStockLiquidationInsights(): Promise<{
 
       const clearanceRate = Math.round(p.sellingPrice * (1 - discPercent / 100));
 
+      // Find matched buyers who buy this product's category
+      const matchedBuyerMap: Record<string, MatchedBuyer> = {};
+      orderItems.forEach(item => {
+        if (!item.order?.customer) return;
+        const c = item.order.customer;
+        if (!matchedBuyerMap[c.id]) {
+          matchedBuyerMap[c.id] = {
+            customerId: c.id,
+            businessName: c.businessName,
+            contactPerson: c.contactPerson,
+            mobile: c.mobile,
+            totalCategorySpend: 0
+          };
+        }
+        matchedBuyerMap[c.id].totalCategorySpend += (item.quantity || 0) * (item.rate || 0);
+      });
+
+      const matchedBuyers = Object.values(matchedBuyerMap)
+        .sort((a, b) => b.totalCategorySpend - a.totalCategorySpend)
+        .slice(0, 4);
+
       const campaignText = `🔥 *FLASH WHOLESALE CLEARANCE DEAL*\n\n` +
         `Dear Retail Partner,\n` +
-        `Special limited clearance discount on *${p.name}* (Art #${p.sku || 'N/A'}).\n` +
+        `Special limited clearance discount on *${p.name}* (Art #${p.sku || p.articleNumber || 'N/A'}).\n` +
         `• Regular Rate: ~₹${p.sellingPrice}/pc~\n` +
         `• *Clearance Rate: ₹${clearanceRate}/pc* (${discPercent > 0 ? `${discPercent}% OFF` : 'Best Rate'})\n` +
-        `• Available Stock: ${p.stockQuantity} pcs in godown\n` +
+        `• Available Stock: ${p.stockQuantity} pcs in warehouse\n` +
         `• Min Order: Set of 12 / 24 pcs\n\n` +
         `👉 Book instantly via WhatsApp: ${companyPhone}\n` +
         `${companyName}`;
@@ -141,7 +177,8 @@ export async function getDeadStockLiquidationInsights(): Promise<{
         recommendedDiscountPercent: discPercent,
         recommendedClearancePrice: clearanceRate,
         aiStrategy,
-        whatsappCampaignText: campaignText
+        whatsappCampaignText: campaignText,
+        matchedBuyers
       });
     }
 
@@ -165,6 +202,41 @@ export async function getDeadStockLiquidationInsights(): Promise<{
     };
   } catch (error: any) {
     console.error("Dead Stock Analyzer Error:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error.message || "Failed to analyze dead stock" };
+  }
+}
+
+export async function createClearanceTask(data: {
+  productName: string;
+  sku: string;
+  lockedCapital: number;
+  discountPercent: number;
+  clearanceRate: number;
+}) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, error: "Unauthorized" };
+
+    const userId = (session.user as any).id;
+    const creator = await getOrCreateEmployee(userId, session.user);
+
+    const task = await prisma.task.create({
+      data: {
+        title: `Liquidate Dead Stock: ${data.productName} (${data.discountPercent}% Clearance)`,
+        description: `₹${data.lockedCapital.toLocaleString('en-IN')} locked in inventory. Offer clearance rate ₹${data.clearanceRate}/pc to wholesale buyers and broadcast catalog.`,
+        priority: "High",
+        status: "To Do",
+        dueDate: new Date(Date.now() + 48 * 60 * 60 * 1000),
+        assigneeId: creator ? creator.id : userId,
+        creatorId: creator ? creator.id : userId,
+      }
+    });
+
+    revalidatePath("/tasks");
+    revalidatePath("/products");
+    return { success: true, taskId: task.id };
+  } catch (error: any) {
+    console.error("Error creating clearance task:", error);
+    return { success: false, error: error.message || "Failed to assign clearance task" };
   }
 }

@@ -4,11 +4,14 @@ import React, { useState } from 'react';
 import SalesChart from '@/components/dashboard/SalesChart';
 import TopProductsChart from '@/components/dashboard/TopProductsChart';
 import Link from 'next/link';
-import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy, Zap, Rocket, AlertCircle, ShieldCheck, Target, ClipboardList, Sparkles, Plus, Pencil } from 'lucide-react';
+import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy, Zap, Rocket, AlertCircle, ShieldCheck, Target, ClipboardList, Sparkles, Plus, Pencil, MessageSquare, RefreshCw, Package } from 'lucide-react';
 import KPIDetailsModal from './KPIDetailsModal';
 import EditSalespersonTargetsModal from './EditSalespersonTargetsModal';
 import AssignTaskModal from './AssignTaskModal';
 import AISprintCoachModal from './AISprintCoachModal';
+import AIReorderPredictorModal from '../ai/AIReorderPredictorModal';
+import DeadStockInsightsModal from '../products/DeadStockInsightsModal';
+import AskERPAssistantModal from '../ai/AskERPAssistantModal';
 
 interface AdminDashboardProps {
   totalRevenue: number;
@@ -55,15 +58,140 @@ export default function AdminDashboard({
   const [assigningTaskEmployee, setAssigningTaskEmployee] = useState<any | null>(null);
   const [aiCoachEmployee, setAiCoachEmployee] = useState<any | null>(null);
 
+  // Executive AI Suite Modals
+  const [showAskERPModal, setShowAskERPModal] = useState(false);
+  const [showReorderModal, setShowReorderModal] = useState(false);
+  const [showDeadStockModal, setShowDeadStockModal] = useState(false);
+
   return (
     <div className="dashboard-container admin-dashboard">
       <div className="dashboard-header">
         <div>
           <h1 className="page-title">Admin Command Center 👑</h1>
-          <p className="page-subtitle">Overview of your entire business and team performance.</p>
+          <p className="page-subtitle">Overview of your entire business, sales velocity, and executive AI intelligence.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setShowAskERPModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              backgroundColor: '#7c3aed',
+              color: '#ffffff',
+              border: 'none',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Sparkles size={15} />
+            <span>Ask ERP Copilot</span>
+          </button>
           <Link href="/reports" className="primary-btn hover-lift">View Full Reports</Link>
+        </div>
+      </div>
+
+      {/* EXECUTIVE AI INTELLIGENCE BANNER */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gap: '12px',
+        marginBottom: '20px'
+      }}>
+        {/* 1. Ask ERP Assistant Card */}
+        <div
+          onClick={() => setShowAskERPModal(true)}
+          style={{
+            backgroundColor: '#f5f3ff',
+            border: '1px solid #ddd6fe',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            transition: 'all 0.15s ease',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#7c3aed', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Sparkles size={20} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#5b21b6' }}>Ask ERP Assistant</span>
+              <span style={{ fontSize: '0.68rem', backgroundColor: '#ede9fe', color: '#6d28d9', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>Gemini 2.5</span>
+            </div>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#6d28d9' }}>
+              Voice & text Q&A on revenue, profit, cash flow & KPIs.
+            </p>
+          </div>
+        </div>
+
+        {/* 2. AI Customer Re-Order & Churn Predictor */}
+        <div
+          onClick={() => setShowReorderModal(true)}
+          style={{
+            backgroundColor: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            transition: 'all 0.15s ease',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <RefreshCw size={19} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e40af' }}>Re-Order & Churn Engine</span>
+              <span style={{ fontSize: '0.68rem', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>Smart Nudge</span>
+            </div>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#1d4ed8' }}>
+              Detect overdue buyers & send 1-click repeat quotations.
+            </p>
+          </div>
+        </div>
+
+        {/* 3. Dead Stock Liquidation */}
+        <div
+          onClick={() => setShowDeadStockModal(true)}
+          style={{
+            backgroundColor: '#fff7ed',
+            border: '1px solid #fed7aa',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            transition: 'all 0.15s ease',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#ea580c', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Flame size={20} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#9a3412' }}>Dead Stock Liquidation</span>
+              <span style={{ fontSize: '0.68rem', backgroundColor: '#ffedd5', color: '#c2410c', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>Clearance</span>
+            </div>
+            <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#c2410c' }}>
+              Liquidate slow-moving articles with flash B2B deals.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -436,6 +564,27 @@ export default function AdminDashboard({
           salesperson={aiCoachEmployee}
           onClose={() => setAiCoachEmployee(null)}
           onSuccess={() => window.location.reload()}
+        />
+      )}
+
+      {/* Ask ERP Assistant Modal */}
+      {showAskERPModal && (
+        <AskERPAssistantModal
+          onClose={() => setShowAskERPModal(false)}
+        />
+      )}
+
+      {/* AI Customer Re-Order & Churn Predictor Modal */}
+      {showReorderModal && (
+        <AIReorderPredictorModal
+          onClose={() => setShowReorderModal(false)}
+        />
+      )}
+
+      {/* Dead Stock Liquidation Modal */}
+      {showDeadStockModal && (
+        <DeadStockInsightsModal
+          onClose={() => setShowDeadStockModal(false)}
         />
       )}
     </div>
