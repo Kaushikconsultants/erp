@@ -189,12 +189,12 @@ export default function OrderListClient({
   return (
     <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
       
-      {/* ─── 1. MODERN THEME TABS (NO GLITCHY VERTICAL SCROLLBAR) ─── */}
+      {/* ─── 1. MODERN THEME TABS ─── */}
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
         gap: '8px', 
-        padding: '14px 18px', 
+        padding: '12px 18px', 
         borderBottom: '1px solid #f1f5f9', 
         backgroundColor: '#f8fafc',
         overflowX: 'auto',
@@ -211,27 +211,27 @@ export default function OrderListClient({
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
-                padding: '8px 16px',
+                gap: '7px',
+                padding: '6px 14px',
                 borderRadius: '9999px',
-                fontSize: '0.84rem',
-                fontWeight: isSelected ? 700 : 600,
+                fontSize: '0.8125rem',
+                fontWeight: isSelected ? 550 : 500,
                 border: isSelected ? 'none' : '1px solid #e2e8f0',
                 backgroundColor: isSelected ? 'var(--accent-primary, #4f46e5)' : '#ffffff',
                 color: isSelected ? '#ffffff' : '#475569',
                 cursor: 'pointer',
-                boxShadow: isSelected ? '0 2px 6px rgba(0,0,0,0.12)' : '0 1px 2px rgba(0,0,0,0.02)',
+                boxShadow: isSelected ? '0 2px 5px rgba(79, 70, 229, 0.2)' : '0 1px 2px rgba(0,0,0,0.02)',
                 transition: 'all 0.15s ease',
                 whiteSpace: 'nowrap'
               }}
             >
               <span>{tab}</span>
               <span style={{
-                padding: '2px 7px',
+                padding: '1px 6px',
                 borderRadius: '9999px',
                 fontSize: '0.72rem',
-                fontWeight: 700,
-                backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : '#f1f5f9',
+                fontWeight: 500,
+                backgroundColor: isSelected ? 'rgba(255,255,255,0.22)' : '#f1f5f9',
                 color: isSelected ? '#ffffff' : '#64748b'
               }}>
                 {count}
@@ -243,7 +243,7 @@ export default function OrderListClient({
 
       {/* ─── 2. MODERN FILTERS & THEMED SEARCH BAR ─── */}
       <div style={{ 
-        padding: '16px 20px', 
+        padding: '14px 18px', 
         borderBottom: '1px solid #f1f5f9', 
         display: 'flex', 
         gap: '12px', 
@@ -260,7 +260,7 @@ export default function OrderListClient({
             backgroundColor: '#f8fafc', 
             border: '1px solid #cbd5e1', 
             borderRadius: '9999px', 
-            padding: '8px 16px', 
+            padding: '7px 14px', 
             flex: '1', 
             minWidth: '240px',
             maxWidth: '360px',
@@ -278,7 +278,7 @@ export default function OrderListClient({
             e.currentTarget.style.backgroundColor = "#f8fafc";
           }}
         >
-          <Search size={15} style={{ color: '#94a3b8', marginRight: '10px', flexShrink: 0 }} />
+          <Search size={14} style={{ color: '#94a3b8', marginRight: '8px', flexShrink: 0 }} />
           <input
             type="text"
             placeholder="Search customer, order #, AWB..."
@@ -289,7 +289,7 @@ export default function OrderListClient({
               border: 'none', 
               background: 'transparent', 
               outline: 'none', 
-              fontSize: '0.875rem', 
+              fontSize: '0.85rem', 
               color: '#0f172a',
               fontFamily: 'inherit'
             }}
@@ -300,7 +300,7 @@ export default function OrderListClient({
               onClick={() => setSearchQuery('')}
               style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#94a3b8', padding: '0 2px' }}
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           )}
         </div>
@@ -313,11 +313,11 @@ export default function OrderListClient({
               onChange={e => setSelectedAgent(e.target.value)}
               style={{ 
                 width: '100%', 
-                padding: '9px 34px 9px 14px', 
-                borderRadius: '10px', 
+                padding: '7px 32px 7px 12px', 
+                borderRadius: '8px', 
                 border: '1px solid #cbd5e1', 
-                fontSize: '0.85rem', 
-                fontWeight: 600,
+                fontSize: '0.8125rem', 
+                fontWeight: 500,
                 appearance: 'none', 
                 backgroundColor: '#ffffff', 
                 color: '#334155',
@@ -328,22 +328,22 @@ export default function OrderListClient({
               <option value="All Agents">All Sales Agents</option>
               {agents.map(a => <option key={a.id} value={a.name}>{a.name}</option>)}
             </select>
-            <ChevronDown size={15} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+            <ChevronDown size={14} color="#94a3b8" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
         ) : (
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            padding: '8px 14px',
-            borderRadius: '10px',
+            padding: '7px 12px',
+            borderRadius: '8px',
             backgroundColor: '#f8fafc',
             border: '1px solid #e2e8f0',
             color: '#475569',
-            fontSize: '0.82rem',
-            fontWeight: 600
+            fontSize: '0.8125rem',
+            fontWeight: 500
           }}>
-            <UserCheck size={14} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
+            <UserCheck size={13} style={{ color: 'var(--accent-primary, #4f46e5)' }} />
             <span>Rep: {currentUserName || 'You'}</span>
           </div>
         )}
@@ -355,11 +355,11 @@ export default function OrderListClient({
             onChange={e => setSelectedPayment(e.target.value)}
             style={{ 
               width: '100%', 
-              padding: '9px 34px 9px 14px', 
-              borderRadius: '10px', 
+              padding: '7px 32px 7px 12px', 
+              borderRadius: '8px', 
               border: '1px solid #cbd5e1', 
-              fontSize: '0.85rem', 
-              fontWeight: 600,
+              fontSize: '0.8125rem', 
+              fontWeight: 500,
               appearance: 'none', 
               backgroundColor: '#ffffff', 
               color: '#334155',
@@ -373,12 +373,12 @@ export default function OrderListClient({
             <option value="Credit">Credit Terms</option>
             <option value="Quotation">Quotation</option>
           </select>
-          <ChevronDown size={15} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          <ChevronDown size={14} color="#94a3b8" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
         </div>
 
         {/* Interactive Date Range Filter */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#f8fafc', padding: '4px 8px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
-          <Calendar size={14} style={{ color: '#94a3b8' }} />
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#f8fafc', padding: '4px 8px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+          <Calendar size={13} style={{ color: '#94a3b8' }} />
           <input
             type="date"
             value={startDate}
@@ -387,7 +387,7 @@ export default function OrderListClient({
             style={{
               border: 'none',
               backgroundColor: 'transparent',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               color: '#334155',
               outline: 'none',
               cursor: 'pointer'
@@ -402,7 +402,7 @@ export default function OrderListClient({
             style={{
               border: 'none',
               backgroundColor: 'transparent',
-              fontSize: '0.8rem',
+              fontSize: '0.78rem',
               color: '#334155',
               outline: 'none',
               cursor: 'pointer'
@@ -419,13 +419,13 @@ export default function OrderListClient({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px', 
-              borderRadius: '10px', 
+              padding: '7px 12px', 
+              borderRadius: '8px', 
               border: '1px solid #cbd5e1', 
               backgroundColor: '#ffffff', 
-              fontSize: '0.82rem', 
+              fontSize: '0.8125rem', 
               cursor: 'pointer', 
-              fontWeight: 600, 
+              fontWeight: 500, 
               color: '#475569',
               transition: 'all 0.15s ease'
             }}
@@ -462,13 +462,13 @@ export default function OrderListClient({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 550, color: 'var(--accent-primary, #4f46e5)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace' }}>
                   <FileText size={13} /> {doc.documentNumber} • {doc.date}
                 </span>
-                <h4 style={{ margin: '4px 0 0 0', fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                <h4 style={{ margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 600, color: '#0f172a' }}>
                   {doc.customerName}
                 </h4>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
                   {doc.customerSub} • Rep: {doc.agentName}
                 </p>
               </div>
@@ -476,10 +476,10 @@ export default function OrderListClient({
               <span style={{ 
                 backgroundColor: doc.statusBg, 
                 color: doc.statusColor, 
-                padding: '4px 10px', 
+                padding: '3px 8px', 
                 borderRadius: '9999px', 
-                fontSize: '0.75rem', 
-                fontWeight: 700 
+                fontSize: '0.72rem', 
+                fontWeight: 500 
               }}>
                 {doc.status}
               </span>
@@ -488,17 +488,17 @@ export default function OrderListClient({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '10px 14px', borderRadius: '10px' }}>
               <div>
                 <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Amount</span>
-                <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>₹{doc.totalAmount.toLocaleString()}</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>₹{doc.totalAmount.toLocaleString()}</span>
               </div>
               <div>
                 <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Payment</span>
-                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>{doc.paymentType}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#475569' }}>{doc.paymentType}</span>
               </div>
               <div>
                 <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Commission</span>
                 <button 
                   onClick={() => setCommissionModal(doc)}
-                  style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: 800, fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}
+                  style={{ background: 'none', border: 'none', color: '#10b981', fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer', padding: 0 }}
                 >
                   ₹{doc.commissionValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </button>
@@ -506,13 +506,13 @@ export default function OrderListClient({
             </div>
 
             {doc.awbNumber && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.8rem', color: '#475569', backgroundColor: '#f0fdf4', padding: '6px 10px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
-                <span>AWB: <strong>{doc.awbNumber}</strong></span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.78rem', color: '#475569', backgroundColor: '#f0fdf4', padding: '6px 10px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                <span>AWB: <span style={{ fontWeight: 550 }}>{doc.awbNumber}</span></span>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button onClick={() => copyToClipboard(doc.awbNumber!)} style={{ background: 'none', border: 'none', color: 'var(--accent-primary, #4f46e5)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                  <button onClick={() => copyToClipboard(doc.awbNumber!)} style={{ background: 'none', border: 'none', color: 'var(--accent-primary, #4f46e5)', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500 }}>
                     {copiedAwb === doc.awbNumber ? 'Copied!' : 'Copy'}
                   </button>
-                  <button onClick={() => setTrackingOrder(doc)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <button onClick={() => setTrackingOrder(doc)} style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '2px' }}>
                     <Truck size={13} /> Track
                   </button>
                 </div>
@@ -526,9 +526,9 @@ export default function OrderListClient({
                   flex: 1, 
                   textAlign: 'center', 
                   textDecoration: 'none', 
-                  fontSize: '0.82rem', 
-                  fontWeight: 600,
-                  padding: '8px',
+                  fontSize: '0.8125rem', 
+                  fontWeight: 500,
+                  padding: '7px',
                   borderRadius: '8px',
                   border: '1px solid #cbd5e1',
                   backgroundColor: '#ffffff',
@@ -545,9 +545,9 @@ export default function OrderListClient({
                   flex: 1, 
                   textAlign: 'center', 
                   textDecoration: 'none', 
-                  fontSize: '0.82rem', 
-                  fontWeight: 700,
-                  padding: '8px',
+                  fontSize: '0.8125rem', 
+                  fontWeight: 500,
+                  padding: '7px',
                   borderRadius: '8px',
                   backgroundColor: 'var(--accent-primary, #4f46e5)', 
                   color: '#ffffff'
@@ -568,19 +568,19 @@ export default function OrderListClient({
 
       {/* ─── 4. MODERN DESKTOP DATA TABLE ─── */}
       <div className="desktop-order-table" style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px', fontSize: '0.875rem' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px', fontSize: '0.85rem' }}>
           <thead>
-            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Date</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Customer</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Agent</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Amount</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Payment</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Discount</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Commission</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Doc # / Status</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700 }}>Notes</th>
-              <th style={{ padding: '14px 18px', fontWeight: 700, textAlign: 'right' }}>Actions</th>
+            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Date</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Customer</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Agent</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Amount</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Payment</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Discount</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Commission</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Doc # / Status</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Notes</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550, textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -596,18 +596,18 @@ export default function OrderListClient({
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#fafafa'}
               >
                 {/* Date */}
-                <td style={{ padding: '14px 18px', color: '#475569', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                <td style={{ padding: '12px 14px', color: '#475569', whiteSpace: 'nowrap', verticalAlign: 'middle', fontSize: '0.8125rem' }}>
                   {doc.date}
                 </td>
                 
                 {/* Customer */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                   <a 
                     href={`/customers`} 
                     style={{ 
                       color: 'var(--accent-primary, #4f46e5)', 
-                      fontWeight: 700, 
-                      fontSize: '0.92rem', 
+                      fontWeight: 550, 
+                      fontSize: '0.875rem', 
                       textDecoration: 'none',
                       display: 'block'
                     }}
@@ -615,14 +615,14 @@ export default function OrderListClient({
                     {doc.customerName}
                   </a>
                   {doc.customerSub && (
-                    <div style={{ color: '#64748b', fontSize: '0.78rem', marginTop: '2px' }}>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '2px' }}>
                       {doc.customerSub}
                     </div>
                   )}
                 </td>
                 
                 {/* Agent */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div style={{ 
                       width: '24px', 
@@ -634,33 +634,33 @@ export default function OrderListClient({
                       alignItems: 'center', 
                       justifyContent: 'center', 
                       fontSize: '0.72rem', 
-                      fontWeight: 700 
+                      fontWeight: 600 
                     }}>
                       {doc.agentName.charAt(0).toUpperCase()}
                     </div>
-                    <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.85rem' }}>{doc.agentName}</span>
+                    <span style={{ fontWeight: 500, color: '#1e293b', fontSize: '0.8125rem' }}>{doc.agentName}</span>
                   </div>
                 </td>
                 
                 {/* Amount */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
-                  <div style={{ color: '#0f172a', fontWeight: 800, fontSize: '0.95rem' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                  <div style={{ color: '#0f172a', fontWeight: 600, fontSize: '0.875rem', letterSpacing: '-0.01em', fontVariantNumeric: 'tabular-nums' }}>
                     ₹{doc.totalAmount.toLocaleString()}
                   </div>
-                  <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginTop: '1px' }}>
+                  <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '1px' }}>
                     Taxable: ₹{doc.taxableAmount.toLocaleString()}
                   </div>
                 </td>
                 
                 {/* Payment */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                   <span style={{ 
                     backgroundColor: '#f1f5f9', 
                     color: '#475569', 
-                    padding: '4px 10px', 
+                    padding: '3px 8px', 
                     borderRadius: '9999px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: 600,
+                    fontSize: '0.72rem', 
+                    fontWeight: 500,
                     border: '1px solid #e2e8f0',
                     display: 'inline-block'
                   }}>
@@ -669,15 +669,15 @@ export default function OrderListClient({
                 </td>
 
                 {/* Discount */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                   <span style={{ 
                     backgroundColor: 'var(--accent-light, #eff6ff)', 
                     color: 'var(--accent-primary, #4f46e5)', 
-                    padding: '4px 10px', 
+                    padding: '3px 8px', 
                     borderRadius: '9999px', 
                     border: '1px solid rgba(79, 70, 229, 0.2)',
-                    fontSize: '0.75rem', 
-                    fontWeight: 700,
+                    fontSize: '0.72rem', 
+                    fontWeight: 500,
                     whiteSpace: 'nowrap',
                     display: 'inline-block'
                   }}>
@@ -686,7 +686,7 @@ export default function OrderListClient({
                 </td>
 
                 {/* Commission */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                   <button 
                     type="button"
                     onClick={() => setCommissionModal(doc)}
@@ -695,10 +695,10 @@ export default function OrderListClient({
                       alignItems: 'center', 
                       backgroundColor: '#f8fafc', 
                       color: '#0f172a', 
-                      padding: '4px 10px', 
-                      borderRadius: '8px', 
-                      fontWeight: 700, 
-                      fontSize: '0.82rem', 
+                      padding: '3px 8px', 
+                      borderRadius: '6px', 
+                      fontWeight: 500, 
+                      fontSize: '0.78rem', 
                       gap: '4px', 
                       border: '1px solid #e2e8f0', 
                       cursor: 'pointer', 
@@ -711,25 +711,25 @@ export default function OrderListClient({
                     <span>₹{doc.commissionValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                     <div style={{ opacity: 0.4 }}><FileText size={12} /></div>
                   </button>
-                  <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginTop: '2px', fontWeight: 500 }}>
+                  <div style={{ color: '#94a3b8', fontSize: '0.72rem', marginTop: '2px', fontWeight: 400 }}>
                     {doc.commissionAvg}
                   </div>
                 </td>
 
                 {/* Doc # / Status */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary, #4f46e5)', fontWeight: 700, fontSize: '0.85rem', fontFamily: 'monospace', marginBottom: '4px' }}>
-                    <FileText size={14} />
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary, #4f46e5)', fontWeight: 550, fontSize: '0.8125rem', fontFamily: 'monospace', marginBottom: '4px' }}>
+                    <FileText size={13} />
                     <span>{doc.documentNumber}</span>
                   </div>
                   
                   <span style={{ 
                     backgroundColor: doc.statusBg, 
                     color: doc.statusColor, 
-                    padding: '3px 10px', 
+                    padding: '2px 8px', 
                     borderRadius: '9999px', 
                     fontSize: '0.72rem', 
-                    fontWeight: 700,
+                    fontWeight: 500,
                     display: 'inline-block'
                   }}>
                     {doc.status}
@@ -763,12 +763,12 @@ export default function OrderListClient({
                 </td>
 
                 {/* Notes */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle', color: '#64748b', fontSize: '0.82rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle', color: '#64748b', fontSize: '0.8125rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 400 }}>
                   {doc.notes || '-'}
                 </td>
 
                 {/* Actions */}
-                <td style={{ padding: '14px 18px', verticalAlign: 'middle', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle', textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-end' }}>
                     
                     {/* View Details */}
@@ -778,8 +778,8 @@ export default function OrderListClient({
                         display: 'inline-flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
-                        width: '32px', 
-                        height: '32px', 
+                        width: '30px', 
+                        height: '30px', 
                         backgroundColor: '#ffffff', 
                         color: '#475569', 
                         borderRadius: '8px', 
@@ -811,17 +811,17 @@ export default function OrderListClient({
                         display: 'inline-flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
-                        padding: '6px 12px', 
+                        padding: '5px 11px', 
                         gap: '5px', 
-                        height: '32px', 
+                        height: '30px', 
                         backgroundColor: 'var(--accent-primary, #4f46e5)', 
                         border: 'none', 
                         color: '#ffffff', 
                         borderRadius: '8px', 
-                        fontSize: '0.78rem', 
-                        fontWeight: 700, 
+                        fontSize: '0.75rem', 
+                        fontWeight: 500, 
                         textDecoration: 'none',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+                        boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)',
                         transition: 'all 0.15s ease'
                       }} 
                       title="View & Print Tax Invoice"
@@ -844,8 +844,8 @@ export default function OrderListClient({
                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
                       <ShoppingBag size={24} />
                     </div>
-                    <div style={{ fontWeight: 700, color: '#1e293b' }}>No orders found</div>
-                    <p style={{ margin: 0, fontSize: '0.82rem', color: '#94a3b8' }}>
+                    <div style={{ fontWeight: 600, color: '#1e293b' }}>No orders found</div>
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#94a3b8' }}>
                       {searchQuery || selectedAgent !== 'All Agents' || selectedPayment !== 'All Payment Types' || startDate || endDate || activeTab !== 'All'
                         ? "Try adjusting or clearing your filters to see more results."
                         : !isAdmin 
@@ -892,7 +892,7 @@ export default function OrderListClient({
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>Commission Breakdown</h2>
+              <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#0f172a' }}>Commission Breakdown</h2>
               <button 
                 type="button"
                 onClick={() => setCommissionModal(null)} 
@@ -914,26 +914,26 @@ export default function OrderListClient({
             </div>
             
             <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.875rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#64748b' }}>Order / Document:</span>
-                <span style={{ fontWeight: 700, color: 'var(--accent-primary, #4f46e5)', fontFamily: 'monospace' }}>{commissionModal.documentNumber}</span>
+                <span style={{ fontWeight: 550, color: 'var(--accent-primary, #4f46e5)', fontFamily: 'monospace' }}>{commissionModal.documentNumber}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.875rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#64748b' }}>Taxable Amount:</span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>₹{commissionModal.taxableAmount.toLocaleString()}</span>
+                <span style={{ fontWeight: 550, color: '#0f172a' }}>₹{commissionModal.taxableAmount.toLocaleString()}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.875rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#64748b' }}>Discount Profile:</span>
-                <span style={{ fontWeight: 700, color: commissionModal.discountColor }}>{commissionModal.discountBadge}</span>
+                <span style={{ fontWeight: 550, color: commissionModal.discountColor }}>{commissionModal.discountBadge}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.875rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#64748b' }}>Commission Slab:</span>
-                <span style={{ fontWeight: 700, color: 'var(--accent-primary, #4f46e5)' }}>{commissionModal.commissionAvg}</span>
+                <span style={{ fontWeight: 550, color: 'var(--accent-primary, #4f46e5)' }}>{commissionModal.commissionAvg}</span>
               </div>
               <div style={{ borderTop: '1px dashed #cbd5e1', margin: '12px 0' }}></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: '#0f172a', fontWeight: 800, fontSize: '0.95rem' }}>Calculated Commission:</span>
-                <span style={{ fontWeight: 800, color: '#10b981', fontSize: '1.25rem' }}>₹{commissionModal.commissionValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                <span style={{ color: '#0f172a', fontWeight: 600, fontSize: '0.875rem' }}>Calculated Commission:</span>
+                <span style={{ fontWeight: 600, color: '#10b981', fontSize: '1.2rem', fontVariantNumeric: 'tabular-nums' }}>₹{commissionModal.commissionValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
               </div>
             </div>
 

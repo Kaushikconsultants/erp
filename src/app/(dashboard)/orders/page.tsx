@@ -261,12 +261,12 @@ export default async function OrdersPage() {
       {/* ─── PAGE HEADER WITH THEME MATCHING ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.6rem', fontWeight: 800 }}>
-            <ShoppingBag style={{ color: "var(--accent-primary, #4f46e5)" }} size={28} />
+          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.5rem', fontWeight: 600, color: '#0f172a', letterSpacing: '-0.02em' }}>
+            <ShoppingBag style={{ color: "var(--accent-primary, #4f46e5)" }} size={26} />
             Sales Orders & Invoices
           </h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
-            <p className="page-subtitle" style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
+            <p className="page-subtitle" style={{ margin: 0, color: '#64748b', fontSize: '0.875rem', fontWeight: 400 }}>
               Track confirmed orders, shipping statuses, and sales commissions.
             </p>
             {!isAdmin && (
@@ -274,13 +274,13 @@ export default async function OrdersPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '2px 10px',
+                padding: '2px 8px',
                 borderRadius: '9999px',
                 backgroundColor: 'var(--accent-light, #eff6ff)',
                 color: 'var(--accent-primary, #4f46e5)',
                 border: '1px solid rgba(79, 70, 229, 0.2)',
-                fontSize: '0.75rem',
-                fontWeight: 700
+                fontSize: '0.72rem',
+                fontWeight: 500
               }}>
                 <UserCheck size={12} />
                 My Assigned Customers ({mappedCustomers.length})
@@ -291,12 +291,13 @@ export default async function OrdersPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
-                padding: '2px 10px',
+                padding: '2px 8px',
                 borderRadius: '9999px',
                 backgroundColor: '#f1f5f9',
                 color: '#475569',
-                fontSize: '0.75rem',
-                fontWeight: 700
+                border: '1px solid #e2e8f0',
+                fontSize: '0.72rem',
+                fontWeight: 500
               }}>
                 <ShieldCheck size={12} />
                 All Organization Orders

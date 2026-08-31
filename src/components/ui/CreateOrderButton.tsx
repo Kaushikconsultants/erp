@@ -33,19 +33,19 @@ export default function CreateOrderButton({ customers, products, employees = [] 
           display: "inline-flex",
           alignItems: "center",
           gap: "8px",
-          padding: "10px 18px",
+          padding: "9px 16px",
           borderRadius: "10px",
-          fontWeight: 700,
-          fontSize: "0.88rem",
+          fontWeight: 500,
+          fontSize: "0.85rem",
           backgroundColor: "#eff6ff",
           color: "#1d4ed8",
           border: "1px solid #bfdbfe",
           cursor: "pointer",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
           transition: "all 0.15s ease"
         }}
       >
-        <Sparkles size={17} color="#2563eb" />
+        <Sparkles size={16} color="#2563eb" />
         <span>AI Scan Order Slip</span>
       </button>
 
@@ -57,18 +57,18 @@ export default function CreateOrderButton({ customers, products, employees = [] 
           display: "inline-flex",
           alignItems: "center",
           gap: "8px",
-          padding: "10px 22px",
+          padding: "9px 18px",
           borderRadius: "10px",
-          fontWeight: 700,
-          fontSize: "0.9rem",
+          fontWeight: 500,
+          fontSize: "0.875rem",
           backgroundColor: "var(--accent-primary, #4f46e5)",
           color: "#ffffff",
           border: "none",
           cursor: "pointer",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+          boxShadow: "0 2px 6px rgba(79, 70, 229, 0.2)"
         }}
       >
-        <Plus size={18} />
+        <Plus size={17} />
         <span>+ Create Order</span>
       </button>
 
