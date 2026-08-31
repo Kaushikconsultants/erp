@@ -22,7 +22,7 @@ export const PLAN_PRICING: Record<'STARTER' | 'GROWTH' | 'ENTERPRISE', PlanTier>
     maxWarehouses: 1,
     monthlyOrderLimit: 500,
     whatsAppCredits: 500,
-    features: ["Up to 3 Users", "1 Branch", "500 Orders / mo", "Basic CRM & Invoicing", "500 WhatsApp Msgs", "GST Reports"]
+    features: ["Up to 3 Users", "1 Branch", "500 Orders / mo", "Basic CRM & Invoicing", "Smart Notifications", "GST Reports"]
   },
   GROWTH: {
     name: "Growth Plan",
@@ -34,7 +34,7 @@ export const PLAN_PRICING: Record<'STARTER' | 'GROWTH' | 'ENTERPRISE', PlanTier>
     maxWarehouses: 2,
     monthlyOrderLimit: 2000,
     whatsAppCredits: 2500,
-    features: ["Up to 10 Users", "3 Branches & 2 Warehouses", "2,000 Orders / mo", "Full CRM & Purchase Ledger", "Live GST Portal Filing (1/3B/2B)", "2,500 WhatsApp Msgs & AI"]
+    features: ["Up to 10 Users", "3 Branches & 2 Warehouses", "2,000 Orders / mo", "Full CRM & Purchase Ledger", "Live GST Portal Filing (1/3B/2B)", "AI Copilot & Smart Insights"]
   },
   ENTERPRISE: {
     name: "Enterprise Plan",
@@ -46,6 +46,6 @@ export const PLAN_PRICING: Record<'STARTER' | 'GROWTH' | 'ENTERPRISE', PlanTier>
     maxWarehouses: 99,
     monthlyOrderLimit: 999999,
     whatsAppCredits: 10000,
-    features: ["Unlimited Users", "Unlimited Branches & Multi-Warehouse", "Unlimited Orders", "Automated E-Way Bill Generation", "Dedicated WhatsApp AI Bot", "Priority Support & API Access"]
+    features: ["Unlimited Users", "Unlimited Branches & Multi-Warehouse", "Unlimited Orders", "Automated E-Way Bill Generation", "Dedicated AI Business Assistant", "Priority Support & API Access"]
   }
 };

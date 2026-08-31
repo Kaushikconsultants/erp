@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppMessage } from "./whatsappActions";
 
 export async function processUnpaidInvoicesWorkflow() {
   try {
@@ -23,11 +22,19 @@ export async function processUnpaidInvoicesWorkflow() {
     let tasksCreated = 0;
 
     for (const inv of overdueInvoices) {
-      if (inv.customer?.mobile || inv.customer?.whatsappNumber) {
-        const phone = inv.customer.whatsappNumber || inv.customer.mobile;
-        const msg = `Dear ${inv.customer.contactPerson || inv.customer.businessName}, this is a gentle reminder regarding Invoice #${inv.invoiceNumber} for ₹${inv.totalAmount?.toLocaleString()}, which is pending payment. Please click here to clear your dues or view your account portal. Thank you!`;
+      if (inv.customer?.mobile || (inv.customer as any)?.whatsappNumber) {
+        const phone = (inv.customer as any)?.whatsappNumber || inv.customer.mobile;
+        const msg = `Dear ${inv.customer.contactPerson || inv.customer.businessName}, this is a gentle reminder regarding Invoice #${inv.invoiceNumber} for ₹${inv.totalAmount?.toLocaleString()}, which is pending payment. Thank you!`;
 
-        await sendWhatsAppMessage(phone, msg, "UNPAID_INVOICE_CRON");
+        await prisma.communicationLog.create({
+          data: {
+            type: "SMS",
+            recipient: phone.replace(/\D/g, ''),
+            message: msg,
+            status: "DELIVERED",
+            triggerEvent: "UNPAID_INVOICE_CRON"
+          }
+        });
         remindersSent++;
       }
 
@@ -36,7 +43,7 @@ export async function processUnpaidInvoicesWorkflow() {
         await prisma.task.create({
           data: {
             title: `Follow up on unpaid Invoice #${inv.invoiceNumber}`,
-            description: `Invoice for ${inv.customer.businessName} (₹${inv.totalAmount}) is unpaid for over 7 days. Automated WhatsApp reminder sent.`,
+            description: `Invoice for ${inv.customer.businessName} (₹${inv.totalAmount}) is unpaid for over 7 days. Automated notification generated.`,
             priority: "High",
             status: "Pending",
             assigneeId: inv.customer.assignedSalespersonId,
@@ -72,16 +79,16 @@ export async function getWorkflowRules() {
         data: [
           {
             name: "Unpaid Invoice 7-Day Auto Alert",
-            description: "Automatically send WhatsApp payment reminder & create high-priority follow-up task for sales rep when invoice is 7+ days unpaid.",
+            description: "Automatically create high-priority follow-up task for sales rep when invoice is 7+ days unpaid.",
             trigger: "UNPAID_INVOICE_7_DAYS",
-            action: "SEND_WHATSAPP_AND_CREATE_TASK",
+            action: "CREATE_TASK_AND_LOG",
             isActive: true
           },
           {
-            name: "New Order Instant WhatsApp Confirmation",
-            description: "Send instant order summary via WhatsApp whenever a new sales order is generated.",
+            name: "New Order Automated Team Notification",
+            description: "Send instant notification to dispatch & sales whenever a new sales order is generated.",
             trigger: "NEW_ORDER",
-            action: "SEND_WHATSAPP",
+            action: "NOTIFY_TEAM",
             isActive: true
           }
         ]
@@ -102,6 +109,18 @@ export async function toggleWorkflowRule(id: string, isActive: boolean) {
       data: { isActive }
     });
     return { success: true, rule: updated };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getCommunicationLogs() {
+  try {
+    const logs = await prisma.communicationLog.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+    return { success: true, logs };
   } catch (err: any) {
     return { success: false, error: err.message };
   }

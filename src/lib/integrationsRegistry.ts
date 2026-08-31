@@ -237,31 +237,7 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     supportedEvents: ["sales_order_save_commit_after", "sales_order_shipment_save_commit_after", "catalog_inventory_stock_item_save_commit_after"]
   },
 
-  // ─── 💬 MESSAGING & PAYMENTS ───
-  {
-    id: "whatsapp_official",
-    name: "WhatsApp Cloud API",
-    category: "MESSAGING",
-    tagline: "Meta Official WhatsApp Business Platform",
-    description: "Direct official Meta Cloud API for high-speed WhatsApp notifications, order alerts, interactive dispatch tracking, and AI chatbot automation.",
-    logo: "💬",
-    brandColor: "#10b981",
-    badge: "Official Meta",
-    docsUrl: "https://developers.facebook.com/docs/whatsapp/cloud-api",
-    fields: [
-      { key: "wabaId", label: "WhatsApp Business Account ID (WABA ID)", type: "text", placeholder: "102938475610293", required: true },
-      { key: "phoneNumberId", label: "Phone Number ID", type: "text", placeholder: "192837465019283", required: true },
-      { key: "accessToken", label: "Permanent System User Access Token", type: "password", placeholder: "EAAG...", required: true },
-      { key: "verifyToken", label: "Webhook Verification Token", type: "text", placeholder: "antigravity_webhook_secret", defaultValue: "antigravity_wa_secure" }
-    ],
-    features: [
-      "Instant order confirmation with dynamic PDF quotation / invoice",
-      "Live courier dispatch alerts with clickable GPS tracking",
-      "Automated payment reminder & Razorpay link dispatch",
-      "24/7 AI Smart Bot for order inquiries & catalog browsing"
-    ],
-    supportedEvents: ["messages", "message_deliveries", "message_reads"]
-  },
+  // ─── 💳 PAYMENTS ───
   {
     id: "razorpay",
     name: "Razorpay Payments",

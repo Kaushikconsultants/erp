@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { getWorkflowRules, toggleWorkflowRule, processUnpaidInvoicesWorkflow } from "@/app/actions/workflowActions";
-import { getCommunicationLogs } from "@/app/actions/whatsappActions";
+import { getWorkflowRules, toggleWorkflowRule, processUnpaidInvoicesWorkflow, getCommunicationLogs } from "@/app/actions/workflowActions";
 import { Zap, MessageSquare, Play, RefreshCw, CheckCircle2, Sliders, ShieldCheck } from "lucide-react";
 
 export default function WorkflowsPage() {
