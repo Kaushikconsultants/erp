@@ -3,7 +3,7 @@ import React from 'react';
 import SalesChart from '@/components/dashboard/SalesChart';
 import TopProductsChart from '@/components/dashboard/TopProductsChart';
 import Link from 'next/link';
-import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy } from 'lucide-react';
+import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy, Zap, Rocket, AlertCircle, ShieldCheck } from 'lucide-react';
 import KPIDetailsModal from './KPIDetailsModal';
 import { useState } from 'react';
 
@@ -23,6 +23,7 @@ interface AdminDashboardProps {
   isCheckedOut?: boolean;
   checkInTime?: string | null;
   checkOutTime?: string | null;
+  sprintTeamHealth?: any[];
 }
 
 export default function AdminDashboard({
@@ -40,7 +41,8 @@ export default function AdminDashboard({
   isCheckedIn = false,
   isCheckedOut = false,
   checkInTime,
-  checkOutTime
+  checkOutTime,
+  sprintTeamHealth = []
 }: AdminDashboardProps) {
   
   const [activeModalType, setActiveModalType] = useState<'customers' | 'orders' | 'calls' | null>(null);
@@ -189,10 +191,13 @@ export default function AdminDashboard({
       {/* Two-Column Detail Section */}
       <div className="dashboard-details-grid">
         
-        {/* Team Leaderboard */}
+        {/* Team Leaderboard with Sprint Health Velocity */}
         <div className="detail-card glass-panel">
           <div className="detail-header">
-            <h3><Users size={18}/> Team Performance</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Users size={18} color="#4f46e5"/>
+              <h3 style={{ margin: 0 }}>Team Performance & Sprint Velocity</h3>
+            </div>
             <Link href="/payroll" className="view-all-link">View All</Link>
           </div>
           <div className="table-responsive">
@@ -202,26 +207,64 @@ export default function AdminDashboard({
                   <th>Employee</th>
                   <th>Sales (MTD)</th>
                   <th>Target %</th>
+                  <th>Sprint Health</th>
                 </tr>
               </thead>
               <tbody>
-                {teamPerformance.length > 0 ? teamPerformance.map((emp) => (
-                  <tr key={emp.id}>
-                    <td className="font-medium">{emp.name}</td>
-                    <td>₹{emp.sales.toLocaleString('en-IN')}</td>
-                    <td>
-                      <div className="mini-progress-bar">
-                        <div 
-                          className={`mini-progress-fill ${emp.targetPercent >= 100 ? 'bg-success' : 'bg-primary'}`} 
-                          style={{ width: `${Math.min(100, emp.targetPercent)}%` }} 
-                        />
-                      </div>
-                      <span className="mini-progress-text">{emp.targetPercent}%</span>
-                    </td>
-                  </tr>
-                )) : (
+                {teamPerformance.length > 0 ? teamPerformance.map((emp) => {
+                  const sprintInfo = sprintTeamHealth.find((s: any) => s.employeeId === emp.id || s.name === emp.name);
+                  const healthScore = sprintInfo?.sprintHealthScore ?? 0;
+                  const healthStatus = sprintInfo?.healthStatus ?? "ON_TRACK";
+                  const streak = sprintInfo?.streakDays ?? 0;
+
+                  return (
+                    <tr key={emp.id}>
+                      <td className="font-medium">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{emp.name}</span>
+                          {streak > 0 && (
+                            <span style={{ fontSize: '10px', fontWeight: 800, backgroundColor: '#fef08a', color: '#854d0e', padding: '1px 5px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                              <Flame size={10} color="#d97706" /> {streak}d
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>₹{emp.sales.toLocaleString('en-IN')}</td>
+                      <td>
+                        <div className="mini-progress-bar">
+                          <div 
+                            className={`mini-progress-fill ${emp.targetPercent >= 100 ? 'bg-success' : 'bg-primary'}`} 
+                            style={{ width: `${Math.min(100, emp.targetPercent)}%` }} 
+                          />
+                        </div>
+                        <span className="mini-progress-text">{emp.targetPercent}%</span>
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          backgroundColor: healthStatus === 'EXCELLENT' ? '#dcfce7' : healthStatus === 'ON_TRACK' ? '#e0e7ff' : '#fee2e2',
+                          color: healthStatus === 'EXCELLENT' ? '#15803d' : healthStatus === 'ON_TRACK' ? '#4338ca' : '#b91c1c',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          <span style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            backgroundColor: healthStatus === 'EXCELLENT' ? '#16a34a' : healthStatus === 'ON_TRACK' ? '#4f46e5' : '#dc2626'
+                          }} />
+                          {healthScore}% {healthStatus === 'EXCELLENT' ? 'Strong' : healthStatus === 'ON_TRACK' ? 'On Track' : 'At Risk'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                }) : (
                   <tr>
-                    <td colSpan={3} className="text-center text-muted py-4">No team data available</td>
+                    <td colSpan={4} className="text-center text-muted py-4">No team data available</td>
                   </tr>
                 )}
               </tbody>

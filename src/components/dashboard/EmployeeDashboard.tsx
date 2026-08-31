@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import CheckInButton from '@/components/ui/CheckInButton';
 import { IncentiveResult, calculateIncentives, OrderData } from '@/lib/incentiveEngine';
+import { SprintData, logDailySalesActivity } from '@/app/actions/sprintActions';
 import { 
   Users, 
   PhoneCall, 
@@ -25,7 +26,16 @@ import {
   X,
   ExternalLink,
   DollarSign,
-  Calculator
+  Calculator,
+  Zap,
+  Flame,
+  ShieldCheck,
+  AlertCircle,
+  Plus,
+  Minus,
+  CheckCircle,
+  BarChart3,
+  Rocket
 } from 'lucide-react';
 import Link from 'next/link';
 import { removeFollowUp, rescheduleFollowUp } from '@/app/actions/callActions';
@@ -146,6 +156,7 @@ interface EmployeeDashboardProps {
   todayFollowUps?: any[];
   allOrders?: any[];
   allFollowUps?: any[];
+  sprintData?: SprintData | null;
 }
 
 type TimeFilterType = "TODAY" | "WEEKLY" | "MONTHLY" | "ALL";
@@ -159,10 +170,33 @@ export default function EmployeeDashboard({
   incentiveData: initialIncentiveData,
   todayFollowUps = [],
   allOrders = [],
-  allFollowUps = []
+  allFollowUps = [],
+  sprintData
 }: EmployeeDashboardProps) {
   const [timeFilter, setTimeFilter] = useState<TimeFilterType>("MONTHLY");
   const [activeModal, setActiveModal] = useState<"SALES" | "FOLLOWUPS" | "TARGET" | "PAYOUT" | null>(null);
+
+  // Optimistic tracking for daily call counters
+  const [callsOffset, setCallsOffset] = useState(0);
+  const [isSavingActivity, setIsSavingActivity] = useState(false);
+
+  const handleAdjustCalls = async (delta: number) => {
+    if (!employee?.id) return;
+    setCallsOffset(prev => prev + delta);
+    setIsSavingActivity(true);
+    try {
+      await logDailySalesActivity({
+        employeeId: employee.id,
+        callsDelta: delta
+      });
+    } catch (err) {
+      console.error("Failed to log activity:", err);
+    } finally {
+      setIsSavingActivity(false);
+    }
+  };
+
+  const currentTodayCalls = Math.max(0, (sprintData?.todayCalls || 0) + callsOffset);
 
   const todayDateStr = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
   const targetMonthlyGoal = employee?.target || 500000;
@@ -315,6 +349,364 @@ export default function EmployeeDashboard({
           />
         </div>
       </div>
+
+      {/* ─── SPRINT FRAMEWORK COCKPIT (WEEKLY SPRINT & DAILY ACTION HUBS) ─── */}
+      {sprintData && (
+        <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          
+          {/* TOP BANNER: SPRINT HEALTH & MOMENTUM GAUGE */}
+          <div style={{ 
+            background: sprintData.healthStatus === 'EXCELLENT' 
+              ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' 
+              : sprintData.healthStatus === 'ON_TRACK'
+              ? 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)'
+              : 'linear-gradient(135deg, #b91c1c 0%, #ef4444 100%)',
+            color: '#ffffff',
+            borderRadius: '14px',
+            padding: '16px 20px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                {sprintData.healthStatus === 'EXCELLENT' ? <Rocket size={26} color="#ffffff" /> : sprintData.healthStatus === 'ON_TRACK' ? <Zap size={26} color="#ffffff" /> : <AlertCircle size={26} color="#ffffff" />}
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', backgroundColor: 'rgba(255,255,255,0.25)', padding: '2px 8px', borderRadius: '6px' }}>
+                    Sprint {sprintData.weekNumber} of 4 ({sprintData.weekStartStr} - {sprintData.weekEndStr})
+                  </span>
+                  {sprintData.streakDays > 0 && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#fef08a', color: '#854d0e', padding: '2px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Flame size={13} color="#d97706" /> {sprintData.streakDays}-Day Streak
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, marginTop: '4px', letterSpacing: '-0.2px' }}>
+                  {sprintData.healthMessage}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.72rem', opacity: 0.9, fontWeight: 600 }}>Sprint Velocity Score</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, lineHeight: 1 }}>{sprintData.sprintHealthScore}<span style={{ fontSize: '0.95rem' }}>/100</span></div>
+              </div>
+              <div style={{
+                height: '40px',
+                width: '1px',
+                backgroundColor: 'rgba(255,255,255,0.3)'
+              }} />
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.72rem', opacity: 0.9, fontWeight: 600 }}>Days Left in Sprint</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, lineHeight: 1 }}>{sprintData.daysRemainingInSprint}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* MAIN SPRINT GRID: WEEKLY TARGET SPRINT + 4-SPRINT ROADMAP */}
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '14px',
+            border: '1px solid #e2e8f0',
+            padding: '18px 20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Target size={18} color="#4f46e5" />
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+                    {sprintData.weekName}
+                  </h3>
+                </div>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  Weekly Target: ₹{sprintData.currentSprintTarget.toLocaleString('en-IN')} (Targeted for this sprint period)
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Sprint Closed / Target:</span>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                    <span style={{ color: '#10b981' }}>₹{sprintData.currentSprintRevenue.toLocaleString('en-IN')}</span> / ₹{sprintData.currentSprintTarget.toLocaleString('en-IN')}
+                  </div>
+                </div>
+                <span style={{
+                  padding: '4px 10px',
+                  borderRadius: '20px',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  backgroundColor: sprintData.sprintProgressPercent >= 100 ? '#dcfce7' : sprintData.sprintProgressPercent >= 60 ? '#e0e7ff' : '#fee2e2',
+                  color: sprintData.sprintProgressPercent >= 100 ? '#15803d' : sprintData.sprintProgressPercent >= 60 ? '#4338ca' : '#b91c1c'
+                }}>
+                  {sprintData.sprintProgressPercent}%
+                </span>
+              </div>
+            </div>
+
+            {/* SPRINT PROGRESS BAR */}
+            <div style={{ width: '100%', height: '10px', backgroundColor: '#f1f5f9', borderRadius: '8px', overflow: 'hidden', marginBottom: '16px' }}>
+              <div style={{
+                width: `${Math.min(100, sprintData.sprintProgressPercent)}%`,
+                height: '100%',
+                background: sprintData.sprintProgressPercent >= 100 
+                  ? 'linear-gradient(90deg, #10b981, #059669)' 
+                  : 'linear-gradient(90deg, #6366f1, #4f46e5)',
+                borderRadius: '8px',
+                transition: 'width 0.4s ease'
+              }} />
+            </div>
+
+            {/* 4-SPRINT ROADMAP PILLS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+              {sprintData.sprints.map(s => (
+                <div key={s.week} style={{
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: s.status === 'CURRENT' ? '2px solid #4f46e5' : '1px solid #e2e8f0',
+                  backgroundColor: s.status === 'CURRENT' ? '#f5f3ff' : s.isPassed ? '#f0fdf4' : '#f8fafc',
+                  position: 'relative'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: s.status === 'CURRENT' ? '#4f46e5' : '#475569' }}>
+                      Sprint {s.week} ({s.weightPercent}%)
+                    </span>
+                    {s.isPassed ? (
+                      <CheckCircle size={13} color="#16a34a" />
+                    ) : s.status === 'CURRENT' ? (
+                      <span style={{ fontSize: '9px', fontWeight: 800, backgroundColor: '#4f46e5', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>ACTIVE</span>
+                    ) : null}
+                  </div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>
+                    ₹{s.actual > 0 ? (s.actual / 1000).toFixed(1) + 'k' : '0'} <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>/ {(s.target / 1000).toFixed(0)}k</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* DAILY ACTION POWER COCKPIT (THE FUEL FOR REVENUE) */}
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '14px',
+            border: '1px solid #e2e8f0',
+            padding: '18px 20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Zap size={18} color="#d97706" />
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#0f172a' }}>
+                    Today's Action Targets (Lead Indicators)
+                  </h3>
+                </div>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                  Consistent daily actions directly drive weekly sprint conversions.
+                </p>
+              </div>
+              <Link href="/quotations/new" style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '6px 12px',
+                backgroundColor: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
+                borderRadius: '8px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                textDecoration: 'none',
+                transition: 'all 0.15s ease'
+              }}>
+                <Plus size={13} /> Create Quote
+              </Link>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+              
+              {/* TARGET 1: CALLS (Interactive Tap Buttons) */}
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: '#f8fafc',
+                border: currentTodayCalls >= sprintData.todayCallsTarget ? '1px solid #86efac' : '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                      📞 Calls Logged
+                    </span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: currentTodayCalls >= sprintData.todayCallsTarget ? '#16a34a' : '#64748b' }}>
+                      Goal: {sprintData.todayCallsTarget}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#0f172a', margin: '4px 0 2px 0' }}>
+                    {currentTodayCalls} <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>/ {sprintData.todayCallsTarget}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustCalls(-1)}
+                    disabled={currentTodayCalls === 0 || isSavingActivity}
+                    style={{
+                      flex: 1,
+                      padding: '5px 0',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      backgroundColor: '#ffffff',
+                      color: '#475569',
+                      cursor: currentTodayCalls === 0 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '12px',
+                      fontWeight: 700
+                    }}
+                    title="Decrease call count"
+                  >
+                    <Minus size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAdjustCalls(1)}
+                    disabled={isSavingActivity}
+                    style={{
+                      flex: 1.5,
+                      padding: '5px 0',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: '#2563eb',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      fontSize: '12px',
+                      fontWeight: 700
+                    }}
+                    title="Log 1 more call"
+                  >
+                    <Plus size={12} /> Call
+                  </button>
+                </div>
+              </div>
+
+              {/* TARGET 2: FOLLOW-UPS DONE */}
+              <div 
+                onClick={() => setActiveModal("FOLLOWUPS")}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  backgroundColor: '#f8fafc',
+                  border: sprintData.todayFollowUps >= sprintData.todayFollowUpsTarget ? '1px solid #86efac' : '1px solid #e2e8f0',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                      🤝 Follow-ups
+                    </span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: sprintData.todayFollowUps >= sprintData.todayFollowUpsTarget ? '#16a34a' : '#64748b' }}>
+                      Goal: {sprintData.todayFollowUpsTarget}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#d97706', margin: '4px 0 2px 0' }}>
+                    {sprintData.todayFollowUps} <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>/ {sprintData.todayFollowUpsTarget}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, marginTop: '8px' }}>
+                  View Today's List →
+                </div>
+              </div>
+
+              {/* TARGET 3: QUOTES SENT */}
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: '#f8fafc',
+                border: sprintData.todayQuotesSent >= sprintData.todayQuotesSentTarget ? '1px solid #86efac' : '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                      📄 Quotes Sent
+                    </span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: sprintData.todayQuotesSent >= sprintData.todayQuotesSentTarget ? '#16a34a' : '#64748b' }}>
+                      Goal: {sprintData.todayQuotesSentTarget}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#0f172a', margin: '4px 0 2px 0' }}>
+                    {sprintData.todayQuotesSent} <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>/ {sprintData.todayQuotesSentTarget}</span>
+                  </div>
+                </div>
+                <Link href="/quotations" style={{ fontSize: '0.72rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none', marginTop: '8px' }}>
+                  Quotes Pipeline →
+                </Link>
+              </div>
+
+              {/* TARGET 4: QUOTES CONFIRMED (DEALS CLOSED) */}
+              <div style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: sprintData.todayQuotesConfirmed > 0 ? '#f0fdf4' : '#f8fafc',
+                border: sprintData.todayQuotesConfirmed >= sprintData.todayQuotesConfirmedTarget ? '1px solid #86efac' : '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>
+                      🎯 Deals Confirmed
+                    </span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: sprintData.todayQuotesConfirmed >= sprintData.todayQuotesConfirmedTarget ? '#16a34a' : '#64748b' }}>
+                      Goal: {sprintData.todayQuotesConfirmedTarget}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#16a34a', margin: '4px 0 2px 0' }}>
+                    {sprintData.todayQuotesConfirmed} <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>/ {sprintData.todayQuotesConfirmedTarget}</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 700, marginTop: '8px' }}>
+                  {sprintData.todayQuotesConfirmed > 0 ? "🎉 Sale Secured!" : "Awaiting close"}
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* ─── PERFORMANCE FILTER TABS ─── */}
       <div style={{ marginBottom: '20px' }}>

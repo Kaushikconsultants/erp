@@ -242,6 +242,7 @@ model Employee {
   round3Candidates Candidate[] @relation("CandidateRound3Interviewer")
   assignedWhatsAppConversations WhatsAppConversation[] @relation("AssignedAgent")
   workerProductionLogs WorkerProductionLog[]
+  dailySalesLogs  DailySalesLog[]
 
   @@index([organizationId])
   @@index([userId])
@@ -416,6 +417,22 @@ model Task {
   @@index([creatorId])
   @@index([customerId])
   @@index([status])
+}
+
+model DailySalesLog {
+  id           String   @id @default(uuid())
+  employeeId   String
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date         DateTime
+  callsMade    Int      @default(0)
+  visitsDone   Int      @default(0)
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
 }
 
 // ---------------------------------------------------------

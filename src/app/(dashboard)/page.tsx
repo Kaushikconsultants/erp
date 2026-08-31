@@ -10,6 +10,7 @@ import TeamLeaderDashboard from '@/components/dashboard/TeamLeaderDashboard';
 import BroadcastBanner from '@/components/dashboard/BroadcastBanner';
 import { calculateIncentives, OrderData } from '@/lib/incentiveEngine';
 import { getFollowUpRecommendations } from '@/app/actions/customerActions';
+import { getSprintData, getAdminSprintTeamHealth } from '@/app/actions/sprintActions';
 import './dashboard.css';
 
 import { getTenantOrgId } from '@/lib/tenant';
@@ -211,6 +212,8 @@ export default async function Home() {
       salesperson: lead.assignedSalesperson?.user?.name || 'Unassigned'
     }));
 
+    const sprintTeamHealth = await getAdminSprintTeamHealth(orgId);
+
     return (
       <>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
@@ -232,6 +235,7 @@ export default async function Home() {
           isCheckedOut={adminCheckedOut}
           checkInTime={adminAtt?.checkIn ? adminAtt.checkIn.toISOString() : null}
           checkOutTime={adminAtt?.checkOut ? adminAtt.checkOut.toISOString() : null}
+          sprintTeamHealth={sprintTeamHealth}
         />
       </>
     );
@@ -471,6 +475,8 @@ export default async function Home() {
       createdAt: c.createdAt ? c.createdAt.toISOString() : null
     }));
 
+    const sprintData = employee ? await getSprintData(employee.id) : null;
+
     return (
       <>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
@@ -486,6 +492,7 @@ export default async function Home() {
           todayFollowUps={serializedTodayFollowUps}
           allOrders={serializedOrders}
           allFollowUps={serializedFollowUps}
+          sprintData={sprintData}
         />
       </>
     );
