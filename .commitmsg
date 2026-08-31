@@ -1,1 +1,1 @@
-feat: allow editing token / advance amount on confirmed quotations across table, detail page, and form
+fix: anchor product search dropdown directly below input box preventing top-left jump

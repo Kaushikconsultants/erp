@@ -125,11 +125,14 @@ export default function CreateQuotationForm({ customers, products, employees, ca
   const [showProductSearch, setShowProductSearch] = useState(-1);
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number; width: number; placeAbove?: boolean } | null>(null);
-  const searchInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+  const desktopInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+  const mobileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+  const activeProductInputRef = useRef<HTMLElement | null>(null);
 
   const updateCustomerDropdownCoords = () => {
     if (customerInputRef.current) {
       const rect = customerInputRef.current.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
       const spaceBelow = window.innerHeight - rect.bottom;
       const placeAbove = spaceBelow < 280 && rect.top > 280;
       
@@ -158,17 +161,41 @@ export default function CreateQuotationForm({ customers, products, employees, ca
     }
   }, [showCustomerSearch]);
 
-  const updateDropdownCoords = (index: number) => {
-    const el = searchInputRefs.current[index];
+  const updateDropdownCoords = (target?: HTMLElement | number | null) => {
+    let el: HTMLElement | null = null;
+    if (typeof target === 'number') {
+      const dEl = desktopInputRefs.current[target];
+      const mEl = mobileInputRefs.current[target];
+      if (dEl && dEl.getBoundingClientRect().width > 0) {
+        el = dEl;
+      } else if (mEl && mEl.getBoundingClientRect().width > 0) {
+        el = mEl;
+      }
+    } else if (target && typeof target === 'object' && 'getBoundingClientRect' in target) {
+      el = target as HTMLElement;
+    }
+
+    if (!el && activeProductInputRef.current) {
+      const r = activeProductInputRef.current.getBoundingClientRect();
+      if (r.width > 0) el = activeProductInputRef.current;
+    }
+
     if (el) {
       const rect = el.getBoundingClientRect();
+      // Guard against hidden elements with 0 width / 0 height
+      if (rect.width === 0 && rect.height === 0) return;
+
+      activeProductInputRef.current = el;
       const spaceBelow = window.innerHeight - rect.bottom;
       const placeAbove = spaceBelow < 280 && rect.top > 280;
-      
+      const dropdownWidth = Math.max(rect.width, 380);
+      const maxLeft = window.innerWidth - dropdownWidth - 16;
+      const left = Math.max(12, Math.min(rect.left, Math.max(12, maxLeft)));
+
       setDropdownCoords({
         top: placeAbove ? rect.top - 6 : rect.bottom + 6,
-        left: Math.max(12, Math.min(rect.left, window.innerWidth - 400)),
-        width: Math.max(rect.width, 360),
+        left,
+        width: Math.min(dropdownWidth, window.innerWidth - 24),
         placeAbove
       });
     }
@@ -286,7 +313,8 @@ export default function CreateQuotationForm({ customers, products, employees, ca
     setProductSearchTerm('');
     setTimeout(() => {
       updateDropdownCoords(newIdx);
-      searchInputRefs.current[newIdx]?.focus();
+      const input = desktopInputRefs.current[newIdx] || mobileInputRefs.current[newIdx];
+      input?.focus();
     }, 50);
   };
 
@@ -1033,26 +1061,27 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                                 transition: 'all 0.15s ease',
                                 cursor: 'text'
                               }}
-                              onClick={() => {
+                              onClick={(e) => {
                                 setShowProductSearch(index);
-                                updateDropdownCoords(index);
-                                searchInputRefs.current[index]?.focus();
+                                const input = desktopInputRefs.current[index];
+                                updateDropdownCoords(input || e.currentTarget);
+                                input?.focus();
                               }}
                             >
                               <Search size={15} color={showProductSearch === index ? "#2563eb" : "#64748b"} style={{ flexShrink: 0 }} />
                               <input 
-                                ref={(el) => { searchInputRefs.current[index] = el; }}
+                                ref={(el) => { desktopInputRefs.current[index] = el; }}
                                 type="text" 
                                 placeholder="Search by name, article #, SKU..." 
                                 value={showProductSearch === index ? productSearchTerm : ''}
                                 onChange={(e) => {
                                   setProductSearchTerm(e.target.value);
                                   setShowProductSearch(index);
-                                  updateDropdownCoords(index);
+                                  updateDropdownCoords(e.currentTarget);
                                 }}
-                                onFocus={() => {
+                                onFocus={(e) => {
                                   setShowProductSearch(index);
-                                  updateDropdownCoords(index);
+                                  updateDropdownCoords(e.currentTarget);
                                 }}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Escape') {
@@ -1076,8 +1105,9 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setProductSearchTerm('');
-                                    updateDropdownCoords(index);
-                                    searchInputRefs.current[index]?.focus();
+                                    const input = desktopInputRefs.current[index];
+                                    updateDropdownCoords(input || e.currentTarget);
+                                    input?.focus();
                                   }}
                                   style={{
                                     background: 'none',
@@ -1157,7 +1187,8 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                                   setProductSearchTerm('');
                                   setTimeout(() => {
                                     updateDropdownCoords(index);
-                                    searchInputRefs.current[index]?.focus();
+                                    const input = desktopInputRefs.current[index] || mobileInputRefs.current[index];
+                                    input?.focus();
                                   }, 50);
                                 }}
                                 style={{ 
@@ -1307,26 +1338,27 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                           backgroundColor: '#ffffff',
                           boxShadow: showProductSearch === index ? '0 0 0 3px rgba(37, 99, 235, 0.12)' : 'none',
                         }}
-                        onClick={() => {
+                        onClick={(e) => {
                           setShowProductSearch(index);
-                          updateDropdownCoords(index);
-                          searchInputRefs.current[index]?.focus();
+                          const input = mobileInputRefs.current[index];
+                          updateDropdownCoords(input || e.currentTarget);
+                          input?.focus();
                         }}
                       >
                         <Search size={16} color={showProductSearch === index ? "#2563eb" : "#94a3b8"} style={{ flexShrink: 0 }} />
                         <input
-                          ref={(el) => { searchInputRefs.current[index] = el; }}
+                          ref={(el) => { mobileInputRefs.current[index] = el; }}
                           type="text"
                           placeholder="Search product..."
                           value={showProductSearch === index ? productSearchTerm : ''}
                           onChange={(e) => {
                             setProductSearchTerm(e.target.value);
                             setShowProductSearch(index);
-                            updateDropdownCoords(index);
+                            updateDropdownCoords(e.currentTarget);
                           }}
-                          onFocus={() => {
+                          onFocus={(e) => {
                             setShowProductSearch(index);
-                            updateDropdownCoords(index);
+                            updateDropdownCoords(e.currentTarget);
                           }}
                           style={{ border: 'none', outline: 'none', marginLeft: '8px', width: '100%', fontSize: '0.9rem', color: '#0f172a', backgroundColor: 'transparent' }}
                         />
@@ -1356,7 +1388,8 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                             setProductSearchTerm('');
                             setTimeout(() => {
                               updateDropdownCoords(index);
-                              searchInputRefs.current[index]?.focus();
+                              const input = mobileInputRefs.current[index] || desktopInputRefs.current[index];
+                              input?.focus();
                             }, 50);
                           }}
                           style={{
