@@ -458,6 +458,15 @@ export default function CreateQuotationForm({ customers, products, employees, ca
 
     setLoading(true);
     try {
+      // Preserve Confirmed / Converted status when editing — never downgrade
+      const originalStatus = initialQuotation?.status;
+      let resolvedStatus: string;
+      if (initialQuotation && (originalStatus === 'Confirmed' || originalStatus === 'Converted')) {
+        resolvedStatus = originalStatus;
+      } else {
+        resolvedStatus = status || 'Draft';
+      }
+
       const payload = {
         customerId: formData.customerId,
         quotationNumber: formData.quotationNumber || undefined,
@@ -465,7 +474,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
         quoteDate: formData.quoteDate,
         expiryDate: formData.expiryDate,
         salespersonId: formData.salespersonId || undefined,
-        status: status || 'Draft',
+        status: resolvedStatus,
         subject: formData.subject || undefined,
         billingAddress: formData.billingAddress || undefined,
         shippingAddress: (showShippingAddress ? formData.shippingAddress : formData.billingAddress) || undefined,
@@ -508,6 +517,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
       const res = initialQuotation 
         ? await updateQuotationFull(initialQuotation.id, payload) 
         : await createQuotation(payload);
+
 
       if (res.error) {
         alert(res.error);
@@ -631,21 +641,24 @@ export default function CreateQuotationForm({ customers, products, employees, ca
           <Link href="/quotations" style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', textDecoration: 'none', fontWeight: 500, fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center' }}>
             Cancel
           </Link>
+          {/* Only show Save Draft button if status is NOT already Confirmed/Converted */}
+          {(!initialQuotation || (initialQuotation?.status !== 'Confirmed' && initialQuotation?.status !== 'Converted')) && (
+            <button 
+              type="button" 
+              onClick={(e) => handleSubmit(e, 'Draft')} 
+              disabled={loading} 
+              style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1e293b', fontWeight: 500, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Save size={15} /> Save Draft
+            </button>
+          )}
           <button 
             type="button" 
-            onClick={(e) => handleSubmit(e, 'Draft')} 
+            onClick={(e) => handleSubmit(e, initialQuotation?.status === 'Confirmed' || initialQuotation?.status === 'Converted' ? initialQuotation.status : 'Sent')} 
             disabled={loading} 
-            style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#1e293b', fontWeight: 500, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: initialQuotation?.status === 'Confirmed' ? '#10b981' : '#2563eb', color: '#ffffff', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' }}
           >
-            <Save size={15} /> Save Draft
-          </button>
-          <button 
-            type="button" 
-            onClick={(e) => handleSubmit(e, 'Sent')} 
-            disabled={loading} 
-            style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#2563eb', color: '#ffffff', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' }}
-          >
-            <Send size={15} /> {loading ? "Saving..." : initialQuotation ? "Update Quotation" : "Save & Send"}
+            <Send size={15} /> {loading ? "Saving..." : initialQuotation ? (initialQuotation?.status === 'Confirmed' ? "Update Confirmed Quote" : "Update Quotation") : "Save & Send"}
           </button>
         </div>
       </div>
