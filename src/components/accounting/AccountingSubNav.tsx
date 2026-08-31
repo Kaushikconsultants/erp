@@ -81,16 +81,16 @@ export default function AccountingSubNav() {
               display: "flex",
               alignItems: "center",
               gap: "7px",
-              padding: "8px 16px",
+              padding: "7px 14px",
               borderRadius: "8px",
               textDecoration: "none",
-              fontSize: "0.84rem",
-              fontWeight: isActive ? 700 : 600,
+              fontSize: "0.8125rem",
+              fontWeight: isActive ? 550 : 500,
               whiteSpace: "nowrap",
               transition: "all 0.15s ease",
               background: isActive ? "var(--accent-primary, #4f46e5)" : "transparent",
               color: isActive ? "#ffffff" : "var(--text-secondary, #64748b)",
-              boxShadow: isActive ? "0 2px 6px rgba(0, 0, 0, 0.12)" : "none"
+              boxShadow: isActive ? "0 2px 4px rgba(79, 70, 229, 0.2)" : "none"
             }}
             onMouseOver={(e) => {
               if (!isActive) {
@@ -105,16 +105,16 @@ export default function AccountingSubNav() {
               }
             }}
           >
-            <Icon size={16} />
+            <Icon size={15} />
             <span>{item.label}</span>
             {item.badge && (
               <span
                 style={{
-                  fontSize: "9px",
-                  fontWeight: 800,
+                  fontSize: "0.6875rem",
+                  fontWeight: 500,
                   padding: "1px 6px",
                   borderRadius: "6px",
-                  background: isActive ? "rgba(255, 255, 255, 0.25)" : "#e2e8f0",
+                  background: isActive ? "rgba(255, 255, 255, 0.22)" : "#e2e8f0",
                   color: isActive ? "#ffffff" : "#475569",
                   letterSpacing: "0.02em"
                 }}

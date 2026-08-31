@@ -464,7 +464,7 @@ export default function ArticleHistoryModal({
 
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#0f172a', letterSpacing: '-0.02em' }}>
                   {data?.product?.name || 'Article Transaction & Usage History'}
                 </h2>
                 
@@ -482,7 +482,7 @@ export default function ArticleHistoryModal({
                     backgroundColor: '#ffffff',
                     color: '#334155',
                     fontSize: '0.8rem',
-                    fontWeight: 600,
+                    fontWeight: 500,
                     cursor: 'pointer',
                     boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                   }}
@@ -493,26 +493,26 @@ export default function ArticleHistoryModal({
               </div>
 
               {/* Sub-header meta strip */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.82rem', color: '#64748b', marginTop: '3px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.8125rem', color: '#64748b', marginTop: '3px' }}>
                 {data?.product?.articleNumber && (
-                  <span>Article: <strong style={{ color: '#0f172a' }}>{data.product.articleNumber}</strong></span>
+                  <span>Article: <span style={{ color: '#0f172a', fontWeight: 550 }}>{data.product.articleNumber}</span></span>
                 )}
                 {data?.product?.sku && (
                   <>
                     <span>•</span>
-                    <span>SKU: <strong style={{ color: '#0f172a' }}>{data.product.sku}</strong></span>
+                    <span>SKU: <span style={{ color: '#0f172a', fontWeight: 550 }}>{data.product.sku}</span></span>
                   </>
                 )}
                 {data?.product?.category && (
                   <>
                     <span>•</span>
-                    <span>Category: <strong style={{ color: '#4f46e5' }}>{data.product.category}</strong></span>
+                    <span>Category: <span style={{ color: '#4f46e5', fontWeight: 550 }}>{data.product.category}</span></span>
                   </>
                 )}
                 {data?.product?.sellingPrice !== undefined && (
                   <>
                     <span>•</span>
-                    <span>Price: <strong style={{ color: '#16a34a' }}>₹{data.product.sellingPrice}</strong></span>
+                    <span>Price: <span style={{ color: '#16a34a', fontWeight: 600 }}>₹{data.product.sellingPrice}</span></span>
                   </>
                 )}
               </div>
@@ -623,13 +623,13 @@ export default function ArticleHistoryModal({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 16px',
+                padding: '8px 14px',
                 borderRadius: '8px',
                 border: 'none',
                 backgroundColor: '#4f46e5',
                 color: '#fff',
-                fontSize: '0.85rem',
-                fontWeight: 600,
+                fontSize: '0.8125rem',
+                fontWeight: 500,
                 cursor: 'pointer',
                 boxShadow: '0 2px 4px rgba(79, 70, 229, 0.25)',
                 transition: 'background-color 0.15s'
@@ -647,13 +647,13 @@ export default function ArticleHistoryModal({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 14px',
+                padding: '8px 13px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
                 color: '#166534',
-                fontSize: '0.85rem',
-                fontWeight: 600,
+                fontSize: '0.8125rem',
+                fontWeight: 500,
                 cursor: 'pointer'
               }}
               title="Download Complete Excel Ledger"
@@ -668,13 +668,13 @@ export default function ArticleHistoryModal({
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 14px',
+                padding: '8px 13px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
                 color: '#991b1b',
-                fontSize: '0.85rem',
-                fontWeight: 600,
+                fontSize: '0.8125rem',
+                fontWeight: 500,
                 cursor: 'pointer'
               }}
               title="Print Article Statement"
@@ -732,7 +732,7 @@ export default function ArticleHistoryModal({
                   <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5' }}>
                     <Layers size={18} />
                   </div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#0f172a' }}>
                     Quick Stock Adjustment
                   </h3>
                 </div>
@@ -742,14 +742,14 @@ export default function ArticleHistoryModal({
               </div>
 
               {adjustSuccessMsg && (
-                <div style={{ padding: '10px 14px', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '14px', fontWeight: 600, border: '1px solid #a7f3d0' }}>
+                <div style={{ padding: '10px 14px', backgroundColor: '#ecfdf5', color: '#065f46', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '14px', fontWeight: 500, border: '1px solid #a7f3d0' }}>
                   {adjustSuccessMsg}
                 </div>
               )}
 
               <form onSubmit={handleQuickAdjust} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, color: '#475569', marginBottom: '6px' }}>
                     Movement Direction
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -759,10 +759,10 @@ export default function ArticleHistoryModal({
                       style={{
                         padding: '10px',
                         borderRadius: '8px',
-                        border: adjustType === 'IN' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                        border: adjustType === 'IN' ? '1.5px solid #16a34a' : '1px solid #cbd5e1',
                         backgroundColor: adjustType === 'IN' ? '#f0fdf4' : '#ffffff',
                         color: adjustType === 'IN' ? '#166534' : '#64748b',
-                        fontWeight: 700,
+                        fontWeight: 550,
                         fontSize: '0.85rem',
                         display: 'flex',
                         alignItems: 'center',
@@ -779,10 +779,10 @@ export default function ArticleHistoryModal({
                       style={{
                         padding: '10px',
                         borderRadius: '8px',
-                        border: adjustType === 'OUT' ? '2px solid #dc2626' : '1px solid #cbd5e1',
+                        border: adjustType === 'OUT' ? '1.5px solid #dc2626' : '1px solid #cbd5e1',
                         backgroundColor: adjustType === 'OUT' ? '#fef2f2' : '#ffffff',
                         color: adjustType === 'OUT' ? '#991b1b' : '#64748b',
-                        fontWeight: 700,
+                        fontWeight: 550,
                         fontSize: '0.85rem',
                         display: 'flex',
                         alignItems: 'center',
@@ -797,7 +797,7 @@ export default function ArticleHistoryModal({
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, color: '#475569', marginBottom: '4px' }}>
                     Quantity (Units)
                   </label>
                   <input
@@ -812,14 +812,14 @@ export default function ArticleHistoryModal({
                       borderRadius: '8px',
                       border: '1px solid #cbd5e1',
                       fontSize: '1rem',
-                      fontWeight: 700,
+                      fontWeight: 600,
                       outline: 'none'
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 500, color: '#475569', marginBottom: '4px' }}>
                     Reference / Reason / Notes
                   </label>
                   <input
@@ -849,7 +849,7 @@ export default function ArticleHistoryModal({
                       backgroundColor: '#ffffff',
                       color: '#475569',
                       fontSize: '0.85rem',
-                      fontWeight: 600,
+                      fontWeight: 500,
                       cursor: 'pointer'
                     }}
                   >
@@ -864,7 +864,7 @@ export default function ArticleHistoryModal({
                       border: 'none',
                       backgroundColor: adjustType === 'IN' ? '#16a34a' : '#dc2626',
                       color: '#ffffff',
-                      fontWeight: 700,
+                      fontWeight: 550,
                       fontSize: '0.85rem',
                       cursor: adjustLoading ? 'default' : 'pointer'
                     }}
@@ -905,20 +905,20 @@ export default function ArticleHistoryModal({
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
                   padding: '16px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                  borderLeft: '5px solid #10b981',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                  borderLeft: '3px solid #10b981',
                   position: 'relative'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Current In-Stock</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 550, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Current In-Stock</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
                       <Package size={16} />
                     </div>
                   </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', marginTop: '6px' }}>
-                    {data.kpis.currentStock} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#0f172a', marginTop: '6px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                    {data.kpis.currentStock} <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#16a34a', marginTop: '4px', fontWeight: 700 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#16a34a', marginTop: '4px', fontWeight: 500 }}>
                     <CheckCircle2 size={13} />
                     <span>{data.kpis.currentStock > data.product.minimumStock ? 'Physical Available Stock' : 'Low Stock Alert'}</span>
                   </div>
@@ -930,19 +930,19 @@ export default function ArticleHistoryModal({
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
                   padding: '16px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                  borderLeft: '5px solid #3b82f6'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                  borderLeft: '3px solid #3b82f6'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Invoiced / Sold Qty</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 550, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Invoiced / Sold Qty</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
                       <Receipt size={16} />
                     </div>
                   </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1d4ed8', marginTop: '6px' }}>
-                    {data.kpis.totalInvoicedQty} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#2563eb', marginTop: '6px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                    {data.kpis.totalInvoicedQty} <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 450 }}>
                     Across {data.kpis.totalOrdersCount} orders • ₹{data.kpis.totalRevenue?.toLocaleString()}
                   </div>
                 </div>
@@ -953,19 +953,19 @@ export default function ArticleHistoryModal({
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
                   padding: '16px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                  borderLeft: '5px solid #f59e0b'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                  borderLeft: '3px solid #f59e0b'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quoted in Quotes</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 550, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Quoted in Quotes</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
                       <FileCheck2 size={16} />
                     </div>
                   </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#b45309', marginTop: '6px' }}>
-                    {data.kpis.totalQuotedQty} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#d97706', marginTop: '6px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                    {data.kpis.totalQuotedQty} <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 450 }}>
                     {data.kpis.convertedQuotedQty} converted • {data.kpis.activeQuotedQty} active
                   </div>
                 </div>
@@ -976,19 +976,19 @@ export default function ArticleHistoryModal({
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
                   padding: '16px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                  borderLeft: '5px solid #0d9488'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                  borderLeft: '3px solid #0d9488'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Stock In</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 550, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Stock In</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#f0fdfa', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0d9488' }}>
                       <ArrowDownLeft size={16} />
                     </div>
                   </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f766e', marginTop: '6px' }}>
-                    +{data.kpis.totalStockIn} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#0f766e', marginTop: '6px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                    +{data.kpis.totalStockIn} <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 450 }}>
                     Initial stock, restocks & POs
                   </div>
                 </div>
@@ -999,19 +999,19 @@ export default function ArticleHistoryModal({
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
                   padding: '16px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                  borderLeft: '5px solid #e11d48'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                  borderLeft: '3px solid #e11d48'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Stock Out</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 550, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Total Stock Out</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e11d48' }}>
                       <ArrowUpRight size={16} />
                     </div>
                   </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#be123c', marginTop: '6px' }}>
-                    -{data.kpis.totalStockOut} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#e11d48', marginTop: '6px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                    -{data.kpis.totalStockOut} <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 450 }}>
                     {data.kpis.totalInvoicedQty} sold • {data.kpis.manualOutQty} write-offs
                   </div>
                 </div>
@@ -1022,19 +1022,19 @@ export default function ArticleHistoryModal({
                   border: '1px solid #e2e8f0',
                   borderRadius: '12px',
                   padding: '16px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                  borderLeft: '5px solid #8b5cf6'
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                  borderLeft: '3px solid #8b5cf6'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>PO Received</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 550, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>PO Received</span>
                     <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b5cf6' }}>
                       <Truck size={16} />
                     </div>
                   </div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#6d28d9', marginTop: '6px' }}>
-                    {data.kpis.totalPOReceivedQty} / {data.kpis.totalPOQty} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>units</span>
+                  <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#7c3aed', marginTop: '6px', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                    {data.kpis.totalPOReceivedQty} / {data.kpis.totalPOQty} <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: '#64748b' }}>units</span>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 500 }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', fontWeight: 450 }}>
                     From {data.kpis.totalPOsCount} Vendor POs
                   </div>
                 </div>
@@ -1045,7 +1045,7 @@ export default function ArticleHistoryModal({
                 backgroundColor: '#f8fafc',
                 border: '1px solid #e2e8f0',
                 borderRadius: '12px',
-                padding: '12px 18px',
+                padding: '10px 16px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -1053,35 +1053,35 @@ export default function ArticleHistoryModal({
                 gap: '12px',
                 boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', fontSize: '0.85rem', color: '#334155', fontWeight: 600 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#0f766e', backgroundColor: '#ccfbf1', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>
-                    <ArrowDownLeft size={14} /> Total Sourced In: +{data.kpis.totalStockIn}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '0.8125rem', color: '#334155', fontWeight: 500 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#0f766e', backgroundColor: '#ccfbf1', padding: '3px 9px', borderRadius: '6px', fontWeight: 550 }}>
+                    <ArrowDownLeft size={13} /> Total Sourced In: +{data.kpis.totalStockIn}
                   </span>
-                  <Minus size={14} color="#94a3b8" />
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#1e40af', backgroundColor: '#dbeafe', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>
-                    <ShoppingCart size={14} /> Invoiced / Sold: {data.kpis.totalInvoicedQty}
+                  <Minus size={13} color="#94a3b8" />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#1e40af', backgroundColor: '#dbeafe', padding: '3px 9px', borderRadius: '6px', fontWeight: 550 }}>
+                    <ShoppingCart size={13} /> Invoiced / Sold: {data.kpis.totalInvoicedQty}
                   </span>
                   {data.kpis.manualOutQty > 0 && (
                     <>
-                      <Minus size={14} color="#94a3b8" />
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#991b1b', backgroundColor: '#fee2e2', padding: '4px 10px', borderRadius: '6px', fontWeight: 700 }}>
-                        <ArrowUpRight size={14} /> Manual Write-Offs: {data.kpis.manualOutQty}
+                      <Minus size={13} color="#94a3b8" />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#991b1b', backgroundColor: '#fee2e2', padding: '3px 9px', borderRadius: '6px', fontWeight: 550 }}>
+                        <ArrowUpRight size={13} /> Manual Write-Offs: {data.kpis.manualOutQty}
                       </span>
                     </>
                   )}
-                  <Equal size={14} color="#64748b" />
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#166534', backgroundColor: '#dcfce7', padding: '4px 12px', borderRadius: '6px', fontWeight: 800, fontSize: '0.9rem' }}>
-                    <Package size={15} /> Physical Available Stock: {data.kpis.currentStock} Units
+                  <Equal size={13} color="#64748b" />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#166534', backgroundColor: '#dcfce7', padding: '3px 10px', borderRadius: '6px', fontWeight: 600, fontSize: '0.85rem' }}>
+                    <Package size={14} /> Physical Available Stock: {data.kpis.currentStock} Units
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem' }}>
                   <span style={{ color: '#64748b' }}>Pipeline Demand:</span>
-                  <span style={{ fontWeight: 700, color: '#b45309', backgroundColor: '#fef3c7', padding: '3px 8px', borderRadius: '6px' }}>
+                  <span style={{ fontWeight: 550, color: '#b45309', backgroundColor: '#fef3c7', padding: '2px 7px', borderRadius: '6px' }}>
                     {data.kpis.activeQuotedQty} units in active quotes
                   </span>
-                  <span style={{ color: '#94a3b8' }}>•</span>
-                  <span style={{ fontWeight: 700, color: '#4338ca', backgroundColor: '#e0e7ff', padding: '3px 8px', borderRadius: '6px' }}>
+                  <span style={{ color: '#cbd5e1' }}>•</span>
+                  <span style={{ fontWeight: 550, color: '#4338ca', backgroundColor: '#e0e7ff', padding: '2px 7px', borderRadius: '6px' }}>
                     Uncommitted: {data.kpis.uncommittedStock} units
                   </span>
                 </div>
@@ -1118,25 +1118,25 @@ export default function ArticleHistoryModal({
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '6px',
-                          padding: '8px 14px',
+                          padding: '7px 13px',
                           borderRadius: '8px',
                           border: isActive ? '1px solid #4f46e5' : '1px solid #e2e8f0',
                           backgroundColor: isActive ? '#4f46e5' : '#ffffff',
                           color: isActive ? '#ffffff' : '#475569',
-                          fontWeight: isActive ? 700 : 600,
-                          fontSize: '0.85rem',
+                          fontWeight: isActive ? 600 : 500,
+                          fontSize: '0.8125rem',
                           cursor: 'pointer',
-                          boxShadow: isActive ? '0 2px 4px rgba(79, 70, 229, 0.2)' : 'none',
+                          boxShadow: isActive ? '0 2px 4px rgba(79, 70, 229, 0.18)' : 'none',
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        <Icon size={15} />
+                        <Icon size={14} />
                         {tab.label}
                         <span style={{
-                          backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                          backgroundColor: isActive ? 'rgba(255,255,255,0.22)' : '#e2e8f0',
                           color: isActive ? '#ffffff' : '#64748b',
                           fontSize: '0.72rem',
-                          fontWeight: 700,
+                          fontWeight: 500,
                           padding: '1px 6px',
                           borderRadius: '10px'
                         }}>
@@ -1197,7 +1197,7 @@ export default function ArticleHistoryModal({
                         backgroundColor: '#f1f5f9',
                         color: '#475569',
                         fontSize: '0.75rem',
-                        fontWeight: 600,
+                        fontWeight: 500,
                         cursor: 'pointer'
                       }}
                     >
@@ -1215,14 +1215,14 @@ export default function ArticleHistoryModal({
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date & Time</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Event Type</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Doc / Ref #</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Customer / Vendor / User</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Qty Change</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Stock Balance</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Details / Notes</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Date & Time</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Event Type</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Doc / Ref #</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Customer / Vendor / User</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Qty Change</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Stock Balance</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Status</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Details / Notes</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1248,8 +1248,8 @@ export default function ArticleHistoryModal({
                               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                             >
                               {/* Date */}
-                              <td style={{ padding: '12px 16px', color: '#475569', whiteSpace: 'nowrap' }}>
-                                <div style={{ fontWeight: 600, color: '#1e293b' }}>
+                              <td style={{ padding: '12px 14px', color: '#475569', whiteSpace: 'nowrap' }}>
+                                <div style={{ fontWeight: 500, color: '#1e293b', fontSize: '0.8125rem' }}>
                                   {new Date(item.date).toLocaleDateString()}
                                 </div>
                                 <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
@@ -1258,15 +1258,15 @@ export default function ArticleHistoryModal({
                               </td>
 
                               {/* Event Type Badge */}
-                              <td style={{ padding: '12px 16px' }}>
+                              <td style={{ padding: '12px 14px' }}>
                                 <span style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '4px',
-                                  padding: '4px 8px',
+                                  padding: '3px 8px',
                                   borderRadius: '6px',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 700,
+                                  fontSize: '0.72rem',
+                                  fontWeight: 500,
                                   backgroundColor: isStockIn ? '#dcfce7' : (isInvoice ? '#dbeafe' : (isQuote ? '#fef3c7' : (isPO ? '#ede9fe' : '#fee2e2'))),
                                   color: isStockIn ? '#166534' : (isInvoice ? '#1e40af' : (isQuote ? '#92400e' : (isPO ? '#6d28d9' : '#991b1b')))
                                 }}>
@@ -1280,7 +1280,7 @@ export default function ArticleHistoryModal({
                               </td>
 
                               {/* Doc / Reference # */}
-                              <td style={{ padding: '12px 16px', fontWeight: 700, color: isInvoice ? '#2563eb' : (isQuote ? '#b45309' : '#0f172a') }}>
+                              <td style={{ padding: '12px 14px', fontWeight: 550, fontSize: '0.8125rem', color: isInvoice ? '#2563eb' : (isQuote ? '#b45309' : '#0f172a') }}>
                                 {item.orderId ? (
                                   <Link href={`/orders/${item.orderId}`} target="_blank" style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                     {item.docNumber} <ExternalLink size={12} />
@@ -1295,7 +1295,7 @@ export default function ArticleHistoryModal({
                               </td>
 
                               {/* Customer / Vendor / Party */}
-                              <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
+                              <td style={{ padding: '12px 14px', fontWeight: 500, color: '#1e293b', fontSize: '0.8125rem' }}>
                                 <div>{item.party || '-'}</div>
                                 {item.warehouse && (
                                   <div style={{ fontSize: '0.72rem', color: '#64748b' }}>📍 {item.warehouse}</div>
@@ -1303,40 +1303,40 @@ export default function ArticleHistoryModal({
                               </td>
 
                               {/* Qty Change */}
-                              <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                                 <span style={{
-                                  fontSize: '0.95rem',
-                                  fontWeight: 800,
+                                  fontSize: '0.875rem',
+                                  fontWeight: 600,
                                   color: isStockIn ? '#16a34a' : (isInvoice || (item.type === 'OUT' && !isQuote) ? '#dc2626' : (isQuote ? '#d97706' : '#6d28d9'))
                                 }}>
                                   {isStockIn ? `+${item.quantity}` : (isInvoice || (item.type === 'OUT' && !isQuote) ? `-${item.quantity}` : `${item.quantity}`)}
                                 </span>
-                                <span style={{ fontSize: '0.75rem', color: '#64748b', marginLeft: '4px' }}>
+                                <span style={{ fontSize: '0.72rem', color: '#64748b', marginLeft: '4px', fontWeight: 400 }}>
                                   {isQuote ? 'pcs (Quote)' : 'pcs'}
                                 </span>
                               </td>
 
                               {/* Running Stock Balance */}
-                              <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <td style={{ padding: '12px 14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                                 <span style={{
-                                  padding: '3px 8px',
+                                  padding: '2px 7px',
                                   borderRadius: '6px',
                                   backgroundColor: '#f0fdf4',
                                   color: '#166534',
-                                  fontWeight: 800,
-                                  fontSize: '0.85rem'
+                                  fontWeight: 600,
+                                  fontSize: '0.8125rem'
                                 }}>
                                   {item.runningBalance !== undefined ? `${item.runningBalance} units` : '-'}
                                 </span>
                               </td>
 
                               {/* Status Badge */}
-                              <td style={{ padding: '12px 16px' }}>
+                              <td style={{ padding: '12px 14px' }}>
                                 <span style={{
-                                  padding: '3px 8px',
+                                  padding: '2px 7px',
                                   borderRadius: '12px',
                                   fontSize: '0.72rem',
-                                  fontWeight: 700,
+                                  fontWeight: 500,
                                   backgroundColor: item.status === 'Converted' || item.status === 'Paid' || item.status === 'In Stock' || item.status === 'Received' ? '#dcfce7' : '#fef3c7',
                                   color: item.status === 'Converted' || item.status === 'Paid' || item.status === 'In Stock' || item.status === 'Received' ? '#166534' : '#92400e'
                                 }}>
@@ -1345,7 +1345,7 @@ export default function ArticleHistoryModal({
                               </td>
 
                               {/* Notes / Details */}
-                              <td style={{ padding: '12px 16px', color: '#64748b', fontSize: '0.8rem', maxWidth: '240px' }}>
+                              <td style={{ padding: '12px 14px', color: '#64748b', fontSize: '0.8125rem', maxWidth: '240px', fontWeight: 400 }}>
                                 {item.notes || '-'}
                               </td>
                             </tr>
@@ -1361,8 +1361,8 @@ export default function ArticleHistoryModal({
               {activeTab === 'quotations' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', backgroundColor: '#fefce8', borderRadius: '8px', border: '1px solid #fef08a' }}>
-                    <div style={{ fontSize: '0.85rem', color: '#854d0e', fontWeight: 600 }}>
-                      <strong>Quotation Pipeline:</strong> Total <strong>{data.kpis.totalQuotedQty} units</strong> across {data.kpis.totalQuotationsCount} quotes (<strong>{data.kpis.convertedQuotedQty} units converted</strong> • <strong>{data.kpis.activeQuotedQty} active</strong>)
+                    <div style={{ fontSize: '0.8125rem', color: '#854d0e', fontWeight: 500 }}>
+                      <span style={{ fontWeight: 600 }}>Quotation Pipeline:</span> Total <span style={{ fontWeight: 600 }}>{data.kpis.totalQuotedQty} units</span> across {data.kpis.totalQuotationsCount} quotes (<span style={{ fontWeight: 600 }}>{data.kpis.convertedQuotedQty} units converted</span> • <span style={{ fontWeight: 600 }}>{data.kpis.activeQuotedQty} active</span>)
                     </div>
                   </div>
 
@@ -1370,14 +1370,14 @@ export default function ArticleHistoryModal({
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Quotation #</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Customer</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Quoted Qty</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Unit Rate</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Item Total</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Action</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Quotation #</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Date</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Customer</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Quoted Qty</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Unit Rate</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Item Total</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Status</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1390,39 +1390,39 @@ export default function ArticleHistoryModal({
                         ) : (
                           filteredQuotations.map((qi: any) => (
                             <tr key={qi.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
-                              <td style={{ padding: '12px 16px', fontWeight: 700, color: '#4f46e5' }}>
+                              <td style={{ padding: '12px 14px', fontWeight: 550, fontSize: '0.8125rem', color: '#4f46e5' }}>
                                 <Link href={`/quotations/${qi.quotation?.id}`} target="_blank" style={{ color: '#4f46e5', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                   {qi.quotation?.quotationNumber} <ExternalLink size={12} />
                                 </Link>
                               </td>
-                              <td style={{ padding: '12px 16px', color: '#475569' }}>
+                              <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.8125rem' }}>
                                 {new Date(qi.quotation?.date).toLocaleDateString()}
                               </td>
-                              <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
+                              <td style={{ padding: '12px 14px', fontWeight: 500, color: '#1e293b', fontSize: '0.8125rem' }}>
                                 {qi.quotation?.customer?.businessName || qi.quotation?.customer?.contactPerson}
                               </td>
-                              <td style={{ padding: '12px 16px', fontWeight: 800, color: '#d97706', textAlign: 'right' }}>
+                              <td style={{ padding: '12px 14px', fontWeight: 600, color: '#d97706', textAlign: 'right', fontSize: '0.875rem' }}>
                                 {qi.quantity} {qi.unit || 'pcs'}
                               </td>
-                              <td style={{ padding: '12px 16px', color: '#475569', textAlign: 'right' }}>
+                              <td style={{ padding: '12px 14px', color: '#475569', textAlign: 'right', fontSize: '0.8125rem' }}>
                                 ₹{qi.rate}
                               </td>
-                              <td style={{ padding: '12px 16px', fontWeight: 800, color: '#0f172a', textAlign: 'right' }}>
+                              <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a', textAlign: 'right', fontSize: '0.875rem' }}>
                                 ₹{qi.total?.toLocaleString()}
                               </td>
-                              <td style={{ padding: '12px 16px' }}>
+                              <td style={{ padding: '12px 14px' }}>
                                 <span style={{
-                                  padding: '3px 8px',
+                                  padding: '2px 7px',
                                   borderRadius: '12px',
                                   fontSize: '0.72rem',
-                                  fontWeight: 700,
+                                  fontWeight: 500,
                                   backgroundColor: qi.quotation?.status === 'Converted' || qi.quotation?.status === 'Accepted' ? '#dcfce7' : '#fef3c7',
                                   color: qi.quotation?.status === 'Converted' || qi.quotation?.status === 'Accepted' ? '#166534' : '#92400e'
                                 }}>
                                   {qi.quotation?.status}
                                 </span>
                               </td>
-                              <td style={{ padding: '12px 16px' }}>
+                              <td style={{ padding: '12px 14px' }}>
                                 <Link
                                   href={`/quotations/${qi.quotation?.id}`}
                                   target="_blank"
@@ -1435,7 +1435,7 @@ export default function ArticleHistoryModal({
                                     backgroundColor: '#eff6ff',
                                     color: '#2563eb',
                                     fontSize: '0.75rem',
-                                    fontWeight: 600,
+                                    fontWeight: 500,
                                     textDecoration: 'none'
                                   }}
                                 >
@@ -1455,8 +1455,8 @@ export default function ArticleHistoryModal({
               {activeTab === 'invoices' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', backgroundColor: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                    <div style={{ fontSize: '0.85rem', color: '#1e40af', fontWeight: 600 }}>
-                      <strong>Sales & Invoicing Summary:</strong> Total <strong>{data.kpis.totalInvoicedQty} units sold</strong> across {data.kpis.totalOrdersCount} orders (Revenue: <strong>₹{data.kpis.totalRevenue?.toLocaleString()}</strong>)
+                    <div style={{ fontSize: '0.8125rem', color: '#1e40af', fontWeight: 500 }}>
+                      <span style={{ fontWeight: 600 }}>Sales & Invoicing Summary:</span> Total <span style={{ fontWeight: 600 }}>{data.kpis.totalInvoicedQty} units sold</span> across {data.kpis.totalOrdersCount} orders (Revenue: <span style={{ fontWeight: 600 }}>₹{data.kpis.totalRevenue?.toLocaleString()}</span>)
                     </div>
                   </div>
 
@@ -1464,15 +1464,15 @@ export default function ArticleHistoryModal({
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Invoice # / Order #</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Customer</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Billed Qty</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Unit Rate</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Total</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Invoice Status</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Order Status</th>
-                          <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Action</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Invoice # / Order #</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Date</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Customer</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Billed Qty</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Unit Rate</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Total</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Invoice Status</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Order Status</th>
+                          <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1487,54 +1487,54 @@ export default function ArticleHistoryModal({
                             const invoice = oi.order?.invoices?.[0];
                             return (
                               <tr key={oi.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
-                                <td style={{ padding: '12px 16px' }}>
-                                  <div style={{ fontWeight: 700, color: '#2563eb' }}>
+                                <td style={{ padding: '12px 14px' }}>
+                                  <div style={{ fontWeight: 550, color: '#2563eb', fontSize: '0.8125rem' }}>
                                     {invoice?.invoiceNumber || 'Invoice Pending'}
                                   </div>
-                                  <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
                                     Order: {oi.order?.orderNumber}
                                   </div>
                                 </td>
-                                <td style={{ padding: '12px 16px', color: '#475569' }}>
+                                <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.8125rem' }}>
                                   {new Date(oi.order?.orderDate).toLocaleDateString()}
                                 </td>
-                                <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
+                                <td style={{ padding: '12px 14px', fontWeight: 500, color: '#1e293b', fontSize: '0.8125rem' }}>
                                   {oi.order?.customer?.businessName || oi.order?.customer?.contactPerson}
                                 </td>
-                                <td style={{ padding: '12px 16px', fontWeight: 800, color: '#2563eb', textAlign: 'right' }}>
+                                <td style={{ padding: '12px 14px', fontWeight: 600, color: '#2563eb', textAlign: 'right', fontSize: '0.875rem' }}>
                                   {oi.quantity} pcs
                                 </td>
-                                <td style={{ padding: '12px 16px', color: '#475569', textAlign: 'right' }}>
+                                <td style={{ padding: '12px 14px', color: '#475569', textAlign: 'right', fontSize: '0.8125rem' }}>
                                   ₹{oi.rate}
                                 </td>
-                                <td style={{ padding: '12px 16px', fontWeight: 800, color: '#0f172a', textAlign: 'right' }}>
+                                <td style={{ padding: '12px 14px', fontWeight: 600, color: '#0f172a', textAlign: 'right', fontSize: '0.875rem' }}>
                                   ₹{(oi.total || (oi.quantity * oi.rate))?.toLocaleString()}
                                 </td>
-                                <td style={{ padding: '12px 16px' }}>
+                                <td style={{ padding: '12px 14px' }}>
                                   <span style={{
-                                    padding: '3px 8px',
+                                    padding: '2px 7px',
                                     borderRadius: '12px',
                                     fontSize: '0.72rem',
-                                    fontWeight: 700,
+                                    fontWeight: 500,
                                     backgroundColor: invoice?.status === 'Paid' ? '#dcfce7' : '#fee2e2',
                                     color: invoice?.status === 'Paid' ? '#166534' : '#991b1b'
                                   }}>
                                     {invoice?.status || 'Unbilled'}
                                   </span>
                                 </td>
-                                <td style={{ padding: '12px 16px' }}>
+                                <td style={{ padding: '12px 14px' }}>
                                   <span style={{
-                                    padding: '3px 8px',
+                                    padding: '2px 7px',
                                     borderRadius: '12px',
                                     fontSize: '0.72rem',
-                                    fontWeight: 600,
+                                    fontWeight: 500,
                                     backgroundColor: '#f1f5f9',
                                     color: '#334155'
                                   }}>
                                     {oi.order?.orderStatus}
                                   </span>
                                 </td>
-                                <td style={{ padding: '12px 16px' }}>
+                                <td style={{ padding: '12px 14px' }}>
                                   <Link
                                     href={`/orders/${oi.order?.id}`}
                                     target="_blank"
@@ -1547,7 +1547,7 @@ export default function ArticleHistoryModal({
                                       backgroundColor: '#eff6ff',
                                       color: '#2563eb',
                                       fontSize: '0.75rem',
-                                      fontWeight: 600,
+                                      fontWeight: 500,
                                       textDecoration: 'none'
                                     }}
                                   >
@@ -1570,13 +1570,13 @@ export default function ArticleHistoryModal({
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date & Time</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Movement</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Quantity</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Reference</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Warehouse</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Employee / User</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Notes</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Date & Time</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Movement</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Quantity</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Reference</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Warehouse</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Employee / User</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Notes</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1589,38 +1589,38 @@ export default function ArticleHistoryModal({
                       ) : (
                         filteredAdjustments.map((t: any) => (
                           <tr key={t.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
-                            <td style={{ padding: '12px 16px', color: '#475569' }}>
+                            <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.8125rem' }}>
                               {new Date(t.date).toLocaleString()}
                             </td>
-                            <td style={{ padding: '12px 16px' }}>
+                            <td style={{ padding: '12px 14px' }}>
                               <span style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
-                                padding: '3px 8px',
+                                padding: '2px 7px',
                                 borderRadius: '12px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
+                                fontSize: '0.72rem',
+                                fontWeight: 500,
                                 backgroundColor: t.type === 'IN' ? '#dcfce7' : '#fee2e2',
                                 color: t.type === 'IN' ? '#166534' : '#991b1b'
                               }}>
                                 {t.type === 'IN' ? <ArrowDownLeft size={13} /> : <ArrowUpRight size={13} />}
-                                {t.type === 'IN' ? 'Stock In (Add)' : 'Stock Out (Deduct)'}
+                                {t.type === 'IN' ? 'Stock In' : 'Stock Out'}
                               </span>
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 800, color: t.type === 'IN' ? '#16a34a' : '#dc2626', textAlign: 'right' }}>
+                            <td style={{ padding: '12px 14px', fontWeight: 600, color: t.type === 'IN' ? '#16a34a' : '#dc2626', textAlign: 'right', fontSize: '0.875rem' }}>
                               {t.type === 'IN' ? `+${t.quantity}` : `-${t.quantity}`} pcs
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
+                            <td style={{ padding: '12px 14px', fontWeight: 500, color: '#1e293b', fontSize: '0.8125rem' }}>
                               {t.reference || 'Manual Scan'}
                             </td>
-                            <td style={{ padding: '12px 16px', color: '#475569' }}>
+                            <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.8125rem' }}>
                               {t.warehouse?.name || 'Main Warehouse'}
                             </td>
-                            <td style={{ padding: '12px 16px', color: '#475569' }}>
+                            <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.8125rem' }}>
                               {t.employee?.user?.name || 'System / Admin'}
                             </td>
-                            <td style={{ padding: '12px 16px', color: '#64748b', fontSize: '0.85rem' }}>
+                            <td style={{ padding: '12px 14px', color: '#64748b', fontSize: '0.8125rem', fontWeight: 400 }}>
                               {t.notes || '-'}
                             </td>
                           </tr>
@@ -1637,13 +1637,13 @@ export default function ArticleHistoryModal({
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>PO #</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Date</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Vendor</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Ordered Qty</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Received Qty</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569', textAlign: 'right' }}>Rate</th>
-                        <th style={{ padding: '12px 16px', fontWeight: 700, color: '#475569' }}>Status</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>PO #</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Date</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Vendor</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Ordered Qty</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Received Qty</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em', textAlign: 'right' }}>Rate</th>
+                        <th style={{ padding: '10px 14px', fontWeight: 550, color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1656,30 +1656,30 @@ export default function ArticleHistoryModal({
                       ) : (
                         filteredPOs.map((poi: any) => (
                           <tr key={poi.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
-                            <td style={{ padding: '12px 16px', fontWeight: 700, color: '#7c3aed' }}>
+                            <td style={{ padding: '12px 14px', fontWeight: 550, color: '#7c3aed', fontSize: '0.8125rem' }}>
                               {poi.purchaseOrder?.poNumber}
                             </td>
-                            <td style={{ padding: '12px 16px', color: '#475569' }}>
+                            <td style={{ padding: '12px 14px', color: '#475569', fontSize: '0.8125rem' }}>
                               {new Date(poi.purchaseOrder?.orderDate).toLocaleDateString()}
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 600, color: '#1e293b' }}>
+                            <td style={{ padding: '12px 14px', fontWeight: 500, color: '#1e293b', fontSize: '0.8125rem' }}>
                               {poi.purchaseOrder?.vendor?.companyName || '-'}
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 800, color: '#7c3aed', textAlign: 'right' }}>
+                            <td style={{ padding: '12px 14px', fontWeight: 600, color: '#7c3aed', textAlign: 'right', fontSize: '0.875rem' }}>
                               {poi.quantity} pcs
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 800, color: '#16a34a', textAlign: 'right' }}>
+                            <td style={{ padding: '12px 14px', fontWeight: 600, color: '#16a34a', textAlign: 'right', fontSize: '0.875rem' }}>
                               {poi.receivedQty} pcs
                             </td>
-                            <td style={{ padding: '12px 16px', color: '#475569', textAlign: 'right' }}>
+                            <td style={{ padding: '12px 14px', color: '#475569', textAlign: 'right', fontSize: '0.8125rem' }}>
                               ₹{poi.rate}
                             </td>
-                            <td style={{ padding: '12px 16px' }}>
+                            <td style={{ padding: '12px 14px' }}>
                               <span style={{
-                                padding: '3px 8px',
+                                padding: '2px 7px',
                                 borderRadius: '12px',
                                 fontSize: '0.72rem',
-                                fontWeight: 700,
+                                fontWeight: 500,
                                 backgroundColor: poi.purchaseOrder?.status === 'Received' ? '#dcfce7' : '#ede9fe',
                                 color: poi.purchaseOrder?.status === 'Received' ? '#166534' : '#6d28d9'
                               }}>

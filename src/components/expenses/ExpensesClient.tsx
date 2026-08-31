@@ -210,11 +210,11 @@ export default function ExpensesClient({
       {/* ─── 1. PAGE HEADER ─── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px", margin: 0, fontSize: "1.6rem", fontWeight: 800 }}>
-            <Receipt style={{ color: "var(--accent-primary, #4f46e5)" }} size={28} />
+          <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px", margin: 0, fontSize: "1.5rem", fontWeight: 600, color: "#0f172a", letterSpacing: "-0.02em" }}>
+            <Receipt style={{ color: "var(--accent-primary, #4f46e5)" }} size={26} />
             Expense Management
           </h1>
-          <p className="page-subtitle" style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.875rem" }}>
+          <p className="page-subtitle" style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.875rem", fontWeight: 400 }}>
             {isAdmin 
               ? "Review, approve, and settle employee expense claims with locked audit security." 
               : "Submit, track, and manage your operational expense reimbursements."}
@@ -229,18 +229,18 @@ export default function ExpensesClient({
             display: "inline-flex",
             alignItems: "center",
             gap: "8px",
-            padding: "10px 22px",
+            padding: "9px 18px",
             borderRadius: "10px",
-            fontWeight: 700,
-            fontSize: "0.9rem",
+            fontWeight: 500,
+            fontSize: "0.875rem",
             backgroundColor: "var(--accent-primary, #4f46e5)",
             color: "#ffffff",
             border: "none",
             cursor: "pointer",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+            boxShadow: "0 2px 6px rgba(79, 70, 229, 0.2)"
           }}
         >
-          <Plus size={18} />
+          <Plus size={17} />
           <span>Submit Expense Claim</span>
         </button>
       </div>
@@ -250,84 +250,84 @@ export default function ExpensesClient({
         {/* Pending Approval */}
         <div style={{ 
           backgroundColor: "#ffffff", 
-          padding: "20px 22px", 
+          padding: "18px 20px", 
           borderRadius: "14px", 
           border: "1px solid #e2e8f0", 
-          borderLeft: "4px solid #f59e0b",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+          borderLeft: "3px solid #f59e0b",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
           display: "flex",
           flexDirection: "column",
           gap: "6px"
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 550, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Pending Approval
             </span>
             <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#fef3c7", color: "#b45309" }}>
               <Clock size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#b45309" }}>
+          <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#d97706", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
             {formatCurrency(totalPending)}
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 500 }}>
-            <strong>{countPending}</strong> claims awaiting review
+          <div style={{ fontSize: "0.8125rem", color: "#64748b", fontWeight: 400 }}>
+            <span style={{ fontWeight: 550, color: "#334155" }}>{countPending}</span> claims awaiting review
           </div>
         </div>
 
         {/* Approved (Unpaid) */}
         <div style={{ 
           backgroundColor: "#ffffff", 
-          padding: "20px 22px", 
+          padding: "18px 20px", 
           borderRadius: "14px", 
           border: "1px solid #e2e8f0", 
-          borderLeft: "4px solid var(--accent-primary, #3b82f6)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+          borderLeft: "3px solid #059669",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
           display: "flex",
           flexDirection: "column",
           gap: "6px"
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 550, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Approved (Unpaid)
             </span>
-            <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "var(--accent-light, #eff6ff)", color: "var(--accent-primary, #3b82f6)" }}>
+            <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#ecfdf5", color: "#059669" }}>
               <CheckCircle2 size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--accent-primary, #3b82f6)" }}>
+          <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#059669", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
             {formatCurrency(totalApproved)}
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 500 }}>
-            <strong>{countApproved}</strong> claims ready for payout
+          <div style={{ fontSize: "0.8125rem", color: "#64748b", fontWeight: 400 }}>
+            <span style={{ fontWeight: 550, color: "#334155" }}>{countApproved}</span> claims ready for payout
           </div>
         </div>
 
         {/* Total Paid Out */}
         <div style={{ 
           backgroundColor: "#ffffff", 
-          padding: "20px 22px", 
+          padding: "18px 20px", 
           borderRadius: "14px", 
           border: "1px solid #e2e8f0", 
-          borderLeft: "4px solid #10b981",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+          borderLeft: "3px solid #0284c7",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
           display: "flex",
           flexDirection: "column",
           gap: "6px"
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 550, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Total Paid Out
             </span>
-            <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#d1fae5", color: "#059669" }}>
+            <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#f0f9ff", color: "#0284c7" }}>
               <Wallet size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "#059669" }}>
+          <div style={{ fontSize: "1.5rem", fontWeight: 600, color: "#0284c7", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
             {formatCurrency(totalPaid)}
           </div>
-          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 500 }}>
-            <strong>{countPaid}</strong> claims settled
+          <div style={{ fontSize: "0.8125rem", color: "#64748b", fontWeight: 400 }}>
+            <span style={{ fontWeight: 550, color: "#334155" }}>{countPaid}</span> claims settled
           </div>
         </div>
       </div>
@@ -408,21 +408,21 @@ export default function ExpensesClient({
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "8px",
-                  padding: "8px 16px",
-                  borderRadius: "10px",
+                  padding: "7px 14px",
+                  borderRadius: "8px",
                   backgroundColor: filterCategory !== "All" ? "var(--accent-light, #eff6ff)" : "#ffffff",
                   border: `1px solid ${filterCategory !== "All" ? "var(--accent-primary, #4f46e5)" : "#cbd5e1"}`,
                   color: filterCategory !== "All" ? "var(--accent-primary, #4f46e5)" : "#334155",
-                  fontSize: "0.85rem",
-                  fontWeight: 600,
+                  fontSize: "0.8125rem",
+                  fontWeight: 500,
                   cursor: "pointer",
                   boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
                   transition: "all 0.15s ease"
                 }}
               >
-                <Filter size={15} style={{ color: filterCategory !== "All" ? "var(--accent-primary, #4f46e5)" : "#64748b" }} />
+                <Filter size={14} style={{ color: filterCategory !== "All" ? "var(--accent-primary, #4f46e5)" : "#64748b" }} />
                 <span>{filterCategory === "All" ? "All Categories" : filterCategory}</span>
-                <ChevronDown size={14} style={{ color: "#94a3b8", transform: categoryDropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
+                <ChevronDown size={13} style={{ color: "#94a3b8", transform: categoryDropdownOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s ease" }} />
               </button>
 
               {categoryDropdownOpen && (
@@ -456,7 +456,7 @@ export default function ExpensesClient({
                         border: "none",
                         backgroundColor: filterCategory === "All" ? "var(--accent-light, #eff6ff)" : "transparent",
                         color: filterCategory === "All" ? "var(--accent-primary, #4f46e5)" : "#334155",
-                        fontWeight: filterCategory === "All" ? 700 : 500,
+                        fontWeight: filterCategory === "All" ? 600 : 500,
                         fontSize: "0.82rem",
                         cursor: "pointer",
                         display: "flex",
@@ -479,7 +479,7 @@ export default function ExpensesClient({
                           border: "none",
                           backgroundColor: filterCategory === cat ? "var(--accent-light, #eff6ff)" : "transparent",
                           color: filterCategory === cat ? "var(--accent-primary, #4f46e5)" : "#334155",
-                          fontWeight: filterCategory === cat ? 700 : 500,
+                          fontWeight: filterCategory === cat ? 600 : 500,
                           fontSize: "0.82rem",
                           cursor: "pointer",
                           display: "flex",
@@ -514,27 +514,27 @@ export default function ExpensesClient({
                 type="button"
                 onClick={() => setFilterStatus(tab.id)}
                 style={{
-                  padding: "7px 16px",
+                  padding: "6px 14px",
                   borderRadius: "9999px",
-                  fontSize: "0.82rem",
-                  fontWeight: isSelected ? 700 : 600,
+                  fontSize: "0.8125rem",
+                  fontWeight: isSelected ? 550 : 500,
                   cursor: "pointer",
                   border: isSelected ? "none" : "1px solid #e2e8f0",
                   backgroundColor: isSelected ? "var(--accent-primary, #4f46e5)" : "#f8fafc",
                   color: isSelected ? "#ffffff" : "#475569",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: "8px",
-                  boxShadow: isSelected ? "0 2px 6px rgba(0,0,0,0.12)" : "none",
+                  gap: "7px",
+                  boxShadow: isSelected ? "0 2px 6px rgba(79, 70, 229, 0.2)" : "none",
                   transition: "all 0.15s ease"
                 }}
               >
                 <span>{tab.label}</span>
                 <span style={{
-                  padding: "2px 7px",
+                  padding: "1px 6px",
                   borderRadius: "9999px",
                   fontSize: "0.72rem",
-                  fontWeight: 700,
+                  fontWeight: 500,
                   backgroundColor: isSelected ? "rgba(255,255,255,0.25)" : "#e2e8f0",
                   color: isSelected ? "#ffffff" : "#475569"
                 }}>
@@ -555,17 +555,17 @@ export default function ExpensesClient({
         overflow: "hidden"
       }}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.875rem" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
             <thead>
-              <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                <th style={{ padding: "14px 18px", fontWeight: 700 }}>Expense #</th>
-                {isAdmin && <th style={{ padding: "14px 18px", fontWeight: 700 }}>Employee</th>}
-                <th style={{ padding: "14px 18px", fontWeight: 700 }}>Date</th>
-                <th style={{ padding: "14px 18px", fontWeight: 700 }}>Category</th>
-                <th style={{ padding: "14px 18px", fontWeight: 700 }}>Description</th>
-                <th style={{ padding: "14px 18px", fontWeight: 700, textAlign: "right" }}>Amount</th>
-                <th style={{ padding: "14px 18px", fontWeight: 700, textAlign: "center" }}>Status</th>
-                <th style={{ padding: "14px 18px", fontWeight: 700, textAlign: "right" }}>Actions</th>
+              <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#64748b", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                <th style={{ padding: "12px 16px", fontWeight: 550 }}>Expense #</th>
+                {isAdmin && <th style={{ padding: "12px 16px", fontWeight: 550 }}>Employee</th>}
+                <th style={{ padding: "12px 16px", fontWeight: 550 }}>Date</th>
+                <th style={{ padding: "12px 16px", fontWeight: 550 }}>Category</th>
+                <th style={{ padding: "12px 16px", fontWeight: 550 }}>Description</th>
+                <th style={{ padding: "12px 16px", fontWeight: 550, textAlign: "right" }}>Amount</th>
+                <th style={{ padding: "12px 16px", fontWeight: 550, textAlign: "center" }}>Status</th>
+                <th style={{ padding: "12px 16px", fontWeight: 550, textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -586,15 +586,15 @@ export default function ExpensesClient({
                     }}
                   >
                     {/* Expense # */}
-                    <td style={{ padding: "14px 18px", fontWeight: 700, color: "var(--accent-primary, #4f46e5)", fontFamily: "monospace", fontSize: "0.9rem" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 550, color: "var(--accent-primary, #4f46e5)", fontFamily: "monospace", fontSize: "0.85rem" }}>
                       {exp.expenseNumber}
                     </td>
 
                     {/* Employee (if admin) */}
                     {isAdmin && (
-                      <td style={{ padding: "14px 18px", color: "#1e293b", fontWeight: 500 }}>
+                      <td style={{ padding: "12px 16px", color: "#1e293b", fontWeight: 500, fontSize: "0.8125rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <div style={{ width: "26px", height: "26px", borderRadius: "50%", backgroundColor: "var(--accent-light, #eff6ff)", color: "var(--accent-primary, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 700 }}>
+                          <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "var(--accent-light, #eff6ff)", color: "var(--accent-primary, #4f46e5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.72rem", fontWeight: 600 }}>
                             {(exp.employee?.user?.name || "E").charAt(0).toUpperCase()}
                           </div>
                           <span>{exp.employee?.user?.name || "Staff Member"}</span>
@@ -603,19 +603,19 @@ export default function ExpensesClient({
                     )}
 
                     {/* Date */}
-                    <td style={{ padding: "14px 18px", color: "#475569", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px 16px", color: "#475569", whiteSpace: "nowrap", fontSize: "0.8125rem" }}>
                       {new Date(exp.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
                     </td>
 
                     {/* Category */}
-                    <td style={{ padding: "14px 18px" }}>
+                    <td style={{ padding: "12px 16px" }}>
                       <span style={{
-                        padding: "4px 10px",
+                        padding: "3px 9px",
                         borderRadius: "9999px",
                         backgroundColor: catColor.bg,
                         color: catColor.color,
-                        fontSize: "0.78rem",
-                        fontWeight: 600,
+                        fontSize: "0.75rem",
+                        fontWeight: 500,
                         display: "inline-block"
                       }}>
                         {exp.category}
@@ -623,31 +623,31 @@ export default function ExpensesClient({
                     </td>
 
                     {/* Description */}
-                    <td style={{ padding: "14px 18px", color: "#64748b", maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px 16px", color: "#64748b", maxWidth: "260px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "0.8125rem" }}>
                       {exp.description || <span style={{ color: "#cbd5e1" }}>-</span>}
                     </td>
 
                     {/* Amount */}
-                    <td style={{ padding: "14px 18px", textAlign: "right", fontWeight: 800, color: "#0f172a", fontSize: "0.95rem" }}>
+                    <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600, color: "#0f172a", fontSize: "0.9rem", letterSpacing: "-0.01em" }}>
                       {formatCurrency(exp.amount)}
                     </td>
 
                     {/* Status Badge */}
-                    <td style={{ padding: "14px 18px", textAlign: "center" }}>
+                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
                       <span style={{
                         display: "inline-flex",
                         alignItems: "center",
                         gap: "5px",
-                        padding: "4px 12px",
+                        padding: "3px 10px",
                         borderRadius: "9999px",
                         backgroundColor: badgeStyle.bg,
                         color: badgeStyle.color,
                         border: `1px solid ${badgeStyle.border}`,
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
+                        fontSize: "0.72rem",
+                        fontWeight: 500,
                         textTransform: "capitalize"
                       }}>
-                        <span style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: badgeStyle.color }} />
+                        <span style={{ width: "5px", height: "5px", borderRadius: "50%", backgroundColor: badgeStyle.color }} />
                         {exp.status}
                       </span>
                     </td>

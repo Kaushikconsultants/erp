@@ -55,10 +55,10 @@ export default async function AccountingHubPage() {
       {/* Header */}
       <div className="dashboard-header mb-4">
         <div>
-          <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Scale style={{ color: "var(--accent-primary, #4f46e5)" }} /> Accounting & Double-Entry Ledger Suite
+          <h1 className="page-title" style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "1.5rem", fontWeight: 600, color: "#0f172a", letterSpacing: "-0.02em" }}>
+            <Scale style={{ color: "var(--accent-primary, #4f46e5)" }} size={26} /> Accounting & Double-Entry Ledger Suite
           </h1>
-          <p className="page-subtitle">
+          <p className="page-subtitle" style={{ color: "#64748b", fontSize: "0.875rem", fontWeight: 400 }}>
             Enterprise double-entry financial core with Tally & Busy parity: Chart of Accounts, P&L, Balance Sheet, Ageing, and Bank Reconciliation.
           </p>
         </div>
@@ -68,49 +68,49 @@ export default async function AccountingHubPage() {
 
       {/* KPI Overview Strip */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-        <div className="glass-panel" style={{ padding: "20px", borderLeft: "4px solid var(--accent-primary, #4f46e5)", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeftWidth: "4px" }}>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600 }}>TOTAL ASSETS (BS)</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#0f172a", marginTop: "4px" }}>
+        <div className="glass-panel" style={{ padding: "18px 20px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeft: "3px solid var(--accent-primary, #4f46e5)", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)", fontWeight: 550, textTransform: "uppercase", letterSpacing: "0.04em" }}>TOTAL ASSETS (BS)</div>
+          <div style={{ fontSize: "1.45rem", fontWeight: 600, color: "#0f172a", marginTop: "4px", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
             ₹{totalAssets.toLocaleString()}
           </div>
-          <div style={{ fontSize: "0.75rem", color: "#059669", marginTop: "4px", fontWeight: 600 }}>
+          <div style={{ fontSize: "0.75rem", color: "#059669", marginTop: "4px", fontWeight: 500 }}>
             Schedule III Compliant
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: "20px", borderLeft: "4px solid #059669", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeftWidth: "4px" }}>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600 }}>NET PROFIT / LOSS (P&L)</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: netProfit >= 0 ? "#059669" : "#dc2626", marginTop: "4px" }}>
+        <div className="glass-panel" style={{ padding: "18px 20px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeft: "3px solid #059669", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)", fontWeight: 550, textTransform: "uppercase", letterSpacing: "0.04em" }}>NET PROFIT / LOSS (P&L)</div>
+          <div style={{ fontSize: "1.45rem", fontWeight: 600, color: netProfit >= 0 ? "#059669" : "#dc2626", marginTop: "4px", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
             ₹{netProfit.toLocaleString()}
           </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "4px" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)", marginTop: "4px", fontWeight: 400 }}>
             Trading & Operating P&L
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: "20px", borderLeft: "4px solid #ea580c", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeftWidth: "4px" }}>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600 }}>SUNDRY DEBTORS (RECEIVABLES)</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#ea580c", marginTop: "4px" }}>
+        <div className="glass-panel" style={{ padding: "18px 20px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeft: "3px solid #ea580c", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)", fontWeight: 550, textTransform: "uppercase", letterSpacing: "0.04em" }}>SUNDRY DEBTORS (RECEIVABLES)</div>
+          <div style={{ fontSize: "1.45rem", fontWeight: 600, color: "#ea580c", marginTop: "4px", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
             ₹{totalDebtors.toLocaleString()}
           </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "4px" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)", marginTop: "4px", fontWeight: 400 }}>
             Across all customer accounts
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: "20px", borderLeft: "4px solid #dc2626", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeftWidth: "4px" }}>
-          <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: 600 }}>SUNDRY CREDITORS (PAYABLES)</div>
-          <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "#dc2626", marginTop: "4px" }}>
+        <div className="glass-panel" style={{ padding: "18px 20px", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeft: "3px solid #dc2626", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)", fontWeight: 550, textTransform: "uppercase", letterSpacing: "0.04em" }}>SUNDRY CREDITORS (PAYABLES)</div>
+          <div style={{ fontSize: "1.45rem", fontWeight: 600, color: "#dc2626", marginTop: "4px", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
             ₹{totalCreditors.toLocaleString()}
           </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "4px" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary, #64748b)", marginTop: "4px", fontWeight: 400 }}>
             Vendor & Supplier payables
           </div>
         </div>
       </div>
 
       {/* 5 Accounting Pillars Cards Grid */}
-      <h2 style={{ fontSize: "1.15rem", fontWeight: 700, marginBottom: "14px", color: "var(--text-primary)" }}>
+      <h2 style={{ fontSize: "1.1rem", fontWeight: 600, marginBottom: "14px", color: "var(--text-primary, #0f172a)", letterSpacing: "-0.01em" }}>
         Accounting Modules & Financial Tools
       </h2>
 
@@ -118,105 +118,105 @@ export default async function AccountingHubPage() {
         
         {/* Card 1: Statutory Financial Statements */}
         <Link href="/accounting/financial-statements" style={{ textDecoration: "none", color: "inherit" }}>
-          <div className="glass-panel hover-lift" style={{ padding: "24px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", cursor: "pointer" }}>
+          <div className="glass-panel hover-lift" style={{ padding: "22px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-              <div style={{ padding: "12px", borderRadius: "12px", background: "var(--accent-light, #eef2ff)", color: "var(--accent-primary, #4f46e5)" }}>
-                <Scale size={24} />
+              <div style={{ padding: "10px", borderRadius: "10px", background: "var(--accent-light, #eef2ff)", color: "var(--accent-primary, #4f46e5)" }}>
+                <Scale size={22} />
               </div>
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "3px 10px", borderRadius: "6px", background: "#ecfdf5", color: "#059669" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 500, padding: "2px 8px", borderRadius: "6px", background: "#ecfdf5", color: "#059669" }}>
                 AUDIT READY
               </span>
             </div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a" }}>Financial Statements</h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5 }}>
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 600, margin: "0 0 6px 0", color: "#0f172a" }}>Financial Statements</h3>
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary, #64748b)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5, fontWeight: 400 }}>
               Real-time Schedule III Balance Sheet, Trading Account, Profit & Loss Statement, and Trial Balance with Excel/CSV export.
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 700, fontSize: "0.875rem", marginTop: "auto" }}>
-              Open Statements <ArrowRight size={15} />
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 550, fontSize: "0.84rem", marginTop: "auto" }}>
+              Open Statements <ArrowRight size={14} />
             </div>
           </div>
         </Link>
 
         {/* Card 2: Chart of Accounts */}
         <Link href="/accounting/chart-of-accounts" style={{ textDecoration: "none", color: "inherit" }}>
-          <div className="glass-panel hover-lift" style={{ padding: "24px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", cursor: "pointer" }}>
+          <div className="glass-panel hover-lift" style={{ padding: "22px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-              <div style={{ padding: "12px", borderRadius: "12px", background: "#fef3c7", color: "#92400e" }}>
-                <FolderTree size={24} />
+              <div style={{ padding: "10px", borderRadius: "10px", background: "#fef3c7", color: "#92400e" }}>
+                <FolderTree size={22} />
               </div>
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "3px 10px", borderRadius: "6px", background: "#fef3c7", color: "#92400e" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 500, padding: "2px 8px", borderRadius: "6px", background: "#fef3c7", color: "#92400e" }}>
                 COA MASTER
               </span>
             </div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a" }}>Chart of Accounts</h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5 }}>
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 600, margin: "0 0 6px 0", color: "#0f172a" }}>Chart of Accounts</h3>
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary, #64748b)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5, fontWeight: 400 }}>
               Standard Indian account groups (Assets, Liabilities, Incomes, Expenses) and general ledgers with opening and running balances.
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 700, fontSize: "0.875rem", marginTop: "auto" }}>
-              Manage Ledgers <ArrowRight size={15} />
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 550, fontSize: "0.84rem", marginTop: "auto" }}>
+              Manage Ledgers <ArrowRight size={14} />
             </div>
           </div>
         </Link>
 
         {/* Card 3: Journal Vouchers */}
         <Link href="/accounting/vouchers" style={{ textDecoration: "none", color: "inherit" }}>
-          <div className="glass-panel hover-lift" style={{ padding: "24px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", cursor: "pointer" }}>
+          <div className="glass-panel hover-lift" style={{ padding: "22px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-              <div style={{ padding: "12px", borderRadius: "12px", background: "#f3e8ff", color: "#7e22ce" }}>
-                <FileText size={24} />
+              <div style={{ padding: "10px", borderRadius: "10px", background: "#f3e8ff", color: "#7e22ce" }}>
+                <FileText size={22} />
               </div>
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "3px 10px", borderRadius: "6px", background: "#f3e8ff", color: "#7e22ce" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 500, padding: "2px 8px", borderRadius: "6px", background: "#f3e8ff", color: "#7e22ce" }}>
                 DOUBLE-ENTRY
               </span>
             </div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a" }}>Journal & Contra Vouchers</h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5 }}>
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 600, margin: "0 0 6px 0", color: "#0f172a" }}>Journal & Contra Vouchers</h3>
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary, #64748b)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5, fontWeight: 400 }}>
               Post adjustment Journal Vouchers (JV), cash/bank Contra entries, and inspect complete chronological voucher audit trails.
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 700, fontSize: "0.875rem", marginTop: "auto" }}>
-              Post Vouchers <ArrowRight size={15} />
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 550, fontSize: "0.84rem", marginTop: "auto" }}>
+              Post Vouchers <ArrowRight size={14} />
             </div>
           </div>
         </Link>
 
         {/* Card 4: Ageing Analysis */}
         <Link href="/accounting/ageing" style={{ textDecoration: "none", color: "inherit" }}>
-          <div className="glass-panel hover-lift" style={{ padding: "24px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", cursor: "pointer" }}>
+          <div className="glass-panel hover-lift" style={{ padding: "22px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-              <div style={{ padding: "12px", borderRadius: "12px", background: "#ffedd5", color: "#c2410c" }}>
-                <Clock size={24} />
+              <div style={{ padding: "10px", borderRadius: "10px", background: "#ffedd5", color: "#c2410c" }}>
+                <Clock size={22} />
               </div>
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "3px 10px", borderRadius: "6px", background: "#ffedd5", color: "#c2410c" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 500, padding: "2px 8px", borderRadius: "6px", background: "#ffedd5", color: "#c2410c" }}>
                 0-90+ DAYS
               </span>
             </div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a" }}>Outstanding Ageing Analysis</h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5 }}>
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 600, margin: "0 0 6px 0", color: "#0f172a" }}>Outstanding Ageing Analysis</h3>
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary, #64748b)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5, fontWeight: 400 }}>
               Track overdue receivables (Debtors) and payables (Creditors) bucketed by 0-30, 31-60, 61-90, &gt;90 days with WhatsApp payment triggers.
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 700, fontSize: "0.875rem", marginTop: "auto" }}>
-              View Ageing <ArrowRight size={15} />
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 550, fontSize: "0.84rem", marginTop: "auto" }}>
+              View Ageing <ArrowRight size={14} />
             </div>
           </div>
         </Link>
 
         {/* Card 5: Bank Reconciliation */}
         <Link href="/accounting/bank-reconciliation" style={{ textDecoration: "none", color: "inherit" }}>
-          <div className="glass-panel hover-lift" style={{ padding: "24px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", cursor: "pointer" }}>
+          <div className="glass-panel hover-lift" style={{ padding: "22px", height: "100%", display: "flex", flexDirection: "column", backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
-              <div style={{ padding: "12px", borderRadius: "12px", background: "#ecfdf5", color: "#047857" }}>
-                <Landmark size={24} />
+              <div style={{ padding: "10px", borderRadius: "10px", background: "#ecfdf5", color: "#047857" }}>
+                <Landmark size={22} />
               </div>
-              <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "3px 10px", borderRadius: "6px", background: "#ecfdf5", color: "#047857" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 500, padding: "2px 8px", borderRadius: "6px", background: "#ecfdf5", color: "#047857" }}>
                 BRS ENGINE
               </span>
             </div>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: 700, margin: "0 0 6px 0", color: "#0f172a" }}>Bank Reconciliation (BRS)</h3>
-            <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5 }}>
+            <h3 style={{ fontSize: "1.05rem", fontWeight: 600, margin: "0 0 6px 0", color: "#0f172a" }}>Bank Reconciliation (BRS)</h3>
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary, #64748b)", margin: "0 0 16px 0", flex: 1, lineHeight: 1.5, fontWeight: 400 }}>
               Reconcile ledger accounts with bank statement passbooks, track unpresented cheques, and verify cleared deposits.
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 700, fontSize: "0.875rem", marginTop: "auto" }}>
-              Start Reconciliation <ArrowRight size={15} />
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--accent-primary, #4f46e5)", fontWeight: 550, fontSize: "0.84rem", marginTop: "auto" }}>
+              Start Reconciliation <ArrowRight size={14} />
             </div>
           </div>
         </Link>

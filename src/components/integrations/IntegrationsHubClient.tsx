@@ -206,7 +206,7 @@ export default function IntegrationsHubClient({
             <Blocks size={24} />
           </div>
           <div className="stat-info">
-            <div className="stat-value">{stats.connected} <span style={{ fontSize: "14px", fontWeight: 500, color: "#94a3b8" }}>/ {stats.total}</span></div>
+            <div className="stat-value">{stats.connected} <span style={{ fontSize: "13px", fontWeight: 400, color: "#94a3b8" }}>/ {stats.total}</span></div>
             <div className="stat-label">Connected Integrations</div>
           </div>
         </div>
@@ -216,7 +216,7 @@ export default function IntegrationsHubClient({
             <Truck size={24} />
           </div>
           <div className="stat-info">
-            <div className="stat-value">{stats.shippingConnected} <span style={{ fontSize: "14px", fontWeight: 500, color: "#94a3b8" }}>/ 4</span></div>
+            <div className="stat-value">{stats.shippingConnected} <span style={{ fontSize: "13px", fontWeight: 400, color: "#94a3b8" }}>/ 4</span></div>
             <div className="stat-label">Shipping Channels Active</div>
           </div>
         </div>
@@ -226,7 +226,7 @@ export default function IntegrationsHubClient({
             <ShoppingBag size={24} />
           </div>
           <div className="stat-info">
-            <div className="stat-value">{stats.ecommerceConnected} <span style={{ fontSize: "14px", fontWeight: 500, color: "#94a3b8" }}>/ 3</span></div>
+            <div className="stat-value">{stats.ecommerceConnected} <span style={{ fontSize: "13px", fontWeight: 400, color: "#94a3b8" }}>/ 3</span></div>
             <div className="stat-label">E-Commerce Stores Synced</div>
           </div>
         </div>
