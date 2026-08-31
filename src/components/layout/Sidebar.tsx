@@ -34,7 +34,8 @@ import {
   Scale,
   FolderTree,
   FileText,
-  Factory
+  Factory,
+  Blocks
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -92,7 +93,8 @@ const Sidebar = ({
       (sectionKey === 'delivery-challans' && (allowedSections.includes('delivery_challans') || allowedSections.includes('dispatches'))) ||
       (sectionKey === 'accounting' && (allowedSections.includes('invoices') || allowedSections.includes('payments') || allowedSections.includes('accounting'))) ||
       (sectionKey === 'purchases' && allowedSections.includes('procurement')) ||
-      (sectionKey === 'procurement' && allowedSections.includes('purchases'))
+      (sectionKey === 'procurement' && allowedSections.includes('purchases')) ||
+      (sectionKey === 'integrations' && (allowedSections.includes('integrations') || allowedSections.includes('settings') || allowedSections.includes('dispatches')))
     );
   };
 
@@ -536,8 +538,15 @@ const Sidebar = ({
       </nav>
 
       {/* SETTINGS & BILLING FOOTER */}
-      {(showSettings || canAccess('settings')) && (
+      {(showSettings || canAccess('settings') || canAccess('integrations')) && (
         <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          {canAccess('integrations') && (
+            <Link href="/integrations" onClick={onClose} className={`nav-item ${isActive('/integrations') ? 'active' : ''}`}>
+              <Blocks size={18} style={{ color: '#7c3aed' }} />
+              <span>Integrations & APIs</span>
+              <span style={{ marginLeft: 'auto', background: '#f5f3ff', color: '#7c3aed', fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '8px', border: '1px solid #ddd6fe' }}>API</span>
+            </Link>
+          )}
           <Link href="/settings" onClick={onClose} className={`nav-item ${isActive('/settings') && !isActive('/settings/billing') ? 'active' : ''}`}>
             <Settings size={18} />
             <span>Settings</span>

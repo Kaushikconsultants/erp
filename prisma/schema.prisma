@@ -82,6 +82,7 @@ model Organization {
   deliveryChallans      DeliveryChallan[]
   workOrders            WorkOrder[]
   billsOfMaterials      BillOfMaterials[]
+  integrations          AppIntegration[]
 }
 
 model SubscriptionHistory {
@@ -2373,4 +2374,62 @@ model BomItem {
   
   @@index([bomId])
   @@index([productId])
+}
+
+// ---------------------------------------------------------
+// E-Commerce & Shipping Integrations Hub
+// ---------------------------------------------------------
+model AppIntegration {
+  id              String         @id @default(uuid())
+  organizationId  String?
+  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  
+  providerId      String         // "shiprocket", "shipmozo", "nimbuspost", "delhivery", "shopify", "woocommerce", "magento", "whatsapp", "razorpay"
+  category        String         // "SHIPPING", "ECOMMERCE", "MESSAGING", "PAYMENT", "ACCOUNTING"
+  name            String         // Display Name e.g. "Shiprocket Logistics"
+  
+  isEnabled       Boolean        @default(false)
+  isConfigured    Boolean        @default(false)
+  environment     String         @default("production") // "sandbox", "production"
+  
+  credentials     String         @default("{}") // JSON string of encrypted/serialized API keys & secrets
+  settings        String?        @default("{}") // JSON string of automation settings, status mappings, etc.
+  
+  webhookSecret   String?
+  webhookUrl      String?
+  
+  lastSyncAt      DateTime?
+  lastSyncStatus  String?        // "SUCCESS", "FAILED", "PENDING", "NEVER"
+  lastSyncMessage String?
+  syncCount       Int            @default(0)
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  syncLogs        IntegrationSyncLog[]
+
+  @@unique([organizationId, providerId])
+  @@index([organizationId])
+  @@index([category])
+  @@index([providerId])
+}
+
+model IntegrationSyncLog {
+  id               String         @id @default(uuid())
+  integrationId    String
+  integration      AppIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  providerId       String
+  
+  syncType         String         // "ORDERS_IMPORT", "TRACKING_PUSH", "INVENTORY_SYNC", "WEBHOOK_EVENT", "TEST_CONNECTION", "MANUAL_SYNC"
+  status           String         // "SUCCESS", "FAILED", "IN_PROGRESS"
+  
+  recordsProcessed Int            @default(0)
+  recordsFailed    Int            @default(0)
+  details          String?        // Summary or JSON error/success response
+  
+  createdAt        DateTime       @default(now())
+  
+  @@index([integrationId])
+  @@index([providerId])
+  @@index([createdAt])
 }
