@@ -404,7 +404,9 @@ export default function EmployeeDashboard({
                   {growthIsPositive ? `+${growthPercent}%` : `${growthPercent}%`}
                 </span>
               )}
-              <span style={{ fontSize: '0.68rem', color: '#64748b' }}>{filteredOrders.length} orders</span>
+              <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                {filteredOrders.length} sale{filteredOrders.length !== 1 ? 's' : ''}
+              </span>
             </div>
           </div>
 

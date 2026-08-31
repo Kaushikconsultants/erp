@@ -45,6 +45,8 @@ export default async function Home() {
       totalCustomers,
       totalOrders,
       totalRevenueResult,
+      confirmedQuotationsRevenue,
+      confirmedQuotationsThisMonth,
       pendingCalls,
       adminAtt,
       todayOrdersCount,
@@ -59,6 +61,20 @@ export default async function Home() {
       prisma.order.aggregate({
         where: { organizationId: orgId },
         _sum: { totalValue: true }
+      }),
+      // Confirmed quotations count as confirmed sales - sum their totalValue
+      prisma.quotation.aggregate({
+        where: { organizationId: orgId, status: 'Confirmed' },
+        _sum: { totalValue: true }
+      }),
+      // Confirmed quotations this month per salesperson for team performance
+      prisma.quotation.findMany({
+        where: {
+          organizationId: orgId,
+          status: 'Confirmed',
+          date: { gte: startOfMonth }
+        },
+        select: { salespersonId: true, totalValue: true }
       }),
       prisma.call.count({
         where: { 
@@ -110,9 +126,20 @@ export default async function Home() {
       })
     ]);
 
-    const totalRevenue = totalRevenueResult._sum.totalValue || 0;
+    // Combine orders revenue + confirmed quotations revenue for total
+    const ordersRevenue = totalRevenueResult._sum.totalValue || 0;
+    const quotRevenue = confirmedQuotationsRevenue._sum.totalValue || 0;
+    const totalRevenue = ordersRevenue + quotRevenue;
     const adminCheckedIn = !!adminAtt;
     const adminCheckedOut = !!adminAtt?.checkOut;
+
+    // Build a map of confirmed quotation value per salesperson this month
+    const confirmedQuotMap: Record<string, number> = {};
+    for (const q of confirmedQuotationsThisMonth) {
+      if (q.salespersonId) {
+        confirmedQuotMap[q.salespersonId] = (confirmedQuotMap[q.salespersonId] || 0) + (q.totalValue || 0);
+      }
+    }
 
     const liveAttendance = activeAttendances.map(a => ({
       id: a.id,
@@ -163,7 +190,10 @@ export default async function Home() {
     ];
 
     const teamPerformance = employees.map(emp => {
-      const salesMTD = emp.orders.reduce((sum, o) => sum + o.totalValue, 0);
+      const orderSalesMTD = emp.orders.reduce((sum, o) => sum + o.totalValue, 0);
+      // Add confirmed quotation value to this employee's MTD sales
+      const quotSalesMTD = confirmedQuotMap[emp.id] || 0;
+      const salesMTD = orderSalesMTD + quotSalesMTD;
       const target = emp.target || 500000;
       return {
         id: emp.id,
@@ -311,6 +341,7 @@ export default async function Home() {
     const [
       attendanceRecord,
       allEmployeeOrders,
+      allConfirmedQuotations,
       allFollowUps
     ] = await Promise.all([
       employee ? prisma.attendance.findFirst({
@@ -341,6 +372,26 @@ export default async function Home() {
         },
         orderBy: { orderDate: 'desc' }
       }) : Promise.resolve([]),
+      // Confirmed quotations count as sales for this salesperson
+      employee ? prisma.quotation.findMany({
+        where: {
+          status: 'Confirmed',
+          OR: [
+            { salespersonId: employee.id },
+            { customer: { assignedSalespersonId: employee.id } }
+          ]
+        },
+        select: {
+          id: true,
+          quotationNumber: true,
+          date: true,
+          subtotal: true,
+          totalValue: true,
+          status: true,
+          customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } }
+        },
+        orderBy: { date: 'desc' }
+      }) : Promise.resolve([]),
       employee ? prisma.call.findMany({
         where: {
           employeeId: employee.id,
@@ -354,12 +405,34 @@ export default async function Home() {
     const isCheckedIn = !!attendanceRecord;
     const isCheckedOut = !!attendanceRecord?.checkOut;
 
-    const formattedOrders: OrderData[] = allEmployeeOrders
+    // Merge confirmed quotations into the orders list so all metric cards see them
+    // Map quotations to the same shape as orders (use orderDate = quote date)
+    const confirmedQuotAsOrders = allConfirmedQuotations.map((q: any) => ({
+      id: q.id,
+      orderNumber: q.quotationNumber,
+      orderDate: q.date ? q.date.toISOString() : null,
+      subtotal: q.subtotal,
+      totalValue: q.totalValue,
+      discount: 0,
+      orderStatus: 'Confirmed',
+      customer: q.customer
+    }));
+
+    // Combined list: real orders + confirmed quotations
+    const allCombinedSales = [
+      ...allEmployeeOrders.map((o: any) => ({
+        ...o,
+        orderDate: o.orderDate ? o.orderDate.toISOString() : null
+      })),
+      ...confirmedQuotAsOrders
+    ];
+
+    const formattedOrders: OrderData[] = allCombinedSales
       .filter(o => o.orderDate && new Date(o.orderDate) >= startOfMonth)
       .map(order => ({
         id: order.id,
         taxableValue: Number(order.subtotal ?? order.totalValue ?? 0),
-        discount: Number(order.discount || 0),
+        discount: Number((order as any).discount || 0),
         isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
       }));
 
@@ -383,11 +456,8 @@ export default async function Home() {
       return d >= todayStart && d < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
     });
 
-    // Serialize cleanly for client component props
-    const serializedOrders = allEmployeeOrders.map(o => ({
-      ...o,
-      orderDate: o.orderDate ? o.orderDate.toISOString() : null
-    }));
+    // Serialize cleanly for client component props - include confirmed quotations
+    const serializedOrders = allCombinedSales;
 
     const serializedFollowUps = allFollowUps.map(f => ({
       ...f,
