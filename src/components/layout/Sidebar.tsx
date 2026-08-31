@@ -101,6 +101,7 @@ const Sidebar = ({
   // Default state: ALL dropdown categories collapsed by default
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     crm: false,
+    whatsapp: false,
     sales: false,
     purchases: false,
     accounting: false,
@@ -117,6 +118,7 @@ const Sidebar = ({
 
   // Active state indicators
   const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups');
+  const isWhatsappActive = pathname.startsWith('/whatsapp');
   const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/delivery-challans') || pathname.startsWith('/eway-bills');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
   const isAccountingActive = pathname.startsWith('/accounting');
@@ -201,6 +203,59 @@ const Sidebar = ({
                     </Link>
                   </>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 1.5 WHATSAPP & AUTOMATION CATEGORY DROPDOWN */}
+        {(isSuperOrAdmin || canAccess('whatsapp') || canAccess('customers') || canAccess('sales')) && (
+          <div className="nav-section">
+            <button
+              type="button"
+              onClick={() => toggleCategory('whatsapp')}
+              className={`category-dropdown-header ${openCategories.whatsapp ? 'is-open' : ''} ${isWhatsappActive ? 'has-active-child' : ''}`}
+            >
+              <div className="category-header-title">
+                <MessageSquare size={18} style={{ color: isWhatsappActive ? '#10b981' : '#64748b' }} />
+                <span>WHATSAPP SUITE</span>
+              </div>
+              <div className="category-chevron">
+                <ChevronRight size={15} />
+              </div>
+            </button>
+
+            {openCategories.whatsapp && (
+              <div className="category-sub-list">
+                <Link href="/whatsapp/dashboard" onClick={onClose} className={`category-sub-item ${pathname === '/whatsapp/dashboard' || pathname === '/whatsapp' ? 'active' : ''}`}>
+                  <LayoutDashboard size={16} style={{ color: '#10b981' }} />
+                  <span>WhatsApp Dashboard</span>
+                </Link>
+                <Link href="/whatsapp/team-inbox" onClick={onClose} className={`category-sub-item ${isActive('/whatsapp/team-inbox') || isActive('/whatsapp/inbox') ? 'active' : ''}`}>
+                  <MessageSquare size={16} style={{ color: '#2563eb' }} />
+                  <span>Live Team Inbox</span>
+                  <span style={{ marginLeft: 'auto', background: '#dcfce7', color: '#15803d', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>LIVE</span>
+                </Link>
+                <Link href="/whatsapp/broadcasts" onClick={onClose} className={`category-sub-item ${isActive('/whatsapp/broadcasts') ? 'active' : ''}`}>
+                  <Megaphone size={16} style={{ color: '#ea580c' }} />
+                  <span>WhatsApp Broadcasts</span>
+                </Link>
+                <Link href="/whatsapp/chatbot-builder" onClick={onClose} className={`category-sub-item ${isActive('/whatsapp/chatbot-builder') ? 'active' : ''}`}>
+                  <Zap size={16} style={{ color: '#8b5cf6' }} />
+                  <span>Chatbot Builder</span>
+                </Link>
+                <Link href="/whatsapp/ai-automation" onClick={onClose} className={`category-sub-item ${isActive('/whatsapp/ai-automation') ? 'active' : ''}`}>
+                  <Zap size={16} style={{ color: '#4f46e5' }} />
+                  <span>AI Automation</span>
+                </Link>
+                <Link href="/whatsapp/campaigns" onClick={onClose} className={`category-sub-item ${isActive('/whatsapp/campaigns') ? 'active' : ''}`}>
+                  <TrendingUp size={16} />
+                  <span>Campaigns</span>
+                </Link>
+                <Link href="/whatsapp/api-settings" onClick={onClose} className={`category-sub-item ${isActive('/whatsapp/api-settings') ? 'active' : ''}`}>
+                  <Settings size={16} />
+                  <span>API & Phone Settings</span>
+                </Link>
               </div>
             )}
           </div>

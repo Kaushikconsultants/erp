@@ -317,6 +317,10 @@ export default function OrderSlipScannerModal({
 
                 <button
                   type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
                   style={{
                     padding: "8px 18px",
                     borderRadius: "8px",

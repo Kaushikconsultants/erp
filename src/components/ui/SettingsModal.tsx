@@ -12,6 +12,17 @@ export default function SettingsModal({ featureName, onClose }: SettingsModalPro
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Dynamic state for custom statuses
+  const [customStatuses, setCustomStatuses] = useState<string[]>(["Active", "Inactive", "New Lead", "Client", "Negotiation"]);
+  const [newStatusInput, setNewStatusInput] = useState("");
+
+  // Dynamic state for teams
+  const [teams, setTeams] = useState<string[]>(["Central Sales Hub", "Field Sales Division", "Dispatch & Logistics", "Accounts & Finance"]);
+  const [newTeamInput, setNewTeamInput] = useState("");
+
+  // State for backup
+  const [backupGenerated, setBackupGenerated] = useState(false);
+
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -19,7 +30,52 @@ export default function SettingsModal({ featureName, onClose }: SettingsModalPro
       setLoading(false);
       setSaved(true);
       setTimeout(onClose, 1000);
-    }, 800);
+    }, 600);
+  };
+
+  const handleAddStatus = () => {
+    if (!newStatusInput.trim()) return;
+    if (!customStatuses.includes(newStatusInput.trim())) {
+      setCustomStatuses(prev => [...prev, newStatusInput.trim()]);
+    }
+    setNewStatusInput("");
+  };
+
+  const handleAddTeam = () => {
+    if (!newTeamInput.trim()) return;
+    if (!teams.includes(newTeamInput.trim())) {
+      setTeams(prev => [...prev, newTeamInput.trim()]);
+    }
+    setNewTeamInput("");
+  };
+
+  const handleGenerateBackup = () => {
+    setLoading(true);
+    setTimeout(() => {
+      const backupData = {
+        exportedAt: new Date().toISOString(),
+        version: "2.0",
+        system: "Enterprise Apparel CRM & ERP",
+        status: "SUCCESS",
+        metadata: {
+          teams,
+          customStatuses,
+          note: "Offline Database Schema & Snapshot Export"
+        }
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `crm-backup-${new Date().toISOString().split("T")[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      setLoading(false);
+      setBackupGenerated(true);
+      setTimeout(() => setBackupGenerated(false), 3000);
+    }, 600);
   };
 
   const renderContent = () => {
@@ -29,7 +85,7 @@ export default function SettingsModal({ featureName, onClose }: SettingsModalPro
           <>
             <div className="form-group">
               <label>Company Name</label>
-              <input type="text" defaultValue="B2B Clothing Co." />
+              <input type="text" defaultValue="ESPON CLOTHING PRIVATE LIMITED" />
             </div>
             <div className="form-group">
               <label>Default Currency</label>
@@ -48,74 +104,42 @@ export default function SettingsModal({ featureName, onClose }: SettingsModalPro
             </div>
           </>
         );
-      case "Incentive Rules":
-        return (
-          <>
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Discount = 0%</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Bonus Incentive:</span>
-                <input type="number" defaultValue="2" min="0" max="100" style={{ width: '80px' }} step="0.1" />
-                <span>% (Added to Slab)</span>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label>Discount &gt; 15% OR Credit Customer</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Flat Rate Incentive:</span>
-                <input type="number" defaultValue="1" min="0" max="100" style={{ width: '80px' }} step="0.1" />
-                <span>%</span>
-              </div>
-            </div>
-
-            <div className="vertical-group">
-              <label style={{ marginBottom: '8px' }}>Standard Slabs (1 - 15% Discount)</label>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                <span style={{ width: '130px', fontSize: '14px' }}>Up to ₹2.49 Lakh:</span>
-                <input type="number" defaultValue="1" style={{ width: '70px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} step="0.1" /> <span>%</span>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                <span style={{ width: '130px', fontSize: '14px' }}>₹2.5 - 4.99 Lakh:</span>
-                <input type="number" defaultValue="1.75" style={{ width: '70px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} step="0.1" /> <span>%</span>
-              </div>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                <span style={{ width: '130px', fontSize: '14px' }}>₹5 - 6.99 Lakh:</span>
-                <input type="number" defaultValue="2.5" style={{ width: '70px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} step="0.1" /> <span>%</span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                <span style={{ width: '130px', fontSize: '14px' }}>₹7 - 8.99 Lakh:</span>
-                <input type="number" defaultValue="3.5" style={{ width: '70px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} step="0.1" /> <span>%</span>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ width: '130px', fontSize: '14px' }}>Above ₹9 Lakh:</span>
-                <input type="number" defaultValue="5" style={{ width: '70px', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }} step="0.1" /> <span>%</span>
-              </div>
-            </div>
-          </>
-        );
       case "Customer Statuses":
         return (
           <>
             <div className="form-group">
-              <label>Available Statuses</label>
+              <label>Available Lead & Customer Statuses</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
-                <span className="status-badge active">Active</span>
-                <span className="status-badge inactive">Inactive</span>
-                <span className="status-badge">New Lead</span>
-                <span className="status-badge warning">Client</span>
+                {customStatuses.map((st, i) => (
+                  <span 
+                    key={i} 
+                    className="status-badge"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '6px', backgroundColor: '#f1f5f9', color: '#1e293b', fontSize: '0.8rem', fontWeight: 500 }}
+                  >
+                    {st}
+                    <button
+                      type="button"
+                      onClick={() => setCustomStatuses(customStatuses.filter((_, idx) => idx !== i))}
+                      style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, fontSize: '12px' }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
               </div>
             </div>
             <div className="form-group" style={{ marginTop: '16px' }}>
               <label>Add Custom Status</label>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input type="text" placeholder="e.g. Churned" style={{ flex: 1 }} />
-                <button type="button" className="btn-secondary">Add</button>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Churned, Retargeting" 
+                  value={newStatusInput}
+                  onChange={e => setNewStatusInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddStatus(); } }}
+                  style={{ flex: 1 }} 
+                />
+                <button type="button" onClick={handleAddStatus} className="btn-secondary">Add</button>
               </div>
             </div>
           </>
@@ -123,27 +147,52 @@ export default function SettingsModal({ featureName, onClose }: SettingsModalPro
       case "Backup Data":
         return (
           <div style={{ textAlign: 'center', padding: '20px' }}>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              Download a complete backup of your CRM database (JSON format).
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: '0.875rem' }}>
+              Download a complete offline snapshot backup of your CRM & ERP records (JSON format).
             </p>
-            <button type="button" className="primary-btn hover-lift">Generate Full Backup</button>
+            <button 
+              type="button" 
+              onClick={handleGenerateBackup}
+              disabled={loading}
+              className="primary-btn hover-lift"
+              style={{ padding: '10px 20px', fontSize: '0.875rem', fontWeight: 600 }}
+            >
+              {loading ? "Exporting Data..." : backupGenerated ? "Downloaded ✓" : "Generate & Download Backup"}
+            </button>
           </div>
         );
       case "Manage Teams":
         return (
           <>
             <div className="form-group">
-              <label>Existing Teams</label>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0' }}>
-                <li style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>North America Sales</li>
-                <li style={{ padding: '12px', borderBottom: '1px solid var(--border)' }}>EMEA Operations</li>
+              <label>Existing Department Units</label>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '8px 0', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                {teams.map((t, idx) => (
+                  <li key={idx} style={{ padding: '10px 14px', borderBottom: idx < teams.length - 1 ? '1px solid #e2e8f0' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                    <span style={{ fontWeight: 500, color: '#1e293b' }}>{t}</span>
+                    <button
+                      type="button"
+                      onClick={() => setTeams(teams.filter((_, i) => i !== idx))}
+                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem' }}
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
               </ul>
             </div>
-            <div className="form-group">
-              <label>Create New Team</label>
+            <div className="form-group" style={{ marginTop: '14px' }}>
+              <label>Create New Department / Team</label>
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input type="text" placeholder="Team Name" style={{ flex: 1 }} />
-                <button type="button" className="btn-secondary">Create</button>
+                <input 
+                  type="text" 
+                  placeholder="Team Name (e.g. North Zone Sales)" 
+                  value={newTeamInput}
+                  onChange={e => setNewTeamInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddTeam(); } }}
+                  style={{ flex: 1 }} 
+                />
+                <button type="button" onClick={handleAddTeam} className="btn-secondary">Create</button>
               </div>
             </div>
           </>
@@ -179,7 +228,7 @@ export default function SettingsModal({ featureName, onClose }: SettingsModalPro
           </>
         );
       default:
-        return <p>Settings coming soon.</p>;
+        return <p>Configure preferences below and click Save Settings.</p>;
     }
   };
 

@@ -664,6 +664,10 @@ export default function PurchaseBillScannerModal({
 
                 <button
                   type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
                   style={{
                     padding: "9px 20px",
                     borderRadius: "8px",

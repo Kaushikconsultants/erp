@@ -212,6 +212,7 @@ export default function ThemeSettingsModal({ onClose }: ThemeSettingsModalProps)
 
               <button
                 type="button"
+                disabled
                 style={{
                   padding: '7px 14px',
                   backgroundColor: themeColor,
@@ -222,7 +223,8 @@ export default function ThemeSettingsModal({ onClose }: ThemeSettingsModalProps)
                   fontSize: `${(currentSizeNum / 16) * 0.8}rem`,
                   boxShadow: `0 3px 8px ${themeColor}40`,
                   whiteSpace: 'nowrap',
-                  cursor: 'default'
+                  cursor: 'default',
+                  opacity: 1
                 }}
               >
                 Sample Button

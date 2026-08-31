@@ -311,9 +311,9 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
           </h1>
           <p style={{ margin: 0, color: '#64748b' }}>Graphical insights across all timeframes, states & agents</p>
         </div>
-        <button style={{ backgroundColor: '#fff', color: '#ef4444', border: '1px solid #ef4444', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <Link href="/reports" style={{ backgroundColor: '#fff', color: '#ef4444', border: '1px solid #ef4444', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', cursor: 'pointer' }}>
           <Crown size={18} /> Master Report (PDF)
-        </button>
+        </Link>
       </div>
 
       {/* ─── FILTERS (Client Component) ─── */}
@@ -558,9 +558,9 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
                 <TrendingUp size={18} color="#4f46e5" /> Sales Trend (Monthly)
               </h3>
-              <button style={{ backgroundColor: '#fff', border: '1px solid #cbd5e1', color: '#475569', padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+              <Link href="/reports" style={{ backgroundColor: '#fff', border: '1px solid #cbd5e1', color: '#475569', padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', cursor: 'pointer' }}>
                 Export
-              </button>
+              </Link>
             </div>
             <SalesTrendChart data={salesTrendData} />
           </div>
