@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from "react";
 import Link from "next/link";
 import {
@@ -148,8 +150,8 @@ export default function BankReconciliationClient({ bankAccounts, initialOverview
             <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary, #64748b)", display: "block", marginBottom: "4px" }}>
               STATEMENT AS OF DATE
             </label>
-            <input
-              type="date"
+            <DatePicker
+              
               value={statementDate}
               onChange={(e) => setStatementDate(e.target.value)}
               style={{ padding: "8px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}

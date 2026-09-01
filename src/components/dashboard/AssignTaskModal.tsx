@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from 'react';
 import { ClipboardList, X, Check, Calendar, AlertCircle, Plus, User } from 'lucide-react';
 import { createOrAssignTask } from '@/app/actions/taskActions';
@@ -319,8 +321,8 @@ export default function AssignTaskModal({
             <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
               Due Date
             </label>
-            <input
-              type="date"
+            <DatePicker
+              
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
               style={{

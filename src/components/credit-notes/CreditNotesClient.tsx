@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
@@ -631,8 +633,8 @@ export default function CreditNotesClient({
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
                       Credit Note Date
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      
                       value={cnDate}
                       onChange={(e) => setCnDate(e.target.value)}
                       required

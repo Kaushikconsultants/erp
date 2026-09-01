@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from "react";
 import Link from "next/link";
 import {
@@ -369,8 +371,8 @@ export default function DeliveryChallanClient({
                 </div>
                 <div>
                   <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Challan Date *</label>
-                  <input
-                    type="date"
+                  <DatePicker
+                    
                     value={challanDate}
                     onChange={(e) => setChallanDate(e.target.value)}
                     className="form-input"

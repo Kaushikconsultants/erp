@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from 'react';
 import { 
   Building2, 
@@ -516,8 +518,8 @@ export default function PlatformAdminClient({ initialData }: PlatformAdminClient
                   Subscription Expiry Date
                 </label>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input
-                    type="date"
+                  <DatePicker
+                    
                     value={tenantForm.currentPeriodEnd}
                     onChange={e => setTenantForm({ ...tenantForm, currentPeriodEnd: e.target.value })}
                     style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}

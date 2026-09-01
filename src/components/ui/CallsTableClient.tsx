@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from 'react';
 import { Pencil, Trash2, Eye, Calendar, FileText, PhoneCall, CheckCircle } from 'lucide-react';
 import { updateCall, deleteCall } from '@/app/actions/callActions';
@@ -240,8 +242,8 @@ export default function CallsTableClient({
                   Next Follow-up Date (12-Hour Clock)
                 </label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <input 
-                    type="date" 
+                  <DatePicker 
+                     
                     value={editFollowUpDate}
                     onChange={e => setEditFollowUpDate(e.target.value)}
                     style={{ flex: '1 1 130px', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}

@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { 
@@ -726,8 +728,8 @@ export default function EWayBillsClient({
                       <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
                         Document Date
                       </label>
-                      <input
-                        type="date"
+                      <DatePicker
+                        
                         value={docDate}
                         onChange={(e) => setDocDate(e.target.value)}
                         required

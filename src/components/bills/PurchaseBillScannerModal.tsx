@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useRef } from "react";
 import {
   X,
@@ -1085,8 +1087,8 @@ export default function PurchaseBillScannerModal({
                     <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       BILL DATE
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      
                       value={billDate}
                       onChange={e => setBillDate(e.target.value)}
                       style={{
@@ -1108,8 +1110,8 @@ export default function PurchaseBillScannerModal({
                     <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       DUE DATE
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      
                       value={dueDate}
                       onChange={e => setDueDate(e.target.value)}
                       style={{

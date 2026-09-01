@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
@@ -742,8 +744,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
 
             {/* Date Input Controls */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px', backgroundColor: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-              <input
-                type="date"
+              <DatePicker
+                
                 style={{
                   padding: '2px',
                   border: 'none',
@@ -757,8 +759,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 onChange={e => { setStartDate(e.target.value); setDatePreset('custom'); }}
               />
               <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>→</span>
-              <input
-                type="date"
+              <DatePicker
+                
                 style={{
                   padding: '2px',
                   border: 'none',
@@ -1207,8 +1209,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                       <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 500, color: 'var(--text-primary)', marginBottom: '3px' }}>
                         Payment Date *
                       </label>
-                      <input
-                        type="date"
+                      <DatePicker
+                        
                         required
                         className="form-input"
                         style={{

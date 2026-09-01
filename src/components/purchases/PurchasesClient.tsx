@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { createPurchaseOrder, updatePOStatus, receiveGRN } from "@/app/actions/purchaseActions";
@@ -1071,8 +1073,8 @@ export default function PurchasesClient({
                     <span>Expected Delivery Date</span>
                   </label>
                   <div style={{ position: "relative" }}>
-                    <input
-                      type="date"
+                    <DatePicker
+                      
                       value={expectedDate}
                       onChange={(e) => setExpectedDate(e.target.value)}
                       style={{

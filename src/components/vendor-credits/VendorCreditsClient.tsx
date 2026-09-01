@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
@@ -584,15 +586,15 @@ export default function VendorCreditsClient({
             ))}
 
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px', backgroundColor: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border)' }}>
-              <input
-                type="date"
+              <DatePicker
+                
                 style={{ border: 'none', background: 'transparent', fontSize: '0.78rem', color: 'var(--text-primary)', outline: 'none' }}
                 value={startDate}
                 onChange={e => { setStartDate(e.target.value); setDatePreset('custom'); }}
               />
               <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>→</span>
-              <input
-                type="date"
+              <DatePicker
+                
                 style={{ border: 'none', background: 'transparent', fontSize: '0.78rem', color: 'var(--text-primary)', outline: 'none' }}
                 value={endDate}
                 onChange={e => { setEndDate(e.target.value); setDatePreset('custom'); }}
@@ -886,8 +888,8 @@ export default function VendorCreditsClient({
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
                       Credit / Debit Note Date <span style={{ color: '#ef4444' }}>*</span>
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      
                       required
                       style={{ 
                         width: '100%', 

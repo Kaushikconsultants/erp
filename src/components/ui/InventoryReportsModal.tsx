@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useEffect } from 'react';
 import { getInventoryHistory } from '@/app/actions/inventoryActions';
 import * as XLSX from 'xlsx';
@@ -129,8 +131,8 @@ export default function InventoryReportsModal({ onClose }: InventoryReportsModal
           <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 150px' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '4px' }}>Start Date</label>
-              <input 
-                type="date" 
+              <DatePicker 
+                 
                 value={filters.startDate} 
                 onChange={e => setFilters({...filters, startDate: e.target.value})}
                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
@@ -138,8 +140,8 @@ export default function InventoryReportsModal({ onClose }: InventoryReportsModal
             </div>
             <div style={{ flex: '1 1 150px' }}>
               <label style={{ display: 'block', fontSize: '0.875rem', marginBottom: '4px' }}>End Date</label>
-              <input 
-                type="date" 
+              <DatePicker 
+                 
                 value={filters.endDate} 
                 onChange={e => setFilters({...filters, endDate: e.target.value})}
                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}

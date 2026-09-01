@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { logCall } from "@/app/actions/callActions";
@@ -566,8 +568,8 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
                 {/* Date and 12-Hour Time Inputs Row */}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", width: "100%" }}>
                   {/* Date input */}
-                  <input
-                    type="date"
+                  <DatePicker
+                    
                     value={followUpDate}
                     onChange={(e) => setFollowUpDate(e.target.value)}
                     style={{

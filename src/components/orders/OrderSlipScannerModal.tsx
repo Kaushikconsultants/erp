@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useRef } from "react";
 import {
   X,
@@ -450,8 +452,8 @@ export default function OrderSlipScannerModal({
                     <label style={{ display: "block", fontSize: "0.76rem", fontWeight: 700, color: "#334155", marginBottom: "5px" }}>
                       ORDER DATE
                     </label>
-                    <input
-                      type="date"
+                    <DatePicker
+                      
                       value={orderDate}
                       onChange={e => setOrderDate(e.target.value)}
                       style={{

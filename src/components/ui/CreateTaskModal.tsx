@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useEffect, useRef } from "react";
 import { createTask } from "@/app/actions/taskActions";
 import AddCustomerModal from "./AddCustomerModal";
@@ -170,7 +172,7 @@ export default function CreateTaskModal({ onClose, employees, customers: initial
             
             <div className="form-group">
               <label>Due Date</label>
-              <input type="date" name="dueDate" />
+              <DatePicker  name="dueDate" />
             </div>
 
             <div className="form-group">

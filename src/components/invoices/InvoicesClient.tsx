@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from "react";
 import Link from "next/link";
 import { 
@@ -794,9 +796,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                 </div>
                 <div className="vertical-group">
                   <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Payment Date</label>
-                  <input 
+                  <DatePicker 
                     name="paymentDate" 
-                    type="date" 
+                     
                     className="form-input" 
                     defaultValue={new Date().toISOString().split('T')[0]} 
                     style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
@@ -861,9 +863,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                 {/* Invoice Date */}
                 <div className="vertical-group">
                   <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Invoice Date *</label>
-                  <input
+                  <DatePicker
                     name="invoiceDate"
-                    type="date"
+                    
                     required
                     defaultValue={editModal.invoiceDate ? new Date(editModal.invoiceDate).toISOString().split('T')[0] : ''}
                     style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%' }}
@@ -873,9 +875,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                 {/* Due Date */}
                 <div className="vertical-group">
                   <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Due Date</label>
-                  <input
+                  <DatePicker
                     name="dueDate"
-                    type="date"
+                    
                     defaultValue={editModal.dueDate ? new Date(editModal.dueDate).toISOString().split('T')[0] : ''}
                     style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%' }}
                   />

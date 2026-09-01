@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useMemo } from 'react';
 import CheckInButton from '@/components/ui/CheckInButton';
 import { IncentiveResult, calculateIncentives, OrderData } from '@/lib/incentiveEngine';
@@ -99,8 +101,8 @@ function FollowUpCard({ call }: { call: any }) {
       
       {isEditing ? (
         <div style={{ display: 'flex', gap: '8px', marginTop: '10px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-          <input 
-            type="date" 
+          <DatePicker 
+             
             value={newDate} 
             onChange={(e) => setNewDate(e.target.value)}
             className="zoho-input-field" 

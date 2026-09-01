@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from "react";
 import { X, Plus, Trash2, Factory, Calendar, Package2, Layers, Cpu, Wrench, Leaf, AlertCircle } from "lucide-react";
 import { createWorkOrder } from "@/app/actions/productionActions";
@@ -224,11 +226,11 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
               <div>
                 <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Start Date</label>
-                <input type="date" value={plannedStart} onChange={e => setPlannedStart(e.target.value)} style={inputStyle} />
+                <DatePicker  value={plannedStart} onChange={e => setPlannedStart(e.target.value)} style={inputStyle} />
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Due Date</label>
-                <input type="date" value={plannedEnd} onChange={e => setPlannedEnd(e.target.value)} style={inputStyle} />
+                <DatePicker  value={plannedEnd} onChange={e => setPlannedEnd(e.target.value)} style={inputStyle} />
               </div>
             </div>
             <div>

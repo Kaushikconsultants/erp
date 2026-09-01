@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useRef } from "react";
 import { createBroadcast, AttachmentItem } from "@/app/actions/broadcastActions";
 import { 
@@ -537,8 +539,8 @@ export default function CreateBroadcastModal({ onClose, employees }: CreateBroad
 
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <label style={{ fontSize: "0.78rem", color: "#64748b" }}>Expires (Optional):</label>
-              <input
-                type="date"
+              <DatePicker
+                
                 value={expiresAt}
                 onChange={(e) => setExpiresAt(e.target.value)}
                 style={{ padding: "4px 8px", borderRadius: "4px", border: "1px solid #cbd5e1", fontSize: "0.8rem" }}

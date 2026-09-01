@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import DateRangeFilter from '@/components/ui/DateRangeFilter';
 import { 
   Calendar, 
   Edit, 
@@ -377,38 +378,12 @@ export default function OrderListClient({
         </div>
 
         {/* Interactive Date Range Filter */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: '#f8fafc', padding: '4px 8px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-          <Calendar size={13} style={{ color: '#94a3b8' }} />
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            title="Start Date"
-            style={{
-              border: 'none',
-              backgroundColor: 'transparent',
-              fontSize: '0.78rem',
-              color: '#334155',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-          <span style={{ color: '#cbd5e1' }}>-</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            title="End Date"
-            style={{
-              border: 'none',
-              backgroundColor: 'transparent',
-              fontSize: '0.78rem',
-              color: '#334155',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          />
-        </div>
+        <DateRangeFilter
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+        />
 
         {/* Reset Filter Button */}
         {(searchQuery || selectedAgent !== 'All Agents' || selectedPayment !== 'All Payment Types' || startDate || endDate || activeTab !== 'All') && (

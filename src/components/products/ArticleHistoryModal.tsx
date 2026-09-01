@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import {
@@ -1151,16 +1153,16 @@ export default function ArticleHistoryModal({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#ffffff', padding: '4px 10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                     <Calendar size={14} color="#64748b" />
-                    <input
-                      type="date"
+                    <DatePicker
+                      
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
                       style={{ border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#1e293b' }}
                       title="Start Date"
                     />
                     <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>to</span>
-                    <input
-                      type="date"
+                    <DatePicker
+                      
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
                       style={{ border: 'none', background: 'transparent', fontSize: '0.8rem', outline: 'none', color: '#1e293b' }}

@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from 'react';
 import { 
   CalendarRange, 
@@ -160,8 +162,8 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
                   Start Date *
                 </label>
-                <input 
-                  type="date" 
+                <DatePicker 
+                   
                   name="startDate" 
                   required 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc', outline: 'none' }} 
@@ -171,8 +173,8 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
                   End Date *
                 </label>
-                <input 
-                  type="date" 
+                <DatePicker 
+                   
                   name="endDate" 
                   required 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc', outline: 'none' }} 

@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from "react";
 import { 
   submitExpense, 
@@ -940,9 +942,9 @@ export default function ExpensesClient({
                   <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155", display: "block" }}>
                     Expense Date <span style={{ color: "#dc2626" }}>*</span>
                   </label>
-                  <input 
+                  <DatePicker 
                     name="date" 
-                    type="date" 
+                     
                     required 
                     defaultValue={formatDateForInput(new Date())}
                     style={{
@@ -1203,9 +1205,9 @@ export default function ExpensesClient({
                   <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155", display: "block" }}>
                     Expense Date <span style={{ color: "#dc2626" }}>*</span>
                   </label>
-                  <input 
+                  <DatePicker 
                     name="date" 
-                    type="date" 
+                     
                     required 
                     defaultValue={formatDateForInput(editExpenseData.date)}
                     style={{

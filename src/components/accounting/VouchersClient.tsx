@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from "react";
 import {
   FileText,
@@ -445,8 +447,8 @@ export default function VouchersClient({ vouchers, initialVouchers, ledgers }: P
                 </div>
                 <div>
                   <label style={{ fontSize: "0.85rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>Voucher Date *</label>
-                  <input
-                    type="date"
+                  <DatePicker
+                    
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
                     style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.875rem", backgroundColor: "#f8fafc", outline: "none" }}

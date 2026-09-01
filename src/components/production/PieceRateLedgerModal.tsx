@@ -1,5 +1,7 @@
 "use client";
 
+import DatePicker from '@/components/ui/DatePicker';
+
 import React, { useState } from "react";
 import { X, Users, Plus, CheckCircle2, Clock, TrendingUp, IndianRupee } from "lucide-react";
 import { logWorkerPieceRate } from "@/app/actions/productionActions";
@@ -146,7 +148,7 @@ export default function PieceRateLedgerModal({ workOrder, employees, onClose, on
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "0.7rem", fontWeight: 700, color: "#334155", marginBottom: "3px" }}>LOG DATE</label>
-                <input type="date" value={logDate} onChange={e => setLogDate(e.target.value)} style={inputStyle} />
+                <DatePicker  value={logDate} onChange={e => setLogDate(e.target.value)} style={inputStyle} />
               </div>
             </div>
 
