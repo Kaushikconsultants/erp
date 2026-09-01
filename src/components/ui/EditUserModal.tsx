@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { updateUser } from "@/app/actions/userActions";
-import { KeyRound, Eye, EyeOff, Sparkles, ShieldCheck, RotateCcw } from "lucide-react";
+import { KeyRound, Eye, EyeOff, Sparkles, ShieldCheck, RotateCcw, Trash2, UserX, UserCheck } from "lucide-react";
 import "./modal.css";
 
 interface User {
@@ -13,11 +13,13 @@ interface User {
   isActive: boolean;
   canManageSettings: boolean;
   allowedSections?: string | null;
+  createdAt?: Date;
 }
 
 interface EditUserModalProps {
   user: User;
   onClose: (updatedUser?: Partial<User> & { id: string }) => void;
+  onDeleteRequest?: (user: User) => void;
 }
 
 const ALL_SECTIONS = [
@@ -84,7 +86,7 @@ const parseAllowedSections = (raw: string | null | undefined, userRole: string):
   return getDefaultSectionsForRole(userRole);
 };
 
-export default function EditUserModal({ user, onClose }: EditUserModalProps) {
+export default function EditUserModal({ user, onClose, onDeleteRequest }: EditUserModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedRole, setSelectedRole] = useState(user.role || "SALES");
@@ -408,34 +410,75 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
           </div>
 
           {/* PERMISSIONS & STATUS TOGGLES */}
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <input 
-                type="checkbox" 
-                checked={canManageSettings}
-                onChange={(e) => setCanManageSettings(e.target.checked)}
-                style={{ accentColor: 'var(--accent-primary, #4f46e5)', width: '16px', height: '16px' }}
-              />
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>Can Manage System Settings</span>
-            </label>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
               <input 
                 type="checkbox" 
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                style={{ accentColor: '#16a34a', width: '16px', height: '16px' }}
+                style={{ accentColor: '#16a34a', width: '18px', height: '18px' }}
               />
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#16a34a' }}>Account Active</span>
+              <div>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: isActive ? '#166534' : '#991b1b', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  {isActive ? <UserCheck size={16} /> : <UserX size={16} />}
+                  Account Status: {isActive ? 'Active (Login Allowed)' : 'Deactivated (Login Blocked)'}
+                </span>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                  {isActive ? 'User has active access to log in and access allowed sections.' : 'User is blocked from signing in. All user records and logs are preserved.'}
+                </p>
+              </div>
             </label>
+
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={canManageSettings}
+                  onChange={(e) => setCanManageSettings(e.target.checked)}
+                  style={{ accentColor: 'var(--accent-primary, #4f46e5)', width: '18px', height: '18px' }}
+                />
+                <div>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#1e293b' }}>
+                    Can Manage System Settings
+                  </span>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Allow this user to configure organization settings, roles, security, and territories.
+                  </p>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
 
-        <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px', flexShrink: 0 }}>
-          <button type="button" onClick={() => onClose()} style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600, color: '#475569', fontSize: '0.875rem' }}>Cancel</button>
-          <button type="submit" disabled={loading} className="primary-btn" style={{ padding: '9px 20px', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 700 }}>
-            {loading ? "Saving Settings..." : "Save Role, Password & Permissions"}
-          </button>
+        <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap', gap: '12px' }}>
+          {onDeleteRequest ? (
+            <button
+              type="button"
+              onClick={() => onDeleteRequest(user)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: '1px solid #fecaca',
+                backgroundColor: '#fef2f2',
+                color: '#dc2626',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              <Trash2 size={14} /> Delete User
+            </button>
+          ) : <div />}
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button type="button" onClick={() => onClose()} style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600, color: '#475569', fontSize: '0.875rem' }}>Cancel</button>
+            <button type="submit" disabled={loading} className="primary-btn" style={{ padding: '9px 20px', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 700 }}>
+              {loading ? "Saving Settings..." : "Save Role, Password & Permissions"}
+            </button>
+          </div>
         </div>
       </form>
     </div>

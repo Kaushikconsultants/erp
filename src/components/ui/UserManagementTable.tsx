@@ -4,7 +4,18 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import EditUserModal from "./EditUserModal";
 import ChangePasswordModal from "./ChangePasswordModal";
-import { KeyRound, ShieldCheck } from "lucide-react";
+import { toggleUserStatus, deleteUser } from "@/app/actions/userActions";
+import { 
+  KeyRound, 
+  ShieldCheck, 
+  UserX, 
+  UserCheck, 
+  Trash2, 
+  AlertTriangle, 
+  Loader2, 
+  X,
+  AlertCircle
+} from "lucide-react";
 
 interface User {
   id: string;
@@ -21,6 +32,10 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [passwordUser, setPasswordUser] = useState<User | null>(null);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
   // Sync state if initialUsers changes from server
@@ -34,6 +49,47 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
     }
     setEditingUser(null);
     router.refresh();
+  };
+
+  const handleToggleStatus = async (user: User) => {
+    setLoadingUserId(user.id);
+    setErrorMessage(null);
+    try {
+      const res = await toggleUserStatus(user.id);
+      if (res.error) {
+        setErrorMessage(res.error);
+      } else if (res.success) {
+        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive: res.isActive ?? !u.isActive } : u));
+        router.refresh();
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || "Failed to update user status");
+    } finally {
+      setLoadingUserId(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingUser) return;
+    setIsDeleting(true);
+    setErrorMessage(null);
+    try {
+      const res = await deleteUser(deletingUser.id);
+      if (res.error) {
+        setErrorMessage(res.error);
+      } else if (res.success) {
+        setUsers(prev => prev.filter(u => u.id !== deletingUser.id));
+        setDeletingUser(null);
+        if (editingUser?.id === deletingUser.id) {
+          setEditingUser(null);
+        }
+        router.refresh();
+      }
+    } catch (e: any) {
+      setErrorMessage(e.message || "Failed to delete user");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const getRoleBadgeStyle = (role: string) => {
@@ -86,6 +142,36 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
 
   return (
     <div className="table-responsive">
+      {errorMessage && (
+        <div 
+          style={{
+            marginBottom: '14px',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#b91c1c',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: '0.85rem',
+            fontWeight: 600
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={16} />
+            <span>{errorMessage}</span>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setErrorMessage(null)} 
+            style={{ background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer' }}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <table className="data-table">
         <thead>
           <tr>
@@ -101,8 +187,10 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
         <tbody>
           {users.map(user => {
             const badge = getRoleBadgeStyle(user.role);
+            const isLoading = loadingUserId === user.id;
+
             return (
-              <tr key={user.id}>
+              <tr key={user.id} style={{ opacity: user.isActive ? 1 : 0.75 }}>
                 <td>
                   <strong>{user.name}</strong>
                   {user.canManageSettings && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#64748b' }} title="Can manage settings">⚙️</span>}
@@ -130,28 +218,31 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
                 </td>
                 <td>
                   <span className={`status-badge ${user.isActive ? 'active' : 'inactive'}`}>
-                    {user.isActive ? 'Active' : 'Inactive'}
+                    {user.isActive ? '• Active' : '• Deactivated'}
                   </span>
                 </td>
                 <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                 <td style={{ textAlign: 'center' }}>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Edit Role & Access */}
                     <button 
                       className="action-btn text-blue"
                       onClick={() => setEditingUser(user)}
-                      style={{ fontWeight: 600, cursor: 'pointer', padding: '6px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      style={{ fontWeight: 600, cursor: 'pointer', padding: '5px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      title="Edit Role & Section Access"
                     >
-                      <ShieldCheck size={14} /> Edit Role & Access
+                      <ShieldCheck size={13} /> Edit Role & Access
                     </button>
 
+                    {/* Change Password */}
                     <button 
                       className="action-btn"
                       onClick={() => setPasswordUser(user)}
                       style={{ 
                         fontWeight: 600, 
                         cursor: 'pointer', 
-                        padding: '6px 12px', 
-                        fontSize: '0.8rem', 
+                        padding: '5px 10px', 
+                        fontSize: '0.78rem', 
                         backgroundColor: 'var(--accent-light, #ede9fe)', 
                         color: 'var(--accent-primary, #4f46e5)', 
                         border: '1px solid var(--accent-light, #ddd6fe)',
@@ -160,9 +251,66 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
                         alignItems: 'center',
                         gap: '4px'
                       }}
-                      title="View & Change User Password"
+                      title="Change User Password"
                     >
-                      <KeyRound size={14} /> Change Password
+                      <KeyRound size={13} /> Change Password
+                    </button>
+
+                    {/* Deactivate / Activate Button */}
+                    <button
+                      type="button"
+                      disabled={isLoading}
+                      onClick={() => handleToggleStatus(user)}
+                      style={{
+                        fontWeight: 600,
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        padding: '5px 10px',
+                        fontSize: '0.78rem',
+                        backgroundColor: user.isActive ? '#fff7ed' : '#f0fdf4',
+                        color: user.isActive ? '#c2410c' : '#15803d',
+                        border: user.isActive ? '1px solid #fed7aa' : '1px solid #86efac',
+                        borderRadius: '6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title={user.isActive ? "Deactivate user account (block login)" : "Activate user account (allow login)"}
+                    >
+                      {isLoading ? (
+                        <Loader2 size={13} className="animate-spin" />
+                      ) : user.isActive ? (
+                        <>
+                          <UserX size={13} /> Deactivate
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck size={13} /> Activate
+                        </>
+                      )}
+                    </button>
+
+                    {/* Delete User Button */}
+                    <button
+                      type="button"
+                      onClick={() => setDeletingUser(user)}
+                      style={{
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: '5px 8px',
+                        fontSize: '0.78rem',
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        border: '1px solid #fecaca',
+                        borderRadius: '6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title="Permanently delete user"
+                    >
+                      <Trash2 size={13} />
                     </button>
                   </div>
                 </td>
@@ -179,12 +327,149 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
         </tbody>
       </table>
 
+      {/* Edit Role & Permissions Modal */}
       {editingUser && (
-        <EditUserModal user={editingUser} onClose={handleEditModalClose} />
+        <EditUserModal 
+          user={editingUser} 
+          onClose={handleEditModalClose}
+          onDeleteRequest={(u) => {
+            const foundUser = users.find(x => x.id === u.id) || editingUser;
+            setEditingUser(null);
+            setDeletingUser(foundUser);
+          }}
+        />
       )}
 
+      {/* Change Password Modal */}
       {passwordUser && (
         <ChangePasswordModal user={passwordUser} onClose={() => setPasswordUser(null)} />
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {deletingUser && (
+        <div 
+          className="modal-backdrop" 
+          onClick={(e) => { if (e.target === e.currentTarget && !isDeleting) setDeletingUser(null); }}
+          style={{ 
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 999999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px 16px'
+          }}
+        >
+          <div 
+            className="animate-in" 
+            style={{ 
+              maxWidth: '460px', 
+              width: '100%', 
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #fee2e2',
+              boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.25)',
+              overflow: 'hidden'
+            }}
+          >
+            <div style={{ padding: '24px', textAlign: 'center' }}>
+              <div 
+                style={{ 
+                  width: '52px', 
+                  height: '52px', 
+                  borderRadius: '50%', 
+                  backgroundColor: '#fee2e2', 
+                  color: '#dc2626',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  margin: '0 auto 16px'
+                }}
+              >
+                <AlertTriangle size={28} />
+              </div>
+
+              <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>
+                Delete User Account?
+              </h3>
+
+              <p style={{ margin: '0 0 16px 0', fontSize: '0.875rem', color: '#64748b', lineHeight: 1.5 }}>
+                Are you sure you want to permanently delete <strong>{deletingUser.name}</strong> (<span style={{ color: '#475569' }}>{deletingUser.email}</span>)?
+              </p>
+
+              <div 
+                style={{ 
+                  padding: '12px', 
+                  borderRadius: '8px', 
+                  backgroundColor: '#fff7ed', 
+                  border: '1px solid #fed7aa',
+                  fontSize: '0.8rem',
+                  color: '#9a3412',
+                  textAlign: 'left',
+                  lineHeight: 1.4,
+                  marginBottom: '20px'
+                }}
+              >
+                ⚠️ <strong>Warning:</strong> This will delete their login credentials, employee profile, and unassign any associated tasks or customer accounts. This action <strong>cannot be undone</strong>.
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeletingUser(null)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#475569',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    cursor: isDeleting ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleConfirmDelete}
+                  style={{
+                    flex: 1,
+                    padding: '10px 16px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: '#dc2626',
+                    color: '#ffffff',
+                    fontSize: '0.875rem',
+                    fontWeight: 700,
+                    cursor: isDeleting ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+                  }}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={16} /> Yes, Delete User
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

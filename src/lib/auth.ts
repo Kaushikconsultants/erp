@@ -43,6 +43,10 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        if (user.isActive === false) {
+          throw new Error("Your account has been deactivated. Please contact your system administrator.");
+        }
+
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isPasswordValid) {
