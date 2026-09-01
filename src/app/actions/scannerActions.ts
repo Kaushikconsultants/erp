@@ -13,16 +13,44 @@ export async function lookupBarcode(rawCode: string) {
   const code = rawCode.trim();
 
   try {
-    // 1. Try matching Product by SKU or Article Number or ID
-    const product = await prisma.product.findFirst({
+    // 1. Try matching Product by exact SKU, Article Number, ID, Name or HSN
+    let product = await prisma.product.findFirst({
       where: {
         OR: [
           { sku: { equals: code, mode: "insensitive" } },
           { articleNumber: { equals: code, mode: "insensitive" } },
+          { name: { equals: code, mode: "insensitive" } },
+          { hsnCode: { equals: code, mode: "insensitive" } },
           { id: code }
         ]
       }
     });
+
+    // 1.1 Try matching Product Batch by Batch / Barcode Number
+    if (!product) {
+      const batch = await prisma.productBatch.findFirst({
+        where: {
+          batchNumber: { equals: code, mode: "insensitive" }
+        },
+        include: { product: true }
+      });
+      if (batch && batch.product) {
+        product = batch.product;
+      }
+    }
+
+    // 1.2 Try partial contains match on SKU or Article Number or Name
+    if (!product) {
+      product = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { sku: { contains: code, mode: "insensitive" } },
+            { articleNumber: { contains: code, mode: "insensitive" } },
+            { name: { contains: code, mode: "insensitive" } }
+          ]
+        }
+      });
+    }
 
     if (product) {
       return {
@@ -30,14 +58,16 @@ export async function lookupBarcode(rawCode: string) {
         product: {
           id: product.id,
           name: product.name,
-          sku: product.sku || "",
-          articleNumber: product.articleNumber || "",
+          sku: product.sku || product.articleNumber || "",
+          articleNumber: product.articleNumber || product.sku || "",
           category: product.category,
           stockQuantity: product.stockQuantity,
           minimumStock: product.minimumStock,
           sellingPrice: product.sellingPrice,
           mrp: product.mrp,
-          hsnCode: product.hsnCode || ""
+          hsnCode: product.hsnCode || "6109",
+          weight: product.weight || 0,
+          description: product.description || ""
         }
       };
     }
@@ -88,7 +118,11 @@ export async function lookupBarcode(rawCode: string) {
       };
     }
 
-    return { error: `No product or order found matching code: "${code}"` };
+    return {
+      type: "RAW" as const,
+      code: code,
+      error: `No product or order found matching code: "${code}"`
+    };
   } catch (error) {
     console.error("Lookup barcode error:", error);
     return { error: "Failed to query database for barcode." };

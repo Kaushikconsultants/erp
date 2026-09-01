@@ -12,6 +12,8 @@ import { Smartphone, X, CheckCircle, Copy, Check, Radio, Sparkles } from "lucide
 interface MobileConnectModalProps {
   mode?: "INVENTORY" | "PACKING";
   orderId?: string;
+  sessionCode?: string;
+  onSessionCreated?: (code: string) => void;
   onScan: (code: string) => void;
   onClose: () => void;
 }
@@ -19,10 +21,12 @@ interface MobileConnectModalProps {
 export default function MobileConnectModal({
   mode = "INVENTORY",
   orderId,
+  sessionCode: initialSessionCode,
+  onSessionCreated,
   onScan,
   onClose
 }: MobileConnectModalProps) {
-  const [sessionCode, setSessionCode] = useState<string | null>(null);
+  const [sessionCode, setSessionCode] = useState<string | null>(initialSessionCode || null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [scanUrl, setScanUrl] = useState<string>("");
   const [status, setStatus] = useState<"ACTIVE" | "CONNECTED" | "COMPLETED">("ACTIVE");
@@ -30,37 +34,45 @@ export default function MobileConnectModal({
   const [copied, setCopied] = useState(false);
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const activeSessionRef = useRef<string | null>(null);
   const onScanRef = useRef(onScan);
 
   useEffect(() => {
     onScanRef.current = onScan;
   }, [onScan]);
 
+  const generateQRCode = async (code: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const targetUrl = `${origin}/scan?session=${code}`;
+    setScanUrl(targetUrl);
+
+    try {
+      const url = await QRCode.toDataURL(targetUrl, {
+        width: 220,
+        margin: 1,
+        color: { dark: "#1e1b4b", light: "#ffffff" }
+      });
+      setQrDataUrl(url);
+    } catch (e) {
+      console.error("QR Code error:", e);
+    }
+  };
+
   // Initialize Session
   useEffect(() => {
     let unmounted = false;
 
     async function initSession() {
+      if (initialSessionCode) {
+        setSessionCode(initialSessionCode);
+        generateQRCode(initialSessionCode);
+        return;
+      }
+
       const res = await createMobileScanSession(mode, orderId);
       if (res.success && res.sessionCode && !unmounted) {
         setSessionCode(res.sessionCode);
-        activeSessionRef.current = res.sessionCode;
-
-        const origin = window.location.origin;
-        const targetUrl = `${origin}/scan?session=${res.sessionCode}`;
-        setScanUrl(targetUrl);
-
-        try {
-          const url = await QRCode.toDataURL(targetUrl, {
-            width: 200,
-            margin: 1,
-            color: { dark: "#1e1b4b", light: "#ffffff" }
-          });
-          if (!unmounted) setQrDataUrl(url);
-        } catch (e) {
-          console.error("QR Code error:", e);
-        }
+        if (onSessionCreated) onSessionCreated(res.sessionCode);
+        generateQRCode(res.sessionCode);
       }
     }
 
@@ -70,26 +82,37 @@ export default function MobileConnectModal({
       unmounted = true;
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
-  }, [mode, orderId]);
+  }, [initialSessionCode, mode, orderId]);
+
+  const handleGenerateNew = async () => {
+    const res = await createMobileScanSession(mode, orderId);
+    if (res.success && res.sessionCode) {
+      setSessionCode(res.sessionCode);
+      if (onSessionCreated) onSessionCreated(res.sessionCode);
+      generateQRCode(res.sessionCode);
+    }
+  };
 
   // Polling listener for live mobile scans
   useEffect(() => {
     if (!sessionCode) return;
 
     pollIntervalRef.current = setInterval(async () => {
-      const res = await getMobileScanUpdate(sessionCode);
-      if (res.success) {
-        if (res.status === "CONNECTED") {
+      try {
+        const res = await fetch(`/api/scanner?session=${encodeURIComponent(sessionCode)}`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status === "CONNECTED") {
           setStatus("CONNECTED");
         }
-
-        if (res.scannedCode) {
-          setLastReceivedCode(res.scannedCode);
+        if (data.scannedCode) {
+          const code = String(data.scannedCode).trim();
+          setLastReceivedCode(code);
           playSuccessSound();
-          onScanRef.current(res.scannedCode);
+          onScanRef.current(code);
         }
-      }
-    }, 1000);
+      } catch (e) {}
+    }, 700);
 
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
@@ -231,26 +254,49 @@ export default function MobileConnectModal({
                 </strong>
               </div>
 
-              <button
-                type="button"
-                onClick={handleCopy}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  padding: "6px 12px",
-                  borderRadius: "6px",
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  color: "#334155"
-                }}
-              >
-                {copied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                {copied ? "Copied Link" : "Copy Link"}
-              </button>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  type="button"
+                  onClick={handleGenerateNew}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "6px 10px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    background: "#fff",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#475569"
+                  }}
+                  title="Generate a new pairing code"
+                >
+                  New Code
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1",
+                    background: "#fff",
+                    fontSize: "0.8rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#334155"
+                  }}
+                >
+                  {copied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                  {copied ? "Copied Link" : "Copy Link"}
+                </button>
+              </div>
             </div>
           )}
 

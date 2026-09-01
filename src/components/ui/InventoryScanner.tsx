@@ -19,7 +19,8 @@ import {
   Package,
   Layers,
   ArrowRight,
-  Smartphone
+  Smartphone,
+  Radio
 } from "lucide-react";
 
 interface ScanHistoryItem {
@@ -42,8 +43,61 @@ export default function InventoryScanner() {
   const [previewProduct, setPreviewProduct] = useState<any>(null);
   const [printModalProduct, setPrintModalProduct] = useState<any>(null);
   const [history, setHistory] = useState<ScanHistoryItem[]>([]);
+  const [sessionCode, setSessionCode] = useState<string>("");
+  const [isPhoneConnected, setIsPhoneConnected] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize or load sessionCode
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("crm_scanner_session");
+      if (saved && saved.startsWith("SC-")) {
+        setSessionCode(saved);
+      } else {
+        const newCode = `SC-${Math.floor(1000 + Math.random() * 9000)}`;
+        setSessionCode(newCode);
+        localStorage.setItem("crm_scanner_session", newCode);
+      }
+    } catch (e) {
+      const newCode = `SC-${Math.floor(1000 + Math.random() * 9000)}`;
+      setSessionCode(newCode);
+    }
+  }, []);
+
+  // Continuous background poller that listens to phone scans even when modal is closed
+  useEffect(() => {
+    if (!sessionCode) return;
+
+    let isCancelled = false;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/scanner?session=${encodeURIComponent(sessionCode)}`, {
+          cache: "no-store"
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isCancelled) return;
+
+        if (data.status === "CONNECTED") {
+          setIsPhoneConnected(true);
+        }
+
+        if (data.scannedCode) {
+          const code = String(data.scannedCode).trim();
+          setSku(code);
+          handleLookup(code);
+          handleScan("IN", code);
+        }
+      } catch (e) {}
+    }, 700);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [sessionCode]);
 
   // Auto-focus scanner input
   useEffect(() => {
@@ -131,9 +185,45 @@ export default function InventoryScanner() {
   return (
     <div className="glass-panel" style={{ padding: "24px", marginBottom: "24px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
-        <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px", color: "var(--text-primary)" }}>
-          <ScanBarcode className="text-indigo-600" /> Fast Barcode & QR Scanner
-        </h3>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px", color: "var(--text-primary)" }}>
+            <ScanBarcode className="text-indigo-600" /> Fast Barcode & QR Scanner
+          </h3>
+
+          {sessionCode && (
+            <button
+              type="button"
+              onClick={() => setShowMobileModal(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "3px 10px",
+                borderRadius: "12px",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                background: isPhoneConnected ? "#dcfce7" : "#f1f5f9",
+                color: isPhoneConnected ? "#15803d" : "#475569",
+                border: isPhoneConnected ? "1px solid #86efac" : "1px solid #cbd5e1",
+                cursor: "pointer"
+              }}
+              title="Click to view QR code or change pairing"
+            >
+              {isPhoneConnected ? (
+                <>
+                  <Radio size={12} className="animate-pulse" style={{ color: "#22c55e" }} />
+                  <span>Phone Paired ({sessionCode})</span>
+                </>
+              ) : (
+                <>
+                  <Smartphone size={12} />
+                  <span>Pair Phone ({sessionCode})</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
+
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <button
             type="button"
@@ -391,6 +481,11 @@ export default function InventoryScanner() {
       {showMobileModal && (
         <MobileConnectModal
           mode="INVENTORY"
+          sessionCode={sessionCode}
+          onSessionCreated={(code) => {
+            setSessionCode(code);
+            try { localStorage.setItem("crm_scanner_session", code); } catch (e) {}
+          }}
           onScan={(code) => {
             setSku(code);
             handleLookup(code);

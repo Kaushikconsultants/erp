@@ -433,7 +433,31 @@ export default function CreateQuotationForm({ customers, products, employees, ca
         }
       }
     } else {
-      alert(`No product found matching barcode "${code}"`);
+      // If product not found in database, still add a customized line item with the scanned code
+      const emptyIndex = items.findIndex((i: any) => !i.productId && !i.productName);
+      const customItem = {
+        productId: '',
+        productName: `Scanned Item (${code})`,
+        sku: code,
+        description: `Barcode: ${code}`,
+        hsnCode: '6109',
+        quantity: 1,
+        rate: 0,
+        unitWeight: 0.25,
+        discountType: 'percent',
+        discountPercent: 0,
+        discountAmount: 0,
+        gstRate: 5,
+        availableStock: 0
+      };
+
+      if (emptyIndex !== -1) {
+        const newItems = [...items];
+        newItems[emptyIndex] = customItem;
+        setItems(newItems);
+      } else {
+        setItems([...items, customItem]);
+      }
     }
   };
 

@@ -59,6 +59,21 @@ function MobileScanClient() {
     let isMounted = true;
 
     async function sendPing() {
+      try {
+        const fetchRes = await fetch('/api/scanner', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionCode: sessionCode.trim().toUpperCase(), ping: true })
+        });
+        if (fetchRes.ok) {
+          if (isMounted) {
+            setIsPaired(true);
+            setPingFails(0);
+          }
+          return;
+        }
+      } catch (e) {}
+
       const res = await pingMobileConnect(sessionCode);
       if (isMounted) {
         if (res.success) {
@@ -76,7 +91,7 @@ function MobileScanClient() {
     }
 
     sendPing();
-    const interval = setInterval(sendPing, 4000);
+    const interval = setInterval(sendPing, 3000);
 
     return () => {
       isMounted = false;
@@ -99,17 +114,31 @@ function MobileScanClient() {
     if (sessionCode.trim()) {
       // Transmit to desktop session
       setSending(true);
-      let res = await pushMobileScan(sessionCode.trim(), cleanCode);
+      let transmitted = false;
 
-      // If push failed (e.g. session was briefly missing), retry once after 800ms
-      if (!res.success) {
-        await new Promise(r => setTimeout(r, 800));
-        res = await pushMobileScan(sessionCode.trim(), cleanCode);
+      try {
+        const fetchRes = await fetch('/api/scanner', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionCode: sessionCode.trim().toUpperCase(), code: cleanCode })
+        });
+        if (fetchRes.ok) {
+          transmitted = true;
+        }
+      } catch (e) {}
+
+      if (!transmitted) {
+        let res = await pushMobileScan(sessionCode.trim(), cleanCode);
+        if (!res.success) {
+          await new Promise(r => setTimeout(r, 600));
+          res = await pushMobileScan(sessionCode.trim(), cleanCode);
+        }
+        transmitted = !!res.success;
       }
 
-      if (res.success) {
+      if (transmitted) {
         playSuccessSound();
-        setIsPaired(true); // confirm we're still paired after a successful push
+        setIsPaired(true);
         const newEntry = {
           code: cleanCode,
           time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
@@ -123,7 +152,7 @@ function MobileScanClient() {
         playErrorSound();
         setStatusMessage({
           type: "error",
-          text: "Could not reach desktop. Please ensure the quotation form is still open."
+          text: "Could not reach desktop. Please check connection."
         });
       }
       setSending(false);

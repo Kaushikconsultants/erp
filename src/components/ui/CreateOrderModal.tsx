@@ -74,7 +74,13 @@ export default function CreateOrderModal({ onClose, customers: initialCustomers,
     if (!matched) {
       const res = await lookupBarcode(code);
       if (res.type === "PRODUCT" && res.product) {
-        matched = products.find((p) => p.id === res.product?.id);
+        matched = products.find((p) => p.id === res.product?.id) || {
+          id: res.product.id,
+          name: res.product.name,
+          price: res.product.sellingPrice || res.product.mrp || 0,
+          sku: res.product.sku,
+          articleNumber: res.product.articleNumber
+        };
       }
     }
 
@@ -86,7 +92,7 @@ export default function CreateOrderModal({ onClose, customers: initialCustomers,
         setQuantity(1);
       }
     } else {
-      alert(`No product found matching barcode "${code}"`);
+      alert(`No product found matching barcode "${code}" in database.`);
     }
   };
 

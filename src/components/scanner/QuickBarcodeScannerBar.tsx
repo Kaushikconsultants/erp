@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { ScanBarcode, Camera, Smartphone, X, Sparkles } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { ScanBarcode, Camera, Smartphone, Sparkles, Radio, CheckCircle2 } from "lucide-react";
 import CameraScanner from "./CameraScanner";
 import MobileConnectModal from "./MobileConnectModal";
 import { playSuccessSound } from "@/lib/soundUtils";
@@ -23,8 +23,68 @@ export default function QuickBarcodeScannerBar({
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [lastScanned, setLastScanned] = useState<string | null>(null);
+  const [sessionCode, setSessionCode] = useState<string>("");
+  const [isPhoneConnected, setIsPhoneConnected] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const onScanRef = useRef(onScan);
+
+  useEffect(() => {
+    onScanRef.current = onScan;
+  }, [onScan]);
+
+  // Load existing session code from localStorage or initialize
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("crm_scanner_session");
+      if (saved && saved.startsWith("SC-")) {
+        setSessionCode(saved);
+      } else {
+        const newCode = `SC-${Math.floor(1000 + Math.random() * 9000)}`;
+        setSessionCode(newCode);
+        localStorage.setItem("crm_scanner_session", newCode);
+      }
+    } catch (e) {
+      const newCode = `SC-${Math.floor(1000 + Math.random() * 9000)}`;
+      setSessionCode(newCode);
+    }
+  }, []);
+
+  // Continuous background poller that keeps listening even when the connect modal is closed!
+  useEffect(() => {
+    if (!sessionCode) return;
+
+    let isCancelled = false;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/scanner?session=${encodeURIComponent(sessionCode)}`, {
+          cache: "no-store"
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isCancelled) return;
+
+        if (data.status === "CONNECTED") {
+          setIsPhoneConnected(true);
+        }
+
+        if (data.scannedCode) {
+          const code = String(data.scannedCode).trim();
+          setLastScanned(code);
+          playSuccessSound();
+          onScanRef.current(code);
+        }
+      } catch (e) {
+        // network silent retry
+      }
+    }, 700);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [sessionCode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +94,6 @@ export default function QuickBarcodeScannerBar({
       playSuccessSound();
       onScan(code);
       setInputValue("");
-      // Keep focus on input for fast rapid barcode gun scanning
       inputRef.current?.focus();
     }
   };
@@ -53,6 +112,13 @@ export default function QuickBarcodeScannerBar({
       playSuccessSound();
       onScan(code.trim());
     }
+  };
+
+  const handleSessionCreated = (code: string) => {
+    setSessionCode(code);
+    try {
+      localStorage.setItem("crm_scanner_session", code);
+    } catch (e) {}
   };
 
   return (
@@ -77,7 +143,7 @@ export default function QuickBarcodeScannerBar({
           gap: "8px"
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
           <div
             style={{
               width: "28px",
@@ -95,6 +161,41 @@ export default function QuickBarcodeScannerBar({
           <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e1b4b" }}>
             {label}
           </span>
+
+          {/* Live Mobile Scanner Link Status Badge */}
+          {sessionCode && (
+            <button
+              type="button"
+              onClick={() => setShowMobileModal(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "5px",
+                padding: "2px 9px",
+                borderRadius: "12px",
+                fontSize: "0.74rem",
+                fontWeight: 600,
+                background: isPhoneConnected ? "#dcfce7" : "#f1f5f9",
+                color: isPhoneConnected ? "#15803d" : "#475569",
+                border: isPhoneConnected ? "1px solid #86efac" : "1px solid #cbd5e1",
+                cursor: "pointer"
+              }}
+              title="Click to view mobile QR code or change code"
+            >
+              {isPhoneConnected ? (
+                <>
+                  <Radio size={11} className="animate-pulse" style={{ color: "#22c55e" }} />
+                  <span>Phone Paired ({sessionCode})</span>
+                </>
+              ) : (
+                <>
+                  <Smartphone size={11} />
+                  <span>Pair Phone ({sessionCode})</span>
+                </>
+              )}
+            </button>
+          )}
+
           {lastScanned && (
             <span
               style={{
@@ -109,7 +210,7 @@ export default function QuickBarcodeScannerBar({
                 gap: "4px"
               }}
             >
-              <Sparkles size={12} /> Added: {lastScanned}
+              <Sparkles size={12} /> Received: {lastScanned}
             </span>
           )}
         </div>
@@ -222,6 +323,8 @@ export default function QuickBarcodeScannerBar({
       {showMobileModal && (
         <MobileConnectModal
           mode="INVENTORY"
+          sessionCode={sessionCode}
+          onSessionCreated={handleSessionCreated}
           onScan={handleMobileScan}
           onClose={() => setShowMobileModal(false)}
         />

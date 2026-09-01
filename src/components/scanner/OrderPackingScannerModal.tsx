@@ -16,7 +16,8 @@ import {
   ArrowRight,
   Sparkles,
   RefreshCw,
-  Smartphone
+  Smartphone,
+  Radio
 } from "lucide-react";
 
 interface OrderPackingScannerModalProps {
@@ -48,8 +49,27 @@ export default function OrderPackingScannerModal({
   const [showMobileModal, setShowMobileModal] = useState(false);
   const [alertState, setAlertState] = useState<{ type: "success" | "error" | "warning"; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [sessionCode, setSessionCode] = useState<string>("");
+  const [isPhoneConnected, setIsPhoneConnected] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize or load sessionCode
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("crm_scanner_session");
+      if (saved && saved.startsWith("SC-")) {
+        setSessionCode(saved);
+      } else {
+        const newCode = `SC-${Math.floor(1000 + Math.random() * 9000)}`;
+        setSessionCode(newCode);
+        localStorage.setItem("crm_scanner_session", newCode);
+      }
+    } catch (e) {
+      const newCode = `SC-${Math.floor(1000 + Math.random() * 9000)}`;
+      setSessionCode(newCode);
+    }
+  }, []);
 
   const fetchDetails = async () => {
     setLoading(true);
@@ -120,24 +140,56 @@ export default function OrderPackingScannerModal({
     updatedItems[matchIndex].packedCount += 1;
     setItems(updatedItems);
 
-    const newTotalPacked = totalPacked + 1;
-    if (newTotalPacked >= totalRequired) {
+    // Trigger packing complete sound if finished
+    if (totalPacked + 1 >= totalRequired) {
       playCompleteSound();
       setAlertState({
         type: "success",
-        text: `🎉 Order 100% Packed! All ${totalRequired} items verified successfully.`
+        text: "🎉 Order packing complete! All items verified."
       });
     } else {
       playSuccessSound();
       setAlertState({
         type: "success",
-        text: `✅ Verified: 1x ${matchedItem.name} (${updatedItems[matchIndex].packedCount}/${matchedItem.quantity})`
+        text: `✅ Verified: ${matchedItem.name} (${updatedItems[matchIndex].packedCount}/${matchedItem.quantity})`
       });
     }
-
+    
     setBarcodeInput("");
     if (inputRef.current) inputRef.current.focus();
   };
+
+  // Continuous background poller that listens to phone scans even when modal is closed
+  useEffect(() => {
+    if (!sessionCode) return;
+
+    let isCancelled = false;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/scanner?session=${encodeURIComponent(sessionCode)}`, {
+          cache: "no-store"
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (isCancelled) return;
+
+        if (data.status === "CONNECTED") {
+          setIsPhoneConnected(true);
+        }
+
+        if (data.scannedCode) {
+          const code = String(data.scannedCode).trim();
+          processScanCode(code);
+        }
+      } catch (e) {}
+    }, 700);
+
+    return () => {
+      isCancelled = true;
+      clearInterval(interval);
+    };
+  }, [sessionCode, items, totalRequired, totalPacked]);
 
   const handleManualScanSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,6 +334,39 @@ export default function OrderPackingScannerModal({
                   <ScanBarcode size={18} /> Verify
                 </button>
               </form>
+
+              {sessionCode && (
+                <button
+                  type="button"
+                  onClick={() => setShowMobileModal(true)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "8px 12px",
+                    borderRadius: "8px",
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    background: isPhoneConnected ? "#dcfce7" : "#f1f5f9",
+                    color: isPhoneConnected ? "#15803d" : "#475569",
+                    border: isPhoneConnected ? "1px solid #86efac" : "1px solid #cbd5e1",
+                    cursor: "pointer"
+                  }}
+                  title="Click to view QR code or change pairing"
+                >
+                  {isPhoneConnected ? (
+                    <>
+                      <Radio size={13} className="animate-pulse" style={{ color: "#22c55e" }} />
+                      <span>Phone Paired ({sessionCode})</span>
+                    </>
+                  ) : (
+                    <>
+                      <Smartphone size={13} />
+                      <span>Pair Phone ({sessionCode})</span>
+                    </>
+                  )}
+                </button>
+              )}
 
               <button
                 type="button"
@@ -450,6 +535,11 @@ export default function OrderPackingScannerModal({
         <MobileConnectModal
           mode="PACKING"
           orderId={orderId}
+          sessionCode={sessionCode}
+          onSessionCreated={(code) => {
+            setSessionCode(code);
+            try { localStorage.setItem("crm_scanner_session", code); } catch (e) {}
+          }}
           onScan={(code) => processScanCode(code)}
           onClose={() => setShowMobileModal(false)}
         />
