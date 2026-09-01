@@ -637,12 +637,128 @@ export async function reassignCustomer(id: string, salespersonId: string) {
 }
 
 export async function deleteCustomer(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
   try {
-    await prisma.customer.delete({ where: { id } });
+    const customer = await prisma.customer.findUnique({
+      where: { id },
+      select: { id: true, businessName: true, contactPerson: true, mobile: true, organizationId: true }
+    });
+
+    if (!customer) return { error: "Customer not found." };
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete Activity logs / Calls / Followups / Tasks
+      await tx.call.deleteMany({ where: { customerId: id } });
+      await tx.followUp.deleteMany({ where: { customerId: id } });
+      await tx.task.deleteMany({ where: { customerId: id } });
+
+      // 2. Delete WhatsApp communications & links
+      const convos = await tx.whatsAppConversation.findMany({
+        where: { customerId: id },
+        select: { id: true }
+      });
+      if (convos.length > 0) {
+        await tx.whatsAppMessage.deleteMany({
+          where: { conversationId: { in: convos.map(c => c.id) } }
+        });
+        await tx.whatsAppConversation.deleteMany({ where: { customerId: id } });
+      }
+      await tx.whatsAppPaymentLink.deleteMany({ where: { customerId: id } });
+      await tx.whatsAppFormSubmission.deleteMany({ where: { customerId: id } });
+
+      // 3. Delete Delivery Challans
+      const challans = await tx.deliveryChallan.findMany({
+        where: { customerId: id },
+        select: { id: true }
+      });
+      if (challans.length > 0) {
+        await tx.deliveryChallanItem.deleteMany({
+          where: { challanId: { in: challans.map(c => c.id) } }
+        });
+        await tx.deliveryChallan.deleteMany({ where: { customerId: id } });
+      }
+
+      // 4. Delete EWayBills
+      await tx.eWayBill.deleteMany({ where: { customerId: id } });
+
+      // 5. Delete Credit Notes
+      const creditNotes = await tx.creditNote.findMany({
+        where: { customerId: id },
+        select: { id: true }
+      });
+      if (creditNotes.length > 0) {
+        await tx.creditNoteItem.deleteMany({
+          where: { creditNoteId: { in: creditNotes.map(c => c.id) } }
+        });
+        await tx.creditNote.deleteMany({ where: { customerId: id } });
+      }
+
+      // 6. Delete Bill Allocations
+      await tx.billAllocation.deleteMany({ where: { customerId: id } });
+
+      // 7. Delete Payments
+      await tx.payment.deleteMany({ where: { customerId: id } });
+
+      // 8. Delete Invoices
+      await tx.invoice.deleteMany({ where: { customerId: id } });
+
+      // 9. Delete Quotations
+      const quotes = await tx.quotation.findMany({
+        where: { customerId: id },
+        select: { id: true }
+      });
+      if (quotes.length > 0) {
+        await tx.quotationItem.deleteMany({
+          where: { quotationId: { in: quotes.map(q => q.id) } }
+        });
+        await tx.quotationActivity.deleteMany({
+          where: { quotationId: { in: quotes.map(q => q.id) } }
+        });
+        await tx.quotation.deleteMany({ where: { customerId: id } });
+      }
+
+      // 10. Delete Orders
+      const orders = await tx.order.findMany({
+        where: { customerId: id },
+        select: { id: true }
+      });
+      if (orders.length > 0) {
+        await tx.orderItem.deleteMany({
+          where: { orderId: { in: orders.map(o => o.id) } }
+        });
+        await tx.order.deleteMany({ where: { customerId: id } });
+      }
+
+      // 11. Create Audit Log
+      await tx.auditLog.create({
+        data: {
+          userId: (session.user as any).id,
+          action: 'CUSTOMER_DELETED',
+          module: 'Customer',
+          recordId: id,
+          newValue: JSON.stringify({
+            businessName: customer.businessName,
+            contactPerson: customer.contactPerson,
+            mobile: customer.mobile
+          })
+        }
+      });
+
+      // 12. Delete Customer record
+      await tx.customer.delete({ where: { id } });
+    });
+
     revalidatePath("/customers");
+    revalidatePath("/analytics");
+    revalidatePath("/orders");
+    revalidatePath("/invoices");
+    revalidatePath("/payments");
+    revalidatePath("/quotations");
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to delete customer:", error);
-    return { error: "Failed to delete customer. Ensure no related records exist." };
+    return { error: "Failed to delete customer: " + (error.message || "Unknown error") };
   }
 }

@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { MessageCircle, Edit, RefreshCw, Trash2, Sparkles } from 'lucide-react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { MessageCircle, Edit, RefreshCw, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { deleteCustomer } from '@/app/actions/customerActions';
 import EditCustomerModal from './EditCustomerModal';
 import ReassignCustomerModal from './ReassignCustomerModal';
@@ -26,9 +26,15 @@ interface Customer {
 }
 
 export default function CustomerTable({ initialCustomers, allEmployees = [] }: { initialCustomers: Customer[], allEmployees?: { id: string; name: string }[] }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const queryParam = searchParams?.get('search') || "";
   const [searchTerm, setSearchTerm] = useState(queryParam);
+  const [customersList, setCustomersList] = useState<Customer[]>(initialCustomers);
+
+  useEffect(() => {
+    setCustomersList(initialCustomers);
+  }, [initialCustomers]);
 
   useEffect(() => {
     const q = searchParams?.get('search');
@@ -36,6 +42,7 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
       setSearchTerm(q);
     }
   }, [searchParams]);
+
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [stateFilter, setStateFilter] = useState("All States");
   const [agentFilter, setAgentFilter] = useState("All Agents");
@@ -46,14 +53,26 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
   const [showReorderModal, setShowReorderModal] = useState(false);
 
   const handleDelete = async (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
-      setIsDeleting(id);
-      await deleteCustomer(id);
+    if (!window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone and will remove related activities.`)) {
+      return;
+    }
+    setIsDeleting(id);
+    try {
+      const res = await deleteCustomer(id);
+      if (res?.error) {
+        alert("Could not delete customer: " + res.error);
+      } else {
+        setCustomersList(prev => prev.filter(c => c.id !== id));
+        router.refresh();
+      }
+    } catch (err: any) {
+      alert("An unexpected error occurred while deleting the customer: " + (err.message || ""));
+    } finally {
       setIsDeleting(null);
     }
   };
 
-  const filteredCustomers = initialCustomers.filter(customer => {
+  const filteredCustomers = customersList.filter(customer => {
     const matchesSearch = 
       (customer.businessName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (customer.contactPerson || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -82,7 +101,7 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
   };
 
   // Get unique states for filter
-  const uniqueStates = Array.from(new Set(initialCustomers.map(c => c.state).filter(Boolean))) as string[];
+  const uniqueStates = Array.from(new Set(customersList.map(c => c.state).filter(Boolean))) as string[];
 
   return (
     <>
@@ -221,10 +240,10 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
                       <button 
                         onClick={() => handleDelete(customer.id, customer.businessName || customer.contactPerson)}
                         disabled={isDeleting === customer.id}
-                        style={{ padding: '4px', background: '#fff', color: '#ef4444', borderRadius: '4px', border: '1px solid #ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isDeleting === customer.id ? 0.5 : 1 }} 
+                        style={{ padding: '4px', background: '#fff', color: '#ef4444', borderRadius: '4px', border: '1px solid #ef4444', cursor: isDeleting === customer.id ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: isDeleting === customer.id ? 0.6 : 1 }} 
                         title="Delete"
                       >
-                        <Trash2 size={14} />
+                        {isDeleting === customer.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
                       </button>
                     </div>
                   </td>

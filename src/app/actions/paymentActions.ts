@@ -493,3 +493,200 @@ export async function cancelPayment(paymentId: string, reason: string) {
     return { error: "Failed to cancel payment: " + error.message };
   }
 }
+
+export async function deletePayment(paymentId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+    const payment = await prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        OR: [
+          { customer: { organizationId } },
+          { invoice: { organizationId } },
+          { order: { organizationId } }
+        ]
+      },
+      include: { invoice: true }
+    });
+
+    if (!payment) return { error: "Payment not found" };
+
+    await prisma.$transaction(async (tx) => {
+      // If payment was Completed and linked to an invoice, revert invoice amountPaid
+      if (payment.status === 'Completed' && payment.invoiceId && payment.invoice) {
+        const inv = payment.invoice;
+        const newPaid = Math.max(0, inv.amountPaid - payment.amount);
+        const newDue = Math.max(0, inv.totalAmount - newPaid);
+        const newStatus = newPaid <= 0 ? 'Unpaid' : newPaid >= inv.totalAmount ? 'Paid' : 'Partially Paid';
+
+        await tx.invoice.update({
+          where: { id: payment.invoiceId },
+          data: {
+            amountPaid: newPaid,
+            amountDue: newDue,
+            status: newStatus
+          }
+        });
+
+        if (inv.orderId) {
+          await tx.order.update({
+            where: { id: inv.orderId },
+            data: {
+              paymentReceived: newPaid,
+              outstandingAmount: newDue,
+              paymentStatus: newStatus
+            }
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: (session.user as any).id,
+          action: 'PAYMENT_DELETED',
+          module: 'Finance',
+          recordId: paymentId,
+          newValue: JSON.stringify({
+            paymentNumber: payment.paymentNumber,
+            amount: payment.amount,
+            status: payment.status,
+            customerId: payment.customerId,
+            invoiceId: payment.invoiceId
+          })
+        }
+      });
+
+      await tx.payment.delete({
+        where: { id: paymentId }
+      });
+    });
+
+    revalidatePath("/invoices");
+    revalidatePath("/payments");
+    revalidatePath("/customers");
+    revalidatePath("/orders");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to delete payment:", error);
+    return { error: "Failed to delete payment: " + error.message };
+  }
+}
+
+export async function updatePayment(data: {
+  id: string;
+  amount?: number;
+  paymentDate?: string;
+  paymentMode?: string;
+  receivingAccount?: string;
+  referenceNumber?: string;
+  payerName?: string;
+  notes?: string;
+  status?: string;
+}) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+    const payment = await prisma.payment.findFirst({
+      where: {
+        id: data.id,
+        OR: [
+          { customer: { organizationId } },
+          { invoice: { organizationId } },
+          { order: { organizationId } }
+        ]
+      },
+      include: { invoice: true }
+    });
+
+    if (!payment) return { error: "Payment not found" };
+
+    const newAmount = data.amount !== undefined ? Number(data.amount) : payment.amount;
+    const newStatus = data.status || payment.status;
+    const oldStatus = payment.status;
+    const oldAmount = payment.amount;
+
+    await prisma.$transaction(async (tx) => {
+      // If payment is linked to an invoice, recalculate invoice amountPaid based on amount/status changes
+      if (payment.invoiceId && payment.invoice) {
+        const inv = payment.invoice;
+        let effectivePaid = inv.amountPaid;
+
+        // Step 1: Remove old contribution if oldStatus was Completed
+        if (oldStatus === 'Completed') {
+          effectivePaid -= oldAmount;
+        }
+
+        // Step 2: Add new contribution if newStatus is Completed
+        if (newStatus === 'Completed') {
+          effectivePaid += newAmount;
+        }
+
+        effectivePaid = Math.max(0, effectivePaid);
+        const newDue = Math.max(0, inv.totalAmount - effectivePaid);
+        const invStatus = effectivePaid >= inv.totalAmount ? 'Paid' : effectivePaid <= 0 ? 'Unpaid' : 'Partially Paid';
+
+        await tx.invoice.update({
+          where: { id: payment.invoiceId },
+          data: {
+            amountPaid: effectivePaid,
+            amountDue: newDue,
+            status: invStatus
+          }
+        });
+
+        if (inv.orderId) {
+          await tx.order.update({
+            where: { id: inv.orderId },
+            data: {
+              paymentReceived: effectivePaid,
+              outstandingAmount: newDue,
+              paymentStatus: invStatus
+            }
+          });
+        }
+      }
+
+      // Update payment record
+      const updateData: any = {};
+      if (data.amount !== undefined) updateData.amount = newAmount;
+      if (data.paymentDate) updateData.paymentDate = new Date(data.paymentDate);
+      if (data.paymentMode) updateData.paymentMode = data.paymentMode;
+      if (data.receivingAccount !== undefined) updateData.receivingAccount = data.receivingAccount;
+      if (data.referenceNumber !== undefined) updateData.referenceNumber = data.referenceNumber;
+      if (data.payerName !== undefined) updateData.payerName = data.payerName;
+      if (data.notes !== undefined) updateData.notes = data.notes;
+      if (data.status) updateData.status = newStatus;
+
+      await tx.payment.update({
+        where: { id: data.id },
+        data: updateData
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: (session.user as any).id,
+          action: 'PAYMENT_UPDATED',
+          module: 'Finance',
+          recordId: data.id,
+          previousValue: JSON.stringify({ amount: oldAmount, status: oldStatus, mode: payment.paymentMode }),
+          newValue: JSON.stringify(updateData)
+        }
+      });
+    });
+
+    revalidatePath("/invoices");
+    revalidatePath("/payments");
+    revalidatePath("/customers");
+    revalidatePath("/orders");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to update payment:", error);
+    return { error: "Failed to update payment: " + error.message };
+  }
+}
+

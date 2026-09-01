@@ -27,9 +27,12 @@ import {
   Hash,
   Landmark,
   FileCheck,
-  Check
+  Check,
+  Pencil,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
-import { recordCustomerPayment, getCustomerUnpaidInvoices, cancelPayment } from '@/app/actions/paymentActions';
+import { recordCustomerPayment, getCustomerUnpaidInvoices, cancelPayment, updatePayment, deletePayment } from '@/app/actions/paymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
 
 interface CustomerOption {
@@ -167,6 +170,24 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
   const [cancelModalPay, setCancelModalPay] = useState<PaymentRecord | null>(null);
   const [cancelReason, setCancelReason] = useState('Entered in Error');
   const [cancelling, setCancelling] = useState(false);
+
+  // Edit Payment Modal State
+  const [editModalPay, setEditModalPay] = useState<PaymentRecord | null>(null);
+  const [editForm, setEditForm] = useState({
+    amount: '',
+    paymentDate: '',
+    paymentMode: '',
+    receivingAccount: '',
+    referenceNumber: '',
+    payerName: '',
+    notes: '',
+    status: 'Completed'
+  });
+  const [updating, setUpdating] = useState(false);
+
+  // Delete Payment Modal State
+  const [deleteModalPay, setDeleteModalPay] = useState<PaymentRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // View Receipt Modal State
   const [viewReceipt, setViewReceipt] = useState<PaymentRecord | null>(null);
@@ -342,6 +363,70 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
       alert("Error cancelling payment: " + res.error);
     } else {
       setCancelModalPay(null);
+      window.location.reload();
+    }
+  };
+
+  // Open Edit Payment Modal
+  const handleOpenEdit = (pay: PaymentRecord) => {
+    setEditModalPay(pay);
+    setEditForm({
+      amount: String(pay.amount || ''),
+      paymentDate: pay.paymentDate ? new Date(pay.paymentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      paymentMode: pay.paymentMode || 'UPI (GPay / PhonePe / Paytm / QR)',
+      receivingAccount: pay.receivingAccount || 'HDFC Bank Current A/c - 016805006415',
+      referenceNumber: pay.referenceNumber || '',
+      payerName: pay.payerName || '',
+      notes: pay.notes || '',
+      status: pay.status || 'Completed'
+    });
+  };
+
+  // Save Payment Edit
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editModalPay) return;
+    const amt = parseFloat(editForm.amount);
+    if (isNaN(amt) || amt <= 0) {
+      alert("Please enter a valid amount greater than 0");
+      return;
+    }
+    setUpdating(true);
+    const res = await updatePayment({
+      id: editModalPay.id,
+      amount: amt,
+      paymentDate: editForm.paymentDate,
+      paymentMode: editForm.paymentMode,
+      receivingAccount: editForm.receivingAccount,
+      referenceNumber: editForm.referenceNumber,
+      payerName: editForm.payerName,
+      notes: editForm.notes,
+      status: editForm.status
+    });
+    setUpdating(false);
+    if (res.error) {
+      alert("Error updating payment: " + res.error);
+    } else {
+      setEditModalPay(null);
+      window.location.reload();
+    }
+  };
+
+  // Open Delete Payment Confirmation Modal
+  const handleOpenDelete = (pay: PaymentRecord) => {
+    setDeleteModalPay(pay);
+  };
+
+  // Confirm Delete Payment
+  const handleConfirmDelete = async () => {
+    if (!deleteModalPay) return;
+    setDeleting(true);
+    const res = await deletePayment(deleteModalPay.id);
+    setDeleting(false);
+    if (res.error) {
+      alert("Error deleting payment: " + res.error);
+    } else {
+      setDeleteModalPay(null);
       window.location.reload();
     }
   };
@@ -902,36 +987,58 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
                       <button
+                        type="button"
                         onClick={() => setViewReceipt(pay)}
                         className="action-btn outline-primary"
-                        style={{ padding: '3px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        style={{ padding: '4px 8px', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '6px' }}
                         title="Print Receipt Voucher"
                       >
                         <Receipt size={13} /> Receipt
                       </button>
 
-                      {pay.status === 'Completed' && (
-                        <button
-                          onClick={() => setCancelModalPay(pay)}
-                          style={{
-                            padding: '3px 8px',
-                            fontSize: '0.75rem',
-                            backgroundColor: '#fff1f2',
-                            color: '#e11d48',
-                            border: '1px solid #fecdd3',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '3px'
-                          }}
-                          title="Cancel / Reverse Payment"
-                        >
-                          <Ban size={12} />
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEdit(pay)}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '0.74rem',
+                          backgroundColor: '#f8fafc',
+                          color: 'var(--text-primary)',
+                          border: '1px solid var(--border)',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          transition: 'all 0.15s ease'
+                        }}
+                        title="Edit Payment Details"
+                      >
+                        <Pencil size={12} style={{ color: 'var(--accent-primary)' }} /> Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDelete(pay)}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '0.74rem',
+                          backgroundColor: '#fff1f2',
+                          color: '#e11d48',
+                          border: '1px solid #fecdd3',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          transition: 'all 0.15s ease'
+                        }}
+                        title="Delete Payment Record"
+                      >
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1544,6 +1651,368 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 }}
               >
                 {cancelling ? 'Reversing...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 4. EDIT PAYMENT POPUP MODAL */}
+      {mounted && editModalPay && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '16px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditModalPay(null);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '620px',
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              padding: '20px 24px',
+              position: 'relative',
+              margin: 'auto',
+              maxHeight: '90vh',
+              overflowY: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              borderBottom: '1px solid var(--border)',
+              paddingBottom: '10px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '8px',
+                  background: 'var(--accent-light, #e6f7f2)',
+                  color: 'var(--accent-primary, #00a884)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Pencil size={16} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
+                    Edit Payment ({editModalPay.paymentNumber})
+                  </h2>
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    Customer: {editModalPay.customer?.businessName || editModalPay.payerName || 'Direct'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditModalPay(null)}
+                className="close-btn"
+                style={{ fontSize: '1.25rem', color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none', width: '28px', height: '28px' }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveEdit}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Payment Date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    style={{ width: '100%', fontSize: '0.85rem' }}
+                    value={editForm.paymentDate}
+                    onChange={e => setEditForm({ ...editForm, paymentDate: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Amount (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    className="form-input"
+                    style={{ width: '100%', fontSize: '0.85rem', fontWeight: 600, color: 'var(--success)' }}
+                    value={editForm.amount}
+                    onChange={e => setEditForm({ ...editForm, amount: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Payment Mode
+                  </label>
+                  <select
+                    className="form-input"
+                    style={{ width: '100%', fontSize: '0.85rem' }}
+                    value={editForm.paymentMode}
+                    onChange={e => setEditForm({ ...editForm, paymentMode: e.target.value })}
+                  >
+                    {PAYMENT_MODES.map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Status
+                  </label>
+                  <select
+                    className="form-input"
+                    style={{ width: '100%', fontSize: '0.85rem' }}
+                    value={editForm.status}
+                    onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                  >
+                    <option value="Completed">Completed</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="Refunded">Refunded</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Receiving Bank / Account
+                </label>
+                <select
+                  className="form-input"
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                  value={editForm.receivingAccount}
+                  onChange={e => setEditForm({ ...editForm, receivingAccount: e.target.value })}
+                >
+                  {RECEIVING_ACCOUNTS.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Reference / UTR / Cheque #
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ width: '100%', fontSize: '0.85rem' }}
+                    placeholder="e.g. UTR-982738912"
+                    value={editForm.referenceNumber}
+                    onChange={e => setEditForm({ ...editForm, referenceNumber: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    Payer Name
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    style={{ width: '100%', fontSize: '0.85rem' }}
+                    placeholder="e.g. Praveen Gupta"
+                    value={editForm.payerName}
+                    onChange={e => setEditForm({ ...editForm, payerName: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Transaction Notes
+                </label>
+                <textarea
+                  className="form-input"
+                  style={{ width: '100%', minHeight: '60px', fontSize: '0.85rem', resize: 'vertical' }}
+                  placeholder="Optional internal remarks..."
+                  value={editForm.notes}
+                  onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setEditModalPay(null)}
+                  className="action-btn"
+                  style={{ fontSize: '0.82rem', fontWeight: 500 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating}
+                  style={{
+                    backgroundColor: 'var(--accent-primary)',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    padding: '8px 18px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
+                    opacity: updating ? 0.7 : 1
+                  }}
+                >
+                  {updating ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 5. DELETE PAYMENT CONFIRMATION MODAL */}
+      {mounted && deleteModalPay && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            padding: '16px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setDeleteModalPay(null);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '440px',
+              backgroundColor: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              padding: '24px',
+              position: 'relative',
+              margin: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{
+                width: 40,
+                height: 40,
+                borderRadius: '10px',
+                backgroundColor: '#fee2e2',
+                color: '#ef4444',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <Trash2 size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#991b1b', margin: 0 }}>
+                  Delete Payment Record
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  {deleteModalPay.paymentNumber}
+                </p>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', lineHeight: 1.5, marginBottom: '16px' }}>
+              Are you sure you want to permanently delete payment <strong>{deleteModalPay.paymentNumber}</strong> of <strong style={{ color: 'var(--success)' }}>₹{deleteModalPay.amount.toLocaleString('en-IN')}</strong>?
+            </p>
+
+            <div style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              padding: '10px 12px',
+              fontSize: '0.78rem',
+              color: '#991b1b',
+              marginBottom: '20px',
+              display: 'flex',
+              gap: '8px',
+              alignItems: 'flex-start'
+            }}>
+              <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                If this payment was settled against an invoice, deleting it will automatically recalculate and restore the invoice's balance due.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setDeleteModalPay(null)}
+                className="action-btn"
+                style={{ fontSize: '0.82rem', fontWeight: 500 }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                style={{
+                  backgroundColor: '#dc2626',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(220, 38, 38, 0.25)',
+                  opacity: deleting ? 0.7 : 1
+                }}
+              >
+                {deleting ? 'Deleting...' : 'Delete Payment'}
               </button>
             </div>
           </div>
