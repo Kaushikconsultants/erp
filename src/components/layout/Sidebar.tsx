@@ -163,7 +163,7 @@ const Sidebar = ({
             >
               <div className="category-header-title">
                 <Users size={18} style={{ color: isCrmActive ? '#4f46e5' : '#64748b' }} />
-                <span>CRM & CLIENTS</span>
+                <span>CRM & Clients</span>
               </div>
               <div className="category-chevron">
                 <ChevronRight size={15} />
@@ -216,7 +216,7 @@ const Sidebar = ({
             >
               <div className="category-header-title">
                 <ShoppingCart size={18} style={{ color: isSalesActive ? '#4f46e5' : '#64748b' }} />
-                <span>SALES & DISPATCH</span>
+                <span>Sales & Dispatch</span>
               </div>
               <div className="category-chevron">
                 <ChevronRight size={15} />
@@ -300,8 +300,8 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.purchases ? 'is-open' : ''} ${isPurchasesActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <ShoppingBag size={18} style={{ color: isPurchasesActive ? '#2563eb' : '#64748b' }} />
-                <span>PURCHASES</span>
+                <ShoppingBag size={18} style={{ color: isPurchasesActive ? '#4f46e5' : '#64748b' }} />
+                <span>Purchases</span>
               </div>
               <div className="category-chevron">
                 <ChevronRight size={15} />
@@ -366,8 +366,8 @@ const Sidebar = ({
               className={`category-dropdown-header ${openCategories.accounting ? 'is-open' : ''} ${isAccountingActive ? 'has-active-child' : ''}`}
             >
               <div className="category-header-title">
-                <Scale size={18} style={{ color: isAccountingActive ? 'var(--accent-primary, #4f46e5)' : '#64748b' }} />
-                <span>ACCOUNTING & LEDGERS</span>
+                <Calculator size={18} style={{ color: isAccountingActive ? '#4f46e5' : '#64748b' }} />
+                <span>Accounting & Ledgers</span>
               </div>
               <div className="category-chevron">
                 <ChevronRight size={15} />
@@ -476,7 +476,7 @@ const Sidebar = ({
               }}
             >
               <Factory size={18} style={{ color: isProductionActive ? '#7c3aed' : '#64748b' }} />
-              <span>PRODUCTION & WORKSHOP</span>
+              <span>Production & Workshop</span>
               <span style={{ marginLeft: 'auto', background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', color: '#fff', fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '10px' }}>MFG</span>
             </Link>
           </div>
@@ -492,7 +492,7 @@ const Sidebar = ({
             >
               <div className="category-header-title">
                 <BarChart3 size={18} style={{ color: isReportsActive ? '#4f46e5' : '#64748b' }} />
-                <span>REPORTS & INTELLIGENCE</span>
+                <span>Reports & Intelligence</span>
               </div>
               <div className="category-chevron">
                 <ChevronRight size={15} />
