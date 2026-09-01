@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import EditUserModal from "./EditUserModal";
 import ChangePasswordModal from "./ChangePasswordModal";
 import { KeyRound, ShieldCheck } from "lucide-react";
@@ -17,8 +18,23 @@ interface User {
 }
 
 export default function UserManagementTable({ initialUsers }: { initialUsers: User[] }) {
+  const [users, setUsers] = useState<User[]>(initialUsers);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [passwordUser, setPasswordUser] = useState<User | null>(null);
+  const router = useRouter();
+
+  // Sync state if initialUsers changes from server
+  useEffect(() => {
+    setUsers(initialUsers);
+  }, [initialUsers]);
+
+  const handleEditModalClose = (updatedUser?: Partial<User> & { id: string }) => {
+    if (updatedUser) {
+      setUsers(prev => prev.map(u => u.id === updatedUser.id ? { ...u, ...updatedUser } : u));
+    }
+    setEditingUser(null);
+    router.refresh();
+  };
 
   const getRoleBadgeStyle = (role: string) => {
     switch (role) {
@@ -49,14 +65,18 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
     }
   };
 
-  const getSectionCount = (allowedSections?: string | null) => {
-    if (!allowedSections) return "All Sections";
+  const getSectionCount = (allowedSections?: string | null, userRole?: string) => {
+    if (!allowedSections) {
+      if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') return "All 19 Sections";
+      return "Role Defaults";
+    }
     try {
       let parsed: string[] = [];
-      if (allowedSections.startsWith('[')) {
-        parsed = JSON.parse(allowedSections);
+      const trimmed = allowedSections.trim();
+      if (trimmed.startsWith('[')) {
+        parsed = JSON.parse(trimmed);
       } else {
-        parsed = allowedSections.split(',').map(s => s.trim());
+        parsed = trimmed.split(',').map(s => s.trim().replace(/^["'\[\]]+|["'\[\]]+$/g, '')).filter(Boolean);
       }
       return `${parsed.length} Sections`;
     } catch {
@@ -79,7 +99,7 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
           </tr>
         </thead>
         <tbody>
-          {initialUsers.map(user => {
+          {users.map(user => {
             const badge = getRoleBadgeStyle(user.role);
             return (
               <tr key={user.id}>
@@ -105,7 +125,7 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
                 </td>
                 <td>
                   <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600, backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>
-                    {getSectionCount(user.allowedSections)}
+                    {getSectionCount(user.allowedSections, user.role)}
                   </span>
                 </td>
                 <td>
@@ -149,7 +169,7 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
               </tr>
             );
           })}
-          {initialUsers.length === 0 && (
+          {users.length === 0 && (
             <tr>
               <td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
                 No users found.
@@ -160,7 +180,7 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
       </table>
 
       {editingUser && (
-        <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} />
+        <EditUserModal user={editingUser} onClose={handleEditModalClose} />
       )}
 
       {passwordUser && (

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { updateUser } from "@/app/actions/userActions";
-import { KeyRound, Eye, EyeOff, Sparkles, ShieldCheck } from "lucide-react";
+import { KeyRound, Eye, EyeOff, Sparkles, ShieldCheck, RotateCcw } from "lucide-react";
 import "./modal.css";
 
 interface User {
@@ -17,7 +17,7 @@ interface User {
 
 interface EditUserModalProps {
   user: User;
-  onClose: () => void;
+  onClose: (updatedUser?: Partial<User> & { id: string }) => void;
 }
 
 const ALL_SECTIONS = [
@@ -68,26 +68,35 @@ const getDefaultSectionsForRole = (role: string): string[] => {
   }
 };
 
+const parseAllowedSections = (raw: string | null | undefined, userRole: string): string[] => {
+  if (!raw || !raw.trim()) return getDefaultSectionsForRole(userRole);
+  const trimmed = raw.trim();
+  try {
+    if (trimmed.startsWith('[')) {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    const split = trimmed.split(',').map(s => s.trim().replace(/^["'\[\]]+|["'\[\]]+$/g, '')).filter(Boolean);
+    if (split.length > 0) return split;
+  } catch (e) {
+    console.warn("Failed to parse allowedSections:", e);
+  }
+  return getDefaultSectionsForRole(userRole);
+};
+
 export default function EditUserModal({ user, onClose }: EditUserModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedRole, setSelectedRole] = useState(user.role || "SALES");
   const [newPassword, setNewPassword] = useState("");
   const [showPassword, setShowPassword] = useState(true);
+  const [canManageSettings, setCanManageSettings] = useState(Boolean(user.canManageSettings));
+  const [isActive, setIsActive] = useState(user.isActive ?? true);
 
-  // Parse existing allowed sections
-  const initialAllowed: string[] = (() => {
-    if (!user.allowedSections) return getDefaultSectionsForRole(user.role);
-    try {
-      if (user.allowedSections.startsWith('[')) {
-        return JSON.parse(user.allowedSections);
-      }
-      return user.allowedSections.split(',').map(s => s.trim());
-    } catch {
-      return getDefaultSectionsForRole(user.role);
-    }
-  })();
-
-  const [selectedSections, setSelectedSections] = useState<string[]>(initialAllowed);
+  // Parse existing allowed sections with robust fallback
+  const [selectedSections, setSelectedSections] = useState<string[]>(() =>
+    parseAllowedSections(user.allowedSections, user.role || "SALES")
+  );
 
   const toggleSection = (id: string) => {
     setSelectedSections(prev => 
@@ -97,6 +106,13 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
 
   const selectAll = () => setSelectedSections(ALL_SECTIONS.map(s => s.id));
   const deselectAll = () => setSelectedSections([]);
+  const resetToRoleDefault = () => setSelectedSections(getDefaultSectionsForRole(selectedRole));
+
+  const handleRoleChange = (newRole: string) => {
+    setSelectedRole(newRole);
+    // When changing the role, automatically pre-fill with default preset for that role
+    setSelectedSections(getDefaultSectionsForRole(newRole));
+  };
 
   const handleGeneratePassword = () => {
     const randomChars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -115,11 +131,13 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
     setError("");
 
     const formData = new FormData(e.currentTarget);
-    if (!formData.get("canManageSettings")) formData.set("canManageSettings", "false");
-    if (!formData.get("isActive")) formData.set("isActive", "false");
+    formData.set("role", selectedRole);
+    formData.set("canManageSettings", String(canManageSettings));
+    formData.set("isActive", String(isActive));
     
     // Store allowed sections as JSON string
-    formData.set("allowedSections", JSON.stringify(selectedSections));
+    const sectionsJson = JSON.stringify(selectedSections);
+    formData.set("allowedSections", sectionsJson);
     if (newPassword.trim()) {
       formData.set("newPassword", newPassword.trim());
     }
@@ -130,7 +148,13 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
       setError(result.error);
       setLoading(false);
     } else {
-      onClose();
+      onClose({
+        id: user.id,
+        role: selectedRole,
+        allowedSections: sectionsJson,
+        canManageSettings,
+        isActive
+      });
     }
   };
 
@@ -188,7 +212,7 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
           </div>
           <button 
             type="button" 
-            onClick={onClose}
+            onClick={() => onClose()}
             style={{
               background: 'transparent',
               border: 'none',
@@ -199,7 +223,8 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              fontSize: '1.4rem'
             }}
           >
             ×
@@ -230,14 +255,34 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
           
           {/* ROLE SELECTOR */}
           <div className="form-group">
-            <label style={{ fontWeight: 700, color: '#334155', fontSize: '0.85rem', marginBottom: '6px', display: 'block' }}>
-              Assign Department Role
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontWeight: 700, color: '#334155', fontSize: '0.85rem', margin: 0 }}>
+                Assign Department Role
+              </label>
+              <button
+                type="button"
+                onClick={resetToRoleDefault}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--accent-primary, #4f46e5)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                <RotateCcw size={12} /> Reset Sections to {selectedRole} Defaults
+              </button>
+            </div>
             <select 
               name="role" 
-              defaultValue={user.role} 
+              value={selectedRole}
+              onChange={(e) => handleRoleChange(e.target.value)}
               required
-              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', backgroundColor: '#f8fafc' }}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', outline: 'none', backgroundColor: '#f8fafc', fontWeight: 600 }}
             >
               <option value="SUPER_ADMIN">👑 Super Admin (Full Unrestricted Access)</option>
               <option value="ADMIN">🛡️ Admin (System Administrator)</option>
@@ -311,50 +356,54 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
 
           {/* SECTION VISIBILITY CONTROL (ADMIN DECIDES WHO CAN SEE WHICH SECTION) */}
           <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
               <div>
                 <label style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem', margin: 0 }}>
-                  Section Visibility Permissions (Admin Controls)
+                  Section Visibility Permissions ({selectedSections.length} of {ALL_SECTIONS.length} Enabled)
                 </label>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                  Select which sections this user can view in the software menu:
+                  Select which sections this user can access in the navigation menu:
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button type="button" onClick={selectAll} style={{ background: 'none', border: 'none', color: 'var(--accent-primary, #4f46e5)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Select All</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button type="button" onClick={selectAll} style={{ background: 'none', border: 'none', color: 'var(--accent-primary, #4f46e5)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Select All</button>
                 <span style={{ color: '#cbd5e1' }}>|</span>
-                <button type="button" onClick={deselectAll} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>Deselect All</button>
+                <button type="button" onClick={deselectAll} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Deselect All</button>
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '10px' }}>
-              {ALL_SECTIONS.map(sec => (
-                <label 
-                  key={sec.id} 
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
-                    padding: '8px 10px',
-                    borderRadius: '6px',
-                    backgroundColor: selectedSections.includes(sec.id) ? '#ffffff' : 'transparent',
-                    border: selectedSections.includes(sec.id) ? '1px solid var(--accent-primary, #cbd5e1)' : '1px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <input 
-                    type="checkbox"
-                    checked={selectedSections.includes(sec.id)}
-                    onChange={() => toggleSection(sec.id)}
-                    style={{ marginTop: '2px', accentColor: 'var(--accent-primary, #4f46e5)' }}
-                  />
-                  <div>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#1e293b' }}>{sec.label}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>{sec.desc}</div>
-                  </div>
-                </label>
-              ))}
+              {ALL_SECTIONS.map(sec => {
+                const isChecked = selectedSections.includes(sec.id);
+                return (
+                  <label 
+                    key={sec.id} 
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      backgroundColor: isChecked ? '#ffffff' : '#f1f5f9',
+                      border: isChecked ? '1.5px solid #10b981' : '1px solid #e2e8f0',
+                      boxShadow: isChecked ? '0 1px 3px rgba(16,185,129,0.1)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <input 
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleSection(sec.id)}
+                      style={{ marginTop: '2px', accentColor: '#10b981', width: '16px', height: '16px' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: isChecked ? 700 : 500, color: isChecked ? '#0f172a' : '#64748b' }}>{sec.label}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>{sec.desc}</div>
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -363,10 +412,9 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input 
                 type="checkbox" 
-                name="canManageSettings" 
-                value="true"
-                defaultChecked={user.canManageSettings}
-                style={{ accentColor: 'var(--accent-primary, #4f46e5)' }}
+                checked={canManageSettings}
+                onChange={(e) => setCanManageSettings(e.target.checked)}
+                style={{ accentColor: 'var(--accent-primary, #4f46e5)', width: '16px', height: '16px' }}
               />
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>Can Manage System Settings</span>
             </label>
@@ -374,10 +422,9 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input 
                 type="checkbox" 
-                name="isActive" 
-                value="true"
-                defaultChecked={user.isActive}
-                style={{ accentColor: '#16a34a' }}
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                style={{ accentColor: '#16a34a', width: '16px', height: '16px' }}
               />
               <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#16a34a' }}>Account Active</span>
             </label>
@@ -385,7 +432,7 @@ export default function EditUserModal({ user, onClose }: EditUserModalProps) {
         </div>
 
         <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '12px', flexShrink: 0 }}>
-          <button type="button" onClick={onClose} style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600, color: '#475569', fontSize: '0.875rem' }}>Cancel</button>
+          <button type="button" onClick={() => onClose()} style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', cursor: 'pointer', fontWeight: 600, color: '#475569', fontSize: '0.875rem' }}>Cancel</button>
           <button type="submit" disabled={loading} className="primary-btn" style={{ padding: '9px 20px', borderRadius: '8px', fontSize: '0.875rem', fontWeight: 700 }}>
             {loading ? "Saving Settings..." : "Save Role, Password & Permissions"}
           </button>
