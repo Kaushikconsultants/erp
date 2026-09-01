@@ -31,7 +31,7 @@ import {
   Landmark,
   TrendingUp,
   Clock,
-  Scale,
+  Calculator,
   FolderTree,
   FileText,
   Factory,
