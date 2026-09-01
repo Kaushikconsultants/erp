@@ -77,8 +77,6 @@ export default async function SettingsPage() {
             </p>
           </div>
         </div>
-
-        <AddUserButton />
       </div>
 
       {/* ─── 2. TOP KPI CARDS ─── */}
@@ -264,7 +262,7 @@ export default async function SettingsPage() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <h2 style={{ fontSize: '1.05rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>
               User Directory & Access Control
@@ -273,8 +271,11 @@ export default async function SettingsPage() {
               Grant section access, assign roles (Super Admin, Sales, HR, Accounts, Dispatch, Warehouse), and reset security credentials.
             </p>
           </div>
-          <div style={{ fontSize: '0.75rem', backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '3px 10px', borderRadius: '20px', fontWeight: 500 }}>
-            {totalUsers} Members
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ fontSize: '0.75rem', backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '5px 12px', borderRadius: '20px', fontWeight: 600, border: '1px solid #bfdbfe' }}>
+              {totalUsers} Members
+            </div>
+            <AddUserButton />
           </div>
         </div>
         
