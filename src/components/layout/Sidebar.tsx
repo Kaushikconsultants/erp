@@ -32,6 +32,7 @@ import {
   TrendingUp,
   Clock,
   Calculator,
+  Scale,
   FolderTree,
   FileText,
   Factory,
