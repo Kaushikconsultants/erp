@@ -182,7 +182,7 @@ export default function CreateOrderModal({ onClose, customers: initialCustomers,
                     onClick={() => { setShowAddCustomer(true); setCustomerDropdownOpen(false); }}
                     style={{ padding: "10px 14px", cursor: "pointer", fontWeight: 700, color: "#10b981", borderBottom: "1px solid #f1f5f9", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "6px" }}
                   >
-                    <Plus size={15} /> + Add New Customer...
+                    <Plus size={15} /> Add New Customer...
                   </div>
                   {filteredCustomers.length === 0 ? (
                     <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem", textAlign: "center" }}>No customers found</div>

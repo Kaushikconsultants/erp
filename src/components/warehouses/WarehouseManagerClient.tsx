@@ -93,27 +93,12 @@ export default function WarehouseManagerClient({
   const [branchId, setBranchId] = useState("");
   const [managerId, setManagerId] = useState("");
 
-  // Sync state if initial changes
-  useEffect(() => {
-    setWarehouses(initialWarehouses);
-  }, [initialWarehouses]);
-
-  // Handle ESC to close modal & lock body scroll
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        closeModal();
-      }
-    };
-    if (modalOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-    }
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "unset";
-    };
-  }, [modalOpen]);
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingWarehouse(null);
+    setErrorMsg("");
+    setSuccessMsg("");
+  };
 
   const openCreateModal = () => {
     setEditingWarehouse(null);
@@ -139,12 +124,27 @@ export default function WarehouseManagerClient({
     setModalOpen(true);
   };
 
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditingWarehouse(null);
-    setErrorMsg("");
-    setSuccessMsg("");
-  };
+  // Sync state if initial changes
+  useEffect(() => {
+    setWarehouses(initialWarehouses);
+  }, [initialWarehouses]);
+
+  // Handle ESC to close modal & lock body scroll
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeModal();
+      }
+    };
+    if (modalOpen) {
+      window.addEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "hidden";
+    }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = "unset";
+    };
+  }, [modalOpen]);
 
   const handleAutoGenerateCode = () => {
     const prefix = name ? name.replace(/[^a-zA-Z0-9]/g, "").slice(0, 3).toUpperCase() : "WH";

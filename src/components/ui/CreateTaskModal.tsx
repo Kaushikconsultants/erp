@@ -138,7 +138,7 @@ export default function CreateTaskModal({ onClose, employees, customers: initial
                       onClick={() => { setShowAddCustomer(true); setDropdownOpen(false); }}
                       style={{ padding: "10px 14px", cursor: "pointer", fontWeight: 700, color: "#10b981", borderBottom: "1px solid #f1f5f9", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "6px" }}
                     >
-                      <Plus size={15} /> + Add New Customer...
+                      <Plus size={15} /> Add New Customer...
                     </div>
                     <div onClick={() => { setSelectedCustomerId(""); setSelectedCustomerLabel(""); setDropdownOpen(false); }} style={{ padding: "10px 14px", cursor: "pointer", color: "#94a3b8", fontSize: "0.85rem", borderBottom: "1px solid #f1f5f9" }}>None</div>
                     {filteredCustomers.length === 0 ? (

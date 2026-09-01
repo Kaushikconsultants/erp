@@ -183,10 +183,19 @@ export async function recordCustomerPayment(data: {
   }
 
   try {
-    const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
+    const organizationId = await getTenantOrgId();
+    const customer = await prisma.customer.findFirst({ where: { id: data.customerId, organizationId } });
     if (!customer) return { error: "Customer not found" };
 
-    const count = await prisma.payment.count();
+    const count = await prisma.payment.count({
+      where: {
+        OR: [
+          { customer: { organizationId } },
+          { invoice: { organizationId } },
+          { order: { organizationId } }
+        ]
+      }
+    });
     const paymentNumber = `PAY-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
     const pDate = data.paymentDate ? new Date(data.paymentDate) : new Date();
     const paymentStatus = data.status || 'Completed';
@@ -410,8 +419,16 @@ export async function cancelPayment(paymentId: string, reason: string) {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    const payment = await prisma.payment.findUnique({
-      where: { id: paymentId },
+    const organizationId = await getTenantOrgId();
+    const payment = await prisma.payment.findFirst({
+      where: {
+        id: paymentId,
+        OR: [
+          { customer: { organizationId } },
+          { invoice: { organizationId } },
+          { order: { organizationId } }
+        ]
+      },
       include: { invoice: true }
     });
 

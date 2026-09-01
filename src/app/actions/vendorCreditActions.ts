@@ -109,8 +109,14 @@ export async function createVendorCredit(data: {
     const userId = (session?.user as any)?.id;
     const employee = await prisma.employee.findUnique({ where: { userId } });
 
+    const organizationId = await getTenantOrgId();
+
     // Generate unique Debit Note / Vendor Credit number e.g. DN-0001
-    const count = await prisma.vendorCredit.count();
+    const count = await prisma.vendorCredit.count({
+      where: {
+        vendor: { organizationId }
+      }
+    });
     const creditNoteNumber = `DN-${String(count + 1).padStart(4, '0')}`;
 
     let subtotal = 0;

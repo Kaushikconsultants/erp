@@ -235,7 +235,7 @@ export default function BroadcastListClient({
             className="primary-btn hover-lift"
             style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 18px", fontSize: "0.875rem", fontWeight: 600 }}
           >
-            <Megaphone size={16} /> + Create New Broadcast
+            <Megaphone size={16} /> Create New Broadcast
           </button>
         )}
       </div>

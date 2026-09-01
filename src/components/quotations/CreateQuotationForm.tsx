@@ -1932,7 +1932,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#dbeafe')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#eff6ff')}
             >
-              <UserPlus size={16} /> + Add New Customer
+              <UserPlus size={16} /> Add New Customer
             </div>
 
             {/* Header info */}

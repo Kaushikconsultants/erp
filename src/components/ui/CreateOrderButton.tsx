@@ -69,7 +69,7 @@ export default function CreateOrderButton({ customers, products, employees = [] 
         }}
       >
         <Plus size={17} />
-        <span>+ Create Order</span>
+        <span>Create Order</span>
       </button>
 
       {isModalOpen && (

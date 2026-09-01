@@ -298,8 +298,12 @@ export async function getReceivablesAgeing() {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const invoices = await prisma.invoice.findMany({
-      where: { status: { in: ['Unpaid', 'Partially Paid', 'Overdue'] } },
+      where: { 
+        organizationId,
+        status: { in: ['Unpaid', 'Partially Paid', 'Overdue'] } 
+      },
       include: { customer: { select: { businessName: true, mobile: true } } },
       orderBy: { dueDate: 'asc' }
     });

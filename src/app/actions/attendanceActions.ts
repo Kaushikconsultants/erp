@@ -4,14 +4,21 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function toggleAttendance() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized. Please log in." };
 
+    const organizationId = (session.user as any).organizationId || (await getTenantOrgId());
     const userId = (session.user as any).id;
-    let employee = await prisma.employee.findUnique({ where: { userId } });
+    let employee = await prisma.employee.findFirst({
+      where: {
+        userId,
+        ...(organizationId ? { organizationId } : {})
+      }
+    });
 
     if (!employee) {
       // Auto-create an employee record for the logged in user
@@ -20,6 +27,7 @@ export async function toggleAttendance() {
 
       employee = await prisma.employee.create({
         data: {
+          organizationId: organizationId || null,
           userId: user.id,
           employeeId: `EMP-${Date.now().toString().slice(-4)}`,
           joiningDate: new Date(),

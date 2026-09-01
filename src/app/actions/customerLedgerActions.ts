@@ -95,10 +95,14 @@ export async function getCustomerLedgerStatement(
       orderBy: { invoiceDate: 'asc' }
     });
 
-    // Fetch all Payments for this customer's invoices
+    // Fetch all Payments for this customer (Invoice Payments, Advance Payments, On-Account)
     const payments = await prisma.payment.findMany({
       where: {
-        invoice: { customerId },
+        OR: [
+          { customerId },
+          { invoice: { customerId } }
+        ],
+        status: { in: ['Completed', 'Success', 'Received', 'Processed'] },
         paymentDate: { lte: endDate }
       },
       include: { invoice: true },
@@ -109,6 +113,7 @@ export async function getCustomerLedgerStatement(
     const creditNotes = await prisma.creditNote.findMany({
       where: {
         customerId,
+        status: { not: 'CANCELLED' },
         createdAt: { lte: endDate }
       },
       orderBy: { createdAt: 'asc' }
@@ -157,11 +162,16 @@ export async function getCustomerLedgerStatement(
 
     // Add Payments
     for (const pay of payments) {
+      const isAdvance = pay.paymentType === 'Advance Payment' || pay.paymentType === 'On-Account' || !pay.invoiceId;
+      const refDetail = isAdvance 
+        ? (pay.paymentType || 'Advance Payment') 
+        : `Against Inv #${pay.invoice?.invoiceNumber || 'Sales'}`;
+
       allEvents.push({
         date: pay.paymentDate,
         type: 'PAYMENT',
         voucherNumber: pay.paymentNumber || pay.referenceNumber || 'RCPT',
-        particulars: `Payment Received [Against Inv #${pay.invoice?.invoiceNumber || 'Sales'}]`,
+        particulars: `Payment Received [${refDetail}]`,
         debit: 0,
         credit: pay.amount,
         paymentMode: pay.paymentMode || 'Bank Transfer',

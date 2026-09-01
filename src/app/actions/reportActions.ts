@@ -143,8 +143,17 @@ export async function getFinancialsReport() {
         orderBy: { invoiceDate: 'desc' }
       }),
       prisma.payment.findMany({
-        where: { invoice: { organizationId } },
-        include: { invoice: { include: { customer: { select: { businessName: true } } } } },
+        where: {
+          OR: [
+            { customer: { organizationId } },
+            { invoice: { organizationId } }
+          ],
+          status: { in: ['Completed', 'Success', 'Received', 'Processed'] }
+        },
+        include: { 
+          invoice: { include: { customer: { select: { businessName: true } } } },
+          customer: { select: { businessName: true } }
+        },
         orderBy: { paymentDate: 'desc' }
       })
     ]);

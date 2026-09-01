@@ -357,7 +357,7 @@ export default function TemplatesClient({ initialTemplates }: { initialTemplates
                 onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#1d4ed8"; }}
                 onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#2563eb"; }}
               >
-                <Plus size={16} /> + New
+                <Plus size={16} /> New
               </button>
             </div>
           </div>
@@ -456,7 +456,7 @@ export default function TemplatesClient({ initialTemplates }: { initialTemplates
                   boxShadow: "0 2px 6px rgba(37,99,235,0.25)"
                 }}
               >
-                <Plus size={16} /> + New
+                <Plus size={16} /> New
               </button>
             </div>
           </div>
