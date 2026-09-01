@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Clock, Users, MapPin, Search } from 'lucide-react';
+import { Calendar, Users, MapPin, Filter, ChevronDown } from 'lucide-react';
 
 interface AnalyticsFiltersProps {
   activeTab: string;
@@ -35,37 +35,73 @@ export default function AnalyticsFilters({
   };
 
   return (
-    <form onSubmit={handleFilter} style={{ backgroundColor: '#fff', padding: '16px 24px', borderRadius: '12px', display: 'flex', gap: '20px', alignItems: 'flex-end', marginBottom: '24px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-      <div style={{ flex: 1 }}>
-        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '8px' }}><Clock size={14} style={{display:'inline', verticalAlign:'middle', marginRight:'4px'}}/>Timeframe</label>
-        <select value={timeframe} onChange={e => setTimeframe(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff' }}>
-          <option>This Month</option>
-          <option>Last Month</option>
-          <option>This Quarter</option>
-          <option>This Year</option>
-        </select>
+    <form 
+      onSubmit={handleFilter} 
+      className="analytics-filters-card"
+    >
+      <div className="analytics-filter-field">
+        <label className="analytics-filter-label">
+          <Calendar size={13} style={{ color: 'var(--accent-primary, #00a884)' }} />
+          Timeframe
+        </label>
+        <div className="analytics-select-wrapper">
+          <select 
+            value={timeframe} 
+            onChange={e => setTimeframe(e.target.value)} 
+            className="analytics-select"
+          >
+            <option>This Month</option>
+            <option>Last Month</option>
+            <option>This Quarter</option>
+            <option>This Year</option>
+          </select>
+          <ChevronDown size={16} className="analytics-select-chevron" />
+        </div>
       </div>
-      <div style={{ flex: 1 }}>
-        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '8px' }}><Users size={14} style={{display:'inline', verticalAlign:'middle', marginRight:'4px'}}/>Agent</label>
-        <select value={agent} onChange={e => setAgent(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff' }}>
-          <option value="all">All Agents</option>
-          {agents.map(a => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </select>
+
+      <div className="analytics-filter-field">
+        <label className="analytics-filter-label">
+          <Users size={13} style={{ color: 'var(--accent-primary, #00a884)' }} />
+          Agent
+        </label>
+        <div className="analytics-select-wrapper">
+          <select 
+            value={agent} 
+            onChange={e => setAgent(e.target.value)} 
+            className="analytics-select"
+          >
+            <option value="all">All Agents</option>
+            {agents.map(a => (
+              <option key={a.id} value={a.id}>{a.name}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} className="analytics-select-chevron" />
+        </div>
       </div>
-      <div style={{ flex: 1 }}>
-        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '8px' }}><MapPin size={14} style={{display:'inline', verticalAlign:'middle', marginRight:'4px'}}/>State</label>
-        <select value={stateFilter} onChange={e => setStateFilter(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff' }}>
-          <option value="all">All States</option>
-          {states.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+
+      <div className="analytics-filter-field">
+        <label className="analytics-filter-label">
+          <MapPin size={13} style={{ color: 'var(--accent-primary, #00a884)' }} />
+          State
+        </label>
+        <div className="analytics-select-wrapper">
+          <select 
+            value={stateFilter} 
+            onChange={e => setStateFilter(e.target.value)} 
+            className="analytics-select"
+          >
+            <option value="all">All States</option>
+            {states.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <ChevronDown size={16} className="analytics-select-chevron" />
+        </div>
       </div>
+
       <div>
-        <button type="submit" style={{ backgroundColor: 'var(--accent-primary)', color: 'white', padding: '10px 24px', borderRadius: '6px', border: 'none', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', height: '40px' }}>
-          <Search size={16} /> Filter
+        <button type="submit" className="analytics-filter-submit">
+          <Filter size={16} /> Filter
         </button>
       </div>
     </form>

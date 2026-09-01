@@ -6,11 +6,32 @@ import RepPerformanceChart from '@/components/dashboard/RepPerformanceChart';
 import TopProductsChart from '@/components/dashboard/TopProductsChart';
 import AnalyticsFilters from '@/components/dashboard/AnalyticsFilters';
 import EditGoalModal from '@/components/dashboard/EditGoalModal';
-import { TrendingUp, Users, Target, Zap, Trophy, Crown, MapPin, Search, Clock, ShoppingCart, Repeat, Percent, IndianRupee, Star, ShieldCheck, Box } from 'lucide-react';
+import { 
+  TrendingUp, 
+  Users, 
+  Target, 
+  Zap, 
+  Trophy, 
+  Crown, 
+  MapPin, 
+  ShoppingCart, 
+  Repeat, 
+  Percent, 
+  IndianRupee, 
+  Star, 
+  ShieldCheck, 
+  Box,
+  FileText,
+  Download,
+  Sparkles,
+  ArrowUpRight,
+  ArrowRight
+} from 'lucide-react';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getTenantOrgId } from '@/lib/tenant';
+import './analytics.css';
 
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
@@ -40,9 +61,22 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
 
   if (!canView) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <h2>Unauthorized</h2>
-        <p>You do not have permission to view Analytics.</p>
+      <div style={{ padding: '60px 24px', textAlign: 'center' }}>
+        <div style={{ 
+          width: '64px', 
+          height: '64px', 
+          borderRadius: '16px', 
+          background: '#fee2e2', 
+          color: '#ef4444', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          margin: '0 auto 16px auto' 
+        }}>
+          <ShieldCheck size={32} />
+        </div>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>Unauthorized Access</h2>
+        <p style={{ color: '#64748b', fontSize: '0.95rem' }}>You do not have permission to view Analytics.</p>
       </div>
     );
   }
@@ -277,41 +311,28 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
   // Formatting helpers
   const formatINR = (val: number) => `₹${Math.round(val).toLocaleString('en-IN')}`;
 
-  // Helper for active tab styles
-  const getTabStyle = (tabId: string) => {
-    const isActive = activeTab === tabId;
-    return {
-      backgroundColor: isActive ? 'var(--accent-primary)' : 'transparent',
-      color: isActive ? '#fff' : 'var(--accent-primary)',
-      padding: '10px 20px',
-      borderRadius: '6px',
-      border: 'none',
-      fontWeight: 600,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      cursor: 'pointer',
-      textDecoration: 'none'
-    };
-  };
-  
   const searchParamsQuery = new URLSearchParams();
   if (selectedAgentId !== 'all') searchParamsQuery.set('agent', selectedAgentId);
   if (selectedState !== 'all') searchParamsQuery.set('state', selectedState);
   const currentQueryStr = searchParamsQuery.toString();
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', fontFamily: '"Inter", sans-serif' }}>
+    <div className="analytics-container">
       
       {/* ─── HEADER ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-        <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '12px', color: '#1e293b' }}>
-            <TrendingUp color="#4f46e5" size={32} /> Analytics & Reports
-          </h1>
-          <p style={{ margin: 0, color: '#64748b' }}>Graphical insights across all timeframes, states & agents</p>
+      <div className="analytics-header">
+        <div className="analytics-title-group">
+          <div className="analytics-title-icon-badge">
+            <TrendingUp size={26} />
+          </div>
+          <div>
+            <h1 className="analytics-title">
+              Analytics & Reports
+            </h1>
+            <p className="analytics-subtitle">Graphical insights across all timeframes, states & agents</p>
+          </div>
         </div>
-        <Link href="/reports" style={{ backgroundColor: '#fff', color: '#ef4444', border: '1px solid #ef4444', padding: '10px 20px', borderRadius: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', cursor: 'pointer' }}>
+        <Link href="/reports" className="analytics-btn-pdf">
           <Crown size={18} /> Master Report (PDF)
         </Link>
       </div>
@@ -325,18 +346,30 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
         states={states as string[]}
       />
 
-      {/* ─── INTERACTIVE TABS ─── */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
-        <Link href={`?tab=executive${currentQueryStr ? '&' + currentQueryStr : ''}`} style={getTabStyle('executive')}>
+      {/* ─── INTERACTIVE TABS (Segmented Control Bar) ─── */}
+      <div className="analytics-tabs-wrapper">
+        <Link 
+          href={`?tab=executive${currentQueryStr ? '&' + currentQueryStr : ''}`} 
+          className={`analytics-tab-item ${activeTab === 'executive' ? 'active' : ''}`}
+        >
           <TrendingUp size={16} /> Executive Overview
         </Link>
-        <Link href={`?tab=vips${currentQueryStr ? '&' + currentQueryStr : ''}`} style={getTabStyle('vips')}>
+        <Link 
+          href={`?tab=vips${currentQueryStr ? '&' + currentQueryStr : ''}`} 
+          className={`analytics-tab-item ${activeTab === 'vips' ? 'active' : ''}`}
+        >
           <Crown size={16} /> VIPs & Retention
         </Link>
-        <Link href={`?tab=team${currentQueryStr ? '&' + currentQueryStr : ''}`} style={getTabStyle('team')}>
+        <Link 
+          href={`?tab=team${currentQueryStr ? '&' + currentQueryStr : ''}`} 
+          className={`analytics-tab-item ${activeTab === 'team' ? 'active' : ''}`}
+        >
           <Trophy size={16} /> Team & Incentives
         </Link>
-        <Link href={`?tab=regional${currentQueryStr ? '&' + currentQueryStr : ''}`} style={getTabStyle('regional')}>
+        <Link 
+          href={`?tab=regional${currentQueryStr ? '&' + currentQueryStr : ''}`} 
+          className={`analytics-tab-item ${activeTab === 'regional' ? 'active' : ''}`}
+        >
           <MapPin size={16} /> Regional & Payments
         </Link>
       </div>
@@ -344,66 +377,101 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
       {/* ─── TAB CONTENT: EXECUTIVE OVERVIEW ─── */}
       {activeTab === 'executive' && (
         <>
-          {/* Target & Forecast Cards (Clean White Theme) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+          {/* Target & Forecast Cards */}
+          <div className="analytics-target-forecast-grid">
             
-            <div className="zoho-form-card" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ backgroundColor: '#fef9c3', padding: '8px', borderRadius: '8px', color: '#eab308' }}>
-                    <Target size={24} />
+            {/* Monthly Target Card */}
+            <div className="analytics-feature-card">
+              <div>
+                <div className="analytics-card-header">
+                  <div className="analytics-card-title-group">
+                    <div className="analytics-card-icon-badge target">
+                      <Target size={22} />
+                    </div>
+                    <div>
+                      <h2 className="analytics-card-title">Monthly Target</h2>
+                      <div className="analytics-card-subtitle">Goal: {formatINR(MONTHLY_GOAL)}</div>
+                    </div>
                   </div>
-                  <div>
-                    <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700, color: '#1e293b' }}>Monthly Target</h2>
-                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Goal: {formatINR(MONTHLY_GOAL)}</div>
+                  <EditGoalModal currentTarget={MONTHLY_GOAL} />
+                </div>
+                
+                {/* Progress Bar */}
+                <div className="analytics-progress-wrapper">
+                  <div className="analytics-progress-labels">
+                    <span style={{ color: '#64748b', fontSize: '0.78rem' }}>Target Achieved</span>
+                    <span style={{ color: '#0f172a', fontWeight: 800 }}>{progressPercent.toFixed(1)}%</span>
+                  </div>
+                  <div className="analytics-progress-track">
+                    <div 
+                      className="analytics-progress-fill" 
+                      style={{ width: `${progressPercent}%` }} 
+                    />
                   </div>
                 </div>
-                <EditGoalModal currentTarget={MONTHLY_GOAL} />
-              </div>
-              
-              <div style={{ backgroundColor: '#f1f5f9', height: '12px', borderRadius: '6px', marginBottom: '24px', overflow: 'hidden' }}>
-                <div style={{ backgroundColor: '#eab308', width: `${progressPercent}%`, height: '100%', borderRadius: '6px', transition: 'width 0.5s ease-out' }} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
-                <div>
-                  <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '4px' }}>Current Revenue</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>{formatINR(currentMonthRevenue)}</div>
+              <div className="analytics-stats-chips-grid">
+                <div className="analytics-stat-chip">
+                  <div className="analytics-stat-chip-label">Current Revenue</div>
+                  <div className="analytics-stat-chip-value">{formatINR(currentMonthRevenue)}</div>
                 </div>
-                <div>
-                  <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '4px' }}>Remaining</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#ef4444' }}>{formatINR(remainingTarget)}</div>
+                <div className="analytics-stat-chip">
+                  <div className="analytics-stat-chip-label">Remaining</div>
+                  <div className="analytics-stat-chip-value danger">{formatINR(remainingTarget)}</div>
                 </div>
-                <div>
-                  <div style={{ color: '#64748b', fontSize: '0.8rem', marginBottom: '4px' }}>Req. Run-Rate</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#3b82f6' }}>{formatINR(runRateRequired)}/d</div>
+                <div className="analytics-stat-chip">
+                  <div className="analytics-stat-chip-label">Req. Run-Rate</div>
+                  <div className="analytics-stat-chip-value info">{formatINR(runRateRequired)}/d</div>
                 </div>
               </div>
             </div>
 
-            <div className="zoho-form-card" style={{ backgroundColor: '#fff', borderRadius: '12px', padding: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ backgroundColor: '#ccfbf1', padding: '8px', borderRadius: '8px', color: '#14b8a6' }}>
-                    <Zap size={24} />
-                  </div>
-                  <div>
-                    <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700, color: '#1e293b' }}>AI Forecast Engine</h2>
-                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Projection based on current run-rate</div>
+            {/* AI Forecast Engine Card */}
+            <div className="analytics-feature-card" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%)', borderColor: '#ccfbf1' }}>
+              <div>
+                <div className="analytics-card-header">
+                  <div className="analytics-card-title-group">
+                    <div className="analytics-card-icon-badge forecast">
+                      <Sparkles size={22} />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h2 className="analytics-card-title">AI Forecast Engine</h2>
+                        <span style={{ 
+                          fontSize: '0.65rem', 
+                          fontWeight: 800, 
+                          backgroundColor: '#ccfbf1', 
+                          color: '#0f766e', 
+                          padding: '2px 6px', 
+                          borderRadius: '6px',
+                          letterSpacing: '0.04em'
+                        }}>
+                          SMART PREDICTION
+                        </span>
+                      </div>
+                      <div className="analytics-card-subtitle">Projection based on current run-rate</div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '32px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: '1px dashed #e2e8f0' }}>
-                  <span style={{ color: '#64748b', fontWeight: 500 }}>Expected Closing (This Month)</span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#14b8a6' }}>{formatINR(expectedClosing)}</span>
+              <div className="analytics-forecast-rows">
+                <div className="analytics-forecast-row" style={{ backgroundColor: '#ffffff' }}>
+                  <span className="analytics-forecast-label">Expected Closing (This Month)</span>
+                  <span className="analytics-forecast-val" style={{ color: 'var(--accent-primary, #00a884)' }}>
+                    {formatINR(expectedClosing)}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#64748b', fontWeight: 500 }}>Next-Month Forecast</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>+14% MoM</span>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e293b' }}>{formatINR(nextMonthForecast)}</span>
+                <div className="analytics-forecast-row" style={{ backgroundColor: '#ffffff' }}>
+                  <span className="analytics-forecast-label">Next-Month Forecast</span>
+                  <div className="analytics-forecast-val-group">
+                    <span className="analytics-badge-mom">
+                      <ArrowUpRight size={12} /> +14% MoM
+                    </span>
+                    <span className="analytics-forecast-val">
+                      {formatINR(nextMonthForecast)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -411,139 +479,186 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
 
           </div>
 
-          {/* 8 KPI METRICS GRID (Clean White Theme & Clickable) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '32px' }}>
-            <Link href="/orders" className="zoho-form-card" style={{ display: 'block', textDecoration: 'none', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Total Revenue</div>
-                <div style={{ padding: '6px', backgroundColor: '#e0e7ff', borderRadius: '6px', color: '#4f46e5' }}><IndianRupee size={16} /></div>
+          {/* 8 KPI METRICS GRID (Theme Aligned & Clickable) */}
+          <div className="analytics-kpi-grid">
+            <Link href="/orders" className="analytics-kpi-card">
+              <div className="analytics-kpi-header">
+                <div className="analytics-kpi-label">Total Revenue</div>
+                <div className="analytics-kpi-icon-box" style={{ backgroundColor: '#e0e7ff', color: '#4f46e5' }}>
+                  <IndianRupee size={18} />
+                </div>
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{formatINR(totalRevenue)}</div>
+              <div className="analytics-kpi-value">{formatINR(totalRevenue)}</div>
+              <div className="analytics-kpi-footer">
+                <span>View all orders</span> <ArrowRight size={12} />
+              </div>
             </Link>
 
-            <Link href="/orders" className="zoho-form-card" style={{ display: 'block', textDecoration: 'none', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Total Orders</div>
-                <div style={{ padding: '6px', backgroundColor: '#ffe4e6', borderRadius: '6px', color: '#e11d48' }}><ShoppingCart size={16} /></div>
+            <Link href="/orders" className="analytics-kpi-card">
+              <div className="analytics-kpi-header">
+                <div className="analytics-kpi-label">Total Orders</div>
+                <div className="analytics-kpi-icon-box" style={{ backgroundColor: '#ffe4e6', color: '#e11d48' }}>
+                  <ShoppingCart size={18} />
+                </div>
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{totalOrdersCount}</div>
+              <div className="analytics-kpi-value">{totalOrdersCount}</div>
+              <div className="analytics-kpi-footer">
+                <span>View order ledger</span> <ArrowRight size={12} />
+              </div>
             </Link>
 
-            <Link href="/customers" className="zoho-form-card" style={{ display: 'block', textDecoration: 'none', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Total Customers</div>
-                <div style={{ padding: '6px', backgroundColor: '#e0f2fe', borderRadius: '6px', color: '#0284c7' }}><Users size={16} /></div>
+            <Link href="/customers" className="analytics-kpi-card">
+              <div className="analytics-kpi-header">
+                <div className="analytics-kpi-label">Total Customers</div>
+                <div className="analytics-kpi-icon-box" style={{ backgroundColor: '#e0f2fe', color: '#0284c7' }}>
+                  <Users size={18} />
+                </div>
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{totalCustomers}</div>
+              <div className="analytics-kpi-value">{totalCustomers}</div>
+              <div className="analytics-kpi-footer">
+                <span>Customer directory</span> <ArrowRight size={12} />
+              </div>
             </Link>
 
-            <Link href="/customers" className="zoho-form-card" style={{ display: 'block', textDecoration: 'none', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Matured Customers</div>
-                <div style={{ padding: '6px', backgroundColor: '#d1fae5', borderRadius: '6px', color: '#059669' }}><ShieldCheck size={16} /></div>
+            <Link href="/customers" className="analytics-kpi-card">
+              <div className="analytics-kpi-header">
+                <div className="analytics-kpi-label">Matured Customers</div>
+                <div className="analytics-kpi-icon-box" style={{ backgroundColor: '#d1fae5', color: '#059669' }}>
+                  <ShieldCheck size={18} />
+                </div>
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{maturedCustomers}</div>
+              <div className="analytics-kpi-value">{maturedCustomers}</div>
+              <div className="analytics-kpi-footer">
+                <span>Active buyers</span> <ArrowRight size={12} />
+              </div>
             </Link>
 
-            <Link href={`?tab=vips${currentQueryStr ? '&' + currentQueryStr : ''}`} className="zoho-form-card" style={{ display: 'block', textDecoration: 'none', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Repeat Buyers</div>
-                <div style={{ padding: '6px', backgroundColor: '#fef3c7', borderRadius: '6px', color: '#d97706' }}><Repeat size={16} /></div>
+            <Link href={`?tab=vips${currentQueryStr ? '&' + currentQueryStr : ''}`} className="analytics-kpi-card">
+              <div className="analytics-kpi-header">
+                <div className="analytics-kpi-label">Repeat Buyers</div>
+                <div className="analytics-kpi-icon-box" style={{ backgroundColor: '#fef3c7', color: '#d97706' }}>
+                  <Repeat size={18} />
+                </div>
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{repeatBuyers}</div>
+              <div className="analytics-kpi-value">{repeatBuyers}</div>
+              <div className="analytics-kpi-footer">
+                <span>VIP leaderboard</span> <ArrowRight size={12} />
+              </div>
             </Link>
 
-            <Link href={`?tab=vips${currentQueryStr ? '&' + currentQueryStr : ''}`} className="zoho-form-card" style={{ display: 'block', textDecoration: 'none', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Retention Rate</div>
-                <div style={{ padding: '6px', backgroundColor: '#f3e8ff', borderRadius: '6px', color: '#9333ea' }}><Percent size={16} /></div>
+            <Link href={`?tab=vips${currentQueryStr ? '&' + currentQueryStr : ''}`} className="analytics-kpi-card">
+              <div className="analytics-kpi-header">
+                <div className="analytics-kpi-label">Retention Rate</div>
+                <div className="analytics-kpi-icon-box" style={{ backgroundColor: '#f3e8ff', color: '#9333ea' }}>
+                  <Percent size={18} />
+                </div>
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{retentionRate}%</div>
+              <div className="analytics-kpi-value">{retentionRate}%</div>
+              <div className="analytics-kpi-footer">
+                <span>Cohort analytics</span> <ArrowRight size={12} />
+              </div>
             </Link>
 
-            <Link href="/orders" className="zoho-form-card" style={{ display: 'block', textDecoration: 'none', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Avg Order Value</div>
-                <div style={{ padding: '6px', backgroundColor: '#ffedd5', borderRadius: '6px', color: '#ea580c' }}><IndianRupee size={16} /></div>
+            <Link href="/orders" className="analytics-kpi-card">
+              <div className="analytics-kpi-header">
+                <div className="analytics-kpi-label">Avg Order Value</div>
+                <div className="analytics-kpi-icon-box" style={{ backgroundColor: '#ffedd5', color: '#ea580c' }}>
+                  <IndianRupee size={18} />
+                </div>
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{formatINR(aov)}</div>
+              <div className="analytics-kpi-value">{formatINR(aov)}</div>
+              <div className="analytics-kpi-footer">
+                <span>Order statistics</span> <ArrowRight size={12} />
+              </div>
             </Link>
 
-            <Link href={`?tab=vips${currentQueryStr ? '&' + currentQueryStr : ''}`} className="zoho-form-card" style={{ display: 'block', textDecoration: 'none', backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Customer LTV</div>
-                <div style={{ padding: '6px', backgroundColor: '#ccfbf1', borderRadius: '6px', color: '#0d9488' }}><Star size={16} /></div>
+            <Link href={`?tab=vips${currentQueryStr ? '&' + currentQueryStr : ''}`} className="analytics-kpi-card">
+              <div className="analytics-kpi-header">
+                <div className="analytics-kpi-label">Customer LTV</div>
+                <div className="analytics-kpi-icon-box" style={{ backgroundColor: '#ccfbf1', color: '#0d9488' }}>
+                  <Star size={18} />
+                </div>
               </div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{formatINR(customerLTV)}</div>
+              <div className="analytics-kpi-value">{formatINR(customerLTV)}</div>
+              <div className="analytics-kpi-footer">
+                <span>Lifetime value</span> <ArrowRight size={12} />
+              </div>
             </Link>
           </div>
 
           {/* ─── MATURED CUSTOMER BREAKDOWN ─── */}
           <div style={{ marginBottom: '32px' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: 600, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShieldCheck size={18} color="#059669" /> Matured Customers Breakdown
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={18} color="#059669" /> Matured Customers Discount Breakdown
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-              <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>0% Discount</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{count0Percent}</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+              <div className="analytics-stat-chip" style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '16px', boxShadow: '0 2px 6px -1px rgba(0,0,0,0.04)' }}>
+                <div className="analytics-stat-chip-label">0% Discount</div>
+                <div className="analytics-stat-chip-value">{count0Percent}</div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>Full price purchasers</div>
               </div>
-              <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>1-15% Discount</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{count1to15Percent}</div>
+              <div className="analytics-stat-chip" style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '16px', boxShadow: '0 2px 6px -1px rgba(0,0,0,0.04)' }}>
+                <div className="analytics-stat-chip-label">1-15% Discount</div>
+                <div className="analytics-stat-chip-value" style={{ color: '#0284c7' }}>{count1to15Percent}</div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>Standard tier buyers</div>
               </div>
-              <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>15%+ Discount</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{count15PlusPercent}</div>
+              <div className="analytics-stat-chip" style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '16px', boxShadow: '0 2px 6px -1px rgba(0,0,0,0.04)' }}>
+                <div className="analytics-stat-chip-label">15%+ Discount</div>
+                <div className="analytics-stat-chip-value" style={{ color: '#d97706' }}>{count15PlusPercent}</div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>High incentive buyers</div>
               </div>
-              <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>Credit Customers</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1e293b' }}>{countCredit}</div>
+              <div className="analytics-stat-chip" style={{ background: '#ffffff', border: '1px solid #e2e8f0', padding: '16px', boxShadow: '0 2px 6px -1px rgba(0,0,0,0.04)' }}>
+                <div className="analytics-stat-chip-label">Credit Customers</div>
+                <div className="analytics-stat-chip-value" style={{ color: '#9333ea' }}>{countCredit}</div>
+                <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>Credit term accounts</div>
               </div>
             </div>
           </div>
 
-          {/* ─── NEW B2B REPORTS ─── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-            <div className="zoho-form-card" style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
+          {/* ─── B2B REPORTS ─── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+            
+            {/* Category Revenue Card */}
+            <div className="analytics-section-card">
+              <div className="analytics-section-header">
+                <h3 className="analytics-section-title">
                   <Box size={18} color="#06b6d4" /> Revenue by Category
                 </h3>
               </div>
               {categoryData.length > 0 ? (
                 <TopProductsChart data={categoryData} />
               ) : (
-                <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>No category data available.</div>
+                <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>No category data available.</div>
               )}
             </div>
 
-            <div className="zoho-form-card" style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
+            {/* Top Performing Products Card */}
+            <div className="analytics-section-card">
+              <div className="analytics-section-header">
+                <h3 className="analytics-section-title">
                   <Star size={18} color="#f59e0b" /> Top Performing Products
                 </h3>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <div className="analytics-table-wrapper">
+                <table className="analytics-table">
                   <thead>
-                    <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>Product Name</th>
-                      <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'center' }}>Qty Sold</th>
-                      <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'right' }}>Revenue</th>
+                    <tr>
+                      <th>Product Name</th>
+                      <th style={{ textAlign: 'center' }}>Qty Sold</th>
+                      <th style={{ textAlign: 'right' }}>Revenue</th>
                     </tr>
                   </thead>
                   <tbody>
                     {topProductsData.length === 0 ? (
                       <tr>
-                        <td colSpan={3} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No products found.</td>
+                        <td colSpan={3} style={{ textAlign: 'center', padding: '28px', color: '#64748b' }}>No products found.</td>
                       </tr>
                     ) : (
                       topProductsData.map((prod, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '12px', fontWeight: 600, color: '#1e293b' }}>{prod.name}</td>
-                          <td style={{ padding: '12px', color: '#3b82f6', fontWeight: 700, textAlign: 'center' }}>{prod.qty}</td>
-                          <td style={{ padding: '12px', color: '#10b981', fontWeight: 700, textAlign: 'right' }}>{formatINR(prod.revenue)}</td>
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 600, color: '#0f172a' }}>{prod.name}</td>
+                          <td style={{ color: '#2563eb', fontWeight: 700, textAlign: 'center' }}>{prod.qty}</td>
+                          <td style={{ color: 'var(--accent-primary, #00a884)', fontWeight: 800, textAlign: 'right' }}>{formatINR(prod.revenue)}</td>
                         </tr>
                       ))
                     )}
@@ -553,13 +668,34 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
             </div>
           </div>
 
-          <div className="zoho-form-card" style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-                <TrendingUp size={18} color="#4f46e5" /> Sales Trend (Monthly)
-              </h3>
-              <Link href="/reports" style={{ backgroundColor: '#fff', border: '1px solid #cbd5e1', color: '#475569', padding: '4px 12px', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', cursor: 'pointer' }}>
-                Export
+          {/* Sales Trend Card */}
+          <div className="analytics-section-card">
+            <div className="analytics-section-header">
+              <div>
+                <h3 className="analytics-section-title">
+                  <TrendingUp size={18} style={{ color: 'var(--accent-primary, #00a884)' }} /> Sales & Order Trend
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>Daily revenue volume and order frequency over the last 10 days</p>
+              </div>
+              <Link 
+                href="/reports" 
+                style={{ 
+                  backgroundColor: '#ffffff', 
+                  border: '1.5px solid #e2e8f0', 
+                  color: '#475569', 
+                  padding: '6px 14px', 
+                  borderRadius: '10px', 
+                  fontSize: '0.8rem', 
+                  fontWeight: 600, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  textDecoration: 'none', 
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Download size={14} /> Export Data
               </Link>
             </div>
             <SalesTrendChart data={salesTrendData} />
@@ -569,44 +705,51 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
 
       {/* ─── TAB CONTENT: VIPS & RETENTION ─── */}
       {activeTab === 'vips' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '24px' }}>
           
-          <div className="zoho-form-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-              <Crown size={20} color="#f59e0b" /> Top 10 VIP Customers
-            </h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="analytics-section-card" style={{ flex: 2 }}>
+            <div className="analytics-section-header">
+              <div>
+                <h3 className="analytics-section-title">
+                  <Crown size={20} color="#f59e0b" /> Top 10 VIP Customers
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>High-value accounts contributing the largest portion of total revenue</p>
+              </div>
+            </div>
+            <div className="analytics-table-wrapper">
+              <table className="analytics-table">
                 <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>Rank</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>Customer Name</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>Phone</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>Agent</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'center' }}>Orders</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'right' }}>Total Revenue</th>
+                  <tr>
+                    <th style={{ width: '60px' }}>Rank</th>
+                    <th>Customer Name</th>
+                    <th>Phone</th>
+                    <th>Agent</th>
+                    <th style={{ textAlign: 'center' }}>Orders</th>
+                    <th style={{ textAlign: 'right' }}>Total Purchase</th>
                   </tr>
                 </thead>
                 <tbody>
                   {vipCustomers.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No VIP customers found matching the filters.</td>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>No VIP customers found matching the filters.</td>
                     </tr>
                   ) : (
                     vipCustomers.map((vip, idx) => (
-                      <tr key={vip.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px', fontWeight: 700, color: idx === 0 ? '#f59e0b' : idx === 1 ? '#94a3b8' : idx === 2 ? '#b45309' : '#475569' }}>
-                          {idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : idx + 1}
+                      <tr key={vip.id}>
+                        <td>
+                          <span className={`analytics-rank-badge ${idx === 0 ? 'analytics-rank-1' : idx === 1 ? 'analytics-rank-2' : idx === 2 ? 'analytics-rank-3' : 'analytics-rank-other'}`}>
+                            {idx === 0 ? '🥇 1' : idx === 1 ? '🥈 2' : idx === 2 ? '🥉 3' : idx + 1}
+                          </span>
                         </td>
-                        <td style={{ padding: '12px', fontWeight: 600, color: '#1e293b' }}>
-                          <Link href={`/customers/${vip.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                            {vip.businessName}
+                        <td style={{ fontWeight: 700, color: '#0f172a' }}>
+                          <Link href={`/customers/${vip.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            {vip.businessName} <ArrowUpRight size={12} color="#94a3b8" />
                           </Link>
                         </td>
-                        <td style={{ padding: '12px', color: '#3b82f6' }}>{vip.mobile}</td>
-                        <td style={{ padding: '12px', color: '#475569' }}>{vip.assignedSalesperson?.user?.name || 'Unassigned'}</td>
-                        <td style={{ padding: '12px', color: '#3b82f6', fontWeight: 700, textAlign: 'center' }}>{vip.orders?.length || vip.totalOrders}</td>
-                        <td style={{ padding: '12px', color: '#10b981', fontWeight: 700, textAlign: 'right' }}>{formatINR(vip.calculatedTotalPurchase)}</td>
+                        <td style={{ color: '#2563eb', fontWeight: 600 }}>{vip.mobile}</td>
+                        <td style={{ color: '#64748b', fontWeight: 500 }}>{vip.assignedSalesperson?.user?.name || 'Unassigned'}</td>
+                        <td style={{ color: '#2563eb', fontWeight: 700, textAlign: 'center' }}>{vip.orders?.length || vip.totalOrders}</td>
+                        <td style={{ color: 'var(--accent-primary, #00a884)', fontWeight: 800, textAlign: 'right' }}>{formatINR(vip.calculatedTotalPurchase)}</td>
                       </tr>
                     ))
                   )}
@@ -615,10 +758,10 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
             </div>
           </div>
 
-          <div className="zoho-form-card" style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', alignSelf: 'start' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-                <Users size={18} color="#10b981" /> Customer Growth
+          <div className="analytics-section-card" style={{ flex: 1, alignSelf: 'start' }}>
+            <div className="analytics-section-header">
+              <h3 className="analytics-section-title">
+                <Users size={18} style={{ color: 'var(--accent-primary, #00a884)' }} /> Customer Acquisition Growth
               </h3>
             </div>
             <CustomerGrowthChart data={customerGrowthData} />
@@ -630,70 +773,71 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
       {/* ─── TAB CONTENT: TEAM & INCENTIVES ─── */}
       {activeTab === 'team' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-          <div className="zoho-form-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div className="analytics-section-card">
+            <div className="analytics-section-header">
               <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-                  <Trophy size={20} style={{ color: 'var(--accent-primary)' }} /> Team Performance
+                <h3 className="analytics-section-title">
+                  <Trophy size={20} style={{ color: 'var(--accent-primary, #00a884)' }} /> Team Performance
                 </h3>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>Comparing total revenue generated vs calls logged per employee.</p>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>Comparing total revenue generated vs calls logged per salesperson.</p>
               </div>
             </div>
             {repPerformanceData.length > 0 ? (
               <RepPerformanceChart data={repPerformanceData} />
             ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', border: '1px dashed #cbd5e1', borderRadius: '8px' }}>
+              <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b', border: '1.5px dashed #cbd5e1', borderRadius: '12px' }}>
                 No employee data available for the selected filters.
               </div>
             )}
           </div>
 
-          <div className="zoho-form-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div className="analytics-section-card">
+            <div className="analytics-section-header">
               <div>
-                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-                  <Zap size={20} style={{ color: '#eab308' }} /> Incentives & Targets
+                <h3 className="analytics-section-title">
+                  <Zap size={20} style={{ color: '#f59e0b' }} /> Incentives & Targets Breakdown
                 </h3>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b' }}>Detailed breakdown of targets achieved and incentives earned.</p>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>Detailed breakdown of targets achieved and incentives earned.</p>
               </div>
             </div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <div className="analytics-table-wrapper">
+              <table className="analytics-table">
                 <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>Employee Name</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'right' }}>Target</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'right' }}>Total Sales</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'center' }}>% Achieved</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'right' }}>Incentive Earned</th>
+                  <tr>
+                    <th>Employee Name</th>
+                    <th style={{ textAlign: 'right' }}>Target</th>
+                    <th style={{ textAlign: 'right' }}>Total Sales</th>
+                    <th style={{ textAlign: 'center' }}>% Achieved</th>
+                    <th style={{ textAlign: 'right' }}>Incentive Earned</th>
                   </tr>
                 </thead>
                 <tbody>
                   {repPerformanceData.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No data available.</td>
+                      <td colSpan={5} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>No data available.</td>
                     </tr>
                   ) : (
                     repPerformanceData.map((emp, idx) => {
                       const pctAchieved = emp.target > 0 ? (emp.sales / emp.target) * 100 : 0;
                       return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                          <td style={{ padding: '12px', fontWeight: 600, color: '#1e293b' }}>{emp.name}</td>
-                          <td style={{ padding: '12px', color: '#475569', textAlign: 'right' }}>{emp.target > 0 ? formatINR(emp.target) : '-'}</td>
-                          <td style={{ padding: '12px', color: '#3b82f6', fontWeight: 700, textAlign: 'right' }}>{formatINR(emp.sales)}</td>
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 700, color: '#0f172a' }}>{emp.name}</td>
+                          <td style={{ color: '#64748b', textAlign: 'right', fontWeight: 600 }}>{emp.target > 0 ? formatINR(emp.target) : '-'}</td>
+                          <td style={{ color: '#2563eb', fontWeight: 700, textAlign: 'right' }}>{formatINR(emp.sales)}</td>
                           <td style={{ padding: '12px', textAlign: 'center' }}>
                             <span style={{ 
-                              padding: '2px 8px', 
-                              borderRadius: '12px', 
+                              padding: '3px 10px', 
+                              borderRadius: '9999px', 
                               fontSize: '0.75rem', 
-                              fontWeight: 700,
+                              fontWeight: 800,
                               backgroundColor: pctAchieved >= 100 ? '#dcfce7' : pctAchieved >= 50 ? '#fef9c3' : '#fee2e2',
-                              color: pctAchieved >= 100 ? '#166534' : pctAchieved >= 50 ? '#854d0e' : '#991b1b'
+                              color: pctAchieved >= 100 ? '#166534' : pctAchieved >= 50 ? '#854d0e' : '#991b1b',
+                              border: `1px solid ${pctAchieved >= 100 ? '#bbf7d0' : pctAchieved >= 50 ? '#fde047' : '#fecaca'}`
                             }}>
                               {pctAchieved > 0 ? `${pctAchieved.toFixed(1)}%` : '-'}
                             </span>
                           </td>
-                          <td style={{ padding: '12px', color: '#10b981', fontWeight: 700, textAlign: 'right' }}>
+                          <td style={{ color: 'var(--accent-primary, #00a884)', fontWeight: 800, textAlign: 'right' }}>
                             {formatINR(emp.incentives)}
                           </td>
                         </tr>
@@ -709,32 +853,34 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
 
       {/* ─── TAB CONTENT: REGIONAL ─── */}
       {activeTab === 'regional' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
           {/* Regional Table */}
-          <div className="zoho-form-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-              <MapPin size={20} color="#3b82f6" /> Regional Revenue Breakdown
-            </h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+          <div className="analytics-section-card">
+            <div className="analytics-section-header">
+              <h3 className="analytics-section-title">
+                <MapPin size={20} color="#2563eb" /> Regional Revenue Breakdown
+              </h3>
+            </div>
+            <div className="analytics-table-wrapper">
+              <table className="analytics-table">
                 <thead>
-                  <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700 }}>State / Region</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'center' }}>Total Orders</th>
-                    <th style={{ padding: '12px', fontSize: '0.85rem', color: '#475569', fontWeight: 700, textAlign: 'right' }}>Revenue</th>
+                  <tr>
+                    <th>State / Region</th>
+                    <th style={{ textAlign: 'center' }}>Total Orders</th>
+                    <th style={{ textAlign: 'right' }}>Revenue</th>
                   </tr>
                 </thead>
                 <tbody>
                   {regionalData.length === 0 ? (
                     <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>No regional data found.</td>
+                      <td colSpan={3} style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>No regional data found.</td>
                     </tr>
                   ) : (
                     regionalData.map((reg, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px', fontWeight: 600, color: '#1e293b' }}>{reg.state}</td>
-                        <td style={{ padding: '12px', color: '#3b82f6', fontWeight: 700, textAlign: 'center' }}>{reg.orders}</td>
-                        <td style={{ padding: '12px', color: '#10b981', fontWeight: 700, textAlign: 'right' }}>{formatINR(reg.revenue)}</td>
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 700, color: '#0f172a' }}>{reg.state}</td>
+                        <td style={{ color: '#2563eb', fontWeight: 700, textAlign: 'center' }}>{reg.orders}</td>
+                        <td style={{ color: 'var(--accent-primary, #00a884)', fontWeight: 800, textAlign: 'right' }}>{formatINR(reg.revenue)}</td>
                       </tr>
                     ))
                   )}
@@ -744,21 +890,37 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
           </div>
 
           {/* Payments Breakdown */}
-          <div className="zoho-form-card" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', alignSelf: 'start' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '1.1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', color: '#1e293b' }}>
-              <IndianRupee size={20} color="#10b981" /> Payment Status
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="analytics-section-card" style={{ alignSelf: 'start' }}>
+            <div className="analytics-section-header">
+              <h3 className="analytics-section-title">
+                <IndianRupee size={20} style={{ color: 'var(--accent-primary, #00a884)' }} /> Payment Status
+              </h3>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {paymentData.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>No payment data found.</div>
+                <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>No payment data found.</div>
               ) : (
                 paymentData.map((pay, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '16px', borderBottom: idx !== paymentData.length - 1 ? '1px dashed #e2e8f0' : 'none' }}>
-                    <span style={{ color: '#475569', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: pay.status === 'Paid' ? '#10b981' : pay.status === 'Unpaid' ? '#ef4444' : '#f59e0b' }} />
+                  <div key={idx} style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    background: '#f8fafc',
+                    border: '1px solid #f1f5f9'
+                  }}>
+                    <span style={{ color: '#334155', fontWeight: 700, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ 
+                        width: '10px', 
+                        height: '10px', 
+                        borderRadius: '50%', 
+                        backgroundColor: pay.status === 'Paid' ? '#10b981' : pay.status === 'Unpaid' ? '#ef4444' : '#f59e0b',
+                        boxShadow: `0 0 8px ${pay.status === 'Paid' ? 'rgba(16, 185, 129, 0.4)' : pay.status === 'Unpaid' ? 'rgba(239, 68, 68, 0.4)' : 'rgba(245, 158, 11, 0.4)'}`
+                      }} />
                       {pay.status}
                     </span>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b' }}>{formatINR(pay.value)}</span>
+                    <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>{formatINR(pay.value)}</span>
                   </div>
                 ))
               )}
