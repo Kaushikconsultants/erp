@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { processSalary, markSalaryPaid, updateEmployeeSalary } from "@/app/actions/hrmsActions";
 import MonthPicker from "@/components/ui/MonthPicker";
+import AddUserModal from "@/components/ui/AddUserModal";
 import Link from "next/link";
 import {
   Wallet,
@@ -16,7 +17,8 @@ import {
   X,
   ArrowUpRight,
   FileText,
-  ChevronRight
+  ChevronRight,
+  UserPlus
 } from "lucide-react";
 
 export interface EmployeeData {
@@ -101,6 +103,7 @@ export default function PayrollClient({
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [slipModal, setSlipModal] = useState<any | null>(null);
   const [baseSalaryModal, setBaseSalaryModal] = useState<EmployeeData | null>(null);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [salaryForm, setSalaryForm] = useState<Record<string, any>>({});
   const [newBaseSalary, setNewBaseSalary] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -445,6 +448,30 @@ export default function PayrollClient({
               Click on any MTD Sales, Incentive, or Net Salary metric to inspect full order breakdown and calculations.
             </p>
           </div>
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setShowAddStaffModal(true)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "8px 16px",
+                borderRadius: "8px",
+                backgroundColor: "#16a34a",
+                color: "#ffffff",
+                border: "none",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 2px 6px rgba(22, 163, 74, 0.25)",
+                transition: "all 0.15s ease"
+              }}
+            >
+              <UserPlus size={16} /> Add New Staff Member
+            </button>
+          )}
         </div>
 
         <div className="table-responsive" style={{ overflowX: "auto" }}>
@@ -1616,6 +1643,19 @@ export default function PayrollClient({
             </div>
           </div>
         </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          6. ONBOARD NEW STAFF MEMBER MODAL
+      ───────────────────────────────────────────────────────────── */}
+      {showAddStaffModal && (
+        <AddUserModal
+          onClose={() => setShowAddStaffModal(false)}
+          onSuccess={() => {
+            setShowAddStaffModal(false);
+            window.location.reload();
+          }}
+        />
       )}
     </div>
   );

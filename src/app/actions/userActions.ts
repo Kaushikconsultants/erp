@@ -7,48 +7,87 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 
+export async function getHiredCandidates() {
+  try {
+    const candidates = await prisma.candidate.findMany({
+      where: {
+        status: { in: ['HIRED', 'ROUND_3_PASSED', 'ROUND_2_PASSED', 'NEW'] }
+      },
+      select: {
+        id: true,
+        candidateNumber: true,
+        name: true,
+        email: true,
+        phone: true,
+        appliedRole: true,
+        experienceYears: true,
+        expectedSalary: true,
+        resumeUrl: true,
+        referenceName: true,
+        status: true,
+        finalConclusion: true,
+        createdAt: true
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50
+    });
+    return { success: true, candidates };
+  } catch (error: any) {
+    console.error("Failed to fetch candidates:", error);
+    return { error: error?.message || "Failed to fetch candidates", candidates: [] };
+  }
+}
+
 export async function createUser(formData: FormData) {
   const name = formData.get("name") as string;
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const role = formData.get("role") as string;
+  const department = formData.get("department") as string;
+  const designation = formData.get("designation") as string;
+  const employeeCode = formData.get("employeeCode") as string;
+  const mobile = formData.get("mobile") as string;
+  const joiningDateStr = formData.get("joiningDate") as string;
+  const birthday = formData.get("birthday") as string;
+  const gender = formData.get("gender") as string;
+  const bloodGroup = formData.get("bloodGroup") as string;
+  const emergencyContactName = formData.get("emergencyContactName") as string;
+  const emergencyContactPhone = formData.get("emergencyContactPhone") as string;
+  const address = formData.get("address") as string;
+  const resumeUrl = formData.get("resumeUrl") as string;
+  const avatarUrl = formData.get("avatarUrl") as string;
+  const candidateId = formData.get("candidateId") as string;
   const allowedSections = formData.get("allowedSections") as string;
+  const canManageSettingsRaw = formData.get("canManageSettings");
+
+  const bankName = formData.get("bankName") as string;
+  const bankAccountNo = formData.get("bankAccountNo") as string;
+  const ifscCode = formData.get("ifscCode") as string;
+  const panNumber = formData.get("panNumber") as string;
+  const aadhaarNumber = formData.get("aadhaarNumber") as string;
 
   const salaryStr = formData.get("salary") as string;
   const salary = salaryStr ? parseFloat(salaryStr) : null;
 
   if (!name || !email || !password || !role) {
-    return { error: "All required fields must be filled" };
+    return { error: "Name, email, password, and role are required" };
   }
 
   try {
     const organizationId = await getTenantOrgId();
 
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.trim() },
     });
 
     if (existingUser) {
       return { error: "A user with this email address already exists" };
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+    const hashedPassword = await bcrypt.hash(password.trim(), 10);
     const isSuperOrAdmin = role === "SUPER_ADMIN" || role === "ADMIN";
+    const canManageSettings = canManageSettingsRaw !== null ? canManageSettingsRaw === "true" : isSuperOrAdmin;
 
-    const user = await prisma.user.create({
-      data: {
-        organizationId,
-        name,
-        email,
-        password: hashedPassword,
-        role,
-        canManageSettings: isSuperOrAdmin,
-        allowedSections: allowedSections || null
-      },
-    });
-
-    // Automatically create an employee record for them
     const departmentMap: Record<string, string> = {
       HR: "HR & Recruitment",
       SALES: "Sales & CRM",
@@ -62,20 +101,82 @@ export async function createUser(formData: FormData) {
       SUPER_ADMIN: "Executive Leadership"
     };
 
+    const resolvedDepartment = department?.trim() || departmentMap[role] || "General Operations";
+
+    const bankDetailsObj = {
+      bankName: bankName?.trim() || "",
+      bankAccountNo: bankAccountNo?.trim() || "",
+      ifscCode: ifscCode?.trim() || "",
+      panNumber: panNumber?.trim() || "",
+      aadhaarNumber: aadhaarNumber?.trim() || ""
+    };
+
+    const notesObj = {
+      birthday: birthday?.trim() || "",
+      gender: gender?.trim() || "",
+      bloodGroup: bloodGroup?.trim() || "",
+      resumeUrl: resumeUrl?.trim() || "",
+      candidateId: candidateId?.trim() || "",
+      onboardedAt: new Date().toISOString()
+    };
+
+    let emergencyContactCombined = "";
+    if (emergencyContactName?.trim() || emergencyContactPhone?.trim()) {
+      emergencyContactCombined = `${emergencyContactName?.trim() || 'Contact'} (${emergencyContactPhone?.trim() || 'N/A'})`;
+    }
+
+    const user = await prisma.user.create({
+      data: {
+        organizationId,
+        name: name.trim(),
+        email: email.trim(),
+        password: hashedPassword,
+        role,
+        canManageSettings,
+        allowedSections: allowedSections || null,
+        avatarUrl: avatarUrl?.trim() || null,
+        image: avatarUrl?.trim() || null,
+      },
+    });
+
+    const empCode = employeeCode?.trim() || `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
+    const joiningDate = joiningDateStr ? new Date(joiningDateStr) : new Date();
+
     await prisma.employee.create({
       data: {
         organizationId,
         userId: user.id,
-        employeeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-        department: departmentMap[role] || "General Operations",
+        employeeId: empCode,
+        department: resolvedDepartment,
+        designation: designation?.trim() || null,
+        mobile: mobile?.trim() || null,
+        joiningDate: isNaN(joiningDate.getTime()) ? new Date() : joiningDate,
         employmentStatus: "Active",
         salary: salary,
+        address: address?.trim() || null,
+        emergencyContact: emergencyContactCombined || null,
+        bankDetails: JSON.stringify(bankDetailsObj),
+        notes: JSON.stringify(notesObj)
       }
     });
 
+    if (candidateId) {
+      await prisma.candidate.update({
+        where: { id: candidateId },
+        data: {
+          status: 'HIRED',
+          finalConclusion: `Onboarded as Staff Member (${user.name}) on ${new Date().toLocaleDateString()}`
+        }
+      }).catch((e) => console.warn("Failed to link candidate status:", e));
+    }
+
     revalidatePath("/settings");
     revalidatePath("/settings/roles");
-    return { success: true };
+    revalidatePath("/hrms");
+    revalidatePath("/hrms/payroll");
+    revalidatePath("/payroll");
+    revalidatePath("/hiring");
+    return { success: true, userId: user.id };
   } catch (error: any) {
     console.error("Failed to create user:", error);
     return { error: error?.message || "Failed to create user. Please try again." };
