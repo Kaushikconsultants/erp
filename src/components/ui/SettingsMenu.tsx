@@ -307,9 +307,9 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: "0.74rem", fontWeight: 400, color: "#64748b", marginTop: "1px" }}>
+                  {/* <div style={{ fontSize: "0.74rem", fontWeight: 400, color: "#64748b", marginTop: "1px" }}>
                     {item.desc}
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
