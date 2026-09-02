@@ -302,7 +302,12 @@ export default function AdminDashboard({
           <div className="kpi-value">{pendingCalls}</div>
           <div className="kpi-trend negative">Team-wide attention needed</div>
         </div>
-        <div className="kpi-card glass-panel hover-lift" style={{ cursor: 'pointer' }}>
+        <div 
+          className="kpi-card glass-panel hover-lift" 
+          onClick={() => setShowReorderModal(true)} 
+          style={{ cursor: 'pointer' }}
+          title="Click to view At-Risk & Churn Prediction Insights"
+        >
           <div className="kpi-icon-header">
             <div className="kpi-title">At-Risk Customers</div>
             <Users size={18} className="kpi-icon warning text-orange-500" />
