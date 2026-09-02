@@ -223,8 +223,21 @@ export default async function OrdersPage() {
     });
   });
 
-  // Map Quotations for the Quotations Tab
+  // Collect quotation numbers that have already been converted into Orders to prevent duplicates
+  const convertedQuoteNumbers = new Set<string>();
+  orders.forEach(o => {
+    const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+    if (match && match[1]) {
+      convertedQuoteNumbers.add(match[1].trim());
+    }
+  });
+
+  // Map Quotations: Exclude converted quotations that are already represented as Sales Orders
   quotations.forEach(q => {
+    if (q.status === 'Converted' || convertedQuoteNumbers.has((q.quotationNumber || '').trim())) {
+      return;
+    }
+
     const isCredit = q.customer?.status?.toLowerCase() === 'credit' || q.customer?.preferredPaymentMethod?.toLowerCase() === 'credit';
     const taxableAmount = q.subtotal || q.totalValue;
     const statusObj = getStatusStyle(q.status);

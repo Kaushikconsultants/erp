@@ -633,6 +633,55 @@ export async function updateQuotationFull(id: string, data: {
       }).catch(() => {});
     }
 
+    // Synchronize linked Order if this quotation was previously converted to an order
+    try {
+      const linkedOrder = await prisma.order.findFirst({
+        where: {
+          customerId: data.customerId,
+          notes: { contains: quotation.quotationNumber }
+        }
+      });
+
+      if (linkedOrder) {
+        const overrideDiscount = itemDiscountTotal + additionalDiscount;
+        const effectiveReceived = Number(data.receivedAmount !== undefined ? data.receivedAmount : (existingQuotation?.receivedAmount || 0));
+
+        await prisma.orderItem.deleteMany({ where: { orderId: linkedOrder.id } });
+
+        await prisma.order.update({
+          where: { id: linkedOrder.id },
+          data: {
+            totalValue,
+            subtotal,
+            discount: overrideDiscount,
+            tax: taxTotal,
+            cgst: totalCgst,
+            sgst: totalSgst,
+            igst: totalIgst,
+            isInterstate,
+            placeOfSupply: quotation.placeOfSupply,
+            paymentReceived: effectiveReceived,
+            outstandingAmount: Math.max(0, totalValue - effectiveReceived),
+            items: {
+              create: preparedItems.map(item => ({
+                productId: item.productId,
+                quantity: Math.round(item.quantity),
+                rate: item.rate,
+                hsnCode: item.hsnCode,
+                gstRate: item.gstRate,
+                cgst: item.cgst,
+                sgst: item.sgst,
+                igst: item.igst,
+                total: item.total
+              }))
+            }
+          }
+        });
+      }
+    } catch (syncErr) {
+      console.error("Error syncing linked order on quotation edit:", syncErr);
+    }
+
     revalidatePath("/quotations");
     revalidatePath("/quotations", "page");
     revalidatePath(`/quotations/${id}`);
