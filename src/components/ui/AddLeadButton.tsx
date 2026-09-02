@@ -179,6 +179,13 @@ Content-Type: application/json`}
                 </p>
               </div>
 
+              <div style={{background: '#fffbeb', border: '1px solid #fde68a', padding: '12px', borderRadius: '8px'}}>
+                <h4 style={{fontSize: '0.85rem', fontWeight: 600, color: '#b45309', margin: '0 0 6px 0'}}>⚠️ Auto-Agent Assignment</h4>
+                <p style={{fontSize: '0.8rem', color: '#92400e', margin: 0}}>
+                  To perfectly assign leads to the correct agent automatically, ensure that the <code>agentEmail</code> you send from WhatsApp exactly matches the agent's email registered here in the CRM/ERP.
+                </p>
+              </div>
+
             </div>
             <div className="modal-footer">
               <button type="button" className="action-btn" onClick={() => setIsApiGuideOpen(false)}>Close Guide</button>
