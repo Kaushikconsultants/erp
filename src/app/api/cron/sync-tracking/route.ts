@@ -35,8 +35,23 @@ export async function GET(request: Request) {
     for (const order of activeOrders) {
       try {
         if (!order.awbNumber) continue;
+        if (!order.organizationId) continue;
 
-        const trackingRes = await shipmozoService.fetchTracking(order.awbNumber);
+        // Fetch the specific organization's shipmozo integration credentials
+        const integration = await prisma.appIntegration.findFirst({
+          where: { 
+            organizationId: order.organizationId, 
+            providerId: "shipmozo", 
+            isEnabled: true 
+          }
+        });
+
+        if (!integration || !integration.credentials) {
+          continue; // Skip if no valid credentials for this tenant
+        }
+
+        const creds = JSON.parse(integration.credentials);
+        const trackingRes = await shipmozoService.fetchTracking(order.awbNumber, creds.apiKey, creds.apiSecret);
         
         if (trackingRes && trackingRes.currentStatus) {
           const isDelivered = trackingRes.currentStatus.toLowerCase().includes('delivered');
