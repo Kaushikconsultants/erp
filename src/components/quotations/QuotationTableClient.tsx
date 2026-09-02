@@ -444,11 +444,12 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
           customerName={tokenModalQuote.customer?.businessName || tokenModalQuote.customer?.contactPerson}
           totalValue={Number(tokenModalQuote.totalValue || 0)}
           currentReceivedAmount={Number(tokenModalQuote.receivedAmount || 0)}
+          discountSlab={tokenModalQuote.discountSlab || '1-15'}
           onClose={() => setTokenModalQuote(null)}
-          onSuccess={(newAmt) => {
+          onSuccess={(newAmt, newSlab) => {
             setQuotations(prev => prev.map(item => 
               item.id === tokenModalQuote.id 
-                ? { ...item, receivedAmount: newAmt }
+                ? { ...item, receivedAmount: newAmt, discountSlab: newSlab || item.discountSlab }
                 : item
             ));
           }}

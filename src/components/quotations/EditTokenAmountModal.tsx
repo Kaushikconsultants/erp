@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { updateQuotationTokenAmount } from '@/app/actions/quotationActions';
 import { useRouter } from 'next/navigation';
-import { Coins, X, CheckCircle2, CreditCard, ShieldCheck, DollarSign, Wallet, Percent, ShieldAlert } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { Coins, X, CheckCircle2, CreditCard, Percent, ShieldAlert } from 'lucide-react';
+import '@/components/ui/modal.css';
 
 const SLAB_OPTIONS = [
   { id: '0', title: '0% Discount (Bonus)', icon: <Percent size={14} color="#059669" /> },
@@ -12,7 +12,6 @@ const SLAB_OPTIONS = [
   { id: '>15', title: 'Above 15% Discount', icon: <ShieldAlert size={14} color="#d97706" /> },
   { id: 'credit', title: 'Credit Customer', icon: <CreditCard size={14} color="#4f46e5" /> }
 ];
-import '@/components/ui/modal.css';
 
 interface EditTokenAmountModalProps {
   quotationId: string;
@@ -22,7 +21,7 @@ interface EditTokenAmountModalProps {
   currentReceivedAmount: number;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess?: (newAmount: number) => void;
+  onSuccess?: (newAmount: number, newSlab?: string) => void;
   discountSlab?: string;
 }
 
@@ -37,11 +36,6 @@ export default function EditTokenAmountModal({
   onSuccess,
   discountSlab
 }: EditTokenAmountModalProps) {
-  const { data: session } = useSession();
-  const rawRole = (session?.user as any)?.role || 'SALES';
-  const normRole = String(rawRole).trim().toUpperCase();
-  const isAdmin = normRole === 'ADMIN' || normRole === 'SUPER_ADMIN';
-
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -59,6 +53,21 @@ export default function EditTokenAmountModal({
   const [tokenAmountStr, setTokenAmountStr] = useState<string>(
     currentReceivedAmount > 0 ? String(currentReceivedAmount) : ''
   );
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedSlab(discountSlab || '1-15');
+      const opt: 'FULL' | 'TOKEN' | 'CREDIT' = 
+        currentReceivedAmount >= totalValue && totalValue > 0 
+          ? 'FULL' 
+          : currentReceivedAmount > 0 
+          ? 'TOKEN' 
+          : 'CREDIT';
+      setPaymentOption(opt);
+      setTokenAmountStr(currentReceivedAmount > 0 ? String(currentReceivedAmount) : '');
+      setError('');
+    }
+  }, [isOpen, discountSlab, currentReceivedAmount, totalValue]);
 
   if (!isOpen) return null;
 
@@ -81,15 +90,15 @@ export default function EditTokenAmountModal({
     setLoading(true);
     setError('');
 
-    const res = await updateQuotationTokenAmount(quotationId, resolvedAmount, paymentOption, isAdmin ? selectedSlab : undefined);
+    const res = await updateQuotationTokenAmount(quotationId, resolvedAmount, paymentOption, selectedSlab);
     setLoading(false);
 
     if (res.success) {
-      if (onSuccess) onSuccess(resolvedAmount);
+      if (onSuccess) onSuccess(resolvedAmount, selectedSlab);
       onClose();
       router.refresh();
     } else {
-      setError(res.error || 'Failed to update token amount');
+      setError(res.error || 'Failed to update token amount and pricing structure');
     }
   };
 
@@ -113,7 +122,7 @@ export default function EditTokenAmountModal({
         style={{
           backgroundColor: '#ffffff',
           width: '100%',
-          maxWidth: '480px',
+          maxWidth: '500px',
           borderRadius: '16px',
           overflow: 'hidden',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
@@ -143,7 +152,7 @@ export default function EditTokenAmountModal({
               <Coins size={20} color="#ffffff" />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Edit Token / Advance Amount</h3>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Edit Token / Advance & Pricing</h3>
               <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#e6fffa', fontWeight: 500 }}>
                 Quote #{quotationNumber} • {customerName || 'Customer'}
               </p>
@@ -275,47 +284,6 @@ export default function EditTokenAmountModal({
             </button>
           </div>
 
-          {/* ADMIN SLAB OVERRIDE */}
-          {isAdmin && (
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
-                Pricing Structure (Admin Override)
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {SLAB_OPTIONS.map((option) => {
-                  const isSelected = selectedSlab === option.id;
-                  return (
-                    <div
-                      key={option.id}
-                      onClick={() => setSelectedSlab(option.id)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        border: isSelected ? '2px solid #b45309' : '1px solid #e2e8f0',
-                        backgroundColor: isSelected ? '#fffbeb' : '#ffffff',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <input 
-                        type="radio"
-                        checked={isSelected}
-                        onChange={() => setSelectedSlab(option.id)}
-                        style={{ accentColor: '#b45309', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
-                      />
-                      <div style={{ flex: 1, fontSize: '0.75rem', fontWeight: isSelected ? 600 : 500, color: isSelected ? '#78350f' : '#1e293b' }}>
-                        {option.title}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* TOKEN AMOUNT INPUT IF TOKEN IS SELECTED */}
           {paymentOption === 'TOKEN' && (
             <div style={{ marginBottom: '18px' }}>
@@ -363,6 +331,50 @@ export default function EditTokenAmountModal({
               </div>
             </div>
           )}
+
+          {/* DISCOUNT & PRICING STRUCTURE (SLABS) */}
+          <div style={{ marginBottom: '18px' }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
+              Discount & Pricing Structure
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {SLAB_OPTIONS.map((option) => {
+                const isSelected = selectedSlab === option.id;
+                return (
+                  <div
+                    key={option.id}
+                    onClick={() => setSelectedSlab(option.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '9px 10px',
+                      borderRadius: '8px',
+                      border: isSelected ? '2px solid #059669' : '1px solid #cbd5e1',
+                      backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <input 
+                      type="radio"
+                      name="discountSlabModal"
+                      value={option.id}
+                      checked={isSelected}
+                      onChange={() => setSelectedSlab(option.id)}
+                      style={{ accentColor: '#059669', width: '15px', height: '15px', cursor: 'pointer', margin: 0 }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                      {option.icon}
+                      <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#065f46' : '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {option.title}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {/* DYNAMIC BALANCE SUMMARY */}
           <div style={{
@@ -425,7 +437,7 @@ export default function EditTokenAmountModal({
               }}
             >
               <CheckCircle2 size={16} />
-              {loading ? 'Saving...' : 'Save Token Amount'}
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>
