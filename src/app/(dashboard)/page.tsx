@@ -394,6 +394,7 @@ export default async function Home() {
           totalValue: true, 
           discount: true, 
           orderStatus: true,
+          notes: true,
           customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } } 
         },
         orderBy: { orderDate: 'desc' }
@@ -433,7 +434,7 @@ export default async function Home() {
 
     // Deduplicate confirmed quotations already converted to orders
     const convertedQuoteNumbersForEmp = new Set<string>();
-    allEmployeeOrders.forEach(o => {
+    allEmployeeOrders.forEach((o: any) => {
       const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
       if (match && match[1]) {
         convertedQuoteNumbersForEmp.add(match[1].trim());
