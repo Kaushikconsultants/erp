@@ -2,13 +2,34 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
+  let rawBody = "";
+  let orgIdToLog: string | null = null;
+
+  async function sendResponse(status: number, data: any) {
+    try {
+      await prisma.webhookLog.create({
+        data: {
+          organizationId: orgIdToLog,
+          endpoint: "/api/webhooks/whatsapp/leads",
+          payload: rawBody,
+          responseStatus: status,
+          responseBody: JSON.stringify(data),
+        }
+      });
+    } catch (e) {
+      console.error("Failed to log webhook:", e);
+    }
+    return NextResponse.json(data, { status });
+  }
+
   try {
     const authHeader = req.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized. Missing Bearer Token." }, { status: 401 });
+      return sendResponse(401, { error: "Unauthorized. Missing Bearer Token." });
     }
 
     const orgIdFromToken = authHeader.replace("Bearer ", "").trim();
+    orgIdToLog = orgIdFromToken;
 
     // Verify if this is a valid organization ID
     const org = await prisma.organization.findUnique({
@@ -16,14 +37,15 @@ export async function POST(req: Request) {
     });
 
     if (!org) {
-      return NextResponse.json({ error: "Unauthorized. Invalid Organization Token." }, { status: 401 });
+      return sendResponse(401, { error: "Unauthorized. Invalid Organization Token." });
     }
 
-    const body = await req.json();
+    rawBody = await req.text();
+    const body = JSON.parse(rawBody);
     const { name, whatsappNumber, shopName, agentEmail } = body;
 
     if (!name || !whatsappNumber) {
-      return NextResponse.json({ error: "Missing required fields (name, whatsappNumber)" }, { status: 400 });
+      return sendResponse(400, { error: "Missing required fields (name, whatsappNumber)" });
     }
 
     const orgIdToUse = org.id;
@@ -41,11 +63,11 @@ export async function POST(req: Request) {
 
     if (existingLead) {
       const agentName = existingLead.assignedSalesperson?.user?.name || "an agent";
-      return NextResponse.json({ 
+      return sendResponse(409, { 
         success: false, 
         error: `Lead with this mobile number already exists and is assigned to ${agentName}.`,
         existingLeadId: existingLead.id 
-      }, { status: 409 });
+      });
     }
 
     let assignedSalespersonId = undefined;
@@ -72,10 +94,10 @@ export async function POST(req: Request) {
       }
     });
 
-    return NextResponse.json({ success: true, lead }, { status: 201 });
+    return sendResponse(201, { success: true, lead });
 
   } catch (error: any) {
     console.error("Webhook lead creation error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return sendResponse(500, { error: "Internal Server Error" });
   }
 }

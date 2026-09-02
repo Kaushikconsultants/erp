@@ -2,11 +2,14 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createLead } from '@/actions/leads';
+import { createLead, getWebhookLogs } from '@/actions/leads';
 
 export default function AddLeadButton({ employees, organizationId }: { employees?: {id: string, name: string}[], organizationId?: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isApiGuideOpen, setIsApiGuideOpen] = useState(false);
+  const [apiActiveTab, setApiActiveTab] = useState<'guide' | 'logs'>('guide');
+  const [logs, setLogs] = useState<any[]>([]);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
   
@@ -35,15 +38,25 @@ export default function AddLeadButton({ employees, organizationId }: { employees
     }
   };
 
+  const loadLogs = async () => {
+    setIsLoadingLogs(true);
+    const fetchedLogs = await getWebhookLogs();
+    setLogs(fetchedLogs);
+    setIsLoadingLogs(false);
+  };
+
   return (
     <>
       <div style={{ display: 'flex', gap: '12px' }}>
         <button 
-          className="action-btn hover-lift" 
-          onClick={() => setIsApiGuideOpen(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid #4f46e5', color: '#4f46e5', background: 'transparent' }}
+          className="action-btn"
+          onClick={() => {
+            setIsApiGuideOpen(true);
+            setApiActiveTab('guide');
+          }}
+          style={{ background: '#fff', border: '1px solid #cbd5e1', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> API / Webhook Setup
+          <Code size={16} /> API / Webhook Setup
         </button>
         <button 
           className="action-btn hover-lift" 
@@ -135,20 +148,11 @@ export default function AddLeadButton({ employees, organizationId }: { employees
       )}
       {isApiGuideOpen && (
         <div className="modal-backdrop" onClick={() => setIsApiGuideOpen(false)}>
-          <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{maxWidth: '650px'}}>
+          <div className="modal-content" style={{maxWidth: '650px', width: '90%', maxHeight: '90vh', overflowY: 'auto'}} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>WhatsApp Lead Webhook API Setup</h2>
+              <h3 style={{display: 'flex', alignItems: 'center', gap: '8px'}}><Code size={20} color="var(--accent-primary)"/> WhatsApp API & Webhooks</h3>
               <button className="modal-close" onClick={() => setIsApiGuideOpen(false)}>×</button>
             </div>
-            <div className="modal-body" style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-              <p style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
-                Use this API to push new leads from your WhatsApp Chatbot directly into the CRM.
-              </p>
-              
-              <div>
-                <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Endpoint URL (POST)</label>
-                <div style={{background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#0f172a'}}>
-                  {typeof window !== 'undefined' ? window.location.origin : 'https://your-crm-url.com'}/api/webhooks/whatsapp/leads
                 </div>
               </div>
 
@@ -185,7 +189,50 @@ Content-Type: application/json`}
                   To perfectly assign leads to the correct agent automatically, ensure that the <code>agentEmail</code> you send from WhatsApp exactly matches the agent's email registered here in the CRM/ERP.
                 </p>
               </div>
-
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{fontSize: '0.9rem', fontWeight: 600, color: '#1e293b', margin: 0}}>Recent Webhook Events</h4>
+                    <button onClick={loadLogs} style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '4px', background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer' }}>
+                      Refresh
+                    </button>
+                  </div>
+                  {isLoadingLogs ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Loading logs...</div>
+                  ) : logs.length === 0 ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>No webhook logs found.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
+                      {logs.map((log: any) => (
+                        <div key={log.id} style={{ padding: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(log.createdAt).toLocaleString()}</span>
+                            <span style={{ 
+                              fontSize: '0.75rem', 
+                              fontWeight: 600,
+                              padding: '2px 8px',
+                              borderRadius: '12px',
+                              background: log.responseStatus >= 200 && log.responseStatus < 300 ? '#dcfce7' : log.responseStatus === 409 ? '#fef3c7' : '#fee2e2',
+                              color: log.responseStatus >= 200 && log.responseStatus < 300 ? '#166534' : log.responseStatus === 409 ? '#92400e' : '#991b1b'
+                            }}>
+                              {log.responseStatus}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#334155', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                            <strong>Payload:</strong><br/>
+                            {log.payload || 'No payload'}
+                          </div>
+                          <div style={{ fontSize: '0.8rem', color: '#334155', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: '8px' }}>
+                            <strong>Response:</strong><br/>
+                            {log.responseBody || 'No response body'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button type="button" className="action-btn" onClick={() => setIsApiGuideOpen(false)}>Close Guide</button>

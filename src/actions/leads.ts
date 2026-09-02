@@ -220,3 +220,21 @@ export async function deleteLead(id: string) {
     return { success: false, error: "Failed to delete lead" };
   }
 }
+
+export async function getWebhookLogs() {
+  try {
+    const orgId = await getTenantOrgId();
+    if (!orgId) return [];
+
+    const logs = await prisma.webhookLog.findMany({
+      where: { organizationId: orgId },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+    
+    return logs;
+  } catch (error) {
+    console.error("Failed to fetch webhook logs:", error);
+    return [];
+  }
+}
