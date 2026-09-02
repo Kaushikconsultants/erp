@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Target, X, Check, Save, Zap, AlertCircle, TrendingUp } from 'lucide-react';
+import { Target, X, Check, Save, Zap, AlertCircle, TrendingUp, Sparkles } from 'lucide-react';
 import { updateSalespersonTargets } from '@/app/actions/sprintActions';
 
 interface EditSalespersonTargetsModalProps {
@@ -25,7 +25,10 @@ export default function EditSalespersonTargetsModal({
   onClose,
   onSuccess
 }: EditSalespersonTargetsModalProps) {
-  const [monthlyTarget, setMonthlyTarget] = useState(salesperson.monthlyTarget || 500000);
+  // Allow empty string so the user can easily backspace and delete "0" without it bouncing back
+  const [monthlyTarget, setMonthlyTarget] = useState<number | ''>(
+    salesperson.monthlyTarget && salesperson.monthlyTarget > 0 ? salesperson.monthlyTarget : ''
+  );
   
   // Custom Sprint weights (default: 20%, 25%, 30%, 25%)
   let initialWeights = [20, 25, 30, 25];
@@ -40,26 +43,60 @@ export default function EditSalespersonTargetsModal({
     }
   }
 
-  const [sprint1Weight, setSprint1Weight] = useState(initialWeights[0]);
-  const [sprint2Weight, setSprint2Weight] = useState(initialWeights[1]);
-  const [sprint3Weight, setSprint3Weight] = useState(initialWeights[2]);
-  const [sprint4Weight, setSprint4Weight] = useState(initialWeights[3]);
+  const [sprint1Weight, setSprint1Weight] = useState<number | ''>(initialWeights[0] ?? 20);
+  const [sprint2Weight, setSprint2Weight] = useState<number | ''>(initialWeights[1] ?? 25);
+  const [sprint3Weight, setSprint3Weight] = useState<number | ''>(initialWeights[2] ?? 30);
+  const [sprint4Weight, setSprint4Weight] = useState<number | ''>(initialWeights[3] ?? 25);
 
-  // Daily Activity Goals
-  const [dailyCalls, setDailyCalls] = useState(salesperson.dailyCallsTarget ?? 15);
-  const [dailyFollowUps, setDailyFollowUps] = useState(salesperson.dailyFollowUpsTarget ?? 5);
-  const [dailyQuotes, setDailyQuotes] = useState(salesperson.dailyQuotesTarget ?? 2);
-  const [dailyDeals, setDailyDeals] = useState(salesperson.dailyDealsTarget ?? 1);
+  // Daily Activity Goals (default: 15, 5, 2, 1)
+  const [dailyCalls, setDailyCalls] = useState<number | ''>(
+    salesperson.dailyCallsTarget !== undefined && salesperson.dailyCallsTarget !== null
+      ? (salesperson.dailyCallsTarget === 0 ? '' : salesperson.dailyCallsTarget)
+      : 15
+  );
+  const [dailyFollowUps, setDailyFollowUps] = useState<number | ''>(
+    salesperson.dailyFollowUpsTarget !== undefined && salesperson.dailyFollowUpsTarget !== null
+      ? (salesperson.dailyFollowUpsTarget === 0 ? '' : salesperson.dailyFollowUpsTarget)
+      : 5
+  );
+  const [dailyQuotes, setDailyQuotes] = useState<number | ''>(
+    salesperson.dailyQuotesTarget !== undefined && salesperson.dailyQuotesTarget !== null
+      ? (salesperson.dailyQuotesTarget === 0 ? '' : salesperson.dailyQuotesTarget)
+      : 2
+  );
+  const [dailyDeals, setDailyDeals] = useState<number | ''>(
+    salesperson.dailyDealsTarget !== undefined && salesperson.dailyDealsTarget !== null
+      ? (salesperson.dailyDealsTarget === 0 ? '' : salesperson.dailyDealsTarget)
+      : 1
+  );
 
   const [isSaving, setIsSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const totalSprintPercent = sprint1Weight + sprint2Weight + sprint3Weight + sprint4Weight;
+  const s1Num = Number(sprint1Weight) || 0;
+  const s2Num = Number(sprint2Weight) || 0;
+  const s3Num = Number(sprint3Weight) || 0;
+  const s4Num = Number(sprint4Weight) || 0;
+  const targetNum = Number(monthlyTarget) || 0;
+
+  const totalSprintPercent = s1Num + s2Num + s3Num + s4Num;
+
+  // Indian currency formatting helper
+  const formatIndianWords = (amt: number) => {
+    if (!amt || isNaN(amt)) return '';
+    if (amt >= 10000000) {
+      return `₹${amt.toLocaleString('en-IN')} (${(amt / 10000000).toFixed(2)} Cr)`;
+    }
+    if (amt >= 100000) {
+      return `₹${amt.toLocaleString('en-IN')} (${(amt / 100000).toFixed(2)} Lakhs)`;
+    }
+    return `₹${amt.toLocaleString('en-IN')}`;
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (monthlyTarget <= 0) {
-      setStatusMessage({ type: 'error', text: 'Monthly target must be greater than 0' });
+    if (targetNum <= 0) {
+      setStatusMessage({ type: 'error', text: 'Please enter a monthly revenue goal greater than 0' });
       return;
     }
 
@@ -72,19 +109,19 @@ export default function EditSalespersonTargetsModal({
     setStatusMessage(null);
 
     const weightsDecimals = [
-      sprint1Weight / 100,
-      sprint2Weight / 100,
-      sprint3Weight / 100,
-      sprint4Weight / 100
+      s1Num / 100,
+      s2Num / 100,
+      s3Num / 100,
+      s4Num / 100
     ];
 
     const res = await updateSalespersonTargets({
       employeeId: salesperson.employeeId,
-      monthlyTarget,
-      dailyCallsTarget: Number(dailyCalls),
-      dailyFollowUpsTarget: Number(dailyFollowUps),
-      dailyQuotesTarget: Number(dailyQuotes),
-      dailyDealsTarget: Number(dailyDeals),
+      monthlyTarget: targetNum,
+      dailyCallsTarget: Number(dailyCalls) || 0,
+      dailyFollowUpsTarget: Number(dailyFollowUps) || 0,
+      dailyQuotesTarget: Number(dailyQuotes) || 0,
+      dailyDealsTarget: Number(dailyDeals) || 0,
       sprintWeights: weightsDecimals
     });
 
@@ -94,7 +131,7 @@ export default function EditSalespersonTargetsModal({
       setTimeout(() => {
         if (onSuccess) onSuccess();
         onClose();
-      }, 1000);
+      }, 900);
     } else {
       setStatusMessage({ type: 'error', text: res.error || 'Failed to update targets' });
     }
@@ -113,7 +150,7 @@ export default function EditSalespersonTargetsModal({
         right: 0,
         bottom: 0,
         backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(4px)',
+        backdropFilter: 'blur(5px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -126,335 +163,527 @@ export default function EditSalespersonTargetsModal({
         style={{
           backgroundColor: '#ffffff',
           borderRadius: '16px',
-          padding: '24px',
+          padding: '22px 24px',
           width: '100%',
           maxWidth: '560px',
-          maxHeight: '90vh',
+          maxHeight: '92vh',
           overflowY: 'auto',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
           border: '1px solid #e2e8f0'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ padding: '6px', borderRadius: '8px', backgroundColor: '#eff6ff', color: '#4f46e5' }}>
-                <Target size={20} />
-              </div>
-              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '9px',
+              backgroundColor: '#eff6ff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#2563eb'
+            }}>
+              <Target size={19} />
+            </div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
                 Manage Sales Targets
               </h2>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.76rem', color: '#64748b' }}>
+                Configure monthly revenue goals and daily activity pacing for <strong style={{ color: '#0f172a' }}>{salesperson.name}</strong>
+              </p>
             </div>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.8125rem', color: '#64748b' }}>
-              Configure monthly revenue targets and daily activity lead indicators for <strong style={{ color: '#0f172a' }}>{salesperson.name}</strong>.
-            </p>
           </div>
 
           <button 
             type="button" 
             onClick={onClose}
-            style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '50%',
+              width: '28px',
+              height: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: '#64748b',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
           >
-            <X size={15} />
+            <X size={14} />
           </button>
         </div>
 
         {statusMessage && (
           <div style={{
-            padding: '10px 14px',
+            padding: '8px 12px',
             borderRadius: '8px',
-            marginBottom: '16px',
-            fontSize: '0.85rem',
-            fontWeight: 500,
+            marginBottom: '14px',
+            fontSize: '0.78rem',
+            fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            backgroundColor: statusMessage.type === 'success' ? '#f0fdf4' : '#fef2f2',
-            color: statusMessage.type === 'success' ? '#16a34a' : '#dc2626',
-            border: `1px solid ${statusMessage.type === 'success' ? '#bbf7d0' : '#fecaca'}`
+            backgroundColor: statusMessage.type === 'success' ? '#ecfdf5' : '#fef2f2',
+            color: statusMessage.type === 'success' ? '#065f46' : '#991b1b',
+            border: `1px solid ${statusMessage.type === 'success' ? '#a7f3d0' : '#fecaca'}`
           }}>
-            {statusMessage.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
+            {statusMessage.type === 'success' ? <Check size={15} /> : <AlertCircle size={15} />}
             <span>{statusMessage.text}</span>
           </div>
         )}
 
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           {/* 1. Monthly Revenue Target */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-              Monthly Revenue Goal (₹)
-            </label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: '#64748b' }}>₹</span>
-                <input
-                  type="number"
-                  min="10000"
-                  step="5000"
-                  value={monthlyTarget}
-                  onChange={(e) => setMonthlyTarget(Number(e.target.value))}
-                  style={{
-                    width: '100%',
-                    padding: '9px 12px 9px 28px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '1rem',
-                    fontWeight: 700,
-                    color: '#0f172a',
-                    outline: 'none',
-                    backgroundColor: '#ffffff'
-                  }}
-                  required
-                />
+          <div style={{ backgroundColor: '#f8fafc', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Monthly Revenue Goal (₹)
+              </label>
+              {targetNum > 0 && (
+                <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#2563eb' }}>
+                  {formatIndianWords(targetNum)}
+                </span>
+              )}
+            </div>
+
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: '#ffffff',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              overflow: 'hidden',
+              transition: 'border-color 0.15s ease'
+            }}
+            onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+            onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
+            >
+              <div style={{
+                padding: '0 14px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                backgroundColor: '#f8fafc',
+                borderRight: '1px solid #e2e8f0',
+                color: '#475569',
+                fontWeight: 700,
+                fontSize: '0.95rem'
+              }}>
+                ₹
               </div>
+              <input
+                type="number"
+                min="0"
+                step="5000"
+                value={monthlyTarget}
+                placeholder="Enter monthly goal (e.g. 500000)"
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setMonthlyTarget(val === '' ? '' : Math.max(0, Number(val)));
+                }}
+                style={{
+                  width: '100%',
+                  height: '40px',
+                  padding: '0 12px',
+                  border: 'none',
+                  fontSize: '0.95rem',
+                  fontWeight: 700,
+                  color: '#0f172a',
+                  outline: 'none',
+                  backgroundColor: 'transparent'
+                }}
+                required
+              />
             </div>
 
             {/* Quick Presets */}
             <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
-              {[250000, 500000, 750000, 1000000, 1500000].map(amt => (
-                <button
-                  key={amt}
-                  type="button"
-                  onClick={() => setTargetPreset(amt)}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    fontWeight: monthlyTarget === amt ? 700 : 500,
-                    backgroundColor: monthlyTarget === amt ? '#4f46e5' : '#ffffff',
-                    color: monthlyTarget === amt ? '#ffffff' : '#475569',
-                    border: monthlyTarget === amt ? 'none' : '1px solid #cbd5e1',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  ₹{(amt / 100000).toFixed(1)}L
-                </button>
-              ))}
+              {[250000, 500000, 750000, 1000000, 1500000, 2000000].map(amt => {
+                const isActive = targetNum === amt;
+                return (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setTargetPreset(amt)}
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '0.74rem',
+                      fontWeight: isActive ? 700 : 500,
+                      backgroundColor: isActive ? '#2563eb' : '#ffffff',
+                      color: isActive ? '#ffffff' : '#475569',
+                      border: isActive ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      boxShadow: isActive ? '0 1px 2px rgba(37, 99, 235, 0.2)' : '0 1px 2px rgba(0,0,0,0.02)'
+                    }}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = '#ffffff'; }}
+                  >
+                    ₹{(amt / 100000).toFixed(1)}L
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* 2. 4-Week Sprint Breakdown Weights */}
-          <div style={{ backgroundColor: '#ffffff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div style={{ backgroundColor: '#ffffff', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>Weekly Sprint Distribution</span>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>Customizable target pacing across the 4 month weeks.</p>
+                <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a' }}>Weekly Sprint Distribution</span>
+                <p style={{ margin: '1px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>Target revenue pacing across the 4 monthly weeks.</p>
               </div>
               <span style={{
-                fontSize: '0.75rem',
+                fontSize: '0.72rem',
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: '6px',
-                backgroundColor: totalSprintPercent === 100 ? '#dcfce7' : '#fee2e2',
-                color: totalSprintPercent === 100 ? '#15803d' : '#b91c1c'
+                backgroundColor: totalSprintPercent === 100 ? '#ecfdf5' : '#fef2f2',
+                color: totalSprintPercent === 100 ? '#065f46' : '#991b1b',
+                border: totalSprintPercent === 100 ? '1px solid #a7f3d0' : '1px solid #fecaca'
               }}>
                 Total: {totalSprintPercent}%
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               {/* Sprint 1 */}
-              <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#475569', marginBottom: '4px' }}>
+              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: '#475569', marginBottom: '5px' }}>
                   <span style={{ fontWeight: 600 }}>Sprint 1 (Days 1-7)</span>
-                  <span style={{ fontWeight: 700, color: '#4f46e5' }}>₹{((monthlyTarget * sprint1Weight) / 100).toLocaleString('en-IN')}</span>
+                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+                    ₹{Math.round((targetNum * s1Num) / 100).toLocaleString('en-IN')}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <input 
                     type="number" 
-                    min="5" 
-                    max="60" 
+                    min="0" 
+                    max="100" 
                     value={sprint1Weight} 
-                    onChange={e => setSprint1Weight(Number(e.target.value))} 
-                    style={{ width: '60px', padding: '4px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600 }}
+                    placeholder="0"
+                    onFocus={e => e.target.select()}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setSprint1Weight(v === '' ? '' : Math.max(0, Number(v)));
+                    }}
+                    style={{
+                      width: '56px',
+                      height: '30px',
+                      padding: '0 6px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      color: '#0f172a',
+                      backgroundColor: '#ffffff',
+                      outline: 'none'
+                    }}
+                    onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+                    onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                   />
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>% weight</span>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>% weight</span>
                 </div>
               </div>
 
               {/* Sprint 2 */}
-              <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#475569', marginBottom: '4px' }}>
+              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: '#475569', marginBottom: '5px' }}>
                   <span style={{ fontWeight: 600 }}>Sprint 2 (Days 8-14)</span>
-                  <span style={{ fontWeight: 700, color: '#4f46e5' }}>₹{((monthlyTarget * sprint2Weight) / 100).toLocaleString('en-IN')}</span>
+                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+                    ₹{Math.round((targetNum * s2Num) / 100).toLocaleString('en-IN')}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <input 
                     type="number" 
-                    min="5" 
-                    max="60" 
+                    min="0" 
+                    max="100" 
                     value={sprint2Weight} 
-                    onChange={e => setSprint2Weight(Number(e.target.value))} 
-                    style={{ width: '60px', padding: '4px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600 }}
+                    placeholder="0"
+                    onFocus={e => e.target.select()}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setSprint2Weight(v === '' ? '' : Math.max(0, Number(v)));
+                    }}
+                    style={{
+                      width: '56px',
+                      height: '30px',
+                      padding: '0 6px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      color: '#0f172a',
+                      backgroundColor: '#ffffff',
+                      outline: 'none'
+                    }}
+                    onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+                    onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                   />
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>% weight</span>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>% weight</span>
                 </div>
               </div>
 
               {/* Sprint 3 */}
-              <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#475569', marginBottom: '4px' }}>
+              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: '#475569', marginBottom: '5px' }}>
                   <span style={{ fontWeight: 600 }}>Sprint 3 (Days 15-21)</span>
-                  <span style={{ fontWeight: 700, color: '#4f46e5' }}>₹{((monthlyTarget * sprint3Weight) / 100).toLocaleString('en-IN')}</span>
+                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+                    ₹{Math.round((targetNum * s3Num) / 100).toLocaleString('en-IN')}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <input 
                     type="number" 
-                    min="5" 
-                    max="60" 
+                    min="0" 
+                    max="100" 
                     value={sprint3Weight} 
-                    onChange={e => setSprint3Weight(Number(e.target.value))} 
-                    style={{ width: '60px', padding: '4px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600 }}
+                    placeholder="0"
+                    onFocus={e => e.target.select()}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setSprint3Weight(v === '' ? '' : Math.max(0, Number(v)));
+                    }}
+                    style={{
+                      width: '56px',
+                      height: '30px',
+                      padding: '0 6px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      color: '#0f172a',
+                      backgroundColor: '#ffffff',
+                      outline: 'none'
+                    }}
+                    onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+                    onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                   />
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>% weight</span>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>% weight</span>
                 </div>
               </div>
 
               {/* Sprint 4 */}
-              <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#475569', marginBottom: '4px' }}>
+              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: '#475569', marginBottom: '5px' }}>
                   <span style={{ fontWeight: 600 }}>Sprint 4 (Days 22-End)</span>
-                  <span style={{ fontWeight: 700, color: '#4f46e5' }}>₹{((monthlyTarget * sprint4Weight) / 100).toLocaleString('en-IN')}</span>
+                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+                    ₹{Math.round((targetNum * s4Num) / 100).toLocaleString('en-IN')}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <input 
                     type="number" 
-                    min="5" 
-                    max="60" 
+                    min="0" 
+                    max="100" 
                     value={sprint4Weight} 
-                    onChange={e => setSprint4Weight(Number(e.target.value))} 
-                    style={{ width: '60px', padding: '4px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600 }}
+                    placeholder="0"
+                    onFocus={e => e.target.select()}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setSprint4Weight(v === '' ? '' : Math.max(0, Number(v)));
+                    }}
+                    style={{
+                      width: '56px',
+                      height: '30px',
+                      padding: '0 6px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      color: '#0f172a',
+                      backgroundColor: '#ffffff',
+                      outline: 'none'
+                    }}
+                    onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+                    onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                   />
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>% weight</span>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>% weight</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* 3. Daily Activity Goals (Lead Indicators) */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+          <div style={{ backgroundColor: '#f8fafc', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-              <Zap size={16} color="#d97706" />
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>Daily Action Goals (Lead Indicators)</span>
+              <Zap size={15} color="#d97706" />
+              <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a' }}>Daily Action Goals (Lead Indicators)</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              {/* Calls */}
+              <div style={{ backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                   📞 Calls / Day
                 </label>
                 <input
                   type="number"
-                  min="1"
-                  max="100"
+                  min="0"
+                  max="500"
                   value={dailyCalls}
-                  onChange={(e) => setDailyCalls(Number(e.target.value))}
+                  placeholder="0"
+                  onFocus={e => e.target.select()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDailyCalls(v === '' ? '' : Math.max(0, Number(v)));
+                  }}
                   style={{
                     width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
+                    height: '32px',
+                    padding: '0 8px',
+                    borderRadius: '6px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
+                    fontSize: '0.86rem',
                     fontWeight: 700,
+                    textAlign: 'center',
                     color: '#0f172a',
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    outline: 'none'
                   }}
-                  required
+                  onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+                  onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase' }}>
+              {/* Follow-ups */}
+              <div style={{ backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                   🤝 Follow-ups
                 </label>
                 <input
                   type="number"
                   min="0"
-                  max="50"
+                  max="200"
                   value={dailyFollowUps}
-                  onChange={(e) => setDailyFollowUps(Number(e.target.value))}
+                  placeholder="0"
+                  onFocus={e => e.target.select()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDailyFollowUps(v === '' ? '' : Math.max(0, Number(v)));
+                  }}
                   style={{
                     width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
+                    height: '32px',
+                    padding: '0 8px',
+                    borderRadius: '6px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
+                    fontSize: '0.86rem',
                     fontWeight: 700,
+                    textAlign: 'center',
                     color: '#0f172a',
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    outline: 'none'
                   }}
-                  required
+                  onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+                  onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase' }}>
+              {/* Quotes */}
+              <div style={{ backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                   📄 Quotes Sent
                 </label>
                 <input
                   type="number"
                   min="0"
-                  max="30"
+                  max="100"
                   value={dailyQuotes}
-                  onChange={(e) => setDailyQuotes(Number(e.target.value))}
+                  placeholder="0"
+                  onFocus={e => e.target.select()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDailyQuotes(v === '' ? '' : Math.max(0, Number(v)));
+                  }}
                   style={{
                     width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
+                    height: '32px',
+                    padding: '0 8px',
+                    borderRadius: '6px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
+                    fontSize: '0.86rem',
                     fontWeight: 700,
+                    textAlign: 'center',
                     color: '#0f172a',
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    outline: 'none'
                   }}
-                  required
+                  onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+                  onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase' }}>
+              {/* Deals Closed */}
+              <div style={{ backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                   🎯 Deals Closed
                 </label>
                 <input
                   type="number"
                   min="0"
-                  max="20"
+                  max="50"
                   value={dailyDeals}
-                  onChange={(e) => setDailyDeals(Number(e.target.value))}
+                  placeholder="0"
+                  onFocus={e => e.target.select()}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setDailyDeals(v === '' ? '' : Math.max(0, Number(v)));
+                  }}
                   style={{
                     width: '100%',
-                    padding: '8px 10px',
-                    borderRadius: '8px',
+                    height: '32px',
+                    padding: '0 8px',
+                    borderRadius: '6px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.9rem',
+                    fontSize: '0.86rem',
                     fontWeight: 700,
+                    textAlign: 'center',
                     color: '#0f172a',
-                    backgroundColor: '#ffffff'
+                    backgroundColor: '#ffffff',
+                    outline: 'none'
                   }}
-                  required
+                  onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
+                  onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                 />
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '9px 16px',
-                borderRadius: '8px',
+                height: '34px',
+                padding: '0 14px',
+                borderRadius: '7px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
                 color: '#475569',
-                fontSize: '0.85rem',
-                fontWeight: 500,
-                cursor: 'pointer'
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
               }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ffffff'}
             >
               Cancel
             </button>
@@ -462,22 +691,26 @@ export default function EditSalespersonTargetsModal({
               type="submit"
               disabled={isSaving}
               style={{
-                padding: '9px 20px',
-                borderRadius: '8px',
+                height: '34px',
+                padding: '0 16px',
+                borderRadius: '7px',
                 border: 'none',
-                backgroundColor: '#4f46e5',
+                backgroundColor: '#2563eb',
                 color: '#ffffff',
-                fontSize: '0.85rem',
+                fontSize: '0.78rem',
                 fontWeight: 600,
                 cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 2px 4px rgba(79, 70, 229, 0.25)',
-                opacity: isSaving ? 0.7 : 1
+                gap: '5px',
+                boxShadow: '0 1px 2px rgba(37, 99, 235, 0.25)',
+                opacity: isSaving ? 0.7 : 1,
+                transition: 'all 0.15s ease'
               }}
+              onMouseEnter={e => { if (!isSaving) e.currentTarget.style.backgroundColor = '#1d4ed8'; }}
+              onMouseLeave={e => { if (!isSaving) e.currentTarget.style.backgroundColor = '#2563eb'; }}
             >
-              <Save size={15} />
+              <Save size={14} />
               <span>{isSaving ? 'Saving...' : 'Save & Apply Targets'}</span>
             </button>
           </div>
