@@ -985,12 +985,33 @@ export async function deleteQuotation(id: string) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
+    const quotation = await prisma.quotation.findUnique({ where: { id } });
 
     await prisma.quotationItem.deleteMany({ where: { quotationId: id } });
     await prisma.quotationActivity.deleteMany({ where: { quotationId: id } });
     await prisma.quotation.delete({ where: { id } });
 
+    if (quotation) {
+      const linkedOrders = await prisma.order.findMany({
+        where: { notes: { contains: `Converted from Quotation #${quotation.quotationNumber}` } }
+      });
+      for (const order of linkedOrders) {
+        await prisma.invoiceItem.deleteMany({ where: { invoice: { orderId: order.id } } }).catch(() => {});
+        const invoices = await prisma.invoice.findMany({ where: { orderId: order.id } });
+        for (const inv of invoices) {
+          await prisma.payment.updateMany({ where: { invoiceId: inv.id }, data: { invoiceId: null } }).catch(() => {});
+          await prisma.creditNote.updateMany({ where: { invoiceId: inv.id }, data: { invoiceId: null } }).catch(() => {});
+        }
+        await prisma.invoice.deleteMany({ where: { orderId: order.id } }).catch(() => {});
+        await prisma.orderItem.deleteMany({ where: { orderId: order.id } }).catch(() => {});
+        await prisma.eWayBill.deleteMany({ where: { orderId: order.id } }).catch(() => {});
+        await prisma.payment.updateMany({ where: { orderId: order.id }, data: { orderId: null } }).catch(() => {});
+        await prisma.order.delete({ where: { id: order.id } }).catch(e => console.warn("Failed to delete linked order", e));
+      }
+    }
+
     revalidatePath("/quotations");
+    revalidatePath("/orders");
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting quotation:", error);

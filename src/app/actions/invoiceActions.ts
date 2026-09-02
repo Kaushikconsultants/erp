@@ -281,11 +281,20 @@ export async function deleteInvoice(id: string) {
       data: { invoiceId: null }
     });
 
+    await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } }).catch(() => {});
     await prisma.invoice.delete({
       where: { id }
     });
 
+    if (existing.orderId) {
+      await prisma.orderItem.deleteMany({ where: { orderId: existing.orderId } }).catch(() => {});
+      await prisma.eWayBill.deleteMany({ where: { orderId: existing.orderId } }).catch(() => {});
+      await prisma.payment.updateMany({ where: { orderId: existing.orderId }, data: { orderId: null } }).catch(() => {});
+      await prisma.order.delete({ where: { id: existing.orderId } }).catch(e => console.warn("Failed to delete order with invoice", e));
+    }
+
     revalidatePath("/invoices");
+    revalidatePath("/orders");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to delete invoice: " + error.message };
