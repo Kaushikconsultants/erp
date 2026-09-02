@@ -168,7 +168,7 @@ export const shipmozoService = {
          partnerName: r.name || r.courier_name || r.courier_company || r.courier || r.partnerName || "Shipmozo",
          serviceName: r.service_name || r.courier_company_service || r.serviceName || "Standard",
          courierCompanyId: String(r.id || r.courier_id || r.courierCompanyId || "1"),
-         chargedWeight: r.minimum_chargeable_weight || r.charged_weight || r.chargedWeight || params.weight,
+         chargedWeight: parseFloat(String(r.charged_weight || r.chargedWeight || params.weight).replace(/kg/i, '').trim()) || params.weight,
          estimatedDeliveryDays: r.estimated_delivery || r.estimated_delivery_days || 3,
          zone: r.to_zone || r.zone || "A",
          charge: r.total_charges || r.total_amount || r.freight_charge || r.charge || r.total_charge || r.rate || 0,
