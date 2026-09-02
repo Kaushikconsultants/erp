@@ -23,26 +23,40 @@ export default async function CallsPage() {
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
   let callWhereClause: any = {
-    customer: { organizationId: orgId }
+    OR: [
+      { customer: { organizationId: orgId } },
+      { lead: { organizationId: orgId } }
+    ]
   };
   let customerWhereClause: any = {
+    organizationId: orgId
+  };
+  let leadWhereClause: any = {
     organizationId: orgId
   };
 
   if (!isAdmin) {
     const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
-      callWhereClause = { employeeId: employee.id, customer: { organizationId: orgId } };
+      callWhereClause = { 
+        employeeId: employee.id, 
+        OR: [
+          { customer: { organizationId: orgId } },
+          { lead: { organizationId: orgId } }
+        ]
+      };
       customerWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
+      leadWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
     }
   }
 
-  const [calls, customers, companyRes] = await Promise.all([
+  const [calls, customers, leads, companyRes] = await Promise.all([
     prisma.call.findMany({
       where: callWhereClause,
       orderBy: { createdAt: 'desc' },
       include: {
         customer: true,
+        lead: true,
         employee: {
           include: { user: true }
         }
@@ -53,14 +67,28 @@ export default async function CallsPage() {
       select: { id: true, businessName: true, contactPerson: true },
       orderBy: { businessName: 'asc' }
     }),
+    prisma.lead.findMany({
+      where: leadWhereClause,
+      select: { id: true, name: true, shopName: true },
+      orderBy: { name: 'asc' }
+    }),
     getCompanySettings()
   ]);
 
-  const mappedCustomers = customers.map(c => ({
-    id: c.id,
-    companyName: c.businessName,
-    contactPerson: c.contactPerson
-  }));
+  const mappedCustomers = [
+    ...customers.map(c => ({
+      id: c.id,
+      companyName: c.businessName,
+      contactPerson: c.contactPerson,
+      type: 'Customer'
+    })),
+    ...leads.map(l => ({
+      id: l.id,
+      companyName: l.shopName || l.name,
+      contactPerson: l.name,
+      type: 'Lead'
+    }))
+  ];
 
   const callOutcomes = companyRes?.settings?.callOutcomes || ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support", "Call Back Later"];
   const callTypes = companyRes?.settings?.callTypes || ["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"];

@@ -23,7 +23,10 @@ export default async function FollowUpsDashboard() {
 
   let whereClause: any = {
     followUpDate: { not: null },
-    customer: { organizationId: orgId }
+    OR: [
+      { customer: { organizationId: orgId } },
+      { lead: { organizationId: orgId } }
+    ]
   };
 
   if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
@@ -38,6 +41,7 @@ export default async function FollowUpsDashboard() {
     orderBy: { followUpDate: 'asc' },
     include: {
       customer: true,
+      lead: true,
       employee: { include: { user: true } }
     }
   });
@@ -74,9 +78,15 @@ export default async function FollowUpsDashboard() {
             {overdue.map(c => (
               <div key={c.id} style={{ border: '1px solid #f1f5f9', padding: '12px', borderRadius: '8px', backgroundColor: '#ffffff' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                  <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
-                    {c.customer?.businessName}
-                  </Link>
+                  {c.customer ? (
+                    <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                      {c.customer?.businessName}
+                    </Link>
+                  ) : (
+                    <Link href={`/leads/${c.leadId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                      {c.lead?.name} <span style={{ fontSize: '0.65rem', background: '#eef2ff', color: '#4f46e5', padding: '2px 4px', borderRadius: '4px' }}>Lead</span>
+                    </Link>
+                  )}
                   <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 600 }}>
                     {c.followUpDate ? new Date(c.followUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}
                   </span>
@@ -84,7 +94,7 @@ export default async function FollowUpsDashboard() {
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.callType || 'Call'} - {c.notes || 'Follow-up'}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
-                  <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+                  <Link href={`/calls?${c.customerId ? `customerId=${c.customerId}` : `leadId=${c.leadId}`}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
                     Log Call →
                   </Link>
                 </div>
@@ -104,9 +114,15 @@ export default async function FollowUpsDashboard() {
             {dueToday.map(c => (
               <div key={c.id} style={{ border: '1px solid #f1f5f9', padding: '12px', borderRadius: '8px', backgroundColor: '#ffffff' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                  <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
-                    {c.customer?.businessName}
-                  </Link>
+                  {c.customer ? (
+                    <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                      {c.customer?.businessName}
+                    </Link>
+                  ) : (
+                    <Link href={`/leads/${c.leadId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                      {c.lead?.name} <span style={{ fontSize: '0.65rem', background: '#eef2ff', color: '#4f46e5', padding: '2px 4px', borderRadius: '4px' }}>Lead</span>
+                    </Link>
+                  )}
                   <span style={{ fontSize: '0.75rem', color: '#ea580c', fontWeight: 600 }}>
                     Today
                   </span>
@@ -114,7 +130,7 @@ export default async function FollowUpsDashboard() {
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.callType || 'Call'} - {c.notes || 'Follow-up'}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
-                  <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+                  <Link href={`/calls?${c.customerId ? `customerId=${c.customerId}` : `leadId=${c.leadId}`}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
                     Log Call →
                   </Link>
                 </div>
@@ -134,9 +150,15 @@ export default async function FollowUpsDashboard() {
             {upcoming.map(c => (
               <div key={c.id} style={{ border: '1px solid #f1f5f9', padding: '12px', borderRadius: '8px', backgroundColor: '#ffffff' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                  <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
-                    {c.customer?.businessName}
-                  </Link>
+                  {c.customer ? (
+                    <Link href={`/customers/${c.customerId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                      {c.customer?.businessName}
+                    </Link>
+                  ) : (
+                    <Link href={`/leads/${c.leadId}`} style={{ fontWeight: 600, color: '#1e293b', textDecoration: 'none' }}>
+                      {c.lead?.name} <span style={{ fontSize: '0.65rem', background: '#eef2ff', color: '#4f46e5', padding: '2px 4px', borderRadius: '4px' }}>Lead</span>
+                    </Link>
+                  )}
                   <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
                     {c.followUpDate ? new Date(c.followUpDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}
                   </span>
@@ -144,7 +166,7 @@ export default async function FollowUpsDashboard() {
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '8px' }}>{c.callType || 'Call'} - {c.notes || 'Follow-up'}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Rep: {c.employee?.user?.name}</span>
-                  <Link href={`/calls?customerId=${c.customerId}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
+                  <Link href={`/calls?${c.customerId ? `customerId=${c.customerId}` : `leadId=${c.leadId}`}`} style={{ fontSize: '0.75rem', color: '#4f46e5', fontWeight: 600, textDecoration: 'none' }}>
                     Log Call →
                   </Link>
                 </div>

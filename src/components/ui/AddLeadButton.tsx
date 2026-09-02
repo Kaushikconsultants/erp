@@ -110,11 +110,11 @@ export default function AddLeadButton({ employees }: { employees?: {id: string, 
                 </div>
               )}
 
-              <div className="modal-footer" style={{marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px'}}>
-                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>
+              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '10px 20px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                <button type="submit" disabled={isSubmitting} style={{ padding: '10px 20px', borderRadius: '6px', border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>
                   {isSubmitting ? 'Creating...' : 'Create Lead'}
                 </button>
               </div>

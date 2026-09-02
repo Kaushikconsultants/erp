@@ -214,15 +214,6 @@ export default function CustomerTable({ initialCustomers, allEmployees = [] }: {
                   </td>
                   <td style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <a 
-                        href={`https://wa.me/${customer.mobile?.replace(/\D/g, '').length === 10 ? `91${customer.mobile.replace(/\D/g, '')}` : customer.mobile?.replace(/\D/g, '') || ''}`} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        style={{ padding: '4px', background: '#10b981', color: '#fff', borderRadius: '4px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
-                        title="WhatsApp"
-                      >
-                        <MessageCircle size={14} />
-                      </a>
                       <button 
                         onClick={() => setEditingCustomer(customer)}
                         style={{ padding: '4px', background: '#fff', color: '#3b82f6', borderRadius: '4px', border: '1px solid #3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 

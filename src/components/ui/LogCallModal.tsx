@@ -238,11 +238,15 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
     
     setLoading(true);
     const formData = new FormData();
-    if (selectedCustomerId) {
-      formData.set("customerId", selectedCustomerId);
-    }
     if (leadId) {
       formData.set("leadId", leadId);
+    } else if (selectedCustomerId) {
+      const selected = customers.find((c: any) => c.id === selectedCustomerId);
+      if (selected?.type === 'Lead') {
+        formData.set("leadId", selectedCustomerId);
+      } else {
+        formData.set("customerId", selectedCustomerId);
+      }
     }
     formData.set("type", selectedCallType);
     formData.set("outcome", selectedOutcome);
@@ -354,7 +358,10 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
                               }}
                               style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }}
                             >
-                              <div style={{ fontWeight: 500, fontSize: '0.95rem', color: '#1e293b' }}>{c.companyName}</div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ fontWeight: 500, fontSize: '0.95rem', color: '#1e293b' }}>{c.companyName}</div>
+                                {(c as any).type === 'Lead' && <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#eef2ff', color: '#4f46e5', borderRadius: '4px', fontWeight: 600 }}>Lead</span>}
+                              </div>
                               {c.contactPerson && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{c.contactPerson}</div>}
                             </div>
                           ))

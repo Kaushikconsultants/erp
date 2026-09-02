@@ -3,12 +3,14 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { MessageCircle, Edit, RefreshCw, Trash2, Loader2 } from 'lucide-react';
+import { Edit, RefreshCw, Trash2, Loader2, UserPlus } from 'lucide-react';
 import { updateLead, deleteLead } from '@/actions/leads';
+import AddCustomerModal from './AddCustomerModal';
 
 export default function LeadTable({ initialLeads, allEmployees }: { initialLeads: any[], allEmployees?: any[] }) {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
+  const [leadToConvert, setLeadToConvert] = useState<any>(null);
 
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [agentFilter, setAgentFilter] = useState("All Agents");
@@ -133,15 +135,13 @@ export default function LeadTable({ initialLeads, allEmployees }: { initialLeads
                   </td>
                   <td style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      <a 
-                        href={`https://wa.me/${lead.whatsappNumber?.replace(/\D/g, '').length === 10 ? `91${lead.whatsappNumber.replace(/\D/g, '')}` : lead.whatsappNumber?.replace(/\D/g, '') || ''}`} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        style={{ padding: '4px', background: '#10b981', color: '#fff', borderRadius: '4px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
-                        title="WhatsApp"
+                      <button 
+                        onClick={() => setLeadToConvert(lead)}
+                        style={{ padding: '4px', background: '#fff', color: '#10b981', borderRadius: '4px', border: '1px solid #10b981', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                        title="Convert to Customer"
                       >
-                        <MessageCircle size={14} />
-                      </a>
+                        <UserPlus size={14} />
+                      </button>
                       <button 
                         onClick={() => router.push(`/leads/${lead.id}`)}
                         style={{ padding: '4px', background: '#fff', color: '#3b82f6', borderRadius: '4px', border: '1px solid #3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
@@ -172,6 +172,19 @@ export default function LeadTable({ initialLeads, allEmployees }: { initialLeads
           </tbody>
         </table>
       </div>
+
+      {leadToConvert && (
+        <AddCustomerModal 
+          onClose={(newCustomer) => {
+            setLeadToConvert(null);
+            if (newCustomer) {
+              router.push(`/customers/${newCustomer.id}`);
+            }
+          }} 
+          employees={allEmployees?.map(e => ({ id: e.id, name: e.name })) || []}
+          leadToConvert={leadToConvert}
+        />
+      )}
     </div>
   );
 }
