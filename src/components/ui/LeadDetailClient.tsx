@@ -137,7 +137,7 @@ export default function LeadDetailClient({ lead, employees }: { lead: any, emplo
               router.push(`/customers/${newCustomer.id}`);
             }
           }} 
-          employees={employees.map(e => ({ id: e.id, name: e.user.name }))}
+          employees={employees.map(e => ({ id: e.id, name: e.user?.name || 'Unknown' }))}
           leadToConvert={lead}
         />
       )}

@@ -8,14 +8,15 @@ import LeadDetailClient from '@/components/ui/LeadDetailClient';
 
 export const dynamic = 'force-dynamic';
 
-export default async function LeadDetailPage({ params }: { params: { id: string } }) {
+export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');
 
+  const { id } = await params;
   const { organizationId, isAdmin } = await getTenantScope();
 
   const lead = await prisma.lead.findFirst({
-    where: { id: params.id, organizationId },
+    where: { id, organizationId },
     include: {
       assignedSalesperson: {
         include: { user: true }

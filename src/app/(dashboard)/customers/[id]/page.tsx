@@ -10,7 +10,7 @@ import CustomerIntelligencePanel from '@/components/customers/CustomerIntelligen
 
 import { getTenantOrgId } from '@/lib/tenant';
 
-export default async function CustomerProfilePage({ params }: { params: { id: string } }) {
+export default async function CustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   
   if (!session?.user) {
