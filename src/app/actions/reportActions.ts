@@ -55,10 +55,26 @@ export async function getEmployeeScorecard(employeeId: string) {
 export async function getSalesIntelligence() {
   try {
     const organizationId = await getTenantOrgId();
-    const orders = await prisma.order.findMany({
-      where: { organizationId },
-      include: {
-        items: { include: { product: true } }
+    const [orders, quotations] = await Promise.all([
+      prisma.order.findMany({
+        where: { ...(organizationId ? { organizationId } : {}), orderStatus: { not: 'Cancelled' } },
+        include: {
+          items: { include: { product: true } }
+        }
+      }),
+      prisma.quotation.findMany({
+        where: { ...(organizationId ? { organizationId } : {}), status: 'Confirmed' },
+        include: {
+          items: { include: { product: true } }
+        }
+      })
+    ]);
+
+    const convertedQuoteNumbers = new Set<string>();
+    orders.forEach((o: any) => {
+      const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+      if (match && match[1]) {
+        convertedQuoteNumbers.add(match[1].trim());
       }
     });
 
@@ -66,13 +82,27 @@ export async function getSalesIntelligence() {
     
     orders.forEach(o => {
       o.items.forEach(i => {
-        if (!productSales[i.product.name]) {
-          productSales[i.product.name] = { qty: 0, value: 0 };
+        const prodName = i.product?.name || 'Unknown Product';
+        if (!productSales[prodName]) {
+          productSales[prodName] = { qty: 0, value: 0 };
         }
-        productSales[i.product.name].qty += i.quantity;
-        productSales[i.product.name].value += i.total;
+        productSales[prodName].qty += i.quantity;
+        productSales[prodName].value += i.total;
       });
     });
+
+    quotations
+      .filter((q: any) => !convertedQuoteNumbers.has((q.quotationNumber || '').trim()))
+      .forEach(q => {
+        q.items.forEach((i: any) => {
+          const prodName = i.product?.name || 'Unknown Product';
+          if (!productSales[prodName]) {
+            productSales[prodName] = { qty: 0, value: 0 };
+          }
+          productSales[prodName].qty += i.quantity;
+          productSales[prodName].value += (i.total || (i.rate * i.quantity));
+        });
+      });
 
     return { success: true, productSales };
   } catch (error) {
@@ -86,24 +116,118 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
 
   try {
     const organizationId = await getTenantOrgId();
-    const where: any = { organizationId, orderStatus: { not: 'Cancelled' } };
+    const orderWhere: any = { 
+      ...(organizationId ? { organizationId } : {}), 
+      orderStatus: { not: 'Cancelled' } 
+    };
     if (startDate || endDate) {
-      where.orderDate = {};
-      if (startDate) where.orderDate.gte = new Date(startDate);
-      if (endDate) where.orderDate.lte = new Date(endDate);
+      orderWhere.orderDate = {};
+      if (startDate) orderWhere.orderDate.gte = new Date(startDate);
+      if (endDate) orderWhere.orderDate.lte = new Date(endDate);
     }
 
-    const orders = await prisma.order.findMany({
-      where,
-      include: {
-        customer: { select: { businessName: true, mobile: true, state: true } },
-        salesperson: { include: { user: { select: { name: true } } } },
-        items: { include: { product: { select: { name: true, sku: true } } } }
-      },
-      orderBy: { orderDate: 'desc' }
+    const quoteWhere: any = {
+      ...(organizationId ? { organizationId } : {}),
+      status: { in: ['Confirmed', 'Converted'] }
+    };
+    if (startDate || endDate) {
+      quoteWhere.OR = [
+        {
+          date: {
+            ...(startDate ? { gte: new Date(startDate) } : {}),
+            ...(endDate ? { lte: new Date(endDate) } : {})
+          }
+        },
+        {
+          createdAt: {
+            ...(startDate ? { gte: new Date(startDate) } : {}),
+            ...(endDate ? { lte: new Date(endDate) } : {})
+          }
+        }
+      ];
+    }
+
+    const [orders, quotations] = await Promise.all([
+      prisma.order.findMany({
+        where: orderWhere,
+        include: {
+          customer: { select: { businessName: true, mobile: true, state: true } },
+          salesperson: { include: { user: { select: { name: true } } } },
+          items: { include: { product: { select: { name: true, sku: true } } } }
+        },
+        orderBy: { orderDate: 'desc' }
+      }),
+      prisma.quotation.findMany({
+        where: quoteWhere,
+        include: {
+          customer: { 
+            select: { 
+              businessName: true, 
+              mobile: true, 
+              state: true, 
+              assignedSalesperson: { include: { user: { select: { name: true } } } } 
+            } 
+          },
+          salesperson: { include: { user: { select: { name: true } } } },
+          items: { include: { product: { select: { name: true, sku: true } } } }
+        },
+        orderBy: { date: 'desc' }
+      })
+    ]);
+
+    // Deduplicate: collect quotation numbers already represented as orders
+    const convertedQuoteNumbers = new Set<string>();
+    orders.forEach((o: any) => {
+      const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+      if (match && match[1]) {
+        convertedQuoteNumbers.add(match[1].trim());
+      }
     });
 
-    return { success: true, orders };
+    // Format standalone confirmed quotations into orders shape
+    const standaloneQuotes = quotations
+      .filter((q: any) => q.status === 'Confirmed' && !convertedQuoteNumbers.has((q.quotationNumber || '').trim()))
+      .map((q: any) => ({
+        id: q.id,
+        orderNumber: q.quotationNumber,
+        customer: q.customer,
+        salesperson: q.salesperson || (q.customer?.assignedSalesperson ? { user: { name: q.customer.assignedSalesperson.user?.name } } : null),
+        orderDate: q.date || q.createdAt,
+        subtotal: Number(q.subtotal ?? q.totalValue ?? 0),
+        tax: Number(q.taxTotal ?? (q.cgst + q.sgst + q.igst) ?? 0),
+        totalValue: Number(q.totalValue ?? q.subtotal ?? 0),
+        paymentReceived: Number(q.receivedAmount || 0),
+        outstandingAmount: Math.max(0, Number(q.totalValue || 0) - Number(q.receivedAmount || 0)),
+        paymentStatus: Number(q.receivedAmount || 0) >= Number(q.totalValue || 0) && Number(q.totalValue || 0) > 0 ? 'Paid' : Number(q.receivedAmount || 0) > 0 ? 'Partially Paid' : 'Unpaid',
+        orderStatus: 'Confirmed Deal',
+        isQuotation: true,
+        items: q.items || []
+      }));
+
+    const formattedOrders = orders.map((o: any) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      customer: o.customer,
+      salesperson: o.salesperson,
+      orderDate: o.orderDate,
+      subtotal: Number(o.subtotal ?? o.totalValue ?? 0),
+      tax: Number(o.tax ?? (o.cgst + o.sgst + o.igst) ?? 0),
+      totalValue: Number(o.totalValue ?? o.subtotal ?? 0),
+      paymentReceived: Number(o.paymentReceived || 0),
+      outstandingAmount: Number(o.outstandingAmount || 0),
+      paymentStatus: o.paymentStatus || 'Unpaid',
+      orderStatus: o.orderStatus || 'Processing',
+      isQuotation: false,
+      items: o.items || []
+    }));
+
+    const combined = [...formattedOrders, ...standaloneQuotes].sort((a, b) => {
+      const dateA = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+      const dateB = b.orderDate ? new Date(b.orderDate).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return { success: true, orders: combined };
   } catch (error: any) {
     return { error: "Failed to fetch sales report: " + error.message };
   }

@@ -152,16 +152,23 @@ export default function ReportCenterClient({
               <tbody>
                 {salesData.map((o: any) => (
                   <tr key={o.id}>
-                    <td><strong>{o.orderNumber}</strong></td>
-                    <td>{o.customer?.businessName}</td>
-                    <td>{o.salesperson?.user?.name || 'Unassigned'}</td>
-                    <td>{new Date(o.orderDate).toLocaleDateString()}</td>
-                    <td style={{ fontWeight: 700 }}>₹{o.totalValue.toLocaleString()}</td>
                     <td>
-                      <span className={`status-badge ${o.paymentStatus === 'Paid' ? 'active' : 'warning'}`}>{o.paymentStatus}</span>
+                      <strong>{o.orderNumber}</strong>
+                      {o.isQuotation && (
+                        <span style={{ marginLeft: '6px', fontSize: '0.65rem', backgroundColor: '#e0e7ff', color: '#4338ca', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          Quote
+                        </span>
+                      )}
+                    </td>
+                    <td>{o.customer?.businessName || 'Unknown'}</td>
+                    <td>{o.salesperson?.user?.name || o.salesperson?.name || 'Unassigned'}</td>
+                    <td>{o.orderDate ? new Date(o.orderDate).toLocaleDateString() : '-'}</td>
+                    <td style={{ fontWeight: 700 }}>₹{Number(o.totalValue || 0).toLocaleString('en-IN')}</td>
+                    <td>
+                      <span className={`status-badge ${o.paymentStatus === 'Paid' ? 'active' : o.paymentStatus === 'Partially Paid' ? 'warning' : 'inactive'}`}>{o.paymentStatus}</span>
                     </td>
                     <td>
-                      <span className={`status-badge ${o.orderStatus === 'Delivered' ? 'active' : 'inactive'}`}>{o.orderStatus}</span>
+                      <span className={`status-badge ${o.orderStatus === 'Delivered' || o.orderStatus === 'Confirmed Deal' ? 'active' : 'inactive'}`}>{o.orderStatus}</span>
                     </td>
                   </tr>
                 ))}
