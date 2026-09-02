@@ -134,58 +134,80 @@ export const shipmozoService = {
 
       const isMultiBox = dimensions.length > 1 || dimensions.some(d => (Number(d.no_of_box) || 1) > 1);
       const isHeavy = params.weight > 10;
-      const computedPackageType = (isMultiBox || isHeavy) ? "MPS" : "SPS";
 
-      const body = {
+      const baseBody = {
         pickup_pincode: Number(params.originPincode),
         delivery_pincode: Number(params.destinationPincode),
         payment_type: params.paymentMode === "COD" ? "COD" : "PREPAID",
         shipment_type: params.shipmentType === "Reverse" ? "RETURN" : "FORWARD",
         order_amount: params.orderValue || 0,
-        type_of_package: computedPackageType,
         rov_type: params.rovType === "Rov Carrier" ? "ROV_CARRIER" : "ROV_OWNER",
         cod_amount: params.paymentMode === "COD" ? String(params.codAmount ?? params.orderValue) : "",
         weight: Math.round(params.weight * 1000), // Shipmozo accepts weight in grams
         dimensions: dimensions
       };
 
-      const response = await fetch(`https://shipping-api.com/app/api/v1/rate-calculator`, {
-        method: "POST",
-        headers: this.getHeaders(apiKey, apiSecret),
-        body: JSON.stringify(body)
-      });
+      const mapRates = (data: any[]): ShippingRate[] =>
+        data.map((r: any) => ({
+          partnerName: r.name || r.courier_name || r.courier_company || r.courier || "Shipmozo",
+          serviceName: r.service_name || r.courier_company_service || "Standard",
+          courierCompanyId: String(r.id || r.courier_id || "1"),
+          chargedWeight: r.chargeable_weight || r.volumetric_weight || r.applied_weight || parseFloat(String(r.charged_weight || params.weight).replace(/kg/i, '').trim()) || params.weight,
+          estimatedDeliveryDays: r.estimated_delivery || r.estimated_delivery_days || 3,
+          zone: r.to_zone || r.zone || "A",
+          charge: r.total_charges || r.total_amount || r.freight_charge || r.charge || r.rate || 0,
+          breakdown: {
+            shippingCharges: r.shipping_charges || r.freight_charge || 0,
+            codCharges: r.overhead_charges || r.cod_charges || 0,
+            gst: r.gst || 0
+          }
+        }));
 
-      const json = await response.json();
+      const callApi = async (packageType: string): Promise<ShippingRate[]> => {
+        try {
+          const resp = await fetch(`https://shipping-api.com/app/api/v1/rate-calculator`, {
+            method: "POST",
+            headers: this.getHeaders(apiKey, apiSecret),
+            body: JSON.stringify({ ...baseBody, type_of_package: packageType })
+          });
+          const j = await resp.json();
+          if (j.result === "0" || !Array.isArray(j.data)) return [];
+          return mapRates(j.data);
+        } catch {
+          return [];
+        }
+      };
 
-      if (json.result === "0") {
-        return { 
-          success: false, 
-          error: json.message || "Shipmozo API Error" 
-        };
+      let allRates: ShippingRate[];
+
+      if (isHeavy || isMultiBox) {
+        // For heavy/multi-box: call both MPS (2 results) and B2B (5 results) in parallel
+        const [mpsRates, b2bRates] = await Promise.all([
+          callApi("MPS"),
+          callApi("B2B")
+        ]);
+        // Merge and deduplicate by partnerName + serviceName
+        const seen = new Set<string>();
+        allRates = [];
+        for (const rate of [...b2bRates, ...mpsRates]) {
+          const key = `${rate.partnerName}|${rate.serviceName}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            allRates.push(rate);
+          }
+        }
+      } else {
+        // For regular shipments: SPS gives all light courier options
+        allRates = await callApi("SPS");
       }
-
-      // Map whatever data comes back to our internal array
-      const ratesList: ShippingRate[] = Array.isArray(json.data) ? json.data.map((r: any) => ({
-         partnerName: r.name || r.courier_name || r.courier_company || r.courier || r.partnerName || "Shipmozo",
-         serviceName: r.service_name || r.courier_company_service || r.serviceName || "Standard",
-         courierCompanyId: String(r.id || r.courier_id || r.courierCompanyId || "1"),
-         chargedWeight: r.chargeable_weight || r.volumetric_weight || r.applied_weight || parseFloat(String(r.charged_weight || r.chargedWeight || params.weight).replace(/kg/i, '').trim()) || params.weight,
-         estimatedDeliveryDays: r.estimated_delivery || r.estimated_delivery_days || 3,
-         zone: r.to_zone || r.zone || "A",
-         charge: r.total_charges || r.total_amount || r.freight_charge || r.charge || r.total_charge || r.rate || 0,
-         breakdown: {
-           shippingCharges: r.shipping_charges || r.freight_charge || r.charge || 0,
-           codCharges: r.overhead_charges || r.cod_charges || 0,
-           gst: r.gst || 0
-         }
-      })) : [];
 
       return {
         success: true,
-        rates: ratesList
+        rates: allRates
       };
     } catch (error: any) {
       return { success: false, error: `Failed to connect to Shipmozo: ${error.message}` };
     }
   }
+
 };
