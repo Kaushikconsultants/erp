@@ -208,20 +208,6 @@ export default function ShippingRateCalculator({
           </select>
         </div>
 
-        {/* Package Type */}
-        <div>
-          <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '6px', display: 'block' }}>
-            Package Type <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <select 
-            value={packageType} 
-            onChange={e => setPackageType(e.target.value)}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', backgroundColor: '#fff' }}
-          >
-            <option value="NON ESSENTIALS">Heavy Shipment / Standard Parcel</option>
-            <option value="ESSENTIALS">Essentials / Documents</option>
-          </select>
-        </div>
 
         {/* Origin Pincode */}
         <div>
@@ -303,20 +289,6 @@ export default function ShippingRateCalculator({
           </div>
         </div>
 
-        {/* Rov Type */}
-        <div>
-          <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '6px', display: 'block' }}>
-            Rov Type <span style={{ color: '#ef4444' }}>*</span>
-          </label>
-          <select 
-            value={rovType} 
-            onChange={e => setRovType(e.target.value as any)}
-            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', backgroundColor: '#fff' }}
-          >
-            <option value="Rov Owner">Rov Owner</option>
-            <option value="Rov Carrier">Rov Carrier</option>
-          </select>
-        </div>
 
       </div>
 
