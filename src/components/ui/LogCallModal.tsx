@@ -12,7 +12,7 @@ import "@/components/ui/modal.css";
 
 interface LogCallModalProps {
   onClose: () => void;
-  customers?: { id: string; companyName: string; contactPerson: string }[];
+  customers?: { id: string; companyName: string; contactPerson: string; type?: string }[];
   isAdmin?: boolean;
   leadId?: string;
   leadName?: string;
