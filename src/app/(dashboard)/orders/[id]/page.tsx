@@ -23,6 +23,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import GenerateInvoiceButton from '@/components/invoices/GenerateInvoiceButton';
+import OrderDetailActions from '@/components/orders/OrderDetailActions';
 
 import { getTenantOrgId } from '@/lib/tenant';
 
@@ -159,7 +160,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
           {/* Header Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-
+            <OrderDetailActions
+              order={{
+                id: order.id,
+                orderNumber: order.orderNumber,
+                customerName: order.customer?.businessName || order.customer?.contactPerson,
+                totalAmount: order.totalValue,
+                status: order.orderStatus,
+                paymentType: order.paymentStatus,
+                notes: order.notes,
+                awbNumber: order.awbNumber,
+                courierName: order.courierName
+              }}
+            />
 
             <Link 
               href={`/orders/${order.id}/invoice`} 

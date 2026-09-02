@@ -21,6 +21,9 @@ import {
   ExternalLink 
 } from 'lucide-react';
 import OrderTrackingModal from '@/components/orders/OrderTrackingModal';
+import EditOrderModal from '@/components/orders/EditOrderModal';
+import { deleteOrder } from '@/app/actions/orderActions';
+import { deleteQuotation } from '@/app/actions/quotationActions';
 
 type DocumentType = 'Order' | 'Quotation';
 
@@ -76,6 +79,31 @@ export default function OrderListClient({
   const [copiedAwb, setCopiedAwb] = useState<string | null>(null);
   const [commissionModal, setCommissionModal] = useState<UnifiedDocument | null>(null);
   const [trackingOrder, setTrackingOrder] = useState<UnifiedDocument | null>(null);
+  const [editingOrder, setEditingOrder] = useState<UnifiedDocument | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [docList, setDocList] = useState<UnifiedDocument[]>(documents);
+
+  useEffect(() => {
+    setDocList(documents);
+  }, [documents]);
+
+  const handleDeleteDoc = async (doc: UnifiedDocument) => {
+    const isOrder = doc.type === 'Order';
+    const label = isOrder ? `Sales Order #${doc.documentNumber}` : `Quotation #${doc.documentNumber}`;
+    if (!window.confirm(`Are you sure you want to delete ${label}? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(doc.id);
+    const res = isOrder ? await deleteOrder(doc.id) : await deleteQuotation(doc.id);
+    setDeletingId(null);
+
+    if (res?.error) {
+      alert(`Failed to delete: ${res.error}`);
+    } else {
+      setDocList(prev => prev.filter(d => d.id !== doc.id));
+    }
+  };
 
   useEffect(() => {
     const s = searchParams?.get('search');
@@ -87,7 +115,7 @@ export default function OrderListClient({
   // Tab Count Computation
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = {
-      'All': documents.length,
+      'All': docList.length,
       'Printed': 0,
       'AWB Assigned': 0,
       'In Transit': 0,
@@ -96,7 +124,7 @@ export default function OrderListClient({
       'Quotations': 0
     };
 
-    documents.forEach(doc => {
+    docList.forEach(doc => {
       if (doc.type === 'Quotation') {
         counts['Quotations'] = (counts['Quotations'] || 0) + 1;
         return;
@@ -110,10 +138,10 @@ export default function OrderListClient({
     });
 
     return counts;
-  }, [documents]);
+  }, [docList]);
 
   const filteredDocs = useMemo(() => {
-    return documents.filter(doc => {
+    return docList.filter(doc => {
       // 1. Tab filter
       if (activeTab === 'Quotations' && doc.type !== 'Quotation') return false;
       if (activeTab !== 'All' && activeTab !== 'Quotations') {
@@ -170,7 +198,7 @@ export default function OrderListClient({
 
       return true;
     });
-  }, [documents, activeTab, searchQuery, selectedAgent, selectedPayment, startDate, endDate, isAdmin]);
+  }, [docList, activeTab, searchQuery, selectedAgent, selectedPayment, startDate, endDate, isAdmin]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -494,41 +522,92 @@ export default function OrderListClient({
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: '8px', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
+            <div style={{ display: 'flex', gap: '6px', paddingTop: '8px', borderTop: '1px solid #f1f5f9', alignItems: 'center' }}>
               <a 
                 href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}`} 
                 style={{ 
                   flex: 1, 
                   textAlign: 'center', 
                   textDecoration: 'none', 
-                  fontSize: '0.8125rem', 
-                  fontWeight: 500,
-                  padding: '7px',
+                  fontSize: '0.78rem', 
+                  fontWeight: 600,
+                  padding: '7px 8px',
                   borderRadius: '8px',
                   border: '1px solid #cbd5e1',
                   backgroundColor: '#ffffff',
                   color: '#334155'
                 }}
               >
-                View Details
+                View
               </a>
+              {doc.type === 'Order' ? (
+                <button
+                  type="button"
+                  onClick={() => setEditingOrder(doc)}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #bfdbfe',
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Edit
+                </button>
+              ) : (
+                <a
+                  href={`/quotations/${doc.id}/edit`}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: '8px',
+                    border: '1px solid #bfdbfe',
+                    backgroundColor: '#eff6ff',
+                    color: '#2563eb',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    textDecoration: 'none'
+                  }}
+                >
+                  Edit
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => handleDeleteDoc(doc)}
+                disabled={deletingId === doc.id}
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: '8px',
+                  border: '1px solid #fecaca',
+                  backgroundColor: '#fef2f2',
+                  color: '#dc2626',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: deletingId === doc.id ? 'not-allowed' : 'pointer',
+                  opacity: deletingId === doc.id ? 0.6 : 1
+                }}
+              >
+                <Trash2 size={13} />
+              </button>
               <a 
                 href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}/invoice`} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 style={{ 
-                  flex: 1, 
+                  padding: '7px 12px',
                   textAlign: 'center', 
                   textDecoration: 'none', 
-                  fontSize: '0.8125rem', 
-                  fontWeight: 500,
-                  padding: '7px',
+                  fontSize: '0.78rem', 
+                  fontWeight: 600,
                   borderRadius: '8px',
-                  backgroundColor: 'var(--accent-primary, #4f46e5)', 
+                  backgroundColor: '#10b981', 
                   color: '#ffffff'
                 }}
               >
-                Tax Invoice PDF
+                Invoice
               </a>
             </div>
           </div>
@@ -762,7 +841,7 @@ export default function OrderListClient({
                         border: '1px solid #cbd5e1',
                         transition: 'all 0.15s ease'
                       }} 
-                      title="View Order Details"
+                      title="View Details"
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = "var(--accent-primary, #4f46e5)";
                         e.currentTarget.style.color = "var(--accent-primary, #4f46e5)";
@@ -777,6 +856,80 @@ export default function OrderListClient({
                       <Eye size={14} />
                     </a>
 
+                    {/* Edit Action Button */}
+                    {doc.type === 'Order' ? (
+                      <button
+                        type="button"
+                        onClick={() => setEditingOrder(doc)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '30px',
+                          height: '30px',
+                          backgroundColor: '#eff6ff',
+                          color: '#2563eb',
+                          borderRadius: '8px',
+                          border: '1px solid #bfdbfe',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                        title="Edit Sales Order"
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                      >
+                        <Edit size={14} />
+                      </button>
+                    ) : (
+                      <a
+                        href={`/quotations/${doc.id}/edit`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          width: '30px',
+                          height: '30px',
+                          backgroundColor: '#eff6ff',
+                          color: '#2563eb',
+                          borderRadius: '8px',
+                          border: '1px solid #bfdbfe',
+                          textDecoration: 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                        title="Edit Quotation"
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                      >
+                        <Edit size={14} />
+                      </a>
+                    )}
+
+                    {/* Delete Action Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDoc(doc)}
+                      disabled={deletingId === doc.id}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '30px',
+                        height: '30px',
+                        backgroundColor: '#fef2f2',
+                        color: '#dc2626',
+                        borderRadius: '8px',
+                        border: '1px solid #fecaca',
+                        cursor: deletingId === doc.id ? 'not-allowed' : 'pointer',
+                        opacity: deletingId === doc.id ? 0.6 : 1,
+                        transition: 'all 0.15s ease'
+                      }}
+                      title={`Delete ${doc.type}`}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+
                     {/* Tax Invoice Action Button */}
                     <a 
                       href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}/invoice`} 
@@ -789,19 +942,19 @@ export default function OrderListClient({
                         padding: '5px 11px', 
                         gap: '5px', 
                         height: '30px', 
-                        backgroundColor: 'var(--accent-primary, #4f46e5)', 
+                        backgroundColor: '#10b981', 
                         border: 'none', 
                         color: '#ffffff', 
                         borderRadius: '8px', 
                         fontSize: '0.75rem', 
-                        fontWeight: 500, 
+                        fontWeight: 600, 
                         textDecoration: 'none',
-                        boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)',
+                        boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
                         transition: 'all 0.15s ease'
                       }} 
                       title="View & Print Tax Invoice"
-                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
                     >
                       <FileText size={13} />
                       <span>Invoice</span>
@@ -926,6 +1079,27 @@ export default function OrderListClient({
           orderNumber={trackingOrder.documentNumber}
           awbNumber={trackingOrder.awbNumber}
           onClose={() => setTrackingOrder(null)}
+        />
+      )}
+
+      {/* ─── 7. EDIT ORDER MODAL ─── */}
+      {editingOrder && (
+        <EditOrderModal
+          isOpen={!!editingOrder}
+          order={{
+            id: editingOrder.id,
+            orderNumber: editingOrder.documentNumber,
+            customerName: editingOrder.customerName,
+            totalAmount: editingOrder.totalAmount,
+            status: editingOrder.status,
+            paymentType: editingOrder.paymentType,
+            notes: editingOrder.notes,
+            awbNumber: editingOrder.awbNumber,
+          }}
+          onClose={() => setEditingOrder(null)}
+          onSuccess={() => {
+            // refresh
+          }}
         />
       )}
     </div>

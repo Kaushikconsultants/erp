@@ -337,7 +337,182 @@ export async function calculateShippingRates(params: RateCalculationParams) {
     return ratesResponse;
   } catch (error) {
     console.error("Failed to calculate shipping rates:", error);
-    return { error: "Failed to calculate shipping rates" };
+// ─── DELETE & UPDATE ORDER ACTIONS ───
+
+export async function deleteOrder(orderId: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { error: "Unauthorized" };
+
+    const organizationId = await getTenantOrgId();
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+      },
+      include: {
+        items: true,
+        invoices: true
+      }
+    });
+
+    if (!order) return { error: "Order not found" };
+
+    // 1. Delete associated Invoices & update payments
+    for (const inv of order.invoices) {
+      await prisma.payment.updateMany({
+        where: { invoiceId: inv.id },
+        data: { invoiceId: null }
+      }).catch(() => {});
+      await prisma.invoice.delete({ where: { id: inv.id } }).catch(() => {});
+    }
+
+    // 2. Delete associated EWayBills
+    await prisma.eWayBill.deleteMany({ where: { orderId } }).catch(() => {});
+
+    // 3. Delete CreditNotes
+    await prisma.creditNote.deleteMany({ where: { orderId } }).catch(() => {});
+
+    // 4. Restore inventory for order items
+    for (const item of order.items) {
+      if (item.productId && item.quantity > 0) {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { stockQuantity: { increment: item.quantity } }
+        }).catch(() => {});
+
+        await prisma.inventoryTransaction.create({
+          data: {
+            productId: item.productId,
+            quantity: item.quantity,
+            type: 'IN',
+            reference: order.orderNumber,
+            notes: `Restocked due to deletion of Order #${order.orderNumber}`
+          }
+        }).catch(() => {});
+      }
+    }
+
+    // 5. Delete Order Items
+    await prisma.orderItem.deleteMany({ where: { orderId } }).catch(() => {});
+
+    // 6. Delete Order
+    await prisma.order.delete({ where: { id: orderId } });
+
+    // 7. Adjust customer purchase value if needed
+    if (order.customerId && order.paymentReceived > 0) {
+      await prisma.customer.update({
+        where: { id: order.customerId },
+        data: {
+          totalPurchaseValue: { decrement: order.paymentReceived }
+        }
+      }).catch(() => {});
+    }
+
+    revalidatePath("/orders");
+    revalidatePath("/invoices");
+    revalidatePath("/dispatches");
+    revalidatePath("/customers");
+    revalidatePath("/", "layout");
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleting order:", error);
+    return { error: error?.message || "Failed to delete order" };
   }
 }
+
+export async function updateOrder(orderId: string, data: {
+  orderStatus?: string;
+  paymentStatus?: string;
+  paymentReceived?: number;
+  discount?: number;
+  notes?: string;
+  awbNumber?: string;
+  courierName?: string;
+  shippingStatus?: string;
+  deliveryDate?: string;
+}) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { error: "Unauthorized" };
+
+    const organizationId = await getTenantOrgId();
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+      }
+    });
+
+    if (!order) return { error: "Order not found" };
+
+    const updateData: any = {};
+    if (data.orderStatus !== undefined) updateData.orderStatus = data.orderStatus;
+    if (data.paymentStatus !== undefined) updateData.paymentStatus = data.paymentStatus;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+    if (data.awbNumber !== undefined) updateData.awbNumber = data.awbNumber;
+    if (data.courierName !== undefined) updateData.courierName = data.courierName;
+    if (data.shippingStatus !== undefined) updateData.shippingStatus = data.shippingStatus;
+    if (data.deliveryDate !== undefined) {
+      updateData.deliveryDate = data.deliveryDate ? new Date(data.deliveryDate) : null;
+    }
+
+    if (data.discount !== undefined) {
+      updateData.discount = Number(data.discount);
+      const subtotal = order.subtotal || 0;
+      const tax = order.tax || 0;
+      const total = Math.max(0, subtotal + tax - Number(data.discount));
+      updateData.totalValue = total;
+    }
+
+    if (data.paymentReceived !== undefined) {
+      const newPaid = Number(data.paymentReceived);
+      updateData.paymentReceived = newPaid;
+      const total = updateData.totalValue !== undefined ? updateData.totalValue : order.totalValue;
+      updateData.outstandingAmount = Math.max(0, total - newPaid);
+      if (newPaid >= total && total > 0) {
+        updateData.paymentStatus = 'Paid';
+      } else if (newPaid > 0) {
+        updateData.paymentStatus = 'Partially Paid';
+      } else if (order.paymentStatus !== 'Credit') {
+        updateData.paymentStatus = 'Unpaid';
+      }
+    }
+
+    const updated = await prisma.order.update({
+      where: { id: orderId },
+      data: updateData
+    });
+
+    // Also sync invoice amounts
+    if (data.paymentReceived !== undefined || data.discount !== undefined || data.notes !== undefined) {
+      await prisma.invoice.updateMany({
+        where: { orderId },
+        data: {
+          ...(updateData.totalValue !== undefined ? { totalAmount: updateData.totalValue } : {}),
+          ...(updateData.paymentReceived !== undefined ? { 
+            amountPaid: updateData.paymentReceived,
+            amountDue: updateData.outstandingAmount,
+            status: updateData.paymentStatus === 'Paid' ? 'Paid' : updateData.paymentStatus === 'Partially Paid' ? 'Partially Paid' : 'Unpaid'
+          } : {}),
+          ...(data.notes !== undefined ? { notes: data.notes } : {})
+        }
+      }).catch(() => {});
+    }
+
+    revalidatePath("/orders");
+    revalidatePath(`/orders/${orderId}`);
+    revalidatePath("/invoices");
+    revalidatePath("/dispatches");
+
+    return { success: true, order: updated };
+  } catch (error: any) {
+    console.error("Error updating order:", error);
+    return { error: error?.message || "Failed to update order" };
+  }
+}
+
 
