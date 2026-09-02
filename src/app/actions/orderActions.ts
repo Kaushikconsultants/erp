@@ -337,6 +337,10 @@ export async function calculateShippingRates(params: RateCalculationParams) {
     return ratesResponse;
   } catch (error) {
     console.error("Failed to calculate shipping rates:", error);
+    return { error: "Failed to calculate shipping rates" };
+  }
+}
+
 // ─── DELETE & UPDATE ORDER ACTIONS ───
 
 export async function deleteOrder(orderId: string) {
