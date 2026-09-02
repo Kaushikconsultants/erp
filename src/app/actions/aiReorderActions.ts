@@ -52,25 +52,41 @@ export async function getDormantAndReorderInsights(): Promise<{
   try {
     const organizationId = await getTenantOrgId();
 
-    const [companySettings, customers, allOrders] = await Promise.all([
-      prisma.companySettings.findFirst({ where: { organizationId } }),
+    const [companySettings, customers, allOrders, allQuotations, topSellingProducts] = await Promise.all([
+      prisma.companySettings.findFirst({ 
+        where: organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {} 
+      }),
       prisma.customer.findMany({
-        where: { organizationId },
+        where: organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {},
         include: {
           assignedSalesperson: {
             include: { user: true }
+          },
+          quotations: {
+            include: { items: { include: { product: true } } },
+            orderBy: { createdAt: 'desc' }
           }
         },
         orderBy: { totalPurchaseValue: "desc" }
       }),
       prisma.order.findMany({
-        where: { organizationId },
+        where: organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {},
         include: {
           items: {
             include: { product: true }
           }
         },
         orderBy: { orderDate: "desc" }
+      }),
+      prisma.quotation.findMany({
+        where: organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {},
+        include: { items: { include: { product: true } } },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.product.findMany({
+        where: organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {},
+        take: 5,
+        orderBy: { createdAt: 'desc' }
       })
     ]);
 
@@ -85,10 +101,7 @@ export async function getDormantAndReorderInsights(): Promise<{
 
     for (const cust of customers) {
       const custOrders = allOrders.filter(o => o.customerId === cust.id);
-
-      if (custOrders.length === 0 && cust.totalOrders === 0) {
-        continue; // Skip brand new leads with no purchase history for re-order predictions
-      }
+      const custQuotes = allQuotations.filter(q => q.customerId === cust.id);
 
       // Calculate order dates & cycle
       const orderDates = custOrders
@@ -96,38 +109,52 @@ export async function getDormantAndReorderInsights(): Promise<{
         .sort((a, b) => b.getTime() - a.getTime());
 
       const lastOrderDate = orderDates.length > 0 ? orderDates[0] : null;
-      const daysSinceLastOrder = lastOrderDate 
-        ? Math.floor((now.getTime() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24))
-        : 90;
-
-      // Compute average order cycle
+      let daysSinceLastOrder: number;
       let averageCycle = cust.averageOrderCycleDays || 30;
-      if (orderDates.length >= 2) {
-        const totalSpanDays = Math.floor((orderDates[0].getTime() - orderDates[orderDates.length - 1].getTime()) / (1000 * 60 * 60 * 24));
-        const intervals = orderDates.length - 1;
-        if (intervals > 0 && totalSpanDays > 0) {
-          averageCycle = Math.max(7, Math.round(totalSpanDays / intervals));
+
+      if (lastOrderDate) {
+        daysSinceLastOrder = Math.floor((now.getTime() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (orderDates.length >= 2) {
+          const totalSpanDays = Math.floor((orderDates[0].getTime() - orderDates[orderDates.length - 1].getTime()) / (1000 * 60 * 60 * 24));
+          const intervals = orderDates.length - 1;
+          if (intervals > 0 && totalSpanDays > 0) {
+            averageCycle = Math.max(7, Math.round(totalSpanDays / intervals));
+          }
         }
+      } else {
+        // No orders placed yet: calculate days since account creation
+        const accountCreatedDate = new Date(cust.createdAt || cust.updatedAt);
+        daysSinceLastOrder = Math.floor((now.getTime() - accountCreatedDate.getTime()) / (1000 * 60 * 60 * 24));
+        averageCycle = 30;
       }
 
       const daysOverdue = Math.max(0, daysSinceLastOrder - averageCycle);
 
       // Determine Churn / Re-order Status
       let churnStatus: "HIGH_CHURN_RISK" | "DUE_FOR_REORDER" | "ACTIVE_HEALTHY" = "ACTIVE_HEALTHY";
-      if (daysSinceLastOrder > Math.max(45, averageCycle * 1.8)) {
+      const custStatusLower = (cust.status || '').toLowerCase();
+      const isMarkedInactive = custStatusLower.includes('inactive') || custStatusLower.includes('lost') || custStatusLower.includes('churn') || custStatusLower.includes('dormant');
+
+      if (isMarkedInactive || daysSinceLastOrder > Math.max(45, averageCycle * 1.8) || (lastOrderDate === null && daysSinceLastOrder > 14)) {
         churnStatus = "HIGH_CHURN_RISK";
         highRiskCount++;
-        estimatedRecoverableRevenue += (cust.totalPurchaseValue / Math.max(1, cust.totalOrders));
-      } else if (daysSinceLastOrder >= averageCycle) {
+        const estimatedVal = (cust.totalPurchaseValue > 0) 
+          ? (cust.totalPurchaseValue / Math.max(1, cust.totalOrders))
+          : (custQuotes.length > 0 ? (custQuotes[0].totalValue || 5000) : 5000);
+        estimatedRecoverableRevenue += estimatedVal;
+      } else if (daysSinceLastOrder >= averageCycle || (lastOrderDate === null && daysSinceLastOrder > 7)) {
         churnStatus = "DUE_FOR_REORDER";
         dueForReorderCount++;
-        estimatedRecoverableRevenue += (cust.totalPurchaseValue / Math.max(1, cust.totalOrders));
+        const estimatedVal = (cust.totalPurchaseValue > 0) 
+          ? (cust.totalPurchaseValue / Math.max(1, cust.totalOrders))
+          : (custQuotes.length > 0 ? (custQuotes[0].totalValue || 5000) : 5000);
+        estimatedRecoverableRevenue += estimatedVal;
       } else {
         churnStatus = "ACTIVE_HEALTHY";
         healthyCount++;
       }
 
-      // Identify Top historically ordered products
+      // Identify Top historically ordered products or quotation items
       const productMap: Record<string, { productId: string; productName: string; category: string; quantity: number; sellingPrice: number }> = {};
       custOrders.forEach(o => {
         o.items.forEach(item => {
@@ -145,7 +172,25 @@ export async function getDormantAndReorderInsights(): Promise<{
         });
       });
 
-      const topProducts = Object.values(productMap)
+      if (Object.keys(productMap).length === 0 && custQuotes.length > 0) {
+        custQuotes.forEach(q => {
+          q.items.forEach(item => {
+            if (!item.product) return;
+            if (!productMap[item.productId]) {
+              productMap[item.productId] = {
+                productId: item.productId,
+                productName: item.product.name,
+                category: item.product.category,
+                quantity: 0,
+                sellingPrice: item.product.sellingPrice || item.rate
+              };
+            }
+            productMap[item.productId].quantity += (item.quantity || 1);
+          });
+        });
+      }
+
+      let topProducts = Object.values(productMap)
         .sort((a, b) => b.quantity - a.quantity)
         .slice(0, 3)
         .map(p => ({
@@ -156,10 +201,22 @@ export async function getDormantAndReorderInsights(): Promise<{
           sellingPrice: p.sellingPrice
         }));
 
+      if (topProducts.length === 0 && topSellingProducts.length > 0) {
+        topProducts = topSellingProducts.slice(0, 2).map(p => ({
+          productId: p.id,
+          productName: p.name,
+          category: p.category,
+          totalQuantityBought: 0,
+          sellingPrice: p.sellingPrice
+        }));
+      }
+
       const topProductName = topProducts[0]?.productName || "Apparel collection";
       const salespersonName = cust.assignedSalesperson?.user?.name || "Sales Team";
 
-      const whatsappPitch = `Namaste ${cust.contactPerson || cust.businessName}! 🙏 We noticed it's been ${daysSinceLastOrder} days since your last order with ${companyName}. Your favourite fast-moving item (*${topProductName}*) and fresh seasonal stock are ready for dispatch. Shall we book a refill order for you today with prompt dispatch?`;
+      const whatsappPitch = lastOrderDate
+        ? `Namaste ${cust.contactPerson || cust.businessName}! 🙏 We noticed it's been ${daysSinceLastOrder} days since your last order with ${companyName}. Your favourite fast-moving item (*${topProductName}*) and fresh seasonal stock are ready for dispatch. Shall we book a refill order for you today with prompt dispatch?`
+        : `Namaste ${cust.contactPerson || cust.businessName}! 🙏 Reaching out from ${companyName}. We have exciting new stock ready in *${topProductName}* with exclusive B2B wholesale pricing. Can I send our latest product catalogue and pricing sheet for your review?`;
 
       insights.push({
         customerId: cust.id,
@@ -176,13 +233,21 @@ export async function getDormantAndReorderInsights(): Promise<{
         daysOverdue,
         churnStatus,
         topProducts,
-        recommendedRestockText: `Historically reorders every ~${averageCycle} days. Top purchase: ${topProductName}.`,
+        recommendedRestockText: lastOrderDate
+          ? `Historically reorders every ~${averageCycle} days. Top purchase: ${topProductName}.`
+          : `New account awaiting first order. Suggested catalogue: ${topProductName}.`,
         whatsappPitch
       });
     }
 
     // Sort by most overdue / at-risk customers first
-    insights.sort((a, b) => b.daysOverdue - a.daysOverdue);
+    insights.sort((a, b) => {
+      if (a.churnStatus === 'HIGH_CHURN_RISK' && b.churnStatus !== 'HIGH_CHURN_RISK') return -1;
+      if (b.churnStatus === 'HIGH_CHURN_RISK' && a.churnStatus !== 'HIGH_CHURN_RISK') return 1;
+      if (a.churnStatus === 'DUE_FOR_REORDER' && b.churnStatus === 'ACTIVE_HEALTHY') return -1;
+      if (b.churnStatus === 'DUE_FOR_REORDER' && a.churnStatus === 'ACTIVE_HEALTHY') return 1;
+      return b.daysSinceLastOrder - a.daysSinceLastOrder;
+    });
 
     return {
       success: true,

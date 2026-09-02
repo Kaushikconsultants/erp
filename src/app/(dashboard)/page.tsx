@@ -11,6 +11,7 @@ import BroadcastBanner from '@/components/dashboard/BroadcastBanner';
 import { calculateIncentives, OrderData } from '@/lib/incentiveEngine';
 import { getFollowUpRecommendations } from '@/app/actions/customerActions';
 import { getSprintData, getAdminSprintTeamHealth } from '@/app/actions/sprintActions';
+import { getDormantAndReorderInsights } from '@/app/actions/aiReorderActions';
 import './dashboard.css';
 
 import { getTenantOrgId } from '@/lib/tenant';
@@ -235,7 +236,14 @@ export default async function Home() {
       salesperson: lead.assignedSalesperson?.user?.name || 'Unassigned'
     }));
 
-    const sprintTeamHealth = await getAdminSprintTeamHealth(orgId);
+    const [sprintTeamHealth, reorderInsightsRes] = await Promise.all([
+      getAdminSprintTeamHealth(orgId),
+      getDormantAndReorderInsights()
+    ]);
+
+    const atRiskCount = reorderInsightsRes.success && reorderInsightsRes.data 
+      ? (reorderInsightsRes.data.highRiskCount + reorderInsightsRes.data.dueForReorderCount) 
+      : 0;
 
     return (
       <>
@@ -247,6 +255,7 @@ export default async function Home() {
           totalCustomers={totalCustomers}
           totalOrders={combinedTotalOrders}
           pendingCalls={pendingCalls}
+          atRiskCustomersCount={atRiskCount}
           salesData={salesData}
           topProductsData={topProductsData}
           teamPerformance={teamPerformance}

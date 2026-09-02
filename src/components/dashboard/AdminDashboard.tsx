@@ -18,6 +18,7 @@ interface AdminDashboardProps {
   totalCustomers: number;
   totalOrders: number;
   pendingCalls: number;
+  atRiskCustomersCount?: number;
   salesData: any[];
   topProductsData: any[];
   teamPerformance: any[];
@@ -37,6 +38,7 @@ export default function AdminDashboard({
   totalCustomers,
   totalOrders,
   pendingCalls,
+  atRiskCustomersCount = 0,
   salesData,
   topProductsData,
   teamPerformance,
@@ -312,7 +314,7 @@ export default function AdminDashboard({
             <div className="kpi-title">At-Risk Customers</div>
             <Users size={18} className="kpi-icon warning text-orange-500" />
           </div>
-          <div className="kpi-value">{Math.floor(totalCustomers * 0.15)}</div>
+          <div className="kpi-value">{atRiskCustomersCount}</div>
           <div className="kpi-trend negative">Needs retention follow-up</div>
         </div>
       </div>
