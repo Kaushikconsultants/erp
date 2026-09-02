@@ -21,6 +21,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [fetchingPin, setFetchingPin] = useState(false);
+  const [availablePostOffices, setAvailablePostOffices] = useState<any[]>([]);
   const [fetchingGst, setFetchingGst] = useState(false);
   const [gstSuccessMsg, setGstSuccessMsg] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("None");
@@ -35,7 +36,8 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
   const [addressData, setAddressData] = useState({
     pincode: "",
     city: "",
-    state: ""
+    state: "",
+    postOffice: ""
   });
   const [openingBalance, setOpeningBalance] = useState("0");
   const [openingBalanceType, setOpeningBalanceType] = useState("DEBIT");
@@ -155,12 +157,19 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
         const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
         const data = await response.json();
         if (data && data[0] && data[0].Status === "Success") {
-          const postOffice = data[0].PostOffice[0];
-          setAddressData(prev => ({
-            ...prev,
-            city: postOffice.District || prev.city,
-            state: postOffice.State || prev.state
-          }));
+          const postOffices = data[0].PostOffice || [];
+          setAvailablePostOffices(postOffices);
+          
+          if (postOffices.length > 0) {
+            setAddressData(prev => ({
+              ...prev,
+              city: postOffices[0].District || prev.city,
+              state: postOffices[0].State || prev.state,
+              postOffice: postOffices.length === 1 ? postOffices[0].Name : ""
+            }));
+          }
+        } else {
+          setAvailablePostOffices([]);
         }
       } catch (err) {
         console.error("Failed to fetch pincode details:", err);
@@ -175,13 +184,18 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     setLoading(true);
     setError("");
 
+    let finalAddress = streetAddress;
+    if (addressData.postOffice && !finalAddress.includes(addressData.postOffice)) {
+      finalAddress = finalAddress ? `${finalAddress}, ${addressData.postOffice}` : addressData.postOffice;
+    }
+
     const formData = new FormData();
     formData.set("companyName", companyName);
     formData.set("contactPerson", contactPerson);
     formData.set("email", email);
     formData.set("phone", phone);
     formData.set("gstNumber", gstNumber);
-    formData.set("address", streetAddress);
+    formData.set("address", finalAddress);
     formData.set("pincode", addressData.pincode);
     formData.set("city", addressData.city);
     formData.set("state", addressData.state);
@@ -203,7 +217,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
         email: email,
         mobile: phone,
         gstNumber: gstNumber,
-        billingAddress: streetAddress,
+        billingAddress: finalAddress,
         pincode: addressData.pincode,
         city: addressData.city,
         state: addressData.state,
@@ -416,7 +430,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
                   Pincode {fetchingPin && <span style={{ fontSize: '0.7rem', color: '#2563eb' }}>(fetching...)</span>}
@@ -432,7 +446,33 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>City</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Post Office / Area</label>
+                {availablePostOffices.length > 0 ? (
+                  <select 
+                    value={addressData.postOffice}
+                    onChange={(e) => setAddressData(prev => ({...prev, postOffice: e.target.value}))}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }}
+                  >
+                    <option value="">Select Area</option>
+                    {availablePostOffices.map((po, idx) => (
+                      <option key={idx} value={po.Name}>{po.Name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input 
+                    type="text" 
+                    value={addressData.postOffice} 
+                    onChange={(e) => setAddressData(prev => ({...prev, postOffice: e.target.value}))} 
+                    placeholder="Enter Area" 
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
+                  />
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>City / District</label>
                 <input 
                   type="text" 
                   name="city" 
