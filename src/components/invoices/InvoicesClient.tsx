@@ -29,6 +29,7 @@ import { recordPayment } from "@/app/actions/paymentActions";
 import { updateInvoice, deleteInvoice } from "@/app/actions/invoiceActions";
 import { sendInvoiceViaWhatsApp, sendPaymentReminder } from "@/app/actions/documentShareActions";
 import { exportTallySalesInvoices } from "@/app/actions/tallyExportActions";
+import EditFullInvoiceModal from "./EditFullInvoiceModal";
 import "@/components/ui/modal.css";
 
 const PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Cheque", "Card", "Other"];
@@ -148,46 +149,6 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
 
     setPaymentModal(null);
     showToast("Payment recorded successfully!");
-  }
-
-  // --- EDIT INVOICE ---
-  async function handleEditInvoice(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!editModal) return;
-    setLoading(true);
-    setError("");
-    const fd = new FormData(e.currentTarget);
-    
-    const invoiceDate = fd.get("invoiceDate") as string;
-    const dueDate = fd.get("dueDate") as string;
-    const paymentTerms = fd.get("paymentTerms") as string;
-    const status = fd.get("status") as string;
-    const notes = fd.get("notes") as string;
-    const totalAmount = parseFloat(fd.get("totalAmount") as string);
-    const amountPaid = parseFloat(fd.get("amountPaid") as string);
-
-    const res = await updateInvoice(editModal.id, {
-      invoiceDate,
-      dueDate,
-      paymentTerms,
-      status,
-      notes,
-      totalAmount: isNaN(totalAmount) ? undefined : totalAmount,
-      amountPaid: isNaN(amountPaid) ? undefined : amountPaid,
-    });
-
-    setLoading(false);
-    if (res.error) {
-      setError(res.error);
-      return;
-    }
-
-    if (res.invoice) {
-      setInvoices(prev => prev.map(inv => (inv.id === editModal.id ? { ...inv, ...res.invoice } : inv)));
-    }
-
-    setEditModal(null);
-    showToast(`Invoice ${editModal.invoiceNumber} updated successfully!`);
   }
 
   // --- DELETE INVOICE ---
@@ -841,128 +802,19 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
         </div>
       )}
 
-      {/* ─── MODAL 2: EDIT INVOICE MODAL ─── */}
+      {/* ─── MODAL 2: EDIT FULL INVOICE MODAL ─── */}
       {editModal && (
-        <div className="modal-backdrop" onClick={() => setEditModal(null)}>
-          <div className="modal-content glass-panel animate-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
-            <div className="modal-header">
-              <div>
-                <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Edit3 size={16} color="var(--accent-primary, #4f46e5)" /> Edit Invoice
-                </h2>
-                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  {editModal.invoiceNumber} • <span style={{ fontWeight: 600, color: '#334155' }}>{editModal.customer?.businessName}</span>
-                </p>
-              </div>
-              <button className="close-btn" onClick={() => setEditModal(null)}>×</button>
-            </div>
-
-            <form onSubmit={handleEditInvoice} className="modal-body" style={{ marginTop: '14px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                
-                {/* Invoice Date */}
-                <div className="vertical-group">
-                  <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Invoice Date *</label>
-                  <DatePicker
-                    name="invoiceDate"
-                    
-                    required
-                    defaultValue={editModal.invoiceDate ? new Date(editModal.invoiceDate).toISOString().split('T')[0] : ''}
-                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%' }}
-                  />
-                </div>
-
-                {/* Due Date */}
-                <div className="vertical-group">
-                  <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Due Date</label>
-                  <DatePicker
-                    name="dueDate"
-                    
-                    defaultValue={editModal.dueDate ? new Date(editModal.dueDate).toISOString().split('T')[0] : ''}
-                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%' }}
-                  />
-                </div>
-
-                {/* Total Amount */}
-                <div className="vertical-group">
-                  <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Total Amount (₹) *</label>
-                  <input
-                    name="totalAmount"
-                    type="number"
-                    step="0.01"
-                    required
-                    defaultValue={editModal.totalAmount}
-                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%' }}
-                  />
-                </div>
-
-                {/* Amount Paid */}
-                <div className="vertical-group">
-                  <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Amount Paid (₹)</label>
-                  <input
-                    name="amountPaid"
-                    type="number"
-                    step="0.01"
-                    defaultValue={editModal.amountPaid}
-                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%' }}
-                  />
-                </div>
-
-                {/* Status */}
-                <div className="vertical-group">
-                  <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Invoice Status</label>
-                  <select
-                    name="status"
-                    defaultValue={editModal.status}
-                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%' }}
-                  >
-                    <option value="Unpaid">Unpaid</option>
-                    <option value="Partially Paid">Partially Paid</option>
-                    <option value="Paid">Paid</option>
-                    <option value="Overdue">Overdue</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </div>
-
-                {/* Payment Terms */}
-                <div className="vertical-group">
-                  <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Payment Terms</label>
-                  <input
-                    name="paymentTerms"
-                    defaultValue={editModal.paymentTerms || 'Net 30'}
-                    placeholder="e.g. Net 30, Due on Receipt"
-                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%' }}
-                  />
-                </div>
-
-                {/* Notes */}
-                <div className="vertical-group" style={{ gridColumn: '1/-1' }}>
-                  <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Internal Notes</label>
-                  <textarea
-                    name="notes"
-                    defaultValue={editModal.notes || ''}
-                    rows={2}
-                    placeholder="Optional notes or reference information"
-                    style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', width: '100%', resize: 'vertical' }}
-                  />
-                </div>
-              </div>
-
-              {error && (
-                <div style={{ color: '#dc2626', backgroundColor: '#fee2e2', padding: '8px 12px', borderRadius: '6px', fontSize: '0.82rem', marginTop: '12px' }}>
-                  {error}
-                </div>
-              )}
-
-              <div className="modal-footer" style={{ marginTop: '18px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button type="button" className="btn-secondary" onClick={() => setEditModal(null)}>Cancel</button>
-                <button type="submit" className="primary-btn" disabled={loading}>
-                  {loading ? "Saving..." : "Save Changes"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EditFullInvoiceModal
+          invoiceId={editModal.id}
+          isOpen={!!editModal}
+          onClose={() => setEditModal(null)}
+          onSuccess={(updatedInvoice) => {
+            if (updatedInvoice) {
+              setInvoices(prev => prev.map(inv => (inv.id === updatedInvoice.id ? { ...inv, ...updatedInvoice } : inv)));
+            }
+            showToast(`Invoice ${editModal.invoiceNumber} updated successfully!`);
+          }}
+        />
       )}
 
       {/* ─── MODAL 3: DELETE CONFIRMATION MODAL ─── */}

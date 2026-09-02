@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
+import { getCompanySettings } from "./companyActions";
 
 async function canManageInvoices() {
   const session = await getServerSession(authOptions);
@@ -338,5 +339,342 @@ export async function getReceivablesAgeing() {
     return { success: true, ageing };
   } catch (error: any) {
     return { error: "Failed to fetch ageing report" };
+  }
+}
+
+/**
+ * Fetch all comprehensive data required to edit an invoice:
+ * - Invoice details
+ * - Customer & Shipping / Billing address
+ * - Order & Order items with product details
+ * - Products catalog (for autocomplete / adding items)
+ * - Customers list (for switching / selecting customer)
+ * - Company state settings (for auto tax calculation)
+ */
+export async function getInvoiceForFullEdit(id: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        order: {
+          include: {
+            items: {
+              include: {
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    sku: true,
+                    articleNumber: true,
+                    sellingPrice: true,
+                    hsnCode: true,
+                    stockQuantity: true,
+                  }
+                }
+              }
+            }
+          }
+        },
+        payments: { orderBy: { paymentDate: 'desc' } }
+      }
+    });
+
+    if (!invoice) return { error: "Invoice not found" };
+
+    // Fetch active products in this organization
+    const products = await prisma.product.findMany({
+      where: organizationId ? { organizationId, status: "Active" } : { status: "Active" },
+      select: {
+        id: true,
+        name: true,
+        sku: true,
+        articleNumber: true,
+        sellingPrice: true,
+        hsnCode: true,
+        stockQuantity: true,
+      },
+      orderBy: { name: "asc" },
+      take: 200,
+    });
+
+    // Fetch customers
+    const customers = await prisma.customer.findMany({
+      where: organizationId ? { organizationId } : undefined,
+      select: {
+        id: true,
+        businessName: true,
+        contactPerson: true,
+        mobile: true,
+        email: true,
+        billingAddress: true,
+        shippingAddress: true,
+        state: true,
+        gstNumber: true,
+        pan: true,
+      },
+      orderBy: { businessName: "asc" },
+      take: 200,
+    });
+
+    const companyRes = await getCompanySettings();
+    const companyState = companyRes.settings?.state || "Haryana";
+
+    return {
+      success: true,
+      invoice,
+      products,
+      customers,
+      companyState,
+    };
+  } catch (error: any) {
+    return { error: "Failed to load invoice editor data: " + error.message };
+  }
+}
+
+/**
+ * Save complete invoice changes atomically:
+ * - Updates Invoice (dates, number, terms, status, totals, notes)
+ * - Updates Customer details (business name, phone, email, addresses, state, GSTIN)
+ * - Synchronizes Order & OrderItems (line items, pricing, discounts, GST rates)
+ */
+export async function saveFullInvoiceDetails(payload: {
+  invoiceId: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate?: string;
+  paymentTerms?: string;
+  status: string;
+  notes?: string;
+
+  // Customer Details
+  customerId: string;
+  customerName?: string;
+  contactPerson?: string;
+  mobile?: string;
+  email?: string;
+  billingAddress?: string;
+  shippingAddress?: string;
+  state?: string;
+  gstin?: string;
+  placeOfSupply?: string;
+  isInterstate?: boolean;
+
+  // Line Items
+  items: Array<{
+    id?: string;
+    productId?: string;
+    productName?: string;
+    hsnCode?: string;
+    quantity: number;
+    rate: number;
+    discount?: number;
+    gstRate: number;
+    cgst?: number;
+    sgst?: number;
+    igst?: number;
+    total: number;
+  }>;
+
+  // Totals
+  subtotal: number;
+  discountAmount: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  taxAmount: number;
+  shippingCharges?: number;
+  roundOff?: number;
+  totalAmount: number;
+  amountPaid: number;
+  amountDue: number;
+}) {
+  const { allowed } = await canManageInvoices();
+  if (!allowed) return { error: "Unauthorized" };
+
+  try {
+    const existing = await prisma.invoice.findUnique({
+      where: { id: payload.invoiceId },
+      include: { order: true, customer: true }
+    });
+    if (!existing) return { error: "Invoice not found" };
+
+    const organizationId = existing.organizationId || (await getTenantOrgId());
+
+    // 1. Check for duplicate invoiceNumber if changed
+    if (payload.invoiceNumber.trim() !== existing.invoiceNumber) {
+      const duplicate = await prisma.invoice.findFirst({
+        where: {
+          invoiceNumber: payload.invoiceNumber.trim(),
+          id: { not: payload.invoiceId },
+          ...(organizationId ? { organizationId } : {})
+        }
+      });
+      if (duplicate) {
+        return { error: `Invoice number "${payload.invoiceNumber}" is already in use by another invoice.` };
+      }
+    }
+
+    // 2. Update Customer Details if provided
+    if (payload.customerId) {
+      await prisma.customer.update({
+        where: { id: payload.customerId },
+        data: {
+          businessName: payload.customerName || undefined,
+          contactPerson: payload.contactPerson || undefined,
+          mobile: payload.mobile || undefined,
+          email: payload.email || undefined,
+          billingAddress: payload.billingAddress || undefined,
+          shippingAddress: payload.shippingAddress || undefined,
+          state: payload.state || undefined,
+          gstNumber: payload.gstin || undefined,
+        }
+      }).catch((err) => console.warn("Could not update customer record:", err));
+    }
+
+    // 3. Find or manage products for line items
+    const defaultProduct = await prisma.product.findFirst({
+      where: organizationId ? { organizationId } : undefined
+    });
+
+    let orderId = existing.orderId;
+
+    if (!orderId) {
+      // Create an underlying order for manual invoice if needed
+      const defaultEmp = await prisma.employee.findFirst({
+        where: organizationId ? { organizationId } : undefined
+      });
+      const newOrder = await prisma.order.create({
+        data: {
+          organizationId,
+          orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
+          customerId: payload.customerId,
+          salespersonId: defaultEmp?.id || "",
+          orderDate: new Date(payload.invoiceDate),
+          subtotal: payload.subtotal,
+          discount: payload.discountAmount,
+          tax: payload.taxAmount,
+          cgst: payload.cgst,
+          sgst: payload.sgst,
+          igst: payload.igst,
+          isInterstate: payload.isInterstate || false,
+          placeOfSupply: payload.placeOfSupply || payload.state,
+          totalValue: payload.totalAmount,
+          paymentReceived: payload.amountPaid,
+          outstandingAmount: payload.amountDue,
+          paymentStatus: payload.amountDue <= 0 ? 'Paid' : payload.amountPaid > 0 ? 'Partially Paid' : 'Unpaid',
+          orderStatus: 'Processing',
+          notes: payload.notes || `Invoice ${payload.invoiceNumber}`,
+        }
+      });
+      orderId = newOrder.id;
+    } else {
+      // Update existing order
+      await prisma.order.update({
+        where: { id: orderId },
+        data: {
+          customerId: payload.customerId,
+          subtotal: payload.subtotal,
+          discount: payload.discountAmount,
+          tax: payload.taxAmount,
+          cgst: payload.cgst,
+          sgst: payload.sgst,
+          igst: payload.igst,
+          isInterstate: payload.isInterstate || false,
+          placeOfSupply: payload.placeOfSupply || payload.state,
+          totalValue: payload.totalAmount,
+          paymentReceived: payload.amountPaid,
+          outstandingAmount: payload.amountDue,
+          paymentStatus: payload.amountDue <= 0 ? 'Paid' : payload.amountPaid > 0 ? 'Partially Paid' : 'Unpaid',
+          notes: payload.notes || undefined,
+        }
+      });
+    }
+
+    // 4. Synchronize OrderItems
+    if (orderId && Array.isArray(payload.items) && payload.items.length > 0) {
+      await prisma.orderItem.deleteMany({ where: { orderId } });
+
+      for (const item of payload.items) {
+        let pId = item.productId;
+        if (!pId) {
+          if (defaultProduct) {
+            pId = defaultProduct.id;
+          } else {
+            const createdProd = await prisma.product.create({
+              data: {
+                organizationId,
+                name: item.productName || "General Item",
+                category: "General",
+                sku: `SKU-${Date.now().toString().slice(-6)}`,
+                sellingPrice: item.rate,
+                purchasePrice: item.rate * 0.7,
+                mrp: item.rate,
+                hsnCode: item.hsnCode || "6109"
+              }
+            });
+            pId = createdProd.id;
+          }
+        }
+
+        await prisma.orderItem.create({
+          data: {
+            orderId,
+            productId: pId,
+            quantity: Math.max(1, Math.round(item.quantity)),
+            rate: item.rate,
+            hsnCode: item.hsnCode || "6109",
+            gstRate: item.gstRate,
+            cgst: item.cgst || 0,
+            sgst: item.sgst || 0,
+            igst: item.igst || 0,
+            total: item.total
+          }
+        });
+      }
+    }
+
+    // 5. Update Invoice
+    const updatedInvoice = await prisma.invoice.update({
+      where: { id: payload.invoiceId },
+      data: {
+        invoiceNumber: payload.invoiceNumber.trim(),
+        orderId,
+        customerId: payload.customerId,
+        invoiceDate: new Date(payload.invoiceDate),
+        dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
+        paymentTerms: payload.paymentTerms || 'Net 30',
+        status: payload.status,
+        notes: payload.notes || null,
+        subtotal: payload.subtotal,
+        discountAmount: payload.discountAmount,
+        taxAmount: payload.taxAmount,
+        totalAmount: payload.totalAmount,
+        amountPaid: payload.amountPaid,
+        amountDue: payload.amountDue,
+      },
+      include: {
+        customer: { select: { businessName: true, mobile: true, state: true } },
+        order: { select: { orderNumber: true } },
+        payments: true
+      }
+    });
+
+    revalidatePath("/invoices");
+    if (orderId) {
+      revalidatePath(`/orders/${orderId}`);
+      revalidatePath(`/orders/${orderId}/invoice`);
+    }
+    revalidatePath("/orders");
+    revalidatePath("/customers");
+
+    return { success: true, invoice: updatedInvoice };
+  } catch (error: any) {
+    return { error: "Failed to save invoice: " + error.message };
   }
 }
