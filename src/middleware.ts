@@ -25,6 +25,6 @@ export const config = {
      * - portal (public customer portal)
      * - scan (mobile wireless scanner page)
      */
-    "/((?!api/auth|api/testdb|_next/static|_next/image|favicon.ico|manifest.json|manifest.webmanifest|sw.js|login|register|pricing|portal|scan).*)",
+    "/((?!api/auth|api/webhooks|api/testdb|_next/static|_next/image|favicon.ico|manifest.json|manifest.webmanifest|sw.js|login|register|pricing|portal|scan).*)",
   ],
 };
