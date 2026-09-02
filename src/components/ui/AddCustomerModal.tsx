@@ -86,9 +86,9 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
       else if (entityChar === 'T') suffix = "Trust";
       
       const derivedName = `M/S ${pan} (${state || 'India'} ${suffix})`;
-      setCompanyName(prev => (!prev || prev.startsWith("M/S") ? derivedName : prev));
-      setContactPerson(prev => (!prev ? `Authorized Signatory (${pan})` : prev));
-      setStreetAddress(prev => (!prev ? `Commercial Business Complex, ${state || 'India'}` : prev));
+      setCompanyName((prev: string) => (!prev || prev.startsWith("M/S") ? derivedName : prev));
+      setContactPerson((prev: string) => (!prev ? `Authorized Signatory (${pan})` : prev));
+      setStreetAddress((prev: string) => (!prev ? `Commercial Business Complex, ${state || 'India'}` : prev));
       setGstSuccessMsg(`✓ Auto-filled GSTIN: State: ${state || stCode} • PAN: ${pan}`);
     }
   };
