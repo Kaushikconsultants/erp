@@ -42,7 +42,7 @@ export default function ShippingRateCalculator({
   // Form State matching Software Theme
   const [category, setCategory] = useState<"Domestic" | "International">("Domestic");
   const [shipmentType, setShipmentType] = useState<"Forward" | "Reverse">("Forward");
-  const [packageType, setPackageType] = useState("Heavy Shipment (10 kg or above) Single or MPS");
+  const [packageType, setPackageType] = useState("NON ESSENTIALS");
   const [originPincode, setOriginPincode] = useState("124001");
   const [destinationPincode, setDestinationPincode] = useState(initialDestinationPincode || "");
   const [paymentMode, setPaymentMode] = useState<"Prepaid" | "COD">("Prepaid");
@@ -218,9 +218,8 @@ export default function ShippingRateCalculator({
             onChange={e => setPackageType(e.target.value)}
             style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', backgroundColor: '#fff' }}
           >
-            <option value="Heavy Shipment (10 kg or above) Single or MPS">Heavy Shipment (10 kg or above) Single or MPS</option>
-            <option value="Standard Parcel Box">Standard Parcel Box</option>
-            <option value="Express Document">Express Document</option>
+            <option value="NON ESSENTIALS">Heavy Shipment / Standard Parcel</option>
+            <option value="ESSENTIALS">Essentials / Documents</option>
           </select>
         </div>
 
