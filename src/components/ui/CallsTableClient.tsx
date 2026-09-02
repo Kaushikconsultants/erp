@@ -63,9 +63,10 @@ export default function CallsTableClient({
     let h = parseInt(editFollowUpHour || "10", 10);
     if (editFollowUpPeriod === "PM" && h < 12) h += 12;
     if (editFollowUpPeriod === "AM" && h === 12) h = 0;
-    const hStr = h.toString().padStart(2, "0");
-    const mStr = (editFollowUpMinute || "00").padStart(2, "0");
-    return `${editFollowUpDate}T${hStr}:${mStr}:00`;
+    const [year, month, day] = editFollowUpDate.split('-');
+    const m = parseInt(editFollowUpMinute || "00", 10);
+    const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), h, m, 0);
+    return localDate.toISOString();
   };
 
   const handleSaveEdit = async () => {

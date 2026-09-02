@@ -109,9 +109,10 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
     let h = parseInt(followUpHour || "10", 10);
     if (followUpPeriod === "PM" && h < 12) h += 12;
     if (followUpPeriod === "AM" && h === 12) h = 0;
-    const hStr = h.toString().padStart(2, "0");
-    const mStr = (followUpMinute || "00").padStart(2, "0");
-    return `${followUpDate}T${hStr}:${mStr}:00`;
+    const [year, month, day] = followUpDate.split('-');
+    const m = parseInt(followUpMinute || "00", 10);
+    const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), h, m, 0);
+    return localDate.toISOString();
   };
 
   const setQuickFollowUp = (daysFromNow: number, hour12: number, minute: number, period: "AM" | "PM") => {
