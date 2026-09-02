@@ -31,7 +31,7 @@ export default async function SettingsPage() {
 
   const users = await prisma.user.findMany({
     where: { organizationId: orgId },
-    select: { id: true, name: true, email: true, role: true, isActive: true, canManageSettings: true, allowedSections: true, createdAt: true },
+    include: { employee: true },
     orderBy: { createdAt: 'desc' }
   });
 

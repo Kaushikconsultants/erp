@@ -11,21 +11,21 @@ export default function AddUserButton() {
     <>
       <button
         type="button"
-        className="primary-btn hover-lift"
+        className="hover-lift"
         onClick={() => setIsModalOpen(true)}
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: "8px",
-          padding: "10px 20px",
-          borderRadius: "10px",
+          gap: "6px",
+          padding: "8px 16px",
+          borderRadius: "8px",
           fontWeight: 700,
-          fontSize: "0.88rem",
-          backgroundColor: "var(--accent-primary, #4f46e5)",
+          fontSize: "0.85rem",
+          backgroundColor: "#16a34a",
           color: "#ffffff",
           border: "none",
           cursor: "pointer",
-          boxShadow: "0 2px 8px rgba(79, 70, 229, 0.25)",
+          boxShadow: "0 2px 6px rgba(22, 163, 74, 0.25)",
           transition: "all 0.15s ease"
         }}
       >

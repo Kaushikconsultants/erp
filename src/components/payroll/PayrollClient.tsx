@@ -4,6 +4,7 @@ import React, { useState, useMemo } from "react";
 import { processSalary, markSalaryPaid, updateEmployeeSalary } from "@/app/actions/hrmsActions";
 import MonthPicker from "@/components/ui/MonthPicker";
 import AddUserModal from "@/components/ui/AddUserModal";
+import EditEmployeeModal from "@/components/ui/EditEmployeeModal";
 import Link from "next/link";
 import {
   Wallet,
@@ -18,7 +19,8 @@ import {
   ArrowUpRight,
   FileText,
   ChevronRight,
-  UserPlus
+  UserPlus,
+  Pencil
 } from "lucide-react";
 
 export interface EmployeeData {
@@ -27,7 +29,7 @@ export interface EmployeeData {
   department: string | null;
   designation: string | null;
   target?: number | null;
-  user: { name: string; email: string };
+  user: { name: string; email: string; isActive?: boolean };
   salaries: any[];
   incentives: any[];
   orders: any[];
@@ -104,6 +106,7 @@ export default function PayrollClient({
   const [slipModal, setSlipModal] = useState<any | null>(null);
   const [baseSalaryModal, setBaseSalaryModal] = useState<EmployeeData | null>(null);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<EmployeeData | null>(null);
   const [salaryForm, setSalaryForm] = useState<Record<string, any>>({});
   const [newBaseSalary, setNewBaseSalary] = useState<number>(0);
   const [loading, setLoading] = useState(false);
@@ -414,7 +417,7 @@ export default function PayrollClient({
               {totals.paidCount} Paid • {totals.processedCount} Processed
             </div>
             <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "1px" }}>
-              {totals.pendingCount} Pending Approval
+              {totals.pendingCount} Pending Payout
             </div>
           </div>
         </div>
@@ -478,29 +481,29 @@ export default function PayrollClient({
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 500, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left" }}>
+                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
                   Employee
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 500, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left" }}>
+                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
                   Department
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 500, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left" }}>
+                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
                   Basic Salary
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 500, color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left" }}>
+                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
                   MTD Sales
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 500, color: "#059669", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left" }}>
+                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#059669", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
                   Incentive
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 500, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left" }}>
+                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
                   Net Salary
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 500, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left" }}>
-                  Status
+                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
+                  Payout Status
                 </th>
                 {isAdmin && (
-                  <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 500, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "right" }}>
+                  <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "right", verticalAlign: "middle" }}>
                     Actions
                   </th>
                 )}
@@ -536,17 +539,17 @@ export default function PayrollClient({
                       }}
                     >
                       {/* Employee Column */}
-                      <td style={{ padding: "12px 14px" }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                           <div
                             style={{
-                              width: 32,
-                              height: 32,
+                              width: 34,
+                              height: 34,
                               borderRadius: "50%",
                               backgroundColor: "#eef2ff",
                               color: "#4f46e5",
                               fontWeight: 600,
-                              fontSize: "0.8rem",
+                              fontSize: "0.82rem",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -556,8 +559,25 @@ export default function PayrollClient({
                             {emp.user?.name ? emp.user.name.charAt(0).toUpperCase() : "E"}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 500, color: "#0f172a", fontSize: "0.875rem" }}>
-                              {emp.user.name}
+                            <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                              {emp.user?.name}
+                              <span 
+                                style={{ 
+                                  fontSize: "0.68rem", 
+                                  padding: "1px 6px", 
+                                  borderRadius: "4px", 
+                                  backgroundColor: emp.user?.isActive !== false ? "#ecfdf5" : "#fef2f2", 
+                                  color: emp.user?.isActive !== false ? "#059669" : "#dc2626",
+                                  fontWeight: 600,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "3px"
+                                }}
+                                title={emp.user?.isActive !== false ? "Active Employee Account" : "Deactivated Account"}
+                              >
+                                <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "currentColor" }} />
+                                {emp.user?.isActive !== false ? "Active" : "Inactive"}
+                              </span>
                             </div>
                             <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
                               {emp.designation || "Staff"}
@@ -567,7 +587,7 @@ export default function PayrollClient({
                       </td>
 
                       {/* Department */}
-                      <td style={{ padding: "12px 14px" }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
                         <span
                           style={{
                             fontSize: "0.75rem",
@@ -583,12 +603,12 @@ export default function PayrollClient({
                       </td>
 
                       {/* Basic Salary */}
-                      <td style={{ padding: "12px 14px", fontWeight: 500, color: "#334155" }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "middle", fontWeight: 500, color: "#334155" }}>
                         ₹{basicSalary.toLocaleString("en-IN")}
                       </td>
 
                       {/* 1. MTD SALES (CLICKABLE) */}
-                      <td style={{ padding: "12px 14px" }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
                         <button
                           type="button"
                           onClick={() => setSelectedSalesEmp(emp)}
@@ -624,7 +644,7 @@ export default function PayrollClient({
                       </td>
 
                       {/* 2. INCENTIVE (CLICKABLE) */}
-                      <td style={{ padding: "12px 14px" }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
                         <button
                           type="button"
                           onClick={() => setSelectedIncentiveEmp(emp)}
@@ -660,7 +680,7 @@ export default function PayrollClient({
                       </td>
 
                       {/* 3. NET SALARY (CLICKABLE) */}
-                      <td style={{ padding: "12px 14px" }}>
+                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
                         <button
                           type="button"
                           onClick={() => setSelectedSalaryEmp(emp)}
@@ -695,12 +715,12 @@ export default function PayrollClient({
                         </button>
                       </td>
 
-                      {/* Status */}
-                      <td style={{ padding: "12px 14px" }}>
+                      {/* Payout Status */}
+                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
                         <span
                           style={{
-                            fontSize: "0.75rem",
-                            fontWeight: 500,
+                            fontSize: "0.74rem",
+                            fontWeight: 600,
                             padding: "3px 8px",
                             borderRadius: "6px",
                             display: "inline-flex",
@@ -711,36 +731,69 @@ export default function PayrollClient({
                                 ? "#ecfdf5"
                                 : salaryRecord?.status === "Processed"
                                 ? "#fffbeb"
-                                : "#fef2f2",
+                                : "#f8fafc",
                             color:
                               salaryRecord?.status === "Paid"
                                 ? "#059669"
                                 : salaryRecord?.status === "Processed"
                                 ? "#d97706"
-                                : "#dc2626"
+                                : "#64748b",
+                            border:
+                              salaryRecord?.status === "Paid"
+                                ? "1px solid #bbf7d0"
+                                : salaryRecord?.status === "Processed"
+                                ? "1px solid #fde68a"
+                                : "1px solid #e2e8f0"
                           }}
                         >
                           <span
                             style={{
-                              width: 5,
-                              height: 5,
+                              width: 6,
+                              height: 6,
                               borderRadius: "50%",
                               backgroundColor:
                                 salaryRecord?.status === "Paid"
                                   ? "#059669"
                                   : salaryRecord?.status === "Processed"
                                   ? "#d97706"
-                                  : "#dc2626"
+                                  : "#94a3b8"
                             }}
                           />
-                          {salaryRecord?.status || "Pending"}
+                          {salaryRecord?.status === "Paid"
+                            ? "Paid"
+                            : salaryRecord?.status === "Processed"
+                            ? "Processed"
+                            : "Pending Payout"}
                         </span>
                       </td>
 
                       {/* Admin Actions */}
                       {isAdmin && (
-                        <td style={{ padding: "12px 14px", textAlign: "right" }}>
-                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                        <td style={{ padding: "12px 14px", textAlign: "right", verticalAlign: "middle" }}>
+                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
+                            {/* Edit Employee Details */}
+                            <button
+                              type="button"
+                              onClick={() => setEditingEmployee(emp)}
+                              style={{
+                                padding: "4px 8px",
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                borderRadius: "6px",
+                                border: "1px solid #bfdbfe",
+                                background: "#eff6ff",
+                                color: "#2563eb",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                transition: "all 0.15s ease"
+                              }}
+                              title="Edit Employee Profile, Job Role, Base Salary, Bank Details & Permissions"
+                            >
+                              <Pencil size={12} /> Edit Details
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => setProcessingId(emp.id)}
@@ -755,7 +808,7 @@ export default function PayrollClient({
                                 cursor: "pointer"
                               }}
                             >
-                              {salaryRecord ? "Edit" : "Process"}
+                              {salaryRecord ? "Edit Salary" : "Process"}
                             </button>
                             <button
                               type="button"
@@ -1653,6 +1706,20 @@ export default function PayrollClient({
           onClose={() => setShowAddStaffModal(false)}
           onSuccess={() => {
             setShowAddStaffModal(false);
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+          7. EDIT EMPLOYEE DETAILS MODAL
+      ───────────────────────────────────────────────────────────── */}
+      {editingEmployee && (
+        <EditEmployeeModal
+          employee={editingEmployee}
+          onClose={() => setEditingEmployee(null)}
+          onSuccess={() => {
+            setEditingEmployee(null);
             window.location.reload();
           }}
         />

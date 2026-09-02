@@ -416,3 +416,148 @@ export async function deleteUser(userId: string) {
     return { error: error?.message || "Failed to delete user." };
   }
 }
+
+export async function updateEmployee(employeeId: string, formData: FormData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+  const userRole = (session.user as any)?.role;
+  const canManageSettings = (session.user as any)?.canManageSettings;
+  if (userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN' && !canManageSettings) {
+    return { error: "You don't have permission to edit employee details." };
+  }
+
+  const name = formData.get("name") as string;
+  const email = formData.get("email") as string;
+  const mobile = formData.get("mobile") as string;
+  const department = formData.get("department") as string;
+  const designation = formData.get("designation") as string;
+  const employeeCode = formData.get("employeeCode") as string;
+  const joiningDateStr = formData.get("joiningDate") as string;
+  const salaryStr = formData.get("salary") as string;
+  const targetStr = formData.get("target") as string;
+  
+  const birthday = formData.get("birthday") as string;
+  const gender = formData.get("gender") as string;
+  const bloodGroup = formData.get("bloodGroup") as string;
+  const emergencyContactName = formData.get("emergencyContactName") as string;
+  const emergencyContactPhone = formData.get("emergencyContactPhone") as string;
+  const address = formData.get("address") as string;
+  const avatarUrl = formData.get("avatarUrl") as string;
+
+  const bankName = formData.get("bankName") as string;
+  const bankAccountNo = formData.get("bankAccountNo") as string;
+  const ifscCode = formData.get("ifscCode") as string;
+  const panNumber = formData.get("panNumber") as string;
+  const aadhaarNumber = formData.get("aadhaarNumber") as string;
+
+  const role = formData.get("role") as string;
+  const allowedSections = formData.get("allowedSections") as string;
+  const canManageSettingsVal = formData.get("canManageSettings") === "true";
+  const isActive = formData.get("isActive") === "true";
+  const newPassword = formData.get("newPassword") as string;
+
+  if (!employeeId) return { error: "Employee ID is required." };
+  if (!name?.trim()) return { error: "Employee name is required." };
+
+  try {
+    const existingEmp = await prisma.employee.findUnique({
+      where: { id: employeeId },
+      include: { user: true }
+    });
+
+    if (!existingEmp) return { error: "Employee record not found." };
+
+    const salary = salaryStr && !isNaN(parseFloat(salaryStr)) ? parseFloat(salaryStr) : null;
+    const target = targetStr && !isNaN(parseFloat(targetStr)) ? parseFloat(targetStr) : null;
+
+    let parsedNotes: any = {};
+    try {
+      if (existingEmp.notes) parsedNotes = JSON.parse(existingEmp.notes);
+    } catch {}
+
+    const updatedNotes = {
+      ...parsedNotes,
+      birthday: birthday?.trim() ?? parsedNotes.birthday ?? "",
+      gender: gender?.trim() ?? parsedNotes.gender ?? "",
+      bloodGroup: bloodGroup?.trim() ?? parsedNotes.bloodGroup ?? "",
+      updatedAt: new Date().toISOString()
+    };
+
+    const bankDetailsObj = {
+      bankName: bankName?.trim() || "",
+      bankAccountNo: bankAccountNo?.trim() || "",
+      ifscCode: ifscCode?.trim() || "",
+      panNumber: panNumber?.trim() || "",
+      aadhaarNumber: aadhaarNumber?.trim() || ""
+    };
+
+    let emergencyContactCombined = "";
+    if (emergencyContactName?.trim() || emergencyContactPhone?.trim()) {
+      emergencyContactCombined = `${emergencyContactName?.trim() || 'Contact'} (${emergencyContactPhone?.trim() || 'N/A'})`;
+    }
+
+    const joiningDate = joiningDateStr ? new Date(joiningDateStr) : existingEmp.joiningDate;
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Update Employee table
+      await tx.employee.update({
+        where: { id: employeeId },
+        data: {
+          department: department?.trim() || existingEmp.department,
+          designation: designation?.trim() || null,
+          mobile: mobile?.trim() || null,
+          employeeId: employeeCode?.trim() || existingEmp.employeeId,
+          joiningDate: joiningDate && !isNaN(joiningDate.getTime()) ? joiningDate : existingEmp.joiningDate,
+          employmentStatus: isActive ? "Active" : "Inactive",
+          salary: salary !== null ? salary : existingEmp.salary,
+          target: target !== null ? target : existingEmp.target,
+          address: address?.trim() || null,
+          emergencyContact: emergencyContactCombined || existingEmp.emergencyContact,
+          bankDetails: JSON.stringify(bankDetailsObj),
+          notes: JSON.stringify(updatedNotes)
+        }
+      });
+
+      // 2. Update User table
+      if (existingEmp.userId) {
+        const userUpdateData: any = {
+          name: name.trim(),
+          isActive,
+          avatarUrl: avatarUrl?.trim() || existingEmp.user?.avatarUrl
+        };
+
+        if (email?.trim() && email.trim().toLowerCase() !== existingEmp.user?.email) {
+          const emailCheck = await tx.user.findUnique({
+            where: { email: email.trim().toLowerCase() }
+          });
+          if (emailCheck && emailCheck.id !== existingEmp.userId) {
+            throw new Error("This email is already in use by another user account.");
+          }
+          userUpdateData.email = email.trim().toLowerCase();
+        }
+
+        if (role) userUpdateData.role = role;
+        if (allowedSections) userUpdateData.allowedSections = allowedSections;
+        if (formData.has("canManageSettings")) userUpdateData.canManageSettings = canManageSettingsVal;
+        if (newPassword && newPassword.trim().length >= 4) {
+          userUpdateData.password = await bcrypt.hash(newPassword.trim(), 10);
+        }
+
+        await tx.user.update({
+          where: { id: existingEmp.userId },
+          data: userUpdateData
+        });
+      }
+    });
+
+    revalidatePath("/payroll");
+    revalidatePath("/hrms");
+    revalidatePath("/hrms/payroll");
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to update employee:", error);
+    return { error: error?.message || "Failed to update employee details." };
+  }
+}
+

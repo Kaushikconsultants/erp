@@ -100,7 +100,7 @@ export async function getPayrollData(month: string) {
     const employees = await prisma.employee.findMany({
       where: whereEmp,
       include: {
-        user: { select: { name: true, email: true } },
+        user: { select: { id: true, name: true, email: true, role: true, isActive: true, canManageSettings: true, allowedSections: true, avatarUrl: true } },
         salaries: { where: { month }, take: 1 },
         incentives: { where: { month }, take: 1 },
         orders: {

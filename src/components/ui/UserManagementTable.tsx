@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import EditUserModal from "./EditUserModal";
+import EditEmployeeModal from "./EditEmployeeModal";
 import ChangePasswordModal from "./ChangePasswordModal";
 import { toggleUserStatus, deleteUser } from "@/app/actions/userActions";
 import { 
@@ -14,7 +15,9 @@ import {
   AlertTriangle, 
   Loader2, 
   X,
-  AlertCircle
+  AlertCircle,
+  Settings,
+  Pencil
 } from "lucide-react";
 
 interface User {
@@ -26,11 +29,13 @@ interface User {
   canManageSettings: boolean;
   allowedSections?: string | null;
   createdAt: Date;
+  employee?: any;
 }
 
 export default function UserManagementTable({ initialUsers }: { initialUsers: User[] }) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
   const [passwordUser, setPasswordUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [loadingUserId, setLoadingUserId] = useState<string | null>(null);
@@ -141,7 +146,7 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
   };
 
   return (
-    <div className="table-responsive">
+    <div className="table-responsive" style={{ overflowX: 'auto' }}>
       {errorMessage && (
         <div 
           style={{
@@ -172,16 +177,30 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
         </div>
       )}
 
-      <table className="data-table">
+      <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
         <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Role</th>
-            <th>Section Access</th>
-            <th>Status</th>
-            <th>Joined</th>
-            <th style={{ textAlign: 'center' }}>Actions</th>
+          <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+            <th style={{ padding: '10px 14px', fontSize: '0.74rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', verticalAlign: 'middle' }}>
+              Name
+            </th>
+            <th style={{ padding: '10px 14px', fontSize: '0.74rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', verticalAlign: 'middle' }}>
+              Email
+            </th>
+            <th style={{ padding: '10px 14px', fontSize: '0.74rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', verticalAlign: 'middle' }}>
+              Role
+            </th>
+            <th style={{ padding: '10px 14px', fontSize: '0.74rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', verticalAlign: 'middle' }}>
+              Section Access
+            </th>
+            <th style={{ padding: '10px 14px', fontSize: '0.74rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', verticalAlign: 'middle' }}>
+              Status
+            </th>
+            <th style={{ padding: '10px 14px', fontSize: '0.74rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'left', verticalAlign: 'middle' }}>
+              Joined
+            </th>
+            <th style={{ padding: '10px 14px', fontSize: '0.74rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'right', verticalAlign: 'middle' }}>
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -190,66 +209,154 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
             const isLoading = loadingUserId === user.id;
 
             return (
-              <tr key={user.id} style={{ opacity: user.isActive ? 1 : 0.75 }}>
-                <td>
-                  <strong>{user.name}</strong>
-                  {user.canManageSettings && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#64748b' }} title="Can manage settings">⚙️</span>}
+              <tr 
+                key={user.id} 
+                style={{ 
+                  opacity: user.isActive ? 1 : 0.75,
+                  borderBottom: '1px solid #f1f5f9',
+                  transition: 'background-color 0.15s ease'
+                }}
+              >
+                {/* 1. Name */}
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem' }}>
+                      {user.name}
+                    </span>
+                    {user.canManageSettings && (
+                      <span title="Can manage settings" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        <Settings 
+                          size={13} 
+                          style={{ color: '#64748b', flexShrink: 0 }} 
+                        />
+                      </span>
+                    )}
+                  </div>
                 </td>
-                <td>{user.email}</td>
-                <td>
+
+                {/* 2. Email */}
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle', color: '#475569', fontSize: '0.84rem' }}>
+                  {user.email}
+                </td>
+
+                {/* 3. Role */}
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                   <span style={{ 
-                    padding: '3px 10px', 
-                    borderRadius: '9999px', 
-                    fontSize: '0.75rem', 
+                    padding: '3px 8px', 
+                    borderRadius: '6px', 
+                    fontSize: '0.74rem', 
                     fontWeight: 700, 
                     backgroundColor: badge.bg, 
                     color: badge.color,
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '4px',
+                    whiteSpace: 'nowrap'
                   }}>
                     {badge.label}
                   </span>
                 </td>
-                <td>
-                  <span style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600, backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>
+
+                {/* 4. Section Access */}
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                  <span style={{ 
+                    fontSize: '0.74rem', 
+                    color: '#475569', 
+                    fontWeight: 600, 
+                    backgroundColor: '#f1f5f9', 
+                    padding: '3px 8px', 
+                    borderRadius: '6px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    whiteSpace: 'nowrap'
+                  }}>
                     {getSectionCount(user.allowedSections, user.role)}
                   </span>
                 </td>
-                <td>
-                  <span className={`status-badge ${user.isActive ? 'active' : 'inactive'}`}>
-                    {user.isActive ? '• Active' : '• Deactivated'}
+
+                {/* 5. Status */}
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                  <span 
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '0.74rem',
+                      fontWeight: 600,
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: user.isActive ? '#ecfdf5' : '#fef2f2',
+                      color: user.isActive ? '#059669' : '#dc2626',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <span 
+                      style={{ 
+                        width: '6px', 
+                        height: '6px', 
+                        borderRadius: '50%', 
+                        backgroundColor: user.isActive ? '#059669' : '#dc2626',
+                        display: 'inline-block'
+                      }} 
+                    />
+                    {user.isActive ? 'Active' : 'Deactivated'}
                   </span>
                 </td>
-                <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                <td style={{ textAlign: 'center' }}>
-                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                    {/* Edit Role & Access */}
+
+                {/* 6. Joined */}
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle', color: '#475569', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </td>
+
+                {/* 7. Actions */}
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle', textAlign: 'right' }}>
+                  <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                    {/* Edit Details */}
                     <button 
-                      className="action-btn text-blue"
-                      onClick={() => setEditingUser(user)}
-                      style={{ fontWeight: 600, cursor: 'pointer', padding: '5px 10px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                      title="Edit Role & Section Access"
+                      type="button"
+                      onClick={() => {
+                        if (user.employee) {
+                          setEditingEmployee({ ...user.employee, user });
+                        } else {
+                          setEditingUser(user);
+                        }
+                      }}
+                      style={{ 
+                        fontWeight: 600, 
+                        cursor: 'pointer', 
+                        padding: '5px 9px', 
+                        fontSize: '0.76rem', 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '4px',
+                        backgroundColor: '#eff6ff',
+                        color: '#2563eb',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: '6px',
+                        transition: 'all 0.15s ease'
+                      }}
+                      title="Edit Staff Details, Base Salary, Department, Role & Access"
                     >
-                      <ShieldCheck size={13} /> Edit Role & Access
+                      <Pencil size={13} /> Edit Details
                     </button>
 
                     {/* Change Password */}
                     <button 
-                      className="action-btn"
+                      type="button"
                       onClick={() => setPasswordUser(user)}
                       style={{ 
                         fontWeight: 600, 
                         cursor: 'pointer', 
-                        padding: '5px 10px', 
-                        fontSize: '0.78rem', 
-                        backgroundColor: 'var(--accent-light, #ede9fe)', 
-                        color: 'var(--accent-primary, #4f46e5)', 
-                        border: '1px solid var(--accent-light, #ddd6fe)',
+                        padding: '5px 9px', 
+                        fontSize: '0.76rem', 
+                        backgroundColor: '#f5f3ff', 
+                        color: '#7c3aed', 
+                        border: '1px solid #ddd6fe',
                         borderRadius: '6px',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        gap: '4px',
+                        transition: 'all 0.15s ease'
                       }}
                       title="Change User Password"
                     >
@@ -264,8 +371,8 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
                       style={{
                         fontWeight: 600,
                         cursor: isLoading ? 'not-allowed' : 'pointer',
-                        padding: '5px 10px',
-                        fontSize: '0.78rem',
+                        padding: '5px 9px',
+                        fontSize: '0.76rem',
                         backgroundColor: user.isActive ? '#fff7ed' : '#f0fdf4',
                         color: user.isActive ? '#c2410c' : '#15803d',
                         border: user.isActive ? '1px solid #fed7aa' : '1px solid #86efac',
@@ -297,15 +404,15 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
                       style={{
                         fontWeight: 600,
                         cursor: 'pointer',
-                        padding: '5px 8px',
-                        fontSize: '0.78rem',
+                        padding: '5px 7px',
+                        fontSize: '0.76rem',
                         backgroundColor: '#fef2f2',
                         color: '#dc2626',
                         border: '1px solid #fecaca',
                         borderRadius: '6px',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '4px',
+                        justifyContent: 'center',
                         transition: 'all 0.15s ease'
                       }}
                       title="Permanently delete user"
@@ -327,7 +434,7 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
         </tbody>
       </table>
 
-      {/* Edit Role & Permissions Modal */}
+      {/* Edit Role & Permissions Modal (Fallback) */}
       {editingUser && (
         <EditUserModal 
           user={editingUser} 
@@ -336,6 +443,18 @@ export default function UserManagementTable({ initialUsers }: { initialUsers: Us
             const foundUser = users.find(x => x.id === u.id) || editingUser;
             setEditingUser(null);
             setDeletingUser(foundUser);
+          }}
+        />
+      )}
+
+      {/* Edit Full Staff Details Modal */}
+      {editingEmployee && (
+        <EditEmployeeModal
+          employee={editingEmployee}
+          onClose={() => setEditingEmployee(null)}
+          onSuccess={() => {
+            setEditingEmployee(null);
+            router.refresh();
           }}
         />
       )}
