@@ -1,30 +1,81 @@
 import React from 'react';
-import { getPipelineData } from '@/app/actions/leadActions';
-import KanbanBoard from '@/components/leads/KanbanBoard';
-import Link from 'next/link';
+import { prisma } from '@/lib/db';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import AddLeadButton from '@/components/ui/AddLeadButton';
+import LeadTable from '@/components/ui/LeadTable';
+import { getTenantScope } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LeadsPage() {
-  const res = await getPipelineData();
-  const leads = res.success ? res.customers : [];
-  const employees = res.success ? (res.employees || []) : [];
+  const session = await getServerSession(authOptions);
+  
+  if (!session?.user) {
+    redirect('/login');
+  }
+
+  const { organizationId, isAdmin, employeeId } = await getTenantScope();
+
+  let whereClause: any = { organizationId };
+
+  if (!isAdmin) {
+    whereClause.assignedSalespersonId = employeeId || 'unassigned';
+  }
+
+  let leads: any[] = [];
+  let allEmployees: { id: string; name: string }[] = [];
+
+  try {
+    const [leadsRes, empRes] = await Promise.allSettled([
+      prisma.lead.findMany({
+        where: whereClause,
+        include: {
+          assignedSalesperson: {
+            include: {
+              user: true
+            }
+          },
+          _count: {
+            select: { calls: true, followUps: true, tasks: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      isAdmin ? prisma.employee.findMany({
+        where: { organizationId },
+        include: { user: true },
+        orderBy: { user: { name: 'asc' } }
+      }) : Promise.resolve([])
+    ]);
+
+    if (leadsRes.status === 'fulfilled') {
+      leads = leadsRes.value || [];
+    }
+    if (empRes.status === 'fulfilled' && empRes.value) {
+      allEmployees = empRes.value.map((e: any) => ({
+        id: e.id,
+        name: e.user?.name || 'Unknown'
+      }));
+    }
+  } catch (err) {
+    console.error("Error fetching leads:", err);
+  }
 
   return (
-    <div className="page-container" style={{ padding: '24px', maxWidth: '100%', overflow: 'hidden' }}>
-      <div className="dashboard-header mb-6">
+    <div className="page-container">
+      <div className="dashboard-header">
         <div>
-          <h1 className="page-title">Sales Pipeline</h1>
-          <p className="page-subtitle">Track deal stages, advance leads, and accelerate sales conversions</p>
+          <h1 className="page-title">Leads</h1>
+          <p className="page-subtitle">Manage your incoming leads, WhatsApp inquiries, and track conversions.</p>
         </div>
-        <div>
-          <Link href="/customers" className="primary-btn">
-            + New Lead
-          </Link>
-        </div>
+        <AddLeadButton employees={allEmployees} />
       </div>
 
-      <KanbanBoard initialLeads={leads} employees={employees} />
+      <div className="glass-panel" style={{ padding: '24px' }}>
+        <LeadTable initialLeads={leads} allEmployees={allEmployees} />
+      </div>
     </div>
   );
 }

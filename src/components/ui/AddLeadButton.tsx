@@ -1,0 +1,127 @@
+"use client";
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createLead } from '@/actions/leads';
+
+export default function AddLeadButton({ employees }: { employees?: {id: string, name: string}[] }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const router = useRouter();
+
+  const [formData, setFormData] = useState({
+    name: '',
+    whatsappNumber: '',
+    shopName: '',
+    assignedSalespersonId: ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    const res = await createLead(formData);
+    
+    setIsSubmitting(false);
+    if (res.success) {
+      setIsModalOpen(false);
+      setFormData({ name: '', whatsappNumber: '', shopName: '', assignedSalespersonId: '' });
+      router.refresh();
+    } else {
+      alert(res.error || "Failed to create lead");
+    }
+  };
+
+  return (
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button 
+          className="action-btn hover-lift" 
+          onClick={() => {}}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--success)', color: 'var(--success)', background: 'transparent' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg> Bulk Import
+        </button>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="primary-btn hover-lift"
+        >
+          + Add Lead
+        </button>
+      </div>
+
+      {isModalOpen && (
+        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
+          <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{maxWidth: '500px'}}>
+            <div className="modal-header">
+              <h2>Add New Lead</h2>
+              <button className="modal-close" onClick={() => setIsModalOpen(false)}>×</button>
+            </div>
+            <form onSubmit={handleSubmit} className="modal-body" style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+              
+              <div className="form-group">
+                <label>Name *</label>
+                <input 
+                  type="text" 
+                  required 
+                  className="form-input" 
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                  placeholder="Lead Name"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>WhatsApp Number *</label>
+                <input 
+                  type="text" 
+                  required 
+                  className="form-input" 
+                  value={formData.whatsappNumber}
+                  onChange={e => setFormData({...formData, whatsappNumber: e.target.value})}
+                  placeholder="e.g. 9876543210"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Shop Name (Optional)</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={formData.shopName}
+                  onChange={e => setFormData({...formData, shopName: e.target.value})}
+                  placeholder="e.g. Acme Stores"
+                />
+              </div>
+
+              {employees && employees.length > 0 && (
+                <div className="form-group">
+                  <label>Assign To</label>
+                  <select 
+                    className="form-input"
+                    value={formData.assignedSalespersonId}
+                    onChange={e => setFormData({...formData, assignedSalespersonId: e.target.value})}
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="modal-footer" style={{marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px'}}>
+                <button type="button" className="btn-secondary" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Creating...' : 'Create Lead'}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

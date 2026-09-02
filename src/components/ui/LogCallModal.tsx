@@ -12,11 +12,13 @@ import "@/components/ui/modal.css";
 
 interface LogCallModalProps {
   onClose: () => void;
-  customers: { id: string; companyName: string; contactPerson: string }[];
+  customers?: { id: string; companyName: string; contactPerson: string }[];
   isAdmin?: boolean;
+  leadId?: string;
+  leadName?: string;
 }
 
-export default function LogCallModal({ onClose, customers: initialCustomers, isAdmin: propIsAdmin }: LogCallModalProps) {
+export default function LogCallModal({ onClose, customers: initialCustomers, isAdmin: propIsAdmin, leadId, leadName }: LogCallModalProps) {
   const { data: session } = useSession();
   const sessionRole = (session?.user as any)?.role;
   const userIsAdmin = propIsAdmin !== undefined ? propIsAdmin : (sessionRole === "ADMIN" || sessionRole === "SUPER_ADMIN");
@@ -41,7 +43,8 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
   const [selectedOutcome, setSelectedOutcome] = useState<string>("");
 
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [customers, setCustomers] = useState(initialCustomers);
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [customers, setCustomers] = useState(initialCustomers || []);
 
   // Keep customers in sync if parent props change
   useEffect(() => {
@@ -229,15 +232,19 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!selectedCustomerId) {
-      setError("Please select a customer.");
+    if (!leadId && !selectedCustomerId) {
+      setError("Please select a customer or provide a lead.");
       return;
     }
+    
     setLoading(true);
-    setError("");
-
-    const formData = new FormData(e.currentTarget);
-    formData.set("customerId", selectedCustomerId);
+    const formData = new FormData();
+    if (selectedCustomerId) {
+      formData.set("customerId", selectedCustomerId);
+    }
+    if (leadId) {
+      formData.set("leadId", leadId);
+    }
     formData.set("type", selectedCallType);
     formData.set("outcome", selectedOutcome);
 
@@ -303,151 +310,81 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
             {/* Hidden field carries the real customer ID */}
             <input type="hidden" name="customerId" value={selectedCustomerId} />
 
-            {/* Searchable Customer Picker */}
-            <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%" }}>
-              <label style={{ width: "140px", paddingTop: "10px", flexShrink: 0, fontWeight: 500, fontSize: "0.875rem", color: "#475569" }}>
-                Customer
-              </label>
-              <div ref={dropdownRef} style={{ position: "relative", flex: 1, width: "100%" }}>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    border: dropdownOpen ? "1px solid var(--accent-primary, #4f46e5)" : "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                    backgroundColor: dropdownOpen ? "#ffffff" : "#f8fafc",
-                    boxShadow: dropdownOpen ? "0 0 0 3px rgba(79, 70, 229, 0.15)" : "inset 0 1px 2px rgba(0,0,0,0.02)",
-                    padding: "0 12px",
-                    cursor: "text",
-                    minHeight: "42px",
-                    height: "42px",
-                    gap: "8px",
-                    width: "100%",
-                    boxSizing: "border-box",
-                    transition: "all 0.2s ease"
-                  }}
-                  onClick={() => setDropdownOpen(true)}
-                >
-                  <Search size={15} style={{ color: "#94a3b8", flexShrink: 0 }} />
-                  {selectedCustomerId && !dropdownOpen ? (
-                    <span style={{ flex: 1, fontSize: "0.875rem", color: "#1e293b", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {selectedCustomerLabel}
-                    </span>
-                  ) : (
-                    <input
-                      autoFocus={dropdownOpen}
-                      type="text"
-                      placeholder={selectedCustomerId ? selectedCustomerLabel : "Search customer by name or contact person..."}
-                      value={customerSearch}
-                      onChange={(e) => { setCustomerSearch(e.target.value); setDropdownOpen(true); }}
-                      onFocus={() => setDropdownOpen(true)}
-                      style={{
-                        flex: 1,
-                        border: "none",
-                        outline: "none",
-                        background: "transparent",
-                        fontSize: "0.875rem",
-                        color: "#1e293b",
-                        padding: "0",
-                        height: "100%",
-                        width: "100%",
-                        boxShadow: "none"
-                      }}
-                    />
-                  )}
-                  {selectedCustomerId && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCustomerId("");
-                        setSelectedCustomerLabel("");
-                        setCustomerSearch("");
-                        setDropdownOpen(true);
-                      }}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: "pointer",
-                        color: "#94a3b8",
-                        fontSize: "1.2rem",
-                        lineHeight: 1,
-                        padding: "0 4px",
-                        display: "flex",
-                        alignItems: "center"
-                      }}
-                      title="Clear selection"
-                    >
-                      ×
-                    </button>
-                  )}
-                  <ChevronDown size={15} style={{ color: "#94a3b8", flexShrink: 0, transition: "transform 0.2s", transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
-                </div>
-
-                {dropdownOpen && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: "calc(100% + 4px)",
-                      left: 0,
-                      right: 0,
-                      background: "#ffffff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "8px",
-                      boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-                      zIndex: 9999,
-                      maxHeight: "230px",
-                      overflowY: "auto"
-                    }}
+            {!leadId && (
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+                  Select Customer
+                </label>
+                <div className="custom-dropdown" ref={dropdownRef}>
+                  <div 
+                    className="dropdown-trigger" 
+                    onClick={() => setDropdownOpen(!dropdownOpen)}
+                    style={{ padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff' }}
                   >
-                    <div
-                      onClick={() => { setShowAddCustomer(true); setDropdownOpen(false); }}
-                      style={{
-                        padding: "10px 14px",
-                        cursor: "pointer",
-                        fontWeight: 700,
-                        color: "#10b981",
-                        borderBottom: "1px solid #f1f5f9",
-                        fontSize: "0.875rem",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px"
-                      }}
-                    >
-                      <Plus size={15} /> Add New Customer...
-                    </div>
-                    {filteredCustomers.length === 0 ? (
-                      <div style={{ padding: "14px", color: "#94a3b8", fontSize: "0.85rem", textAlign: "center" }}>
-                        No customers found matching &quot;{customerSearch}&quot;
-                      </div>
-                    ) : (
-                      filteredCustomers.map((c) => (
-                        <div
-                          key={c.id}
-                          onClick={() => handleSelectCustomer(c.id, `${c.companyName} (${c.contactPerson})`)}
-                          style={{
-                            padding: "10px 14px",
-                            cursor: "pointer",
-                            fontSize: "0.875rem",
-                            borderBottom: "1px solid #f8fafc",
-                            backgroundColor: selectedCustomerId === c.id ? "#eff6ff" : "transparent",
-                            color: selectedCustomerId === c.id ? "#1d4ed8" : "#1e293b",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center"
-                          }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = selectedCustomerId === c.id ? "#eff6ff" : "transparent")}
-                        >
-                          <span style={{ fontWeight: 600 }}>{c.companyName}</span>
-                          <span style={{ color: "#64748b", fontSize: "0.8rem" }}>{c.contactPerson}</span>
-                        </div>
-                      ))
-                    )}
+                    <span style={{ color: selectedCustomerLabel ? '#0f172a' : '#94a3b8' }}>
+                      {selectedCustomerLabel || "Search or select a customer..."}
+                    </span>
+                    <ChevronDown size={18} color="#64748b" />
                   </div>
-                )}
+
+                  {dropdownOpen && (
+                    <div className="dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', marginTop: '4px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
+                      <div style={{ padding: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ position: 'relative' }}>
+                          <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+                          <input 
+                            type="text" 
+                            placeholder="Search customers..." 
+                            value={customerSearch}
+                            onChange={(e) => setCustomerSearch(e.target.value)}
+                            style={{ width: '100%', padding: '8px 10px 8px 32px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                        {filteredCustomers.length > 0 ? (
+                          filteredCustomers.map(c => (
+                            <div 
+                              key={c.id} 
+                              className="dropdown-item hover-bg"
+                              onClick={() => {
+                                setSelectedCustomerId(c.id);
+                                setSelectedCustomerLabel(c.companyName + (c.contactPerson ? ` (${c.contactPerson})` : ''));
+                                setDropdownOpen(false);
+                              }}
+                              style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }}
+                            >
+                              <div style={{ fontWeight: 500, fontSize: '0.95rem', color: '#1e293b' }}>{c.companyName}</div>
+                              {c.contactPerson && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{c.contactPerson}</div>}
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ padding: '12px 16px', color: '#64748b', fontSize: '0.9rem', textAlign: 'center' }}>No customers found.</div>
+                        )}
+                      </div>
+                      <div 
+                        onClick={() => { setDropdownOpen(false); setShowAddCustomer(true); }}
+                        style={{ padding: '10px 16px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', color: '#2563eb', fontWeight: 500, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Plus size={16} /> Add New Customer
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
+
+            {leadId && (
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+                  Lead
+                </label>
+                <div style={{ padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', backgroundColor: '#f1f5f9', color: '#0f172a' }}>
+                  {leadName || "Lead"}
+                </div>
+              </div>
+            )}
 
             {/* Call Type with Edit/Manage Button (Admin only) */}
             <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%" }}>
@@ -569,8 +506,8 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
                 {/* Date and 12-Hour Time Inputs Row */}
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", width: "100%" }}>
                   {/* Date input */}
-                  <DatePicker
-                    
+                  <input
+                    type="date"
                     value={followUpDate}
                     onChange={(e) => setFollowUpDate(e.target.value)}
                     style={{

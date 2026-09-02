@@ -9,6 +9,7 @@ import { getTenantOrgId } from "@/lib/tenant";
 
 export async function logCall(formData: FormData) {
   const customerId = formData.get("customerId") as string;
+  const leadId = formData.get("leadId") as string;
   const type = formData.get("type") as string || "OUTBOUND";
   const outcome = formData.get("outcome") as string;
   const notes = formData.get("notes") as string;
@@ -16,8 +17,8 @@ export async function logCall(formData: FormData) {
   const recordingUrl = formData.get("recordingUrl") as string;
   const summary = formData.get("summary") as string;
 
-  if (!customerId || !outcome) {
-    return { error: "Customer and Outcome are required" };
+  if ((!customerId && !leadId) || !outcome) {
+    return { error: "Customer/Lead and Outcome are required" };
   }
 
   try {
@@ -44,18 +45,22 @@ export async function logCall(formData: FormData) {
       followUpDate = new Date(followUpDateStr);
     }
 
+    // Build base data
+    const dataObj: any = {
+      employeeId: employee.id,
+      callType: type,
+      status: "Completed",
+      outcome,
+      notes: notes || null,
+      followUpDate,
+      recordingUrl: recordingUrl || null,
+      summary: summary || await generateCallSummary(notes, outcome),
+    };
+    if (customerId) dataObj.customerId = customerId;
+    if (leadId) dataObj.leadId = leadId;
+
     const callRecord = await prisma.call.create({
-      data: {
-        customerId,
-        employeeId: employee.id,
-        callType: type,
-        status: "Completed",
-        outcome,
-        notes: notes || null,
-        followUpDate,
-        recordingUrl: recordingUrl || null,
-        summary: summary || await generateCallSummary(notes, outcome),
-      },
+      data: dataObj,
     });
 
     // --- Automated Follow-Up Sequence ---
@@ -73,7 +78,8 @@ export async function logCall(formData: FormData) {
           status: "To Do",
           assigneeId: employee.id,
           creatorId: employee.id,
-          customerId: customerId,
+          customerId: customerId || null,
+          leadId: leadId || null,
         }
       });
     }
@@ -138,11 +144,17 @@ export async function removeFollowUp(callId: string) {
 
 export async function rescheduleFollowUp(callId: string, newDateStr: string) {
   try {
-    await prisma.call.update({
+    const call = await prisma.call.update({
       where: { id: callId },
       data: { followUpDate: new Date(newDateStr) }
     });
-    revalidatePath("/");
+    if (call.leadId) {
+      revalidatePath(`/leads/${call.leadId}`);
+      revalidatePath("/leads");
+    } else if (call.customerId) {
+      revalidatePath(`/customers/${call.customerId}`);
+      revalidatePath("/customers");
+    }
     revalidatePath("/calls");
     return { success: true };
   } catch (error) {

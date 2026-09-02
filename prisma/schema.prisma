@@ -61,6 +61,7 @@ model Organization {
   users                 User[]
   employees             Employee[]
   customers             Customer[]
+  leads                 Lead[]
   vendors               Vendor[]
   products              Product[]
   orders                Order[]
@@ -231,6 +232,7 @@ model Employee {
   updatedAt       DateTime @updatedAt
 
   customers       Customer[] @relation("AssignedSalesperson")
+  leads           Lead[]     @relation("AssignedLeads")
   calls           Call[]
   followUps       FollowUp[]
   tasksAssigned   Task[]     @relation("TaskAssignee")
@@ -354,12 +356,44 @@ model Customer {
 }
 
 // ---------------------------------------------------------
+// Leads CRM
+// ---------------------------------------------------------
+model Lead {
+  id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  name            String
+  whatsappNumber  String
+  shopName        String?
+  
+  status          String   @default("New") // New, Contacted, Converted, Lost
+  
+  assignedSalespersonId String?
+  assignedSalesperson   Employee? @relation("AssignedLeads", fields: [assignedSalespersonId], references: [id])
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  calls           Call[]
+  followUps       FollowUp[]
+  tasks           Task[]
+
+  @@index([organizationId])
+  @@index([assignedSalespersonId])
+  @@index([status])
+  @@index([whatsappNumber])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------
 // Sales & Activity (Calls, FollowUps, Tasks)
 // ---------------------------------------------------------
 model Call {
   id           String   @id @default(uuid())
-  customerId   String
-  customer     Customer @relation(fields: [customerId], references: [id])
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id])
+  leadId       String?
+  lead         Lead?    @relation(fields: [leadId], references: [id])
   employeeId   String
   employee     Employee @relation(fields: [employeeId], references: [id])
   callType     String   // Incoming / Outgoing
@@ -375,14 +409,17 @@ model Call {
   createdAt    DateTime @default(now())
 
   @@index([customerId])
+  @@index([leadId])
   @@index([employeeId])
   @@index([createdAt])
 }
 
 model FollowUp {
   id           String   @id @default(uuid())
-  customerId   String
-  customer     Customer @relation(fields: [customerId], references: [id])
+  customerId   String?
+  customer     Customer? @relation(fields: [customerId], references: [id])
+  leadId       String?
+  lead         Lead?    @relation(fields: [leadId], references: [id])
   employeeId   String
   employee     Employee @relation(fields: [employeeId], references: [id])
   date         DateTime
@@ -396,6 +433,7 @@ model FollowUp {
   updatedAt    DateTime @updatedAt
 
   @@index([customerId])
+  @@index([leadId])
   @@index([employeeId])
   @@index([status])
   @@index([date])
@@ -415,6 +453,8 @@ model Task {
   creator      Employee @relation("TaskCreator", fields: [creatorId], references: [id])
   customerId   String?
   customer     Customer? @relation(fields: [customerId], references: [id])
+  leadId       String?
+  lead         Lead?    @relation(fields: [leadId], references: [id])
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -422,6 +462,7 @@ model Task {
   @@index([assigneeId])
   @@index([creatorId])
   @@index([customerId])
+  @@index([leadId])
   @@index([status])
 }
 

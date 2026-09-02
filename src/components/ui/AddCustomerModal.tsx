@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { createCustomer, lookupGstin } from "@/app/actions/customerActions";
+import { convertLeadToCustomer } from "@/actions/leads";
 import { UserPlus, Sparkles, CheckCircle2, Loader2, Landmark } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import "@/components/ui/modal.css"; 
@@ -10,9 +11,10 @@ interface AddCustomerModalProps {
   onClose: (newCustomer?: any) => void;
   employees?: { id: string; name: string }[];
   zIndex?: number;
+  leadToConvert?: any;
 }
 
-export default function AddCustomerModal({ onClose, employees = [], zIndex = 100050 }: AddCustomerModalProps) {
+export default function AddCustomerModal({ onClose, employees = [], zIndex = 100050, leadToConvert }: AddCustomerModalProps) {
   const searchParams = useSearchParams();
   const initialName = searchParams?.get('name') || searchParams?.get('customer') || '';
   
@@ -24,9 +26,9 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
   const [paymentMethod, setPaymentMethod] = useState("None");
   
   // Form fields state for real-time auto-fill from GST
-  const [companyName, setCompanyName] = useState(initialName);
-  const [contactPerson, setContactPerson] = useState("");
-  const [phone, setPhone] = useState("+91 ");
+  const [companyName, setCompanyName] = useState(leadToConvert?.shopName || initialName);
+  const [contactPerson, setContactPerson] = useState(leadToConvert?.name || "");
+  const [phone, setPhone] = useState(leadToConvert?.whatsappNumber || "+91 ");
   const [email, setEmail] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
@@ -38,7 +40,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
   const [openingBalance, setOpeningBalance] = useState("0");
   const [openingBalanceType, setOpeningBalanceType] = useState("DEBIT");
   const [regularDiscount, setRegularDiscount] = useState("");
-  const [salespersonId, setSalespersonId] = useState("");
+  const [salespersonId, setSalespersonId] = useState(leadToConvert?.assignedSalespersonId || "");
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -191,7 +193,36 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
       formData.set("salespersonId", salespersonId);
     }
 
-    const result = await createCustomer(formData);
+    let result: any;
+    
+    if (leadToConvert) {
+      // Create JSON payload for conversion
+      const customerData = {
+        businessName: companyName,
+        contactPerson: contactPerson,
+        email: email,
+        mobile: phone,
+        gstNumber: gstNumber,
+        billingAddress: streetAddress,
+        pincode: addressData.pincode,
+        city: addressData.city,
+        state: addressData.state,
+        preferredPaymentMethod: paymentMethod,
+        regularDiscount: regularDiscount,
+        openingBalance: parseFloat(openingBalance) || 0,
+        openingBalanceType: openingBalanceType,
+        assignedSalespersonId: salespersonId || undefined,
+        whatsappNumber: leadToConvert.whatsappNumber || phone
+      };
+      result = await convertLeadToCustomer(leadToConvert.id, customerData);
+      
+      // Map return format back to what modal expects
+      if (result.success) {
+        result = { customer: result.data };
+      }
+    } else {
+      result = await createCustomer(formData);
+    }
 
     if (result?.error) {
       setError(result.error);
@@ -209,10 +240,10 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderRadius: '14px 14px 0 0' }}>
           <div>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <UserPlus size={20} color="#2563eb" /> Add New Customer
+              <UserPlus size={20} color="#2563eb" /> {leadToConvert ? 'Convert Lead to Customer' : 'Add New Customer'}
             </h2>
             <p style={{ margin: '4px 0 0 28px', fontSize: '0.8rem', color: '#64748b' }}>
-              Enter company details or auto-fetch by entering GSTIN
+              {leadToConvert ? `Converting ${leadToConvert.name}` : 'Enter company details or auto-fetch by entering GSTIN'}
             </p>
           </div>
           <button type="button" onClick={() => onClose()} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}>

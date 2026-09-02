@@ -74,7 +74,7 @@ const Sidebar = ({
     if (!allowedSections || allowedSections.length === 0) {
       // Default Role Fallbacks if no custom allowedSections specified
       if (userRole === 'DISPATCH') return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
-      if (userRole === 'SALES') return ['dashboard', 'customers', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
+      if (userRole === 'SALES') return ['dashboard', 'customers', 'leads', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
       if (userRole === 'HR') return ['dashboard', 'hrms', 'hiring'].includes(sectionKey);
       if (userRole === 'ACCOUNTS') return ['dashboard', 'accounting', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
       if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches', 'eway_bills', 'eway-bills', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
@@ -95,7 +95,8 @@ const Sidebar = ({
       (sectionKey === 'accounting' && (allowedSections.includes('invoices') || allowedSections.includes('payments') || allowedSections.includes('accounting'))) ||
       (sectionKey === 'purchases' && allowedSections.includes('procurement')) ||
       (sectionKey === 'procurement' && allowedSections.includes('purchases')) ||
-      (sectionKey === 'integrations' && (allowedSections.includes('integrations') || allowedSections.includes('settings') || allowedSections.includes('dispatches')))
+      (sectionKey === 'integrations' && (allowedSections.includes('integrations') || allowedSections.includes('settings') || allowedSections.includes('dispatches'))) ||
+      (sectionKey === 'leads' && (allowedSections.includes('leads') || allowedSections.includes('customers')))
     );
   };
 
@@ -174,16 +175,16 @@ const Sidebar = ({
             {openCategories.crm && (
               <div className="category-sub-list">
                 {canAccess('customers') && (
-                  <>
-                    <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
-                      <Users size={16} />
-                      <span>Customers</span>
-                    </Link>
-                    <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
-                      <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
-                      <span>Sales Pipeline (Leads)</span>
-                    </Link>
-                  </>
+                  <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
+                    <Users size={16} />
+                    <span>Customers</span>
+                  </Link>
+                )}
+                {canAccess('leads') && (
+                  <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
+                    <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
+                    <span>Leads</span>
+                  </Link>
                 )}
 
                 {canAccess('calls_tasks') && (
