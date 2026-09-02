@@ -6,8 +6,11 @@ import { createLead } from '@/actions/leads';
 
 export default function AddLeadButton({ employees }: { employees?: {id: string, name: string}[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isApiGuideOpen, setIsApiGuideOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  
+  const [copied, setCopied] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -35,6 +38,13 @@ export default function AddLeadButton({ employees }: { employees?: {id: string, 
   return (
     <>
       <div style={{ display: 'flex', gap: '12px' }}>
+        <button 
+          className="action-btn hover-lift" 
+          onClick={() => setIsApiGuideOpen(true)}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid #4f46e5', color: '#4f46e5', background: 'transparent' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg> API / Webhook Setup
+        </button>
         <button 
           className="action-btn hover-lift" 
           onClick={() => {}}
@@ -120,6 +130,58 @@ export default function AddLeadButton({ employees }: { employees?: {id: string, 
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+      {isApiGuideOpen && (
+        <div className="modal-backdrop" onClick={() => setIsApiGuideOpen(false)}>
+          <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{maxWidth: '650px'}}>
+            <div className="modal-header">
+              <h2>WhatsApp Lead Webhook API Setup</h2>
+              <button className="modal-close" onClick={() => setIsApiGuideOpen(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+              <p style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>
+                Use this API to push new leads from your WhatsApp Chatbot directly into the CRM.
+              </p>
+              
+              <div>
+                <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Endpoint URL (POST)</label>
+                <div style={{background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#0f172a'}}>
+                  {typeof window !== 'undefined' ? window.location.origin : 'https://your-crm-url.com'}/api/webhooks/whatsapp/leads
+                </div>
+              </div>
+
+              <div>
+                <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Headers</label>
+                <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
+{`Authorization: Bearer blip-whatsapp-secret-2024
+Content-Type: application/json`}
+                </div>
+              </div>
+
+              <div>
+                <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>JSON Payload</label>
+                <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
+{`{
+  "name": "Customer Name",
+  "whatsappNumber": "+91 9999999999",
+  "shopName": "Optional Shop Name"
+}`}
+                </div>
+              </div>
+
+              <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', padding: '12px', borderRadius: '8px'}}>
+                <h4 style={{fontSize: '0.85rem', fontWeight: 600, color: '#1e40af', margin: '0 0 6px 0'}}>Note on Duplicates</h4>
+                <p style={{fontSize: '0.8rem', color: '#1e3a8a', margin: 0}}>
+                  If the mobile number already exists in the system as a Customer or Lead, the API will return a <code>409 Conflict</code> error, and you can redirect the user to a live agent in your chatbot.
+                </p>
+              </div>
+
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="action-btn" onClick={() => setIsApiGuideOpen(false)}>Close Guide</button>
+            </div>
           </div>
         </div>
       )}
