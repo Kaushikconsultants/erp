@@ -359,146 +359,217 @@ export default function EmployeeDashboard({
           {/* TOP BANNER: SPRINT HEALTH & MOMENTUM GAUGE */}
           <div style={{ 
             background: sprintData.healthStatus === 'EXCELLENT' 
-              ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' 
+              ? 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)' 
               : sprintData.healthStatus === 'ON_TRACK'
-              ? 'linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)'
-              : 'linear-gradient(135deg, #b91c1c 0%, #ef4444 100%)',
+              ? 'linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)'
+              : 'linear-gradient(135deg, #450a0a 0%, #991b1b 50%, #dc2626 100%)',
             color: '#ffffff',
-            borderRadius: '14px',
-            padding: '16px 20px',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+            borderRadius: '16px',
+            padding: '16px 22px',
+            boxShadow: '0 8px 24px -4px rgba(0,0,0,0.12), 0 2px 6px -1px rgba(0,0,0,0.06)',
+            border: '1px solid rgba(255,255,255,0.12)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             flexWrap: 'wrap',
-            gap: '12px'
+            gap: '14px',
+            position: 'relative',
+            overflow: 'hidden'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            {/* Ambient background glow element */}
+            <div style={{
+              position: 'absolute',
+              right: '-40px',
+              top: '-40px',
+              width: '180px',
+              height: '180px',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%)',
+              pointerEvents: 'none'
+            }} />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', zIndex: 1 }}>
               <div style={{
-                width: '46px',
-                height: '46px',
+                width: '44px',
+                height: '44px',
                 borderRadius: '12px',
-                backgroundColor: 'rgba(255,255,255,0.2)',
+                backgroundColor: 'rgba(255,255,255,0.12)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(8px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0
               }}>
-                {sprintData.healthStatus === 'EXCELLENT' ? <Rocket size={26} color="#ffffff" /> : sprintData.healthStatus === 'ON_TRACK' ? <Zap size={26} color="#ffffff" /> : <AlertCircle size={26} color="#ffffff" />}
+                {sprintData.healthStatus === 'EXCELLENT' ? <Rocket size={22} color="#ffffff" /> : sprintData.healthStatus === 'ON_TRACK' ? <Zap size={22} color="#ffffff" /> : <AlertCircle size={22} color="#ffffff" />}
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px', backgroundColor: 'rgba(255,255,255,0.25)', padding: '2px 8px', borderRadius: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', backgroundColor: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)', padding: '2px 9px', borderRadius: '20px' }}>
                     Sprint {sprintData.weekNumber} of 4 ({sprintData.weekStartStr} - {sprintData.weekEndStr})
                   </span>
                   {sprintData.streakDays > 0 && (
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, backgroundColor: '#fef08a', color: '#854d0e', padding: '2px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <Flame size={13} color="#d97706" /> {sprintData.streakDays}-Day Streak
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, backgroundColor: 'rgba(254, 240, 138, 0.95)', color: '#854d0e', padding: '2px 9px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Flame size={12} color="#d97706" /> {sprintData.streakDays}-Day Streak
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '1.05rem', fontWeight: 800, marginTop: '4px', letterSpacing: '-0.2px' }}>
+                <div style={{ fontSize: '0.98rem', fontWeight: 600, marginTop: '4px', letterSpacing: '-0.1px', opacity: 0.95 }}>
                   {sprintData.healthMessage}
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px', zIndex: 1 }}>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.72rem', opacity: 0.9, fontWeight: 600 }}>Sprint Velocity Score</div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, lineHeight: 1 }}>{sprintData.sprintHealthScore}<span style={{ fontSize: '0.95rem' }}>/100</span></div>
+                <div style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 500, letterSpacing: '0.2px' }}>Sprint Velocity Score</div>
+                <div style={{ fontSize: '1.45rem', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                  {sprintData.sprintHealthScore}<span style={{ fontSize: '0.85rem', opacity: 0.7, fontWeight: 500 }}>/100</span>
+                </div>
               </div>
               <div style={{
-                height: '40px',
+                height: '36px',
                 width: '1px',
-                backgroundColor: 'rgba(255,255,255,0.3)'
+                backgroundColor: 'rgba(255,255,255,0.2)'
               }} />
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.72rem', opacity: 0.9, fontWeight: 600 }}>Days Left in Sprint</div>
-                <div style={{ fontSize: '1.6rem', fontWeight: 900, lineHeight: 1 }}>{sprintData.daysRemainingInSprint}</div>
+                <div style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 500, letterSpacing: '0.2px' }}>Days Left in Sprint</div>
+                <div style={{ fontSize: '1.45rem', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                  {sprintData.daysRemainingInSprint}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* MAIN SPRINT GRID: WEEKLY TARGET SPRINT + 4-SPRINT ROADMAP */}
+          {/* MAIN SPRINT CARD: WEEKLY TARGET SPRINT + CREATIVE MULTI-STAGE ROADMAP */}
           <div style={{
             backgroundColor: '#ffffff',
-            borderRadius: '14px',
+            borderRadius: '16px',
             border: '1px solid #e2e8f0',
-            padding: '18px 20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+            padding: '20px 22px',
+            boxShadow: '0 4px 20px -2px rgba(99, 102, 241, 0.05), 0 2px 6px -1px rgba(0,0,0,0.02)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Target size={18} color="#4f46e5" />
-                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: '#0f172a' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  backgroundColor: '#eff6ff',
+                  color: '#4f46e5',
+                  border: '1px solid #e0e7ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  <Target size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 650, color: '#0f172a', letterSpacing: '-0.2px' }}>
                     {sprintData.weekName}
                   </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b', fontWeight: 450 }}>
+                    Weekly Target: ₹{sprintData.currentSprintTarget.toLocaleString('en-IN')} (Targeted for this sprint period)
+                  </p>
                 </div>
-                <p style={{ margin: '3px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                  Weekly Target: ₹{sprintData.currentSprintTarget.toLocaleString('en-IN')} (Targeted for this sprint period)
-                </p>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>Sprint Closed / Target:</span>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                    <span style={{ color: '#10b981' }}>₹{sprintData.currentSprintRevenue.toLocaleString('en-IN')}</span> / ₹{sprintData.currentSprintTarget.toLocaleString('en-IN')}
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>Sprint Closed / Target:</span>
+                  <div style={{ fontSize: '1.02rem', fontWeight: 650, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                    <span style={{ color: '#059669' }}>₹{sprintData.currentSprintRevenue.toLocaleString('en-IN')}</span> <span style={{ color: '#94a3b8', fontWeight: 400 }}>/</span> ₹{sprintData.currentSprintTarget.toLocaleString('en-IN')}
                   </div>
                 </div>
                 <span style={{
-                  padding: '3px 8px',
+                  padding: '4px 10px',
                   borderRadius: '20px',
                   fontSize: '0.75rem',
                   fontWeight: 600,
-                  backgroundColor: sprintData.sprintProgressPercent >= 100 ? '#dcfce7' : sprintData.sprintProgressPercent >= 60 ? '#e0e7ff' : '#fee2e2',
-                  color: sprintData.sprintProgressPercent >= 100 ? '#15803d' : sprintData.sprintProgressPercent >= 60 ? '#4338ca' : '#b91c1c'
+                  backgroundColor: sprintData.sprintProgressPercent >= 100 ? '#ecfdf5' : sprintData.sprintProgressPercent >= 60 ? '#eff6ff' : '#fef2f2',
+                  color: sprintData.sprintProgressPercent >= 100 ? '#059669' : sprintData.sprintProgressPercent >= 60 ? '#4f46e5' : '#dc2626',
+                  border: sprintData.sprintProgressPercent >= 100 ? '1px solid #a7f3d0' : sprintData.sprintProgressPercent >= 60 ? '1px solid #bfdbfe' : '1px solid #fecaca'
                 }}>
                   {sprintData.sprintProgressPercent}%
                 </span>
               </div>
             </div>
 
-            {/* SPRINT PROGRESS BAR */}
-            <div style={{ width: '100%', height: '8px', backgroundColor: '#f1f5f9', borderRadius: '8px', overflow: 'hidden', marginBottom: '14px' }}>
+            {/* HIGH-TECH GLOWING SPRINT PROGRESS BAR */}
+            <div style={{ 
+              width: '100%', 
+              height: '9px', 
+              backgroundColor: '#f1f5f9', 
+              borderRadius: '20px', 
+              overflow: 'hidden', 
+              marginBottom: '16px',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.06)'
+            }}>
               <div style={{
-                width: `${Math.min(100, sprintData.sprintProgressPercent)}%`,
+                width: `${Math.min(100, Math.max(2, sprintData.sprintProgressPercent))}%`,
                 height: '100%',
                 background: sprintData.sprintProgressPercent >= 100 
                   ? 'linear-gradient(90deg, #10b981, #059669)' 
-                  : 'linear-gradient(90deg, #6366f1, #4f46e5)',
-                borderRadius: '8px',
+                  : 'linear-gradient(90deg, #6366f1 0%, #8b5cf6 50%, #4f46e5 100%)',
+                borderRadius: '20px',
+                boxShadow: sprintData.sprintProgressPercent >= 100 ? '0 0 10px rgba(16, 185, 129, 0.4)' : '0 0 10px rgba(99, 102, 241, 0.35)',
                 transition: 'width 0.4s ease'
               }} />
             </div>
 
-            {/* 4-SPRINT ROADMAP PILLS */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
-              {sprintData.sprints.map(s => (
-                <div key={s.week} style={{
-                  padding: '9px 12px',
-                  borderRadius: '10px',
-                  border: s.status === 'CURRENT' ? '1.5px solid #4f46e5' : '1px solid #e2e8f0',
-                  backgroundColor: s.status === 'CURRENT' ? '#f5f3ff' : s.isPassed ? '#f0fdf4' : '#f8fafc',
-                  position: 'relative'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: s.status === 'CURRENT' ? '#4f46e5' : '#475569' }}>
-                      Sprint {s.week} ({s.weightPercent}%)
-                    </span>
-                    {s.isPassed ? (
-                      <CheckCircle size={13} color="#16a34a" />
-                    ) : s.status === 'CURRENT' ? (
-                      <span style={{ fontSize: '9px', fontWeight: 600, backgroundColor: '#4f46e5', color: '#fff', padding: '1px 5px', borderRadius: '4px' }}>ACTIVE</span>
-                    ) : null}
+            {/* 4-SPRINT CONNECTED ROADMAP CARDS */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', paddingTop: '12px', borderTop: '1px solid #f8fafc' }}>
+              {sprintData.sprints.map(s => {
+                const isCurrent = s.status === 'CURRENT';
+                const isPassed = s.isPassed;
+                const stagePercent = s.target > 0 ? Math.min(100, Math.round((s.actual / s.target) * 100)) : 0;
+
+                return (
+                  <div key={s.week} style={{
+                    padding: '11px 13px',
+                    borderRadius: '12px',
+                    border: isCurrent 
+                      ? '1.5px solid #6366f1' 
+                      : isPassed 
+                      ? '1px solid #bbf7d0' 
+                      : '1px solid #e2e8f0',
+                    background: isCurrent 
+                      ? 'linear-gradient(135deg, #fbfaff 0%, #f5f3ff 100%)' 
+                      : isPassed 
+                      ? '#f0fdf4' 
+                      : '#f8fafc',
+                    boxShadow: isCurrent ? '0 4px 12px rgba(99, 102, 241, 0.1)' : 'none',
+                    position: 'relative',
+                    transition: 'all 0.2s ease'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: isCurrent ? '#4f46e5' : isPassed ? '#16a34a' : '#64748b' }}>
+                        Sprint {s.week} <span style={{ opacity: 0.7, fontWeight: 500 }}>({s.weightPercent}%)</span>
+                      </span>
+                      {isPassed ? (
+                        <CheckCircle size={14} color="#16a34a" />
+                      ) : isCurrent ? (
+                        <span style={{ fontSize: '8.5px', fontWeight: 600, backgroundColor: '#4f46e5', color: '#fff', padding: '1px 6px', borderRadius: '10px', letterSpacing: '0.4px' }}>ACTIVE</span>
+                      ) : null}
+                    </div>
+
+                    <div style={{ fontSize: '0.88rem', fontWeight: 650, color: '#0f172a', fontVariantNumeric: 'tabular-nums', marginBottom: '6px' }}>
+                      ₹{s.actual > 0 ? (s.actual / 1000).toFixed(1) + 'k' : '0'} <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400 }}>/ {(s.target / 1000).toFixed(0)}k</span>
+                    </div>
+
+                    {/* Micro stage progress line */}
+                    <div style={{ width: '100%', height: '3.5px', backgroundColor: isCurrent ? '#ddd6fe' : '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${stagePercent}%`,
+                        height: '100%',
+                        backgroundColor: isPassed ? '#16a34a' : isCurrent ? '#4f46e5' : '#94a3b8',
+                        borderRadius: '4px'
+                      }} />
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                    ₹{s.actual > 0 ? (s.actual / 1000).toFixed(1) + 'k' : '0'} <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400 }}>/ {(s.target / 1000).toFixed(0)}k</span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -757,11 +828,11 @@ export default function EmployeeDashboard({
           <div 
             onClick={() => setActiveModal("SALES")}
             style={{ 
-              padding: '14px', 
-              borderRadius: '12px', 
+              padding: '14px 16px', 
+              borderRadius: '14px', 
               backgroundColor: '#ffffff', 
-              border: '1px solid #cbd5e1', 
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              border: '1px solid #e2e8f0', 
+              boxShadow: '0 2px 8px -2px rgba(0,0,0,0.04)',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
               position: 'relative'
@@ -769,36 +840,36 @@ export default function EmployeeDashboard({
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = '#818cf8';
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 12px rgba(79, 70, 229, 0.08)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(79, 70, 229, 0.08)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.borderColor = '#e2e8f0';
               e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+              e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.04)';
             }}
             title="Click to view sales breakdown"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{periodLabel} Sales</span>
-              <span style={{ fontSize: '0.65rem', color: '#4f46e5', fontWeight: 700 }}>View 🔍</span>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 550 }}>{periodLabel} Sales</span>
+              <span style={{ fontSize: '0.68rem', color: '#4f46e5', fontWeight: 600 }}>View 🔍</span>
             </div>
 
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '4px 0' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 650, color: '#0f172a', margin: '4px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
               ₹{(totalSales / 1000).toFixed(1)}k
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               {totalSales === 0 ? (
-                <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600 }}>
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 500 }}>
                   0 orders
                 </span>
               ) : (
-                <span style={{ fontSize: '0.7rem', color: growthIsPositive ? '#10b981' : '#ef4444', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                <span style={{ fontSize: '0.7rem', color: growthIsPositive ? '#10b981' : '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                   {growthIsPositive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                   {growthIsPositive ? `+${growthPercent}%` : `${growthPercent}%`}
                 </span>
               )}
-              <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
+              <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 450 }}>
                 {filteredOrders.length} sale{filteredOrders.length !== 1 ? 's' : ''}
               </span>
             </div>
@@ -808,36 +879,36 @@ export default function EmployeeDashboard({
           <div 
             onClick={() => setActiveModal("FOLLOWUPS")}
             style={{ 
-              padding: '14px', 
-              borderRadius: '12px', 
+              padding: '14px 16px', 
+              borderRadius: '14px', 
               backgroundColor: '#ffffff', 
-              border: '1px solid #cbd5e1', 
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              border: '1px solid #e2e8f0', 
+              boxShadow: '0 2px 8px -2px rgba(0,0,0,0.04)',
               cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = '#f59e0b';
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 12px rgba(245, 158, 11, 0.08)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.08)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.borderColor = '#e2e8f0';
               e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+              e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.04)';
             }}
             title="Click to view follow-ups"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Follow-ups Due</span>
-              <span style={{ fontSize: '0.65rem', color: '#d97706', fontWeight: 700 }}>View 🔍</span>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 550 }}>Follow-ups Due</span>
+              <span style={{ fontSize: '0.68rem', color: '#d97706', fontWeight: 600 }}>View 🔍</span>
             </div>
 
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#d97706', margin: '4px 0' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 650, color: '#d97706', margin: '4px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
               {filteredFollowUps.length}
             </div>
 
-            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 600 }}>
+            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>
               {filteredFollowUps.length > 0 ? `${filteredFollowUps.length} Pending` : 'All Cleared 🎉'}
             </span>
           </div>
@@ -846,36 +917,36 @@ export default function EmployeeDashboard({
           <div 
             onClick={() => setActiveModal("TARGET")}
             style={{ 
-              padding: '14px', 
-              borderRadius: '12px', 
+              padding: '14px 16px', 
+              borderRadius: '14px', 
               backgroundColor: '#ffffff', 
-              border: '1px solid #cbd5e1', 
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              border: '1px solid #e2e8f0', 
+              boxShadow: '0 2px 8px -2px rgba(0,0,0,0.04)',
               cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = '#818cf8';
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 12px rgba(99, 102, 241, 0.08)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(99, 102, 241, 0.08)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.borderColor = '#e2e8f0';
               e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+              e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.04)';
             }}
             title="Click to view target progress details"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Target Progress</span>
-              <span style={{ fontSize: '0.65rem', color: '#6366f1', fontWeight: 700 }}>View 🔍</span>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 550 }}>Target Progress</span>
+              <span style={{ fontSize: '0.68rem', color: '#6366f1', fontWeight: 600 }}>View 🔍</span>
             </div>
 
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#6366f1', margin: '4px 0' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 650, color: '#6366f1', margin: '4px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
               {targetPercent}%
             </div>
 
-            <span style={{ fontSize: '0.7rem', color: '#6366f1', fontWeight: 700 }}>
+            <span style={{ fontSize: '0.7rem', color: '#6366f1', fontWeight: 600 }}>
               Goal: ₹{(targetPeriodGoal / 100000).toFixed(1)}L
             </span>
           </div>
@@ -884,36 +955,36 @@ export default function EmployeeDashboard({
           <div 
             onClick={() => setActiveModal("PAYOUT")}
             style={{ 
-              padding: '14px', 
-              borderRadius: '12px', 
+              padding: '14px 16px', 
+              borderRadius: '14px', 
               backgroundColor: '#ffffff', 
-              border: '1px solid #cbd5e1', 
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              border: '1px solid #e2e8f0', 
+              boxShadow: '0 2px 8px -2px rgba(0,0,0,0.04)',
               cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = '#34d399';
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 12px rgba(16, 185, 129, 0.08)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.08)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.borderColor = '#e2e8f0';
               e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+              e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.04)';
             }}
             title="Click to view earnings and slab breakdown"
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Est. Total Payout</span>
-              <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: 700 }}>View 🔍</span>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 550 }}>Est. Total Payout</span>
+              <span style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 600 }}>View 🔍</span>
             </div>
 
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981', margin: '4px 0' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 650, color: '#059669', margin: '4px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
               ₹{(totalPayout / 1000).toFixed(1)}k
             </div>
 
-            <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 700 }}>
+            <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 600 }}>
               Slab: {calculatedIncentive.currentSlab}
             </span>
           </div>
