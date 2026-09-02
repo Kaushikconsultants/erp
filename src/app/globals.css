@@ -1060,9 +1060,9 @@ button {
 .date-range-filter-wrapper {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background-color: #ffffff;
-  padding: 6px 12px;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
@@ -1081,6 +1081,7 @@ button {
 
 .date-range-icon {
   color: #64748b;
+  margin-right: 2px;
 }
 
 .date-range-input {
@@ -1091,8 +1092,9 @@ button {
   color: #1e293b;
   outline: none;
   cursor: pointer;
-  width: 95px;
+  width: 82px; /* Perfect fit for DD MMM YYYY, less empty space */
   text-align: center;
+  padding: 0;
 }
 
 .date-range-input::placeholder {
@@ -1101,9 +1103,10 @@ button {
 }
 
 .date-range-separator {
-  color: #94a3b8;
-  font-size: 0.875rem;
-  font-weight: 500;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+  font-weight: 400;
+  padding: 0 2px;
 }
 
 .react-datepicker-wrapper {

@@ -37,20 +37,20 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
 
   return (
     <div className="date-range-filter-wrapper">
-      <Calendar size={13} className="date-range-icon" />
+      <Calendar size={14} className="date-range-icon" />
       <DatePicker
         selected={start}
         onChange={handleStartChange}
         selectsStart
         startDate={start}
         endDate={end}
-        placeholderText="Start Date"
+        placeholderText="Start date"
         className="date-range-input"
         dateFormat="dd MMM yyyy"
         isClearable
         showPopperArrow={false}
       />
-      <span className="date-range-separator">-</span>
+      <span className="date-range-separator">→</span>
       <DatePicker
         selected={end}
         onChange={handleEndChange}
@@ -58,7 +58,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         startDate={start}
         endDate={end}
         minDate={start || undefined}
-        placeholderText="End Date"
+        placeholderText="End date"
         className="date-range-input"
         dateFormat="dd MMM yyyy"
         isClearable
