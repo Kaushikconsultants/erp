@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Target, X, Check, Save, Zap, AlertCircle, TrendingUp, Sparkles } from 'lucide-react';
+import { Target, X, Check, Save, Zap, AlertCircle } from 'lucide-react';
 import { updateSalespersonTargets } from '@/app/actions/sprintActions';
 
 interface EditSalespersonTargetsModalProps {
@@ -155,45 +155,45 @@ export default function EditSalespersonTargetsModal({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 99999,
-        padding: '16px'
+        padding: '12px'
       }}
       onClick={onClose}
     >
       <div 
         style={{
           backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          padding: '22px 24px',
+          borderRadius: '14px',
+          padding: '16px 20px',
           width: '100%',
-          maxWidth: '560px',
-          maxHeight: '92vh',
-          overflowY: 'auto',
+          maxWidth: '540px',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e2e8f0',
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none'
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '9px',
+              width: '30px',
+              height: '30px',
+              borderRadius: '8px',
               backgroundColor: '#eff6ff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#2563eb'
             }}>
-              <Target size={19} />
+              <Target size={16} />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
+              <h2 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
                 Manage Sales Targets
               </h2>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.76rem', color: '#64748b' }}>
-                Configure monthly revenue goals and daily activity pacing for <strong style={{ color: '#0f172a' }}>{salesperson.name}</strong>
+              <p style={{ margin: '1px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>
+                Pacing and goals for <strong style={{ color: '#0f172a' }}>{salesperson.name}</strong>
               </p>
             </div>
           </div>
@@ -205,8 +205,8 @@ export default function EditSalespersonTargetsModal({
               background: '#f8fafc',
               border: '1px solid #e2e8f0',
               borderRadius: '50%',
-              width: '28px',
-              height: '28px',
+              width: '26px',
+              height: '26px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -217,39 +217,39 @@ export default function EditSalespersonTargetsModal({
             onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
             onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
           >
-            <X size={14} />
+            <X size={13} />
           </button>
         </div>
 
         {statusMessage && (
           <div style={{
-            padding: '8px 12px',
-            borderRadius: '8px',
-            marginBottom: '14px',
-            fontSize: '0.78rem',
+            padding: '6px 10px',
+            borderRadius: '6px',
+            marginBottom: '10px',
+            fontSize: '0.74rem',
             fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
+            gap: '6px',
             backgroundColor: statusMessage.type === 'success' ? '#ecfdf5' : '#fef2f2',
             color: statusMessage.type === 'success' ? '#065f46' : '#991b1b',
             border: `1px solid ${statusMessage.type === 'success' ? '#a7f3d0' : '#fecaca'}`
           }}>
-            {statusMessage.type === 'success' ? <Check size={15} /> : <AlertCircle size={15} />}
+            {statusMessage.type === 'success' ? <Check size={14} /> : <AlertCircle size={14} />}
             <span>{statusMessage.text}</span>
           </div>
         )}
 
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
           
           {/* 1. Monthly Revenue Target */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <div style={{ backgroundColor: '#f8fafc', padding: '10px 12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+              <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Monthly Revenue Goal (₹)
               </label>
               {targetNum > 0 && (
-                <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#2563eb' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#2563eb' }}>
                   {formatIndianWords(targetNum)}
                 </span>
               )}
@@ -259,24 +259,21 @@ export default function EditSalespersonTargetsModal({
               display: 'flex',
               alignItems: 'center',
               backgroundColor: '#ffffff',
-              borderRadius: '8px',
+              borderRadius: '6px',
               border: '1px solid #cbd5e1',
               overflow: 'hidden',
-              transition: 'border-color 0.15s ease'
-            }}
-            onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-            onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
-            >
+              height: '32px'
+            }}>
               <div style={{
-                padding: '0 14px',
-                height: '40px',
+                padding: '0 10px',
+                height: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 backgroundColor: '#f8fafc',
                 borderRight: '1px solid #e2e8f0',
                 color: '#475569',
                 fontWeight: 700,
-                fontSize: '0.95rem'
+                fontSize: '0.85rem'
               }}>
                 ₹
               </div>
@@ -293,10 +290,10 @@ export default function EditSalespersonTargetsModal({
                 }}
                 style={{
                   width: '100%',
-                  height: '40px',
-                  padding: '0 12px',
+                  height: '100%',
+                  padding: '0 10px',
                   border: 'none',
-                  fontSize: '0.95rem',
+                  fontSize: '0.88rem',
                   fontWeight: 700,
                   color: '#0f172a',
                   outline: 'none',
@@ -307,7 +304,7 @@ export default function EditSalespersonTargetsModal({
             </div>
 
             {/* Quick Presets */}
-            <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '5px', marginTop: '6px', flexWrap: 'wrap' }}>
               {[250000, 500000, 750000, 1000000, 1500000, 2000000].map(amt => {
                 const isActive = targetNum === amt;
                 return (
@@ -316,19 +313,16 @@ export default function EditSalespersonTargetsModal({
                     type="button"
                     onClick={() => setTargetPreset(amt)}
                     style={{
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '0.74rem',
+                      padding: '2px 8px',
+                      borderRadius: '5px',
+                      fontSize: '0.7rem',
                       fontWeight: isActive ? 700 : 500,
                       backgroundColor: isActive ? '#2563eb' : '#ffffff',
                       color: isActive ? '#ffffff' : '#475569',
                       border: isActive ? '1px solid #2563eb' : '1px solid #cbd5e1',
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isActive ? '0 1px 2px rgba(37, 99, 235, 0.2)' : '0 1px 2px rgba(0,0,0,0.02)'
+                      transition: 'all 0.15s ease'
                     }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.backgroundColor = '#ffffff'; }}
                   >
                     ₹{(amt / 100000).toFixed(1)}L
                   </button>
@@ -338,17 +332,16 @@ export default function EditSalespersonTargetsModal({
           </div>
 
           {/* 2. 4-Week Sprint Breakdown Weights */}
-          <div style={{ backgroundColor: '#ffffff', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <div>
-                <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a' }}>Weekly Sprint Distribution</span>
-                <p style={{ margin: '1px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>Target revenue pacing across the 4 monthly weeks.</p>
-              </div>
+          <div style={{ backgroundColor: '#ffffff', padding: '10px 12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>
+                Weekly Sprint Distribution
+              </span>
               <span style={{
-                fontSize: '0.72rem',
+                fontSize: '0.68rem',
                 fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '6px',
+                padding: '1px 7px',
+                borderRadius: '5px',
                 backgroundColor: totalSprintPercent === 100 ? '#ecfdf5' : '#fef2f2',
                 color: totalSprintPercent === 100 ? '#065f46' : '#991b1b',
                 border: totalSprintPercent === 100 ? '1px solid #a7f3d0' : '1px solid #fecaca'
@@ -357,16 +350,16 @@ export default function EditSalespersonTargetsModal({
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
               {/* Sprint 1 */}
-              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: '#475569', marginBottom: '5px' }}>
-                  <span style={{ fontWeight: 600 }}>Sprint 1 (Days 1-7)</span>
-                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '7px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Sprint 1 (Days 1-7)</div>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#2563eb' }}>
                     ₹{Math.round((targetNum * s1Num) / 100).toLocaleString('en-IN')}
-                  </span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                   <input 
                     type="number" 
                     min="0" 
@@ -379,34 +372,32 @@ export default function EditSalespersonTargetsModal({
                       setSprint1Weight(v === '' ? '' : Math.max(0, Number(v)));
                     }}
                     style={{
-                      width: '56px',
-                      height: '30px',
-                      padding: '0 6px',
-                      borderRadius: '6px',
+                      width: '46px',
+                      height: '26px',
+                      padding: '0 4px',
+                      borderRadius: '5px',
                       border: '1px solid #cbd5e1',
-                      fontSize: '0.82rem',
+                      fontSize: '0.78rem',
                       fontWeight: 700,
                       textAlign: 'center',
                       color: '#0f172a',
                       backgroundColor: '#ffffff',
                       outline: 'none'
                     }}
-                    onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-                    onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                   />
-                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>% weight</span>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>%</span>
                 </div>
               </div>
 
               {/* Sprint 2 */}
-              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: '#475569', marginBottom: '5px' }}>
-                  <span style={{ fontWeight: 600 }}>Sprint 2 (Days 8-14)</span>
-                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '7px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Sprint 2 (Days 8-14)</div>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#2563eb' }}>
                     ₹{Math.round((targetNum * s2Num) / 100).toLocaleString('en-IN')}
-                  </span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                   <input 
                     type="number" 
                     min="0" 
@@ -419,34 +410,32 @@ export default function EditSalespersonTargetsModal({
                       setSprint2Weight(v === '' ? '' : Math.max(0, Number(v)));
                     }}
                     style={{
-                      width: '56px',
-                      height: '30px',
-                      padding: '0 6px',
-                      borderRadius: '6px',
+                      width: '46px',
+                      height: '26px',
+                      padding: '0 4px',
+                      borderRadius: '5px',
                       border: '1px solid #cbd5e1',
-                      fontSize: '0.82rem',
+                      fontSize: '0.78rem',
                       fontWeight: 700,
                       textAlign: 'center',
                       color: '#0f172a',
                       backgroundColor: '#ffffff',
                       outline: 'none'
                     }}
-                    onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-                    onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                   />
-                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>% weight</span>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>%</span>
                 </div>
               </div>
 
               {/* Sprint 3 */}
-              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: '#475569', marginBottom: '5px' }}>
-                  <span style={{ fontWeight: 600 }}>Sprint 3 (Days 15-21)</span>
-                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '7px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Sprint 3 (Days 15-21)</div>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#2563eb' }}>
                     ₹{Math.round((targetNum * s3Num) / 100).toLocaleString('en-IN')}
-                  </span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                   <input 
                     type="number" 
                     min="0" 
@@ -459,34 +448,32 @@ export default function EditSalespersonTargetsModal({
                       setSprint3Weight(v === '' ? '' : Math.max(0, Number(v)));
                     }}
                     style={{
-                      width: '56px',
-                      height: '30px',
-                      padding: '0 6px',
-                      borderRadius: '6px',
+                      width: '46px',
+                      height: '26px',
+                      padding: '0 4px',
+                      borderRadius: '5px',
                       border: '1px solid #cbd5e1',
-                      fontSize: '0.82rem',
+                      fontSize: '0.78rem',
                       fontWeight: 700,
                       textAlign: 'center',
                       color: '#0f172a',
                       backgroundColor: '#ffffff',
                       outline: 'none'
                     }}
-                    onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-                    onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                   />
-                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>% weight</span>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>%</span>
                 </div>
               </div>
 
               {/* Sprint 4 */}
-              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', color: '#475569', marginBottom: '5px' }}>
-                  <span style={{ fontWeight: 600 }}>Sprint 4 (Days 22-End)</span>
-                  <span style={{ fontWeight: 700, color: '#2563eb' }}>
+              <div style={{ padding: '6px 10px', borderRadius: '7px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Sprint 4 (Days 22-End)</div>
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#2563eb' }}>
                     ₹{Math.round((targetNum * s4Num) / 100).toLocaleString('en-IN')}
-                  </span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                   <input 
                     type="number" 
                     min="0" 
@@ -499,38 +486,36 @@ export default function EditSalespersonTargetsModal({
                       setSprint4Weight(v === '' ? '' : Math.max(0, Number(v)));
                     }}
                     style={{
-                      width: '56px',
-                      height: '30px',
-                      padding: '0 6px',
-                      borderRadius: '6px',
+                      width: '46px',
+                      height: '26px',
+                      padding: '0 4px',
+                      borderRadius: '5px',
                       border: '1px solid #cbd5e1',
-                      fontSize: '0.82rem',
+                      fontSize: '0.78rem',
                       fontWeight: 700,
                       textAlign: 'center',
                       color: '#0f172a',
                       backgroundColor: '#ffffff',
                       outline: 'none'
                     }}
-                    onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-                    onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                   />
-                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>% weight</span>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b' }}>%</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* 3. Daily Activity Goals (Lead Indicators) */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
-              <Zap size={15} color="#d97706" />
-              <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a' }}>Daily Action Goals (Lead Indicators)</span>
+          <div style={{ backgroundColor: '#f8fafc', padding: '10px 12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '6px' }}>
+              <Zap size={13} color="#d97706" />
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0f172a' }}>Daily Action Goals (Lead Indicators)</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
               {/* Calls */}
-              <div style={{ backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                  📞 Calls / Day
+              <div style={{ backgroundColor: '#ffffff', padding: '6px 8px', borderRadius: '7px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.64rem', fontWeight: 600, color: '#64748b', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  📞 Calls/Day
                 </label>
                 <input
                   type="number"
@@ -545,25 +530,23 @@ export default function EditSalespersonTargetsModal({
                   }}
                   style={{
                     width: '100%',
-                    height: '32px',
-                    padding: '0 8px',
-                    borderRadius: '6px',
+                    height: '28px',
+                    padding: '0 4px',
+                    borderRadius: '5px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.86rem',
+                    fontSize: '0.82rem',
                     fontWeight: 700,
                     textAlign: 'center',
                     color: '#0f172a',
                     backgroundColor: '#ffffff',
                     outline: 'none'
                   }}
-                  onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-                  onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                 />
               </div>
 
               {/* Follow-ups */}
-              <div style={{ backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              <div style={{ backgroundColor: '#ffffff', padding: '6px 8px', borderRadius: '7px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.64rem', fontWeight: 600, color: '#64748b', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   🤝 Follow-ups
                 </label>
                 <input
@@ -579,26 +562,24 @@ export default function EditSalespersonTargetsModal({
                   }}
                   style={{
                     width: '100%',
-                    height: '32px',
-                    padding: '0 8px',
-                    borderRadius: '6px',
+                    height: '28px',
+                    padding: '0 4px',
+                    borderRadius: '5px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.86rem',
+                    fontSize: '0.82rem',
                     fontWeight: 700,
                     textAlign: 'center',
                     color: '#0f172a',
                     backgroundColor: '#ffffff',
                     outline: 'none'
                   }}
-                  onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-                  onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                 />
               </div>
 
               {/* Quotes */}
-              <div style={{ backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                  📄 Quotes Sent
+              <div style={{ backgroundColor: '#ffffff', padding: '6px 8px', borderRadius: '7px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.64rem', fontWeight: 600, color: '#64748b', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  📄 Quotes
                 </label>
                 <input
                   type="number"
@@ -613,26 +594,24 @@ export default function EditSalespersonTargetsModal({
                   }}
                   style={{
                     width: '100%',
-                    height: '32px',
-                    padding: '0 8px',
-                    borderRadius: '6px',
+                    height: '28px',
+                    padding: '0 4px',
+                    borderRadius: '5px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.86rem',
+                    fontSize: '0.82rem',
                     fontWeight: 700,
                     textAlign: 'center',
                     color: '#0f172a',
                     backgroundColor: '#ffffff',
                     outline: 'none'
                   }}
-                  onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-                  onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                 />
               </div>
 
               {/* Deals Closed */}
-              <div style={{ backgroundColor: '#ffffff', padding: '8px 10px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <label style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: '#64748b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                  🎯 Deals Closed
+              <div style={{ backgroundColor: '#ffffff', padding: '6px 8px', borderRadius: '7px', border: '1px solid #e2e8f0' }}>
+                <label style={{ display: 'block', fontSize: '0.64rem', fontWeight: 600, color: '#64748b', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  🎯 Deals
                 </label>
                 <input
                   type="number"
@@ -647,37 +626,35 @@ export default function EditSalespersonTargetsModal({
                   }}
                   style={{
                     width: '100%',
-                    height: '32px',
-                    padding: '0 8px',
-                    borderRadius: '6px',
+                    height: '28px',
+                    padding: '0 4px',
+                    borderRadius: '5px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.86rem',
+                    fontSize: '0.82rem',
                     fontWeight: 700,
                     textAlign: 'center',
                     color: '#0f172a',
                     backgroundColor: '#ffffff',
                     outline: 'none'
                   }}
-                  onFocusCapture={e => e.currentTarget.style.borderColor = '#2563eb'}
-                  onBlurCapture={e => e.currentTarget.style.borderColor = '#cbd5e1'}
                 />
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                height: '34px',
+                height: '32px',
                 padding: '0 14px',
-                borderRadius: '7px',
+                borderRadius: '6px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
                 color: '#475569',
-                fontSize: '0.78rem',
+                fontSize: '0.76rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
@@ -691,13 +668,13 @@ export default function EditSalespersonTargetsModal({
               type="submit"
               disabled={isSaving}
               style={{
-                height: '34px',
+                height: '32px',
                 padding: '0 16px',
-                borderRadius: '7px',
+                borderRadius: '6px',
                 border: 'none',
                 backgroundColor: '#2563eb',
                 color: '#ffffff',
-                fontSize: '0.78rem',
+                fontSize: '0.76rem',
                 fontWeight: 600,
                 cursor: isSaving ? 'not-allowed' : 'pointer',
                 display: 'inline-flex',
@@ -710,7 +687,7 @@ export default function EditSalespersonTargetsModal({
               onMouseEnter={e => { if (!isSaving) e.currentTarget.style.backgroundColor = '#1d4ed8'; }}
               onMouseLeave={e => { if (!isSaving) e.currentTarget.style.backgroundColor = '#2563eb'; }}
             >
-              <Save size={14} />
+              <Save size={13} />
               <span>{isSaving ? 'Saving...' : 'Save & Apply Targets'}</span>
             </button>
           </div>
