@@ -166,7 +166,8 @@ Content-Type: application/json`}
 {`{
   "name": "Customer Name",
   "whatsappNumber": "+91 9999999999",
-  "shopName": "Optional Shop Name"
+  "shopName": "Optional Shop Name",
+  "agentEmail": "agent@yourcompany.com"
 }`}
                 </div>
               </div>

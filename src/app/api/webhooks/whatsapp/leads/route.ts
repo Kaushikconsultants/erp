@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, whatsappNumber, shopName } = body;
+    const { name, whatsappNumber, shopName, agentEmail } = body;
 
     if (!name || !whatsappNumber) {
       return NextResponse.json({ error: "Missing required fields (name, whatsappNumber)" }, { status: 400 });
@@ -48,13 +48,27 @@ export async function POST(req: Request) {
       }, { status: 409 });
     }
 
+    let assignedSalespersonId = undefined;
+    if (agentEmail) {
+      const employee = await prisma.employee.findFirst({
+        where: {
+          organizationId: orgIdToUse,
+          user: { email: agentEmail }
+        }
+      });
+      if (employee) {
+        assignedSalespersonId = employee.id;
+      }
+    }
+
     const lead = await prisma.lead.create({
       data: {
         name,
         whatsappNumber,
         shopName: shopName || null,
         organizationId: orgIdToUse,
-        status: "New Lead"
+        status: "New Lead",
+        assignedSalespersonId
       }
     });
 
