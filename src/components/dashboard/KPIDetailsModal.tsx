@@ -70,17 +70,17 @@ export default function KPIDetailsModal({ type, onClose }: KPIDetailsModalProps)
     }
 
     if (type === 'orders') {
-      const totalValue = data.reduce((sum, o) => sum + (o.totalValue || 0), 0);
+      const totalValue = data.reduce((sum, o) => sum + Number(o.totalValue || 0), 0);
       return (
         <>
-          <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '6px', marginBottom: '16px', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
-            <span>Total Orders: {data.length}</span>
-            <span className="text-success">Total Value: ₹{totalValue.toLocaleString('en-IN')}</span>
+          <div style={{ padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '16px', fontWeight: 600, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: '#334155' }}>Total Orders / Confirmed Deals: <strong style={{ color: '#0f172a' }}>{data.length}</strong></span>
+            <span className="text-success" style={{ fontSize: '1rem' }}>Total Value: ₹{totalValue.toLocaleString('en-IN')}</span>
           </div>
           <table className="data-table" style={{ width: '100%' }}>
             <thead>
               <tr>
-                <th>Order #</th>
+                <th>Order / Deal #</th>
                 <th>Customer</th>
                 <th>Sales Rep</th>
                 <th>Value</th>
@@ -88,15 +88,26 @@ export default function KPIDetailsModal({ type, onClose }: KPIDetailsModalProps)
               </tr>
             </thead>
             <tbody>
-              {data.map(o => (
-                <tr key={o.id}>
-                  <td style={{ fontWeight: 500 }}>{o.orderNumber}</td>
-                  <td>{o.customer?.businessName || 'Unknown'}</td>
-                  <td>{o.salesperson?.user?.name || 'Unassigned'}</td>
-                  <td className="text-success">₹{o.totalValue?.toLocaleString('en-IN')}</td>
-                  <td>{new Date(o.orderDate).toLocaleDateString()}</td>
-                </tr>
-              ))}
+              {data.map(o => {
+                const repName = o.salesperson?.user?.name || o.salesperson?.name || o.customer?.assignedSalesperson?.user?.name || 'Unassigned';
+                const dateStr = o.orderDate ? new Date(o.orderDate).toLocaleDateString() : '-';
+                return (
+                  <tr key={o.id}>
+                    <td style={{ fontWeight: 500 }}>
+                      {o.orderNumber}
+                      {o.isQuotation && (
+                        <span style={{ marginLeft: '6px', fontSize: '0.65rem', backgroundColor: '#e0e7ff', color: '#4338ca', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          Quote
+                        </span>
+                      )}
+                    </td>
+                    <td>{o.customer?.businessName || 'Unknown'}</td>
+                    <td>{repName}</td>
+                    <td className="text-success" style={{ fontWeight: 600 }}>₹{Number(o.totalValue || 0).toLocaleString('en-IN')}</td>
+                    <td>{dateStr}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </>
