@@ -19,7 +19,9 @@ export async function GET(req: Request) {
     });
 
     if (!session) {
-      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+      // Return 200 with WAITING status to prevent browser console 404 flooding 
+      // when the frontend UI starts polling before the mobile app has connected.
+      return NextResponse.json({ success: true, status: 'WAITING', scannedCode: null });
     }
 
     const scanned = session.scannedCode;

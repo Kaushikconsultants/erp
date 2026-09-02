@@ -136,7 +136,6 @@ export const shipmozoService = {
         payment_type: params.paymentMode === "COD" ? "COD" : "PREPAID",
         shipment_type: params.shipmentType === "Reverse" ? "RETURN" : "FORWARD",
         order_amount: params.orderValue || 0,
-        type_of_package: params.packageType || "ESSENTIALS",
         rov_type: params.rovType === "Rov Carrier" ? "ROV_CARRIER" : "ROV_OWNER",
         cod_amount: params.paymentMode === "COD" ? String(params.orderValue) : "",
         weight: Math.round(params.weight * 1000), // Shipmozo accepts weight in grams
