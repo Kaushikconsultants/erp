@@ -121,6 +121,7 @@ export async function createQuotation(data: {
     availableStock?: number;
   }>;
   totalWeight?: number;
+  discountSlab?: string;
   notes?: string;
   internalNotes?: string;
   termsConditions?: string;
@@ -282,6 +283,7 @@ export async function createQuotation(data: {
           adjustment,
           roundOff,
           receivedAmount,
+          discountSlab: data.discountSlab || "1-15",
           taxTotal,
           cgst: totalCgst,
           sgst: totalSgst,
@@ -458,6 +460,7 @@ export async function updateQuotationFull(id: string, data: {
     availableStock?: number;
   }>;
   totalWeight?: number;
+  discountSlab?: string;
   notes?: string;
   internalNotes?: string;
   termsConditions?: string;
@@ -595,6 +598,7 @@ export async function updateQuotationFull(id: string, data: {
         adjustment,
         roundOff,
         receivedAmount,
+        ...(data.discountSlab ? { discountSlab: data.discountSlab } : {}),
         taxTotal,
         cgst: totalCgst,
         sgst: totalSgst,
@@ -717,13 +721,16 @@ export async function getQuotationById(id: string) {
   }
 }
 
-export async function updateQuotationStatus(id: string, status: string) {
+export async function updateQuotationStatus(id: string, status: string, discountSlab?: string) {
   try {
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id || null;
     const userName = (session?.user as any)?.name || "System";
     
     const dataToUpdate: any = { status };
+    if (discountSlab) {
+      dataToUpdate.discountSlab = discountSlab;
+    }
     if (status === "Sent") {
     } else if (status === "Viewed") {
       dataToUpdate.viewedDate = new Date();

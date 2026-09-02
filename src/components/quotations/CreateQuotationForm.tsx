@@ -77,6 +77,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
     additionalDiscount: initialQuotation?.additionalDiscount || 0,
     adjustment: initialQuotation?.adjustment || 0,
     receivedAmount: initialQuotation?.receivedAmount !== undefined ? Number(initialQuotation.receivedAmount) : 0,
+    discountSlab: initialQuotation?.discountSlab || '1-15',
     notes: initialQuotation?.notes || 'Thank you for your business! Please reach out if you have any questions regarding this quotation.',
     internalNotes: initialQuotation?.internalNotes || '',
     termsConditions: initialQuotation?.termsConditions || "1. Goods once sold cannot be taken back or exchanged.\n2. 50% advance payment required for custom orders.\n3. Quotation valid for 15 days from date of issue.\n4. Subject to local jurisdiction."
@@ -539,6 +540,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
         additionalDiscount: Number(formData.additionalDiscount) || 0,
         adjustment: Number(formData.adjustment) || 0,
         receivedAmount: Number(formData.receivedAmount || 0),
+        discountSlab: formData.discountSlab || '1-15',
         totalWeight: totals.totalWeight,
         notes: formData.notes,
         internalNotes: formData.internalNotes,
@@ -1732,6 +1734,60 @@ export default function CreateQuotationForm({ customers, products, employees, ca
               </div>
               <div style={{ fontSize: '0.72rem', color: '#3b82f6', textAlign: 'right', marginTop: '4px', fontStyle: 'italic', fontWeight: 500 }}>
                 {numberToWords(Math.round(totals.finalTotal))}
+              </div>
+            </div>
+
+            {/* DISCOUNT & PRICING STRUCTURE (SLABS) */}
+            <div style={{
+              backgroundColor: '#f8fafc',
+              padding: '16px',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Discount & Pricing Structure
+              </span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {[
+                  { id: '0', title: '0% Discount (Bonus)' },
+                  { id: '1-15', title: '1 - 15% (Standard)' },
+                  { id: '>15', title: 'Above 15% Discount' },
+                  { id: 'credit', title: 'Credit Customer' }
+                ].map((option) => {
+                  const isSelected = (formData.discountSlab || '1-15') === option.id;
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => setFormData({ ...formData, discountSlab: option.id })}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: isSelected ? '2px solid #059669' : '1px solid #cbd5e1',
+                        backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input 
+                        type="radio"
+                        name="quotationFormDiscountSlab"
+                        value={option.id}
+                        checked={isSelected}
+                        onChange={() => setFormData({ ...formData, discountSlab: option.id })}
+                        style={{ accentColor: '#059669', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
+                      />
+                      <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#065f46' : '#334155' }}>
+                        {option.title}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

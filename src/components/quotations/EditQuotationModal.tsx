@@ -12,6 +12,7 @@ interface EditQuotationModalProps {
 
 export default function EditQuotationModal({ quotation, onClose }: EditQuotationModalProps) {
   const [status, setStatus] = useState(quotation.status || "Draft");
+  const [discountSlab, setDiscountSlab] = useState(quotation.discountSlab || "1-15");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -20,7 +21,7 @@ export default function EditQuotationModal({ quotation, onClose }: EditQuotation
     setLoading(true);
     setError("");
 
-    const res = await updateQuotationStatus(quotation.id, status);
+    const res = await updateQuotationStatus(quotation.id, status, discountSlab);
     if (res.error) {
       setError(res.error);
       setLoading(false);
@@ -76,7 +77,7 @@ export default function EditQuotationModal({ quotation, onClose }: EditQuotation
             </div>
           </div>
 
-          <div style={{ marginBottom: '24px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Quotation Status</label>
             <select 
               value={status}
@@ -88,8 +89,55 @@ export default function EditQuotationModal({ quotation, onClose }: EditQuotation
               <option value="Viewed">Viewed by Customer</option>
               <option value="Accepted">Accepted</option>
               <option value="Declined">Declined</option>
+              <option value="Confirmed">Confirmed</option>
               <option value="Converted">Converted to Order</option>
             </select>
+          </div>
+
+          {/* DISCOUNT & PRICING STRUCTURE */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>
+              Discount & Pricing Structure
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              {[
+                { id: '0', title: '0% Discount (Bonus)' },
+                { id: '1-15', title: '1 - 15% (Standard)' },
+                { id: '>15', title: 'Above 15% Discount' },
+                { id: 'credit', title: 'Credit Customer' }
+              ].map((option) => {
+                const isSelected = discountSlab === option.id;
+                return (
+                  <div
+                    key={option.id}
+                    onClick={() => setDiscountSlab(option.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: isSelected ? '2px solid #059669' : '1px solid #cbd5e1',
+                      backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <input 
+                      type="radio"
+                      name="editModalDiscountSlab"
+                      value={option.id}
+                      checked={isSelected}
+                      onChange={() => setDiscountSlab(option.id)}
+                      style={{ accentColor: '#059669', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
+                    />
+                    <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#065f46' : '#334155' }}>
+                      {option.title}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
