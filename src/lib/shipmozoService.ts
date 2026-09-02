@@ -160,15 +160,15 @@ export const shipmozoService = {
 
       // Map whatever data comes back to our internal array
       const ratesList: ShippingRate[] = Array.isArray(json.data) ? json.data.map((r: any) => ({
-         partnerName: r.courier_name || r.partnerName || "Shipmozo",
-         serviceName: r.service_name || r.serviceName || "Standard",
+         partnerName: r.courier_name || r.courier_company || r.courier || r.partnerName || "Shipmozo",
+         serviceName: r.service_name || r.courier_company_service || r.serviceName || "Standard",
          courierCompanyId: String(r.courier_id || r.courierCompanyId || "1"),
          chargedWeight: r.charged_weight || r.chargedWeight || params.weight,
          estimatedDeliveryDays: r.estimated_delivery_days || 3,
          zone: r.zone || "A",
-         charge: r.charge || r.total_charge || r.rate || 0,
+         charge: r.total_amount || r.freight_charge || r.charge || r.total_charge || r.rate || 0,
          breakdown: {
-           shippingCharges: r.charge || 0,
+           shippingCharges: r.freight_charge || r.charge || 0,
            gst: r.gst || 0
          }
       })) : [];
