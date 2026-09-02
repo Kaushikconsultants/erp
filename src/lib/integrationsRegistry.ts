@@ -21,7 +21,8 @@ export interface IntegrationProviderDef {
   docsUrl: string;
   fields: IntegrationFieldDef[];
   features: string[];
-  supportedEvents: string[];
+  supportedEvents?: string[];
+  supportsWebhooks?: boolean;
 }
 
 // Master Registry of Supported Integrations
@@ -86,10 +87,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       "AI-driven courier assignment (Air / Surface)",
       "Real-time Pin-code serviceability check",
       "Instant Shipping label & Tax Invoice printing",
-      "Non-Delivery Report (NDR) re-attempt engine",
-      "Synchronized order delivery milestone timestamps"
+      "Non-Delivery Report (NDR) re-attempt engine"
     ],
-    supportedEvents: ["order.shipment_assigned", "order.picked_up", "order.tracking_updated", "order.delivered", "order.ndr_raised"]
+    supportsWebhooks: false
   },
   {
     id: "nimbuspost",

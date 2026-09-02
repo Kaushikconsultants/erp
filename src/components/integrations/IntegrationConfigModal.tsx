@@ -217,13 +217,15 @@ export default function IntegrationConfigModal({
             <Sliders size={16} />
             <span>Automation & Sync</span>
           </button>
-          <button
-            className={`modal-nav-tab ${activeTab === "webhooks" ? "active" : ""}`}
-            onClick={() => setActiveTab("webhooks")}
-          >
-            <Webhook size={16} />
-            <span>Webhooks</span>
-          </button>
+          {integration.supportsWebhooks !== false && (
+            <button
+              className={`modal-nav-tab ${activeTab === "webhooks" ? "active" : ""}`}
+              onClick={() => setActiveTab("webhooks")}
+            >
+              <Webhook size={16} />
+              <span>Webhooks</span>
+            </button>
+          )}
           <button
             className={`modal-nav-tab ${activeTab === "test" ? "active" : ""}`}
             onClick={() => setActiveTab("test")}
