@@ -139,8 +139,8 @@ export default function ShippingRateCalculator({
             <Truck size={22} />
           </div>
           <div>
-            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700, color: '#0f172a' }}>Shipmozo Rate Calculator</h3>
-            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Calculate domestic & international logistics charges live</span>
+            <h3 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700, color: '#0f172a' }}>Shipping Rates Calculator</h3>
+            <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Calculate live domestic & international rates across all active aggregators</span>
           </div>
         </div>
         {isModal && onClose && (

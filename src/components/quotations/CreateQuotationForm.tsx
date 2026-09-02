@@ -1681,7 +1681,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <Truck size={14} color="#6366f1" /> Calculate Shipping via Shipmozo
+                  <Truck size={14} color="#6366f1" /> Calculate Shipping Rates
                 </button>
               </div>
 

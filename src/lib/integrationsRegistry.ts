@@ -64,7 +64,7 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     logo: "📦",
     brandColor: "#0284c7",
     badge: "Direct API",
-    docsUrl: "https://shipmozo.com/developer/api-docs",
+    docsUrl: "/Shipmozo_API_Setup_Guide.pdf",
     fields: [
       { key: "apiKey", label: "Shipmozo API Public Key", type: "text", placeholder: "smz_pub_live_...", required: true },
       { key: "apiSecret", label: "Shipmozo API Secret Key", type: "password", placeholder: "smz_sec_...", required: true },
