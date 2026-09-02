@@ -153,8 +153,37 @@ export default function AddLeadButton({ employees, organizationId }: { employees
               <h3 style={{display: 'flex', alignItems: 'center', gap: '8px'}}><Code size={20} color="var(--accent-primary)"/> WhatsApp API & Webhooks</h3>
               <button className="modal-close" onClick={() => setIsApiGuideOpen(false)}>×</button>
             </div>
-                </div>
-              </div>
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
+              <button 
+                onClick={() => setApiActiveTab('guide')}
+                style={{ flex: 1, padding: '12px', background: 'none', border: 'none', borderBottom: apiActiveTab === 'guide' ? '2px solid var(--accent-primary)' : '2px solid transparent', color: apiActiveTab === 'guide' ? 'var(--accent-primary)' : '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem' }}
+              >
+                Setup Guide
+              </button>
+              <button 
+                onClick={() => {
+                  setApiActiveTab('logs');
+                  loadLogs();
+                }}
+                style={{ flex: 1, padding: '12px', background: 'none', border: 'none', borderBottom: apiActiveTab === 'logs' ? '2px solid var(--accent-primary)' : '2px solid transparent', color: apiActiveTab === 'logs' ? 'var(--accent-primary)' : '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem' }}
+              >
+                Webhook Logs
+              </button>
+            </div>
+
+            <div className="modal-body" style={{display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: 0}}>
+              {apiActiveTab === 'guide' ? (
+                <>
+                  <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0}}>
+                    Use this API to push new leads from your WhatsApp Chatbot directly into the CRM.
+                  </p>
+                  
+                  <div>
+                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Endpoint URL (POST)</label>
+                    <div style={{background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#0f172a'}}>
+                      {typeof window !== 'undefined' ? window.location.origin : 'https://your-crm-url.com'}/api/webhooks/whatsapp/leads
+                    </div>
+                  </div>
 
               <div>
                 <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Headers</label>
