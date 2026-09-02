@@ -996,7 +996,6 @@ export async function deleteQuotation(id: string) {
         where: { notes: { contains: `Converted from Quotation #${quotation.quotationNumber}` } }
       });
       for (const order of linkedOrders) {
-        await prisma.invoiceItem.deleteMany({ where: { invoice: { orderId: order.id } } }).catch(() => {});
         const invoices = await prisma.invoice.findMany({ where: { orderId: order.id } });
         for (const inv of invoices) {
           await prisma.payment.updateMany({ where: { invoiceId: inv.id }, data: { invoiceId: null } }).catch(() => {});

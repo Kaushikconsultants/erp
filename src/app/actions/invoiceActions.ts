@@ -281,7 +281,6 @@ export async function deleteInvoice(id: string) {
       data: { invoiceId: null }
     });
 
-    await prisma.invoiceItem.deleteMany({ where: { invoiceId: id } }).catch(() => {});
     await prisma.invoice.delete({
       where: { id }
     });
