@@ -542,6 +542,13 @@ export default function ShippingRateCalculator({
                       <span style={{ fontWeight: 600, color: '#1e293b' }}>₹ {rate.breakdown.shippingCharges}</span>
                     </div>
 
+                    {rate.breakdown.codCharges ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span>COD Charges</span>
+                        <span style={{ fontWeight: 600, color: '#1e293b' }}>₹ {rate.breakdown.codCharges}</span>
+                      </div>
+                    ) : null}
+
                     {rate.breakdown.firstMileCost !== undefined && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span>First Mile Cost</span>
