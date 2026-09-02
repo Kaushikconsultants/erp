@@ -130,87 +130,87 @@ export default function ProductListClient({ products, categories, categoriesData
   const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories' || selectedStatus !== 'All Statuses';
 
   return (
-    <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+    <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
       
       {/* ─── FILTERS & HEADER ACTIONS TOOLBAR ─── */}
-      <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px', backgroundColor: '#ffffff' }}>
+      <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#ffffff' }}>
         
         {/* Row 1: Section Title & Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              backgroundColor: '#e0e7ff',
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              backgroundColor: '#eff6ff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#4f46e5'
+              color: '#2563eb'
             }}>
-              <Layers size={18} />
+              <Layers size={16} />
             </div>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.01em' }}>
+              <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
                 Product Catalog & Inventory
               </h3>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+              <p style={{ margin: '1px 0 0 0', fontSize: '0.74rem', color: '#64748b' }}>
                 Showing <strong>{filteredProducts.length}</strong> of <strong>{products.length}</strong> products
               </p>
             </div>
           </div>
 
           {/* Action Buttons Group */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {/* AI Dead Stock & Liquidation Insights Button */}
             <button
               onClick={() => setShowDeadStockModal(true)}
               style={{
+                height: '32px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                border: '1px solid #fecaca',
-                backgroundColor: '#fef2f2',
-                color: '#dc2626',
-                fontSize: '0.85rem',
-                fontWeight: 700,
+                gap: '5px',
+                padding: '0 11px',
+                borderRadius: '7px',
+                border: '1px solid #fecdd3',
+                backgroundColor: '#fff1f2',
+                color: '#e11d48',
+                fontSize: '0.76rem',
+                fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(220, 38, 38, 0.08)',
                 transition: 'all 0.15s ease'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
-              title="AI Dead Stock & Inventory Liquidation Insights (Clearance Campaigns & Locked Capital)"
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffe4e6'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff1f2'}
+              title="AI Dead Stock & Inventory Liquidation Insights"
             >
-              <Flame size={15} color="#dc2626" />
-              AI Dead Stock Insights
+              <Flame size={13} color="#e11d48" />
+              AI Dead Stock
             </button>
 
             {/* 1-Click Wholesale Catalog / Lookbook Generator Button */}
             <button
               onClick={() => setShowCatalogModal(true)}
               style={{
+                height: '32px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                border: '1px solid #bfdbfe',
-                backgroundColor: '#eff6ff',
-                color: '#2563eb',
-                fontSize: '0.85rem',
+                gap: '5px',
+                padding: '0 11px',
+                borderRadius: '7px',
+                border: '1px solid #bae6fd',
+                backgroundColor: '#f0f9ff',
+                color: '#0284c7',
+                fontSize: '0.76rem',
                 fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(37, 99, 235, 0.08)',
                 transition: 'all 0.15s ease'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dbeafe'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eff6ff'}
-              title="1-Click Generate Wholesale Product Catalog & Lookbook (PDF & WhatsApp)"
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0f2fe'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0f9ff'}
+              title="Generate Wholesale Product Catalog & Lookbook"
             >
-              <BookOpen size={15} color="#2563eb" />
+              <BookOpen size={13} color="#0284c7" />
               Wholesale Catalog
             </button>
 
@@ -223,25 +223,25 @@ export default function ProductListClient({ products, categories, categoriesData
                 }
               }}
               style={{
+                height: '32px',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                border: '1px solid #c7d2fe',
-                backgroundColor: '#eef2ff',
-                color: '#4338ca',
-                fontSize: '0.85rem',
+                gap: '5px',
+                padding: '0 11px',
+                borderRadius: '7px',
+                border: '1px solid #e2e8f0',
+                backgroundColor: '#f8fafc',
+                color: '#334155',
+                fontSize: '0.76rem',
                 fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(79, 70, 229, 0.08)',
                 transition: 'all 0.15s ease'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eef2ff'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
               title="Open Article Transaction History, Quotations, and Invoice Usage"
             >
-              <History size={15} color="#4f46e5" />
+              <History size={13} color="#475569" />
               Article History
             </button>
 
@@ -250,47 +250,49 @@ export default function ProductListClient({ products, categories, categoriesData
                 <button
                   onClick={() => setShowCategoryModal(true)}
                   style={{
+                    height: '32px',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
+                    gap: '5px',
+                    padding: '0 11px',
+                    borderRadius: '7px',
+                    border: '1px solid #e2e8f0',
                     backgroundColor: '#ffffff',
                     color: '#334155',
-                    fontSize: '0.85rem',
+                    fontSize: '0.76rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                     transition: 'all 0.15s ease'
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
                 >
-                  <Scale size={15} color="#4f46e5" />
-                  Manage Categories & Weights
+                  <Scale size={13} color="#475569" />
+                  Categories & Weights
                 </button>
                 <button
                   onClick={() => setShowMatrixModal(true)}
                   style={{
+                    height: '32px',
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #c7d2fe',
-                    backgroundColor: '#eef2ff',
-                    color: '#4338ca',
-                    fontSize: '0.85rem',
+                    gap: '5px',
+                    padding: '0 11px',
+                    borderRadius: '7px',
+                    border: '1px solid #ddd6fe',
+                    backgroundColor: '#f5f3ff',
+                    color: '#6d28d9',
+                    fontSize: '0.76rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    boxShadow: '0 1px 2px rgba(79, 70, 229, 0.08)',
                     transition: 'all 0.15s ease'
                   }}
-                  title="Apparel Size x Color Variant Generator (Busy Matrix Parity)"
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ede9fe'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f5f3ff'}
+                  title="Apparel Size x Color Variant Generator"
                 >
-                  <Layers size={15} color="#4338ca" />
-                  + Size/Color Matrix
+                  <Layers size={13} color="#6d28d9" />
+                  Size/Color Matrix
                 </button>
                 <AddProductButton categories={categories} />
               </>
@@ -302,16 +304,16 @@ export default function ProductListClient({ products, categories, categoriesData
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '8px',
           flexWrap: 'wrap',
           backgroundColor: '#f8fafc',
-          padding: '10px 12px',
-          borderRadius: '10px',
+          padding: '8px 10px',
+          borderRadius: '8px',
           border: '1px solid #e2e8f0'
         }}>
           {/* Search Input */}
-          <div style={{ position: 'relative', flex: '1', minWidth: '260px' }}>
-            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+          <div style={{ position: 'relative', flex: '1', minWidth: '240px' }}>
+            <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
               placeholder="Search by product name, SKU, article no..."
@@ -319,21 +321,24 @@ export default function ProductListClient({ products, categories, categoriesData
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 32px 8px 36px',
-                borderRadius: '8px',
+                height: '32px',
+                padding: '0 28px 0 30px',
+                borderRadius: '6px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.85rem',
+                fontSize: '0.8rem',
                 outline: 'none',
                 backgroundColor: '#ffffff',
-                color: '#1e293b'
+                color: '#0f172a'
               }}
+              onFocus={e => e.target.style.borderColor = '#2563eb'}
+              onBlur={e => e.target.style.borderColor = '#cbd5e1'}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
                 style={{
                   position: 'absolute',
-                  right: '10px',
+                  right: '8px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none',
@@ -345,22 +350,23 @@ export default function ProductListClient({ products, categories, categoriesData
                   alignItems: 'center'
                 }}
               >
-                <X size={14} />
+                <X size={13} />
               </button>
             )}
           </div>
 
           {/* Category Dropdown */}
-          <div style={{ position: 'relative', width: '180px' }}>
+          <div style={{ position: 'relative', width: '160px' }}>
             <select 
               value={selectedCategory} 
               onChange={e => setSelectedCategory(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 30px 8px 12px',
-                borderRadius: '8px',
+                height: '32px',
+                padding: '0 26px 0 10px',
+                borderRadius: '6px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.85rem',
+                fontSize: '0.8rem',
                 appearance: 'none',
                 backgroundColor: '#ffffff',
                 outline: 'none',
@@ -372,20 +378,21 @@ export default function ProductListClient({ products, categories, categoriesData
               <option value="All Categories">All Categories</option>
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+            <ChevronDown size={13} color="#64748b" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
           {/* Status Dropdown */}
-          <div style={{ position: 'relative', width: '160px' }}>
+          <div style={{ position: 'relative', width: '140px' }}>
             <select 
               value={selectedStatus} 
               onChange={e => setSelectedStatus(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 30px 8px 12px',
-                borderRadius: '8px',
+                height: '32px',
+                padding: '0 26px 0 10px',
+                borderRadius: '6px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.85rem',
+                fontSize: '0.8rem',
                 appearance: 'none',
                 backgroundColor: '#ffffff',
                 outline: 'none',
@@ -399,7 +406,7 @@ export default function ProductListClient({ products, categories, categoriesData
               <option value="Low Stock">Low Stock</option>
               <option value="Out of Stock">Out of Stock</option>
             </select>
-            <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+            <ChevronDown size={13} color="#64748b" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
           {/* Reset Filters Button */}
@@ -407,11 +414,12 @@ export default function ProductListClient({ products, categories, categoriesData
             <button 
               onClick={handleReset}
               style={{
-                padding: '8px 14px',
-                borderRadius: '8px',
+                height: '32px',
+                padding: '0 10px',
+                borderRadius: '6px',
                 border: '1px solid #fecaca',
                 backgroundColor: '#fef2f2',
-                fontSize: '0.85rem',
+                fontSize: '0.76rem',
                 cursor: 'pointer',
                 fontWeight: 600,
                 color: '#dc2626',
@@ -423,18 +431,19 @@ export default function ProductListClient({ products, categories, categoriesData
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
             >
-              <RotateCcw size={13} /> Reset
+              <RotateCcw size={12} /> Reset
             </button>
           ) : (
             <button 
               onClick={handleReset}
               disabled
               style={{
-                padding: '8px 14px',
-                borderRadius: '8px',
+                height: '32px',
+                padding: '0 10px',
+                borderRadius: '6px',
                 border: '1px solid #e2e8f0',
                 backgroundColor: '#ffffff',
-                fontSize: '0.85rem',
+                fontSize: '0.76rem',
                 color: '#94a3b8',
                 cursor: 'default'
               }}
@@ -456,16 +465,16 @@ export default function ProductListClient({ products, categories, categoriesData
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '950px' }}>
           <thead>
-            <tr style={{ backgroundColor: '#f1f5f9', borderBottom: '1px solid #e2e8f0' }}>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', width: '60px' }}>Image</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Product Name</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>SKU / Article No.</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Category</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>HSN Code</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Price (₹)</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Stock</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>Status</th>
-              <th style={{ padding: '16px 20px', fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', textAlign: 'center' }}>Actions</th>
+            <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', width: '56px' }}>Image</th>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Product Name</th>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>SKU / Article No.</th>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Category</th>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>HSN Code</th>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Price (₹)</th>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Stock</th>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</th>
+              <th style={{ padding: '10px 14px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -482,7 +491,7 @@ export default function ProductListClient({ products, categories, categoriesData
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   {/* Product Image Thumbnail */}
-                  <td style={{ padding: '14px 20px', verticalAlign: 'middle' }}>
+                  <td style={{ padding: '8px 14px', verticalAlign: 'middle' }}>
                     <div
                       onClick={() => {
                         if (primaryImg) {
@@ -493,9 +502,9 @@ export default function ProductListClient({ products, categories, categoriesData
                       }}
                       style={{
                         position: 'relative',
-                        width: '46px',
-                        height: '46px',
-                        borderRadius: '8px',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '6px',
                         border: '1px solid #e2e8f0',
                         backgroundColor: '#f8fafc',
                         display: 'flex',
@@ -520,40 +529,40 @@ export default function ProductListClient({ products, categories, categoriesData
                               right: 0,
                               backgroundColor: 'rgba(79, 70, 229, 0.9)',
                               color: '#fff',
-                              fontSize: '0.6rem',
+                              fontSize: '0.55rem',
                               fontWeight: 800,
                               padding: '1px 3px',
-                              borderRadius: '4px 0 0 0'
+                              borderRadius: '3px 0 0 0'
                             }}>
                               +{imageCount - 1}
                             </div>
                           )}
                         </>
                       ) : (
-                        <ImageIcon size={18} color="#cbd5e1" />
+                        <ImageIcon size={15} color="#94a3b8" />
                       )}
                     </div>
                   </td>
 
                   {/* Product Name */}
-                  <td style={{ padding: '16px 20px', fontSize: '0.95rem', fontWeight: 600, color: '#1e293b', verticalAlign: 'middle' }}>
-                    <div>{product.name}</div>
+                  <td style={{ padding: '8px 14px', verticalAlign: 'middle' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>{product.name}</div>
                     {product.description && (
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400, marginTop: '2px', maxWidth: '280px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400, marginTop: '1px', maxWidth: '260px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {product.description}
                       </div>
                     )}
                   </td>
                   
                   {/* SKU & Clickable Article Number */}
-                  <td style={{ padding: '16px 20px', verticalAlign: 'middle' }}>
+                  <td style={{ padding: '8px 14px', verticalAlign: 'middle' }}>
                     <div
                       onClick={() => setSelectedHistoryArticle(articleIdentifier)}
                       style={{
                         cursor: 'pointer',
                         display: 'inline-flex',
                         flexDirection: 'column',
-                        gap: '2px'
+                        gap: '1px'
                       }}
                       title="Click to view full transaction and usage history"
                     >
@@ -561,69 +570,69 @@ export default function ProductListClient({ products, categories, categoriesData
                         color: '#0f172a',
                         fontWeight: 600,
                         fontFamily: 'monospace',
-                        fontSize: '0.9rem',
+                        fontSize: '0.78rem',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px'
+                        gap: '3px'
                       }}>
                         {product.sku || '-'}
                       </span>
                       <span style={{
                         color: '#4f46e5',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
+                        fontSize: '0.72rem',
+                        fontWeight: 500,
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '3px'
                       }}>
-                        Art: {product.articleNumber || '-'} <History size={11} />
+                        Art: {product.articleNumber || '-'} <History size={10} />
                       </span>
                     </div>
                   </td>
                   
                   {/* Category */}
-                  <td style={{ padding: '16px 20px', color: '#475569', verticalAlign: 'middle', fontSize: '0.9rem' }}>
+                  <td style={{ padding: '8px 14px', color: '#475569', verticalAlign: 'middle', fontSize: '0.78rem' }}>
                     {product.category || '-'}
                   </td>
                   
                   {/* HSN */}
-                  <td style={{ padding: '16px 20px', verticalAlign: 'middle' }}>
-                    <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                  <td style={{ padding: '8px 14px', verticalAlign: 'middle' }}>
+                    <span style={{ backgroundColor: '#f1f5f9', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 600 }}>
                       {product.hsnCode || '-'}
                     </span>
                   </td>
                   
                   {/* Price */}
-                  <td style={{ padding: '16px 20px', verticalAlign: 'middle', fontWeight: 700, color: '#10b981', fontSize: '1rem' }}>
+                  <td style={{ padding: '8px 14px', verticalAlign: 'middle', fontWeight: 700, color: '#059669', fontSize: '0.84rem' }}>
                     ₹{product.sellingPrice.toLocaleString()}
                   </td>
                   
                   {/* Stock */}
-                  <td style={{ padding: '16px 20px', verticalAlign: 'middle', fontWeight: 600, color: '#0f172a' }}>
+                  <td style={{ padding: '8px 14px', verticalAlign: 'middle', fontWeight: 600, color: '#0f172a', fontSize: '0.82rem' }}>
                     {product.stockQuantity}
                   </td>
                   
                   {/* Status */}
-                  <td style={{ padding: '16px 20px', verticalAlign: 'middle' }}>
+                  <td style={{ padding: '8px 14px', verticalAlign: 'middle' }}>
                     <span style={{ 
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      padding: '4px 12px',
-                      borderRadius: '16px',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      backgroundColor: product.stockQuantity > 10 ? '#dcfce3' : (product.stockQuantity > 0 ? '#fef9c3' : '#fee2e2'),
-                      color: product.stockQuantity > 10 ? '#166534' : (product.stockQuantity > 0 ? '#854d0e' : '#991b1b')
+                      gap: '5px',
+                      padding: '3px 8px',
+                      borderRadius: '12px',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      backgroundColor: product.stockQuantity > 10 ? '#ecfdf5' : (product.stockQuantity > 0 ? '#fef9c3' : '#fef2f2'),
+                      color: product.stockQuantity > 10 ? '#065f46' : (product.stockQuantity > 0 ? '#854d0e' : '#991b1b')
                     }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: product.stockQuantity > 10 ? '#10b981' : (product.stockQuantity > 0 ? '#f59e0b' : '#ef4444') }}></span>
+                      <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: product.stockQuantity > 10 ? '#10b981' : (product.stockQuantity > 0 ? '#f59e0b' : '#ef4444') }}></span>
                       {product.stockQuantity > 10 ? 'In Stock' : (product.stockQuantity > 0 ? 'Low Stock' : 'Out of Stock')}
                     </span>
                   </td>
 
                   {/* Actions */}
-                  <td style={{ padding: '16px 20px', verticalAlign: 'middle', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                  <td style={{ padding: '8px 14px', verticalAlign: 'middle', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '5px', justifyContent: 'center' }}>
                       {/* View Article Transaction History Button */}
                       <button 
                         onClick={() => setSelectedHistoryArticle(articleIdentifier)}
@@ -631,51 +640,88 @@ export default function ProductListClient({ products, categories, categoriesData
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          width: '32px',
-                          height: '32px',
-                          backgroundColor: '#eef2ff',
+                          width: '28px',
+                          height: '28px',
+                          backgroundColor: '#f8fafc',
                           color: '#4f46e5',
                           borderRadius: '6px',
-                          border: '1px solid #c7d2fe',
+                          border: '1px solid #e2e8f0',
                           cursor: 'pointer',
-                          transition: 'background 0.2s'
+                          transition: 'all 0.15s ease'
                         }} 
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#eef2ff'} 
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.borderColor = '#c7d2fe'; }} 
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }} 
                         title="View Article Transaction History, Quotes & Invoices"
                       >
-                        <History size={16} />
+                        <History size={14} />
                       </button>
 
                       {canManage && (
                         <>
                           <button 
                             onClick={() => setPrintLabelProduct(product)}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#4f46e5', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }} 
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '28px',
+                              height: '28px',
+                              backgroundColor: '#f8fafc',
+                              color: '#4f46e5',
+                              borderRadius: '6px',
+                              border: '1px solid #e2e8f0',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }} 
+                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.borderColor = '#c7d2fe'; }} 
+                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }} 
                             title="Print Barcode / QR Label"
                           >
-                            <Tag size={16} />
+                            <Tag size={14} />
                           </button>
                           <button 
                             onClick={() => setEditingProduct(product)}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#3b82f6', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }} 
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e0e7ff'} 
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '28px',
+                              height: '28px',
+                              backgroundColor: '#f8fafc',
+                              color: '#2563eb',
+                              borderRadius: '6px',
+                              border: '1px solid #e2e8f0',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }} 
+                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }} 
+                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }} 
                             title="Edit Product & Images"
                           >
-                            <Edit size={16} />
+                            <Edit size={14} />
                           </button>
                           <button 
                             onClick={() => handleDeleteProduct(product)}
                             disabled={deletingId === product.id}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', backgroundColor: '#f1f5f9', color: '#ef4444', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'background 0.2s', opacity: deletingId === product.id ? 0.5 : 1 }} 
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'} 
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} 
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '28px',
+                              height: '28px',
+                              backgroundColor: '#f8fafc',
+                              color: '#dc2626',
+                              borderRadius: '6px',
+                              border: '1px solid #e2e8f0',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              opacity: deletingId === product.id ? 0.5 : 1
+                            }} 
+                            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; e.currentTarget.style.borderColor = '#fecaca'; }} 
+                            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#e2e8f0'; }} 
                             title="Delete Product"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
                           </button>
                         </>
                       )}

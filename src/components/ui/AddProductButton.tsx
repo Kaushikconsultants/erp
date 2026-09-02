@@ -5,7 +5,15 @@ import AddProductModal from "./AddProductModal";
 
 import { useSearchParams } from "next/navigation";
 
-export default function AddProductButton({ categories = [] }: { categories?: string[] }) {
+export default function AddProductButton({ 
+  categories = [],
+  style,
+  className
+}: { 
+  categories?: string[]; 
+  style?: React.CSSProperties;
+  className?: string;
+}) {
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -16,10 +24,29 @@ export default function AddProductButton({ categories = [] }: { categories?: str
     }
   }, [searchParams]);
 
+  const buttonStyle: React.CSSProperties = {
+    height: "32px",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "5px",
+    padding: "0 13px",
+    backgroundColor: "#10b981",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "7px",
+    fontSize: "0.78rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    boxShadow: "0 1px 2px rgba(16, 185, 129, 0.2)",
+    transition: "all 0.15s ease",
+    ...style
+  };
+
   return (
     <>
       <button 
-        className="primary-btn hover-lift" 
+        className={className || "hover-lift"} 
+        style={buttonStyle}
         onClick={() => setIsModalOpen(true)}
       >
         + Add Product
