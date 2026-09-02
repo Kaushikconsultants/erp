@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 export async function getKPIDetails(type: 'customers' | 'orders' | 'calls', timeRange: 'today' | 'week' | 'month' | 'all') {
   try {
     const session = await getServerSession(authOptions);
-    const orgId = session?.user?.organizationId;
+    const orgId = (session?.user as any)?.organizationId;
 
     const now = new Date();
     let startDate = new Date(0); // Epoch for 'all'
