@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import "react-datepicker/dist/react-datepicker.css";
 import "./globals.css";
 import "@/components/ui/modal.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
