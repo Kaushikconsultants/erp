@@ -1060,29 +1060,50 @@ button {
 .date-range-filter-wrapper {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background-color: #f8fafc;
-  padding: 4px 8px;
+  gap: 8px;
+  background-color: #ffffff;
+  padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+  height: 38px; /* Match standard input height */
+}
+
+.date-range-filter-wrapper:hover {
+  border-color: #cbd5e1;
+}
+
+.date-range-filter-wrapper:focus-within {
+  border-color: var(--accent-primary, #4f46e5);
+  box-shadow: 0 0 0 1px var(--accent-primary, #4f46e5);
 }
 
 .date-range-icon {
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .date-range-input {
   border: none;
   background-color: transparent;
-  font-size: 0.78rem;
-  color: #334155;
+  font-size: 0.875rem; /* 14px */
+  font-weight: 500;
+  color: #1e293b;
   outline: none;
   cursor: pointer;
-  width: 90px;
+  width: 95px;
+  text-align: center;
+}
+
+.date-range-input::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
 }
 
 .date-range-separator {
-  color: #cbd5e1;
+  color: #94a3b8;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .react-datepicker-wrapper {
