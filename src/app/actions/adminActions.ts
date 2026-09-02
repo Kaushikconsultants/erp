@@ -38,8 +38,7 @@ export async function getKPIDetails(type: 'customers' | 'orders' | 'calls', time
       const data = await prisma.call.findMany({
         where: {
           ...(timeRange !== 'all' ? { followUpDate: { gte: startDate } } : {}),
-          followUpDate: { not: null },
-          outcome: 'INTERESTED'
+          followUpDate: { not: null }
         },
         orderBy: { followUpDate: 'desc' },
         include: { customer: true, employee: { include: { user: true } } }
