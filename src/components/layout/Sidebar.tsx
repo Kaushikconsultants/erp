@@ -174,12 +174,6 @@ const Sidebar = ({
 
             {openCategories.crm && (
               <div className="category-sub-list">
-                {canAccess('customers') && (
-                  <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
-                    <Users size={16} />
-                    <span>Customers</span>
-                  </Link>
-                )}
                 {canAccess('leads') && (
                   <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
                     <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
@@ -197,11 +191,21 @@ const Sidebar = ({
                       <Clock size={16} style={{ color: '#f59e0b' }} />
                       <span>Follow-ups</span>
                     </Link>
-                    <Link href="/tasks" onClick={onClose} className={`category-sub-item ${isActive('/tasks') ? 'active' : ''}`}>
-                      <CheckSquare size={16} />
-                      <span>Tasks</span>
-                    </Link>
                   </>
+                )}
+
+                {canAccess('customers') && (
+                  <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
+                    <Users size={16} />
+                    <span>Customers</span>
+                  </Link>
+                )}
+
+                {canAccess('calls_tasks') && (
+                  <Link href="/tasks" onClick={onClose} className={`category-sub-item ${isActive('/tasks') ? 'active' : ''}`}>
+                    <CheckSquare size={16} />
+                    <span>Tasks</span>
+                  </Link>
                 )}
               </div>
             )}
