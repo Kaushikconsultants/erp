@@ -14,7 +14,8 @@ import {
   ExternalLink,
   Package,
   FileText,
-  Clock
+  Clock,
+  Truck
 } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
 import { getInvoiceForFullEdit, saveFullInvoiceDetails } from "@/app/actions/invoiceActions";
@@ -173,6 +174,7 @@ export default function EditFullInvoiceModal({
       }
 
       setOverallDiscount(inv.discountAmount || 0);
+      setShippingCharges(res.shippingCharges || 0);
       setAmountPaid(inv.amountPaid || 0);
       setLoading(false);
     }
@@ -260,6 +262,28 @@ export default function EditFullInvoiceModal({
       return;
     }
     setItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddShippingItem = () => {
+    const freightAmount = shippingCharges > 0 ? shippingCharges : 100;
+    setItems(prev => [
+      ...prev,
+      {
+        productName: "Shipping & Delivery Charges",
+        hsnCode: "9965",
+        quantity: 1,
+        rate: freightAmount,
+        discount: 0,
+        gstRate: 18,
+        cgst: isInterstate ? 0 : (freightAmount * 0.18) / 2,
+        sgst: isInterstate ? 0 : (freightAmount * 0.18) / 2,
+        igst: isInterstate ? freightAmount * 0.18 : 0,
+        total: freightAmount * 1.18
+      }
+    ]);
+    if (shippingCharges > 0) {
+      setShippingCharges(0);
+    }
   };
 
   const handleProductSelect = (index: number, prodId: string) => {
@@ -1018,29 +1042,56 @@ export default function EditFullInvoiceModal({
                   </span>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleAddRow}
-                  style={{
-                    backgroundColor: "#ffffff",
-                    color: "#16a34a",
-                    border: "1.5px solid #86efac",
-                    padding: "6px 13px",
-                    borderRadius: "7px",
-                    fontSize: "0.8rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    transition: "all 0.15s ease",
-                    boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f0fdf4"; }}
-                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#ffffff"; }}
-                >
-                  <Plus size={14} /> Add Line Item
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={handleAddShippingItem}
+                    style={{
+                      backgroundColor: "#ffffff",
+                      color: "#0284c7",
+                      border: "1.5px solid #bae6fd",
+                      padding: "6px 12px",
+                      borderRadius: "7px",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      transition: "all 0.15s ease",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
+                    }}
+                    title="Add Shipping / Freight Charges as a distinct line item"
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f0f9ff"; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#ffffff"; }}
+                  >
+                    <Truck size={14} /> + Shipping Line
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAddRow}
+                    style={{
+                      backgroundColor: "#ffffff",
+                      color: "#16a34a",
+                      border: "1.5px solid #86efac",
+                      padding: "6px 13px",
+                      borderRadius: "7px",
+                      fontSize: "0.8rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      transition: "all 0.15s ease",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.03)"
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#f0fdf4"; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#ffffff"; }}
+                  >
+                    <Plus size={14} /> Add Line Item
+                  </button>
+                </div>
               </div>
 
               {/* Items Table */}
@@ -1382,26 +1433,46 @@ export default function EditFullInvoiceModal({
                   </>
                 )}
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.84rem" }}>
-                  <span style={{ color: "#475569" }}>Shipping Charges (₹)</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={shippingCharges}
-                    onChange={e => setShippingCharges(parseFloat(e.target.value) || 0)}
-                    style={{
-                      width: "100px",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "0.82rem",
-                      textAlign: "right",
-                      fontWeight: 600,
-                      color: "#0f172a",
-                      outline: "none"
-                    }}
-                  />
+                {/* Shipping Charges */}
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  fontSize: "0.84rem",
+                  padding: "6px 10px",
+                  borderRadius: "8px",
+                  backgroundColor: shippingCharges > 0 ? "#f0f9ff" : "#f8fafc",
+                  border: shippingCharges > 0 ? "1.5px solid #7dd3fc" : "1px solid #e2e8f0",
+                  transition: "all 0.15s ease"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Truck size={15} color={shippingCharges > 0 ? "#0284c7" : "#64748b"} />
+                    <span style={{ color: shippingCharges > 0 ? "#0369a1" : "#334155", fontWeight: 600 }}>
+                      Shipping Charges (₹)
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={shippingCharges}
+                      onChange={e => setShippingCharges(parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      style={{
+                        width: "100px",
+                        padding: "4px 8px",
+                        borderRadius: "6px",
+                        border: shippingCharges > 0 ? "1.5px solid #38bdf8" : "1px solid #cbd5e1",
+                        fontSize: "0.84rem",
+                        textAlign: "right",
+                        fontWeight: 700,
+                        color: shippingCharges > 0 ? "#0369a1" : "#0f172a",
+                        backgroundColor: "#ffffff",
+                        outline: "none"
+                      }}
+                    />
+                  </div>
                 </div>
 
                 {/* Grand Total */}

@@ -425,12 +425,38 @@ export async function getInvoiceForFullEdit(id: string) {
     const companyRes = await getCompanySettings();
     const companyState = companyRes.settings?.state || "Haryana";
 
+    // Determine shipping charges from linked quotation or invoice total difference
+    let shippingCharges = 0;
+    const noteText = `${invoice.notes || ""} ${invoice.order?.notes || ""}`;
+    const quoteMatch = noteText.match(/Quotation #([A-Za-z0-9\-_]+)/);
+    if (quoteMatch && quoteMatch[1]) {
+      const q = await prisma.quotation.findFirst({
+        where: { quotationNumber: quoteMatch[1] },
+        select: { shippingCharges: true }
+      });
+      if (q && typeof q.shippingCharges === "number" && q.shippingCharges > 0) {
+        shippingCharges = q.shippingCharges;
+      }
+    }
+
+    if (!shippingCharges) {
+      const items = invoice.order?.items || [];
+      const itemTaxSum = items.reduce((sum, it) => sum + (it.cgst || 0) + (it.sgst || 0) + (it.igst || 0), 0);
+      const itemSubtotalSum = items.reduce((sum, it) => sum + (it.quantity * it.rate), 0);
+      const totalWithoutShipping = itemSubtotalSum + (itemTaxSum || invoice.taxAmount || 0) - (invoice.discountAmount || 0);
+      const diff = Math.round(((invoice.totalAmount || 0) - totalWithoutShipping) * 100) / 100;
+      if (diff > 0) {
+        shippingCharges = diff;
+      }
+    }
+
     return {
       success: true,
       invoice,
       products,
       customers,
       companyState,
+      shippingCharges,
     };
   } catch (error: any) {
     return { error: "Failed to load invoice editor data: " + error.message };
