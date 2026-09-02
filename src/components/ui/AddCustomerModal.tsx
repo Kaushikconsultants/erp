@@ -120,6 +120,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
           setStreetAddress(res.address);
         }
         setAddressData(prev => ({
+          ...prev,
           pincode: res.pincode || prev.pincode,
           city: res.city || prev.city || res.state,
           state: res.state || prev.state
