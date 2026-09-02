@@ -81,6 +81,21 @@ export async function createLead(data: {
     const orgId = await getTenantOrgId();
     if (!orgId) return { success: false, error: "Unauthorized" };
 
+    const existingLead = await prisma.lead.findFirst({
+      where: {
+        whatsappNumber: data.whatsappNumber,
+        organizationId: orgId || null
+      },
+      include: {
+        assignedSalesperson: { include: { user: true } }
+      }
+    });
+
+    if (existingLead) {
+      const agentName = existingLead.assignedSalesperson?.user?.name || "an agent";
+      return { success: false, error: `Lead with this mobile number already exists and is assigned to ${agentName}.` };
+    }
+
     const lead = await prisma.lead.create({
       data: {
         ...data,
@@ -133,6 +148,21 @@ export async function convertLeadToCustomer(leadId: string, customerData: any) {
   try {
     const orgId = await getTenantOrgId();
     if (!orgId) return { success: false, error: "Unauthorized" };
+
+    const existingCustomer = await prisma.customer.findFirst({
+      where: {
+        mobile: customerData.mobile,
+        organizationId: orgId || null
+      },
+      include: {
+        assignedSalesperson: { include: { user: true } }
+      }
+    });
+
+    if (existingCustomer) {
+      const agentName = existingCustomer.assignedSalesperson?.user?.name || "an agent";
+      return { success: false, error: `Customer with this mobile number already exists and is assigned to ${agentName}.` };
+    }
 
     // 1. Create the new customer
     const newCustomer = await prisma.customer.create({

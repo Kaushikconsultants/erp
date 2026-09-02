@@ -337,6 +337,25 @@ export async function createCustomer(formData: FormData) {
 
     const organizationId = await getTenantOrgId();
 
+    const existingCustomer = await prisma.customer.findFirst({
+      where: {
+        mobile: phone,
+        organizationId: organizationId || null
+      },
+      include: {
+        assignedSalesperson: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+
+    if (existingCustomer) {
+      const agentName = existingCustomer.assignedSalesperson?.user?.name || "an agent";
+      return { error: `Customer with this mobile number already exists and is assigned to ${agentName}.` };
+    }
+
     const customer = await prisma.customer.create({
       data: {
         organizationId,
