@@ -1,3 +1,7 @@
+import { shipmozoService } from "./shipmozoService";
+import { prisma } from "@/lib/prisma";
+import { getTenantOrgId } from "@/lib/tenant";
+
 export interface TrackingEvent {
   date: string;
   location: string;
@@ -15,71 +19,44 @@ export interface TrackingResponse {
   error?: string;
 }
 
-import { shipmozoService } from "./shipmozoService";
-
 /**
- * MOCK: Simulates an API call to a shipping aggregator (e.g. Shiprocket, Pickrr, Delhivery)
+ * Fetches real-time tracking from the configured shipping provider in the database
  */
 export async function fetchRealTimeTracking(awb: string, courierName: string): Promise<TrackingResponse> {
-  // If the courier is Shipmozo, use the Shipmozo service directly
-  if (courierName?.toLowerCase().includes("shipmozo")) {
-    return await shipmozoService.fetchTracking(awb);
-  }
-
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-
   if (!awb) {
     return { success: false, error: "AWB Number is required" };
   }
 
-  // Generate dynamic deterministic mock data based on the AWB length/characters
-  const today = new Date();
-  
-  // Status simulation: if AWB ends in '0', it's Delivered, else In Transit.
-  const isDelivered = awb.endsWith("0");
-  const currentStatus = isDelivered ? "Delivered" : "In Transit";
-  
-  const expectedDate = new Date(today);
-  expectedDate.setDate(today.getDate() + 3);
-
-  const events: TrackingEvent[] = [
-    {
-      date: new Date(today.getTime() - 24 * 60 * 60 * 1000 * 2).toISOString(),
-      location: "Warehouse, Mumbai",
-      status: "Manifested",
-      description: "Shipment details received by courier."
-    },
-    {
-      date: new Date(today.getTime() - 24 * 60 * 60 * 1000 * 1.5).toISOString(),
-      location: "Sort Center, Mumbai",
-      status: "Dispatched",
-      description: "Shipment picked up and in transit."
+  try {
+    const orgId = await getTenantOrgId();
+    if (!orgId) {
+      return { success: false, error: "Unauthorized: Tenant ID missing" };
     }
-  ];
 
-  if (isDelivered) {
-    events.push({
-      date: today.toISOString(),
-      location: "Destination City",
-      status: "Delivered",
-      description: "Shipment delivered successfully."
-    });
-  } else {
-    events.push({
-      date: today.toISOString(),
-      location: "In Transit Route",
-      status: "In Transit",
-      description: "Shipment is on the way to the destination city."
-    });
+    // Attempt to route to Shipmozo if specified or default
+    if (courierName?.toLowerCase().includes("shipmozo")) {
+      const integration = await prisma.appIntegration.findFirst({
+        where: { 
+          organizationId: orgId, 
+          providerId: "shipmozo", 
+          isEnabled: true 
+        }
+      });
+
+      if (!integration || !integration.credentials) {
+        return { success: false, error: "Shipmozo Integration is not configured or is disabled in Settings." };
+      }
+
+      const creds = JSON.parse(integration.credentials);
+      return await shipmozoService.fetchTracking(awb, creds.apiKey, creds.apiSecret);
+    }
+
+    // Default Fallback (for other unconfigured couriers, return a live error instead of fake data)
+    return { 
+      success: false, 
+      error: `Live Tracking for courier '${courierName}' is not yet implemented or configured.`
+    };
+  } catch (error: any) {
+    return { success: false, error: `Failed to track shipment: ${error.message}` };
   }
-
-  return {
-    success: true,
-    awb,
-    courier: courierName || "Standard Courier",
-    currentStatus,
-    expectedDelivery: expectedDate.toISOString(),
-    events: events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) // latest first
-  };
 }
