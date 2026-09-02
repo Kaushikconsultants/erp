@@ -1062,12 +1062,13 @@ export async function confirmQuotation(
       data: {
         status: "Confirmed",
         receivedAmount: effectiveReceived,
+        discountSlab: discountSlab,
         activities: {
           create: {
             userId,
             userName,
             action: "Quotation Confirmed",
-            details: `Quotation confirmed [Method: ${paymentOption}, Received: ₹${effectiveReceived}]`
+            details: `Quotation confirmed [Method: ${paymentOption}, Received: ₹${effectiveReceived}, Structure: ${discountSlab}]`
           }
         }
       }
@@ -1174,3 +1175,48 @@ export async function updateQuotationTokenAmount(
   }
 }
 
+// ─── Update Pricing Structure (Admin Only) ───────
+export async function updatePricingStructure(quotationId: string, discountSlab: string) {
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id || null;
+    const userName = (session?.user as any)?.name || "System";
+    const rawRole = (session?.user as any)?.role || 'SALES';
+    const normRole = String(rawRole).trim().toUpperCase();
+    const isAdmin = normRole === 'ADMIN' || normRole === 'SUPER_ADMIN';
+
+    if (!isAdmin) {
+      return { error: "Only admins are allowed to edit the pricing structure." };
+    }
+
+    const quotation = await prisma.quotation.findUnique({
+      where: { id: quotationId }
+    });
+
+    if (!quotation) return { error: "Quotation not found" };
+
+    const oldSlab = quotation.discountSlab || "1-15";
+
+    await prisma.quotation.update({
+      where: { id: quotationId },
+      data: {
+        discountSlab,
+        activities: {
+          create: {
+            userId,
+            userName,
+            action: "Pricing Structure Updated",
+            details: `Admin changed pricing structure from ${oldSlab} to ${discountSlab}`
+          }
+        }
+      }
+    });
+
+    revalidatePath("/quotations");
+    revalidatePath(`/quotations/${quotationId}`);
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating pricing structure:", error);
+    return { error: error?.message || "Failed to update pricing structure" };
+  }
+}

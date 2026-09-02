@@ -9,6 +9,7 @@ import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
 import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
 import SendQuotationWhatsAppBtn from '@/components/quotations/SendQuotationWhatsAppBtn';
 import EditTokenActionBtn from '@/components/quotations/EditTokenActionBtn';
+import EditPricingStructureBtn from '@/components/quotations/EditPricingStructureBtn';
 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -86,6 +87,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
           </a>
           {quotation.status === 'Confirmed' && (
             <>
+              <EditPricingStructureBtn quotationId={quotation.id} currentSlab={quotation.discountSlab || '1-15'} />
               <EditTokenActionBtn
                 quotationId={quotation.id}
                 quotationNumber={quotation.quotationNumber}

@@ -832,6 +832,7 @@ model Quotation {
   notes           String?
   internalNotes   String?
   termsConditions String?
+  discountSlab    String?  @default("1-15")
 
   viewedDate      DateTime?
   acceptedDate    DateTime?
