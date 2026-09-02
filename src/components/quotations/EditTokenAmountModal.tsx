@@ -3,7 +3,15 @@
 import React, { useState } from 'react';
 import { updateQuotationTokenAmount } from '@/app/actions/quotationActions';
 import { useRouter } from 'next/navigation';
-import { Coins, X, CheckCircle2, CreditCard, ShieldCheck, DollarSign, Wallet } from 'lucide-react';
+import { Coins, X, CheckCircle2, CreditCard, ShieldCheck, DollarSign, Wallet, Percent, ShieldAlert } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+
+const SLAB_OPTIONS = [
+  { id: '0', title: '0% Discount (Bonus)', icon: <Percent size={14} color="#059669" /> },
+  { id: '1-15', title: '1 - 15% Discount (Standard)', icon: <CheckCircle2 size={14} color="#059669" /> },
+  { id: '>15', title: 'Above 15% Discount', icon: <ShieldAlert size={14} color="#d97706" /> },
+  { id: 'credit', title: 'Credit Customer', icon: <CreditCard size={14} color="#4f46e5" /> }
+];
 import '@/components/ui/modal.css';
 
 interface EditTokenAmountModalProps {
@@ -15,6 +23,7 @@ interface EditTokenAmountModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (newAmount: number) => void;
+  discountSlab?: string;
 }
 
 export default function EditTokenAmountModal({
@@ -25,11 +34,18 @@ export default function EditTokenAmountModal({
   currentReceivedAmount,
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  discountSlab
 }: EditTokenAmountModalProps) {
+  const { data: session } = useSession();
+  const rawRole = (session?.user as any)?.role || 'SALES';
+  const normRole = String(rawRole).trim().toUpperCase();
+  const isAdmin = normRole === 'ADMIN' || normRole === 'SUPER_ADMIN';
+
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedSlab, setSelectedSlab] = useState(discountSlab || '1-15');
 
   // Initial payment option based on current amount
   const initialOption: 'FULL' | 'TOKEN' | 'CREDIT' = 
@@ -65,7 +81,7 @@ export default function EditTokenAmountModal({
     setLoading(true);
     setError('');
 
-    const res = await updateQuotationTokenAmount(quotationId, resolvedAmount, paymentOption);
+    const res = await updateQuotationTokenAmount(quotationId, resolvedAmount, paymentOption, isAdmin ? selectedSlab : undefined);
     setLoading(false);
 
     if (res.success) {
@@ -258,6 +274,47 @@ export default function EditTokenAmountModal({
               0 Advance (Credit)
             </button>
           </div>
+
+          {/* ADMIN SLAB OVERRIDE */}
+          {isAdmin && (
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
+                Pricing Structure (Admin Override)
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                {SLAB_OPTIONS.map((option) => {
+                  const isSelected = selectedSlab === option.id;
+                  return (
+                    <div
+                      key={option.id}
+                      onClick={() => setSelectedSlab(option.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid #b45309' : '1px solid #e2e8f0',
+                        backgroundColor: isSelected ? '#fffbeb' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <input 
+                        type="radio"
+                        checked={isSelected}
+                        onChange={() => setSelectedSlab(option.id)}
+                        style={{ accentColor: '#b45309', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
+                      />
+                      <div style={{ flex: 1, fontSize: '0.75rem', fontWeight: isSelected ? 600 : 500, color: isSelected ? '#78350f' : '#1e293b' }}>
+                        {option.title}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* TOKEN AMOUNT INPUT IF TOKEN IS SELECTED */}
           {paymentOption === 'TOKEN' && (

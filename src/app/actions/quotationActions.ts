@@ -1113,7 +1113,8 @@ export async function confirmQuotation(
 export async function updateQuotationTokenAmount(
   quotationId: string,
   newTokenAmount: number,
-  paymentOption?: 'FULL' | 'TOKEN' | 'CREDIT'
+  paymentOption?: 'FULL' | 'TOKEN' | 'CREDIT',
+  discountSlab?: string
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -1130,17 +1131,30 @@ export async function updateQuotationTokenAmount(
     const prevReceived = Number(quotation.receivedAmount || 0);
     const newReceived = Math.max(0, Number(newTokenAmount || 0));
     const delta = newReceived - prevReceived;
+    const oldSlab = quotation.discountSlab || "1-15";
+
+    const updateData: any = {
+      receivedAmount: newReceived,
+    };
+    if (discountSlab) {
+      updateData.discountSlab = discountSlab;
+    }
+
+    let detailMsg = `Token amount updated from ₹${prevReceived.toLocaleString('en-IN')} to ₹${newReceived.toLocaleString('en-IN')}`;
+    if (discountSlab && discountSlab !== oldSlab) {
+      detailMsg += ` | Pricing structure changed from ${oldSlab} to ${discountSlab}`;
+    }
 
     await prisma.quotation.update({
       where: { id: quotationId },
       data: {
-        receivedAmount: newReceived,
+        ...updateData,
         activities: {
           create: {
             userId,
             userName,
-            action: "Token Amount Updated",
-            details: `Token amount updated from ₹${prevReceived.toLocaleString('en-IN')} to ₹${newReceived.toLocaleString('en-IN')}`
+            action: "Token/Pricing Updated",
+            details: detailMsg
           }
         }
       }

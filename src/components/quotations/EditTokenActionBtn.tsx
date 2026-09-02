@@ -9,13 +9,15 @@ export default function EditTokenActionBtn({
   quotationNumber,
   customerName,
   totalValue,
-  receivedAmount
+  receivedAmount,
+  discountSlab
 }: {
   quotationId: string;
   quotationNumber: string;
   customerName?: string;
   totalValue: number;
   receivedAmount: number;
+  discountSlab?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -51,6 +53,7 @@ export default function EditTokenActionBtn({
           customerName={customerName}
           totalValue={totalValue}
           currentReceivedAmount={receivedAmount}
+          discountSlab={discountSlab}
           onClose={() => setIsOpen(false)}
         />
       )}
