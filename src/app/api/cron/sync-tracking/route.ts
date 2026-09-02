@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { shipmozoService } from '@/lib/shipmozoService';
+import { fetchRealTimeTracking } from '@/lib/shippingAggregator';
 
 // Vercel Cron Job to run every hour
 export async function GET(request: Request) {
@@ -34,24 +34,11 @@ export async function GET(request: Request) {
     // 3. Process each order and update its shipping status
     for (const order of activeOrders) {
       try {
-        if (!order.awbNumber) continue;
+        if (!order.awbNumber || !order.courierName) continue;
         if (!order.organizationId) continue;
 
-        // Fetch the specific organization's shipmozo integration credentials
-        const integration = await prisma.appIntegration.findFirst({
-          where: { 
-            organizationId: order.organizationId, 
-            providerId: "shipmozo", 
-            isEnabled: true 
-          }
-        });
-
-        if (!integration || !integration.credentials) {
-          continue; // Skip if no valid credentials for this tenant
-        }
-
-        const creds = JSON.parse(integration.credentials);
-        const trackingRes = await shipmozoService.fetchTracking(order.awbNumber, creds.apiKey, creds.apiSecret);
+        // Automatically routes to correct integration service using the new Aggregator
+        const trackingRes = await fetchRealTimeTracking(order.awbNumber, order.courierName);
         
         if (trackingRes && trackingRes.currentStatus) {
           const isDelivered = trackingRes.currentStatus.toLowerCase().includes('delivered');

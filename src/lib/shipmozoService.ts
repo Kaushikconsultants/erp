@@ -54,8 +54,8 @@ export const shipmozoService = {
   getHeaders(apiKey: string, apiSecret: string) {
     return {
       "Content-Type": "application/json",
-      "X-Public-Key": apiKey || "",
-      "X-Private-Key": apiSecret || "",
+      "public-key": apiKey || "",
+      "private-key": apiSecret || "",
     };
   },
 
@@ -65,32 +65,33 @@ export const shipmozoService = {
     }
 
     try {
-      const response = await fetch(`https://api.shipmozo.com/v1/tracking/${awb}`, {
+      const response = await fetch(`https://shipping-api.com/app/api/v1/track-order?awb_number=${awb}`, {
         method: "GET",
         headers: this.getHeaders(apiKey, apiSecret),
       });
 
-      const data = await response.json();
+      const json = await response.json();
 
-      if (!response.ok) {
+      if (json.result === "0") {
         return { 
           success: false, 
-          error: data.message || `Shipmozo API Error: ${response.status} ${response.statusText}` 
+          error: json.message || "Shipmozo tracking error" 
         };
       }
 
-      // Map actual Shipmozo response to our internal TrackingResponse
+      const data = json.data || {};
+
       return {
         success: true,
-        awb: data.awb_number,
-        courier: data.courier_name || "Shipmozo",
-        currentStatus: data.current_status,
-        expectedDelivery: data.expected_delivery_date,
-        events: data.tracking_events?.map((evt: any) => ({
-          date: evt.date,
-          location: evt.location,
-          status: evt.status,
-          description: evt.description
+        awb: data.awb_number || awb,
+        courier: data.courier || "Shipmozo",
+        currentStatus: data.current_status || "Unknown",
+        expectedDelivery: data.expected_delivery_date || null,
+        events: data.scan_detail?.map((evt: any) => ({
+          date: evt.status_time || evt.date || new Date().toISOString(),
+          location: evt.location || "Unknown",
+          status: evt.status || evt.activity || "Update",
+          description: evt.activity || "Tracking updated"
         })) || [],
       };
     } catch (error: any) {
@@ -112,31 +113,69 @@ export const shipmozoService = {
     }
 
     try {
-      const response = await fetch(`https://api.shipmozo.com/v1/rates`, {
+      const dimensions = params.dimensions?.map(d => ({
+        no_of_box: String(d.quantity || 1),
+        length: String(d.length),
+        width: String(d.width),
+        height: String(d.height)
+      })) || [];
+
+      // If dimensions are missing, Shipmozo still expects valid parameters, use defaults or omit depending on strictness
+      if (dimensions.length === 0) {
+        dimensions.push({
+           no_of_box: "1",
+           length: "10",
+           width: "10",
+           height: "10"
+        });
+      }
+
+      const body = {
+        pickup_pincode: Number(params.originPincode),
+        delivery_pincode: Number(params.destinationPincode),
+        payment_type: params.paymentMode === "COD" ? "COD" : "PREPAID",
+        shipment_type: params.shipmentType === "Reverse" ? "RETURN" : "FORWARD",
+        order_amount: params.orderValue || 0,
+        type_of_package: params.packageType || "ESSENTIALS",
+        rov_type: params.rovType === "Rov Carrier" ? "ROV_CARRIER" : "ROV_OWNER",
+        cod_amount: params.paymentMode === "COD" ? String(params.orderValue) : "",
+        weight: Math.round(params.weight * 1000), // Shipmozo accepts weight in grams
+        dimensions: dimensions
+      };
+
+      const response = await fetch(`https://shipping-api.com/app/api/v1/rate-calculator`, {
         method: "POST",
         headers: this.getHeaders(apiKey, apiSecret),
-        body: JSON.stringify({
-          origin: params.originPincode,
-          destination: params.destinationPincode,
-          weight: params.weight,
-          payment_mode: params.paymentMode,
-          order_value: params.orderValue,
-          dimensions: params.dimensions
-        })
+        body: JSON.stringify(body)
       });
 
-      const data = await response.json();
+      const json = await response.json();
 
-      if (!response.ok) {
+      if (json.result === "0") {
         return { 
           success: false, 
-          error: data.message || `Shipmozo API Error: ${response.status} ${response.statusText}` 
+          error: json.message || "Shipmozo API Error" 
         };
       }
 
+      // Map whatever data comes back to our internal array
+      const ratesList: ShippingRate[] = Array.isArray(json.data) ? json.data.map((r: any) => ({
+         partnerName: r.courier_name || r.partnerName || "Shipmozo",
+         serviceName: r.service_name || r.serviceName || "Standard",
+         courierCompanyId: String(r.courier_id || r.courierCompanyId || "1"),
+         chargedWeight: r.charged_weight || r.chargedWeight || params.weight,
+         estimatedDeliveryDays: r.estimated_delivery_days || 3,
+         zone: r.zone || "A",
+         charge: r.charge || r.total_charge || r.rate || 0,
+         breakdown: {
+           shippingCharges: r.charge || 0,
+           gst: r.gst || 0
+         }
+      })) : [];
+
       return {
         success: true,
-        rates: data.rates || [] // Ensure this maps to our ShippingRate interface correctly
+        rates: ratesList
       };
     } catch (error: any) {
       return { success: false, error: `Failed to connect to Shipmozo: ${error.message}` };

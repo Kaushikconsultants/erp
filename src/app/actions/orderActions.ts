@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { fetchRealTimeTracking } from "@/lib/shippingAggregator";
+import { fetchRealTimeTracking, aggregateShippingRates } from "@/lib/shippingAggregator";
 import { calculateItemGst } from "@/lib/gstUtils";
 import { getCompanySettings } from "./companyActions";
 import { shipmozoService, RateCalculationParams } from "@/lib/shipmozoService";
@@ -333,26 +333,11 @@ export async function calculateShippingRates(params: RateCalculationParams) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
 
-    const orgId = await getTenantOrgId();
-    if (!orgId) return { error: "Tenant ID missing" };
-
-    const integration = await prisma.appIntegration.findFirst({
-      where: { 
-        organizationId: orgId, 
-        providerId: "shipmozo", 
-        isEnabled: true 
-      }
-    });
-
-    if (!integration || !integration.credentials) {
-      return { error: "Shipmozo Integration is not configured or is disabled in Settings." };
-    }
-
-    const creds = JSON.parse(integration.credentials);
-    const ratesResponse = await shipmozoService.calculateRates(params, creds.apiKey, creds.apiSecret);
+    const ratesResponse = await aggregateShippingRates(params);
     return ratesResponse;
   } catch (error) {
     console.error("Failed to calculate shipping rates:", error);
     return { error: "Failed to calculate shipping rates" };
   }
 }
+
