@@ -33,6 +33,7 @@ export default function AddLeadButton({ employees }: { employees?: {id: string, 
   };
 
   return (
+    <>
       <div style={{ display: 'flex', gap: '12px' }}>
         <button 
           className="action-btn hover-lift" 
