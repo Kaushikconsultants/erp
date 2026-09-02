@@ -84,6 +84,49 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // Check for existing invoice
   const existingInvoice = await prisma.invoice.findFirst({ where: { orderId: id } });
 
+  // Check if linked to a quotation and auto-sync financial values
+  const quoteMatch = (order.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+  let linkedQuotation: any = null;
+  if (quoteMatch && quoteMatch[1]) {
+    linkedQuotation = await prisma.quotation.findFirst({
+      where: { quotationNumber: quoteMatch[1] },
+      select: { shippingCharges: true, adjustment: true, totalValue: true, receivedAmount: true, subtotal: true, taxTotal: true, cgst: true, sgst: true, igst: true }
+    });
+  }
+
+  // If order total differs or was saved with outdated totals, synchronize to match Quotation
+  if (linkedQuotation && linkedQuotation.totalValue > 0 && (order.totalValue !== linkedQuotation.totalValue || order.subtotal !== linkedQuotation.subtotal)) {
+    const effectiveTotal = linkedQuotation.totalValue;
+    const effectiveReceived = Number(linkedQuotation.receivedAmount !== undefined ? linkedQuotation.receivedAmount : order.paymentReceived);
+    const effectiveOutstanding = Math.max(0, effectiveTotal - effectiveReceived);
+
+    order.totalValue = effectiveTotal;
+    order.subtotal = linkedQuotation.subtotal || order.subtotal;
+    order.paymentReceived = effectiveReceived;
+    order.outstandingAmount = effectiveOutstanding;
+    if (linkedQuotation.taxTotal) order.tax = linkedQuotation.taxTotal;
+    if (linkedQuotation.cgst !== undefined) order.cgst = linkedQuotation.cgst;
+    if (linkedQuotation.sgst !== undefined) order.sgst = linkedQuotation.sgst;
+    if (linkedQuotation.igst !== undefined) order.igst = linkedQuotation.igst;
+
+    prisma.order.update({
+      where: { id: order.id },
+      data: {
+        totalValue: effectiveTotal,
+        subtotal: order.subtotal,
+        tax: order.tax,
+        cgst: order.cgst,
+        sgst: order.sgst,
+        igst: order.igst,
+        paymentReceived: effectiveReceived,
+        outstandingAmount: effectiveOutstanding
+      }
+    }).catch(() => {});
+  }
+
+  const shippingCharges = linkedQuotation?.shippingCharges || 0;
+  const adjustment = linkedQuotation?.adjustment || 0;
+
   const subtotal = order.subtotal || order.items.reduce((acc, item) => acc + (item.rate * item.quantity), 0);
   const taxTotal = order.tax || (order.cgst + order.sgst + order.igst);
 
@@ -357,6 +400,20 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       <span style={{ fontWeight: 600 }}>₹{order.sgst.toLocaleString('en-IN')}</span>
                     </div>
                   </>
+                )}
+
+                {shippingCharges > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#475569' }}>
+                    <span>Shipping charge:</span>
+                    <span style={{ fontWeight: 600 }}>₹{shippingCharges.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+
+                {adjustment !== 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#475569' }}>
+                    <span>Adjustment:</span>
+                    <span style={{ fontWeight: 600 }}>{adjustment > 0 ? '+' : ''}₹{adjustment.toLocaleString('en-IN')}</span>
+                  </div>
                 )}
 
                 <div style={{ 

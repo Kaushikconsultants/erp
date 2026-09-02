@@ -128,7 +128,7 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
           ],
           orderDate: { gte: startOfMonth, lte: endOfMonth }
         },
-        select: { orderDate: true, totalValue: true, subtotal: true }
+        select: { orderDate: true, totalValue: true, subtotal: true, notes: true }
       }),
       prisma.quotation.findMany({
         where: {
@@ -136,9 +136,10 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
             { salespersonId: employee.id },
             { customer: { assignedSalespersonId: employee.id } }
           ],
-          date: { gte: startOfMonth, lte: endOfMonth }
+          date: { gte: startOfMonth, lte: endOfMonth },
+          status: { in: ["Confirmed", "Converted"] }
         },
-        select: { date: true, totalValue: true, subtotal: true, status: true, createdAt: true }
+        select: { date: true, totalValue: true, subtotal: true, status: true, quotationNumber: true, createdAt: true }
       }),
       prisma.call.count({
         where: {
@@ -162,7 +163,7 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
           ],
           createdAt: { gte: todayStart, lte: todayEnd }
         },
-        select: { id: true, status: true }
+        select: { id: true, status: true, quotationNumber: true }
       }),
       prisma.call.count({
         where: {
@@ -172,13 +173,22 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
       })
     ]);
 
-    // Calculate revenue per sprint and MTD
+    // Collect quotation numbers that already exist in orders to prevent duplicate counting
+    const convertedQuoteNumbers = new Set<string>();
+    monthOrders.forEach(o => {
+      const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+      if (match && match[1]) {
+        convertedQuoteNumbers.add(match[1].trim());
+      }
+    });
+
+    // Calculate revenue per sprint and MTD using totalValue as true order value
     const sprintActuals = [0, 0, 0, 0];
 
     monthOrders.forEach(o => {
       if (!o.orderDate) return;
       const d = new Date(o.orderDate).getDate();
-      const val = Number(o.subtotal || o.totalValue || 0);
+      const val = Number(o.totalValue ?? o.subtotal ?? 0);
       if (d <= 7) sprintActuals[0] += val;
       else if (d <= 14) sprintActuals[1] += val;
       else if (d <= 21) sprintActuals[2] += val;
@@ -186,10 +196,13 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
     });
 
     monthQuotations.forEach(q => {
-      if (q.status !== "Confirmed" && q.status !== "Converted") return;
+      // If already converted/represented as an order in monthOrders, skip to avoid double counting
+      if (q.status === "Converted" || convertedQuoteNumbers.has((q.quotationNumber || '').trim())) {
+        return;
+      }
       const qDate = q.date ? new Date(q.date) : new Date(q.createdAt);
       const d = qDate.getDate();
-      const val = Number(q.subtotal || q.totalValue || 0);
+      const val = Number(q.totalValue ?? q.subtotal ?? 0);
       if (d <= 7) sprintActuals[0] += val;
       else if (d <= 14) sprintActuals[1] += val;
       else if (d <= 21) sprintActuals[2] += val;
@@ -217,7 +230,19 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
     const todayQuotesSent = todayQuotations.length;
     const todayQuotesSentTarget = employee.dailyQuotesTarget ?? 2;
 
-    const todayQuotesConfirmed = todayQuotations.filter(q => q.status === "Confirmed" || q.status === "Converted").length;
+    const todayOrdersCount = monthOrders.filter(o => {
+      if (!o.orderDate) return false;
+      const d = new Date(o.orderDate);
+      return d >= todayStart && d <= todayEnd;
+    }).length;
+
+    const todayStandaloneConfirmedQuotes = todayQuotations.filter(q => {
+      if (q.status !== 'Confirmed') return false;
+      const qNum = (q as any).quotationNumber || '';
+      return !convertedQuoteNumbers.has(qNum.trim());
+    }).length;
+
+    const todayQuotesConfirmed = todayOrdersCount + todayStandaloneConfirmedQuotes;
     const todayQuotesConfirmedTarget = employee.dailyDealsTarget ?? 1;
     const todayVisits = todayDailyLog?.visitsDone || 0;
 

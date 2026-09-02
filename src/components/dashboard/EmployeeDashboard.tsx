@@ -300,9 +300,9 @@ export default function EmployeeDashboard({
     };
   }, [allOrders, allFollowUps, timeFilter, targetMonthlyGoal]);
 
-  // Calculate Sales Amount
-  const totalSales = filteredOrders.reduce((sum, o) => sum + (o.subtotal || o.totalValue || 0), 0);
-  const prevTotalSales = previousOrders.reduce((sum, o) => sum + (o.subtotal || o.totalValue || 0), 0);
+  // Calculate Sales Amount using totalValue as true order value
+  const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.totalValue !== null && o.totalValue !== undefined ? o.totalValue : (o.subtotal || 0)), 0);
+  const prevTotalSales = previousOrders.reduce((sum, o) => sum + Number(o.totalValue !== null && o.totalValue !== undefined ? o.totalValue : (o.subtotal || 0)), 0);
 
   // Calculate Real Growth %
   let growthPercent = 0;
@@ -322,7 +322,7 @@ export default function EmployeeDashboard({
   // Calculate Incentive & Payout
   const formattedOrderData: OrderData[] = (filteredOrders || []).map(order => ({
     id: order.id,
-    taxableValue: Number(order.subtotal !== null && order.subtotal !== undefined ? order.subtotal : order.totalValue !== null && order.totalValue !== undefined ? order.totalValue : 0),
+    taxableValue: Number(order.totalValue !== null && order.totalValue !== undefined ? order.totalValue : (order.subtotal || 0)),
     discount: Number(order.discount || 0),
     isCreditCustomer: order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit'
   }));
