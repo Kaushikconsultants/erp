@@ -168,7 +168,14 @@ export default function IntegrationConfigModal({
   const absoluteWebhookUrl = `${currentOrigin}${integration.webhookUrl || `/api/webhooks/integrations/${integration.id}`}`;
 
   return (
-    <div className="config-modal-overlay" onClick={onClose}>
+    <div 
+      className="config-modal-overlay" 
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="config-modal-panel" onClick={(e) => e.stopPropagation()}>
         
         {/* Header */}
@@ -730,14 +737,6 @@ export default function IntegrationConfigModal({
           </button>
           
           <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              type="button"
-              className="sync-now-btn"
-              onClick={handleTestConnection}
-              disabled={testing}
-            >
-              <Zap size={14} /> {testing ? "Testing..." : "Test Connection"}
-            </button>
             <button
               type="button"
               className="btn-primary"
