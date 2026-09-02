@@ -73,7 +73,6 @@ export default function LeadTable({ initialLeads, allEmployees }: { initialLeads
           <option value="New">New</option>
           <option value="Contacted">Contacted</option>
           <option value="In Progress">In Progress</option>
-          <option value="Converted">Converted</option>
           <option value="Lost">Lost</option>
         </select>
         <select 
@@ -122,16 +121,27 @@ export default function LeadTable({ initialLeads, allEmployees }: { initialLeads
                   <td style={{ padding: '16px', color: '#475569' }}>{lead.assignedSalesperson?.user?.name || '-'}</td>
                   <td style={{ padding: '16px', color: '#475569' }}>-</td>
                   <td style={{ padding: '16px' }}>
-                    <span style={{ 
-                      backgroundColor: statusStyles.bg, 
-                      color: statusStyles.color, 
-                      padding: '4px 12px', 
-                      borderRadius: '12px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: 600 
-                    }}>
-                      {lead.status}
-                    </span>
+                    <select 
+                      value={lead.status}
+                      onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                      style={{ 
+                        backgroundColor: statusStyles.bg, 
+                        color: statusStyles.color, 
+                        padding: '4px 8px', 
+                        borderRadius: '12px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 600,
+                        border: 'none',
+                        outline: 'none',
+                        cursor: 'pointer',
+                        appearance: 'none', // removes default arrow for cleaner look, or can keep it
+                      }}
+                    >
+                      <option value="New" style={{background: '#fff', color: '#000'}}>New</option>
+                      <option value="Contacted" style={{background: '#fff', color: '#000'}}>Contacted</option>
+                      <option value="In Progress" style={{background: '#fff', color: '#000'}}>In Progress</option>
+                      <option value="Lost" style={{background: '#fff', color: '#000'}}>Lost</option>
+                    </select>
                   </td>
                   <td style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>

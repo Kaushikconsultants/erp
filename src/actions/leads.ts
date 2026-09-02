@@ -188,10 +188,9 @@ export async function convertLeadToCustomer(leadId: string, customerData: any) {
         where: { leadId: leadId },
         data: { customerId: newCustomer.id, leadId: null }
       }),
-      // 3. Mark the Lead as Converted
-      prisma.lead.update({
-        where: { id: leadId },
-        data: { status: "Converted" }
+      // 3. Delete the Lead as it is now a Customer
+      prisma.lead.delete({
+        where: { id: leadId }
       })
     ]);
 
