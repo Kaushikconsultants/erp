@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createLead } from '@/actions/leads';
 
-export default function AddLeadButton({ employees }: { employees?: {id: string, name: string}[] }) {
+export default function AddLeadButton({ employees, organizationId }: { employees?: {id: string, name: string}[], organizationId?: string }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isApiGuideOpen, setIsApiGuideOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,7 +155,7 @@ export default function AddLeadButton({ employees }: { employees?: {id: string, 
               <div>
                 <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Headers</label>
                 <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
-{`Authorization: Bearer blip-whatsapp-secret-2024
+{`Authorization: Bearer ${organizationId || 'YOUR_ORG_ID'}
 Content-Type: application/json`}
                 </div>
               </div>

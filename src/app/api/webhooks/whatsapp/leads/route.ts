@@ -1,34 +1,32 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-// Basic static secret for webhook verification. 
-// For production, set WHATSAPP_WEBHOOK_SECRET in your environment variables.
-const WEBHOOK_SECRET = process.env.WHATSAPP_WEBHOOK_SECRET || "blip-whatsapp-secret-2024";
-
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get("authorization");
-    if (!authHeader || authHeader !== `Bearer ${WEBHOOK_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized. Missing Bearer Token." }, { status: 401 });
+    }
+
+    const orgIdFromToken = authHeader.replace("Bearer ", "").trim();
+
+    // Verify if this is a valid organization ID
+    const org = await prisma.organization.findUnique({
+      where: { id: orgIdFromToken }
+    });
+
+    if (!org) {
+      return NextResponse.json({ error: "Unauthorized. Invalid Organization Token." }, { status: 401 });
     }
 
     const body = await req.json();
-    const { name, whatsappNumber, shopName, organizationId } = body;
+    const { name, whatsappNumber, shopName } = body;
 
     if (!name || !whatsappNumber) {
       return NextResponse.json({ error: "Missing required fields (name, whatsappNumber)" }, { status: 400 });
     }
 
-    // Use provided organizationId, or fallback to the first one in the DB (useful for single-tenant setup)
-    let orgIdToUse = organizationId;
-    if (!orgIdToUse) {
-        const firstOrg = await prisma.organization.findFirst();
-        if (firstOrg) orgIdToUse = firstOrg.id;
-    }
-
-    if (!orgIdToUse) {
-        return NextResponse.json({ error: "No organization context available." }, { status: 400 });
-    }
+    const orgIdToUse = org.id;
 
     // Check if lead already exists based on our previous logic
     const existingLead = await prisma.lead.findFirst({
