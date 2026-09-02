@@ -20,7 +20,8 @@ import {
   FileText,
   ChevronRight,
   UserPlus,
-  Pencil
+  Pencil,
+  Sliders
 } from "lucide-react";
 
 export interface EmployeeData {
@@ -426,25 +427,27 @@ export default function PayrollClient({
       {/* ─── PAYROLL TABLE ─── */}
       <div
         style={{
-          padding: "20px",
           backgroundColor: "#ffffff",
           borderRadius: "14px",
-          border: "1px solid var(--border, #e2e8f0)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+          overflow: "hidden"
         }}
       >
         <div
           style={{
+            padding: "18px 22px",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: "16px",
+            borderBottom: "1px solid #f1f5f9",
             flexWrap: "wrap",
-            gap: "10px"
+            gap: "12px",
+            background: "#ffffff"
           }}
         >
           <div>
-            <h3 style={{ margin: 0, fontSize: "0.98rem", fontWeight: 600, color: "#0f172a" }}>
+            <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a", letterSpacing: "-0.01em" }}>
               Staff Salaries & Performance Compensations
             </h3>
             <p style={{ margin: "3px 0 0 0", fontSize: "0.78rem", color: "#64748b" }}>
@@ -465,45 +468,45 @@ export default function PayrollClient({
                 backgroundColor: "#16a34a",
                 color: "#ffffff",
                 border: "none",
-                fontSize: "0.85rem",
-                fontWeight: 700,
+                fontSize: "0.84rem",
+                fontWeight: 600,
                 cursor: "pointer",
-                boxShadow: "0 2px 6px rgba(22, 163, 74, 0.25)",
+                boxShadow: "0 2px 4px rgba(22, 163, 74, 0.2)",
                 transition: "all 0.15s ease"
               }}
             >
-              <UserPlus size={16} /> Add New Staff Member
+              <UserPlus size={15} /> Add New Staff Member
             </button>
           )}
         </div>
 
         <div className="table-responsive" style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
-                  Employee
+                <th style={{ padding: "12px 18px", fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "left", verticalAlign: "middle", minWidth: "210px" }}>
+                  Staff Member
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "left", verticalAlign: "middle", minWidth: "120px" }}>
                   Department
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "left", verticalAlign: "middle", minWidth: "110px" }}>
                   Basic Salary
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.72rem", fontWeight: 700, color: "#2563eb", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "left", verticalAlign: "middle", minWidth: "120px" }}>
                   MTD Sales
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#059669", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.72rem", fontWeight: 700, color: "#059669", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "left", verticalAlign: "middle", minWidth: "135px" }}>
                   Incentive
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.72rem", fontWeight: 700, color: "#4f46e5", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "left", verticalAlign: "middle", minWidth: "135px" }}>
                   Net Salary
                 </th>
-                <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "left", verticalAlign: "middle" }}>
+                <th style={{ padding: "12px 14px", fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "left", verticalAlign: "middle", minWidth: "115px" }}>
                   Payout Status
                 </th>
                 {isAdmin && (
-                  <th style={{ padding: "10px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.03em", textAlign: "right", verticalAlign: "middle" }}>
+                  <th style={{ padding: "12px 18px", fontSize: "0.72rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "right", verticalAlign: "middle", minWidth: "250px" }}>
                     Actions
                   </th>
                 )}
@@ -523,6 +526,7 @@ export default function PayrollClient({
                   incentiveRecord?.incentiveEarned ?? emp.dynamicIncentive ?? 0;
                 const grandNet = netSalary + incentiveEarned;
                 const activeSlab = emp.incentiveDetails?.currentSlab || "1%";
+                const isUserActive = emp.user?.isActive !== false;
 
                 return (
                   <React.Fragment key={emp.id}>
@@ -538,190 +542,190 @@ export default function PayrollClient({
                         e.currentTarget.style.backgroundColor = "transparent";
                       }}
                     >
-                      {/* Employee Column */}
-                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      {/* 1. Employee Column */}
+                      <td style={{ padding: "14px 18px", verticalAlign: "middle" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                           <div
                             style={{
-                              width: 34,
-                              height: 34,
+                              width: 36,
+                              height: 36,
                               borderRadius: "50%",
-                              backgroundColor: "#eef2ff",
-                              color: "#4f46e5",
-                              fontWeight: 600,
-                              fontSize: "0.82rem",
+                              backgroundColor: "#e0e7ff",
+                              color: "#4338ca",
+                              fontWeight: 700,
+                              fontSize: "0.85rem",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              flexShrink: 0
+                              flexShrink: 0,
+                              border: "1.5px solid #c7d2fe"
                             }}
                           >
                             {emp.user?.name ? emp.user.name.charAt(0).toUpperCase() : "E"}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem", display: "flex", alignItems: "center", gap: "6px" }}>
-                              {emp.user?.name}
-                              <span 
-                                style={{ 
-                                  fontSize: "0.68rem", 
-                                  padding: "1px 6px", 
-                                  borderRadius: "4px", 
-                                  backgroundColor: emp.user?.isActive !== false ? "#ecfdf5" : "#fef2f2", 
-                                  color: emp.user?.isActive !== false ? "#059669" : "#dc2626",
-                                  fontWeight: 600,
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "3px"
-                                }}
-                                title={emp.user?.isActive !== false ? "Active Employee Account" : "Deactivated Account"}
-                              >
-                                <span style={{ width: 4, height: 4, borderRadius: "50%", backgroundColor: "currentColor" }} />
-                                {emp.user?.isActive !== false ? "Active" : "Inactive"}
-                              </span>
+                            <div style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.88rem", whiteSpace: "nowrap", lineHeight: 1.2 }}>
+                              {emp.user?.name || "Unnamed"}
                             </div>
-                            <div style={{ fontSize: "0.74rem", color: "#64748b" }}>
-                              {emp.designation || "Staff"}
+                            <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "3px", display: "flex", alignItems: "center", gap: "5px" }}>
+                              <span>{emp.designation || "Staff"}</span>
+                              <span style={{ color: "#cbd5e1" }}>•</span>
+                              <span style={{ 
+                                display: "inline-flex", 
+                                alignItems: "center", 
+                                gap: "3px", 
+                                color: isUserActive ? "#16a34a" : "#dc2626", 
+                                fontWeight: 500 
+                              }}>
+                                <span style={{ width: 5, height: 5, borderRadius: "50%", backgroundColor: isUserActive ? "#16a34a" : "#dc2626", display: "inline-block" }} />
+                                {isUserActive ? "Active" : "Inactive"}
+                              </span>
                             </div>
                           </div>
                         </div>
                       </td>
 
-                      {/* Department */}
-                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
+                      {/* 2. Department */}
+                      <td style={{ padding: "14px 14px", verticalAlign: "middle" }}>
                         <span
                           style={{
-                            fontSize: "0.75rem",
-                            fontWeight: 400,
-                            padding: "3px 8px",
+                            fontSize: "0.74rem",
+                            fontWeight: 500,
+                            padding: "4px 9px",
                             borderRadius: "6px",
-                            backgroundColor: "#f1f5f9",
-                            color: "#475569"
+                            backgroundColor: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            color: "#475569",
+                            display: "inline-block"
                           }}
                         >
                           {emp.department || "General"}
                         </span>
                       </td>
 
-                      {/* Basic Salary */}
-                      <td style={{ padding: "12px 14px", verticalAlign: "middle", fontWeight: 500, color: "#334155" }}>
+                      {/* 3. Basic Salary */}
+                      <td style={{ padding: "14px 14px", verticalAlign: "middle", fontWeight: 600, color: "#1e293b", fontSize: "0.88rem" }}>
                         ₹{basicSalary.toLocaleString("en-IN")}
                       </td>
 
-                      {/* 1. MTD SALES (CLICKABLE) */}
-                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
+                      {/* 4. MTD SALES (CLICKABLE) */}
+                      <td style={{ padding: "14px 14px", verticalAlign: "middle" }}>
                         <button
                           type="button"
                           onClick={() => setSelectedSalesEmp(emp)}
-                          title="Click to view MTD sales details"
+                          title="Click to view full MTD sales breakdown"
                           style={{
-                            background: "#f8fafc",
+                            background: "#ffffff",
                             border: "1px solid #e2e8f0",
-                            borderRadius: "6px",
-                            padding: "5px 9px",
+                            borderRadius: "8px",
+                            padding: "6px 10px",
                             cursor: "pointer",
                             textAlign: "left",
                             display: "flex",
                             flexDirection: "column",
                             gap: "1px",
-                            transition: "all 0.15s ease"
+                            transition: "all 0.15s ease",
+                            minWidth: "95px"
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = "#eff6ff";
-                            e.currentTarget.style.borderColor = "#bfdbfe";
+                            e.currentTarget.style.borderColor = "#93c5fd";
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "#f8fafc";
+                            e.currentTarget.style.backgroundColor = "#ffffff";
                             e.currentTarget.style.borderColor = "#e2e8f0";
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "0.85rem" }}>
+                          <span style={{ fontWeight: 700, color: "#1d4ed8", fontSize: "0.85rem" }}>
                             ₹{totalSales.toLocaleString("en-IN")}
                           </span>
                           <span style={{ fontSize: "0.7rem", color: "#64748b", display: "flex", alignItems: "center", gap: "2px" }}>
-                            {emp.orders.length} {emp.orders.length === 1 ? "Order" : "Orders"} <ArrowUpRight size={10} />
+                            {emp.orders.length} {emp.orders.length === 1 ? "Order" : "Orders"} <ArrowUpRight size={10} color="#94a3b8" />
                           </span>
                         </button>
                       </td>
 
-                      {/* 2. INCENTIVE (CLICKABLE) */}
-                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
+                      {/* 5. INCENTIVE (CLICKABLE) */}
+                      <td style={{ padding: "14px 14px", verticalAlign: "middle" }}>
                         <button
                           type="button"
                           onClick={() => setSelectedIncentiveEmp(emp)}
-                          title="Click to view incentive metrics"
+                          title="Click to view incentive slab breakdown"
                           style={{
-                            background: "#f8fafc",
+                            background: "#ffffff",
                             border: "1px solid #e2e8f0",
-                            borderRadius: "6px",
-                            padding: "5px 9px",
+                            borderRadius: "8px",
+                            padding: "6px 10px",
                             cursor: "pointer",
                             textAlign: "left",
                             display: "flex",
                             flexDirection: "column",
                             gap: "1px",
-                            transition: "all 0.15s ease"
+                            transition: "all 0.15s ease",
+                            minWidth: "105px"
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = "#ecfdf5";
-                            e.currentTarget.style.borderColor = "#a7f3d0";
+                            e.currentTarget.style.borderColor = "#86efac";
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "#f8fafc";
+                            e.currentTarget.style.backgroundColor = "#ffffff";
                             e.currentTarget.style.borderColor = "#e2e8f0";
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: "#047857", fontSize: "0.85rem" }}>
+                          <span style={{ fontWeight: 700, color: "#059669", fontSize: "0.85rem" }}>
                             + ₹{incentiveEarned.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           <span style={{ fontSize: "0.7rem", color: "#64748b", display: "flex", alignItems: "center", gap: "2px" }}>
-                            {activeSlab} Slab <ArrowUpRight size={10} />
+                            {activeSlab} Slab <ArrowUpRight size={10} color="#94a3b8" />
                           </span>
                         </button>
                       </td>
 
-                      {/* 3. NET SALARY (CLICKABLE) */}
-                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
+                      {/* 6. NET SALARY (CLICKABLE) */}
+                      <td style={{ padding: "14px 14px", verticalAlign: "middle" }}>
                         <button
                           type="button"
                           onClick={() => setSelectedSalaryEmp(emp)}
-                          title="Click to view salary structure"
+                          title="Click to view comprehensive salary breakdown"
                           style={{
-                            background: "#f8fafc",
+                            background: "#ffffff",
                             border: "1px solid #e2e8f0",
-                            borderRadius: "6px",
-                            padding: "5px 9px",
+                            borderRadius: "8px",
+                            padding: "6px 10px",
                             cursor: "pointer",
                             textAlign: "left",
                             display: "flex",
                             flexDirection: "column",
                             gap: "1px",
-                            transition: "all 0.15s ease"
+                            transition: "all 0.15s ease",
+                            minWidth: "115px"
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = "#f1f5f9";
-                            e.currentTarget.style.borderColor = "#cbd5e1";
+                            e.currentTarget.style.backgroundColor = "#f5f3ff";
+                            e.currentTarget.style.borderColor = "#c7d2fe";
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = "#f8fafc";
+                            e.currentTarget.style.backgroundColor = "#ffffff";
                             e.currentTarget.style.borderColor = "#e2e8f0";
                           }}
                         >
-                          <span style={{ fontWeight: 600, color: "#0f172a", fontSize: "0.875rem" }}>
+                          <span style={{ fontWeight: 700, color: "#0f172a", fontSize: "0.88rem" }}>
                             ₹{grandNet.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                           <span style={{ fontSize: "0.7rem", color: "#64748b", display: "flex", alignItems: "center", gap: "2px" }}>
-                            Base + Inc <ArrowUpRight size={10} />
+                            Base + Inc <ArrowUpRight size={10} color="#94a3b8" />
                           </span>
                         </button>
                       </td>
 
-                      {/* Payout Status */}
-                      <td style={{ padding: "12px 14px", verticalAlign: "middle" }}>
+                      {/* 7. Payout Status */}
+                      <td style={{ padding: "14px 14px", verticalAlign: "middle" }}>
                         <span
                           style={{
-                            fontSize: "0.74rem",
+                            fontSize: "0.75rem",
                             fontWeight: 600,
-                            padding: "3px 8px",
+                            padding: "4px 9px",
                             borderRadius: "6px",
                             display: "inline-flex",
                             alignItems: "center",
@@ -736,11 +740,11 @@ export default function PayrollClient({
                               salaryRecord?.status === "Paid"
                                 ? "#059669"
                                 : salaryRecord?.status === "Processed"
-                                ? "#d97706"
-                                : "#64748b",
+                                ? "#b45309"
+                                : "#475569",
                             border:
                               salaryRecord?.status === "Paid"
-                                ? "1px solid #bbf7d0"
+                                ? "1px solid #a7f3d0"
                                 : salaryRecord?.status === "Processed"
                                 ? "1px solid #fde68a"
                                 : "1px solid #e2e8f0"
@@ -767,17 +771,67 @@ export default function PayrollClient({
                         </span>
                       </td>
 
-                      {/* Admin Actions */}
+                      {/* 8. Admin Actions */}
                       {isAdmin && (
-                        <td style={{ padding: "12px 14px", textAlign: "right", verticalAlign: "middle" }}>
-                          <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
-                            {/* Edit Employee Details */}
+                        <td style={{ padding: "14px 18px", textAlign: "right", verticalAlign: "middle" }}>
+                          <div style={{ display: "inline-flex", gap: "5px", justifyContent: "flex-end", alignItems: "center", flexWrap: "nowrap" }}>
+                            {/* Primary Action Button */}
+                            {salaryRecord?.status === "Processed" ? (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await markSalaryPaid(salaryRecord.id);
+                                  window.location.reload();
+                                }}
+                                style={{
+                                  padding: "5px 10px",
+                                  fontSize: "0.76rem",
+                                  fontWeight: 600,
+                                  borderRadius: "6px",
+                                  border: "none",
+                                  background: "#16a34a",
+                                  color: "#ffffff",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  boxShadow: "0 1px 2px rgba(22, 163, 74, 0.2)"
+                                }}
+                                title="Disburse salary and mark as Paid"
+                              >
+                                <CheckCircle2 size={12} /> Mark Paid
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setProcessingId(emp.id)}
+                                style={{
+                                  padding: "5px 10px",
+                                  fontSize: "0.76rem",
+                                  fontWeight: 600,
+                                  borderRadius: "6px",
+                                  border: salaryRecord ? "1px solid #cbd5e1" : "none",
+                                  background: salaryRecord ? "#f8fafc" : "#4f46e5",
+                                  color: salaryRecord ? "#334155" : "#ffffff",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  boxShadow: salaryRecord ? "none" : "0 1px 2px rgba(79, 70, 229, 0.2)"
+                                }}
+                                title={salaryRecord ? "Edit calculated payroll structure" : "Calculate & process monthly salary"}
+                              >
+                                <Calculator size={12} /> {salaryRecord ? "Edit Salary" : "Process"}
+                              </button>
+                            )}
+
+                            {/* Secondary Tool Buttons */}
                             <button
                               type="button"
                               onClick={() => setEditingEmployee(emp)}
                               style={{
-                                padding: "4px 8px",
-                                fontSize: "0.75rem",
+                                padding: "5px 9px",
+                                fontSize: "0.76rem",
                                 fontWeight: 600,
                                 borderRadius: "6px",
                                 border: "1px solid #bfdbfe",
@@ -789,27 +843,11 @@ export default function PayrollClient({
                                 gap: "4px",
                                 transition: "all 0.15s ease"
                               }}
-                              title="Edit Employee Profile, Job Role, Base Salary, Bank Details & Permissions"
+                              title="Edit Employee Profile, Department, Base Salary, Bank Details & Role"
                             >
                               <Pencil size={12} /> Edit Details
                             </button>
 
-                            <button
-                              type="button"
-                              onClick={() => setProcessingId(emp.id)}
-                              style={{
-                                padding: "4px 8px",
-                                fontSize: "0.75rem",
-                                fontWeight: 500,
-                                borderRadius: "6px",
-                                border: "1px solid #e2e8f0",
-                                background: "#ffffff",
-                                color: "#2563eb",
-                                cursor: "pointer"
-                              }}
-                            >
-                              {salaryRecord ? "Edit Salary" : "Process"}
-                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -817,18 +855,23 @@ export default function PayrollClient({
                                 setNewBaseSalary(emp.salary || 0);
                               }}
                               style={{
-                                padding: "4px 8px",
-                                fontSize: "0.75rem",
+                                padding: "5px 8px",
+                                fontSize: "0.76rem",
                                 fontWeight: 500,
                                 borderRadius: "6px",
                                 border: "1px solid #e2e8f0",
                                 background: "#ffffff",
-                                color: "#4f46e5",
-                                cursor: "pointer"
+                                color: "#475569",
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "3px"
                               }}
+                              title="Quickly adjust default Base Salary"
                             >
-                              Set Base
+                              <Sliders size={12} /> Base
                             </button>
+
                             <button
                               type="button"
                               onClick={() =>
@@ -841,39 +884,22 @@ export default function PayrollClient({
                                 })
                               }
                               style={{
-                                padding: "4px 8px",
-                                fontSize: "0.75rem",
+                                padding: "5px 9px",
+                                fontSize: "0.76rem",
                                 fontWeight: 500,
                                 borderRadius: "6px",
                                 border: "1px solid #e2e8f0",
                                 background: "#ffffff",
                                 color: "#475569",
-                                cursor: "pointer"
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px"
                               }}
+                              title="Generate & View Pay Slip"
                             >
-                              Slip
+                              <FileText size={12} /> Slip
                             </button>
-                            {salaryRecord?.status === "Processed" && (
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  await markSalaryPaid(salaryRecord.id);
-                                  window.location.reload();
-                                }}
-                                style={{
-                                  padding: "4px 8px",
-                                  fontSize: "0.75rem",
-                                  fontWeight: 500,
-                                  borderRadius: "6px",
-                                  border: "1px solid #bbf7d0",
-                                  background: "#ecfdf5",
-                                  color: "#059669",
-                                  cursor: "pointer"
-                                }}
-                              >
-                                Mark Paid
-                              </button>
-                            )}
                           </div>
                         </td>
                       )}
