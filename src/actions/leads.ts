@@ -1,7 +1,7 @@
 "use server";
 
-import { prisma } from "@/lib/db";
-import { getTenantOrgId } from "@/actions/auth";
+import { prisma } from "@/lib/prisma";
+import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 
 export async function getLeads() {

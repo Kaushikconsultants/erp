@@ -43,7 +43,6 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
   const [selectedOutcome, setSelectedOutcome] = useState<string>("");
 
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [customers, setCustomers] = useState(initialCustomers || []);
 
   // Keep customers in sync if parent props change
