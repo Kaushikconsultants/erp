@@ -17,6 +17,7 @@ export interface RateCalculationParams {
   weight: number; // in KG
   orderValue: number;
   paymentMode: "Prepaid" | "COD";
+  codAmount?: number;
   rovType?: "Rov Owner" | "Rov Carrier";
   dimensions?: BoxDimension[];
 }
@@ -130,15 +131,19 @@ export const shipmozoService = {
         });
       }
 
+      const isMultiBox = dimensions.length > 1 || dimensions.some(d => (Number(d.no_of_box) || 1) > 1);
+      const isHeavy = params.weight > 10;
+      const computedPackageType = (isMultiBox || isHeavy) ? "MPS" : "SPS";
+
       const body = {
         pickup_pincode: Number(params.originPincode),
         delivery_pincode: Number(params.destinationPincode),
         payment_type: params.paymentMode === "COD" ? "COD" : "PREPAID",
         shipment_type: params.shipmentType === "Reverse" ? "RETURN" : "FORWARD",
         order_amount: params.orderValue || 0,
-        type_of_package: "SPS",
+        type_of_package: computedPackageType,
         rov_type: params.rovType === "Rov Carrier" ? "ROV_CARRIER" : "ROV_OWNER",
-        cod_amount: params.paymentMode === "COD" ? String(params.orderValue) : "",
+        cod_amount: params.paymentMode === "COD" ? String(params.codAmount ?? params.orderValue) : "",
         weight: Math.round(params.weight * 1000), // Shipmozo accepts weight in grams
         dimensions: dimensions
       };

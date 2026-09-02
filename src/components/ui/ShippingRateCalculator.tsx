@@ -48,6 +48,7 @@ export default function ShippingRateCalculator({
   const [paymentMode, setPaymentMode] = useState<"Prepaid" | "COD">("Prepaid");
   const [weight, setWeight] = useState<number>(startingWeight);
   const [invoiceValue, setInvoiceValue] = useState<number>(orderValue > 0 ? Math.round(orderValue) : 25000);
+  const [codAmount, setCodAmount] = useState<number>(orderValue > 0 ? Math.round(orderValue) : 25000);
   const [rovType, setRovType] = useState<"Rov Owner" | "Rov Carrier">("Rov Owner");
 
   // Dimensions Array - Height defaults to match weight!
@@ -114,6 +115,7 @@ export default function ShippingRateCalculator({
       weight: weight > 0 ? weight : 0.5,
       orderValue: invoiceValue,
       paymentMode,
+      codAmount,
       rovType,
       dimensions
     });
@@ -244,7 +246,12 @@ export default function ShippingRateCalculator({
           </label>
           <select 
             value={paymentMode} 
-            onChange={e => setPaymentMode(e.target.value as any)}
+            onChange={e => {
+              setPaymentMode(e.target.value as any);
+              if (e.target.value === "COD") {
+                setCodAmount(invoiceValue);
+              }
+            }}
             style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.875rem', backgroundColor: '#fff' }}
           >
             <option value="Prepaid">Prepaid</option>
@@ -283,7 +290,11 @@ export default function ShippingRateCalculator({
             <input 
               type="number" 
               value={invoiceValue} 
-              onChange={e => setInvoiceValue(parseFloat(e.target.value) || 0)}
+              onChange={e => {
+                const val = parseFloat(e.target.value) || 0;
+                setInvoiceValue(val);
+                if (paymentMode === "COD") setCodAmount(val);
+              }}
               style={{ flex: 1, padding: '10px 12px', borderRadius: '0 8px 8px 0', border: '1px solid #cbd5e1', fontSize: '0.875rem', fontWeight: 600 }}
             />
           </div>
@@ -292,6 +303,29 @@ export default function ShippingRateCalculator({
 
       </div>
 
+      {paymentMode === "COD" && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          <div>
+            <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '6px', display: 'block' }}>
+              COD Collect Value <span style={{ color: '#ef4444' }}>*</span>
+            </label>
+            <div style={{ display: 'flex' }}>
+              <span style={{ backgroundColor: '#fff7ed', color: '#b45309', padding: '10px 14px', borderRadius: '8px 0 0 8px', border: '1px solid #fdba74', borderRight: 'none', fontSize: '0.875rem', fontWeight: 700 }}>
+                ₹
+              </span>
+              <input 
+                type="number" 
+                value={codAmount} 
+                onChange={e => setCodAmount(parseFloat(e.target.value) || 0)}
+                style={{ flex: 1, padding: '10px 12px', borderRadius: '0 8px 8px 0', border: '1px solid #fdba74', fontSize: '0.875rem', fontWeight: 600, backgroundColor: '#fff' }}
+              />
+            </div>
+            <p style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px', marginBottom: 0 }}>
+              Amount courier will collect from customer on delivery.
+            </p>
+          </div>
+        </div>
+      )}
       {/* DIMENSIONS SECTION - Default Height = Weight */}
       <div style={{ background: '#f8fafc', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
