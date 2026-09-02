@@ -208,6 +208,13 @@ export async function cancelInvoice(id: string) {
   const { allowed } = await canManageInvoices();
   if (!allowed) return { error: "Unauthorized" };
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.invoice.findUnique({ where: { id } });
+    if (!existing) return { error: "Invoice not found" };
+    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+      return { error: "Unauthorized access to invoice" };
+    }
+
     await prisma.invoice.update({ where: { id }, data: { status: 'Cancelled' } });
     revalidatePath("/invoices");
     return { success: true };
@@ -227,8 +234,12 @@ export async function updateInvoice(id: string, data: {
   if (!allowed) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const existing = await prisma.invoice.findUnique({ where: { id } });
     if (!existing) return { error: "Invoice not found" };
+    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+      return { error: "Unauthorized access to invoice" };
+    }
 
     const totalAmount = data.totalAmount !== undefined ? data.totalAmount : existing.totalAmount;
     const amountPaid = data.amountPaid !== undefined ? data.amountPaid : existing.amountPaid;
@@ -267,31 +278,38 @@ export async function deleteInvoice(id: string) {
   if (!allowed) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const existing = await prisma.invoice.findUnique({ where: { id } });
     if (!existing) return { error: "Invoice not found" };
-
-    // Unlink any credit notes
-    await prisma.creditNote.updateMany({
-      where: { invoiceId: id },
-      data: { invoiceId: null }
-    });
-
-    // Unlink or delete associated payments
-    await prisma.payment.updateMany({
-      where: { invoiceId: id },
-      data: { invoiceId: null }
-    });
-
-    await prisma.invoice.delete({
-      where: { id }
-    });
-
-    if (existing.orderId) {
-      await prisma.orderItem.deleteMany({ where: { orderId: existing.orderId } }).catch(() => {});
-      await prisma.eWayBill.deleteMany({ where: { orderId: existing.orderId } }).catch(() => {});
-      await prisma.payment.updateMany({ where: { orderId: existing.orderId }, data: { orderId: null } }).catch(() => {});
-      await prisma.order.delete({ where: { id: existing.orderId } }).catch(e => console.warn("Failed to delete order with invoice", e));
+    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+      return { error: "Unauthorized access to invoice" };
     }
+
+    await prisma.$transaction(async (tx) => {
+      // Unlink any credit notes
+      await tx.creditNote.updateMany({
+        where: { invoiceId: id },
+        data: { invoiceId: null }
+      });
+
+      // Unlink associated payments
+      await tx.payment.updateMany({
+        where: { invoiceId: id },
+        data: { invoiceId: null }
+      });
+
+      // Delete invoice
+      await tx.invoice.delete({
+        where: { id }
+      });
+
+      if (existing.orderId) {
+        await tx.orderItem.deleteMany({ where: { orderId: existing.orderId } });
+        await tx.eWayBill.deleteMany({ where: { orderId: existing.orderId } });
+        await tx.payment.updateMany({ where: { orderId: existing.orderId }, data: { orderId: null } });
+        await tx.order.delete({ where: { id: existing.orderId } });
+      }
+    });
 
     revalidatePath("/invoices");
     revalidatePath("/orders");

@@ -363,56 +363,58 @@ export async function deleteOrder(orderId: string) {
 
     if (!order) return { error: "Order not found" };
 
-    // 1. Delete associated Invoices & update payments
-    for (const inv of order.invoices) {
-      await prisma.payment.updateMany({
-        where: { invoiceId: inv.id },
-        data: { invoiceId: null }
-      }).catch(() => {});
-      await prisma.invoice.delete({ where: { id: inv.id } }).catch(() => {});
-    }
-
-    // 2. Delete associated EWayBills
-    await prisma.eWayBill.deleteMany({ where: { orderId } }).catch(() => {});
-
-    // 3. Delete CreditNotes
-    await prisma.creditNote.deleteMany({ where: { orderId } }).catch(() => {});
-
-    // 4. Restore inventory for order items
-    for (const item of order.items) {
-      if (item.productId && item.quantity > 0) {
-        await prisma.product.update({
-          where: { id: item.productId },
-          data: { stockQuantity: { increment: item.quantity } }
-        }).catch(() => {});
-
-        await prisma.inventoryTransaction.create({
-          data: {
-            productId: item.productId,
-            quantity: item.quantity,
-            type: 'IN',
-            reference: order.orderNumber,
-            notes: `Restocked due to deletion of Order #${order.orderNumber}`
-          }
-        }).catch(() => {});
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete associated Invoices & update payments
+      for (const inv of order.invoices) {
+        await tx.payment.updateMany({
+          where: { invoiceId: inv.id },
+          data: { invoiceId: null }
+        });
+        await tx.invoice.delete({ where: { id: inv.id } });
       }
-    }
 
-    // 5. Delete Order Items
-    await prisma.orderItem.deleteMany({ where: { orderId } }).catch(() => {});
+      // 2. Delete associated EWayBills
+      await tx.eWayBill.deleteMany({ where: { orderId } });
 
-    // 6. Delete Order
-    await prisma.order.delete({ where: { id: orderId } });
+      // 3. Delete CreditNotes
+      await tx.creditNote.deleteMany({ where: { orderId } });
 
-    // 7. Adjust customer purchase value if needed
-    if (order.customerId && order.paymentReceived > 0) {
-      await prisma.customer.update({
-        where: { id: order.customerId },
-        data: {
-          totalPurchaseValue: { decrement: order.paymentReceived }
+      // 4. Restore inventory for order items
+      for (const item of order.items) {
+        if (item.productId && item.quantity > 0) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stockQuantity: { increment: item.quantity } }
+          });
+
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: item.productId,
+              quantity: item.quantity,
+              type: 'IN',
+              reference: order.orderNumber,
+              notes: `Restocked due to deletion of Order #${order.orderNumber}`
+            }
+          });
         }
-      }).catch(() => {});
-    }
+      }
+
+      // 5. Delete Order Items
+      await tx.orderItem.deleteMany({ where: { orderId } });
+
+      // 6. Delete Order
+      await tx.order.delete({ where: { id: orderId } });
+
+      // 7. Adjust customer purchase value if needed
+      if (order.customerId && order.paymentReceived > 0) {
+        await tx.customer.update({
+          where: { id: order.customerId },
+          data: {
+            totalPurchaseValue: { decrement: order.paymentReceived }
+          }
+        });
+      }
+    });
 
     revalidatePath("/orders");
     revalidatePath("/invoices");

@@ -83,6 +83,13 @@ export async function updateVendor(id: string, formData: FormData) {
   if (!await canManageVendors()) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.vendor.findUnique({ where: { id }, select: { organizationId: true } });
+    if (!existing) return { error: "Vendor not found" };
+    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+      return { error: "Unauthorized access to vendor" };
+    }
+
     await prisma.vendor.update({
       where: { id },
       data: {
@@ -110,6 +117,13 @@ export async function updateVendor(id: string, formData: FormData) {
 export async function deleteVendor(id: string) {
   if (!await canManageVendors()) return { error: "Unauthorized" };
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.vendor.findUnique({ where: { id }, select: { organizationId: true } });
+    if (!existing) return { error: "Vendor not found" };
+    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+      return { error: "Unauthorized access to vendor" };
+    }
+
     await prisma.vendor.delete({ where: { id } });
     revalidatePath("/vendors");
     return { success: true };

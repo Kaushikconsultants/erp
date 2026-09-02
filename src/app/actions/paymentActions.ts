@@ -210,6 +210,9 @@ export async function recordCustomerPayment(data: {
         include: { order: true }
       });
       if (!invoice) return { error: "Invoice not found" };
+      if (invoice.organizationId && organizationId && invoice.organizationId !== organizationId) {
+        return { error: "Unauthorized access to invoice" };
+      }
       if (invoice.status === 'Paid') return { error: "Invoice is already fully paid" };
       if (invoice.status === 'Cancelled') return { error: "Cannot record payment on a cancelled invoice" };
 
@@ -218,7 +221,7 @@ export async function recordCustomerPayment(data: {
       const newAmountDue = invoice.totalAmount - newAmountPaid;
       const newStatus = newAmountDue <= 0 ? 'Paid' : 'Partially Paid';
 
-      const [payment] = await prisma.$transaction([
+      const txOps: any[] = [
         prisma.payment.create({
           data: {
             paymentNumber,
@@ -254,18 +257,22 @@ export async function recordCustomerPayment(data: {
             newValue: JSON.stringify({ paymentNumber, amount: payAmount, mode: data.paymentMode, receivingAccount: data.receivingAccount || defaultReceivingAccount })
           }
         })
-      ]);
+      ];
 
       if (invoice.orderId) {
-        await prisma.order.update({
-          where: { id: invoice.orderId },
-          data: {
-            paymentReceived: newAmountPaid,
-            outstandingAmount: Math.max(0, newAmountDue),
-            paymentStatus: newStatus === 'Paid' ? 'Paid' : 'Partially Paid',
-          }
-        });
+        txOps.push(
+          prisma.order.update({
+            where: { id: invoice.orderId },
+            data: {
+              paymentReceived: newAmountPaid,
+              outstandingAmount: Math.max(0, newAmountDue),
+              paymentStatus: newStatus === 'Paid' ? 'Paid' : 'Partially Paid',
+            }
+          })
+        );
       }
+
+      const [payment] = await prisma.$transaction(txOps);
 
       revalidatePath("/invoices");
       revalidatePath("/payments");

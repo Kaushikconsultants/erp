@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getTenantOrgId } from "@/lib/tenant";
 
 export async function adjustInventory(skuOrArticle: string, quantity: number, type: "IN" | "OUT", notes?: string) {
   const session = await getServerSession(authOptions);
@@ -102,7 +103,12 @@ export async function getInventoryHistory(filters: { startDate?: string, endDate
   }
 
   try {
-    const whereClause: any = {};
+    const organizationId = await getTenantOrgId();
+    const whereClause: any = {
+      product: {
+        ...(organizationId ? { organizationId } : {})
+      }
+    };
     
     if (filters.startDate || filters.endDate) {
       whereClause.date = {};
@@ -115,12 +121,10 @@ export async function getInventoryHistory(filters: { startDate?: string, endDate
     }
 
     if (filters.sku) {
-      whereClause.product = {
-        OR: [
-          { sku: { contains: filters.sku, mode: 'insensitive' } },
-          { articleNumber: { contains: filters.sku, mode: 'insensitive' } }
-        ]
-      };
+      whereClause.product.OR = [
+        { sku: { contains: filters.sku, mode: 'insensitive' } },
+        { articleNumber: { contains: filters.sku, mode: 'insensitive' } }
+      ];
     }
 
     const transactions = await prisma.inventoryTransaction.findMany({
@@ -133,7 +137,8 @@ export async function getInventoryHistory(filters: { startDate?: string, endDate
           select: { user: { select: { name: true } } }
         }
       },
-      orderBy: { date: 'desc' }
+      orderBy: { date: 'desc' },
+      take: 200
     });
 
     return { success: true, transactions };

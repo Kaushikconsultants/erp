@@ -958,6 +958,8 @@ model Branch {
   employees       Employee[]
   customers       Customer[]
   warehouses      Warehouse[]
+
+  @@index([organizationId])
 }
 
 model Warehouse {
@@ -975,6 +977,8 @@ model Warehouse {
 
   inventoryTransactions InventoryTransaction[]
   productBatches        ProductBatch[]
+
+  @@index([organizationId])
 }
 
 model Vendor {
@@ -1965,6 +1969,7 @@ model GstFilingReturn {
   updatedAt           DateTime  @updatedAt
 
   @@unique([returnType, financialYear, periodKey])
+  @@index([organizationId])
 }
 
 model GstPortalLog {
@@ -2108,6 +2113,7 @@ model BillAllocation {
   @@index([billId])
   @@index([paymentId])
   @@index([vendorPaymentId])
+  @@index([organizationId])
 }
 
 model BankReconciliation {
@@ -2128,6 +2134,7 @@ model BankReconciliation {
   items              BankStatementItem[]
 
   @@index([ledgerAccountId])
+  @@index([organizationId])
 }
 
 model BankStatementItem {

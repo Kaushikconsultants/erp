@@ -183,6 +183,16 @@ export async function approveExpense(id: string) {
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.expense.findUnique({
+      where: { id },
+      include: { employee: { select: { organizationId: true } } }
+    });
+    if (!existing) return { error: "Expense not found" };
+    if (existing.employee?.organizationId && organizationId && existing.employee.organizationId !== organizationId) {
+      return { error: "Unauthorized access to expense" };
+    }
+
     await prisma.expense.update({ where: { id }, data: { status: "Approved" } });
     revalidatePath("/expenses");
     return { success: true };
@@ -195,6 +205,16 @@ export async function rejectExpense(id: string) {
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.expense.findUnique({
+      where: { id },
+      include: { employee: { select: { organizationId: true } } }
+    });
+    if (!existing) return { error: "Expense not found" };
+    if (existing.employee?.organizationId && organizationId && existing.employee.organizationId !== organizationId) {
+      return { error: "Unauthorized access to expense" };
+    }
+
     await prisma.expense.update({ where: { id }, data: { status: "Rejected" } });
     revalidatePath("/expenses");
     return { success: true };
@@ -207,6 +227,16 @@ export async function markExpensePaid(id: string) {
   if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.expense.findUnique({
+      where: { id },
+      include: { employee: { select: { organizationId: true } } }
+    });
+    if (!existing) return { error: "Expense not found" };
+    if (existing.employee?.organizationId && organizationId && existing.employee.organizationId !== organizationId) {
+      return { error: "Unauthorized access to expense" };
+    }
+
     await prisma.expense.update({ where: { id }, data: { status: "Paid" } });
     revalidatePath("/expenses");
     return { success: true };

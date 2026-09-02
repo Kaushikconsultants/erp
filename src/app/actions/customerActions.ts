@@ -643,6 +643,13 @@ export async function updateCustomer(id: string, formData: FormData) {
 
 export async function reassignCustomer(id: string, salespersonId: string) {
   try {
+    const organizationId = await getTenantOrgId();
+    const customer = await prisma.customer.findUnique({ where: { id }, select: { organizationId: true } });
+    if (!customer) return { error: "Customer not found." };
+    if (customer.organizationId && organizationId && customer.organizationId !== organizationId) {
+      return { error: "Unauthorized access to customer" };
+    }
+
     await prisma.customer.update({
       where: { id },
       data: { assignedSalespersonId: salespersonId || null }
@@ -660,12 +667,16 @@ export async function deleteCustomer(id: string) {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const customer = await prisma.customer.findUnique({
       where: { id },
       select: { id: true, businessName: true, contactPerson: true, mobile: true, organizationId: true }
     });
 
     if (!customer) return { error: "Customer not found." };
+    if (customer.organizationId && organizationId && customer.organizationId !== organizationId) {
+      return { error: "Unauthorized access to customer" };
+    }
 
     await prisma.$transaction(async (tx) => {
       // 1. Delete Activity logs / Calls / Followups / Tasks

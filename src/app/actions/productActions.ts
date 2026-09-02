@@ -184,6 +184,13 @@ export async function updateProduct(id: string, formData: FormData) {
       updateData.images = images;
     }
 
+    const organizationId = await getTenantOrgId();
+    const existingProd = await prisma.product.findUnique({ where: { id }, select: { organizationId: true } });
+    if (!existingProd) return { error: "Product not found" };
+    if (existingProd.organizationId && organizationId && existingProd.organizationId !== organizationId) {
+      return { error: "Unauthorized access to product" };
+    }
+
     const updatedProduct = await prisma.product.update({
       where: { id },
       data: updateData
@@ -218,6 +225,13 @@ export async function deleteProduct(id: string) {
   }
 
   try {
+    const organizationId = await getTenantOrgId();
+    const existingProd = await prisma.product.findUnique({ where: { id }, select: { organizationId: true } });
+    if (!existingProd) return { error: "Product not found" };
+    if (existingProd.organizationId && organizationId && existingProd.organizationId !== organizationId) {
+      return { error: "Unauthorized access to product" };
+    }
+
     await prisma.inventoryTransaction.deleteMany({ where: { productId: id } });
     await prisma.product.delete({ where: { id } });
 
@@ -235,7 +249,9 @@ export async function deleteProduct(id: string) {
  */
 export async function getAllArticlesForSelector() {
   try {
+    const organizationId = await getTenantOrgId();
     const products = await prisma.product.findMany({
+      where: organizationId ? { organizationId } : undefined,
       select: {
         id: true,
         name: true,
@@ -266,11 +282,13 @@ export async function getArticleTransactionHistory(articleOrSkuOrId: string, fil
   }
 
   try {
+    const organizationId = await getTenantOrgId();
     const query = articleOrSkuOrId.trim();
 
-    // 1. Locate Product
+    // 1. Locate Product within tenant
     const product = await prisma.product.findFirst({
       where: {
+        ...(organizationId ? { organizationId } : {}),
         OR: [
           { id: query },
           { sku: { equals: query, mode: 'insensitive' } },
