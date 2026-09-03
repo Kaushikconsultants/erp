@@ -1306,9 +1306,9 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                           <input 
                             type="number" 
                             step="0.01" 
-                            value={item.discountType === 'amount' ? (item.discountAmount || 0) : (item.discountPercent || 0)} 
+                            value={item.discountType === 'amount' ? (item.discountAmount !== undefined && item.discountAmount !== null ? item.discountAmount : '') : (item.discountPercent !== undefined && item.discountPercent !== null ? item.discountPercent : '')} 
                             onChange={e => {
-                              const val = Number(e.target.value) || 0;
+                              const val = e.target.value === '' ? '' : Number(e.target.value);
                               if (item.discountType === 'amount') {
                                 handleItemChange(index, 'discountAmount', val);
                               } else {
@@ -1513,9 +1513,9 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                         </select>
                         <input
                           type="number" step="0.01"
-                          value={item.discountType === 'amount' ? (item.discountAmount || 0) : (item.discountPercent || 0)}
+                          value={item.discountType === 'amount' ? (item.discountAmount !== undefined && item.discountAmount !== null ? item.discountAmount : '') : (item.discountPercent !== undefined && item.discountPercent !== null ? item.discountPercent : '')}
                           onChange={e => {
-                            const val = Number(e.target.value) || 0;
+                            const val = e.target.value === '' ? '' : Number(e.target.value);
                             if (item.discountType === 'amount') {
                               handleItemChange(index, 'discountAmount', val);
                             } else {
