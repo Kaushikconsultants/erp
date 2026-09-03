@@ -24,11 +24,15 @@ export default function DynamicUpiQr({
 }: DynamicUpiQrProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
+  const safeAmount = Number(amount) || 0;
+  const safeUpiId = upiId || '';
+  const safePayee = payeeName || 'Merchant';
+
   // Standard NPCI UPI URI Scheme
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount > 0 ? amount.toFixed(2) : '0.00'}&cu=INR${transactionNote ? `&tn=${encodeURIComponent(transactionNote)}` : ''}${transactionRef ? `&tr=${encodeURIComponent(transactionRef)}` : ''}`;
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(safeUpiId)}&pn=${encodeURIComponent(safePayee)}&am=${safeAmount > 0 ? safeAmount.toFixed(2) : '0.00'}&cu=INR${transactionNote ? `&tn=${encodeURIComponent(transactionNote)}` : ''}${transactionRef ? `&tr=${encodeURIComponent(transactionRef)}` : ''}`;
 
   useEffect(() => {
-    if (!upiId) return;
+    if (!safeUpiId) return;
 
     QRCode.toDataURL(upiUrl, {
       width: size * 2, // 2x for sharp print quality
@@ -40,9 +44,9 @@ export default function DynamicUpiQr({
     })
       .then(url => setQrDataUrl(url))
       .catch(err => console.error("Error generating UPI QR code:", err));
-  }, [upiId, payeeName, amount, transactionNote, transactionRef, size, upiUrl]);
+  }, [safeUpiId, safePayee, safeAmount, transactionNote, transactionRef, size, upiUrl]);
 
-  if (!upiId) return null;
+  if (!safeUpiId) return null;
 
   return (
     <div style={{
@@ -61,7 +65,7 @@ export default function DynamicUpiQr({
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={qrDataUrl}
-          alt={`Scan to Pay ₹${amount.toLocaleString('en-IN')}`}
+          alt={`Scan to Pay ₹${safeAmount.toLocaleString('en-IN')}`}
           style={{ width: `${size}px`, height: `${size}px`, display: 'block', borderRadius: '4px' }}
         />
       ) : (
@@ -73,7 +77,7 @@ export default function DynamicUpiQr({
       {showDetails && (
         <div style={{ marginTop: '6px', fontSize: '0.68rem', color: '#475569', lineHeight: 1.3 }}>
           <div style={{ fontWeight: 600, color: '#0f172a' }}>
-            Scan & Pay {amount > 0 ? `₹${amount.toLocaleString('en-IN')}` : ''}
+            Scan & Pay {safeAmount > 0 ? `₹${safeAmount.toLocaleString('en-IN')}` : ''}
           </div>
           <div style={{ color: '#64748b', fontSize: '0.62rem' }}>
             Google Pay • PhonePe • Paytm • UPI

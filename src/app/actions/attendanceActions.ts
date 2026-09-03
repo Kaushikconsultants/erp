@@ -83,6 +83,7 @@ export async function toggleAttendance() {
 
     revalidatePath("/");
     revalidatePath("/payroll");
+    revalidatePath("/attendance");
     return { success: true };
   } catch (error) {
     console.error("Failed to toggle attendance:", error);

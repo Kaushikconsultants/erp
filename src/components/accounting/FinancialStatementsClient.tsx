@@ -46,10 +46,10 @@ export default function FinancialStatementsClient({
     let filename = "";
 
     if (activeTab === "bs") {
-      filename = `Balance_Sheet_${balanceSheetData.asOfDate || "Current"}.csv`;
+      filename = `Balance_Sheet_${balanceSheetData?.asOfDate || "Current"}.csv`;
       rows = [
         ["BALANCE SHEET (Schedule III Format)", "", "", ""],
-        [`As of: ${balanceSheetData.asOfDate}`, "", "", ""],
+        [`As of: ${balanceSheetData?.asOfDate || ""}`, "", "", ""],
         ["", "", "", ""],
         ["EQUITY AND LIABILITIES", "", "ASSETS", ""],
         ["Particulars", "Amount (₹)", "Particulars", "Amount (₹)"],
@@ -59,7 +59,7 @@ export default function FinancialStatementsClient({
           "1. Non-Current / Fixed Assets",
           ""
         ],
-        ...balanceSheetData.liabilities.capitalAndEquity.map((item: any) => [
+        ...(balanceSheetData?.liabilities?.capitalAndEquity || []).map((item: any) => [
           `  ${item.name}`,
           item.amount,
           "",
@@ -67,9 +67,9 @@ export default function FinancialStatementsClient({
         ]),
         [
           "Total Equity",
-          balanceSheetData.liabilities.totalEquity,
+          balanceSheetData?.liabilities?.totalEquity || 0,
           "Total Fixed Assets",
-          balanceSheetData.assets.totalFixedAssets
+          balanceSheetData?.assets?.totalFixedAssets || 0
         ],
         ["", "", "", ""],
         [
@@ -80,12 +80,12 @@ export default function FinancialStatementsClient({
         ],
         ...Array.from({
           length: Math.max(
-            (balanceSheetData.liabilities?.currentLiabilities || []).length,
-            (balanceSheetData.assets?.currentAssets || []).length
+            (balanceSheetData?.liabilities?.currentLiabilities || []).length,
+            (balanceSheetData?.assets?.currentAssets || []).length
           )
         }).map((_, idx) => {
-          const liabItem = (balanceSheetData.liabilities?.currentLiabilities || [])[idx];
-          const assetItem = (balanceSheetData.assets?.currentAssets || [])[idx];
+          const liabItem = (balanceSheetData?.liabilities?.currentLiabilities || [])[idx];
+          const assetItem = (balanceSheetData?.assets?.currentAssets || [])[idx];
           return [
             liabItem ? `  ${liabItem.name}` : "",
             liabItem ? liabItem.amount : "",
@@ -95,54 +95,54 @@ export default function FinancialStatementsClient({
         }),
         [
           "Total Current Liabilities",
-          balanceSheetData.liabilities.totalCurrentLiabilities,
+          balanceSheetData?.liabilities?.totalCurrentLiabilities || 0,
           "Total Current Assets",
-          balanceSheetData.assets.totalCurrentAssets
+          balanceSheetData?.assets?.totalCurrentAssets || 0
         ],
         ["", "", "", ""],
         [
           "TOTAL LIABILITIES & EQUITY",
-          balanceSheetData.liabilities.totalLiabilitiesAndEquity,
+          balanceSheetData?.liabilities?.totalLiabilitiesAndEquity || 0,
           "TOTAL ASSETS",
-          balanceSheetData.assets.totalAssets
+          balanceSheetData?.assets?.totalAssets || 0
         ]
       ];
     } else if (activeTab === "pl") {
-      filename = `Profit_and_Loss_${plData.startDate}_to_${plData.endDate}.csv`;
+      filename = `Profit_and_Loss_${plData?.startDate || ""}_to_${plData?.endDate || ""}.csv`;
       rows = [
         ["PROFIT & LOSS STATEMENT", "", ""],
-        [`Period: ${plData.startDate} to ${plData.endDate}`, "", ""],
+        [`Period: ${plData?.startDate || ""} to ${plData?.endDate || ""}`, "", ""],
         ["", "", ""],
         ["PARTICULARS", "SUB-TOTAL (₹)", "TOTAL (₹)"],
         ["TRADING ACCOUNT", "", ""],
-        ["Gross Sales Revenue", "", plData.tradingAccount.salesRevenue],
+        ["Gross Sales Revenue", "", plData?.tradingAccount?.salesRevenue || 0],
         ["Less: Cost of Goods Sold (COGS)", "", ""],
-        ["  Opening Stock", plData.tradingAccount.openingStock, ""],
-        ["  Add: Direct Purchases", plData.tradingAccount.purchases, ""],
-        ["  Less: Closing Stock", `-${plData.tradingAccount.closingStock}`, ""],
-        ["Total COGS", "", `-${plData.tradingAccount.costOfGoodsSold}`],
-        ["GROSS PROFIT", "", plData.tradingAccount.grossProfit],
+        ["  Opening Stock", plData?.tradingAccount?.openingStock || 0, ""],
+        ["  Add: Direct Purchases", plData?.tradingAccount?.purchases || 0, ""],
+        ["  Less: Closing Stock", `-${plData?.tradingAccount?.closingStock || 0}`, ""],
+        ["Total COGS", "", `-${plData?.tradingAccount?.costOfGoodsSold || 0}`],
+        ["GROSS PROFIT", "", plData?.tradingAccount?.grossProfit || 0],
         ["", "", ""],
         ["INCOME STATEMENT / OVERHEADS", "", ""],
-        ["Gross Profit b/d", "", plData.incomeStatement.grossProfit],
+        ["Gross Profit b/d", "", plData?.incomeStatement?.grossProfit || 0],
         ["Less: Indirect Expenses & Overheads", "", ""],
-        ...plData.incomeStatement.indirectExpenses.map((exp: any) => [
+        ...(plData?.incomeStatement?.indirectExpenses || []).map((exp: any) => [
           `  ${exp.category}`,
           exp.amount,
           ""
         ]),
-        ["Total Indirect Expenses", "", `-${plData.incomeStatement.totalIndirectExpenses}`],
+        ["Total Indirect Expenses", "", `-${plData?.incomeStatement?.totalIndirectExpenses || 0}`],
         ["", "", ""],
-        ["NET PROFIT / (LOSS)", "", plData.incomeStatement.netProfit]
+        ["NET PROFIT / (LOSS)", "", plData?.incomeStatement?.netProfit || 0]
       ];
     } else {
-      filename = `Trial_Balance_${trialBalanceData.asOfDate}.csv`;
+      filename = `Trial_Balance_${trialBalanceData?.asOfDate || "Current"}.csv`;
       rows = [
         ["TRIAL BALANCE", "", "", ""],
-        [`As of: ${trialBalanceData.asOfDate}`, "", "", ""],
+        [`As of: ${trialBalanceData?.asOfDate || ""}`, "", "", ""],
         ["", "", "", ""],
         ["Ledger Account Code", "Ledger Account Name", "Account Group", "Nature", "Debit Balance (₹)", "Credit Balance (₹)"],
-        ...trialBalanceData.rows.map((r: any) => [
+        ...(trialBalanceData?.rows || []).map((r: any) => [
           r.code || "",
           `"${r.name}"`,
           `"${r.groupName}"`,
@@ -150,7 +150,7 @@ export default function FinancialStatementsClient({
           r.closingDebit,
           r.closingCredit
         ]),
-        ["", "", "TOTAL", "", trialBalanceData.totalDebit, trialBalanceData.totalCredit]
+        ["", "", "TOTAL", "", trialBalanceData?.totalDebit || 0, trialBalanceData?.totalCredit || 0]
       ];
     }
 

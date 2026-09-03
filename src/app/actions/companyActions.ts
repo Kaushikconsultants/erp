@@ -94,28 +94,36 @@ const fetchSettingsInternal = cache(async (orgId?: string) => {
   return settings;
 });
 
-let settingsCache: { data: any; timestamp: number } | null = null;
-const CACHE_TTL_MS = 30000; // 30s in-memory cache
+const settingsCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL_MS = 30000; // 30s per-tenant in-memory cache
 
-export async function invalidateCompanySettingsCache() {
-  settingsCache = null;
+export async function invalidateCompanySettingsCache(orgId?: string) {
+  if (orgId) {
+    settingsCache.delete(orgId);
+  } else {
+    settingsCache.clear();
+  }
 }
 
 export const getCompanySettings = cache(async function getCompanySettings() {
   const now = Date.now();
-  if (settingsCache && (now - settingsCache.timestamp) < CACHE_TTL_MS) {
-    return settingsCache.data;
+  let orgId = "default";
+  try {
+    const session = await getServerSession(authOptions);
+    orgId = (session?.user as any)?.organizationId || (await getTenantOrgId()) || "default";
+  } catch (e) {}
+
+  const cached = settingsCache.get(orgId);
+  if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+    return cached.data;
   }
 
   try {
-    const session = await getServerSession(authOptions);
-    const orgId = (session?.user as any)?.organizationId || (await getTenantOrgId());
     const settings = await fetchSettingsInternal(orgId);
     const result = { success: true, settings: settings || FALLBACK_SETTINGS };
-    settingsCache = { data: result, timestamp: now };
+    settingsCache.set(orgId, { data: result, timestamp: now });
     return result;
   } catch (error) {
-    console.error("Error getting company settings:", error);
     return { 
       success: true, 
       settings: FALLBACK_SETTINGS
@@ -134,7 +142,7 @@ export async function updateMonthlyTarget(target: number) {
       update: { monthlyTarget: target, organizationId: orgId },
       create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", monthlyTarget: target }
     });
-    settingsCache = null;
+    invalidateCompanySettingsCache(orgId);
     revalidatePath("/");
     return { success: true, settings: updated };
   } catch (error) {
@@ -161,7 +169,7 @@ export async function updateCallOutcomes(outcomes: string[]) {
       update: { callOutcomes: cleanOutcomes, organizationId: orgId },
       create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", callOutcomes: cleanOutcomes }
     });
-    settingsCache = null;
+    invalidateCompanySettingsCache(orgId);
     revalidatePath("/calls");
     revalidatePath("/settings");
     revalidatePath("/settings/organization");
@@ -190,7 +198,7 @@ export async function updateCallTypes(callTypes: string[]) {
       update: { callTypes: cleanTypes, organizationId: orgId },
       create: { id: settingId, organizationId: orgId, companyName: current.settings?.companyName || "My Business", callTypes: cleanTypes }
     });
-    settingsCache = null;
+    invalidateCompanySettingsCache(orgId);
     revalidatePath("/calls");
     revalidatePath("/settings");
     revalidatePath("/settings/organization");
@@ -314,7 +322,7 @@ export async function updateCompanySettings(formData: FormData) {
       }).catch(() => {});
     }
 
-    settingsCache = null;
+    invalidateCompanySettingsCache(orgId);
     revalidatePath("/settings");
     revalidatePath("/settings/organization");
     revalidatePath("/calls");

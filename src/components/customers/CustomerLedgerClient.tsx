@@ -32,10 +32,12 @@ export default function CustomerLedgerClient({ initialData, customerId }: Custom
 
   const handleWhatsAppShare = () => {
     const cleanPhone = (customer.whatsappNumber || customer.mobile || '').replace(/[^0-9]/g, '');
+    const custName = customer.businessName || customer.name || 'Customer';
+    const contactPersonStr = customer.contactPerson ? ` (${customer.contactPerson})` : '';
     const text = `*ACCOUNT STATEMENT / KHATA*\n` +
       `*Company:* ${company.companyName || 'Espon Sports'}\n` +
-      `*Customer:* ${customer.businessName} (${customer.contactPerson})\n` +
-      `*Period:* ${startDate} to ${endDate}\n\n` +
+      `*Customer:* ${custName}${contactPersonStr}\n` +
+      `*Period:* ${startDate || 'MTD'} to ${endDate || 'Today'}\n\n` +
       `*Opening Balance:* ₹${fmt(data.openingBalance)}\n` +
       `*Total Sales (Debit):* ₹${fmt(data.totalDebit)}\n` +
       `*Total Received (Credit):* ₹${fmt(data.totalCredit)}\n` +
@@ -56,32 +58,36 @@ export default function CustomerLedgerClient({ initialData, customerId }: Custom
     ];
 
     rows.push([
-      startDate,
+      startDate || "-",
       "OPENING",
       "-",
       "Opening Balance",
       "-",
       "-",
-      data.openingBalance.toFixed(2)
+      (Number(data.openingBalance) || 0).toFixed(2)
     ]);
 
-    data.transactions.forEach(tx => {
+    (data.transactions || []).forEach(tx => {
+      const debitNum = Number(tx.debit) || 0;
+      const creditNum = Number(tx.credit) || 0;
+      const balanceNum = Number(tx.balance) || 0;
       rows.push([
-        new Date(tx.date).toLocaleDateString('en-IN'),
-        tx.type,
-        tx.voucherNumber,
-        `"${tx.particulars}"`,
-        tx.debit > 0 ? tx.debit.toFixed(2) : "-",
-        tx.credit > 0 ? tx.credit.toFixed(2) : "-",
-        tx.balance.toFixed(2)
+        tx.date ? new Date(tx.date).toLocaleDateString('en-IN') : "-",
+        tx.type || "TX",
+        tx.voucherNumber || "-",
+        `"${(tx.particulars || '').replace(/"/g, '""')}"`,
+        debitNum > 0 ? debitNum.toFixed(2) : "-",
+        creditNum > 0 ? creditNum.toFixed(2) : "-",
+        balanceNum.toFixed(2)
       ]);
     });
 
     const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
+    const safeCustName = (customer.businessName || customer.name || 'Customer').replace(/[^a-zA-Z0-9_-]/g, '_');
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Ledger_${customer.businessName.replace(/\s+/g, '_')}_${startDate}_${endDate}.csv`);
+    link.setAttribute("download", `Ledger_${safeCustName}_${startDate || 'from'}_${endDate || 'to'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
