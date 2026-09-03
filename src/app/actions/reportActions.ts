@@ -166,9 +166,9 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
       prisma.order.findMany({
         where: orderWhere,
         include: {
-          customer: { select: { businessName: true, mobile: true, state: true } },
-          salesperson: { include: { user: { select: { name: true } } } },
-          items: { include: { product: { select: { name: true, sku: true } } } }
+          customer: { select: { id: true, businessName: true, mobile: true, state: true, status: true } },
+          salesperson: { include: { user: { select: { name: true, email: true } } } },
+          items: { include: { product: { select: { id: true, name: true, sku: true, costPrice: true, sellingPrice: true, category: true } } } }
         },
         orderBy: { orderDate: 'desc' }
       }),
@@ -177,14 +177,16 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
         include: {
           customer: { 
             select: { 
+              id: true,
               businessName: true, 
               mobile: true, 
               state: true, 
-              assignedSalesperson: { include: { user: { select: { name: true } } } } 
+              status: true,
+              assignedSalesperson: { include: { user: { select: { name: true, email: true } } } } 
             } 
           },
-          salesperson: { include: { user: { select: { name: true } } } },
-          items: { include: { product: { select: { name: true, sku: true } } } }
+          salesperson: { include: { user: { select: { name: true, email: true } } } },
+          items: { include: { product: { select: { id: true, name: true, sku: true, costPrice: true, sellingPrice: true, category: true } } } }
         },
         orderBy: { date: 'desc' }
       })
@@ -206,10 +208,15 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
         id: q.id,
         orderNumber: q.quotationNumber,
         customer: q.customer,
-        salesperson: q.salesperson || (q.customer?.assignedSalesperson ? { user: { name: q.customer.assignedSalesperson.user?.name } } : null),
+        salesperson: q.salesperson || (q.customer?.assignedSalesperson ? { user: { name: q.customer.assignedSalesperson.user?.name, email: q.customer.assignedSalesperson.user?.email } } : null),
         orderDate: q.date || q.createdAt,
         subtotal: Number(q.subtotal ?? q.totalValue ?? 0),
+        discount: Number(q.itemDiscount || 0) + Number(q.additionalDiscount || 0),
         tax: Number(q.taxTotal ?? ((q.cgst || 0) + (q.sgst || 0) + (q.igst || 0))),
+        cgst: Number(q.cgst || 0),
+        sgst: Number(q.sgst || 0),
+        igst: Number(q.igst || 0),
+        isInterstate: !!q.isInterstate,
         totalValue: Number(q.totalValue ?? q.subtotal ?? 0),
         paymentReceived: Number(q.receivedAmount || 0),
         outstandingAmount: Math.max(0, Number(q.totalValue || 0) - Number(q.receivedAmount || 0)),
@@ -226,7 +233,12 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
       salesperson: o.salesperson,
       orderDate: o.orderDate,
       subtotal: Number(o.subtotal ?? o.totalValue ?? 0),
+      discount: Number(o.discount || 0),
       tax: Number(o.tax ?? ((o.cgst || 0) + (o.sgst || 0) + (o.igst || 0))),
+      cgst: Number(o.cgst || 0),
+      sgst: Number(o.sgst || 0),
+      igst: Number(o.igst || 0),
+      isInterstate: (o.customer?.state || '').toLowerCase() !== 'delhi' && (o.customer?.state || '').toLowerCase() !== 'haryana',
       totalValue: Number(o.totalValue ?? o.subtotal ?? 0),
       paymentReceived: Number(o.paymentReceived || 0),
       outstandingAmount: Number(o.outstandingAmount || 0),
@@ -261,9 +273,17 @@ export async function getInventoryReport() {
 
     const totalStockQty = products.reduce((s, p) => s + p.stockQuantity, 0);
     const totalInventoryValue = products.reduce((s, p) => s + (p.stockQuantity * p.sellingPrice), 0);
+    const totalCostValue = products.reduce((s, p) => s + (p.stockQuantity * (p.costPrice || p.sellingPrice * 0.7)), 0);
     const lowStockProducts = products.filter(p => p.stockQuantity <= (p.minimumStock || 10));
 
-    return { success: true, products, totalStockQty, totalInventoryValue, lowStockCount: lowStockProducts.length };
+    return { 
+      success: true, 
+      products, 
+      totalStockQty, 
+      totalInventoryValue, 
+      totalCostValue,
+      lowStockCount: lowStockProducts.length 
+    };
   } catch (error: any) {
     return { error: "Failed to fetch inventory report" };
   }
@@ -296,10 +316,10 @@ export async function getFinancialsReport() {
       ];
     }
 
-    const [invoices, payments] = await Promise.all([
+    const [invoices, payments, expenses, customers] = await Promise.all([
       prisma.invoice.findMany({
         where: invoiceWhere,
-        include: { customer: { select: { businessName: true } } },
+        include: { customer: { select: { id: true, businessName: true, mobile: true, status: true } } },
         orderBy: { invoiceDate: 'desc' }
       }),
       prisma.payment.findMany({
@@ -309,15 +329,103 @@ export async function getFinancialsReport() {
           customer: { select: { businessName: true } }
         },
         orderBy: { paymentDate: 'desc' }
+      }),
+      prisma.expense.findMany({
+        where: { employee: { organizationId } },
+        include: { employee: { include: { user: { select: { name: true } } } } },
+        orderBy: { date: 'desc' }
+      }),
+      prisma.customer.findMany({
+        where: { organizationId },
+        select: {
+          id: true,
+          businessName: true,
+          mobile: true,
+          status: true,
+          leadStage: true,
+          openingBalance: true,
+          totalPurchaseValue: true,
+          totalOrders: true,
+          createdAt: true
+        }
       })
     ]);
 
     const totalInvoiced = invoices.reduce((s, i) => s + i.totalAmount, 0);
     const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
     const totalOutstanding = invoices.reduce((s, i) => s + i.amountDue, 0);
+    const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
 
-    return { success: true, invoices, payments, totalInvoiced, totalCollected, totalOutstanding };
+    return { 
+      success: true, 
+      invoices, 
+      payments, 
+      expenses,
+      customers,
+      totalInvoiced, 
+      totalCollected, 
+      totalOutstanding,
+      totalExpenses 
+    };
   } catch (error: any) {
     return { error: "Failed to fetch financials report" };
+  }
+}
+
+/**
+ * Master Hub Action: Aggregates full multi-module report dataset for Zoho Books style Reports Center
+ */
+export async function getAllReportsHubData(startDate?: string, endDate?: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    const { organizationId, isAdmin } = await getTenantScope();
+
+    const [salesRes, invRes, finRes, intelRes, employees, quotations] = await Promise.all([
+      getSalesReport(startDate, endDate),
+      getInventoryReport(),
+      getFinancialsReport(),
+      getSalesIntelligence(),
+      prisma.employee.findMany({
+        where: { organizationId },
+        include: {
+          user: { select: { id: true, name: true, email: true, role: true } },
+          salaries: { take: 6, orderBy: { month: 'desc' } },
+          incentives: { take: 6, orderBy: { month: 'desc' } },
+          attendances: { take: 30, orderBy: { date: 'desc' } },
+          leaves: { take: 10, orderBy: { startDate: 'desc' } }
+        }
+      }),
+      prisma.quotation.findMany({
+        where: { organizationId },
+        include: {
+          customer: { select: { businessName: true, mobile: true } },
+          salesperson: { include: { user: { select: { name: true } } } }
+        },
+        orderBy: { date: 'desc' }
+      })
+    ]);
+
+    const salesOrders = salesRes.success ? salesRes.orders : [];
+    const inventory = invRes.success ? invRes : {};
+    const financials = finRes.success ? finRes : {};
+    const productSales = intelRes.success ? intelRes.productSales : {};
+
+    return {
+      success: true,
+      data: {
+        salesOrders,
+        inventory,
+        financials,
+        productSales,
+        employees,
+        quotations,
+        isAdmin
+      }
+    };
+  } catch (error: any) {
+    console.error("Error fetching all reports data:", error);
+    return { error: "Failed to fetch comprehensive reports data: " + error.message };
   }
 }
