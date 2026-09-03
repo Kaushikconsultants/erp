@@ -213,26 +213,38 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #9ca3af', marginBottom: '16px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid #9ca3af', backgroundColor: '#f9fafb', fontSize: '11px' }}>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left', width: '30px' }}>#</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left' }}>Item & Description</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'center', width: '70px' }}>HSN/SAC</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Qty</th>
-              <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Rate</th>
+              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left', width: '30px' }}>#</th>
+              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left' }}>Item & Description</th>
+              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'center', width: '70px' }}>HSN/SAC</th>
+              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Qty</th>
+              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Rate</th>
               {hasDiscount && (
-                <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Discount</th>
+                <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Discount</th>
               )}
               {isInterstate ? (
+                <th colSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', borderBottom: '1px solid #9ca3af', textAlign: 'center' }}>IGST</th>
+              ) : (
                 <>
-                  <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '50px' }}>IGST %</th>
-                  <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
+                  <th colSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', borderBottom: '1px solid #9ca3af', textAlign: 'center' }}>CGST</th>
+                  <th colSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', borderBottom: '1px solid #9ca3af', textAlign: 'center' }}>SGST</th>
+                </>
+              )}
+              <th rowSpan={2} style={{ padding: '6px', textAlign: 'right', width: '90px' }}>Amount</th>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #9ca3af', backgroundColor: '#f9fafb', fontSize: '11px' }}>
+              {isInterstate ? (
+                <>
+                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px' }}>%</th>
+                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '65px' }}>Amt</th>
                 </>
               ) : (
                 <>
-                  <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '50px' }}>CGST %</th>
-                  <th style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
+                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px' }}>%</th>
+                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
+                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px' }}>%</th>
+                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
                 </>
               )}
-              <th style={{ padding: '6px', textAlign: 'right', width: '90px' }}>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -273,7 +285,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                       {(item.gstRate || 0) / 2}%
                     </td>
                     <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                      {fmt(item.cgst || 0)}
+                      {fmt(item.cgst || (item.taxAmount ? item.taxAmount / 2 : 0))}
+                    </td>
+                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                      {(item.gstRate || 0) / 2}%
+                    </td>
+                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                      {fmt(item.sgst || item.cgst || (item.taxAmount ? item.taxAmount / 2 : 0))}
                     </td>
                   </>
                 )}

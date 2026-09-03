@@ -284,7 +284,13 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                             {(item.gstRate / 2)}%
                           </td>
                           <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                            {fmt(item.cgst)}
+                            {fmt(item.cgst ?? ((item.total - (item.total / (1 + (item.gstRate || 0) / 100))) / 2))}
+                          </td>
+                          <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                            {(item.gstRate / 2)}%
+                          </td>
+                          <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                            {fmt(item.sgst ?? item.cgst ?? ((item.total - (item.total / (1 + (item.gstRate || 0) / 100))) / 2))}
                           </td>
                         </>
                       )}
