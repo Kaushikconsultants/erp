@@ -189,6 +189,7 @@ export async function getInvoiceById(id: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
   try {
+    const organizationId = await getTenantOrgId();
     const invoice = await prisma.invoice.findUnique({
       where: { id },
       include: {
@@ -198,6 +199,9 @@ export async function getInvoiceById(id: string) {
       }
     });
     if (!invoice) return { error: "Invoice not found" };
+    if (invoice.organizationId && organizationId && invoice.organizationId !== organizationId) {
+      return { error: "Unauthorized access to invoice" };
+    }
     return { success: true, invoice };
   } catch (error: any) {
     return { error: "Failed to fetch invoice" };

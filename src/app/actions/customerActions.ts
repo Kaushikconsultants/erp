@@ -611,6 +611,17 @@ export async function updateCustomer(id: string, formData: FormData) {
   const openingBalanceType = formData.get("openingBalanceType") as string || undefined;
 
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.customer.findUnique({
+      where: { id },
+      select: { id: true, organizationId: true }
+    });
+
+    if (!existing) return { error: "Customer not found." };
+    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+      return { error: "Unauthorized access to customer" };
+    }
+
     await prisma.customer.update({
       where: { id },
       data: {

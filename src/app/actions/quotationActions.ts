@@ -1041,7 +1041,13 @@ export async function deleteQuotation(id: string) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
+
+    const organizationId = await getTenantOrgId();
     const quotation = await prisma.quotation.findUnique({ where: { id } });
+    if (!quotation) return { error: "Quotation not found" };
+    if (quotation.organizationId && organizationId && quotation.organizationId !== organizationId) {
+      return { error: "Unauthorized access to quotation" };
+    }
 
     await prisma.quotationItem.deleteMany({ where: { quotationId: id } });
     await prisma.quotationActivity.deleteMany({ where: { quotationId: id } });
