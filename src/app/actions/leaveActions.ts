@@ -31,8 +31,14 @@ export async function submitLeaveRequest(data: {
   }
 }
 
-export async function updateLeaveStatus(leaveId: string, status: "Approved" | "Rejected" | "Pending") {
+export async function updateLeaveStatus(
+  leaveIdOrPayload: string | { leaveId: string; status: "Approved" | "Rejected" | "Pending" },
+  maybeStatus?: "Approved" | "Rejected" | "Pending"
+) {
   try {
+    const leaveId = typeof leaveIdOrPayload === "string" ? leaveIdOrPayload : leaveIdOrPayload.leaveId;
+    const status = typeof leaveIdOrPayload === "string" ? maybeStatus! : leaveIdOrPayload.status;
+
     const leave = await prisma.leave.update({
       where: { id: leaveId },
       data: { status }

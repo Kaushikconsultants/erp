@@ -27,7 +27,7 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
   const handleStatusUpdate = async (leaveId: string, status: 'Approved' | 'Rejected' | 'Pending') => {
     setIsUpdating(leaveId);
     try {
-      const res = await updateLeaveStatus({ leaveId, status });
+      const res = await updateLeaveStatus(leaveId, status);
       if (res.error) {
         alert(`Failed to update leave status: ${res.error}`);
       }
