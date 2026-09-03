@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getTenantOrgId } from "@/lib/tenant";
+import { getTenantOrgId, getTenantScope } from "@/lib/tenant";
 
 export async function getEmployeeScorecard(employeeId: string) {
   try {
@@ -54,16 +54,23 @@ export async function getEmployeeScorecard(employeeId: string) {
 
 export async function getSalesIntelligence() {
   try {
-    const organizationId = await getTenantOrgId();
+    const { organizationId, isAdmin, employeeId } = await getTenantScope();
+
+    const orderWhere: any = { ...(organizationId ? { organizationId } : {}), orderStatus: { not: 'Cancelled' } };
+    if (!isAdmin) orderWhere.salespersonId = employeeId || 'unassigned';
+
+    const quoteWhere: any = { ...(organizationId ? { organizationId } : {}), status: 'Confirmed' };
+    if (!isAdmin) quoteWhere.salespersonId = employeeId || 'unassigned';
+
     const [orders, quotations] = await Promise.all([
       prisma.order.findMany({
-        where: { ...(organizationId ? { organizationId } : {}), orderStatus: { not: 'Cancelled' } },
+        where: orderWhere,
         include: {
           items: { include: { product: true } }
         }
       }),
       prisma.quotation.findMany({
-        where: { ...(organizationId ? { organizationId } : {}), status: 'Confirmed' },
+        where: quoteWhere,
         include: {
           items: { include: { product: true } }
         }
@@ -115,11 +122,16 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
+    const { organizationId, isAdmin, employeeId } = await getTenantScope();
+    
     const orderWhere: any = { 
       ...(organizationId ? { organizationId } : {}), 
       orderStatus: { not: 'Cancelled' } 
     };
+    if (!isAdmin) {
+      orderWhere.salespersonId = employeeId || 'unassigned';
+    }
+
     if (startDate || endDate) {
       orderWhere.orderDate = {};
       if (startDate) orderWhere.orderDate.gte = new Date(startDate);
@@ -130,6 +142,9 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
       ...(organizationId ? { organizationId } : {}),
       status: { in: ['Confirmed', 'Converted'] }
     };
+    if (!isAdmin) {
+      quoteWhere.salespersonId = employeeId || 'unassigned';
+    }
     if (startDate || endDate) {
       quoteWhere.OR = [
         {
@@ -259,21 +274,36 @@ export async function getFinancialsReport() {
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    const organizationId = await getTenantOrgId();
+    const { organizationId, isAdmin, employeeId } = await getTenantScope();
+    
+    const invoiceWhere: any = { organizationId };
+    if (!isAdmin) {
+      invoiceWhere.customer = { assignedSalespersonId: employeeId || 'unassigned' };
+    }
+
+    const paymentWhere: any = {
+      OR: [
+        { customer: { organizationId } },
+        { invoice: { organizationId } }
+      ],
+      status: { in: ['Completed', 'Success', 'Received', 'Processed'] }
+    };
+    
+    if (!isAdmin) {
+      paymentWhere.OR = [
+        { customer: { organizationId, assignedSalespersonId: employeeId || 'unassigned' } },
+        { invoice: { organizationId, customer: { assignedSalespersonId: employeeId || 'unassigned' } } }
+      ];
+    }
+
     const [invoices, payments] = await Promise.all([
       prisma.invoice.findMany({
-        where: { organizationId },
+        where: invoiceWhere,
         include: { customer: { select: { businessName: true } } },
         orderBy: { invoiceDate: 'desc' }
       }),
       prisma.payment.findMany({
-        where: {
-          OR: [
-            { customer: { organizationId } },
-            { invoice: { organizationId } }
-          ],
-          status: { in: ['Completed', 'Success', 'Received', 'Processed'] }
-        },
+        where: paymentWhere,
         include: { 
           invoice: { include: { customer: { select: { businessName: true } } } },
           customer: { select: { businessName: true } }
