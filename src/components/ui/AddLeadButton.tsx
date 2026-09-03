@@ -181,7 +181,7 @@ export default function AddLeadButton({ employees, organizationId }: { employees
                   
                   <div>
                     <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Endpoint URL (POST)</label>
-                    <div style={{background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#0f172a'}}>
+                    <div suppressHydrationWarning style={{background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#0f172a'}}>
                       {typeof window !== 'undefined' ? window.location.origin : 'https://your-crm-url.com'}/api/webhooks/whatsapp/leads
                     </div>
                   </div>

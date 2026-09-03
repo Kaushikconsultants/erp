@@ -335,7 +335,7 @@ export default function EmployeeDashboard({
       {/* ─── MOBILE COMMAND CENTER HEADER ─── */}
       <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <span suppressHydrationWarning style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {todayDateStr} • Today's Shift
           </span>
           <h1 className="page-title" style={{ fontSize: '1.25rem', marginTop: '2px' }}>

@@ -98,7 +98,7 @@ export default function LeadDetailClient({ lead, employees }: { lead: any, emplo
                   <div key={call.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                       <strong style={{ fontSize: '0.9rem' }}>{call.callType} Call</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(call.createdAt).toLocaleDateString()}</span>
+                      <span suppressHydrationWarning style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(call.createdAt).toLocaleDateString()}</span>
                     </div>
                     <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Outcome: {call.outcome}</div>
                     {call.notes && <div style={{ fontSize: '0.85rem', marginTop: '4px' }}>{call.notes}</div>}
@@ -118,7 +118,7 @@ export default function LeadDetailClient({ lead, employees }: { lead: any, emplo
                   <div key={fu.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', borderLeft: `3px solid ${fu.status === 'Completed' ? 'var(--success)' : 'var(--accent-primary)'}` }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                       <strong style={{ fontSize: '0.9rem' }}>{fu.followUpType}</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(fu.date).toLocaleDateString()}</span>
+                      <span suppressHydrationWarning style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{new Date(fu.date).toLocaleDateString()}</span>
                     </div>
                     <div style={{ fontSize: '0.85rem' }}>Status: {fu.status}</div>
                   </div>
