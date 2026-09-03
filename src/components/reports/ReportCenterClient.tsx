@@ -336,7 +336,7 @@ export default function ReportCenterClient({
 
   return (
     <div className="reports-hub-container">
-      {/* ─── LEFT SIDEBAR: CATEGORIES & NAVIGATION ─── */}
+      {/* ─── DESKTOP SIDEBAR: CATEGORIES & NAVIGATION ─── */}
       <aside className="reports-sidebar">
         <div>
           <div className="reports-sidebar-title">Quick Access</div>
@@ -429,200 +429,311 @@ export default function ReportCenterClient({
 
       {/* ─── RIGHT MAIN PANEL: REPORTS LIST & DETAILS ─── */}
       <main className="reports-main-content">
-        {/* Header Bar */}
+        {/* Mobile / Tablet Horizontal Category Filter Bar */}
+        <div className="reports-mobile-nav">
+          <button
+            type="button"
+            className={`reports-mobile-chip ${activeCategory === "favorites" ? "active" : ""}`}
+            onClick={() => { setActiveCategory("favorites"); setSearchQuery(""); }}
+          >
+            <Star size={13} color={activeCategory === "favorites" ? "#ffffff" : "#f59e0b"} fill={activeCategory === "favorites" ? "#ffffff" : "#f59e0b"} />
+            Favorites
+            <span className="reports-count-badge">{favorites.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`reports-mobile-chip ai-chip ${activeCategory === "ai_analytics" ? "active" : ""}`}
+            onClick={() => { setActiveCategory("ai_analytics"); setSearchQuery(""); }}
+          >
+            <Sparkles size={13} />
+            AI Executive Studio
+            <span className="ai-pill" style={{ fontSize: "0.62rem", padding: "1px 5px" }}>Pro</span>
+          </button>
+
+          {REPORT_CATEGORIES.filter(c => !c.isSpecial).map((cat) => {
+            const isActive = activeCategory === cat.id && !searchQuery;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                className={`reports-mobile-chip ${isActive ? "active" : ""}`}
+                onClick={() => {
+                  setActiveCategory(cat.id);
+                  setSearchQuery("");
+                }}
+              >
+                <span>{cat.icon}</span>
+                {cat.label}
+                <span className="reports-count-badge">
+                  {REPORT_REGISTRY.filter(r => r.category === cat.id).length}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Category Header Card */}
         <div className="reports-header-card">
           <div className="reports-title-row">
             <div className="reports-category-icon">
               <span>{currentCategoryMeta.icon}</span>
             </div>
             <div>
-              <h1 className="reports-title-text">
+              <h2 className="reports-title-text">
                 {currentCategoryMeta.label}
                 <span className="reports-count-badge" style={{ fontSize: "0.76rem" }}>
                   {displayedReports.length}
                 </span>
-              </h1>
+              </h2>
               <p className="reports-subtitle-text">{currentCategoryMeta.subtitle}</p>
             </div>
           </div>
 
           {/* Search Box */}
-          <div style={{ display: "flex", alignItems: "center", gap: "10px", minWidth: "280px" }}>
-            <div style={{ position: "relative", width: "100%" }}>
-              <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-              <input
-                type="text"
-                placeholder="Search report name, keyword, metric..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px 8px 34px",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.82rem",
-                  backgroundColor: "#ffffff",
-                  outline: "none",
-                  color: "#0f172a"
-                }}
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+          <div className="reports-search-container">
+            <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+            <input
+              type="text"
+              className="reports-search-input"
+              placeholder="Search report name, keyword, metric..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "2px" }}
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Reports Table View */}
+        {/* Reports Table Card */}
         <div className="reports-table-card">
-          <table className="reports-table">
-            <thead>
-              <tr>
-                <th style={{ width: "38px" }}></th>
-                <th style={{ minWidth: "260px" }}>Report Name</th>
-                <th style={{ minWidth: "180px" }}>Sub-Category</th>
-                <th style={{ minWidth: "140px" }}>Created By</th>
-                <th style={{ minWidth: "140px" }}>Last Visited</th>
-                <th style={{ textAlign: "right", minWidth: "150px" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {displayedReports.length > 0 ? (
-                displayedReports.map((report) => {
-                  const isStarred = favorites.includes(report.id);
-                  return (
-                    <tr
-                      key={report.id}
-                      onClick={() => setActiveReportModal(report)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {/* Favorite Star */}
-                      <td style={{ textAlign: "center" }} onClick={(e) => toggleFavorite(report.id, e)}>
-                        <button
-                          type="button"
-                          className={`favorite-star-btn ${isStarred ? "starred" : ""}`}
-                          title={isStarred ? "Remove from Favorites" : "Add to Favorites"}
-                        >
-                          <Star size={15} fill={isStarred ? "#f59e0b" : "none"} color={isStarred ? "#f59e0b" : "#cbd5e1"} />
-                        </button>
-                      </td>
+          {/* Responsive Desktop / Tablet Table */}
+          <div className="reports-table-responsive">
+            <table className="reports-table">
+              <thead>
+                <tr>
+                  <th className="col-star"></th>
+                  <th className="col-report-name">Report Name</th>
+                  <th className="col-subcat">Sub-Category</th>
+                  <th className="col-created">Created By</th>
+                  <th className="col-visited">Last Visited</th>
+                  <th className="col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedReports.length > 0 ? (
+                  displayedReports.map((report) => {
+                    const isStarred = favorites.includes(report.id);
+                    return (
+                      <tr
+                        key={report.id}
+                        onClick={() => setActiveReportModal(report)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {/* Favorite Star */}
+                        <td className="col-star" onClick={(e) => toggleFavorite(report.id, e)}>
+                          <button
+                            type="button"
+                            className={`favorite-star-btn ${isStarred ? "starred" : ""}`}
+                            title={isStarred ? "Remove from Favorites" : "Add to Favorites"}
+                          >
+                            <Star size={15} fill={isStarred ? "#f59e0b" : "none"} color={isStarred ? "#f59e0b" : "#cbd5e1"} />
+                          </button>
+                        </td>
 
-                      {/* Report Name & Description */}
-                      <td>
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
-                          <span style={{ fontSize: "1.1rem" }}>{report.icon}</span>
-                          <div>
-                            <div className="report-name-link">
-                              {report.name}
-                              {report.badge && (
-                                <span style={{
-                                  fontSize: "0.65rem",
-                                  fontWeight: 700,
-                                  padding: "1px 6px",
-                                  borderRadius: "4px",
-                                  backgroundColor: report.isAiPowered ? "#f5f3ff" : "#eff6ff",
-                                  color: report.isAiPowered ? "#7c3aed" : "#2563eb",
-                                  border: `1px solid ${report.isAiPowered ? "#ddd6fe" : "#bfdbfe"}`
-                                }}>
-                                  {report.badge}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "2px", lineHeight: 1.35 }}>
-                              {report.description}
+                        {/* Report Name & Description */}
+                        <td className="col-report-name">
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                            <span style={{ fontSize: "1.2rem", flexShrink: 0, marginTop: "1px" }}>{report.icon}</span>
+                            <div style={{ minWidth: 0 }}>
+                              <div className="report-name-link">
+                                <span>{report.name}</span>
+                                {report.badge && (
+                                  <span style={{
+                                    fontSize: "0.65rem",
+                                    fontWeight: 700,
+                                    padding: "1px 6px",
+                                    borderRadius: "4px",
+                                    backgroundColor: report.isAiPowered ? "#f5f3ff" : "#eff6ff",
+                                    color: report.isAiPowered ? "#7c3aed" : "#2563eb",
+                                    border: `1px solid ${report.isAiPowered ? "#ddd6fe" : "#bfdbfe"}`,
+                                    whiteSpace: "nowrap"
+                                  }}>
+                                    {report.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: "0.74rem", color: "#64748b", marginTop: "3px", lineHeight: 1.4 }}>
+                                {report.description}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Sub-Category */}
-                      <td>
-                        <span style={{
-                          fontSize: "0.72rem",
-                          fontWeight: 500,
-                          padding: "3px 8px",
-                          borderRadius: "6px",
-                          backgroundColor: "#f8fafc",
-                          border: "1px solid #e2e8f0",
-                          color: "#475569"
-                        }}>
-                          {report.subCategory}
-                        </span>
-                      </td>
+                        {/* Sub-Category */}
+                        <td className="col-subcat">
+                          <span style={{
+                            fontSize: "0.72rem",
+                            fontWeight: 500,
+                            padding: "3px 8px",
+                            borderRadius: "6px",
+                            backgroundColor: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            color: "#475569",
+                            display: "inline-block"
+                          }}>
+                            {report.subCategory}
+                          </span>
+                        </td>
 
-                      {/* Created By */}
-                      <td style={{ color: "#64748b", fontSize: "0.78rem" }}>
-                        {report.isAiPowered ? "AI Diagnostics Engine" : "System Generated"}
-                      </td>
+                        {/* Created By */}
+                        <td className="col-created">
+                          {report.isAiPowered ? "AI Diagnostics" : "System Generated"}
+                        </td>
 
-                      {/* Last Visited */}
-                      <td style={{ color: "#64748b", fontSize: "0.78rem" }}>
-                        {report.lastVisited || "Today"}
-                      </td>
+                        {/* Last Visited */}
+                        <td className="col-visited">
+                          {report.lastVisited || "Today"}
+                        </td>
 
-                      {/* Actions */}
-                      <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: "inline-flex", gap: "6px" }}>
-                          <button
-                            type="button"
-                            onClick={() => setActiveReportModal(report)}
-                            style={{
-                              padding: "5px 10px",
-                              borderRadius: "6px",
-                              border: "1px solid #cbd5e1",
-                              backgroundColor: "#ffffff",
-                              color: "#1d4ed8",
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px"
-                            }}
-                          >
-                            View Live <ArrowUpRight size={12} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleExportReportCSV(report)}
-                            style={{
-                              padding: "5px 8px",
-                              borderRadius: "6px",
-                              border: "1px solid #e2e8f0",
-                              backgroundColor: "#f8fafc",
-                              color: "#475569",
-                              fontSize: "0.75rem",
+                        {/* Actions */}
+                        <td className="col-actions" onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                            <button
+                              type="button"
+                              className="btn-view-live"
+                              onClick={() => setActiveReportModal(report)}
+                            >
+                              View Live <ArrowUpRight size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-download-csv"
+                              onClick={() => handleExportReportCSV(report)}
+                              title="Instant Export CSV"
+                            >
+                              <Download size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center", padding: "50px 20px", color: "#64748b" }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
+                        <FileText size={32} style={{ color: "#cbd5e1" }} />
+                        <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.9rem" }}>No reports found</div>
+                        <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>Try searching for a different report name or select another category.</div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Cards List (< 640px) */}
+          <div className="reports-mobile-cards">
+            {displayedReports.length > 0 ? (
+              displayedReports.map((report) => {
+                const isStarred = favorites.includes(report.id);
+                return (
+                  <div
+                    key={`mob-${report.id}`}
+                    className="report-mobile-card"
+                    onClick={() => setActiveReportModal(report)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <div className="report-mobile-top">
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "1.25rem" }}>{report.icon}</span>
+                        <div>
+                          <div className="report-name-link">
+                            {report.name}
+                          </div>
+                          <div style={{ display: "flex", gap: "4px", marginTop: "2px", flexWrap: "wrap" }}>
+                            <span style={{
+                              fontSize: "0.65rem",
                               fontWeight: 500,
-                              cursor: "pointer"
-                            }}
-                            title="Instant Export CSV"
-                          >
-                            <Download size={13} />
-                          </button>
+                              padding: "1px 6px",
+                              borderRadius: "4px",
+                              backgroundColor: "#f8fafc",
+                              border: "1px solid #e2e8f0",
+                              color: "#475569"
+                            }}>
+                              {report.subCategory}
+                            </span>
+                            {report.badge && (
+                              <span style={{
+                                fontSize: "0.65rem",
+                                fontWeight: 700,
+                                padding: "1px 6px",
+                                borderRadius: "4px",
+                                backgroundColor: report.isAiPowered ? "#f5f3ff" : "#eff6ff",
+                                color: report.isAiPowered ? "#7c3aed" : "#2563eb",
+                                border: `1px solid ${report.isAiPowered ? "#ddd6fe" : "#bfdbfe"}`
+                              }}>
+                                {report.badge}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: "50px 20px", color: "#64748b" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-                      <FileText size={32} style={{ color: "#cbd5e1" }} />
-                      <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.9rem" }}>No reports found</div>
-                      <div style={{ fontSize: "0.78rem", color: "#94a3b8" }}>Try searching for a different report name or select another category.</div>
+                      </div>
+                      <button
+                        type="button"
+                        className={`favorite-star-btn ${isStarred ? "starred" : ""}`}
+                        onClick={(e) => toggleFavorite(report.id, e)}
+                        title={isStarred ? "Remove from Favorites" : "Add to Favorites"}
+                      >
+                        <Star size={16} fill={isStarred ? "#f59e0b" : "none"} color={isStarred ? "#f59e0b" : "#cbd5e1"} />
+                      </button>
                     </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+
+                    <p style={{ fontSize: "0.76rem", color: "#64748b", margin: 0, lineHeight: 1.4 }}>
+                      {report.description}
+                    </p>
+
+                    <div className="report-mobile-footer" onClick={(e) => e.stopPropagation()}>
+                      <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                        {report.isAiPowered ? "AI Diagnostics" : "System Report"}
+                      </span>
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button
+                          type="button"
+                          className="btn-download-csv"
+                          onClick={() => handleExportReportCSV(report)}
+                          title="Export CSV"
+                        >
+                          <Download size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-view-live"
+                          onClick={() => setActiveReportModal(report)}
+                        >
+                          View Live <ArrowUpRight size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ textAlign: "center", padding: "40px 16px", color: "#64748b" }}>
+                <FileText size={32} style={{ color: "#cbd5e1", margin: "0 auto 8px" }} />
+                <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.9rem" }}>No reports found</div>
+              </div>
+            )}
+          </div>
         </div>
       </main>
 

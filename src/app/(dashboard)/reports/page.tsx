@@ -23,8 +23,8 @@ export default async function ReportsPage() {
   const quotationsData = hubData.quotations || [];
 
   return (
-    <div className="page-container" style={{ padding: '24px 28px', maxWidth: '1600px', margin: '0 auto' }}>
-      <div className="dashboard-header mb-6" style={{ marginBottom: '20px' }}>
+    <div className="reports-page-wrapper" style={{ width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
+      <div className="dashboard-header" style={{ marginBottom: '18px' }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>
             <BarChart3 className="text-indigo-600" size={24} /> Reports Center & AI Analytics
