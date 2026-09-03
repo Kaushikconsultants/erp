@@ -15,11 +15,9 @@ import {
   Receipt, 
   Search, 
   X, 
-  Filter, 
   Plus, 
   Edit3, 
   Trash2, 
-  Lock, 
   Check, 
   CheckCircle2, 
   Clock, 
@@ -29,23 +27,11 @@ import {
   UploadCloud,
   FileText,
   Eye,
-  Building2,
   Car,
-  Navigation,
   DollarSign,
-  Tag,
-  CreditCard,
-  Layers,
-  ArrowRight,
-  ShieldCheck,
-  Sparkles,
-  Download,
-  Info,
-  Calendar,
-  Percent,
-  MapPin,
   FileCheck
 } from "lucide-react";
+import "@/components/ui/modal.css";
 
 // Standard Zoho Books Indian States list
 const INDIAN_STATES = [
@@ -328,7 +314,7 @@ export default function ExpensesClient({
     setModalOpen(true);
   };
 
-  // Open Edit Modal (allowed for all claims)
+  // Open Edit Modal
   const handleOpenEdit = (exp: ParsedExpense) => {
     setEditingExpense(exp);
     setError("");
@@ -535,8 +521,8 @@ export default function ExpensesClient({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px", fontFamily: "inherit" }}>
-      {/* ─── 1. PAGE HEADER (CLEAN, NO DOUBLE PLUS) ─── */}
+    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+      {/* ─── 1. PAGE HEADER ─── */}
       <div style={{ 
         display: "flex", 
         justifyContent: "space-between", 
@@ -544,59 +530,42 @@ export default function ExpensesClient({
         flexWrap: "wrap", 
         gap: "16px",
         backgroundColor: "#ffffff",
-        padding: "20px 24px",
-        borderRadius: "16px",
+        padding: "18px 24px",
+        borderRadius: "12px",
         border: "1px solid #e2e8f0",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.03)"
+        boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <div style={{
-            width: "44px",
-            height: "44px",
-            borderRadius: "12px",
-            background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)",
-            color: "#ffffff",
+            width: "42px",
+            height: "42px",
+            borderRadius: "10px",
+            background: "#eff6ff",
+            color: "#2563eb",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            boxShadow: "0 4px 12px rgba(79, 70, 229, 0.25)"
+            border: "1px solid #dbeafe"
           }}>
             <Receipt size={22} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 700, color: "#0f172a", letterSpacing: "-0.02em" }}>
+            <h1 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#0f172a" }}>
               Expenses & Claims
             </h1>
-            <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "0.82rem" }}>
+            <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "0.8rem" }}>
               Zoho Books integrated expense accounts, GST input tax credits, mileage tracking, and receipt archives.
             </p>
           </div>
         </div>
 
-        {/* SINGLE PLUS BUTTON */}
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <div>
           <button
             type="button"
             onClick={handleOpenCreate}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "10px 20px",
-              borderRadius: "10px",
-              fontWeight: 600,
-              fontSize: "0.88rem",
-              background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
-              color: "#ffffff",
-              border: "none",
-              cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(79, 70, 229, 0.3)",
-              transition: "all 0.15s ease"
-            }}
-            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
-            onMouseLeave={e => e.currentTarget.style.transform = "none"}
+            className="primary-btn"
           >
-            <Plus size={17} />
+            <Plus size={16} />
             <span>Record Expense</span>
           </button>
         </div>
@@ -605,54 +574,54 @@ export default function ExpensesClient({
       {/* ─── 2. KPI METRIC STATS ─── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
         {/* Total Expenses */}
-        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeft: "4px solid #4f46e5", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0", borderLeft: "4px solid #4f46e5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
             <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Total Recorded</span>
-            <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#eef2ff", color: "#4f46e5" }}>
+            <div style={{ padding: "5px", borderRadius: "6px", backgroundColor: "#eef2ff", color: "#4f46e5" }}>
               <DollarSign size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.45rem", fontWeight: 800, color: "#0f172a" }}>{formatCurrency(totalExpenseValue)}</div>
+          <div style={{ fontSize: "1.45rem", fontWeight: 700, color: "#0f172a" }}>{formatCurrency(totalExpenseValue)}</div>
           <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>{expenses.length} claims registered</div>
         </div>
 
         {/* Pending Approval */}
-        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeft: "4px solid #f59e0b", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0", borderLeft: "4px solid #f59e0b" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
             <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Pending Approval</span>
-            <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#fef3c7", color: "#d97706" }}>
+            <div style={{ padding: "5px", borderRadius: "6px", backgroundColor: "#fef3c7", color: "#d97706" }}>
               <Clock size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.45rem", fontWeight: 800, color: "#d97706" }}>{formatCurrency(totalPending)}</div>
+          <div style={{ fontSize: "1.45rem", fontWeight: 700, color: "#d97706" }}>{formatCurrency(totalPending)}</div>
           <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
             {expenses.filter(e => e.status === "Pending").length} pending claims
           </div>
         </div>
 
         {/* Approved (Unpaid) */}
-        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeft: "4px solid #3b82f6", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0", borderLeft: "4px solid #3b82f6" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
             <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Approved (Unsettled)</span>
-            <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#eff6ff", color: "#2563eb" }}>
+            <div style={{ padding: "5px", borderRadius: "6px", backgroundColor: "#eff6ff", color: "#2563eb" }}>
               <CheckCircle2 size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.45rem", fontWeight: 800, color: "#2563eb" }}>{formatCurrency(totalApproved)}</div>
+          <div style={{ fontSize: "1.45rem", fontWeight: 700, color: "#2563eb" }}>{formatCurrency(totalApproved)}</div>
           <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
             {expenses.filter(e => e.status === "Approved").length} ready for payout
           </div>
         </div>
 
         {/* Settled / Paid */}
-        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "14px", border: "1px solid #e2e8f0", borderLeft: "4px solid #10b981", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0", borderLeft: "4px solid #10b981" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
             <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Settled / Paid</span>
-            <div style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#dcfce7", color: "#16a34a" }}>
+            <div style={{ padding: "5px", borderRadius: "6px", backgroundColor: "#dcfce7", color: "#16a34a" }}>
               <Wallet size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.45rem", fontWeight: 800, color: "#16a34a" }}>{formatCurrency(totalPaid)}</div>
+          <div style={{ fontSize: "1.45rem", fontWeight: 700, color: "#16a34a" }}>{formatCurrency(totalPaid)}</div>
           <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
             {expenses.filter(e => e.status === "Paid").length} reimbursed
           </div>
@@ -668,12 +637,12 @@ export default function ExpensesClient({
         gap: "12px",
         backgroundColor: "#ffffff",
         padding: "14px 18px",
-        borderRadius: "14px",
+        borderRadius: "12px",
         border: "1px solid #e2e8f0"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: "260px" }}>
-          <div style={{ position: "relative", width: "100%", maxWidth: "360px" }}>
-            <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+          <div style={{ position: "relative", width: "100%", maxWidth: "340px" }}>
+            <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
             <input
               type="text"
               placeholder="Search by account, vendor, ref #, claim #..."
@@ -681,11 +650,12 @@ export default function ExpensesClient({
               onChange={e => setSearchQuery(e.target.value)}
               style={{
                 width: "100%",
-                padding: "9px 12px 9px 36px",
+                padding: "8px 12px 8px 34px",
                 borderRadius: "8px",
                 border: "1px solid #cbd5e1",
-                fontSize: "0.85rem",
-                outline: "none"
+                fontSize: "0.82rem",
+                outline: "none",
+                backgroundColor: "#f8fafc"
               }}
             />
           </div>
@@ -694,11 +664,11 @@ export default function ExpensesClient({
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
             style={{
-              padding: "9px 12px",
+              padding: "8px 12px",
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
-              fontSize: "0.85rem",
-              backgroundColor: "#ffffff",
+              fontSize: "0.82rem",
+              backgroundColor: "#f8fafc",
               color: "#334155",
               cursor: "pointer"
             }}
@@ -714,11 +684,11 @@ export default function ExpensesClient({
             value={filterCategory}
             onChange={e => setFilterCategory(e.target.value)}
             style={{
-              padding: "9px 12px",
+              padding: "8px 12px",
               borderRadius: "8px",
               border: "1px solid #cbd5e1",
-              fontSize: "0.85rem",
-              backgroundColor: "#ffffff",
+              fontSize: "0.82rem",
+              backgroundColor: "#f8fafc",
               color: "#334155",
               cursor: "pointer"
             }}
@@ -729,26 +699,26 @@ export default function ExpensesClient({
           </select>
         </div>
 
-        <div style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: 500 }}>
+        <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 500 }}>
           Showing <strong>{filteredExpenses.length}</strong> of {expenses.length} records
         </div>
       </div>
 
-      {/* ─── 4. EXPENSES TABLE WITH EDIT & DELETE EVERYWHERE ─── */}
-      <div style={{ backgroundColor: "#ffffff", borderRadius: "14px", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+      {/* ─── 4. EXPENSES TABLE ─── */}
+      <div style={{ backgroundColor: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.85rem" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.84rem" }}>
             <thead>
-              <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569", fontWeight: 700, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                <th style={{ padding: "14px 16px" }}>Date</th>
-                <th style={{ padding: "14px 16px" }}>Expense #</th>
-                <th style={{ padding: "14px 16px" }}>Expense Account</th>
-                <th style={{ padding: "14px 16px" }}>Vendor / Payee</th>
-                <th style={{ padding: "14px 16px" }}>Paid Through</th>
-                <th style={{ padding: "14px 16px" }}>GST / Tax</th>
-                <th style={{ padding: "14px 16px" }}>Amount</th>
-                <th style={{ padding: "14px 16px" }}>Status</th>
-                <th style={{ padding: "14px 16px", textAlign: "right" }}>Actions</th>
+              <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569", fontWeight: 600, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <th style={{ padding: "12px 16px" }}>Date</th>
+                <th style={{ padding: "12px 16px" }}>Expense #</th>
+                <th style={{ padding: "12px 16px" }}>Expense Account</th>
+                <th style={{ padding: "12px 16px" }}>Vendor / Payee</th>
+                <th style={{ padding: "12px 16px" }}>Paid Through</th>
+                <th style={{ padding: "12px 16px" }}>GST / Tax</th>
+                <th style={{ padding: "12px 16px" }}>Amount</th>
+                <th style={{ padding: "12px 16px" }}>Status</th>
+                <th style={{ padding: "12px 16px", textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -760,24 +730,21 @@ export default function ExpensesClient({
                     key={exp.id} 
                     style={{ 
                       borderBottom: "1px solid #f1f5f9",
-                      backgroundColor: idx % 2 === 0 ? "#ffffff" : "#fafcff",
-                      transition: "background-color 0.15s ease"
+                      backgroundColor: idx % 2 === 0 ? "#ffffff" : "#f8fafc"
                     }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = "#f0f7ff"}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? "#ffffff" : "#fafcff"}
                   >
-                    <td style={{ padding: "14px 16px", whiteSpace: "nowrap", color: "#334155" }}>
+                    <td style={{ padding: "12px 16px", whiteSpace: "nowrap", color: "#334155" }}>
                       {new Date(exp.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
                     </td>
 
-                    <td style={{ padding: "14px 16px", fontWeight: 700, color: "#0f172a" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 700, color: "#0f172a" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span>{exp.expenseNumber}</span>
                         {exp.receiptUrl && (
                           <span 
                             title="Receipt attached"
                             onClick={() => setViewingExpense(exp)}
-                            style={{ cursor: "pointer", color: "#4f46e5", display: "inline-flex" }}
+                            style={{ cursor: "pointer", color: "#2563eb", display: "inline-flex" }}
                           >
                             <Receipt size={14} />
                           </span>
@@ -790,7 +757,7 @@ export default function ExpensesClient({
                       )}
                     </td>
 
-                    <td style={{ padding: "14px 16px" }}>
+                    <td style={{ padding: "12px 16px" }}>
                       <div style={{ fontWeight: 600, color: "#1e293b" }}>
                         {exp.details?.account || exp.category}
                       </div>
@@ -806,7 +773,7 @@ export default function ExpensesClient({
                       </span>
                     </td>
 
-                    <td style={{ padding: "14px 16px" }}>
+                    <td style={{ padding: "12px 16px" }}>
                       <div style={{ fontWeight: 500, color: "#334155" }}>
                         {exp.details?.vendorName || "—"}
                       </div>
@@ -817,15 +784,15 @@ export default function ExpensesClient({
                       )}
                     </td>
 
-                    <td style={{ padding: "14px 16px", color: "#475569", fontSize: "0.82rem" }}>
+                    <td style={{ padding: "12px 16px", color: "#475569", fontSize: "0.8rem" }}>
                       {exp.details?.paidThrough || "Petty Cash"}
                     </td>
 
-                    <td style={{ padding: "14px 16px" }}>
+                    <td style={{ padding: "12px 16px" }}>
                       {exp.details?.taxRate ? (
                         <div>
                           <span style={{ fontWeight: 600, color: "#0f172a" }}>{exp.details.taxRate}%</span>
-                          <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                          <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
                             {exp.details.taxInclusive ? "Tax Incl." : "Tax Excl."}
                           </div>
                         </div>
@@ -834,15 +801,15 @@ export default function ExpensesClient({
                       )}
                     </td>
 
-                    <td style={{ padding: "14px 16px", fontWeight: 700, color: "#0f172a", fontSize: "0.95rem" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 700, color: "#0f172a", fontSize: "0.9rem" }}>
                       {formatCurrency(exp.amount)}
                     </td>
 
-                    <td style={{ padding: "14px 16px" }}>
+                    <td style={{ padding: "12px 16px" }}>
                       <span style={{
                         padding: "3px 8px",
                         borderRadius: "6px",
-                        fontSize: "0.75rem",
+                        fontSize: "0.72rem",
                         fontWeight: 650,
                         backgroundColor: bStyle.bg,
                         color: bStyle.color,
@@ -852,33 +819,30 @@ export default function ExpensesClient({
                       </span>
                     </td>
 
-                    {/* TABLE ROW ACTIONS (ALWAYS PERMITS EDIT & DELETE) */}
-                    <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                    {/* ACTIONS */}
+                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", alignItems: "center" }}>
                         <button
                           type="button"
                           onClick={() => setViewingExpense(exp)}
                           style={{
-                            padding: "6px 8px",
+                            padding: "5px 8px",
                             borderRadius: "6px",
                             border: "1px solid #cbd5e1",
                             backgroundColor: "#ffffff",
                             color: "#475569",
-                            cursor: "pointer",
-                            display: "inline-flex",
-                            alignItems: "center",
-                            justifyContent: "center"
+                            cursor: "pointer"
                           }}
-                          title="View Full Details & Receipt"
+                          title="View Details & Receipt"
                         >
-                          <Eye size={14} />
+                          <Eye size={13} />
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleOpenEdit(exp)}
                           style={{
-                            padding: "5px 10px",
+                            padding: "4px 8px",
                             borderRadius: "6px",
                             border: "1px solid #c7d2fe",
                             backgroundColor: "#eef2ff",
@@ -887,12 +851,12 @@ export default function ExpensesClient({
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "4px",
-                            fontSize: "0.78rem",
+                            fontSize: "0.75rem",
                             fontWeight: 600
                           }}
-                          title="Edit Expense Record"
+                          title="Edit Claim"
                         >
-                          <Edit3 size={13} /> Edit
+                          <Edit3 size={12} /> Edit
                         </button>
 
                         <button
@@ -900,7 +864,7 @@ export default function ExpensesClient({
                           onClick={() => handleDelete(exp)}
                           disabled={actionLoadingId === exp.id}
                           style={{
-                            padding: "5px 10px",
+                            padding: "4px 8px",
                             borderRadius: "6px",
                             border: "1px solid #fecaca",
                             backgroundColor: "#fef2f2",
@@ -909,13 +873,13 @@ export default function ExpensesClient({
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "4px",
-                            fontSize: "0.78rem",
+                            fontSize: "0.75rem",
                             fontWeight: 600,
                             opacity: actionLoadingId === exp.id ? 0.5 : 1
                           }}
-                          title="Delete Expense Record"
+                          title="Delete Claim"
                         >
-                          <Trash2 size={13} /> Delete
+                          <Trash2 size={12} /> Delete
                         </button>
 
                         {isAdmin && exp.status === "Pending" && (
@@ -924,13 +888,13 @@ export default function ExpensesClient({
                             onClick={() => handleStatusAction(approveExpense, exp.id)}
                             disabled={actionLoadingId === exp.id}
                             style={{
-                              padding: "5px 10px",
+                              padding: "4px 8px",
                               borderRadius: "6px",
                               border: "none",
                               backgroundColor: "#4f46e5",
                               color: "#ffffff",
                               fontWeight: 600,
-                              fontSize: "0.75rem",
+                              fontSize: "0.72rem",
                               cursor: "pointer"
                             }}
                           >
@@ -944,13 +908,13 @@ export default function ExpensesClient({
                             onClick={() => handleStatusAction(markExpensePaid, exp.id)}
                             disabled={actionLoadingId === exp.id}
                             style={{
-                              padding: "5px 10px",
+                              padding: "4px 8px",
                               borderRadius: "6px",
                               border: "none",
                               backgroundColor: "#16a34a",
                               color: "#ffffff",
                               fontWeight: 600,
-                              fontSize: "0.75rem",
+                              fontSize: "0.72rem",
                               cursor: "pointer"
                             }}
                           >
@@ -965,10 +929,10 @@ export default function ExpensesClient({
 
               {filteredExpenses.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: "center", padding: "48px", color: "#64748b" }}>
-                    <Receipt size={32} style={{ color: "#cbd5e1", marginBottom: "8px" }} />
-                    <div style={{ fontWeight: 600, color: "#1e293b" }}>No expense records found</div>
-                    <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem" }}>
+                  <td colSpan={9} style={{ textAlign: "center", padding: "40px", color: "#64748b" }}>
+                    <Receipt size={30} style={{ color: "#cbd5e1", marginBottom: "6px" }} />
+                    <div style={{ fontWeight: 600, color: "#1e293b", fontSize: "0.85rem" }}>No expense records found</div>
+                    <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem" }}>
                       Click <strong>"Record Expense"</strong> to log your first business expense.
                     </p>
                   </td>
@@ -979,68 +943,53 @@ export default function ExpensesClient({
         </div>
       </div>
 
-      {/* ─── 5. ULTRA-STYLED ZOHO BOOKS RECORD EXPENSE MODAL ─── */}
+      {/* ─── 5. FULLY REDESIGNED RECORD EXPENSE MODAL (APP THEME MATCHED) ─── */}
       {modalOpen && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          backgroundColor: "rgba(15, 23, 42, 0.72)",
-          backdropFilter: "blur(8px)",
-          zIndex: 99999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "16px"
-        }}
-        onClick={() => setModalOpen(false)}
-        >
-          <div style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "20px",
-            width: "100%",
-            maxWidth: "1160px",
-            maxHeight: "92vh",
-            overflow: "hidden",
-            boxShadow: "0 25px 60px -15px rgba(15, 23, 42, 0.35)",
-            border: "1px solid #e2e8f0",
-            display: "flex",
-            flexDirection: "column"
-          }}
-          onClick={e => e.stopPropagation()}
+        <div className="modal-backdrop" onClick={() => setModalOpen(false)}>
+          <div 
+            className="modal-content animate-in" 
+            style={{ 
+              maxWidth: "1060px", 
+              backgroundColor: "#ffffff", 
+              borderRadius: "14px", 
+              border: "1px solid #e2e8f0", 
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" 
+            }}
+            onClick={e => e.stopPropagation()}
           >
-            {/* MODERN MODAL HEADER */}
+            {/* Modal Header */}
             <div style={{
-              padding: "18px 28px",
-              borderBottom: "1px solid #e2e8f0",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)"
+              padding: "16px 24px",
+              borderBottom: "1px solid #e2e8f0",
+              backgroundColor: "#f8fafc",
+              borderRadius: "14px 14px 0 0"
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-                {/* Segmented Pill Tabs */}
+              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                {/* Clean Segmented Tab Switcher */}
                 <div style={{
                   display: "inline-flex",
-                  gap: "4px",
-                  backgroundColor: "#f1f5f9",
-                  padding: "4px",
-                  borderRadius: "10px",
-                  border: "1px solid #e2e8f0"
+                  gap: "3px",
+                  backgroundColor: "#e2e8f0",
+                  padding: "3px",
+                  borderRadius: "8px"
                 }}>
                   <button
                     type="button"
                     onClick={() => setActiveTab("expense")}
                     style={{
-                      padding: "8px 18px",
-                      borderRadius: "8px",
+                      padding: "6px 14px",
+                      borderRadius: "6px",
                       border: "none",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
+                      fontSize: "0.82rem",
+                      fontWeight: 600,
                       cursor: "pointer",
-                      background: activeTab === "expense" ? "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)" : "transparent",
-                      color: activeTab === "expense" ? "#ffffff" : "#64748b",
-                      boxShadow: activeTab === "expense" ? "0 2px 8px rgba(79, 70, 229, 0.3)" : "none",
-                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      backgroundColor: activeTab === "expense" ? "#4f46e5" : "transparent",
+                      color: activeTab === "expense" ? "#ffffff" : "#475569",
+                      boxShadow: activeTab === "expense" ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                      transition: "all 0.15s ease"
                     }}
                   >
                     Record Expense
@@ -1049,74 +998,57 @@ export default function ExpensesClient({
                     type="button"
                     onClick={() => setActiveTab("mileage")}
                     style={{
-                      padding: "8px 18px",
-                      borderRadius: "8px",
+                      padding: "6px 14px",
+                      borderRadius: "6px",
                       border: "none",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
+                      fontSize: "0.82rem",
+                      fontWeight: 600,
                       cursor: "pointer",
-                      background: activeTab === "mileage" ? "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)" : "transparent",
-                      color: activeTab === "mileage" ? "#ffffff" : "#64748b",
-                      boxShadow: activeTab === "mileage" ? "0 2px 8px rgba(79, 70, 229, 0.3)" : "none",
-                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      backgroundColor: activeTab === "mileage" ? "#4f46e5" : "transparent",
+                      color: activeTab === "mileage" ? "#ffffff" : "#475569",
+                      boxShadow: activeTab === "mileage" ? "0 1px 3px rgba(0,0,0,0.12)" : "none",
+                      transition: "all 0.15s ease"
                     }}
                   >
                     Record Mileage
                   </button>
                 </div>
 
-                <div style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "0.82rem",
-                  color: "#4f46e5",
-                  fontWeight: 600,
-                  backgroundColor: "#eef2ff",
-                  padding: "4px 10px",
-                  borderRadius: "6px"
-                }}>
-                  <Sparkles size={13} />
-                  <span>{editingExpense ? `Edit Claim #${editingExpense.expenseNumber}` : "New Entry"}</span>
-                </div>
+                <span style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 500 }}>
+                  {editingExpense ? `Editing Claim #${editingExpense.expenseNumber}` : "New Expense Entry"}
+                </span>
               </div>
 
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
                 style={{
+                  background: "none",
                   border: "none",
-                  background: "#f1f5f9",
-                  borderRadius: "50%",
-                  width: "34px",
-                  height: "34px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
                   color: "#64748b",
-                  transition: "all 0.15s ease"
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  borderRadius: "6px",
+                  fontSize: "1.3rem",
+                  lineHeight: 1
                 }}
-                onMouseEnter={e => { e.currentTarget.style.backgroundColor = "#fee2e2"; e.currentTarget.style.color = "#dc2626"; }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = "#f1f5f9"; e.currentTarget.style.color = "#64748b"; }}
               >
-                <X size={17} />
+                ×
               </button>
             </div>
 
-            {/* MODAL BODY (TWO COLUMNS: FORM LEFT, RECEIPT DROPZONE RIGHT) */}
-            <form onSubmit={handleSubmitForm} style={{ flex: 1, overflowY: "auto", padding: "28px" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: "32px" }}>
+            {/* Modal Form */}
+            <form onSubmit={handleSubmitForm} style={{ maxHeight: "82vh", overflowY: "auto", padding: "22px 24px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 330px", gap: "24px" }}>
                 
                 {/* LEFT COLUMN: FORM FIELDS */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
                   
                   {/* Row 1: Date & Expense Account */}
-                  <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: "14px" }}>
                     <div>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                        <span>Date</span>
-                        <span style={{ color: "#ef4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Date <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <DatePicker
                         value={formDate}
@@ -1124,47 +1056,45 @@ export default function ExpensesClient({
                         required
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem",
-                          backgroundColor: "#ffffff",
-                          outline: "none"
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc",
+                          color: "#0f172a"
                         }}
                       />
                     </div>
 
-                    {/* Expense Account Dropdown */}
+                    {/* Searchable Expense Account Dropdown */}
                     <div style={{ position: "relative" }} ref={accountDropdownRef}>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                        <span>Expense Account</span>
-                        <span style={{ color: "#ef4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Expense Account <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <div
                         onClick={() => setAccountDropdownOpen(!accountDropdownOpen)}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: accountDropdownOpen ? "1.5px solid #4f46e5" : "1.5px solid #cbd5e1",
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: accountDropdownOpen ? "1px solid #4f46e5" : "1px solid #cbd5e1",
                           boxShadow: accountDropdownOpen ? "0 0 0 3px rgba(79, 70, 229, 0.12)" : "none",
-                          fontSize: "0.88rem",
-                          backgroundColor: "#ffffff",
+                          fontSize: "0.84rem",
+                          backgroundColor: "#f8fafc",
                           display: "flex",
                           justifyContent: "space-between",
                           alignItems: "center",
                           cursor: "pointer",
-                          userSelect: "none",
-                          transition: "all 0.15s ease"
+                          userSelect: "none"
                         }}
                       >
                         <span style={{ fontWeight: 600, color: "#0f172a" }}>
                           {selectedAccount || "Select an account"}
                         </span>
-                        <ChevronDown size={16} color="#64748b" />
+                        <ChevronDown size={15} color="#64748b" />
                       </div>
 
-                      {/* Searchable Grouped Dropdown */}
+                      {/* Dropdown Options Box */}
                       {accountDropdownOpen && (
                         <div style={{
                           position: "absolute",
@@ -1172,31 +1102,31 @@ export default function ExpensesClient({
                           left: 0,
                           right: 0,
                           backgroundColor: "#ffffff",
-                          borderRadius: "10px",
+                          borderRadius: "8px",
                           border: "1px solid #cbd5e1",
-                          boxShadow: "0 15px 35px -5px rgba(0, 0, 0, 0.18)",
+                          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.15)",
                           zIndex: 1000,
-                          marginTop: "6px",
+                          marginTop: "4px",
                           overflow: "hidden"
                         }}>
-                          {/* Search box inside dropdown */}
-                          <div style={{ padding: "10px 12px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "8px", backgroundColor: "#f8fafc" }}>
-                            <Search size={15} color="#94a3b8" />
+                          {/* Search Box */}
+                          <div style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#f8fafc" }}>
+                            <Search size={14} color="#94a3b8" />
                             <input
                               type="text"
-                              placeholder="Search account by name..."
+                              placeholder="Search account name..."
                               value={accountSearch}
                               onChange={e => setAccountSearch(e.target.value)}
                               autoFocus
-                              style={{ width: "100%", border: "none", outline: "none", fontSize: "0.85rem", backgroundColor: "transparent" }}
+                              style={{ width: "100%", border: "none", outline: "none", fontSize: "0.8rem", backgroundColor: "transparent" }}
                             />
                           </div>
 
-                          <div style={{ maxHeight: "250px", overflowY: "auto" }}>
+                          <div style={{ maxHeight: "220px", overflowY: "auto" }}>
                             {/* Group 1: Cost Of Goods Sold */}
                             <div>
-                              <div style={{ padding: "7px 14px", fontSize: "0.72rem", fontWeight: 800, color: "#475569", backgroundColor: "#f1f5f9", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                                Cost Of Goods Sold (Direct)
+                              <div style={{ padding: "6px 12px", fontSize: "0.7rem", fontWeight: 700, color: "#475569", backgroundColor: "#f1f5f9", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                Cost Of Goods Sold
                               </div>
                               {customAccounts["Cost Of Goods Sold"]
                                 .filter(a => a.toLowerCase().includes(accountSearch.toLowerCase()))
@@ -1209,15 +1139,15 @@ export default function ExpensesClient({
                                       setAccountDropdownOpen(false);
                                     }}
                                     style={{
-                                      padding: "9px 16px",
-                                      fontSize: "0.84rem",
+                                      padding: "7px 14px",
+                                      fontSize: "0.82rem",
                                       cursor: "pointer",
-                                      backgroundColor: selectedAccount === acc ? "#4f46e5" : "transparent",
-                                      color: selectedAccount === acc ? "#ffffff" : "#1e293b",
+                                      backgroundColor: selectedAccount === acc ? "#eef2ff" : "transparent",
+                                      color: selectedAccount === acc ? "#4f46e5" : "#1e293b",
                                       fontWeight: selectedAccount === acc ? 600 : 400
                                     }}
                                     onMouseEnter={e => {
-                                      if (selectedAccount !== acc) e.currentTarget.style.backgroundColor = "#eef2ff";
+                                      if (selectedAccount !== acc) e.currentTarget.style.backgroundColor = "#f8fafc";
                                     }}
                                     onMouseLeave={e => {
                                       if (selectedAccount !== acc) e.currentTarget.style.backgroundColor = "transparent";
@@ -1230,8 +1160,8 @@ export default function ExpensesClient({
 
                             {/* Group 2: Expense */}
                             <div>
-                              <div style={{ padding: "7px 14px", fontSize: "0.72rem", fontWeight: 800, color: "#475569", backgroundColor: "#f1f5f9", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                                Operating Expenses (Indirect)
+                              <div style={{ padding: "6px 12px", fontSize: "0.7rem", fontWeight: 700, color: "#475569", backgroundColor: "#f1f5f9", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                                Operating Expenses
                               </div>
                               {customAccounts["Expense"]
                                 .filter(a => a.toLowerCase().includes(accountSearch.toLowerCase()))
@@ -1244,15 +1174,15 @@ export default function ExpensesClient({
                                       setAccountDropdownOpen(false);
                                     }}
                                     style={{
-                                      padding: "9px 16px",
-                                      fontSize: "0.84rem",
+                                      padding: "7px 14px",
+                                      fontSize: "0.82rem",
                                       cursor: "pointer",
-                                      backgroundColor: selectedAccount === acc ? "#4f46e5" : "transparent",
-                                      color: selectedAccount === acc ? "#ffffff" : "#1e293b",
+                                      backgroundColor: selectedAccount === acc ? "#eef2ff" : "transparent",
+                                      color: selectedAccount === acc ? "#4f46e5" : "#1e293b",
                                       fontWeight: selectedAccount === acc ? 600 : 400
                                     }}
                                     onMouseEnter={e => {
-                                      if (selectedAccount !== acc) e.currentTarget.style.backgroundColor = "#eef2ff";
+                                      if (selectedAccount !== acc) e.currentTarget.style.backgroundColor = "#f8fafc";
                                     }}
                                     onMouseLeave={e => {
                                       if (selectedAccount !== acc) e.currentTarget.style.backgroundColor = "transparent";
@@ -1268,19 +1198,19 @@ export default function ExpensesClient({
                           <div 
                             onClick={() => setShowNewAccountModal(true)}
                             style={{
-                              padding: "12px 16px",
+                              padding: "9px 12px",
                               borderTop: "1px solid #e2e8f0",
                               color: "#4f46e5",
-                              fontWeight: 700,
-                              fontSize: "0.84rem",
+                              fontWeight: 600,
+                              fontSize: "0.8rem",
                               cursor: "pointer",
                               display: "flex",
                               alignItems: "center",
-                              gap: "6px",
+                              gap: "5px",
                               backgroundColor: "#f8fafc"
                             }}
                           >
-                            <Plus size={15} /> + New Account
+                            <Plus size={14} /> + New Account
                           </div>
                         </div>
                       )}
@@ -1289,27 +1219,27 @@ export default function ExpensesClient({
 
                   {/* MILEAGE TAB SPECIFIC FORM */}
                   {activeTab === "mileage" && (
-                    <div style={{ backgroundColor: "#f8fafc", padding: "16px", borderRadius: "10px", border: "1.5px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "14px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <Car size={18} color="#4f46e5" />
-                        <span style={{ fontWeight: 700, fontSize: "0.88rem", color: "#0f172a" }}>Vehicle & Distance Calculator</span>
+                    <div style={{ backgroundColor: "#f8fafc", padding: "14px", borderRadius: "8px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <Car size={16} color="#4f46e5" />
+                        <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#0f172a" }}>Mileage & Distance Calculator</span>
                       </div>
                       
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
                         <div>
-                          <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>Vehicle Type</label>
+                          <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "3px" }}>Vehicle Type</label>
                           <select
                             value={mileageVehicle}
                             onChange={e => handleVehicleChange(e.target.value as any)}
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.84rem", backgroundColor: "#ffffff" }}
+                            style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.8rem", backgroundColor: "#ffffff" }}
                           >
                             <option value="Car">Car (₹10/km)</option>
-                            <option value="Motorbike">Motorbike / 2-Wheeler (₹5/km)</option>
+                            <option value="Motorbike">Motorbike (₹5/km)</option>
                             <option value="Commercial">Commercial Van (₹15/km)</option>
                           </select>
                         </div>
                         <div>
-                          <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>Distance (KM)*</label>
+                          <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "3px" }}>Distance (KM) *</label>
                           <input
                             type="number"
                             step="0.1"
@@ -1317,50 +1247,49 @@ export default function ExpensesClient({
                             placeholder="e.g. 45"
                             value={mileageDistance}
                             onChange={e => setMileageDistance(e.target.value)}
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.84rem" }}
+                            style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.8rem", backgroundColor: "#ffffff" }}
                           />
                         </div>
                         <div>
-                          <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>Rate per KM (₹)</label>
+                          <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "3px" }}>Rate / KM (₹)</label>
                           <input
                             type="number"
                             step="0.5"
                             min="1"
                             value={mileageRate}
                             onChange={e => setMileageRate(e.target.value)}
-                            style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.84rem" }}
+                            style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.8rem", backgroundColor: "#ffffff" }}
                           />
                         </div>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                         <input
                           type="text"
                           placeholder="From Location (e.g. Rohtak Office)"
                           value={mileageFrom}
                           onChange={e => setMileageFrom(e.target.value)}
-                          style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.84rem" }}
+                          style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.8rem", backgroundColor: "#ffffff" }}
                         />
                         <input
                           type="text"
-                          placeholder="To Location (e.g. Delhi Client Site)"
+                          placeholder="To Location (e.g. Delhi Site)"
                           value={mileageTo}
                           onChange={e => setMileageTo(e.target.value)}
-                          style={{ width: "100%", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.84rem" }}
+                          style={{ width: "100%", padding: "7px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.8rem", backgroundColor: "#ffffff" }}
                         />
                       </div>
                     </div>
                   )}
 
                   {/* Row 2: Amount & Paid Through */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                     <div>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                        <span>Amount (₹)</span>
-                        <span style={{ color: "#ef4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Amount (₹) <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <div style={{ position: "relative" }}>
-                        <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "#4f46e5" }}>₹</span>
+                        <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "#4f46e5", fontSize: "0.85rem" }}>₹</span>
                         <input
                           type="number"
                           step="0.01"
@@ -1371,33 +1300,32 @@ export default function ExpensesClient({
                           onChange={e => setAmount(e.target.value)}
                           style={{
                             width: "100%",
-                            padding: "10px 14px 10px 30px",
-                            borderRadius: "8px",
-                            border: "1.5px solid #cbd5e1",
-                            fontSize: "0.95rem",
+                            padding: "8px 12px 8px 26px",
+                            borderRadius: "6px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "0.88rem",
                             fontWeight: 700,
                             color: "#0f172a",
-                            outline: "none"
+                            backgroundColor: "#f8fafc"
                           }}
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                        <span>Paid Through</span>
-                        <span style={{ color: "#ef4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Paid Through <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <select
                         value={paidThrough}
                         onChange={e => setPaidThrough(e.target.value)}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem",
-                          backgroundColor: "#ffffff",
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc",
                           fontWeight: 600,
                           color: "#0f172a"
                         }}
@@ -1410,22 +1338,21 @@ export default function ExpensesClient({
                   </div>
 
                   {/* Row 3: Expense Type & SAC/HSN */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                     <div>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                        <span>Expense Type</span>
-                        <span style={{ color: "#ef4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Expense Type <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <select
                         value={expenseType}
                         onChange={e => setExpenseType(e.target.value as any)}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem",
-                          backgroundColor: "#ffffff"
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc"
                         }}
                       >
                         <option value="Goods">Goods</option>
@@ -1435,7 +1362,7 @@ export default function ExpensesClient({
                     </div>
 
                     <div>
-                      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
                         SAC / HSN
                       </label>
                       <input
@@ -1445,10 +1372,11 @@ export default function ExpensesClient({
                         onChange={e => setSacCode(e.target.value)}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem"
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc"
                         }}
                       />
                     </div>
@@ -1456,10 +1384,10 @@ export default function ExpensesClient({
 
                   {/* Row 4: Vendor Selection */}
                   <div>
-                    <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
                       Vendor / Payee
                     </label>
-                    <div style={{ display: "flex", gap: "10px" }}>
+                    <div style={{ display: "flex", gap: "8px" }}>
                       <select
                         value={vendorId}
                         onChange={e => {
@@ -1475,11 +1403,11 @@ export default function ExpensesClient({
                         }}
                         style={{
                           flex: 1,
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem",
-                          backgroundColor: "#ffffff"
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc"
                         }}
                       >
                         <option value="">Select or type a Vendor...</option>
@@ -1498,10 +1426,11 @@ export default function ExpensesClient({
                           onChange={e => setVendorName(e.target.value)}
                           style={{
                             flex: 1,
-                            padding: "10px 14px",
-                            borderRadius: "8px",
-                            border: "1.5px solid #cbd5e1",
-                            fontSize: "0.88rem"
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            border: "1px solid #cbd5e1",
+                            fontSize: "0.82rem",
+                            backgroundColor: "#f8fafc"
                           }}
                         />
                       )}
@@ -1510,20 +1439,19 @@ export default function ExpensesClient({
 
                   {/* Row 5: GST Treatment */}
                   <div>
-                    <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                      <span>GST Treatment</span>
-                      <span style={{ color: "#ef4444" }}>*</span>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                      GST Treatment <span style={{ color: "#ef4444" }}>*</span>
                     </label>
                     <select
                       value={gstTreatment}
                       onChange={e => setGstTreatment(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "10px 14px",
-                        borderRadius: "8px",
-                        border: "1.5px solid #cbd5e1",
-                        fontSize: "0.88rem",
-                        backgroundColor: "#ffffff"
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "0.82rem",
+                        backgroundColor: "#f8fafc"
                       }}
                     >
                       {GST_TREATMENTS.map(gt => (
@@ -1533,22 +1461,21 @@ export default function ExpensesClient({
                   </div>
 
                   {/* Row 6: Source & Destination of Supply */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                     <div>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                        <span>Source of Supply</span>
-                        <span style={{ color: "#ef4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Source of Supply <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <select
                         value={sourceOfSupply}
                         onChange={e => setSourceOfSupply(e.target.value)}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem",
-                          backgroundColor: "#ffffff"
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc"
                         }}
                       >
                         {INDIAN_STATES.map(st => (
@@ -1558,20 +1485,19 @@ export default function ExpensesClient({
                     </div>
 
                     <div>
-                      <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
-                        <span>Destination of Supply</span>
-                        <span style={{ color: "#ef4444" }}>*</span>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
+                        Destination of Supply <span style={{ color: "#ef4444" }}>*</span>
                       </label>
                       <select
                         value={destinationOfSupply}
                         onChange={e => setDestinationOfSupply(e.target.value)}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem",
-                          backgroundColor: "#ffffff"
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc"
                         }}
                       >
                         {INDIAN_STATES.map(st => (
@@ -1581,23 +1507,23 @@ export default function ExpensesClient({
                     </div>
                   </div>
 
-                  {/* Row 7: Reverse Charge Checkbox */}
+                  {/* Row 7: Reverse Charge */}
                   <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                     <input
                       type="checkbox"
                       id="reverseChargeBox"
                       checked={reverseCharge}
                       onChange={e => setReverseCharge(e.target.checked)}
-                      style={{ width: "16px", height: "16px", accentColor: "#4f46e5", cursor: "pointer" }}
+                      style={{ width: "15px", height: "15px", accentColor: "#4f46e5", cursor: "pointer" }}
                     />
-                    <label htmlFor="reverseChargeBox" style={{ fontSize: "0.84rem", color: "#334155", cursor: "pointer", fontWeight: 500 }}>
+                    <label htmlFor="reverseChargeBox" style={{ fontSize: "0.8rem", color: "#334155", cursor: "pointer", fontWeight: 500 }}>
                       This transaction is applicable for reverse charge (RCM)
                     </label>
                   </div>
 
-                  {/* Row 8: Tax Rate Dropdown */}
+                  {/* Row 8: Tax Rate */}
                   <div>
-                    <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
                       Tax Rate
                     </label>
                     <select
@@ -1605,11 +1531,11 @@ export default function ExpensesClient({
                       onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
                       style={{
                         width: "100%",
-                        padding: "10px 14px",
-                        borderRadius: "8px",
-                        border: "1.5px solid #cbd5e1",
-                        fontSize: "0.88rem",
-                        backgroundColor: "#ffffff",
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "0.82rem",
+                        backgroundColor: "#f8fafc",
                         fontWeight: 600
                       }}
                     >
@@ -1619,10 +1545,10 @@ export default function ExpensesClient({
                     </select>
                   </div>
 
-                  {/* Row 9: Amount Is (Tax Inclusive / Exclusive) */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
-                    <span style={{ fontSize: "0.84rem", fontWeight: 700, color: "#334155" }}>Amount Is:</span>
-                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.84rem", cursor: "pointer", color: "#1e293b", fontWeight: 500 }}>
+                  {/* Row 9: Tax Inclusive / Exclusive */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Amount Is:</span>
+                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", cursor: "pointer", color: "#1e293b", fontWeight: 500 }}>
                       <input
                         type="radio"
                         name="taxCalcType"
@@ -1632,7 +1558,7 @@ export default function ExpensesClient({
                       />
                       Tax Inclusive
                     </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.84rem", cursor: "pointer", color: "#1e293b", fontWeight: 500 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.8rem", cursor: "pointer", color: "#1e293b", fontWeight: 500 }}>
                       <input
                         type="radio"
                         name="taxCalcType"
@@ -1644,14 +1570,14 @@ export default function ExpensesClient({
                     </label>
                   </div>
 
-                  {/* Live Calculation Summary Banner */}
+                  {/* Live Tax Banner */}
                   {parsedAmount > 0 && taxRate > 0 && (
                     <div style={{
                       backgroundColor: "#eef2ff",
-                      border: "1.5px solid #c7d2fe",
-                      borderRadius: "10px",
-                      padding: "12px 16px",
-                      fontSize: "0.82rem",
+                      border: "1px solid #c7d2fe",
+                      borderRadius: "6px",
+                      padding: "10px 14px",
+                      fontSize: "0.78rem",
                       color: "#3730a3",
                       display: "flex",
                       justifyContent: "space-between",
@@ -1659,21 +1585,21 @@ export default function ExpensesClient({
                     }}>
                       <div>
                         <span>Net Subtotal: <strong>{formatCurrency(netSubtotal)}</strong></span>
-                        <span style={{ margin: "0 8px" }}>•</span>
+                        <span style={{ margin: "0 6px" }}>•</span>
                         <span>
                           {isInterstate ? `IGST (${taxRate}%)` : `CGST (${taxRate/2}%) + SGST (${taxRate/2}%)`}: <strong>{formatCurrency(calculatedTaxAmount)}</strong>
                         </span>
                       </div>
-                      <div style={{ fontWeight: 800, fontSize: "0.95rem" }}>
+                      <div style={{ fontWeight: 700, fontSize: "0.88rem" }}>
                         Total: {formatCurrency(grossTotal)}
                       </div>
                     </div>
                   )}
 
                   {/* Row 10: Reference # & Customer Billable */}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                     <div>
-                      <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
+                      <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
                         Invoice / Bill # / Ref #
                       </label>
                       <input
@@ -1683,18 +1609,19 @@ export default function ExpensesClient({
                         onChange={e => setReferenceNumber(e.target.value)}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem"
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc"
                         }}
                       />
                     </div>
 
                     <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                        <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155" }}>Customer</label>
-                        <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", color: "#059669", cursor: "pointer", fontWeight: 600 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                        <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569" }}>Customer</label>
+                        <label style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.72rem", color: "#059669", cursor: "pointer", fontWeight: 600 }}>
                           <input
                             type="checkbox"
                             checked={isBillable}
@@ -1714,11 +1641,11 @@ export default function ExpensesClient({
                         }}
                         style={{
                           width: "100%",
-                          padding: "10px 14px",
-                          borderRadius: "8px",
-                          border: "1.5px solid #cbd5e1",
-                          fontSize: "0.88rem",
-                          backgroundColor: "#ffffff"
+                          padding: "8px 12px",
+                          borderRadius: "6px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.82rem",
+                          backgroundColor: "#f8fafc"
                         }}
                       >
                         <option value="">Select customer (optional)...</option>
@@ -1731,7 +1658,7 @@ export default function ExpensesClient({
 
                   {/* Row 11: Notes & Description */}
                   <div>
-                    <label style={{ display: "block", fontSize: "0.82rem", fontWeight: 700, color: "#334155", marginBottom: "6px" }}>
+                    <label style={{ display: "block", fontSize: "0.8rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>
                       Notes / Description
                     </label>
                     <textarea
@@ -1741,18 +1668,20 @@ export default function ExpensesClient({
                       onChange={e => setNotes(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "10px 14px",
-                        borderRadius: "8px",
-                        border: "1.5px solid #cbd5e1",
-                        fontSize: "0.88rem",
-                        resize: "vertical"
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        fontSize: "0.82rem",
+                        backgroundColor: "#f8fafc",
+                        resize: "vertical",
+                        fontFamily: "inherit"
                       }}
                     />
                   </div>
                 </div>
 
-                {/* RIGHT COLUMN: ULTRA-STYLISH ZOHO RECEIPT DROPZONE & SUMMARY */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                {/* RIGHT COLUMN: RECEIPTS DROPZONE & FINANCIAL SUMMARY */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   <div
                     onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
                     onDragLeave={() => setIsDragging(false)}
@@ -1760,39 +1689,37 @@ export default function ExpensesClient({
                     style={{
                       border: isDragging ? "2px dashed #4f46e5" : "1.5px dashed #cbd5e1",
                       backgroundColor: isDragging ? "#eef2ff" : "#f8fafc",
-                      borderRadius: "16px",
-                      padding: "28px 20px",
+                      borderRadius: "10px",
+                      padding: "24px 16px",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
                       textAlign: "center",
-                      gap: "14px",
-                      minHeight: "270px",
-                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                      boxShadow: isDragging ? "0 8px 20px rgba(79, 70, 229, 0.15)" : "none"
+                      gap: "10px",
+                      minHeight: "220px",
+                      transition: "all 0.15s ease"
                     }}
                   >
                     {!receiptUrl ? (
                       <>
                         <div style={{
-                          width: "60px",
-                          height: "60px",
-                          borderRadius: "16px",
-                          background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
+                          width: "48px",
+                          height: "48px",
+                          borderRadius: "12px",
+                          background: "#eff6ff",
                           color: "#4f46e5",
                           display: "flex",
                           alignItems: "center",
-                          justifyContent: "center",
-                          boxShadow: "0 4px 12px rgba(79, 70, 229, 0.15)"
+                          justifyContent: "center"
                         }}>
-                          <UploadCloud size={30} />
+                          <UploadCloud size={24} />
                         </div>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "#0f172a" }}>
+                          <div style={{ fontWeight: 700, fontSize: "0.85rem", color: "#0f172a" }}>
                             Drag or Drop your Receipts
                           </div>
-                          <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "3px" }}>
+                          <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: "2px" }}>
                             Maximum file size allowed is 10MB
                           </div>
                         </div>
@@ -1816,31 +1743,28 @@ export default function ExpensesClient({
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "6px",
-                            padding: "9px 18px",
-                            borderRadius: "8px",
-                            border: "1.5px solid #cbd5e1",
+                            padding: "6px 14px",
+                            borderRadius: "6px",
+                            border: "1px solid #cbd5e1",
                             backgroundColor: "#ffffff",
                             color: "#334155",
-                            fontSize: "0.84rem",
+                            fontSize: "0.78rem",
                             fontWeight: 600,
                             cursor: "pointer",
-                            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                            transition: "all 0.15s ease"
+                            boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
                           }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = "#4f46e5"; e.currentTarget.style.color = "#4f46e5"; }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = "#cbd5e1"; e.currentTarget.style.color = "#334155"; }}
                         >
-                          <UploadCloud size={15} /> Upload your Files
+                          <UploadCloud size={14} /> Upload your Files
                         </button>
                       </>
                     ) : (
                       /* Receipt Preview Card */
-                      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
+                      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "10px", alignItems: "center" }}>
                         <div style={{
                           position: "relative",
                           width: "100%",
-                          height: "190px",
-                          borderRadius: "10px",
+                          height: "160px",
+                          borderRadius: "8px",
                           overflow: "hidden",
                           border: "1px solid #cbd5e1",
                           backgroundColor: "#0f172a",
@@ -1855,9 +1779,9 @@ export default function ExpensesClient({
                               style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
                             />
                           ) : (
-                            <div style={{ color: "#ffffff", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
-                              <FileText size={36} />
-                              <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>PDF Receipt Document</span>
+                            <div style={{ color: "#ffffff", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                              <FileText size={32} />
+                              <span style={{ fontSize: "0.75rem", fontWeight: 600 }}>PDF Receipt Document</span>
                             </div>
                           )}
                           <button
@@ -1865,14 +1789,14 @@ export default function ExpensesClient({
                             onClick={() => { setReceiptUrl(null); setReceiptFileName(null); }}
                             style={{
                               position: "absolute",
-                              top: "8px",
-                              right: "8px",
+                              top: "6px",
+                              right: "6px",
                               backgroundColor: "rgba(15, 23, 42, 0.75)",
                               color: "#ffffff",
                               border: "none",
                               borderRadius: "50%",
-                              width: "26px",
-                              height: "26px",
+                              width: "24px",
+                              height: "24px",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -1880,11 +1804,11 @@ export default function ExpensesClient({
                             }}
                             title="Remove Receipt"
                           >
-                            <X size={15} />
+                            <X size={14} />
                           </button>
                         </div>
-                        <span style={{ fontSize: "0.78rem", color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
-                          <Check size={14} /> Receipt Attached Successfully
+                        <span style={{ fontSize: "0.75rem", color: "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                          <Check size={13} /> Receipt Attached
                         </span>
                       </div>
                     )}
@@ -1894,16 +1818,15 @@ export default function ExpensesClient({
                   <div style={{
                     backgroundColor: "#ffffff",
                     border: "1px solid #e2e8f0",
-                    borderRadius: "14px",
-                    padding: "16px",
-                    fontSize: "0.82rem",
+                    borderRadius: "10px",
+                    padding: "14px 16px",
+                    fontSize: "0.8rem",
                     display: "flex",
                     flexDirection: "column",
-                    gap: "10px",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+                    gap: "8px"
                   }}>
-                    <div style={{ fontWeight: 800, color: "#0f172a", borderBottom: "1px solid #f1f5f9", paddingBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                      <FileCheck size={16} color="#4f46e5" />
+                    <div style={{ fontWeight: 700, color: "#0f172a", borderBottom: "1px solid #f1f5f9", paddingBottom: "6px", display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                      <FileCheck size={15} color="#4f46e5" />
                       <span>Expense Summary</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b" }}>
@@ -1918,9 +1841,9 @@ export default function ExpensesClient({
                       <span>Paid Via:</span>
                       <strong style={{ color: "#0f172a" }}>{paidThrough}</strong>
                     </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b", borderTop: "1px dashed #cbd5e1", paddingTop: "8px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b", borderTop: "1px dashed #cbd5e1", paddingTop: "6px", marginTop: "2px" }}>
                       <span style={{ fontWeight: 600 }}>Total Amount:</span>
-                      <strong style={{ color: "#4f46e5", fontSize: "1.05rem", fontWeight: 800 }}>{formatCurrency(grossTotal)}</strong>
+                      <strong style={{ color: "#4f46e5", fontSize: "1rem", fontWeight: 800 }}>{formatCurrency(grossTotal)}</strong>
                     </div>
                   </div>
                 </div>
@@ -1928,62 +1851,44 @@ export default function ExpensesClient({
 
               {error && (
                 <div style={{
-                  marginTop: "16px",
-                  padding: "12px 16px",
-                  borderRadius: "8px",
+                  marginTop: "14px",
+                  padding: "10px 14px",
+                  borderRadius: "6px",
                   backgroundColor: "#fee2e2",
                   border: "1px solid #fecaca",
                   color: "#b91c1c",
-                  fontSize: "0.85rem",
+                  fontSize: "0.82rem",
                   display: "flex",
                   alignItems: "center",
-                  gap: "8px"
+                  gap: "6px"
                 }}>
-                  <AlertCircle size={16} />
+                  <AlertCircle size={15} />
                   <span>{error}</span>
                 </div>
               )}
 
-              {/* MODAL FOOTER ACTIONS */}
+              {/* Modal Footer Actions */}
               <div style={{
-                marginTop: "24px",
-                paddingTop: "18px",
+                marginTop: "20px",
+                paddingTop: "16px",
                 borderTop: "1px solid #f1f5f9",
                 display: "flex",
                 justifyContent: "flex-end",
-                gap: "12px"
+                gap: "10px"
               }}>
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  style={{
-                    padding: "10px 20px",
-                    borderRadius: "8px",
-                    border: "1.5px solid #cbd5e1",
-                    backgroundColor: "#ffffff",
-                    color: "#475569",
-                    fontWeight: 600,
-                    fontSize: "0.88rem",
-                    cursor: "pointer"
-                  }}
+                  className="btn-secondary"
+                  style={{ padding: "8px 18px", fontSize: "0.82rem" }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  style={{
-                    padding: "10px 28px",
-                    borderRadius: "8px",
-                    border: "none",
-                    background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
-                    color: "#ffffff",
-                    fontWeight: 700,
-                    fontSize: "0.9rem",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    boxShadow: "0 4px 12px rgba(79, 70, 229, 0.3)",
-                    opacity: loading ? 0.7 : 1
-                  }}
+                  className="primary-btn"
+                  style={{ padding: "8px 22px", fontSize: "0.82rem" }}
                 >
                   {loading ? "Saving..." : editingExpense ? "Update Expense" : "Save Expense"}
                 </button>
@@ -1995,70 +1900,54 @@ export default function ExpensesClient({
 
       {/* ─── 6. + NEW ACCOUNT SUB-MODAL ─── */}
       {showNewAccountModal && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          backgroundColor: "rgba(15, 23, 42, 0.65)",
-          backdropFilter: "blur(4px)",
-          zIndex: 100000,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "16px"
-        }}>
-          <div style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "16px",
-            width: "100%",
-            maxWidth: "440px",
-            padding: "24px",
-            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-            border: "1px solid #e2e8f0"
-          }}>
-            <h3 style={{ margin: "0 0 16px 0", fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>
+        <div className="modal-backdrop" style={{ zIndex: 100050 }}>
+          <div className="modal-content animate-in" style={{ maxWidth: "420px", padding: "20px" }}>
+            <h3 style={{ margin: "0 0 14px 0", fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>
               + Add New Expense Account
             </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
-                  Account Name*
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
+                  Account Name <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Inward Courier Freight, Raw Cotton..."
+                  placeholder="e.g. Inward Courier Freight..."
                   value={newAccountName}
                   onChange={e => setNewAccountName(e.target.value)}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "0.88rem" }}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.82rem", backgroundColor: "#f8fafc" }}
                   autoFocus
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
-                  Category*
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>
+                  Category <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <select
                   value={newAccountCategory}
                   onChange={e => setNewAccountCategory(e.target.value as any)}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "0.88rem", backgroundColor: "#ffffff" }}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.82rem", backgroundColor: "#f8fafc" }}
                 >
                   <option value="Cost Of Goods Sold">Cost Of Goods Sold (Direct)</option>
                   <option value="Expense">Operating Expense (Indirect)</option>
                 </select>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "10px" }}>
                 <button
                   type="button"
                   onClick={() => setShowNewAccountModal(false)}
-                  style={{ padding: "9px 16px", borderRadius: "8px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.84rem", fontWeight: 600, cursor: "pointer" }}
+                  className="btn-secondary"
+                  style={{ padding: "7px 14px", fontSize: "0.8rem" }}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleSaveNewAccount}
-                  style={{ padding: "9px 20px", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)", color: "#ffffff", fontSize: "0.84rem", fontWeight: 700, cursor: "pointer" }}
+                  className="primary-btn"
+                  style={{ padding: "7px 18px", fontSize: "0.8rem" }}
                 >
                   Save & Select
                 </button>
@@ -2070,34 +1959,15 @@ export default function ExpensesClient({
 
       {/* ─── 7. VIEW FULL DETAILS & RECEIPT MODAL ─── */}
       {viewingExpense && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          backgroundColor: "rgba(15, 23, 42, 0.72)",
-          backdropFilter: "blur(8px)",
-          zIndex: 99999,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "16px"
-        }}
-        onClick={() => setViewingExpense(null)}
-        >
-          <div style={{
-            backgroundColor: "#ffffff",
-            borderRadius: "16px",
-            width: "100%",
-            maxWidth: "680px",
-            maxHeight: "90vh",
-            overflowY: "auto",
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-            border: "1px solid #e2e8f0"
-          }}
-          onClick={e => e.stopPropagation()}
+        <div className="modal-backdrop" onClick={() => setViewingExpense(null)}>
+          <div 
+            className="modal-content animate-in" 
+            style={{ maxWidth: "640px", maxHeight: "90vh", overflowY: "auto" }}
+            onClick={e => e.stopPropagation()}
           >
             {/* Header */}
             <div style={{
-              padding: "18px 24px",
+              padding: "16px 20px",
               borderBottom: "1px solid #e2e8f0",
               display: "flex",
               justifyContent: "space-between",
@@ -2105,34 +1975,34 @@ export default function ExpensesClient({
               backgroundColor: "#f8fafc"
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700, color: "#0f172a" }}>
+                <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>
                   Expense Claim #{viewingExpense.expenseNumber}
                 </h3>
-                <span style={{ fontSize: "0.8rem", color: "#64748b" }}>
+                <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
                   Recorded on {new Date(viewingExpense.date).toLocaleDateString("en-GB")} by {viewingExpense.employee?.user?.name || "Employee"}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setViewingExpense(null)}
-                style={{ border: "none", background: "#f1f5f9", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                style={{ border: "none", background: "none", color: "#64748b", cursor: "pointer", fontSize: "1.3rem", lineHeight: 1 }}
               >
-                <X size={16} />
+                ×
               </button>
             </div>
 
-            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "18px" }}>
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
               {/* Status & Amount Banner */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f8fafc", padding: "14px 18px", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#f8fafc", padding: "12px 16px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
                 <div>
-                  <span style={{ fontSize: "0.75rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>Total Expense</span>
-                  <div style={{ fontSize: "1.45rem", fontWeight: 800, color: "#4f46e5" }}>{formatCurrency(viewingExpense.amount)}</div>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", textTransform: "uppercase", fontWeight: 700 }}>Total Expense</span>
+                  <div style={{ fontSize: "1.35rem", fontWeight: 800, color: "#4f46e5" }}>{formatCurrency(viewingExpense.amount)}</div>
                 </div>
                 <div>
                   <span style={{
-                    padding: "5px 12px",
+                    padding: "4px 10px",
                     borderRadius: "6px",
-                    fontSize: "0.82rem",
+                    fontSize: "0.75rem",
                     fontWeight: 700,
                     backgroundColor: STATUS_BADGES[viewingExpense.status]?.bg || "#f1f5f9",
                     color: STATUS_BADGES[viewingExpense.status]?.color || "#334155"
@@ -2143,37 +2013,37 @@ export default function ExpensesClient({
               </div>
 
               {/* Grid of Details */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", fontSize: "0.88rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", fontSize: "0.82rem" }}>
                 <div>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block" }}>Expense Account</span>
+                  <span style={{ color: "#64748b", fontSize: "0.72rem", display: "block" }}>Expense Account</span>
                   <strong>{viewingExpense.details?.account || viewingExpense.category}</strong> ({viewingExpense.details?.accountCategory || "Expense"})
                 </div>
                 <div>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block" }}>Paid Through</span>
+                  <span style={{ color: "#64748b", fontSize: "0.72rem", display: "block" }}>Paid Through</span>
                   <strong>{viewingExpense.details?.paidThrough || "Petty Cash"}</strong>
                 </div>
                 <div>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block" }}>Vendor</span>
+                  <span style={{ color: "#64748b", fontSize: "0.72rem", display: "block" }}>Vendor</span>
                   <strong>{viewingExpense.details?.vendorName || "—"}</strong>
                 </div>
                 <div>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block" }}>GST Treatment</span>
+                  <span style={{ color: "#64748b", fontSize: "0.72rem", display: "block" }}>GST Treatment</span>
                   <strong>{viewingExpense.details?.gstTreatment || "Registered Business - Regular"}</strong>
                 </div>
                 <div>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block" }}>Place of Supply</span>
+                  <span style={{ color: "#64748b", fontSize: "0.72rem", display: "block" }}>Place of Supply</span>
                   <span>{viewingExpense.details?.sourceOfSupply} → {viewingExpense.details?.destinationOfSupply}</span>
                 </div>
                 <div>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block" }}>Tax Details</span>
+                  <span style={{ color: "#64748b", fontSize: "0.72rem", display: "block" }}>Tax Details</span>
                   <span>{viewingExpense.details?.taxRate ? `${viewingExpense.details.taxRate}% (${viewingExpense.details.taxInclusive ? "Tax Inclusive" : "Tax Exclusive"})` : "Exempt"}</span>
                 </div>
               </div>
 
               {viewingExpense.details?.notes && (
                 <div>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block", marginBottom: "4px" }}>Notes / Description</span>
-                  <div style={{ backgroundColor: "#f8fafc", padding: "12px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.85rem", whiteSpace: "pre-line" }}>
+                  <span style={{ color: "#64748b", fontSize: "0.72rem", display: "block", marginBottom: "3px" }}>Notes / Description</span>
+                  <div style={{ backgroundColor: "#f8fafc", padding: "10px 12px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", whiteSpace: "pre-line" }}>
                     {viewingExpense.details.notes}
                   </div>
                 </div>
@@ -2182,26 +2052,26 @@ export default function ExpensesClient({
               {/* Receipt Preview */}
               {viewingExpense.receiptUrl && (
                 <div>
-                  <span style={{ color: "#64748b", fontSize: "0.75rem", display: "block", marginBottom: "6px" }}>Receipt Document</span>
+                  <span style={{ color: "#64748b", fontSize: "0.72rem", display: "block", marginBottom: "4px" }}>Receipt Document</span>
                   <div style={{
-                    borderRadius: "10px",
+                    borderRadius: "8px",
                     overflow: "hidden",
                     border: "1px solid #cbd5e1",
                     backgroundColor: "#0f172a",
                     display: "flex",
                     justifyContent: "center",
-                    padding: "12px"
+                    padding: "10px"
                   }}>
                     <img
                       src={viewingExpense.receiptUrl}
                       alt="Receipt"
-                      style={{ maxWidth: "100%", maxHeight: "340px", objectFit: "contain" }}
+                      style={{ maxWidth: "100%", maxHeight: "300px", objectFit: "contain" }}
                     />
                   </div>
                 </div>
               )}
 
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -2210,34 +2080,26 @@ export default function ExpensesClient({
                     handleOpenEdit(toEdit);
                   }}
                   style={{
-                    padding: "8px 16px",
-                    borderRadius: "8px",
+                    padding: "7px 14px",
+                    borderRadius: "6px",
                     border: "1px solid #c7d2fe",
                     backgroundColor: "#eef2ff",
                     color: "#4f46e5",
                     fontWeight: 600,
-                    fontSize: "0.85rem",
+                    fontSize: "0.8rem",
                     cursor: "pointer",
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: "6px"
+                    gap: "5px"
                   }}
                 >
-                  <Edit3 size={14} /> Edit Expense
+                  <Edit3 size={13} /> Edit Expense
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewingExpense(null)}
-                  style={{
-                    padding: "8px 20px",
-                    borderRadius: "8px",
-                    border: "none",
-                    backgroundColor: "#334155",
-                    color: "#ffffff",
-                    fontWeight: 600,
-                    fontSize: "0.85rem",
-                    cursor: "pointer"
-                  }}
+                  className="btn-secondary"
+                  style={{ padding: "7px 16px", fontSize: "0.8rem" }}
                 >
                   Close
                 </button>
