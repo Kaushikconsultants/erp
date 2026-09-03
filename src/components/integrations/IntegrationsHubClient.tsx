@@ -375,14 +375,13 @@ export default function IntegrationsHubClient({
                       )}
                     </div>
                     <div className="card-tagline">{item.tagline}</div>
-                    <p className="card-description">{item.description}</p>
                   </div>
 
-                  {/* Features List */}
+                  {/* Clean Feature Pills */}
                   <div className="card-feature-list">
                     {item.features.slice(0, 3).map((f: string, idx: number) => (
                       <span key={idx} className="feature-tag">
-                        <Check size={11} color="#10b981" /> {f}
+                        <Check size={10} color="#10b981" /> {f}
                       </span>
                     ))}
                   </div>

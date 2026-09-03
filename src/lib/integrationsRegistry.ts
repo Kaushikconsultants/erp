@@ -33,7 +33,7 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     name: "Shiprocket",
     category: "SHIPPING",
     tagline: "India's #1 eCommerce Shipping & Logistics Aggregator",
-    description: "Connect Shiprocket to automate AWB generation, schedule courier pickups, compare shipping rates across 17+ couriers, and sync real-time tracking directly with customer orders.",
+    description: "Connect Shiprocket to automate AWB generation, schedule pickups, compare rates across 17+ couriers, and sync live tracking.",
     logo: "🚀",
     brandColor: "#7c3aed",
     badge: "Most Popular",
@@ -48,11 +48,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       { key: "notifyCustomer", label: "Send Automated WhatsApp Tracking Links", type: "checkbox", defaultValue: true },
     ],
     features: [
-      "Automated AWB Number generation",
-      "Multi-courier rate optimization (Bluedart, Delhivery, DTDC, Ekart)",
-      "Real-time shipment tracking webhooks",
-      "Instant Return (RTO) & NDR workflow automation",
-      "Doorstep pickup scheduling"
+      "Auto AWB Generation",
+      "Multi-Courier Rates",
+      "Live Tracking Webhooks"
     ],
     supportedEvents: ["shipment.created", "shipment.manifested", "shipment.in_transit", "shipment.out_for_delivery", "shipment.delivered", "shipment.rto"]
   },
@@ -61,7 +59,7 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     name: "Shipmozo",
     category: "SHIPPING",
     tagline: "Smart Multi-Carrier Shipping & Tracking Automation",
-    description: "Connect Shipmozo via API to leverage AI-driven fastest courier routing, live pin-code serviceability check, bulk label generation, and automated delivery notifications.",
+    description: "Leverage AI-driven fastest courier routing, pin-code serviceability checks, and bulk shipping labels.",
     logo: "📦",
     brandColor: "#0284c7",
     badge: "Direct API",
@@ -84,10 +82,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       { key: "autoManifest", label: "Auto-Generate Manifest & Shipping Labels", type: "checkbox", defaultValue: true }
     ],
     features: [
-      "AI-driven courier assignment (Air / Surface)",
-      "Real-time Pin-code serviceability check",
-      "Instant Shipping label & Tax Invoice printing",
-      "Non-Delivery Report (NDR) re-attempt engine"
+      "AI Courier Routing",
+      "Live Pin-Code Check",
+      "Instant Labels & Invoices"
     ],
     supportsWebhooks: false
   },
@@ -96,7 +93,7 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     name: "NimbusPost",
     category: "SHIPPING",
     tagline: "Commercial Shipping Automation & NDR Management",
-    description: "Integrate NimbusPost to get low shipping rates, automated bulk dispatch, reverse pickup logistics, and unified tracking dashboard.",
+    description: "Get low shipping rates, automated bulk dispatch, reverse pickup logistics, and unified tracking dashboard.",
     logo: "⚡",
     brandColor: "#ea580c",
     docsUrl: "https://nimbuspost.com/api-docs",
@@ -107,10 +104,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       { key: "autoAwb", label: "Auto-Assign Carrier on Dispatch Approval", type: "checkbox", defaultValue: true }
     ],
     features: [
-      "19+ Carrier Integrations with unified balance",
-      "AI-powered NDR verification engine",
-      "Automated WhatsApp NDR interactive bot",
-      "Thermal barcode label & packing slip generation"
+      "19+ Unified Carriers",
+      "AI-Powered NDR Engine",
+      "WhatsApp Tracking Bot"
     ],
     supportedEvents: ["shipment.status_update", "shipment.delivered", "shipment.rto_initiated"]
   },
@@ -119,7 +115,7 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     name: "Delhivery Direct",
     category: "SHIPPING",
     tagline: "Direct Carrier API for Express & Heavy Freight Shipping",
-    description: "Connect directly to Delhivery's enterprise logistics network for Surface, Express, and B2B LTL/FTL cargo shipments without intermediary aggregator margins.",
+    description: "Direct carrier logistics network for Surface, Express Air, and B2B heavy cargo shipments.",
     logo: "🚚",
     brandColor: "#dc2626",
     badge: "Enterprise Carrier",
@@ -141,10 +137,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       }
     ],
     features: [
-      "Direct API integration with Delhivery Hubs",
-      "Real-time Geo-tracking coordinates & scans",
-      "Instant Waybill number reservation",
-      "B2B Freight & Bulk Garment Pallet shipments"
+      "Direct Hub API",
+      "Real-Time Geo Tracking",
+      "Instant Waybills"
     ],
     supportedEvents: ["scan.inward", "scan.in_transit", "scan.out_for_delivery", "scan.delivered"]
   },
@@ -154,8 +149,8 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     id: "shopify",
     name: "Shopify Store",
     category: "ECOMMERCE",
-    tagline: "Two-Way Direct API Sync for Orders, Products & Inventory",
-    description: "Connect your Shopify online storefront directly via Admin API. Automatically pull incoming retail orders into CRM, push real-time stock levels, and write back tracking numbers upon dispatch.",
+    tagline: "Two-Way Direct API Sync for Orders & Inventory",
+    description: "Pull incoming retail orders into CRM, push real-time stock levels, and write back tracking numbers on dispatch.",
     logo: "🛍️",
     brandColor: "#16a34a",
     badge: "Real-Time Sync",
@@ -170,11 +165,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       { key: "pushTracking", label: "Auto-Fulfill on Shopify when Dispatched Here", type: "checkbox", defaultValue: true }
     ],
     features: [
-      "Instant Order ingestion on Shopify checkout",
-      "Two-way multi-variant inventory synchronization",
-      "Automatic customer contact creation & CRM sync",
-      "Automatic Shopify fulfillment & tracking link update",
-      "Support for multi-location warehouse routing"
+      "Instant Order Ingestion",
+      "2-Way Stock Balance",
+      "Auto Customer Sync"
     ],
     supportedEvents: ["orders/create", "orders/updated", "orders/paid", "orders/cancelled", "inventory_levels/update"]
   },
@@ -183,7 +176,7 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     name: "WordPress / WooCommerce",
     category: "ECOMMERCE",
     tagline: "Direct REST API Integration for WordPress Stores",
-    description: "Connect your self-hosted WooCommerce / WordPress site. Seamlessly sync orders, sync SKUs and stock quantities, import customer addresses, and notify customers on dispatch.",
+    description: "Seamlessly sync orders, sync SKUs and stock quantities, import customer addresses, and notify customers on dispatch.",
     logo: "🌐",
     brandColor: "#9333ea",
     badge: "Open API",
@@ -202,11 +195,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       { key: "verifySsl", label: "Verify SSL Certificate", type: "checkbox", defaultValue: true }
     ],
     features: [
-      "Direct REST API v3 integration (no heavy plugins required)",
-      "Instant order ingestion with complete customer details & GSTIN",
-      "Live bi-directional stock balance management",
-      "Auto-order status update to 'Completed' with tracking details",
-      "Compatible with custom fields and WooCommerce HPOS"
+      "REST API v3 Sync",
+      "Instant Order Ingestion",
+      "Live Stock Balances"
     ],
     supportedEvents: ["order.created", "order.updated", "order.deleted", "product.stock_status_update"]
   },
@@ -215,7 +206,7 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     name: "Magento 2 / Adobe Commerce",
     category: "ECOMMERCE",
     tagline: "Enterprise E-Commerce API Integration",
-    description: "Connect Magento 2 / Adobe Commerce stores via Integration Tokens. Ingest high-volume orders, manage B2B customer tier pricing, and keep multi-store inventory perfectly balanced.",
+    description: "Ingest high-volume orders, manage B2B customer tier pricing, and keep multi-store inventory balanced.",
     logo: "🛍️",
     brandColor: "#f97316",
     badge: "Enterprise",
@@ -228,11 +219,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       { key: "syncInventory", label: "Sync Multi-Source Inventory (MSI)", type: "checkbox", defaultValue: true }
     ],
     features: [
-      "Direct Magento 2 REST WebAPI integration",
-      "B2B & Wholesale Tier-pricing synchronization",
-      "Multi-Source Inventory (MSI) warehouse mapping",
-      "Automated Magento shipment & invoice creation",
-      "High-throughput concurrent order processing"
+      "REST WebAPI Integration",
+      "B2B Tier-Pricing Sync",
+      "Multi-Source Inventory"
     ],
     supportedEvents: ["sales_order_save_commit_after", "sales_order_shipment_save_commit_after", "catalog_inventory_stock_item_save_commit_after"]
   },
@@ -242,8 +231,8 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
     id: "razorpay",
     name: "Razorpay Payments",
     category: "PAYMENT",
-    tagline: "India's Leading Payment Gateway & Automated Reconciliation",
-    description: "Generate instant payment links with QR codes, collect advance token payments for quotations, and automatically reconcile order payments upon customer checkout.",
+    tagline: "India's Leading Payment Gateway & Auto Reconciliation",
+    description: "Generate instant payment links with QR codes, collect advance token payments, and auto-reconcile orders.",
     logo: "💳",
     brandColor: "#0284c7",
     badge: "UPI & Cards",
@@ -255,10 +244,9 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       { key: "autoReconcile", label: "Auto-Reconcile Payment Received against Invoices", type: "checkbox", defaultValue: true }
     ],
     features: [
-      "Instant UPI, Credit/Debit Card & Netbanking links",
-      "Automated Token Amount collection on quotation confirmation",
-      "Real-time webhook payment confirmation & ledger entry",
-      "Automated refund processing"
+      "Instant UPI & Cards",
+      "Auto-Reconciliation",
+      "Dynamic Payment Links"
     ],
     supportedEvents: ["payment.captured", "payment.failed", "payment_link.paid", "refund.processed"]
   }
