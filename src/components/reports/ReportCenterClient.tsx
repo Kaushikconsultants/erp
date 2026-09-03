@@ -266,7 +266,7 @@ export default function ReportCenterClient({
         "Category": p.category || "General",
         "Stock Quantity": p.stockQuantity,
         "Min Safety Stock": p.minimumStock || 10,
-        "Cost Price (₹)": p.costPrice || 0,
+        "Cost Price (₹)": p.purchasePrice || 0,
         "Selling Price (₹)": p.sellingPrice || 0,
         "Total Stock Value (₹)": (p.stockQuantity || 0) * (p.sellingPrice || 0),
         "Status": (p.stockQuantity || 0) <= (p.minimumStock || 10) ? "Low Stock" : "In Stock"

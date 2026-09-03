@@ -168,7 +168,7 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
         include: {
           customer: { select: { id: true, businessName: true, mobile: true, state: true, status: true } },
           salesperson: { include: { user: { select: { name: true, email: true } } } },
-          items: { include: { product: { select: { id: true, name: true, sku: true, costPrice: true, sellingPrice: true, category: true } } } }
+          items: { include: { product: { select: { id: true, name: true, sku: true, purchasePrice: true, sellingPrice: true, category: true } } } }
         },
         orderBy: { orderDate: 'desc' }
       }),
@@ -186,7 +186,7 @@ export async function getSalesReport(startDate?: string, endDate?: string) {
             } 
           },
           salesperson: { include: { user: { select: { name: true, email: true } } } },
-          items: { include: { product: { select: { id: true, name: true, sku: true, costPrice: true, sellingPrice: true, category: true } } } }
+          items: { include: { product: { select: { id: true, name: true, sku: true, purchasePrice: true, sellingPrice: true, category: true } } } }
         },
         orderBy: { date: 'desc' }
       })
@@ -273,7 +273,7 @@ export async function getInventoryReport() {
 
     const totalStockQty = products.reduce((s, p) => s + p.stockQuantity, 0);
     const totalInventoryValue = products.reduce((s, p) => s + (p.stockQuantity * p.sellingPrice), 0);
-    const totalCostValue = products.reduce((s, p) => s + (p.stockQuantity * (p.costPrice || p.sellingPrice * 0.7)), 0);
+    const totalCostValue = products.reduce((s, p) => s + (p.stockQuantity * (p.purchasePrice || p.sellingPrice * 0.7)), 0);
     const lowStockProducts = products.filter(p => p.stockQuantity <= (p.minimumStock || 10));
 
     return { 
