@@ -17,6 +17,7 @@ import ShippingRateCalculator from '@/components/ui/ShippingRateCalculator';
 import QuickBarcodeScannerBar from '@/components/scanner/QuickBarcodeScannerBar';
 import GarmentMatrixModal from '@/components/quotations/GarmentMatrixModal';
 import { getCustomerTierDiscount, calculateTieredRate } from '@/lib/pricingUtils';
+import { numberToWordsINR } from '@/lib/gstUtils';
 
 import { useSearchParams } from 'next/navigation';
 
@@ -464,10 +465,12 @@ export default function CreateQuotationForm({ customers, products, employees, ca
 
   // Calculations
   const calculateTotals = () => {
-    let subtotal = 0;
+    let grossSubtotal = 0;
     let itemDiscount = 0;
+    let taxableAmount = 0;
     let taxTotal = 0;
     let totalWeight = 0;
+    let totalRateWeighted = 0;
 
     items.forEach(item => {
       const qty = Number(item.quantity) || 1;
@@ -480,23 +483,51 @@ export default function CreateQuotationForm({ customers, products, employees, ca
         disc = gross * ((Number(item.discountPercent) || 0) / 100);
       }
       const taxable = Math.max(0, gross - disc);
-      const tax = taxable * ((Number(item.gstRate) || 0) / 100);
+      const gstRate = Number(item.gstRate) || 0;
+      const tax = taxable * (gstRate / 100);
       
-      subtotal += gross;
+      grossSubtotal += gross;
       itemDiscount += disc;
+      taxableAmount += taxable;
       taxTotal += tax;
       totalWeight += (Number(item.unitWeight) || 0) * qty;
+      totalRateWeighted += taxable * gstRate;
     });
 
-    const isIntrastate = (formData.placeOfSupply || 'Haryana').trim().toLowerCase() === 'haryana';
+    const pos = (formData.placeOfSupply || '').trim().toLowerCase();
+    const isIntrastate = pos === 'haryana' || pos.startsWith('haryana') || (!pos && true);
     const cgst = isIntrastate ? taxTotal / 2 : 0;
     const sgst = isIntrastate ? taxTotal / 2 : 0;
     const igst = isIntrastate ? 0 : taxTotal;
 
-    const taxableAmount = Math.max(0, subtotal - itemDiscount - (Number(formData.additionalDiscount) || 0));
-    const finalTotal = taxableAmount + taxTotal + (Number(formData.shippingCharges) || 0) + (Number(formData.adjustment) || 0);
+    const effectiveGstRate = taxableAmount > 0 ? (totalRateWeighted / taxableAmount) : 5;
 
-    return { subtotal, itemDiscount, taxableAmount, taxTotal, cgst, sgst, igst, isIntrastate, finalTotal, totalWeight };
+    const additionalDiscount = Number(formData.additionalDiscount) || 0;
+    const netTaxableAmount = Math.max(0, taxableAmount - additionalDiscount);
+    const shippingCharges = Number(formData.shippingCharges) || 0;
+    const adjustment = Number(formData.adjustment) || 0;
+
+    const rawTotal = netTaxableAmount + taxTotal + shippingCharges + adjustment;
+    const finalTotal = Math.round(rawTotal);
+    const roundOff = Math.round((finalTotal - rawTotal) * 100) / 100;
+
+    return { 
+      grossSubtotal, 
+      itemDiscount, 
+      subtotal: taxableAmount, // In Image 2: "Sub Total: 5,525.00"
+      taxableAmount: netTaxableAmount, 
+      taxTotal, 
+      cgst, 
+      sgst, 
+      igst, 
+      isIntrastate, 
+      effectiveGstRate,
+      shippingCharges, 
+      rawTotal, 
+      roundOff, 
+      finalTotal, 
+      totalWeight 
+    };
   };
 
   const totals = calculateTotals();
@@ -539,6 +570,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
         shippingCharges: Number(formData.shippingCharges) || 0,
         additionalDiscount: Number(formData.additionalDiscount) || 0,
         adjustment: Number(formData.adjustment) || 0,
+        roundOff: totals.roundOff,
         receivedAmount: Number(formData.receivedAmount || 0),
         discountSlab: formData.discountSlab || '1-15',
         totalWeight: totals.totalWeight,
@@ -595,8 +627,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
   };
 
   const numberToWords = (num: number) => {
-    if (num === 0) return 'Zero Only';
-    return `Rupees ${num.toLocaleString('en-IN')} Only`; 
+    return numberToWordsINR(num);
   };
 
   const filteredCustomers = localCustomers.filter((c: any) => {
@@ -1069,7 +1100,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                   }
                   const taxable = Math.max(0, gross - disc);
                   const tax = taxable * ((Number(item.gstRate) || 0) / 100);
-                  const amount = taxable + tax;
+                  const amount = taxable;
 
                   return (
                     <tr key={index} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -1297,6 +1328,11 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                           <option value="18">18%</option>
                           <option value="28">28%</option>
                         </select>
+                        {tax > 0 && (
+                          <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px', textAlign: 'right', fontWeight: 600 }}>
+                            +₹{tax.toFixed(2)}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '14px 12px', verticalAlign: 'top', fontWeight: 700, fontSize: '0.9rem', color: '#0f172a', textAlign: 'right' }}>
                         ₹{amount.toFixed(2)}
@@ -1325,7 +1361,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
               }
               const taxable = Math.max(0, gross - disc);
               const tax = taxable * ((Number(item.gstRate) || 0) / 100);
-              const lineAmount = taxable + tax;
+              const lineAmount = taxable;
 
               return (
                 <div key={index} style={{
@@ -1511,7 +1547,14 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     paddingTop: '10px', borderTop: '1px dashed #e2e8f0'
                   }}>
-                    <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Line Total (incl. GST)</span>
+                    <div>
+                      <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Taxable Amount</span>
+                      {tax > 0 && (
+                        <div style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>
+                          GST ({item.gstRate}%): +₹{tax.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
                     <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>₹{lineAmount.toFixed(2)}</span>
                   </div>
 
@@ -1611,25 +1654,31 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             {/* ROWS TABLE / KEY-VALUE LIST WITH UNIFORM ALIGNMENT */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
-              {/* Subtotal */}
+              {/* Sub Total (Taxable subtotal of items after line discounts, exactly like Image 2) */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '32px' }}>
-                <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Subtotal</span>
+                <div>
+                  <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>Sub Total</span>
+                  {totals.itemDiscount > 0 && (
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                      (Gross: ₹{totals.grossSubtotal.toFixed(2)} | Disc: -₹{totals.itemDiscount.toFixed(2)})
+                    </div>
+                  )}
+                </div>
                 <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
                   ₹{totals.subtotal.toFixed(2)}
                 </span>
               </div>
 
-              {/* Line Discounts */}
-              {totals.itemDiscount > 0 && (
+              {/* Additional Discount Input (if applicable) */}
+              {formData.additionalDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '28px' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: 500 }}>Line Discounts</span>
+                  <span style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: 500 }}>Additional Discount</span>
                   <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>
-                    - ₹{totals.itemDiscount.toFixed(2)}
+                    - ₹{Number(formData.additionalDiscount).toFixed(2)}
                   </span>
                 </div>
               )}
 
-              {/* Additional Discount Input */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '34px' }}>
                 <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Additional Discount (₹)</span>
                 <div style={{ display: 'flex', alignItems: 'center', width: '130px', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
@@ -1646,10 +1695,44 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                 </div>
               </div>
 
-              {/* Shipping / Freight with integrated Shipmozo rate calculator */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* Tax Divider */}
+              <div style={{ borderTop: '1px dashed #cbd5e1', margin: '2px 0' }} />
+
+              {/* DYNAMIC GST / IGST METRICS MATCHING IMAGE 2 */}
+              {totals.isIntrastate ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#475569' }}>
+                      CGST {totals.effectiveGstRate > 0 ? `(${(totals.effectiveGstRate / 2).toFixed(1)}%)` : ''}
+                    </span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                      ₹{totals.cgst.toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#475569' }}>
+                      SGST {totals.effectiveGstRate > 0 ? `(${(totals.effectiveGstRate / 2).toFixed(1)}%)` : ''}
+                    </span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                      ₹{totals.sgst.toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#475569' }}>
+                    IGST {totals.effectiveGstRate > 0 ? `(${Math.round(totals.effectiveGstRate)}%)` : ''}
+                  </span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                    ₹{totals.igst.toFixed(2)}
+                  </span>
+                </div>
+              )}
+
+              {/* Shipping charge (₹) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '34px' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Shipping / Freight (₹)</span>
+                  <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Shipping charge (₹)</span>
                   <div style={{ display: 'flex', alignItems: 'center', width: '130px', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
                     <span style={{ padding: '0 8px', fontSize: '0.8rem', color: '#64748b', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', height: '32px' }}>₹</span>
                     <input 
@@ -1671,69 +1754,43 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '6px',
-                    padding: '7px 10px',
+                    padding: '6px 10px',
                     borderRadius: '6px',
                     border: '1px dashed #6366f1',
                     backgroundColor: '#f5f3ff',
                     color: '#4f46e5',
-                    fontSize: '0.78rem',
+                    fontSize: '0.76rem',
                     fontWeight: 600,
                     cursor: 'pointer',
                     width: '100%',
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <Truck size={14} color="#6366f1" /> Calculate Shipping Rates
+                  <Truck size={13} color="#6366f1" /> Calculate Shipping Rates
                 </button>
               </div>
 
-              {/* Tax Divider */}
-              <div style={{ borderTop: '1px dashed #cbd5e1', margin: '4px 0' }} />
-
-              {/* DYNAMIC GST / IGST METRICS */}
-              {totals.isIntrastate ? (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.82rem', color: '#475569' }}>CGST (Central Tax)</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                      ₹{totals.cgst.toFixed(2)}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.82rem', color: '#475569' }}>SGST (State Tax)</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                      ₹{totals.sgst.toFixed(2)}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#475569' }}>IGST (Integrated Tax)</span>
-                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                    ₹{totals.igst.toFixed(2)}
+              {/* Rounding like Image 2 */}
+              {totals.roundOff !== 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '26px' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Rounding</span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: totals.roundOff < 0 ? '#dc2626' : '#059669', fontVariantNumeric: 'tabular-nums' }}>
+                    {totals.roundOff > 0 ? `+${totals.roundOff.toFixed(2)}` : totals.roundOff.toFixed(2)}
                   </span>
                 </div>
               )}
-
-              {/* Total Tax summary row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
-                <span>Total Tax Amount</span>
-                <span style={{ fontWeight: 600, color: '#475569', fontVariantNumeric: 'tabular-nums' }}>
-                  ₹{totals.taxTotal.toFixed(2)}
-                </span>
-              </div>
             </div>
 
-            {/* GRAND TOTAL BLUE BOX */}
+            {/* TOTAL BLUE BOX */}
             <div style={{ backgroundColor: '#eff6ff', padding: '16px', borderRadius: '8px', border: '1px solid #bfdbfe', marginTop: '4px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>Grand Total</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>Total</span>
                 <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2563eb', fontVariantNumeric: 'tabular-nums' }}>
                   ₹{totals.finalTotal.toFixed(2)}
                 </span>
               </div>
-              <div style={{ fontSize: '0.72rem', color: '#3b82f6', textAlign: 'right', marginTop: '4px', fontStyle: 'italic', fontWeight: 500 }}>
-                {numberToWords(Math.round(totals.finalTotal))}
+              <div style={{ fontSize: '0.74rem', color: '#1e40af', textAlign: 'right', marginTop: '6px', fontStyle: 'italic', fontWeight: 600 }}>
+                {numberToWords(totals.finalTotal)}
               </div>
             </div>
 

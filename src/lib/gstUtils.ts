@@ -122,5 +122,5 @@ export function numberToWordsINR(amount: number): string {
     return inWords(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 !== 0 ? " " + inWords(n % 10000000) : "");
   }
 
-  return `${inWords(num)} Rupees Only`;
+  return `Indian Rupee ${inWords(num)} Only`;
 }
