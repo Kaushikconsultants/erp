@@ -85,6 +85,7 @@ export async function logCall(formData: FormData) {
     }
 
     revalidatePath("/calls");
+    revalidatePath("/follow-ups");
     return { success: true, callRecord };
   } catch (error) {
     console.error("Failed to log call:", error);
@@ -105,6 +106,7 @@ export async function updateCall(callId: string, data: { outcome?: string; callT
       }
     });
     revalidatePath("/calls");
+    revalidatePath("/follow-ups");
     revalidatePath("/");
     return { success: true };
   } catch (error) {
@@ -119,6 +121,7 @@ export async function deleteCall(callId: string) {
       where: { id: callId }
     });
     revalidatePath("/calls");
+    revalidatePath("/follow-ups");
     revalidatePath("/");
     return { success: true };
   } catch (error) {
@@ -135,6 +138,7 @@ export async function removeFollowUp(callId: string) {
     });
     revalidatePath("/");
     revalidatePath("/calls");
+    revalidatePath("/follow-ups");
     return { success: true };
   } catch (error) {
     console.error("Failed to remove follow up:", error);
@@ -156,6 +160,7 @@ export async function rescheduleFollowUp(callId: string, newDateStr: string) {
       revalidatePath("/customers");
     }
     revalidatePath("/calls");
+    revalidatePath("/follow-ups");
     return { success: true };
   } catch (error) {
     console.error("Failed to reschedule follow up:", error);

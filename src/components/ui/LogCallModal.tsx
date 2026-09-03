@@ -16,9 +16,21 @@ interface LogCallModalProps {
   isAdmin?: boolean;
   leadId?: string;
   leadName?: string;
+  customerId?: string;
+  customerName?: string;
+  onCallLogged?: () => void;
 }
 
-export default function LogCallModal({ onClose, customers: initialCustomers, isAdmin: propIsAdmin, leadId, leadName }: LogCallModalProps) {
+export default function LogCallModal({ 
+  onClose, 
+  customers: initialCustomers, 
+  isAdmin: propIsAdmin, 
+  leadId, 
+  leadName,
+  customerId,
+  customerName,
+  onCallLogged
+}: LogCallModalProps) {
   const { data: session } = useSession();
   const sessionRole = (session?.user as any)?.role;
   const userIsAdmin = propIsAdmin !== undefined ? propIsAdmin : (sessionRole === "ADMIN" || sessionRole === "SUPER_ADMIN");
@@ -70,8 +82,22 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
   const [followUpPeriod, setFollowUpPeriod] = useState<"AM" | "PM">("AM");
   const [notes, setNotes] = useState("");
 
+  // Preselect customer if passed via props
+  useEffect(() => {
+    if (customerId) {
+      setSelectedCustomerId(customerId);
+      const found = customers.find(c => c.id === customerId);
+      if (found) {
+        setSelectedCustomerLabel(found.companyName || found.contactPerson);
+      } else if (customerName) {
+        setSelectedCustomerLabel(customerName);
+      }
+    }
+  }, [customerId, customerName, customers]);
+
   // Restore draft from sessionStorage on mount
   useEffect(() => {
+    if (customerId || leadId) return; // Skip draft restore when explicitly targeted
     try {
       const savedDraft = sessionStorage.getItem("antigravity_log_call_draft");
       if (savedDraft) {
@@ -87,7 +113,7 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
     } catch (e) {
       // ignore
     }
-  }, []);
+  }, [customerId, leadId]);
 
   // Save draft on change
   useEffect(() => {
@@ -267,6 +293,7 @@ export default function LogCallModal({ onClose, customers: initialCustomers, isA
       try {
         sessionStorage.removeItem("antigravity_log_call_draft");
       } catch (e) {}
+      onCallLogged?.();
       onClose();
     }
   };

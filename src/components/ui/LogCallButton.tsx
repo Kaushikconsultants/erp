@@ -14,12 +14,15 @@ export default function LogCallButton({ customers, isAdmin }: LogCallButtonProps
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const customerIdParam = searchParams?.get('customerId') || undefined;
+  const leadIdParam = searchParams?.get('leadId') || undefined;
+
   React.useEffect(() => {
     const action = searchParams?.get('action') || searchParams?.get('modal');
-    if (action === 'log' || action === 'add' || action === 'new' || searchParams?.get('openLogModal') === 'true') {
+    if (action === 'log' || action === 'add' || action === 'new' || searchParams?.get('openLogModal') === 'true' || customerIdParam || leadIdParam) {
       setIsModalOpen(true);
     }
-  }, [searchParams]);
+  }, [searchParams, customerIdParam, leadIdParam]);
 
   return (
     <>
@@ -31,7 +34,13 @@ export default function LogCallButton({ customers, isAdmin }: LogCallButtonProps
       </button>
 
       {isModalOpen && (
-        <LogCallModal onClose={() => setIsModalOpen(false)} customers={customers} isAdmin={isAdmin} />
+        <LogCallModal 
+          onClose={() => setIsModalOpen(false)} 
+          customers={customers} 
+          isAdmin={isAdmin}
+          customerId={customerIdParam}
+          leadId={leadIdParam}
+        />
       )}
     </>
   );
