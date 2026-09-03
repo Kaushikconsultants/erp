@@ -3,7 +3,7 @@
 import DatePicker from '@/components/ui/DatePicker';
 
 import React, { useState } from 'react';
-import { Pencil, Trash2, Eye, Calendar, FileText, PhoneCall, CheckCircle } from 'lucide-react';
+import { Pencil, Trash2, Calendar, CheckCircle } from 'lucide-react';
 import { updateCall, deleteCall } from '@/app/actions/callActions';
 
 interface CallsTableClientProps {
@@ -18,7 +18,6 @@ export default function CallsTableClient({
   availableCallTypes = ["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"]
 }: CallsTableClientProps) {
   const [editingCall, setEditingCall] = useState<any | null>(null);
-  const [viewingNotesCall, setViewingNotesCall] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -146,15 +145,6 @@ export default function CallsTableClient({
                   <td>{call.employee?.user?.name || 'Unknown'}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                      <button 
-                        type="button"
-                        onClick={() => setViewingNotesCall(call)}
-                        style={{ padding: '5px 10px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#2563eb', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        title="View Notes & Details"
-                      >
-                        <Eye size={13} /> Notes
-                      </button>
-
                       <button 
                         type="button"
                         onClick={() => handleOpenEdit(call)}
@@ -345,63 +335,6 @@ export default function CallsTableClient({
               </div>
             </div>
 
-          </div>
-        </div>
-      )}
-
-      {/* VIEW NOTES MODAL */}
-      {viewingNotesCall && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
-          <div className="modal-content glass-panel animate-in" style={{ width: '100%', maxWidth: '480px', backgroundColor: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ padding: '16px 20px', backgroundColor: '#1e293b', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <FileText size={18} />
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#ffffff' }}>Call Notes</h3>
-              </div>
-              <button onClick={() => setViewingNotesCall(null)} style={{ background: 'none', border: 'none', color: '#ffffff', fontSize: '1.5rem', cursor: 'pointer', lineHeight: 1 }}>×</button>
-            </div>
-            
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <strong style={{ fontSize: '0.85rem', color: '#64748b' }}>Customer:</strong>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>
-                  {viewingNotesCall.customer?.businessName || viewingNotesCall.customer?.contactPerson}
-                </div>
-              </div>
-
-              <div>
-                <strong style={{ fontSize: '0.85rem', color: '#64748b' }}>Outcome & Type:</strong>
-                <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#334155', marginTop: '2px' }}>
-                  {viewingNotesCall.callType} — {viewingNotesCall.outcome}
-                </div>
-              </div>
-
-              {viewingNotesCall.followUpDate && (
-                <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '8px', color: '#166534', fontSize: '0.85rem' }}>
-                  <Calendar size={16} />
-                  <span>
-                    <strong>Next Follow-up:</strong> {new Date(viewingNotesCall.followUpDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} at {new Date(viewingNotesCall.followUpDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                  </span>
-                </div>
-              )}
-
-              <div>
-                <strong style={{ fontSize: '0.85rem', color: '#64748b' }}>Notes & Discussion:</strong>
-                <div style={{ marginTop: '6px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#1e293b', whiteSpace: 'pre-line', lineHeight: '1.5' }}>
-                  {viewingNotesCall.notes || viewingNotesCall.summary || "No notes recorded for this call."}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setViewingNotesCall(null)}
-                  style={{ padding: '8px 20px', borderRadius: '6px', border: 'none', backgroundColor: '#334155', color: '#ffffff', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
