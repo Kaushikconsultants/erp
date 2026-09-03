@@ -250,16 +250,9 @@ export async function updateExpense(id: string, formData: FormData) {
 
     if (!existing) return { error: "Expense record not found." };
 
-    // STRICT LOCK: "no changes will be made after approval"
-    if (existing.status !== "Pending") {
-      return {
-        error: `Expense claim #${existing.expenseNumber} is already "${existing.status}". No changes are permitted after approval or settlement.`
-      };
-    }
-
     // Permission check: admin or creator
     if (!isAdmin && existing.employee?.userId !== userId) {
-      return { error: "You can only edit your own pending expense claims." };
+      return { error: "You can only edit your own expense claims." };
     }
 
     const account = (formData.get("account") as string || formData.get("category") as string || "Other").trim();
@@ -360,12 +353,8 @@ export async function deleteExpense(id: string) {
 
     if (!existing) return { error: "Expense record not found." };
 
-    if (existing.status !== "Pending") {
-      return { error: "Approved or finalized expenses cannot be deleted." };
-    }
-
     if (!isAdmin && existing.employee?.userId !== userId) {
-      return { error: "You can only delete your own pending claims." };
+      return { error: "You can only delete your own claims." };
     }
 
     await prisma.expense.delete({ where: { id } });
