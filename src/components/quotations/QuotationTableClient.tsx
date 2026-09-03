@@ -337,6 +337,9 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                     </td>
                     <td style={{ padding: '14px 20px', fontWeight: 700, color: '#0f172a', textAlign: 'right' }}>
                       <div>₹{(q.totalValue || 0).toLocaleString('en-IN')}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500, marginTop: '2px' }}>
+                        Taxable: ₹{((q.taxableAmount && q.taxableAmount > 0 ? q.taxableAmount : (q.subtotal - (q.itemDiscount || 0) - (q.additionalDiscount || 0))) || q.totalValue || 0).toLocaleString('en-IN')}
+                      </div>
                       {q.receivedAmount > 0 && (
                         <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600, marginTop: '2px' }}>
                           ₹{q.receivedAmount.toLocaleString('en-IN')} Paid

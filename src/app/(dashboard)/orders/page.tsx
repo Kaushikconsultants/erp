@@ -158,10 +158,14 @@ export default async function OrdersPage() {
     const empId = mo.salespersonId || '__none__';
     if (!empOrders[empId]) empOrders[empId] = [];
     const isCredit = mo.customer?.status?.toLowerCase() === 'credit' || mo.customer?.preferredPaymentMethod?.toLowerCase() === 'credit';
+    const grossVal = mo.subtotal || mo.totalValue || 0;
+    const discVal = mo.discount || 0;
+    const taxableVal = Math.max(0, grossVal - discVal);
+    const discountPct = grossVal > 0 && discVal > 0 ? (discVal / grossVal) * 100 : 0;
     empOrders[empId].push({
       id: empId,
-      taxableValue: mo.subtotal || mo.totalValue,
-      discount: mo.discount || 0,
+      taxableValue: taxableVal,
+      discount: discountPct,
       isCreditCustomer: isCredit
     });
   }
@@ -172,7 +176,7 @@ export default async function OrdersPage() {
 
   const getCommissionInfo = (discount: number, isCredit: boolean, taxable: number, empId: string | null) => {
     if (discount > 15 || isCredit) {
-      return { val: taxable * 0.01, avg: '1% (flat)' };
+      return { val: Math.round(taxable * 0.01), avg: '1% (flat)' };
     }
     const slab = empSlabMap[empId || '__none__'] ?? { slabRate: 1, slabLabel: '1%' };
     const baseRate = slab.slabRate / 100;
@@ -182,7 +186,7 @@ export default async function OrdersPage() {
     const avgLabel = discount === 0
       ? `${displayRate}%+2% bonus`
       : `${displayRate}% slab`;
-    return { val: taxable * totalRate, avg: avgLabel };
+    return { val: Math.round(taxable * totalRate), avg: avgLabel };
   };
 
   const unifiedDocs: UnifiedDocument[] = [];
@@ -190,12 +194,20 @@ export default async function OrdersPage() {
   // Map Confirmed Sales Orders
   orders.forEach(o => {
     const isCredit = o.customer?.status?.toLowerCase() === 'credit' || o.customer?.preferredPaymentMethod?.toLowerCase() === 'credit';
-    const taxableAmount = o.subtotal || o.totalValue;
-    const comm = getCommissionInfo(o.discount || 0, isCredit, taxableAmount, o.salespersonId);
+    const grossSubtotal = o.subtotal || o.totalValue || 0;
+    const discountAmt = o.discount || 0;
+    const taxableAmount = Math.max(0, grossSubtotal - discountAmt);
+    const discountPct = grossSubtotal > 0 && discountAmt > 0 ? (discountAmt / grossSubtotal) * 100 : 0;
+    const comm = getCommissionInfo(discountPct, isCredit, taxableAmount, o.salespersonId);
 
-    let badge = '1–15% Disc.';
-    if (o.discount === 0) badge = '0% (Bonus)';
-    else if (o.discount > 15 || isCredit) badge = '>15% / Credit';
+    let badge = '0% (Bonus)';
+    if (isCredit) {
+      badge = 'Credit Customer';
+    } else if (discountPct > 15) {
+      badge = `${discountPct.toFixed(0)}% Disc.`;
+    } else if (discountPct > 0) {
+      badge = `${discountPct.toFixed(0)}% Disc.`;
+    }
 
     const statusObj = getStatusStyle(o.shippingStatus || o.orderStatus);
 
@@ -239,7 +251,29 @@ export default async function OrdersPage() {
     }
 
     const isCredit = q.customer?.status?.toLowerCase() === 'credit' || q.customer?.preferredPaymentMethod?.toLowerCase() === 'credit';
-    const taxableAmount = q.subtotal || q.totalValue;
+    const grossSubtotal = q.subtotal || 0;
+    const itemDisc = q.itemDiscount || 0;
+    const addDisc = q.additionalDiscount || 0;
+    const totalDiscountAmt = itemDisc + addDisc;
+    const taxableAmount = (q.taxableAmount && q.taxableAmount > 0)
+      ? q.taxableAmount
+      : Math.max(0, grossSubtotal - totalDiscountAmt) || q.totalValue;
+
+    const discountPct = grossSubtotal > 0 && totalDiscountAmt > 0
+      ? (totalDiscountAmt / grossSubtotal) * 100
+      : (q.discountSlab === '1-15' ? 15 : (q.discountSlab === '>15' ? 16 : 0));
+
+    const comm = getCommissionInfo(discountPct, isCredit, taxableAmount, q.salespersonId);
+
+    let badge = '0% (Bonus)';
+    if (isCredit || q.discountSlab === 'credit') {
+      badge = 'Credit Customer';
+    } else if (discountPct > 15 || q.discountSlab === '>15') {
+      badge = `${discountPct.toFixed(0)}% Disc.`;
+    } else if (discountPct > 0 || q.discountSlab === '1-15') {
+      badge = `${discountPct.toFixed(0)}% Disc.`;
+    }
+
     const statusObj = getStatusStyle(q.status);
 
     unifiedDocs.push({
@@ -252,10 +286,10 @@ export default async function OrdersPage() {
       totalAmount: q.totalValue,
       taxableAmount: taxableAmount,
       paymentType: 'Quotation',
-      discountBadge: `${q.discount || 0}% Disc.`,
+      discountBadge: badge,
       discountColor: 'var(--accent-primary, #4f46e5)',
-      commissionValue: 0,
-      commissionAvg: 'Estimate',
+      commissionValue: comm.val,
+      commissionAvg: `${comm.avg} (Est.)`,
       documentNumber: q.quotationNumber,
       status: q.status || 'Draft',
       statusColor: statusObj.color,
