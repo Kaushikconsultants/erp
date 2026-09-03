@@ -85,7 +85,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   };
 
   const isInterstate = order.isInterstate;
-  const fmt = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = (val?: number | null) => (val ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Totals
   const totalIgst = order.igst || 0;
@@ -285,13 +285,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                       {(item.gstRate || 0) / 2}%
                     </td>
                     <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                      {fmt(item.cgst || (item.taxAmount ? item.taxAmount / 2 : 0))}
+                      {fmt(item.cgst || ((item.total - (item.total / (1 + (item.gstRate || 0) / 100))) / 2))}
                     </td>
                     <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
                       {(item.gstRate || 0) / 2}%
                     </td>
                     <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
-                      {fmt(item.sgst || item.cgst || (item.taxAmount ? item.taxAmount / 2 : 0))}
+                      {fmt(item.sgst || item.cgst || ((item.total - (item.total / (1 + (item.gstRate || 0) / 100))) / 2))}
                     </td>
                   </>
                 )}

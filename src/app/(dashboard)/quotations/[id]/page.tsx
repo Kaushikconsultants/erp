@@ -70,7 +70,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
   const isInterstate = quotation.isInterstate;
 
   // Format currency helpers
-  const fmt = (val: number) => val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = (val?: number | null) => (val ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div style={{ backgroundColor: '#e5e7eb', minHeight: '100vh', padding: '40px 20px' }}>
