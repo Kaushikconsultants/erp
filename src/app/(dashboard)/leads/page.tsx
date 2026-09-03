@@ -70,7 +70,7 @@ export default async function LeadsPage() {
           <h1 className="page-title">Leads</h1>
           <p className="page-subtitle">Manage your incoming leads, WhatsApp inquiries, and track conversions.</p>
         </div>
-        <AddLeadButton employees={allEmployees} organizationId={organizationId || undefined} />
+        <AddLeadButton employees={allEmployees} organizationId={organizationId || undefined} isAdmin={isAdmin} />
       </div>
 
       <div className="glass-panel" style={{ padding: '24px' }}>

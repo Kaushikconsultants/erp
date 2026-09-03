@@ -81,6 +81,23 @@ export async function createLead(data: {
     const orgId = await getTenantOrgId();
     if (!orgId) return { success: false, error: "Unauthorized" };
 
+    const { getServerSession } = await import("next-auth");
+    const { authOptions } = await import("@/lib/auth");
+    const session = await getServerSession(authOptions);
+    const user = session?.user as any;
+    
+    let assignedSalespersonId = data.assignedSalespersonId;
+    
+    // If an agent is creating this lead, auto-assign to them
+    if (user && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+      const employee = await prisma.employee.findFirst({
+        where: { userId: user.id, organizationId: orgId }
+      });
+      if (employee) {
+        assignedSalespersonId = employee.id;
+      }
+    }
+
     const existingLead = await prisma.lead.findFirst({
       where: {
         whatsappNumber: data.whatsappNumber,
@@ -98,7 +115,10 @@ export async function createLead(data: {
 
     const lead = await prisma.lead.create({
       data: {
-        ...data,
+        name: data.name,
+        whatsappNumber: data.whatsappNumber,
+        shopName: data.shopName,
+        assignedSalespersonId: assignedSalespersonId,
         organizationId: orgId,
       }
     });

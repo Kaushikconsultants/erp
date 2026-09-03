@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Code } from 'lucide-react';
 import { createLead, getWebhookLogs } from '@/actions/leads';
 
-export default function AddLeadButton({ employees, organizationId }: { employees?: {id: string, name: string}[], organizationId?: string }) {
+export default function AddLeadButton({ employees, organizationId, isAdmin }: { employees?: {id: string, name: string}[], organizationId?: string, isAdmin?: boolean }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isApiGuideOpen, setIsApiGuideOpen] = useState(false);
   const [apiActiveTab, setApiActiveTab] = useState<'guide' | 'logs'>('guide');
@@ -26,6 +26,12 @@ export default function AddLeadButton({ employees, organizationId }: { employees
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    
+    if (isAdmin && !formData.assignedSalespersonId) {
+      alert("Please select an agent to save");
+      setIsSubmitting(false);
+      return;
+    }
     
     const res = await createLead(formData);
     
@@ -49,23 +55,27 @@ export default function AddLeadButton({ employees, organizationId }: { employees
   return (
     <>
       <div style={{ display: 'flex', gap: '12px' }}>
-        <button 
-          className="action-btn"
-          onClick={() => {
-            setIsApiGuideOpen(true);
-            setApiActiveTab('guide');
-          }}
-          style={{ background: '#fff', border: '1px solid #cbd5e1', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
-        >
-          <Code size={16} /> API / Webhook Setup
-        </button>
-        <button 
-          className="action-btn hover-lift" 
-          onClick={() => {}}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--success)', color: 'var(--success)', background: 'transparent' }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg> Bulk Import
-        </button>
+        {isAdmin && (
+          <>
+            <button 
+              className="action-btn"
+              onClick={() => {
+                setIsApiGuideOpen(true);
+                setApiActiveTab('guide');
+              }}
+              style={{ background: '#fff', border: '1px solid #cbd5e1', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}
+            >
+              <Code size={16} /> API / Webhook Setup
+            </button>
+            <button 
+              className="action-btn hover-lift" 
+              onClick={() => {}}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--success)', color: 'var(--success)', background: 'transparent' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg> Bulk Import
+            </button>
+          </>
+        )}
         <button 
           onClick={() => setIsModalOpen(true)}
           className="primary-btn hover-lift"
