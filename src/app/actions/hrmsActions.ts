@@ -74,7 +74,7 @@ export async function markSalaryPaid(salaryId: string) {
   try {
     await prisma.salary.update({
       where: { id: salaryId },
-      data: { status: 'Paid', disbursementDate: new Date() }
+      data: { status: 'Paid', paymentDate: new Date() }
     });
     revalidatePath("/payroll");
     return { success: true };
