@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import SalesChart from '@/components/dashboard/SalesChart';
 import TopProductsChart from '@/components/dashboard/TopProductsChart';
 import Link from 'next/link';
@@ -64,6 +64,30 @@ export default function AdminDashboard({
   const [showAskERPModal, setShowAskERPModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showDeadStockModal, setShowDeadStockModal] = useState(false);
+
+  // Live Team Presence Filter
+  const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<'ALL' | 'ACTIVE' | 'CHECKED_OUT'>('ALL');
+
+  const activeTeamCount = useMemo(() => {
+    return liveAttendance.filter((att: any) => att.isShiftActive).length;
+  }, [liveAttendance]);
+
+  const checkedOutTeamCount = useMemo(() => {
+    return liveAttendance.filter((att: any) => !att.isShiftActive).length;
+  }, [liveAttendance]);
+
+  const filteredAttendance = useMemo(() => {
+    return liveAttendance.filter((att: any) => {
+      if (teamAttendanceFilter === 'ACTIVE') return att.isShiftActive;
+      if (teamAttendanceFilter === 'CHECKED_OUT') return !att.isShiftActive;
+      return true;
+    });
+  }, [liveAttendance, teamAttendanceFilter]);
+
+  const maxLeaderboardTotal = useMemo(() => {
+    if (!liveLeaderboard || liveLeaderboard.length === 0) return 1;
+    return Math.max(...liveLeaderboard.map((emp: any) => Number(emp.total) || 0), 1);
+  }, [liveLeaderboard]);
 
   return (
     <div className="dashboard-container admin-dashboard">
@@ -197,75 +221,409 @@ export default function AdminDashboard({
         </div>
       </div>
 
-      {/* LIVE PANEL */}
-      <div className="dashboard-details-grid" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: '24px' }}>
+      {/* ─── LIVE OPERATIONS & PERFORMANCE COMMAND CENTER ─── */}
+      <div className="dashboard-details-grid" style={{ gridTemplateColumns: '1.2fr 1fr', marginBottom: '24px', gap: '16px' }}>
         
-        {/* Live Attendance */}
-        <div className="detail-card glass-panel" style={{ borderLeft: '4px solid #10b981' }}>
-          <div className="detail-header">
-            <h3><UserCheck size={18} className="text-success"/> Today's Active Team ({liveAttendance.length})</h3>
-          </div>
-          <div className="live-attendance-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
-            {liveAttendance.length > 0 ? liveAttendance.map((att: any) => (
-              <div key={att.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: 'rgba(255,255,255,0.5)', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: att.isShiftActive ? '#d1fae5' : '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: att.isShiftActive ? '#059669' : '#64748b', fontWeight: 'bold' }}>
-                    {att.name.charAt(0).toUpperCase()}
+        {/* Live Attendance / Team Presence */}
+        <div className="detail-card glass-panel" style={{
+          borderLeft: '4px solid #10b981',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '310px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <div>
+            {/* Header with Title & Filter Chips */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              borderBottom: '1px solid #f1f5f9',
+              paddingBottom: '10px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  backgroundColor: '#ecfdf5',
+                  color: '#059669',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <UserCheck size={17} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Today's Active Team
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      backgroundColor: '#ecfdf5',
+                      color: '#059669',
+                      padding: '1px 7px',
+                      borderRadius: '12px',
+                      border: '1px solid #a7f3d0'
+                    }}>
+                      {liveAttendance.length} Total
+                    </span>
+                  </h3>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#059669', fontWeight: 600 }}>
+                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
+                      {activeTeamCount} Active Now
+                    </span>
+                    <span>·</span>
+                    <span style={{ color: '#64748b' }}>{checkedOutTeamCount} Shift Ended</span>
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 600, color: '#1e293b' }}>{att.name}</div>
-                    <div style={{ fontSize: '12px', color: '#64748b' }}>
-                      Punch In: <span style={{ fontWeight: 500, color: '#334155' }}>{att.checkInStr}</span>
+                </div>
+              </div>
+
+              {/* Segmented Filter Pills */}
+              <div style={{
+                display: 'inline-flex',
+                backgroundColor: '#f1f5f9',
+                padding: '2px',
+                borderRadius: '7px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setTeamAttendanceFilter('ALL')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backgroundColor: teamAttendanceFilter === 'ALL' ? '#ffffff' : 'transparent',
+                    color: teamAttendanceFilter === 'ALL' ? '#0f172a' : '#64748b',
+                    boxShadow: teamAttendanceFilter === 'ALL' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  All ({liveAttendance.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTeamAttendanceFilter('ACTIVE')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backgroundColor: teamAttendanceFilter === 'ACTIVE' ? '#ffffff' : 'transparent',
+                    color: teamAttendanceFilter === 'ACTIVE' ? '#059669' : '#64748b',
+                    boxShadow: teamAttendanceFilter === 'ACTIVE' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  🟢 Active ({activeTeamCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTeamAttendanceFilter('CHECKED_OUT')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backgroundColor: teamAttendanceFilter === 'CHECKED_OUT' ? '#ffffff' : 'transparent',
+                    color: teamAttendanceFilter === 'CHECKED_OUT' ? '#475569' : '#64748b',
+                    boxShadow: teamAttendanceFilter === 'CHECKED_OUT' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  Shift Ended ({checkedOutTeamCount})
+                </button>
+              </div>
+            </div>
+
+            {/* Creative Multi-Column Micro-Grid with Scroll Area */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(215px, 1fr))',
+              gap: '8px',
+              marginTop: '12px',
+              maxHeight: '220px',
+              overflowY: 'auto',
+              paddingRight: '2px'
+            }}>
+              {filteredAttendance.length > 0 ? filteredAttendance.map((att: any) => (
+                <div 
+                  key={att.id} 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    padding: '8px 10px', 
+                    background: att.isShiftActive ? 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)' : '#ffffff', 
+                    border: att.isShiftActive ? '1px solid #bbf7d0' : '1px solid #e2e8f0', 
+                    borderRadius: '8px',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = att.isShiftActive ? '#86efac' : '#cbd5e1';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = att.isShiftActive ? '#bbf7d0' : '#e2e8f0';
+                    e.currentTarget.style.transform = 'none';
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                    {/* Avatar with live status dot */}
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      <div style={{ 
+                        width: '32px', 
+                        height: '32px', 
+                        borderRadius: '8px', 
+                        background: att.isShiftActive ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#f1f5f9', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        color: att.isShiftActive ? '#ffffff' : '#64748b', 
+                        fontWeight: 700,
+                        fontSize: '0.8rem',
+                        boxShadow: att.isShiftActive ? '0 2px 5px rgba(16, 185, 129, 0.25)' : 'none'
+                      }}>
+                        {att.name.charAt(0).toUpperCase()}
+                      </div>
+                      {att.isShiftActive && (
+                        <span style={{
+                          position: 'absolute',
+                          bottom: '-2px',
+                          right: '-2px',
+                          width: '9px',
+                          height: '9px',
+                          borderRadius: '50%',
+                          backgroundColor: '#10b981',
+                          border: '2px solid #ffffff'
+                        }}></span>
+                      )}
+                    </div>
+
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ 
+                        fontWeight: 600, 
+                        color: '#0f172a', 
+                        fontSize: '0.8rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        maxWidth: '95px'
+                      }} title={att.name}>
+                        {att.name}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                        In: <span style={{ fontWeight: 600, color: '#334155' }}>{att.checkInStr}</span>
+                      </div>
                     </div>
                   </div>
+
+                  <span style={{ 
+                    backgroundColor: att.isShiftActive ? '#ecfdf5' : '#f1f5f9', 
+                    color: att.isShiftActive ? '#059669' : '#64748b', 
+                    border: `1px solid ${att.isShiftActive ? '#a7f3d0' : '#e2e8f0'}`,
+                    fontSize: '0.66rem', 
+                    fontWeight: 600,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}>
+                    {att.isShiftActive ? 'Active' : 'Ended'}
+                  </span>
                 </div>
-                <div className={`badge ${att.isShiftActive ? 'badge-success' : 'badge-neutral'}`} style={{ backgroundColor: att.isShiftActive ? '#d1fae5' : '#f1f5f9', color: att.isShiftActive ? '#059669' : '#64748b', fontSize: '11px', padding: '4px 10px' }}>
-                  {att.isShiftActive ? 'Active Now' : 'Checked Out'}
+              )) : (
+                <div style={{ 
+                  gridColumn: '1 / -1',
+                  textAlign: 'center', 
+                  padding: '28px 12px', 
+                  border: '1px dashed #cbd5e1', 
+                  borderRadius: '8px', 
+                  background: '#f8fafc',
+                  color: '#64748b',
+                  fontSize: '0.78rem'
+                }}>
+                  No team members found in this status.
                 </div>
-              </div>
-            )) : (
-              <div className="text-muted w-100 text-center py-4" style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', background: '#f8fafc' }}>
-                No one checked in yet today.
-              </div>
-            )}
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Link */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
+            <Link 
+              href="/attendance" 
+              style={{ fontSize: '0.74rem', color: '#059669', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+            >
+              View Full Attendance Register →
+            </Link>
           </div>
         </div>
 
         {/* Live Orders Leaderboard */}
-        <div className="detail-card glass-panel" style={{ borderLeft: '4px solid #8b5cf6' }}>
-          <div className="detail-header">
-            <h3><Trophy size={18} style={{ color: '#8b5cf6' }}/> Today's Live Leaderboard</h3>
-            <div className="badge" style={{ backgroundColor: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}>
-              {todayOrdersCount} Orders Today
+        <div className="detail-card glass-panel" style={{
+          borderLeft: '4px solid #8b5cf6',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '310px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.03)'
+        }}>
+          <div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '8px',
+              borderBottom: '1px solid #f1f5f9',
+              paddingBottom: '10px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  backgroundColor: '#f5f3ff',
+                  color: '#7c3aed',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <Trophy size={17} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>
+                    Today's Live Leaderboard
+                  </h3>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>
+                    Real-time deals closed by sales team
+                  </div>
+                </div>
+              </div>
+
+              <div style={{
+                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                color: '#7c3aed',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                padding: '3px 9px',
+                borderRadius: '12px',
+                border: '1px solid rgba(139, 92, 246, 0.2)'
+              }}>
+                🔥 {todayOrdersCount} Orders Today
+              </div>
+            </div>
+
+            {/* Leaderboard Cards Container with matching fixed height */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              marginTop: '12px',
+              maxHeight: '220px',
+              overflowY: 'auto',
+              paddingRight: '2px'
+            }}>
+              {liveLeaderboard.length > 0 ? liveLeaderboard.map((emp: any, index: number) => {
+                const percentOfTop = Math.round((Number(emp.total || 0) / maxLeaderboardTotal) * 100);
+                const medalBg = index === 0 ? '#fef3c7' : index === 1 ? '#f1f5f9' : index === 2 ? '#ffedd5' : '#f8fafc';
+                const medalColor = index === 0 ? '#d97706' : index === 1 ? '#475569' : index === 2 ? '#c2410c' : '#64748b';
+                const medalBorder = index === 0 ? '#fde68a' : index === 1 ? '#e2e8f0' : index === 2 ? '#fed7aa' : '#e2e8f0';
+
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: index === 0 ? 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)' : '#ffffff',
+                      border: index === 0 ? '1px solid #fde68a' : '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                        <span style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '6px',
+                          backgroundColor: medalBg,
+                          color: medalColor,
+                          border: `1px solid ${medalBorder}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          flexShrink: 0
+                        }}>
+                          {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                        </span>
+                        <div>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>{emp.name}</span>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '6px' }}>
+                            ({emp.orders} {emp.orders === 1 ? 'order' : 'orders'})
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#059669' }}>
+                        ₹{Number(emp.total || 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+
+                    {/* Performance Velocity Bar */}
+                    <div style={{ width: '100%', height: '4px', backgroundColor: '#f1f5f9', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${percentOfTop}%`,
+                        height: '100%',
+                        background: index === 0 ? 'linear-gradient(90deg, #f59e0b 0%, #10b981 100%)' : 'linear-gradient(90deg, #8b5cf6 0%, #3b82f6 100%)',
+                        borderRadius: '2px'
+                      }}></div>
+                    </div>
+                  </div>
+                );
+              }) : (
+                <div style={{ 
+                  textAlign: 'center', 
+                  padding: '28px 12px', 
+                  border: '1px dashed #cbd5e1', 
+                  borderRadius: '8px', 
+                  background: '#f8fafc',
+                  color: '#64748b',
+                  fontSize: '0.78rem'
+                }}>
+                  No sales orders recorded yet today.
+                </div>
+              )}
             </div>
           </div>
-          <div className="table-responsive" style={{ marginTop: '15px' }}>
-            <table className="dashboard-table">
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Employee</th>
-                  <th>Orders</th>
-                  <th>Value</th>
-                </tr>
-              </thead>
-              <tbody>
-                {liveLeaderboard.length > 0 ? liveLeaderboard.slice(0, 3).map((emp: any, index: number) => (
-                  <tr key={index}>
-                    <td className="font-medium" style={{ color: index === 0 ? '#fbbf24' : index === 1 ? '#9ca3af' : '#b45309' }}>
-                      #{index + 1}
-                    </td>
-                    <td className="font-medium">{emp.name}</td>
-                    <td>{emp.orders}</td>
-                    <td className="text-success">₹{emp.total.toLocaleString('en-IN')}</td>
-                  </tr>
-                )) : (
-                  <tr>
-                    <td colSpan={4} className="text-center text-muted py-3">No orders placed today.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+
+          {/* Bottom Link */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
+            <Link 
+              href="/orders" 
+              style={{ fontSize: '0.74rem', color: '#7c3aed', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+            >
+              View All Orders & Sales →
+            </Link>
           </div>
         </div>
       </div>

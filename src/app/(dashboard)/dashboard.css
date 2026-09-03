@@ -423,3 +423,10 @@
   font-size: 0.75rem;
   font-weight: 600;
 }
+
+@media (max-width: 1024px) {
+  .dashboard-details-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
