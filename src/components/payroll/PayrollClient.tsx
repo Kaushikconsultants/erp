@@ -640,7 +640,7 @@ export default function PayrollClient({
                             ₹{totalSales.toLocaleString("en-IN")}
                           </span>
                           <span style={{ fontSize: "0.68rem", color: "#64748b", display: "flex", alignItems: "center", gap: "2px" }}>
-                            {emp.orders.length} {emp.orders.length === 1 ? "Order" : "Orders"} <ArrowUpRight size={9} color="#94a3b8" />
+                            {emp.orders.length} {emp.orders.length === 1 ? "Sale" : "Sales"} <ArrowUpRight size={9} color="#94a3b8" />
                           </span>
                         </button>
                       </td>
@@ -1126,16 +1126,17 @@ export default function PayrollClient({
                 );
               })()}
 
-              {/* Detailed Orders Table */}
+              {/* Detailed Sales & Orders Table */}
               <div style={{ border: "1px solid #e2e8f0", borderRadius: "10px", overflow: "hidden" }}>
-                <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", fontWeight: 500, fontSize: "0.78rem", color: "#475569", borderBottom: "1px solid #e2e8f0" }}>
-                  Orders Summary for {monthDisplay}
+                <div style={{ padding: "8px 12px", backgroundColor: "#f8fafc", fontWeight: 500, fontSize: "0.78rem", color: "#475569", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>Sales Breakdown for {monthDisplay}</span>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b" }}>Includes Invoices & Confirmed Quotations</span>
                 </div>
                 <div style={{ overflowX: "auto", maxHeight: "320px" }}>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem" }}>
                     <thead>
                       <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
-                        <th style={{ padding: "8px 12px", fontWeight: 500 }}>Order #</th>
+                        <th style={{ padding: "8px 12px", fontWeight: 500 }}>Doc # / Type</th>
                         <th style={{ padding: "8px 12px", fontWeight: 500 }}>Date</th>
                         <th style={{ padding: "8px 12px", fontWeight: 500 }}>Customer</th>
                         <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 500 }}>Status</th>
@@ -1144,32 +1145,57 @@ export default function PayrollClient({
                       </tr>
                     </thead>
                     <tbody>
-                      {(selectedSalesEmp.enrichedOrders || selectedSalesEmp.orders || []).map((o: any, idx: number) => (
-                        <tr key={o.id || idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                          <td style={{ padding: "8px 12px" }}>
-                            <Link href={`/orders/${o.id}`} style={{ fontWeight: 500, color: "#2563eb", textDecoration: "none" }}>
-                              #{o.orderNumber || o.id.slice(0, 8)}
-                            </Link>
-                          </td>
-                          <td style={{ padding: "8px 12px", color: "#64748b" }}>
-                            {o.orderDate ? new Date(o.orderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "-"}
-                          </td>
-                          <td style={{ padding: "8px 12px" }}>
-                            <div style={{ fontWeight: 500, color: "#0f172a" }}>{o.customer?.businessName || "Walk-in Customer"}</div>
-                          </td>
-                          <td style={{ padding: "8px 12px", textAlign: "center" }}>
-                            <span style={{ fontSize: "0.72rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: o.orderStatus === "Delivered" ? "#ecfdf5" : "#eff6ff", color: o.orderStatus === "Delivered" ? "#059669" : "#2563eb" }}>
-                              {o.orderStatus || "Confirmed"}
-                            </span>
-                          </td>
-                          <td style={{ padding: "8px 12px", textAlign: "center", color: "#475569" }}>
-                            {o.discount || 0}%
-                          </td>
-                          <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 500, color: "#0f172a" }}>
-                            ₹{(o.totalValue || o.subtotal || 0).toLocaleString("en-IN")}
-                          </td>
-                        </tr>
-                      ))}
+                      {(selectedSalesEmp.enrichedOrders || selectedSalesEmp.orders || []).map((o: any, idx: number) => {
+                        const isQuote = !!o.isQuotation || (o.orderNumber && o.orderNumber.startsWith("QT-"));
+                        return (
+                          <tr key={o.id || idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ padding: "8px 12px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                <Link 
+                                  href={isQuote ? `/quotations/${o.id}` : `/orders/${o.id}`} 
+                                  style={{ fontWeight: 600, color: isQuote ? "#4f46e5" : "#2563eb", textDecoration: "none" }}
+                                >
+                                  #{o.orderNumber || o.id.slice(0, 8)}
+                                </Link>
+                                <span style={{
+                                  fontSize: "0.65rem",
+                                  padding: "1px 5px",
+                                  borderRadius: "4px",
+                                  fontWeight: 700,
+                                  backgroundColor: isQuote ? "#e0e7ff" : "#ecfdf5",
+                                  color: isQuote ? "#4338ca" : "#166534"
+                                }}>
+                                  {isQuote ? "Quote" : "Invoice"}
+                                </span>
+                              </div>
+                            </td>
+                            <td style={{ padding: "8px 12px", color: "#64748b" }}>
+                              {o.orderDate ? new Date(o.orderDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "-"}
+                            </td>
+                            <td style={{ padding: "8px 12px" }}>
+                              <div style={{ fontWeight: 500, color: "#0f172a" }}>{o.customer?.businessName || "Walk-in Customer"}</div>
+                            </td>
+                            <td style={{ padding: "8px 12px", textAlign: "center" }}>
+                              <span style={{ 
+                                fontSize: "0.72rem", 
+                                padding: "2px 6px", 
+                                borderRadius: "4px", 
+                                backgroundColor: o.orderStatus === "Delivered" ? "#ecfdf5" : o.orderStatus === "Confirmed" ? "#dbeafe" : "#eff6ff", 
+                                color: o.orderStatus === "Delivered" ? "#059669" : o.orderStatus === "Confirmed" ? "#1d4ed8" : "#2563eb",
+                                fontWeight: 600
+                              }}>
+                                {o.orderStatus || "Confirmed"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "8px 12px", textAlign: "center", color: "#475569" }}>
+                              {o.discount || 0}%
+                            </td>
+                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600, color: "#0f172a" }}>
+                              ₹{(o.totalValue || o.subtotal || 0).toLocaleString("en-IN")}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

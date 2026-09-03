@@ -74,7 +74,7 @@ export async function markSalaryPaid(salaryId: string) {
   try {
     await prisma.salary.update({
       where: { id: salaryId },
-      data: { status: 'Paid', paymentDate: new Date() }
+      data: { status: 'Paid', disbursementDate: new Date() }
     });
     revalidatePath("/payroll");
     return { success: true };
@@ -119,7 +119,8 @@ export async function getPayrollData(month: string) {
             subtotal: true, 
             totalValue: true, 
             tax: true,
-            discount: true, 
+            discount: true,
+            notes: true,
             customer: { 
               select: { 
                 id: true,
@@ -131,6 +132,38 @@ export async function getPayrollData(month: string) {
             } 
           },
           orderBy: { orderDate: 'desc' }
+        },
+        quotations: {
+          where: {
+            date: {
+              gte: startDate,
+              lt: endDate
+            },
+            status: { in: ['Confirmed', 'Accepted'] }
+          },
+          select: {
+            id: true,
+            quotationNumber: true,
+            date: true,
+            status: true,
+            subtotal: true,
+            taxableAmount: true,
+            totalValue: true,
+            taxTotal: true,
+            itemDiscount: true,
+            additionalDiscount: true,
+            receivedAmount: true,
+            customer: {
+              select: {
+                id: true,
+                businessName: true,
+                contactPerson: true,
+                status: true,
+                preferredPaymentMethod: true
+              }
+            }
+          },
+          orderBy: { date: 'desc' }
         },
         attendances: {
           where: {
@@ -162,10 +195,46 @@ export async function getPayrollData(month: string) {
     const zeroDiscBonus = (activePolicy?.zeroDiscountBonusPercent ?? 2) / 100;
 
     const processedEmployees = employees.map((emp: any) => {
-      const empOrders = emp.orders || [];
+      const rawOrders = emp.orders || [];
+      const rawQuotations = emp.quotations || [];
       const empAttendances = emp.attendances || [];
 
-      const formattedOrders: OrderData[] = empOrders.map((order: any) => ({
+      // Deduplicate confirmed quotations that are already converted to orders
+      const convertedQuoteNumbersForEmp = new Set<string>();
+      rawOrders.forEach((o: any) => {
+        const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+        if (match && match[1]) {
+          convertedQuoteNumbersForEmp.add(match[1].trim());
+        }
+      });
+
+      // Standalone confirmed quotations (not yet an Order in prisma.order)
+      const standaloneConfirmedQuotAsOrders = rawQuotations
+        .filter((q: any) => !convertedQuoteNumbersForEmp.has((q.quotationNumber || '').trim()))
+        .map((q: any) => ({
+          id: q.id,
+          orderNumber: q.quotationNumber,
+          orderDate: q.date,
+          orderStatus: q.status || 'Confirmed',
+          paymentStatus: (q.receivedAmount || 0) >= q.totalValue ? 'Paid' : (q.receivedAmount || 0) > 0 ? 'Partially Paid' : 'Pending',
+          subtotal: Number(q.subtotal ?? q.taxableAmount ?? q.totalValue ?? 0),
+          totalValue: Number(q.totalValue ?? q.subtotal ?? 0),
+          tax: Number(q.taxTotal || 0),
+          discount: Number(q.itemDiscount || 0) + Number(q.additionalDiscount || 0),
+          customer: q.customer,
+          isQuotation: true
+        }));
+
+      // Combined MTD sales: Invoice Orders + Confirmed Quotations
+      const allCombinedSales = [
+        ...rawOrders.map((o: any) => ({
+          ...o,
+          isQuotation: false
+        })),
+        ...standaloneConfirmedQuotAsOrders
+      ];
+
+      const formattedOrders: OrderData[] = allCombinedSales.map((order: any) => ({
         id: order.id,
         taxableValue: Number(order.subtotal) || Number(order.totalValue) || 0,
         discount: Number(order.discount) || 0,
@@ -175,8 +244,8 @@ export async function getPayrollData(month: string) {
       const targetGoal = emp.target || 500000;
       const calculatedIncentive = calculateIncentives(formattedOrders, targetGoal, activePolicy);
 
-      // Enriched orders with their incentive tier
-      const enrichedOrders = empOrders.map((order: any) => {
+      // Enriched sales with their incentive tier
+      const enrichedOrders = allCombinedSales.map((order: any) => {
         const taxable = Number(order.subtotal) || Number(order.totalValue) || 0;
         const disc = Number(order.discount) || 0;
         const isCredit = order.customer?.status?.toLowerCase() === 'credit' || order.customer?.preferredPaymentMethod?.toLowerCase() === 'credit';
@@ -215,6 +284,7 @@ export async function getPayrollData(month: string) {
 
       return {
         ...emp,
+        orders: allCombinedSales,
         dynamicIncentive: calculatedIncentive.totalIncentive,
         incentiveDetails: calculatedIncentive,
         enrichedOrders,
