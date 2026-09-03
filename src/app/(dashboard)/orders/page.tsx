@@ -209,6 +209,19 @@ export default async function OrdersPage() {
       badge = `${discountPct.toFixed(0)}% Disc.`;
     }
 
+    let paymentType = 'Unpaid';
+    if (o.paymentStatus === 'Paid') {
+      paymentType = 'Prepaid';
+    } else if (o.paymentStatus === 'Partially Paid' || (o.paymentReceived || 0) > 0) {
+      paymentType = (o.paymentReceived || 0) > 0 ? `Token (₹${Math.round(o.paymentReceived).toLocaleString('en-IN')})` : 'Partially Paid';
+    } else if (o.paymentStatus === 'Credit' || isCredit) {
+      paymentType = 'Credit';
+    } else if (o.paymentStatus === 'COD') {
+      paymentType = 'COD';
+    } else {
+      paymentType = o.paymentStatus || 'Unpaid';
+    }
+
     const statusObj = getStatusStyle(o.shippingStatus || o.orderStatus);
 
     unifiedDocs.push({
@@ -220,7 +233,7 @@ export default async function OrdersPage() {
       agentName: (o as any).salesperson?.user?.name || allEmployees.find(e => e.id === o.salespersonId)?.name || 'Unknown',
       totalAmount: o.totalValue,
       taxableAmount: taxableAmount,
-      paymentType: o.paymentStatus === 'Paid' ? 'Prepaid' : (o.paymentStatus || 'COD'),
+      paymentType: paymentType,
       discountBadge: badge,
       discountColor: 'var(--accent-primary, #4f46e5)',
       commissionValue: comm.val,
@@ -274,6 +287,21 @@ export default async function OrdersPage() {
       badge = `${discountPct.toFixed(0)}% Disc.`;
     }
 
+    let paymentType = 'Unpaid';
+    if (q.receivedAmount && q.receivedAmount >= q.totalValue) {
+      paymentType = 'Prepaid';
+    } else if (q.receivedAmount && q.receivedAmount > 0) {
+      paymentType = `Token (₹${Math.round(q.receivedAmount).toLocaleString('en-IN')})`;
+    } else if (isCredit || q.customer?.preferredPaymentMethod?.toLowerCase() === 'credit') {
+      paymentType = 'Credit';
+    } else if (q.paymentTerms?.toLowerCase().includes('advance') || q.paymentTerms?.toLowerCase().includes('prepaid')) {
+      paymentType = 'Prepaid';
+    } else if (q.paymentTerms?.toLowerCase().includes('cod')) {
+      paymentType = 'COD';
+    } else {
+      paymentType = 'Unpaid';
+    }
+
     const statusObj = getStatusStyle(q.status);
 
     unifiedDocs.push({
@@ -285,7 +313,7 @@ export default async function OrdersPage() {
       agentName: (q as any).salesperson?.user?.name || allEmployees.find(e => e.id === q.salespersonId)?.name || 'Unknown',
       totalAmount: q.totalValue,
       taxableAmount: taxableAmount,
-      paymentType: 'Quotation',
+      paymentType: paymentType,
       discountBadge: badge,
       discountColor: 'var(--accent-primary, #4f46e5)',
       commissionValue: comm.val,

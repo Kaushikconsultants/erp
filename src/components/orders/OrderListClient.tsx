@@ -181,8 +181,13 @@ export default function OrderListClient({
       }
 
       // 4. Payment filter
-      if (selectedPayment !== 'All Payment Types' && doc.paymentType !== selectedPayment) {
-        return false;
+      if (selectedPayment !== 'All Payment Types') {
+        const pType = (doc.paymentType || '').toLowerCase();
+        if (selectedPayment === 'Prepaid' && !(pType.includes('prepaid') || pType === 'paid')) return false;
+        if (selectedPayment === 'Token' && !(pType.includes('token') || pType.includes('partially'))) return false;
+        if (selectedPayment === 'COD' && !pType.includes('cod')) return false;
+        if (selectedPayment === 'Credit' && !pType.includes('credit')) return false;
+        if (selectedPayment === 'Unpaid' && !pType.includes('unpaid')) return false;
       }
 
       // 5. Date filter
@@ -397,10 +402,11 @@ export default function OrderListClient({
             }}
           >
             <option value="All Payment Types">All Payments</option>
-            <option value="Prepaid">Prepaid</option>
+            <option value="Prepaid">Prepaid / Paid</option>
+            <option value="Token">Token / Partial</option>
             <option value="COD">COD</option>
             <option value="Credit">Credit Terms</option>
-            <option value="Quotation">Quotation</option>
+            <option value="Unpaid">Unpaid</option>
           </select>
           <ChevronDown size={14} color="#94a3b8" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
         </div>
@@ -709,14 +715,15 @@ export default function OrderListClient({
                 {/* Payment */}
                 <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
                   <span style={{ 
-                    backgroundColor: '#f1f5f9', 
-                    color: '#475569', 
+                    backgroundColor: doc.paymentType.toLowerCase().includes('prepaid') || doc.paymentType.toLowerCase() === 'paid' ? '#dcfce7' : doc.paymentType.toLowerCase().includes('token') || doc.paymentType.toLowerCase().includes('partial') ? '#dbeafe' : doc.paymentType.toLowerCase().includes('credit') ? '#fef3c7' : doc.paymentType.toLowerCase().includes('unpaid') ? '#fee2e2' : '#f1f5f9', 
+                    color: doc.paymentType.toLowerCase().includes('prepaid') || doc.paymentType.toLowerCase() === 'paid' ? '#166534' : doc.paymentType.toLowerCase().includes('token') || doc.paymentType.toLowerCase().includes('partial') ? '#1e40af' : doc.paymentType.toLowerCase().includes('credit') ? '#854d0e' : doc.paymentType.toLowerCase().includes('unpaid') ? '#991b1b' : '#475569', 
                     padding: '3px 8px', 
                     borderRadius: '9999px', 
                     fontSize: '0.72rem', 
-                    fontWeight: 500,
-                    border: '1px solid #e2e8f0',
-                    display: 'inline-block'
+                    fontWeight: 600,
+                    border: `1px solid ${doc.paymentType.toLowerCase().includes('prepaid') || doc.paymentType.toLowerCase() === 'paid' ? '#bbf7d0' : doc.paymentType.toLowerCase().includes('token') || doc.paymentType.toLowerCase().includes('partial') ? '#bfdbfe' : doc.paymentType.toLowerCase().includes('credit') ? '#fde68a' : doc.paymentType.toLowerCase().includes('unpaid') ? '#fecaca' : '#e2e8f0'}`,
+                    display: 'inline-block',
+                    whiteSpace: 'nowrap'
                   }}>
                     {doc.paymentType}
                   </span>
