@@ -1,39 +1,38 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from "react";
 import { 
-  CalendarRange, 
-  Check, 
-  X, 
-  Clock, 
-  RefreshCw, 
   CheckCircle2, 
   XCircle, 
-  AlertCircle, 
+  Clock, 
+  Calendar, 
   Search, 
-  User, 
-  Filter, 
-  Sparkles,
-  Calendar,
-  Layers
-} from 'lucide-react';
-import { updateLeaveStatus } from '@/app/actions/leaveActions';
+  Layers, 
+  Check, 
+  X, 
+  RotateCcw,
+  UserCheck
+} from "lucide-react";
+import { updateLeaveStatus } from "@/app/actions/leaveActions";
 
 interface AdminLeavePanelProps {
   leaves: any[];
 }
 
 export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
-  const [isUpdating, setIsUpdating] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
-  const handleStatusUpdate = async (leaveId: string, status: "Approved" | "Rejected" | "Pending") => {
+  const handleStatusUpdate = async (leaveId: string, status: 'Approved' | 'Rejected' | 'Pending') => {
     setIsUpdating(leaveId);
     try {
-      await updateLeaveStatus(leaveId, status);
-    } catch (err) {
-      console.error(err);
+      const res = await updateLeaveStatus({ leaveId, status });
+      if (res.error) {
+        alert(`Failed to update leave status: ${res.error}`);
+      }
+    } catch (e: any) {
+      alert(`Error updating leave: ${e.message}`);
     } finally {
       setIsUpdating(null);
     }
@@ -91,17 +90,17 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
             Leave Approvals & Records 📋
           </h1>
-          <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '3px 0 0 0' }}>
             Review, approve, or reject employee leave applications across your organization.
           </p>
         </div>
 
         {pendingLeaves.length > 0 && (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', color: '#b45309', fontWeight: 700, fontSize: '0.85rem' }}>
-            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#f59e0b', animation: 'pulse 1.5s infinite' }}></span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', color: '#b45309', fontWeight: 600, fontSize: '0.78rem' }}>
+            <span style={{ display: 'inline-block', width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#f59e0b' }}></span>
             {pendingLeaves.length} Action{pendingLeaves.length === 1 ? '' : 's'} Required
           </div>
         )}
@@ -114,22 +113,23 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
           onClick={() => setActiveTab('pending')}
           style={{ 
             backgroundColor: '#ffffff', 
-            borderRadius: '14px', 
-            padding: '20px', 
-            border: `2px solid ${activeTab === 'pending' ? '#f59e0b' : '#e2e8f0'}`, 
-            boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+            borderRadius: '12px', 
+            padding: '18px 20px', 
+            border: `1.5px solid ${activeTab === 'pending' ? '#f59e0b' : '#e2e8f0'}`, 
+            borderLeft: '4px solid #f59e0b',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b' }}>Pending Review</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Clock size={18} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Pending Review</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Clock size={16} />
             </div>
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#b45309' }}>{pendingLeaves.length}</div>
-          <div style={{ fontSize: '0.75rem', color: '#d97706', marginTop: '4px', fontWeight: 600 }}>
+          <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#b45309' }}>{pendingLeaves.length}</div>
+          <div style={{ fontSize: '0.74rem', color: '#d97706', marginTop: '3px', fontWeight: 500 }}>
             {pendingLeaves.length > 0 ? 'Requires immediate action' : 'All caught up'}
           </div>
         </div>
@@ -139,22 +139,23 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
           onClick={() => setActiveTab('approved')}
           style={{ 
             backgroundColor: '#ffffff', 
-            borderRadius: '14px', 
-            padding: '20px', 
-            border: `2px solid ${activeTab === 'approved' ? '#10b981' : '#e2e8f0'}`, 
-            boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+            borderRadius: '12px', 
+            padding: '18px 20px', 
+            border: `1.5px solid ${activeTab === 'approved' ? '#10b981' : '#e2e8f0'}`, 
+            borderLeft: '4px solid #10b981',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b' }}>Approved Leaves</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircle2 size={18} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Approved Leaves</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CheckCircle2 size={16} />
             </div>
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#15803d' }}>{approvedLeaves.length}</div>
-          <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '4px', fontWeight: 600 }}>
+          <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#15803d' }}>{approvedLeaves.length}</div>
+          <div style={{ fontSize: '0.74rem', color: '#16a34a', marginTop: '3px', fontWeight: 500 }}>
             Granted time off
           </div>
         </div>
@@ -164,22 +165,23 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
           onClick={() => setActiveTab('rejected')}
           style={{ 
             backgroundColor: '#ffffff', 
-            borderRadius: '14px', 
-            padding: '20px', 
-            border: `2px solid ${activeTab === 'rejected' ? '#ef4444' : '#e2e8f0'}`, 
-            boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+            borderRadius: '12px', 
+            padding: '18px 20px', 
+            border: `1.5px solid ${activeTab === 'rejected' ? '#ef4444' : '#e2e8f0'}`, 
+            borderLeft: '4px solid #ef4444',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b' }}>Rejected Requests</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#fee2e2', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <XCircle size={18} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Rejected Requests</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#fee2e2', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <XCircle size={16} />
             </div>
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#b91c1c' }}>{rejectedLeaves.length}</div>
-          <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px', fontWeight: 600 }}>
+          <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#b91c1c' }}>{rejectedLeaves.length}</div>
+          <div style={{ fontSize: '0.74rem', color: '#dc2626', marginTop: '3px', fontWeight: 500 }}>
             Declined requests
           </div>
         </div>
@@ -189,22 +191,23 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
           onClick={() => setActiveTab('all')}
           style={{ 
             backgroundColor: '#ffffff', 
-            borderRadius: '14px', 
-            padding: '20px', 
-            border: `2px solid ${activeTab === 'all' ? '#6366f1' : '#e2e8f0'}`, 
-            boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+            borderRadius: '12px', 
+            padding: '18px 20px', 
+            border: `1.5px solid ${activeTab === 'all' ? '#4f46e5' : '#e2e8f0'}`, 
+            borderLeft: '4px solid #4f46e5',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
             cursor: 'pointer',
             transition: 'all 0.15s ease'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b' }}>Total Applications</span>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Layers size={18} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Total Applications</span>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Layers size={16} />
             </div>
           </div>
-          <div style={{ fontSize: '1.85rem', fontWeight: 800, color: '#4338ca' }}>{leaves.length}</div>
-          <div style={{ fontSize: '0.75rem', color: '#4f46e5', marginTop: '4px', fontWeight: 600 }}>
+          <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#4338ca' }}>{leaves.length}</div>
+          <div style={{ fontSize: '0.74rem', color: '#4f46e5', marginTop: '3px', fontWeight: 500 }}>
             All-time logged leaves
           </div>
         </div>
@@ -214,61 +217,61 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
       <div 
         style={{ 
           backgroundColor: '#ffffff', 
-          borderRadius: '16px', 
+          borderRadius: '14px', 
           border: '1px solid #e2e8f0', 
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
           overflow: 'hidden'
         }}
       >
         {/* Card Toolbar & Filter Tabs */}
         <div 
           style={{ 
-            padding: '16px 20px', 
+            padding: '14px 18px', 
             borderBottom: '1px solid #e2e8f0', 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center', 
             flexWrap: 'wrap', 
-            gap: '14px',
+            gap: '12px',
             backgroundColor: '#f8fafc'
           }}
         >
           {/* Tabs */}
-          <div style={{ display: 'flex', gap: '6px', backgroundColor: '#e2e8f0', padding: '4px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', gap: '4px', backgroundColor: '#e2e8f0', padding: '3px', borderRadius: '8px' }}>
             <button
               type="button"
               onClick={() => setActiveTab('pending')}
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
+                padding: '6px 12px',
+                borderRadius: '6px',
                 border: 'none',
-                fontWeight: 700,
-                fontSize: '0.82rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
                 cursor: 'pointer',
                 backgroundColor: activeTab === 'pending' ? '#ffffff' : 'transparent',
                 color: activeTab === 'pending' ? '#b45309' : '#64748b',
-                boxShadow: activeTab === 'pending' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                boxShadow: activeTab === 'pending' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
                 transition: 'all 0.15s ease',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '4px'
               }}
             >
-              <Clock size={14} /> Pending ({pendingLeaves.length})
+              <Clock size={13} /> Pending ({pendingLeaves.length})
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('all')}
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
+                padding: '6px 12px',
+                borderRadius: '6px',
                 border: 'none',
-                fontWeight: 700,
-                fontSize: '0.82rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
                 cursor: 'pointer',
                 backgroundColor: activeTab === 'all' ? '#ffffff' : 'transparent',
-                color: activeTab === 'all' ? '#0f172a' : '#64748b',
-                boxShadow: activeTab === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                color: activeTab === 'all' ? '#4338ca' : '#64748b',
+                boxShadow: activeTab === 'all' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -278,15 +281,15 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
               type="button"
               onClick={() => setActiveTab('approved')}
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
+                padding: '6px 12px',
+                borderRadius: '6px',
                 border: 'none',
-                fontWeight: 700,
-                fontSize: '0.82rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
                 cursor: 'pointer',
                 backgroundColor: activeTab === 'approved' ? '#ffffff' : 'transparent',
                 color: activeTab === 'approved' ? '#15803d' : '#64748b',
-                boxShadow: activeTab === 'approved' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                boxShadow: activeTab === 'approved' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -296,15 +299,15 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
               type="button"
               onClick={() => setActiveTab('rejected')}
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
+                padding: '6px 12px',
+                borderRadius: '6px',
                 border: 'none',
-                fontWeight: 700,
-                fontSize: '0.82rem',
+                fontWeight: 600,
+                fontSize: '0.8rem',
                 cursor: 'pointer',
                 backgroundColor: activeTab === 'rejected' ? '#ffffff' : 'transparent',
                 color: activeTab === 'rejected' ? '#b91c1c' : '#64748b',
-                boxShadow: activeTab === 'rejected' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                boxShadow: activeTab === 'rejected' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
@@ -314,7 +317,7 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
 
           {/* Search bar */}
           <div style={{ position: 'relative', minWidth: '260px' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
               type="text" 
               placeholder="Search employee, leave type, reason..."
@@ -322,10 +325,10 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 12px 8px 36px',
+                padding: '8px 12px 8px 34px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
-                fontSize: '0.85rem',
+                fontSize: '0.82rem',
                 backgroundColor: '#ffffff',
                 outline: 'none',
                 color: '#0f172a'
@@ -339,25 +342,25 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, minWidth: '820px' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc' }}>
-                <th style={{ padding: '12px 20px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: '0.74rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
                   Employee
                 </th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '0.74rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
                   Leave Type
                 </th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '0.74rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
                   Date Duration
                 </th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '12px 14px', textAlign: 'center', fontSize: '0.74rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
                   Days
                 </th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', minWidth: '180px' }}>
+                <th style={{ padding: '12px 14px', textAlign: 'left', fontSize: '0.74rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', minWidth: '180px' }}>
                   Reason
                 </th>
-                <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '12px 14px', textAlign: 'center', fontSize: '0.74rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
                   Status
                 </th>
-                <th style={{ padding: '12px 20px', textAlign: 'right', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                <th style={{ padding: '12px 18px', textAlign: 'right', fontSize: '0.74rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0', whiteSpace: 'nowrap' }}>
                   Actions
                 </th>
               </tr>
@@ -372,7 +375,7 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
 
                   return (
                     <tr 
-                      key={leave.id}
+                      key={leave.id} 
                       style={{ 
                         borderBottom: '1px solid #f1f5f9',
                         transition: 'background-color 0.15s ease'
@@ -381,30 +384,30 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
                       onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
                       {/* Employee */}
-                      <td style={{ padding: '14px 20px', borderBottom: '1px solid #f1f5f9' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <td style={{ padding: '12px 18px', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <div 
                             style={{ 
-                              width: '38px', 
-                              height: '38px', 
-                              borderRadius: '10px', 
+                              width: '34px', 
+                              height: '34px', 
+                              borderRadius: '8px', 
                               backgroundColor: '#e0e7ff', 
                               color: '#4338ca', 
                               display: 'flex', 
                               alignItems: 'center', 
-                              justifyContent: 'center',
-                              fontWeight: 800,
-                              fontSize: '0.85rem',
+                              justifyContent: 'center', 
+                              fontWeight: 600, 
+                              fontSize: '0.8rem',
                               flexShrink: 0
                             }}
                           >
                             {initials}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.88rem' }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
                               {empName}
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
                               {empEmail}
                             </div>
                           </div>
@@ -412,19 +415,19 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
                       </td>
 
                       {/* Leave Type */}
-                      <td style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9' }}>
                         <span 
                           style={{ 
                             display: 'inline-flex', 
                             alignItems: 'center', 
-                            gap: '5px', 
-                            padding: '4px 10px', 
+                            gap: '4px', 
+                            padding: '3px 8px', 
                             borderRadius: '6px', 
                             backgroundColor: typeBadge.bg, 
                             color: typeBadge.text, 
                             border: `1px solid ${typeBadge.border}`,
-                            fontSize: '0.78rem',
-                            fontWeight: 700,
+                            fontSize: '0.76rem',
+                            fontWeight: 500,
                             whiteSpace: 'nowrap'
                           }}
                         >
@@ -434,9 +437,9 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
                       </td>
 
                       {/* Date Duration */}
-                      <td style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>
-                          <Calendar size={14} style={{ color: '#94a3b8' }} />
+                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#334155', fontSize: '0.82rem', fontWeight: 500 }}>
+                          <Calendar size={13} style={{ color: '#94a3b8' }} />
                           {formatDate(leave.startDate)}
                           <span style={{ color: '#94a3b8' }}>→</span>
                           {formatDate(leave.endDate)}
@@ -444,84 +447,84 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
                       </td>
 
                       {/* Days */}
-                      <td style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
-                        <span style={{ display: 'inline-block', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#f1f5f9', color: '#334155', fontWeight: 800, fontSize: '0.8rem' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
+                        <span style={{ display: 'inline-block', padding: '2px 7px', borderRadius: '5px', backgroundColor: '#f1f5f9', color: '#334155', fontWeight: 600, fontSize: '0.78rem' }}>
                           {leave.numberOfDays} {leave.numberOfDays === 1 ? 'Day' : 'Days'}
                         </span>
                       </td>
 
                       {/* Reason */}
-                      <td style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9' }}>
-                        <div style={{ fontSize: '0.82rem', color: '#475569', lineHeight: 1.4, maxWidth: '280px' }}>
+                      <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.4, maxWidth: '280px' }}>
                           {leave.reason || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No reason provided</span>}
                         </div>
                       </td>
 
                       {/* Status */}
-                      <td style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '12px 14px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
                         {leave.status === 'Pending' && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '0.75rem', fontWeight: 700 }}>
-                            <Clock size={12} /> Pending
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '0.72rem', fontWeight: 600 }}>
+                            <Clock size={11} /> Pending
                           </span>
                         )}
                         {leave.status === 'Approved' && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontSize: '0.75rem', fontWeight: 700 }}>
-                            <Check size={12} /> Approved
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontSize: '0.72rem', fontWeight: 600 }}>
+                            <Check size={11} /> Approved
                           </span>
                         )}
                         {leave.status === 'Rejected' && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontSize: '0.75rem', fontWeight: 700 }}>
-                            <X size={12} /> Rejected
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontSize: '0.72rem', fontWeight: 600 }}>
+                            <X size={11} /> Rejected
                           </span>
                         )}
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '14px 20px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 18px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>
                         {leave.status === 'Pending' ? (
-                          <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px' }}>
                             <button 
                               type="button"
                               onClick={() => handleStatusUpdate(leave.id, 'Approved')}
                               disabled={isUpdating === leave.id}
                               style={{ 
-                                padding: '6px 14px', 
-                                fontSize: '0.8rem', 
-                                fontWeight: 700,
+                                padding: '5px 12px', 
+                                fontSize: '0.78rem', 
+                                fontWeight: 600,
                                 backgroundColor: '#10b981',
                                 color: '#ffffff',
                                 border: 'none',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '5px',
+                                gap: '4px',
                                 boxShadow: '0 1px 2px rgba(16, 185, 129, 0.2)',
                                 transition: 'all 0.15s ease'
                               }}
                             >
-                              <Check size={14} /> Approve
+                              <Check size={13} /> Approve
                             </button>
                             <button 
                               type="button"
                               onClick={() => handleStatusUpdate(leave.id, 'Rejected')}
                               disabled={isUpdating === leave.id}
                               style={{ 
-                                padding: '6px 14px', 
-                                fontSize: '0.8rem', 
-                                fontWeight: 700,
+                                padding: '5px 12px', 
+                                fontSize: '0.78rem', 
+                                fontWeight: 600,
                                 backgroundColor: '#fee2e2',
                                 color: '#dc2626',
                                 border: '1px solid #fecaca',
-                                borderRadius: '8px',
+                                borderRadius: '6px',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '5px',
+                                gap: '4px',
                                 transition: 'all 0.15s ease'
                               }}
                             >
-                              <X size={14} /> Reject
+                              <X size={13} /> Reject
                             </button>
                           </div>
                         ) : (
@@ -530,9 +533,9 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
                             onClick={() => handleStatusUpdate(leave.id, 'Pending')}
                             disabled={isUpdating === leave.id}
                             style={{ 
-                              padding: '5px 12px', 
-                              fontSize: '0.78rem', 
-                              fontWeight: 700,
+                              padding: '4px 10px', 
+                              fontSize: '0.75rem', 
+                              fontWeight: 500,
                               backgroundColor: '#f8fafc',
                               color: '#64748b',
                               border: '1px solid #cbd5e1',
@@ -540,11 +543,12 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '5px',
+                              gap: '4px',
                               transition: 'all 0.15s ease'
                             }}
+                            title="Revert back to Pending status"
                           >
-                            <RefreshCw size={12} /> Revert to Pending
+                            <RotateCcw size={12} /> Revert to Pending
                           </button>
                         )}
                       </td>
@@ -553,25 +557,11 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
                 })
               ) : (
                 <tr>
-                  <td colSpan={7} style={{ padding: '60px 20px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                      <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
-                        {activeTab === 'pending' ? <CheckCircle2 size={32} style={{ color: '#10b981' }} /> : <CalendarRange size={32} />}
-                      </div>
-                      <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
-                        {activeTab === 'pending' 
-                          ? '🎉 All Caught Up!' 
-                          : searchQuery 
-                            ? 'No matching requests found' 
-                            : 'No leave applications in this view'}
-                      </div>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b', margin: 0, maxWidth: '400px' }}>
-                        {activeTab === 'pending' 
-                          ? 'There are currently no employee leave requests waiting for your approval.' 
-                          : searchQuery 
-                            ? `No records matched your search query "${searchQuery}".` 
-                            : 'Employee leave requests will appear here once submitted.'}
-                      </p>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <UserCheck size={32} style={{ color: '#cbd5e1' }} />
+                      <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.88rem' }}>No leave applications found</div>
+                      <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>There are no {activeTab !== 'all' ? activeTab : ''} leave requests matching your filter.</div>
                     </div>
                   </td>
                 </tr>
@@ -580,7 +570,6 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
           </table>
         </div>
       </div>
-
     </div>
   );
 }

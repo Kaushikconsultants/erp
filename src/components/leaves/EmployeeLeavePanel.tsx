@@ -1,7 +1,6 @@
 "use client";
 
 import DatePicker from '@/components/ui/DatePicker';
-
 import React, { useState } from 'react';
 import { 
   CalendarRange, 
@@ -9,10 +8,9 @@ import {
   Clock, 
   CheckCircle, 
   XCircle, 
-  Calendar,
-  AlertCircle,
-  CheckCircle2,
-  FileText
+  Calendar, 
+  CheckCircle2, 
+  FileText 
 } from 'lucide-react';
 import { submitLeaveRequest } from '@/app/actions/leaveActions';
 
@@ -84,10 +82,10 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
             Leave Management & Requests 🌴
           </h1>
-          <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '4px 0 0 0' }}>
+          <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '3px 0 0 0' }}>
             Request time off, view your leave quota, and track real-time approval status.
           </p>
         </div>
@@ -95,60 +93,60 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
 
       {/* KPI Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '18px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>Approved Days Taken</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#15803d' }}>{totalDaysTaken} <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#64748b' }}>Days</span></div>
-          <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '4px', fontWeight: 600 }}>Approved time off</div>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '16px 18px', border: '1px solid #e2e8f0', borderLeft: '4px solid #10b981', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '4px' }}>Approved Days Taken</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#15803d' }}>{totalDaysTaken} <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#64748b' }}>Days</span></div>
+          <div style={{ fontSize: '0.74rem', color: '#16a34a', marginTop: '3px', fontWeight: 500 }}>Approved time off</div>
         </div>
 
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '18px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>Pending Approvals</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#b45309' }}>{pendingLeaves.length}</div>
-          <div style={{ fontSize: '0.75rem', color: '#d97706', marginTop: '4px', fontWeight: 600 }}>Under manager review</div>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '16px 18px', border: '1px solid #e2e8f0', borderLeft: '4px solid #f59e0b', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '4px' }}>Pending Approvals</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#b45309' }}>{pendingLeaves.length}</div>
+          <div style={{ fontSize: '0.74rem', color: '#d97706', marginTop: '3px', fontWeight: 500 }}>Under manager review</div>
         </div>
 
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', padding: '18px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>Total Applications</div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#4338ca' }}>{leaves.length}</div>
-          <div style={{ fontSize: '0.75rem', color: '#4f46e5', marginTop: '4px', fontWeight: 600 }}>All-time history</div>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '16px 18px', border: '1px solid #e2e8f0', borderLeft: '4px solid #4f46e5', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' }}>
+          <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: '4px' }}>Total Applications</div>
+          <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#4338ca' }}>{leaves.length}</div>
+          <div style={{ fontSize: '0.74rem', color: '#4f46e5', marginTop: '3px', fontWeight: 500 }}>All-time history</div>
         </div>
       </div>
 
       {/* Grid: Form (1) vs History (2) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', alignItems: 'start' }}>
         
         {/* Request Form */}
         <div 
           style={{ 
             backgroundColor: '#ffffff', 
-            borderRadius: '16px', 
+            borderRadius: '14px', 
             border: '1px solid #e2e8f0', 
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-            padding: '24px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
+            padding: '20px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '14px'
           }}
         >
-          <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CalendarRange size={18} />
+          <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '8px', backgroundColor: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <CalendarRange size={16} />
             </div>
             <div>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Apply for Leave</h2>
-              <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0 0' }}>Submit a new time-off request to admin.</p>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#0f172a', margin: 0 }}>Apply for Leave</h2>
+              <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '2px 0 0 0' }}>Submit a new time-off request to admin.</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Leave Type *
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                Leave Type <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <select 
                 name="leaveType" 
                 required 
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', backgroundColor: '#f8fafc', fontWeight: 600, color: '#0f172a', outline: 'none' }}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', backgroundColor: '#ffffff', fontWeight: 500, color: '#0f172a', outline: 'none' }}
               >
                 <option value="Casual Leave">🌴 Casual Leave</option>
                 <option value="Sick Leave">🤒 Sick Leave</option>
@@ -157,34 +155,32 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
               </select>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                  Start Date *
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  Start Date <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <DatePicker 
-                   
                   name="startDate" 
                   required 
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc', outline: 'none' }} 
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', backgroundColor: '#ffffff', outline: 'none' }} 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                  End Date *
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  End Date <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 <DatePicker 
-                   
                   name="endDate" 
                   required 
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc', outline: 'none' }} 
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', backgroundColor: '#ffffff', outline: 'none' }} 
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Total Number of Days *
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                Total Number of Days <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input 
                 type="number" 
@@ -193,30 +189,30 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
                 name="numberOfDays" 
                 required 
                 placeholder="e.g. 1 or 0.5"
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc', outline: 'none' }} 
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', backgroundColor: '#ffffff', outline: 'none' }} 
               />
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Reason for Leave *
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                Reason for Leave <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <textarea 
                 name="reason" 
                 required 
                 rows={3} 
                 placeholder="Describe your reason for time off..."
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc', outline: 'none', resize: 'vertical' }}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', backgroundColor: '#ffffff', outline: 'none', resize: 'vertical' }}
               ></textarea>
             </div>
 
             {message && (
               <div 
                 style={{ 
-                  padding: '12px', 
-                  borderRadius: '8px', 
-                  fontSize: '0.85rem', 
-                  fontWeight: 600,
+                  padding: '10px 12px', 
+                  borderRadius: '6px', 
+                  fontSize: '0.8rem', 
+                  fontWeight: 500,
                   backgroundColor: message.type === 'success' ? '#f0fdf4' : '#fef2f2',
                   color: message.type === 'success' ? '#15803d' : '#dc2626',
                   border: `1px solid ${message.type === 'success' ? '#bbf7d0' : '#fecaca'}`
@@ -231,18 +227,18 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
               disabled={isSubmitting} 
               className="primary-btn"
               style={{ 
-                padding: '11px 20px', 
-                borderRadius: '8px', 
-                fontSize: '0.88rem', 
-                fontWeight: 700, 
+                padding: '9px 18px', 
+                borderRadius: '6px', 
+                fontSize: '0.82rem', 
+                fontWeight: 600, 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
-                gap: '8px',
+                gap: '6px',
                 cursor: 'pointer'
               }}
             >
-              {isSubmitting ? 'Submitting...' : <><Send size={16} /> Submit Leave Request</>}
+              {isSubmitting ? 'Submitting...' : <><Send size={14} /> Submit Leave Request</>}
             </button>
           </form>
         </div>
@@ -251,28 +247,28 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
         <div 
           style={{ 
             backgroundColor: '#ffffff', 
-            borderRadius: '16px', 
+            borderRadius: '14px', 
             border: '1px solid #e2e8f0', 
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)',
             overflow: 'hidden'
           }}
         >
-          <div style={{ padding: '18px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-            <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={18} style={{ color: '#4f46e5' }} /> My Leave History ({leaves.length})
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <FileText size={16} style={{ color: '#4f46e5' }} /> My Leave History ({leaves.length})
             </h3>
-            <p style={{ fontSize: '0.78rem', color: '#64748b', margin: '2px 0 0 0' }}>Track previous requests and current approval status.</p>
+            <p style={{ fontSize: '0.74rem', color: '#64748b', margin: '2px 0 0 0' }}>Track previous requests and current approval status.</p>
           </div>
 
           <div className="table-responsive" style={{ width: '100%', overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, minWidth: '580px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Type</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Dates</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Days</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Reason</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0' }}>Status</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0' }}>Type</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0' }}>Dates</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontSize: '0.72rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0' }}>Days</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0' }}>Reason</th>
+                  <th style={{ padding: '10px 14px', textAlign: 'center', fontSize: '0.72rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', borderBottom: '1px solid #e2e8f0' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -286,52 +282,52 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
                         onMouseOver={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                         onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
-                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9' }}>
                           <span 
                             style={{ 
                               display: 'inline-flex', 
                               alignItems: 'center', 
                               gap: '4px', 
-                              padding: '3px 8px', 
-                              borderRadius: '6px', 
+                              padding: '2px 7px', 
+                              borderRadius: '5px', 
                               backgroundColor: typeBadge.bg, 
                               color: typeBadge.text, 
                               border: `1px solid ${typeBadge.border}`,
-                              fontSize: '0.75rem',
-                              fontWeight: 700
+                              fontSize: '0.72rem',
+                              fontWeight: 500
                             }}
                           >
                             <span>{typeBadge.emoji}</span>
                             <span>{leave.leaveType}</span>
                           </span>
                         </td>
-                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9', fontSize: '0.82rem', color: '#334155', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontSize: '0.8rem', color: '#334155', fontWeight: 500, whiteSpace: 'nowrap' }}>
                           {formatDate(leave.startDate)} → {formatDate(leave.endDate)}
                         </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
-                          <span style={{ padding: '3px 8px', borderRadius: '6px', backgroundColor: '#f1f5f9', color: '#334155', fontWeight: 800, fontSize: '0.78rem' }}>
+                        <td style={{ padding: '10px 14px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
+                          <span style={{ padding: '2px 6px', borderRadius: '5px', backgroundColor: '#f1f5f9', color: '#334155', fontWeight: 600, fontSize: '0.75rem' }}>
                             {leave.numberOfDays}d
                           </span>
                         </td>
-                        <td style={{ padding: '14px 16px', borderBottom: '1px solid #f1f5f9', fontSize: '0.82rem', color: '#64748b' }}>
+                        <td style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', fontSize: '0.8rem', color: '#64748b' }}>
                           <div style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {leave.reason}
                           </div>
                         </td>
-                        <td style={{ padding: '14px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '10px 14px', textAlign: 'center', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>
                           {leave.status === 'Pending' && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '0.75rem', fontWeight: 700 }}>
-                              <Clock size={12} /> Pending
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '0.72rem', fontWeight: 600 }}>
+                              <Clock size={11} /> Pending
                             </span>
                           )}
                           {leave.status === 'Approved' && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontSize: '0.75rem', fontWeight: 700 }}>
-                              <CheckCircle size={12} /> Approved
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0', fontSize: '0.72rem', fontWeight: 600 }}>
+                              <CheckCircle size={11} /> Approved
                             </span>
                           )}
                           {leave.status === 'Rejected' && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontSize: '0.75rem', fontWeight: 700 }}>
-                              <XCircle size={12} /> Rejected
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '6px', backgroundColor: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', fontSize: '0.72rem', fontWeight: 600 }}>
+                              <XCircle size={11} /> Rejected
                             </span>
                           )}
                         </td>
@@ -340,7 +336,7 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                    <td colSpan={5} style={{ padding: '30px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '0.82rem' }}>
                       No leave requests submitted yet.
                     </td>
                   </tr>
@@ -349,7 +345,6 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
             </table>
           </div>
         </div>
-
       </div>
     </div>
   );
