@@ -32,6 +32,22 @@ export async function createProduct(formData: FormData) {
   const category = formData.get("category") as string;
   const description = formData.get("description") as string;
   const price = parseFloat(formData.get("price") as string);
+  const purchasePriceInput = formData.get("purchasePrice");
+  const purchasePrice = purchasePriceInput && !isNaN(parseFloat(purchasePriceInput as string))
+    ? parseFloat(purchasePriceInput as string)
+    : price * 0.7;
+  const mrpInput = formData.get("mrp");
+  const mrp = mrpInput && !isNaN(parseFloat(mrpInput as string))
+    ? parseFloat(mrpInput as string)
+    : price * 1.2;
+  const minStockInput = formData.get("minimumStock");
+  const minimumStock = minStockInput && !isNaN(parseInt(minStockInput as string, 10))
+    ? parseInt(minStockInput as string, 10)
+    : 10;
+  const fabric = (formData.get("fabric") as string) || null;
+  const color = (formData.get("color") as string) || null;
+  const size = (formData.get("size") as string) || null;
+
   const stock = parseInt(formData.get("stock") as string, 10);
   const weightInput = formData.get("weight");
   let weight = weightInput ? parseFloat(weightInput as string) : 0;
@@ -51,7 +67,7 @@ export async function createProduct(formData: FormData) {
   }
 
   if (!name || !sku || isNaN(price)) {
-    return { error: "Name, SKU, and a valid Price are required" };
+    return { error: "Name, SKU, and a valid Selling Price are required" };
   }
 
   try {
@@ -90,8 +106,12 @@ export async function createProduct(formData: FormData) {
         weight: isNaN(weight) ? 0 : weight,
         images: images,
         sellingPrice: price,
-        purchasePrice: price * 0.7, // MVP mock
-        mrp: price * 1.2, // MVP mock
+        purchasePrice: purchasePrice,
+        mrp: mrp,
+        minimumStock: minimumStock,
+        fabric: fabric,
+        color: color,
+        size: size,
         stockQuantity: isNaN(stock) ? 0 : stock,
         inventoryTransactions: {
           create: {
@@ -104,6 +124,7 @@ export async function createProduct(formData: FormData) {
       }
     });
 
+    revalidatePath("/products");
     revalidatePath("/", "layout");
     return { success: true, product };
   } catch (error: any) {
@@ -138,6 +159,22 @@ export async function updateProduct(id: string, formData: FormData) {
   const category = formData.get("category") as string;
   const description = formData.get("description") as string;
   const price = parseFloat(formData.get("price") as string);
+  const purchasePriceInput = formData.get("purchasePrice");
+  const purchasePrice = purchasePriceInput && !isNaN(parseFloat(purchasePriceInput as string))
+    ? parseFloat(purchasePriceInput as string)
+    : undefined;
+  const mrpInput = formData.get("mrp");
+  const mrp = mrpInput && !isNaN(parseFloat(mrpInput as string))
+    ? parseFloat(mrpInput as string)
+    : undefined;
+  const minStockInput = formData.get("minimumStock");
+  const minimumStock = minStockInput && !isNaN(parseInt(minStockInput as string, 10))
+    ? parseInt(minStockInput as string, 10)
+    : undefined;
+  const fabric = formData.has("fabric") ? ((formData.get("fabric") as string) || null) : undefined;
+  const color = formData.has("color") ? ((formData.get("color") as string) || null) : undefined;
+  const size = formData.has("size") ? ((formData.get("size") as string) || null) : undefined;
+
   const stock = parseInt(formData.get("stock") as string, 10);
   const weightInput = formData.get("weight");
   let weight = weightInput ? parseFloat(weightInput as string) : 0;
@@ -157,7 +194,7 @@ export async function updateProduct(id: string, formData: FormData) {
   }
 
   if (!name || isNaN(price)) {
-    return { error: "Product Name and a valid Price are required" };
+    return { error: "Product Name and a valid Selling Price are required" };
   }
 
   try {
@@ -175,10 +212,15 @@ export async function updateProduct(id: string, formData: FormData) {
       description: description || null,
       weight: isNaN(weight) ? 0 : weight,
       sellingPrice: price,
-      purchasePrice: price * 0.7,
-      mrp: price * 1.2,
       stockQuantity: isNaN(stock) ? 0 : stock
     };
+
+    if (purchasePrice !== undefined) updateData.purchasePrice = purchasePrice;
+    if (mrp !== undefined) updateData.mrp = mrp;
+    if (minimumStock !== undefined) updateData.minimumStock = minimumStock;
+    if (fabric !== undefined) updateData.fabric = fabric;
+    if (color !== undefined) updateData.color = color;
+    if (size !== undefined) updateData.size = size;
 
     if (formData.has("images")) {
       updateData.images = images;
@@ -202,6 +244,95 @@ export async function updateProduct(id: string, formData: FormData) {
   } catch (error: any) {
     console.error("Failed to update product:", error);
     return { error: error.message || "Failed to update product." };
+  }
+}
+
+export async function quickAdjustStock(
+  productId: string,
+  quantityChange: number,
+  type: "IN" | "OUT" | "SET",
+  reason: string,
+  notes?: string
+) {
+  const session = await getServerSession(authOptions);
+  const roleName = (session?.user as any)?.role;
+  let canManage = roleName === 'ADMIN' || roleName === 'SUPER_ADMIN';
+
+  if (!canManage && roleName) {
+    const roleDef = await prisma.role.findUnique({ where: { name: roleName } });
+    if (roleDef) {
+      try {
+        const perms = JSON.parse(roleDef.permissions) as string[];
+        if (perms.includes("Manage Inventory")) canManage = true;
+      } catch(e) {}
+    }
+  }
+
+  if (!canManage) {
+    return { error: "Unauthorized. You do not have permission to manage inventory." };
+  }
+
+  try {
+    const organizationId = await getTenantOrgId();
+    const product = await prisma.product.findUnique({
+      where: { id: productId }
+    });
+
+    if (!product) {
+      return { error: "Product not found" };
+    }
+
+    if (product.organizationId && organizationId && product.organizationId !== organizationId) {
+      return { error: "Unauthorized access" };
+    }
+
+    let newStock = product.stockQuantity;
+    let actualChange = 0;
+
+    if (type === "IN") {
+      newStock += Math.abs(quantityChange);
+      actualChange = Math.abs(quantityChange);
+    } else if (type === "OUT") {
+      if (product.stockQuantity < Math.abs(quantityChange)) {
+        return { error: `Insufficient stock! Only ${product.stockQuantity} units available.` };
+      }
+      newStock -= Math.abs(quantityChange);
+      actualChange = Math.abs(quantityChange);
+    } else if (type === "SET") {
+      actualChange = quantityChange - product.stockQuantity;
+      newStock = Math.max(0, quantityChange);
+    }
+
+    const txType = type === "SET" ? (actualChange >= 0 ? "IN" : "OUT") : type;
+
+    await prisma.$transaction([
+      prisma.product.update({
+        where: { id: productId },
+        data: { stockQuantity: newStock }
+      }),
+      prisma.inventoryTransaction.create({
+        data: {
+          productId: productId,
+          type: txType,
+          quantity: Math.abs(actualChange),
+          reference: reason || "Manual Quick Adjustment",
+          notes: notes || `Quick adjusted from ${product.stockQuantity} to ${newStock}`
+        }
+      })
+    ]);
+
+    revalidatePath("/products");
+    revalidatePath("/", "layout");
+
+    return {
+      success: true,
+      productName: product.name,
+      oldStock: product.stockQuantity,
+      newStock
+    };
+  } catch (err: any) {
+    console.error("quickAdjustStock error:", err);
+    return { error: err.message || "Failed to adjust stock." };
   }
 }
 
