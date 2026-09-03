@@ -37,7 +37,8 @@ import {
   Minus,
   CheckCircle,
   BarChart3,
-  Rocket
+  Rocket,
+  Trophy
 } from 'lucide-react';
 import Link from 'next/link';
 import { removeFollowUp, rescheduleFollowUp } from '@/app/actions/callActions';
@@ -159,6 +160,9 @@ interface EmployeeDashboardProps {
   allOrders?: any[];
   allFollowUps?: any[];
   sprintData?: SprintData | null;
+  dailyLeaderboard?: any[];
+  monthlyLeaderboard?: any[];
+  todayOrdersCount?: number;
 }
 
 type TimeFilterType = "TODAY" | "WEEKLY" | "MONTHLY" | "ALL";
@@ -173,10 +177,14 @@ export default function EmployeeDashboard({
   todayFollowUps = [],
   allOrders = [],
   allFollowUps = [],
-  sprintData
+  sprintData,
+  dailyLeaderboard = [],
+  monthlyLeaderboard = [],
+  todayOrdersCount = 0
 }: EmployeeDashboardProps) {
   const [timeFilter, setTimeFilter] = useState<TimeFilterType>("MONTHLY");
   const [activeModal, setActiveModal] = useState<"SALES" | "FOLLOWUPS" | "TARGET" | "PAYOUT" | null>(null);
+  const [leaderboardTimeframe, setLeaderboardTimeframe] = useState<'DAILY' | 'MONTHLY'>('DAILY');
 
   // Optimistic tracking for daily call counters
   const [callsOffset, setCallsOffset] = useState(0);
@@ -328,6 +336,27 @@ export default function EmployeeDashboard({
   }));
   const calculatedIncentive = calculateIncentives(formattedOrderData, targetPeriodGoal);
   const totalPayout = (Number(employee?.salary) || 0) + (Number(calculatedIncentive?.totalIncentive) || 0);
+
+  // ─── LEADERBOARD MEMOIZED COMPUTATIONS ───
+  const activeLeaderboard = useMemo(() => {
+    return leaderboardTimeframe === 'DAILY' ? dailyLeaderboard : monthlyLeaderboard;
+  }, [leaderboardTimeframe, dailyLeaderboard, monthlyLeaderboard]);
+
+  const maxLeaderboardVal = useMemo(() => {
+    if (!activeLeaderboard || activeLeaderboard.length === 0) return 1;
+    return Math.max(...activeLeaderboard.map((item: any) => Number(item.total) || 0), 1);
+  }, [activeLeaderboard]);
+
+  const currentEmployeeRank = useMemo(() => {
+    if (!activeLeaderboard || !employee?.id) return null;
+    const index = activeLeaderboard.findIndex((item: any) => item.id === employee.id || item.isCurrentEmployee);
+    if (index === -1) return null;
+    return {
+      rank: index + 1,
+      item: activeLeaderboard[index],
+      gapToLeader: index > 0 ? Math.max(0, Number(activeLeaderboard[0].total || 0) - Number(activeLeaderboard[index].total || 0)) : 0
+    };
+  }, [activeLeaderboard, employee?.id]);
 
   return (
     <div className="dashboard-container employee-dashboard">
@@ -992,39 +1021,298 @@ export default function EmployeeDashboard({
         </div>
       </div>
 
-      {/* ─── TODAY'S FOLLOW-UPS PRIORITY SECTION ─── */}
-      <div className="zoho-card" style={{ marginBottom: '20px', borderLeft: todayFollowUps.length > 0 ? '4px solid #ef4444' : '1px solid #cbd5e1' }}>
-        <div className="zoho-header" style={{ paddingBottom: '12px' }}>
-          <div className="zoho-title-group">
-            <div className="zoho-title-icon" style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}>
-              <PhoneForwarded size={18} />
+      {/* ─── DUAL WORKFLOW & PERFORMANCE HUB: TODAY'S FOLLOW-UPS + SALES LEADERBOARD ─── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+        
+        {/* LEFT: TODAY'S FOLLOW-UPS */}
+        <div className="zoho-card" style={{
+          borderLeft: todayFollowUps.length > 0 ? '4px solid #ef4444' : '1px solid #cbd5e1',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '340px'
+        }}>
+          <div>
+            <div className="zoho-header" style={{ paddingBottom: '12px' }}>
+              <div className="zoho-title-group">
+                <div className="zoho-title-icon" style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}>
+                  <PhoneForwarded size={18} />
+                </div>
+                <div>
+                  <h2 className="zoho-title" style={{ fontSize: '1rem' }}>
+                    Today's Follow-ups ({todayFollowUps.length})
+                  </h2>
+                  <p className="zoho-subtitle" style={{ fontSize: '0.75rem' }}>Priority calls scheduled for today</p>
+                </div>
+              </div>
+              <Link href="/calls" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
+                View All →
+              </Link>
             </div>
-            <div>
-              <h2 className="zoho-title" style={{ fontSize: '1rem' }}>
-                Today's Follow-ups ({todayFollowUps.length})
-              </h2>
-              <p className="zoho-subtitle" style={{ fontSize: '0.75rem' }}>Priority calls scheduled for today</p>
+
+            <div style={{ padding: '4px 6px', maxHeight: '270px', overflowY: 'auto' }}>
+              {todayFollowUps.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {todayFollowUps.map((call: any) => (
+                    <FollowUpCard key={call.id} call={call} />
+                  ))}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '36px 10px', color: '#64748b' }}>
+                  <CheckCircle2 size={32} style={{ color: '#10b981', margin: '0 auto 8px auto' }} />
+                  <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>No pending follow-ups today!</p>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem' }}>You're all caught up. Schedule new leads or log fresh calls.</p>
+                </div>
+              )}
             </div>
           </div>
-          <Link href="/calls" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
-            View All →
-          </Link>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 14px', borderTop: '1px solid #f1f5f9' }}>
+            <Link href="/calls" style={{ fontSize: '0.74rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
+              Open Call Center →
+            </Link>
+          </div>
         </div>
 
-        <div style={{ padding: '12px 14px' }}>
-          {todayFollowUps.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {todayFollowUps.map((call: any) => (
-                <FollowUpCard key={call.id} call={call} />
-              ))}
+        {/* RIGHT: TEAM SALES LEADERBOARD (DAILY & MONTHLY) */}
+        <div className="zoho-card" style={{
+          borderLeft: '4px solid #8b5cf6',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          minHeight: '340px'
+        }}>
+          <div>
+            {/* Header with Title, Live Badge, and Timeframe Tabs */}
+            <div className="zoho-header" style={{ paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div className="zoho-title-group">
+                <div className="zoho-title-icon" style={{ backgroundColor: '#f5f3ff', color: '#7c3aed' }}>
+                  <Trophy size={18} />
+                </div>
+                <div>
+                  <h2 className="zoho-title" style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    Sales Leaderboard
+                    {leaderboardTimeframe === 'DAILY' && todayOrdersCount > 0 && (
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        backgroundColor: '#f5f3ff',
+                        color: '#7c3aed',
+                        padding: '1px 7px',
+                        borderRadius: '10px',
+                        border: '1px solid rgba(139, 92, 246, 0.2)'
+                      }}>
+                        🔥 {todayOrdersCount} Deals Today
+                      </span>
+                    )}
+                  </h2>
+                  <p className="zoho-subtitle" style={{ fontSize: '0.75rem' }}>
+                    {leaderboardTimeframe === 'DAILY' ? "Today's live closing rankings" : "Month-to-date (MTD) sales performance"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Segmented Timeframe Switcher */}
+              <div style={{
+                display: 'inline-flex',
+                backgroundColor: '#f1f5f9',
+                padding: '2px',
+                borderRadius: '7px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setLeaderboardTimeframe('DAILY')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backgroundColor: leaderboardTimeframe === 'DAILY' ? '#ffffff' : 'transparent',
+                    color: leaderboardTimeframe === 'DAILY' ? '#7c3aed' : '#64748b',
+                    boxShadow: leaderboardTimeframe === 'DAILY' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  ⚡ Daily (Today)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeaderboardTimeframe('MONTHLY')}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backgroundColor: leaderboardTimeframe === 'MONTHLY' ? '#ffffff' : 'transparent',
+                    color: leaderboardTimeframe === 'MONTHLY' ? '#7c3aed' : '#64748b',
+                    boxShadow: leaderboardTimeframe === 'MONTHLY' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  🏆 Monthly (MTD)
+                </button>
+              </div>
             </div>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '20px 10px', color: '#64748b' }}>
-              <CheckCircle2 size={32} style={{ color: '#10b981', margin: '0 auto 8px auto' }} />
-              <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>No pending follow-ups today!</p>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem' }}>You're all caught up. Schedule new leads or log fresh calls.</p>
+
+            {/* Current Salesperson Standings Banner */}
+            {currentEmployeeRank && (
+              <div style={{
+                margin: '0 6px 10px 6px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: currentEmployeeRank.rank === 1
+                  ? 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)'
+                  : 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+                border: currentEmployeeRank.rank === 1 ? '1px solid #fde68a' : '1px solid #ddd6fe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '0.75rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '1rem' }}>
+                    {currentEmployeeRank.rank === 1 ? '🥇' : currentEmployeeRank.rank === 2 ? '🥈' : currentEmployeeRank.rank === 3 ? '🥉' : '🎯'}
+                  </span>
+                  <span style={{ fontWeight: 700, color: currentEmployeeRank.rank === 1 ? '#92400e' : '#5b21b6' }}>
+                    Your Standing: #{currentEmployeeRank.rank}
+                  </span>
+                  <span style={{ color: currentEmployeeRank.rank === 1 ? '#b45309' : '#6d28d9' }}>
+                    • ₹{Number(currentEmployeeRank.item.total || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                {currentEmployeeRank.rank === 1 ? (
+                  <span style={{ fontWeight: 700, color: '#d97706', fontSize: '0.7rem' }}>Leading the Board! 🔥</span>
+                ) : currentEmployeeRank.gapToLeader > 0 ? (
+                  <span style={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.7rem' }}>
+                    ₹{currentEmployeeRank.gapToLeader.toLocaleString('en-IN')} to #1 🥇
+                  </span>
+                ) : null}
+              </div>
+            )}
+
+            {/* Scrollable Leaderboard Rows */}
+            <div style={{
+              padding: '0 6px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              maxHeight: '215px',
+              overflowY: 'auto'
+            }}>
+              {activeLeaderboard && activeLeaderboard.length > 0 ? (
+                activeLeaderboard.map((item: any, index: number) => {
+                  const isCurrent = item.id === employee?.id || item.isCurrentEmployee;
+                  const percentOfTop = Math.round((Number(item.total || 0) / maxLeaderboardVal) * 100);
+                  const medalBg = index === 0 ? '#fef3c7' : index === 1 ? '#f1f5f9' : index === 2 ? '#ffedd5' : '#f8fafc';
+                  const medalColor = index === 0 ? '#d97706' : index === 1 ? '#475569' : index === 2 ? '#c2410c' : '#64748b';
+                  const medalBorder = index === 0 ? '#fde68a' : index === 1 ? '#e2e8f0' : index === 2 ? '#fed7aa' : '#e2e8f0';
+
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        padding: '8px 10px',
+                        backgroundColor: isCurrent ? '#faf5ff' : '#ffffff',
+                        border: isCurrent ? '1.5px solid #a855f7' : '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        boxShadow: isCurrent ? '0 2px 6px rgba(168, 85, 247, 0.12)' : '0 1px 2px rgba(0,0,0,0.02)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          <span style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '6px',
+                            backgroundColor: medalBg,
+                            color: medalColor,
+                            border: `1px solid ${medalBorder}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            flexShrink: 0
+                          }}>
+                            {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
+                          </span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: isCurrent ? '#7c3aed' : '#0f172a' }}>
+                                {item.name}
+                              </span>
+                              {isCurrent && (
+                                <span style={{
+                                  fontSize: '0.62rem',
+                                  fontWeight: 700,
+                                  backgroundColor: '#7c3aed',
+                                  color: '#ffffff',
+                                  padding: '0 5px',
+                                  borderRadius: '4px'
+                                }}>
+                                  YOU
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                              {item.orders} {item.orders === 1 ? 'deal' : 'deals'}
+                              {leaderboardTimeframe === 'MONTHLY' && item.targetPercent !== undefined && (
+                                <span style={{ marginLeft: '6px', color: item.targetPercent >= 100 ? '#059669' : '#4f46e5', fontWeight: 600 }}>
+                                  ({item.targetPercent}% target)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: '0.84rem', fontWeight: 800, color: isCurrent ? '#7c3aed' : '#059669' }}>
+                          ₹{Number(item.total || 0).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+
+                      {/* Velocity bar */}
+                      <div style={{ width: '100%', height: '3px', backgroundColor: '#f1f5f9', borderRadius: '2px', overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${percentOfTop}%`,
+                          height: '100%',
+                          background: isCurrent
+                            ? 'linear-gradient(90deg, #a855f7 0%, #ec4899 100%)'
+                            : index === 0
+                            ? 'linear-gradient(90deg, #f59e0b 0%, #10b981 100%)'
+                            : 'linear-gradient(90deg, #8b5cf6 0%, #3b82f6 100%)',
+                          borderRadius: '2px'
+                        }}></div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ textAlign: 'center', padding: '24px 10px', color: '#64748b', fontSize: '0.78rem' }}>
+                  <Trophy size={28} style={{ color: '#cbd5e1', margin: '0 auto 6px auto' }} />
+                  <p style={{ margin: 0, fontWeight: 600, color: '#0f172a' }}>
+                    {leaderboardTimeframe === 'DAILY' ? 'No orders placed yet today.' : 'No orders recorded this month.'}
+                  </p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.72rem' }}>Close deals and watch your rank climb!</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Bottom Footer */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 14px', borderTop: '1px solid #f1f5f9' }}>
+            <Link href="/orders" style={{ fontSize: '0.74rem', fontWeight: 700, color: '#7c3aed', textDecoration: 'none' }}>
+              View All Orders & Sales →
+            </Link>
+          </div>
         </div>
       </div>
 

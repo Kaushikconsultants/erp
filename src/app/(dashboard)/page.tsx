@@ -368,7 +368,10 @@ export default async function Home() {
       attendanceRecord,
       allEmployeeOrders,
       allConfirmedQuotations,
-      allFollowUps
+      allFollowUps,
+      allOrgOrdersMTD,
+      allOrgQuotesMTD,
+      allOrgEmployees
     ] = await Promise.all([
       employee ? prisma.attendance.findFirst({
         where: {
@@ -426,7 +429,29 @@ export default async function Home() {
         },
         include: { customer: true },
         orderBy: { followUpDate: 'asc' }
-      }) : Promise.resolve([])
+      }) : Promise.resolve([]),
+      prisma.order.findMany({
+        where: {
+          organizationId: orgId,
+          orderDate: { gte: startOfMonth }
+        },
+        include: { salesperson: { include: { user: true } } }
+      }),
+      prisma.quotation.findMany({
+        where: {
+          organizationId: orgId,
+          status: { in: ['Confirmed', 'Converted'] },
+          OR: [
+            { date: { gte: startOfMonth } },
+            { createdAt: { gte: startOfMonth } }
+          ]
+        },
+        include: { salesperson: { include: { user: true } } }
+      }),
+      prisma.employee.findMany({
+        where: { organizationId: orgId },
+        include: { user: true }
+      })
     ]);
 
     const isCheckedIn = !!attendanceRecord;
@@ -511,6 +536,80 @@ export default async function Home() {
 
     const sprintData = employee ? await getSprintData(employee.id) : null;
 
+    // ---------------------------------------------------------
+    // ORG-WIDE LEADERBOARDS: DAILY & MONTHLY
+    // ---------------------------------------------------------
+    // 1. Daily Leaderboard (Today)
+    const dailyMap: Record<string, { id: string, name: string, orders: number, total: number, isCurrentEmployee: boolean }> = {};
+    let todayOrgOrdersCount = 0;
+
+    allOrgOrdersMTD
+      .filter(o => o.orderDate && new Date(o.orderDate) >= todayStart)
+      .forEach(o => {
+        todayOrgOrdersCount += 1;
+        const spId = o.salespersonId || 'unassigned';
+        const name = o.salesperson?.user?.name || 'Sales Champion';
+        if (!dailyMap[spId]) {
+          dailyMap[spId] = { id: spId, name, orders: 0, total: 0, isCurrentEmployee: spId === employee?.id };
+        }
+        dailyMap[spId].orders += 1;
+        dailyMap[spId].total += Number(o.totalValue || 0);
+      });
+
+    allOrgQuotesMTD
+      .filter(q => (q.date && new Date(q.date) >= todayStart) || (q.createdAt && new Date(q.createdAt) >= todayStart))
+      .forEach(q => {
+        todayOrgOrdersCount += 1;
+        const spId = q.salespersonId || 'unassigned';
+        const name = q.salesperson?.user?.name || 'Sales Champion';
+        if (!dailyMap[spId]) {
+          dailyMap[spId] = { id: spId, name, orders: 0, total: 0, isCurrentEmployee: spId === employee?.id };
+        }
+        dailyMap[spId].orders += 1;
+        dailyMap[spId].total += Number(q.totalValue || 0);
+      });
+
+    const dailyLeaderboard = Object.values(dailyMap).sort((a, b) => b.total - a.total);
+
+    // 2. Monthly Leaderboard (MTD)
+    const monthlyMap: Record<string, { id: string, name: string, orders: number, total: number, target: number, targetPercent: number, isCurrentEmployee: boolean }> = {};
+    
+    allOrgEmployees.forEach(emp => {
+      const spId = emp.id;
+      const target = emp.target || 500000;
+      monthlyMap[spId] = {
+        id: spId,
+        name: emp.user?.name || 'Sales Champion',
+        orders: 0,
+        total: 0,
+        target,
+        targetPercent: 0,
+        isCurrentEmployee: spId === employee?.id
+      };
+    });
+
+    allOrgOrdersMTD.forEach(o => {
+      const spId = o.salespersonId;
+      if (spId && monthlyMap[spId]) {
+        monthlyMap[spId].orders += 1;
+        monthlyMap[spId].total += Number(o.totalValue || 0);
+      }
+    });
+
+    allOrgQuotesMTD.forEach(q => {
+      const spId = q.salespersonId;
+      if (spId && monthlyMap[spId]) {
+        monthlyMap[spId].orders += 1;
+        monthlyMap[spId].total += Number(q.totalValue || 0);
+      }
+    });
+
+    Object.values(monthlyMap).forEach(m => {
+      m.targetPercent = m.target > 0 ? Math.min(100, Math.round((m.total / m.target) * 100)) : 0;
+    });
+
+    const monthlyLeaderboard = Object.values(monthlyMap).sort((a, b) => b.total - a.total);
+
     return (
       <>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
@@ -527,6 +626,9 @@ export default async function Home() {
           allOrders={serializedOrders}
           allFollowUps={serializedFollowUps}
           sprintData={sprintData}
+          dailyLeaderboard={dailyLeaderboard}
+          monthlyLeaderboard={monthlyLeaderboard}
+          todayOrdersCount={todayOrgOrdersCount}
         />
       </>
     );

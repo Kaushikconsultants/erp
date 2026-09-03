@@ -67,6 +67,8 @@ export default function AdminDashboard({
 
   // Live Team Presence Filter
   const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<'ALL' | 'ACTIVE' | 'CHECKED_OUT'>('ALL');
+  // Live Leaderboard Timeframe Switcher
+  const [leaderboardMode, setLeaderboardMode] = useState<'DAILY' | 'MONTHLY'>('DAILY');
 
   const activeTeamCount = useMemo(() => {
     return liveAttendance.filter((att: any) => att.isShiftActive).length;
@@ -84,10 +86,29 @@ export default function AdminDashboard({
     });
   }, [liveAttendance, teamAttendanceFilter]);
 
+  const currentLeaderboardList = useMemo(() => {
+    if (leaderboardMode === 'DAILY') {
+      return (liveLeaderboard || []).map((emp: any) => ({
+        name: emp.name,
+        orders: emp.orders,
+        total: Number(emp.total || 0),
+        subtitle: `${emp.orders} ${emp.orders === 1 ? 'order' : 'orders'}`
+      }));
+    } else {
+      return (teamPerformance || []).map((emp: any) => ({
+        name: emp.name,
+        orders: 0,
+        total: Number(emp.sales || 0),
+        targetPercent: emp.targetPercent,
+        subtitle: `${emp.targetPercent}% target`
+      }));
+    }
+  }, [leaderboardMode, liveLeaderboard, teamPerformance]);
+
   const maxLeaderboardTotal = useMemo(() => {
-    if (!liveLeaderboard || liveLeaderboard.length === 0) return 1;
-    return Math.max(...liveLeaderboard.map((emp: any) => Number(emp.total) || 0), 1);
-  }, [liveLeaderboard]);
+    if (!currentLeaderboardList || currentLeaderboardList.length === 0) return 1;
+    return Math.max(...currentLeaderboardList.map((emp: any) => Number(emp.total) || 0), 1);
+  }, [currentLeaderboardList]);
 
   return (
     <div className="dashboard-container admin-dashboard">
@@ -507,24 +528,58 @@ export default function AdminDashboard({
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>
-                    Today's Live Leaderboard
+                    {leaderboardMode === 'DAILY' ? "Today's Live Leaderboard" : "Monthly Team Rankings"}
                   </h3>
                   <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '1px' }}>
-                    Real-time deals closed by sales team
+                    {leaderboardMode === 'DAILY' ? "Real-time deals closed by sales team" : "Month-to-date sales performance"}
                   </div>
                 </div>
               </div>
 
+              {/* Segmented Timeframe Switcher */}
               <div style={{
-                backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                color: '#7c3aed',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                padding: '3px 9px',
-                borderRadius: '12px',
-                border: '1px solid rgba(139, 92, 246, 0.2)'
+                display: 'inline-flex',
+                backgroundColor: '#f1f5f9',
+                padding: '2px',
+                borderRadius: '7px',
+                border: '1px solid #e2e8f0'
               }}>
-                🔥 {todayOrdersCount} Orders Today
+                <button
+                  type="button"
+                  onClick={() => setLeaderboardMode('DAILY')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backgroundColor: leaderboardMode === 'DAILY' ? '#ffffff' : 'transparent',
+                    color: leaderboardMode === 'DAILY' ? '#7c3aed' : '#64748b',
+                    boxShadow: leaderboardMode === 'DAILY' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  ⚡ Daily ({todayOrdersCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeaderboardMode('MONTHLY')}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backgroundColor: leaderboardMode === 'MONTHLY' ? '#ffffff' : 'transparent',
+                    color: leaderboardMode === 'MONTHLY' ? '#7c3aed' : '#64748b',
+                    boxShadow: leaderboardMode === 'MONTHLY' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  🏆 MTD
+                </button>
               </div>
             </div>
 
@@ -538,7 +593,7 @@ export default function AdminDashboard({
               overflowY: 'auto',
               paddingRight: '2px'
             }}>
-              {liveLeaderboard.length > 0 ? liveLeaderboard.map((emp: any, index: number) => {
+              {currentLeaderboardList.length > 0 ? currentLeaderboardList.map((emp: any, index: number) => {
                 const percentOfTop = Math.round((Number(emp.total || 0) / maxLeaderboardTotal) * 100);
                 const medalBg = index === 0 ? '#fef3c7' : index === 1 ? '#f1f5f9' : index === 2 ? '#ffedd5' : '#f8fafc';
                 const medalColor = index === 0 ? '#d97706' : index === 1 ? '#475569' : index === 2 ? '#c2410c' : '#64748b';
@@ -579,7 +634,7 @@ export default function AdminDashboard({
                         <div>
                           <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>{emp.name}</span>
                           <span style={{ fontSize: '0.7rem', color: '#64748b', marginLeft: '6px' }}>
-                            ({emp.orders} {emp.orders === 1 ? 'order' : 'orders'})
+                            ({emp.subtitle})
                           </span>
                         </div>
                       </div>
@@ -610,7 +665,7 @@ export default function AdminDashboard({
                   color: '#64748b',
                   fontSize: '0.78rem'
                 }}>
-                  No sales orders recorded yet today.
+                  {leaderboardMode === 'DAILY' ? 'No sales orders recorded yet today.' : 'No sales records this month.'}
                 </div>
               )}
             </div>
