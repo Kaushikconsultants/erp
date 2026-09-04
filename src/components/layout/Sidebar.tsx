@@ -176,17 +176,11 @@ const Sidebar = ({
 
             {openCategories.crm && (
               <div className="category-sub-list">
-                {(canAccess('leads') || canAccess('pipeline')) && (
-                  <>
-                    <Link href="/pipeline" onClick={onClose} className={`category-sub-item ${isActive('/pipeline') ? 'active' : ''}`}>
-                      <Layers size={16} style={{ color: '#6366f1' }} />
-                      <span>Sales Pipeline</span>
-                    </Link>
-                    <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
-                      <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
-                      <span>Leads</span>
-                    </Link>
-                  </>
+                {canAccess('leads') && (
+                  <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
+                    <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
+                    <span>Leads</span>
+                  </Link>
                 )}
 
                 {canAccess('calls_tasks') && (
@@ -206,6 +200,13 @@ const Sidebar = ({
                   <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
                     <Users size={16} />
                     <span>Customers</span>
+                  </Link>
+                )}
+
+                {(canAccess('pipeline') || canAccess('leads') || canAccess('customers')) && (
+                  <Link href="/pipeline" onClick={onClose} className={`category-sub-item ${isActive('/pipeline') ? 'active' : ''}`}>
+                    <Layers size={16} style={{ color: '#6366f1' }} />
+                    <span>Sales Pipeline</span>
                   </Link>
                 )}
 
