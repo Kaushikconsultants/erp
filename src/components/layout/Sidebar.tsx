@@ -36,7 +36,8 @@ import {
   FolderTree,
   FileText,
   Factory,
-  Blocks
+  Blocks,
+  Layers
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
