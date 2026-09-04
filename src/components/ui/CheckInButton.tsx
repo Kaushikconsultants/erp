@@ -16,11 +16,12 @@ const formatTo12HourTime = (dt: string | Date | null | undefined): string => {
   try {
     const d = new Date(dt);
     if (isNaN(d.getTime())) return "";
-    let h = d.getHours();
-    const m = String(d.getMinutes()).padStart(2, "0");
-    const ampm = h >= 12 ? "PM" : "AM";
-    h = h % 12 || 12;
-    return `${String(h).padStart(2, "0")}:${m} ${ampm}`;
+    return d.toLocaleTimeString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    });
   } catch {
     return "";
   }

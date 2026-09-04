@@ -483,7 +483,18 @@ export default function AdminDashboard({
                         {att.name}
                       </div>
                       <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                        In: <span style={{ fontWeight: 600, color: '#334155' }}>{att.checkInStr}</span>
+                        In: <span style={{ fontWeight: 600, color: '#334155' }}>
+                          {att.checkIn ? (
+                            new Date(att.checkIn).toLocaleTimeString('en-IN', {
+                              timeZone: 'Asia/Kolkata',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              hour12: true
+                            })
+                          ) : (
+                            att.checkInStr || 'Just now'
+                          )}
+                        </span>
                       </div>
                     </div>
                   </div>

@@ -28,11 +28,12 @@ const toTimeDisplay = (dt: string | Date | null | undefined): string => {
   try {
     const d = new Date(dt);
     if (isNaN(d.getTime())) return '';
-    let h = d.getHours();
-    const m = String(d.getMinutes()).padStart(2, '0');
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
-    return `${String(h).padStart(2, '0')}:${m} ${ampm}`;
+    return d.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   } catch {
     return '';
   }
@@ -44,12 +45,19 @@ const to12hParts = (dt: string | Date | null | undefined, defaultH = '09', defau
   try {
     const d = new Date(dt);
     if (isNaN(d.getTime())) return { h: defaultH, m: defaultM, ampm: defaultAmpm };
-    let h = d.getHours();
-    const ampm: 'AM' | 'PM' = h >= 12 ? 'PM' : 'AM';
-    h = h % 12 || 12;
+    const timeStr = d.toLocaleTimeString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    // Expected output format: "09:30 AM" or "09:30 am"
+    const parts = timeStr.trim().split(/\s+/);
+    const [h, m] = parts[0].split(':');
+    const ampm = ((parts[1] || 'AM').toUpperCase()) as 'AM' | 'PM';
     return { 
       h: String(h).padStart(2, '0'), 
-      m: String(d.getMinutes()).padStart(2, '0'), 
+      m: String(m).padStart(2, '0'), 
       ampm 
     };
   } catch {

@@ -200,7 +200,12 @@ export default async function Home() {
       let checkInStr = 'Just now';
       if (a.checkIn) {
         try {
-          checkInStr = new Date(a.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+          checkInStr = new Date(a.checkIn).toLocaleTimeString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
         } catch {
           checkInStr = new Date(a.checkIn).toLocaleTimeString();
         }
@@ -208,6 +213,7 @@ export default async function Home() {
       return {
         id: a.id,
         name: a.employee?.user?.name || 'Team Member',
+        checkIn: a.checkIn ? new Date(a.checkIn).toISOString() : null,
         checkInStr,
         isShiftActive: !a.checkOut
       };
