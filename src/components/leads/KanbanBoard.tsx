@@ -12,7 +12,6 @@ import {
   Layers, 
   ArrowRight, 
   FileText, 
-  UserCheck, 
   Search, 
   Edit2, 
   X, 
@@ -20,14 +19,14 @@ import {
   LayoutGrid, 
   UserPlus, 
   DollarSign,
-  ArrowUpDown,
-  Building2,
-  Sparkles,
   Inbox,
   CheckCircle2,
+  MapPin,
+  User,
   PhoneCall,
   Clock,
-  Briefcase
+  Sparkles,
+  Building2
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
@@ -37,7 +36,7 @@ export const STAGES = [
   { 
     id: 'New Lead', 
     title: 'New Lead', 
-    color: '#3b82f6', 
+    color: '#2563eb', 
     bg: '#eff6ff', 
     border: '#bfdbfe', 
     badgeBg: '#dbeafe',
@@ -47,7 +46,7 @@ export const STAGES = [
   { 
     id: 'Contacted', 
     title: 'Contacted', 
-    color: '#6366f1', 
+    color: '#4f46e5', 
     bg: '#eef2ff', 
     border: '#c7d2fe', 
     badgeBg: '#e0e7ff',
@@ -57,7 +56,7 @@ export const STAGES = [
   { 
     id: 'Qualified', 
     title: 'Qualified', 
-    color: '#8b5cf6', 
+    color: '#7c3aed', 
     bg: '#f5f3ff', 
     border: '#ddd6fe', 
     badgeBg: '#ede9fe',
@@ -147,7 +146,8 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const wonValue = wonLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
   
   const winRate = totalLeadsCount > 0 ? Math.round((wonLeads.length / totalLeadsCount) * 100) : 0;
-  const avgDealSize = openLeads.length > 0 ? Math.round(totalOpenValue / (openLeads.length || 1)) : 0;
+  const valuedDeals = openLeads.filter(l => (l.computedDealValue || l.expectedValue || 0) > 0);
+  const avgDealSize = valuedDeals.length > 0 ? Math.round(totalOpenValue / valuedDeals.length) : (openLeads.length > 0 ? Math.round(totalOpenValue / openLeads.length) : 0);
 
   // Filtered & Sorted Leads
   const filteredLeads = useMemo(() => {
@@ -255,9 +255,10 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
     return repName.slice(0, 2).toUpperCase();
   };
 
-  // Render a Single Modern Deal Card
+  // Render a Single Enterprise Deal Card
   const renderLeadCard = (lead: any, isCompact: boolean = false) => {
-    const cleanPhone = (lead.mobile || lead.whatsappNumber || '').replace(/[^0-9]/g, '');
+    const rawPhone = lead.mobile || lead.whatsappNumber || '';
+    const cleanPhone = rawPhone.replace(/[^0-9]/g, '');
     const dealVal = lead.computedDealValue || lead.expectedValue || 0;
     const isCustomer = !lead.isLeadRecord;
     const detailsUrl = isCustomer ? `/customers/${lead.id}` : `/leads/${lead.id}`;
@@ -267,30 +268,23 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
     return (
       <div 
         key={lead.id}
-        className="deal-card"
+        className="deal-box"
       >
-        {/* Top: Name, Badge & Value */}
-        <div className="deal-card-header">
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-              <Link 
-                href={detailsUrl} 
-                className="deal-title-link"
-                title={lead.businessName || lead.contactPerson}
-              >
-                {lead.businessName || lead.contactPerson || 'Unnamed Deal'}
-              </Link>
-              {lead.isLeadRecord ? (
-                <span className="deal-lead-tag">LEAD</span>
-              ) : (
-                <span className="deal-customer-tag">CLIENT</span>
-              )}
-            </div>
-
-            <div className="deal-meta-text" style={{ marginTop: '3px' }}>
-              {lead.city && <span>📍 {lead.city}</span>}
-              {lead.contactPerson && lead.contactPerson !== lead.businessName && <span>👤 {lead.contactPerson}</span>}
-            </div>
+        {/* Row 1: Header with Name, Badge & Value */}
+        <div className="deal-box-header">
+          <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+            <Link 
+              href={detailsUrl} 
+              className="deal-name-link"
+              title={lead.businessName || lead.contactPerson}
+            >
+              {lead.businessName || lead.contactPerson || 'Unnamed Deal'}
+            </Link>
+            {lead.isLeadRecord ? (
+              <span className="tag-lead">LEAD</span>
+            ) : (
+              <span className="tag-client">CLIENT</span>
+            )}
           </div>
 
           {/* Deal Value Pill */}
@@ -303,18 +297,18 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                   value={customValueInput}
                   onChange={(e) => setCustomValueInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSaveDealValue(lead.id); }}
-                  style={{ width: '70px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #3b82f6', fontSize: '0.74rem', outline: 'none' }}
+                  style={{ width: '65px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #3b82f6', fontSize: '0.72rem', outline: 'none' }}
                 />
                 <button 
                   onClick={() => handleSaveDealValue(lead.id)}
-                  style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: '#059669', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '0.68rem', fontWeight: 700 }}
+                  style={{ padding: '2px 5px', borderRadius: '4px', backgroundColor: '#059669', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}
                 >
                   ✓
                 </button>
               </div>
             ) : (
               <div 
-                className="deal-value-pill"
+                className="val-badge"
                 onClick={() => {
                   setEditingValueLeadId(lead.id);
                   setCustomValueInput(String(dealVal));
@@ -322,22 +316,41 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 title="Click to edit deal value"
               >
                 <span>₹{Number(dealVal || 0).toLocaleString('en-IN')}</span>
-                <Edit2 size={9} style={{ opacity: 0.6 }} />
+                <Edit2 size={8} style={{ opacity: 0.6 }} />
               </div>
             )}
           </div>
         </div>
 
-        {/* Middle Row: Rep Assignment & Stage Jumper */}
-        <div className="deal-mid-row">
-          <div className="deal-rep-selector">
-            <div className="deal-rep-avatar" title={repName || 'Unassigned'}>
+        {/* Row 2: Metadata (Location, Contact, Phone) */}
+        <div className="deal-details-meta">
+          {lead.city && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+              <MapPin size={10} className="deal-meta-icon" /> {lead.city}
+            </span>
+          )}
+          {lead.contactPerson && lead.contactPerson !== lead.businessName && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+              <User size={10} className="deal-meta-icon" /> {lead.contactPerson}
+            </span>
+          )}
+          {rawPhone && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', color: '#94a3b8' }}>
+              • {rawPhone}
+            </span>
+          )}
+        </div>
+
+        {/* Row 3: Sales Rep & Stage Selector */}
+        <div className="deal-rep-stage-row">
+          <div className="deal-rep-group">
+            <div className="deal-rep-circ" title={repName || 'Unassigned'}>
               {getRepInitials(repName)}
             </div>
             <select
               value={lead.assignedSalespersonId || ''}
               onChange={(e) => handleRepAssign(lead.id, e.target.value)}
-              className="deal-select-mini"
+              className="deal-rep-select"
             >
               <option value="">Unassigned</option>
               {employees.map(emp => (
@@ -349,7 +362,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           <select
             value={lead.leadStage || 'New Lead'}
             onChange={(e) => handleStageChange(lead.id, e.target.value)}
-            className="deal-stage-badge-select"
+            className="deal-stage-select"
           >
             {STAGES.map(s => (
               <option key={s.id} value={s.id}>{s.title}</option>
@@ -357,17 +370,17 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           </select>
         </div>
 
-        {/* Action Row */}
-        <div className="deal-actions-row">
+        {/* Row 4: Action Buttons Bar */}
+        <div className="deal-btn-row">
           {/* Primary Advance Button */}
           {lead.leadStage !== 'Won' && lead.leadStage !== 'Lost' && (
             <button
               type="button"
               onClick={() => handleOpenAdvanceModal(lead, STAGES.find(s => s.id === (lead.leadStage || 'New Lead'))?.nextStep || 'Qualified')}
-              className="btn-advance-primary"
+              className="btn-step-adv"
               title="Advance to next pipeline stage"
             >
-              <ArrowRight size={11} /> Advance
+              <ArrowRight size={10} /> Advance
             </button>
           )}
 
@@ -375,10 +388,10 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           {cleanPhone && (
             <a
               href={`tel:${cleanPhone}`}
-              className="btn-icon-action call"
+              className="action-icon-pill call"
               title={`Call ${lead.businessName || 'Lead'}`}
             >
-              <Phone size={12} />
+              <PhoneCall size={11} />
             </a>
           )}
 
@@ -388,10 +401,10 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
               href={`https://wa.me/91${cleanPhone}`}
               target="_blank"
               rel="noreferrer"
-              className="btn-icon-action wa"
+              className="action-icon-pill wa"
               title="Chat on WhatsApp"
             >
-              <MessageSquare size={12} />
+              <MessageSquare size={11} />
             </a>
           )}
 
@@ -400,29 +413,29 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             <button
               type="button"
               onClick={() => setConvertingLead(lead)}
-              className="btn-pill-action convert"
+              className="action-pill-text convert"
               title="Convert Lead into Client"
             >
-              <UserPlus size={11} /> Convert
+              <UserPlus size={10} /> Convert
             </button>
           ) : (
             <Link
               href={`/quotations/new?customerId=${lead.id}`}
-              className="btn-pill-action quote"
+              className="action-pill-text quote"
               title="Generate New Quotation"
             >
-              <FileText size={11} /> + Quote
+              <FileText size={10} /> + Quote
             </Link>
           )}
 
           {/* Card Details Link */}
           <Link
             href={detailsUrl}
-            className="btn-icon-action"
+            className="action-icon-pill"
             style={{ marginLeft: 'auto' }}
             title="View Full Details"
           >
-            <ChevronRight size={13} />
+            <ChevronRight size={12} />
           </Link>
         </div>
       </div>
@@ -430,33 +443,33 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   };
 
   return (
-    <div className="pipeline-wrapper">
+    <div className="pipeline-container">
       
       {/* ─── 0. TOP VIEW SWITCHER TABS ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div className="pipeline-tab-switcher">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+        <div className="pipeline-nav-tabs">
           <button
             type="button"
             onClick={() => setCurrentView('BOARD')}
-            className={`pipeline-tab-btn ${currentView === 'BOARD' ? 'is-active' : ''}`}
+            className={`pipeline-nav-btn ${currentView === 'BOARD' ? 'is-active' : ''}`}
           >
-            <LayoutGrid size={15} /> Multi-Column Board
+            <LayoutGrid size={14} /> Multi-Column Board
           </button>
 
           <button
             type="button"
             onClick={() => setCurrentView('FOCUS')}
-            className={`pipeline-tab-btn ${currentView === 'FOCUS' ? 'is-active' : ''}`}
+            className={`pipeline-nav-btn ${currentView === 'FOCUS' ? 'is-active' : ''}`}
           >
-            <Layers size={15} /> Stage Flow View
+            <Layers size={14} /> Stage Flow View
           </button>
 
           <button
             type="button"
             onClick={() => setCurrentView('TARGETS')}
-            className={`pipeline-tab-btn ${currentView === 'TARGETS' ? 'is-active' : ''}`}
+            className={`pipeline-nav-btn ${currentView === 'TARGETS' ? 'is-active' : ''}`}
           >
-            <Target size={15} /> Rep Targets & Closing
+            <Target size={14} /> Rep Targets & Closing
           </button>
         </div>
       </div>
@@ -466,66 +479,66 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
       ) : (
         <>
           {/* ─── 1. TOP PIPELINE METRICS CARDS ─── */}
-          <div className="pipeline-kpi-grid">
+          <div className="pipeline-kpi-row">
             {/* Card 1: Total Leads */}
-            <div className="pipeline-kpi-card">
-              <div className="kpi-icon-box blue">
-                <Layers size={20} />
+            <div className="kpi-card">
+              <div className="kpi-icon-wrap blue">
+                <Layers size={18} />
               </div>
-              <div className="kpi-content">
-                <span className="kpi-label">Total Pipeline Deals</span>
-                <span className="kpi-value">{leads.length}</span>
-                <span className="kpi-subtext">{openLeads.length} active in workflow</span>
+              <div className="kpi-data">
+                <span className="kpi-title">Total Deals in Pipeline</span>
+                <span className="kpi-metric">{leads.length}</span>
+                <span className="kpi-sub">{openLeads.length} active in workflow</span>
               </div>
             </div>
 
             {/* Card 2: Open Pipeline Value */}
-            <div className="pipeline-kpi-card">
-              <div className="kpi-icon-box purple">
-                <TrendingUp size={20} />
+            <div className="kpi-card">
+              <div className="kpi-icon-wrap indigo">
+                <TrendingUp size={18} />
               </div>
-              <div className="kpi-content">
-                <span className="kpi-label">Open Pipeline Value</span>
-                <span className="kpi-value" style={{ color: '#4f46e5' }}>{formatCurrency(totalOpenValue)}</span>
-                <span className="kpi-subtext">Avg ~{formatCurrency(avgDealSize)} / deal</span>
+              <div className="kpi-data">
+                <span className="kpi-title">Open Pipeline Value</span>
+                <span className="kpi-metric" style={{ color: '#4f46e5' }}>{formatCurrency(totalOpenValue)}</span>
+                <span className="kpi-sub">Avg ~{formatCurrency(avgDealSize)} / deal</span>
               </div>
             </div>
 
             {/* Card 3: Deals Won & Win Rate */}
-            <div className="pipeline-kpi-card">
-              <div className="kpi-icon-box emerald">
-                <Award size={20} />
+            <div className="kpi-card">
+              <div className="kpi-icon-wrap emerald">
+                <Award size={18} />
               </div>
-              <div className="kpi-content">
-                <span className="kpi-label">Deals Won & Win Rate</span>
-                <span className="kpi-value" style={{ color: '#059669' }}>{wonLeads.length} Won ({winRate}%)</span>
-                <span className="kpi-subtext" style={{ color: '#059669', fontWeight: 600 }}>
+              <div className="kpi-data">
+                <span className="kpi-title">Deals Won & Win Rate</span>
+                <span className="kpi-metric" style={{ color: '#059669' }}>{wonLeads.length} Won ({winRate}%)</span>
+                <span className="kpi-sub" style={{ color: '#059669', fontWeight: 600 }}>
                   {formatCurrency(wonValue)} closed
                 </span>
               </div>
             </div>
           </div>
 
-          {/* ─── 2. SEARCH, REP & SORT FILTER TOOLBAR ─── */}
-          <div className="pipeline-filter-bar">
-            {/* Search Input */}
-            <div className="pipeline-search-box">
-              <Search size={15} className="pipeline-search-icon" />
+          {/* ─── 2. TOOLBAR & FILTERS ─── */}
+          <div className="pipeline-toolbar">
+            {/* Search Box */}
+            <div className="search-field">
+              <Search size={14} className="search-field-icon" />
               <input 
                 type="text"
                 placeholder="Search deals by customer, shop, phone or city..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pipeline-search-input"
+                className="search-field-input"
               />
             </div>
 
-            {/* Rep Selector */}
+            {/* Sales Rep Selector */}
             {employees.length > 0 && (
               <select
                 value={selectedRepFilter}
                 onChange={(e) => setSelectedRepFilter(e.target.value)}
-                className="pipeline-filter-select"
+                className="filter-select-input"
               >
                 <option value="ALL">All Sales Representatives ({employees.length})</option>
                 {employees.map(emp => (
@@ -538,7 +551,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="pipeline-filter-select"
+              className="filter-select-input"
             >
               <option value="VALUE_HIGH">Sort: Highest Deal Value</option>
               <option value="VALUE_LOW">Sort: Lowest Deal Value</option>
@@ -560,7 +573,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           {/* ─── 3. VIEW MODE RENDERING ─── */}
           {currentView === 'BOARD' ? (
             /* MULTI-COLUMN KANBAN BOARD */
-            <div className="kanban-board-track">
+            <div className="kanban-track">
               {STAGES.map(stage => {
                 const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                 const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
@@ -568,35 +581,35 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 return (
                   <div 
                     key={stage.id}
-                    className="kanban-column"
+                    className="kanban-col"
                   >
                     {/* Column Header */}
-                    <div className="column-header">
-                      <div className="column-header-left">
-                        <span className="column-status-dot" style={{ backgroundColor: stage.color }}></span>
-                        <span className="column-title" style={{ color: '#0f172a' }}>
+                    <div className="kanban-col-header">
+                      <div className="col-header-left">
+                        <span className="col-dot" style={{ backgroundColor: stage.color }}></span>
+                        <span className="col-title">
                           {stage.title}
                         </span>
                         <span 
-                          className="column-count-badge" 
+                          className="col-badge" 
                           style={{ backgroundColor: stage.badgeBg, color: stage.color, borderColor: stage.border }}
                         >
                           {stageLeads.length}
                         </span>
                       </div>
 
-                      <span className="column-total-val">
+                      <span className="col-sum">
                         {formatCurrency(stageVal)}
                       </span>
                     </div>
 
-                    {/* Column Cards Stack */}
-                    <div className="column-cards-container">
+                    {/* Column Cards Container */}
+                    <div className="kanban-col-cards">
                       {stageLeads.length > 0 ? (
                         stageLeads.map(lead => renderLeadCard(lead, true))
                       ) : (
-                        <div className="empty-column-box">
-                          <Inbox size={24} style={{ color: '#cbd5e1' }} />
+                        <div className="empty-col-state">
+                          <Inbox size={22} style={{ color: '#cbd5e1' }} />
                           <span>No deals in {stage.title}</span>
                         </div>
                       )}
@@ -609,16 +622,16 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             /* STAGE FLOW FOCUSED VIEW */
             <div style={{ 
               backgroundColor: '#ffffff', 
-              borderRadius: '12px', 
+              borderRadius: '10px', 
               border: '1px solid #e2e8f0', 
-              padding: '18px',
+              padding: '16px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '16px'
+              gap: '14px'
             }}>
-              {/* Horizontal Stage Stepper Pills */}
+              {/* Horizontal Stepper */}
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                {STAGES.map((stage, idx) => {
+                {STAGES.map((stage) => {
                   const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                   const count = stageLeads.length;
                   const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
@@ -629,17 +642,17 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                       key={stage.id}
                       onClick={() => setActiveStage(stage.id)}
                       style={{
-                        padding: '8px 14px',
-                        borderRadius: '8px',
+                        padding: '7px 12px',
+                        borderRadius: '7px',
                         border: isSelected ? `1.5px solid ${stage.color}` : '1px solid #e2e8f0',
                         backgroundColor: isSelected ? stage.bg : '#ffffff',
                         color: isSelected ? stage.color : '#475569',
-                        fontSize: '0.82rem',
-                        fontWeight: isSelected ? 750 : 500,
+                        fontSize: '0.8rem',
+                        fontWeight: isSelected ? 700 : 500,
                         whiteSpace: 'nowrap',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '8px',
+                        gap: '6px',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease'
                       }}
@@ -648,15 +661,15 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                       <span style={{ 
                         backgroundColor: isSelected ? stage.color : '#f1f5f9', 
                         color: isSelected ? '#ffffff' : '#64748b',
-                        padding: '2px 7px', 
-                        borderRadius: '10px', 
-                        fontSize: '0.72rem',
+                        padding: '1px 6px', 
+                        borderRadius: '8px', 
+                        fontSize: '0.7rem',
                         fontWeight: 700
                       }}>
                         {count}
                       </span>
                       {stageVal > 0 && (
-                        <span style={{ fontSize: '0.72rem', opacity: 0.85, fontWeight: 600 }}>
+                        <span style={{ fontSize: '0.7rem', opacity: 0.85, fontWeight: 600 }}>
                           • {formatCurrency(stageVal)}
                         </span>
                       )}
@@ -670,32 +683,32 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
-                padding: '10px 14px', 
+                padding: '9px 12px', 
                 backgroundColor: '#f8fafc', 
                 borderRadius: '8px', 
                 border: '1px solid #e2e8f0' 
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: activeStageConfig.color }}></span>
-                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>{activeStageConfig.title} Stage</span>
-                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>({activeStageLeads.length} Deals)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: activeStageConfig.color }}></span>
+                  <span style={{ fontWeight: 700, fontSize: '0.86rem', color: '#0f172a' }}>{activeStageConfig.title} Stage</span>
+                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>({activeStageLeads.length} Deals)</span>
                 </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#059669' }}>
                   Total Value: {formatCurrency(activeStageTotalValue)}
                 </span>
               </div>
 
               {/* Leads List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {activeStageLeads.length > 0 ? (
                   activeStageLeads.map(lead => renderLeadCard(lead, false))
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
-                    <Inbox size={32} style={{ color: '#94a3b8', margin: '0 auto 8px auto' }} />
-                    <h4 style={{ margin: 0, fontWeight: 650, fontSize: '0.92rem', color: '#1e293b' }}>
+                  <div style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    <Inbox size={28} style={{ color: '#94a3b8', margin: '0 auto 6px auto' }} />
+                    <h4 style={{ margin: 0, fontWeight: 650, fontSize: '0.88rem', color: '#1e293b' }}>
                       No deals currently in {activeStageConfig.title}
                     </h4>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
                       Advance deals from earlier stages or create new leads.
                     </p>
                   </div>
@@ -712,33 +725,33 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           className="modal-backdrop" 
           style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
         >
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', width: '100%', maxWidth: '480px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '460px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
             
             {/* Modal Header */}
-            <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700 }}>
                   Advance Pipeline Stage
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
                   {advancingLead.businessName || advancingLead.contactPerson}
                 </p>
               </div>
               <button onClick={() => setAdvancingLead(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 650, color: '#334155', marginBottom: '6px' }}>
-                  Move To Target Stage
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  Target Stage
                 </label>
                 <select
                   value={advanceNextStage}
                   onChange={(e) => setAdvanceNextStage(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem', fontWeight: 600, color: '#1e293b', backgroundColor: '#f8fafc', outline: 'none' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', backgroundColor: '#f8fafc', outline: 'none' }}
                 >
                   {STAGES.map(s => (
                     <option key={s.id} value={s.id}>
@@ -749,7 +762,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 650, color: '#334155', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                   Progress Note / Discussion Details
                 </label>
                 <textarea
@@ -757,28 +770,28 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                   value={advanceNotes}
                   onChange={(e) => setAdvanceNotes(e.target.value)}
                   rows={3}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontFamily: 'inherit', resize: 'none', outline: 'none' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', fontFamily: 'inherit', resize: 'none', outline: 'none' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 650, color: '#334155', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                   Schedule Next Follow-up (Optional)
                 </label>
                 <input
                   type="datetime-local"
                   value={advanceFollowUp}
                   onChange={(e) => setAdvanceFollowUp(e.target.value)}
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
                 />
               </div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
                 <button
                   type="button"
                   onClick={() => setAdvancingLead(null)}
-                  style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}
+                  style={{ padding: '7px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -787,15 +800,14 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                   disabled={advancingLoading}
                   onClick={handleConfirmAdvance}
                   style={{ 
-                    padding: '8px 18px', 
-                    borderRadius: '8px', 
+                    padding: '7px 16px', 
+                    borderRadius: '6px', 
                     border: 'none', 
-                    background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', 
+                    backgroundColor: '#4f46e5', 
                     color: '#ffffff', 
-                    fontWeight: 650, 
-                    fontSize: '0.82rem', 
-                    cursor: advancingLoading ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)'
+                    fontWeight: 600, 
+                    fontSize: '0.8rem', 
+                    cursor: advancingLoading ? 'not-allowed' : 'pointer'
                   }}
                 >
                   {advancingLoading ? "Advancing..." : `Move to ${advanceNextStage} ➔`}
