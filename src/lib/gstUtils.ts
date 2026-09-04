@@ -104,8 +104,12 @@ export function generateHsnSummary(
 }
 
 export function numberToWordsINR(amount: number): string {
-  const num = Math.floor(amount);
-  if (num === 0) return "Zero Rupees Only";
+  const safeAmount = Number(amount);
+  if (isNaN(safeAmount) || safeAmount === 0) return "Indian Rupee Zero Only";
+
+  const isNegative = safeAmount < 0;
+  const num = Math.abs(Math.floor(safeAmount));
+  if (num === 0) return "Indian Rupee Zero Only";
 
   const a = [
     "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
@@ -122,5 +126,5 @@ export function numberToWordsINR(amount: number): string {
     return inWords(Math.floor(n / 10000000)) + " Crore" + (n % 10000000 !== 0 ? " " + inWords(n % 10000000) : "");
   }
 
-  return `Indian Rupee ${inWords(num)} Only`;
+  return `${isNegative ? 'Minus ' : ''}Indian Rupee ${inWords(num)} Only`;
 }

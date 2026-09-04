@@ -132,13 +132,13 @@ export async function getCustomerLedgerStatement(
       notes?: string;
     }[] = [];
 
-    // Customer opening balance
+    // Customer opening balance (placed at timeline origin so periodOpeningBalance starts accurately)
     const rawOpening = customer.openingBalance || 0;
     const isOpeningDebit = customer.openingBalanceType !== 'CREDIT';
 
     if (rawOpening > 0) {
       allEvents.push({
-        date: customer.createdAt,
+        date: new Date(0),
         type: 'OPENING_BALANCE',
         voucherNumber: 'OB-001',
         particulars: 'Opening Balance as per records',

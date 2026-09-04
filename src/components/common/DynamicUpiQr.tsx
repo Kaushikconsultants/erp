@@ -30,8 +30,8 @@ export default function DynamicUpiQr({
   const safeUpiId = upiId || '';
   const safePayee = payeeName || 'Merchant';
 
-  // Standard NPCI UPI URI Scheme
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(safeUpiId)}&pn=${encodeURIComponent(safePayee)}&am=${safeAmount > 0 ? safeAmount.toFixed(2) : '0.00'}&cu=INR${transactionNote ? `&tn=${encodeURIComponent(transactionNote)}` : ''}${transactionRef ? `&tr=${encodeURIComponent(transactionRef)}` : ''}`;
+  // Standard NPCI UPI URI Scheme (omit &am= when amount is 0/unspecified so payer can enter any amount)
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(safeUpiId)}&pn=${encodeURIComponent(safePayee)}${safeAmount > 0 ? `&am=${safeAmount.toFixed(2)}` : ''}&cu=INR${transactionNote ? `&tn=${encodeURIComponent(transactionNote)}` : ''}${transactionRef ? `&tr=${encodeURIComponent(transactionRef)}` : ''}`;
 
   useEffect(() => {
     if (!safeUpiId) return;
@@ -46,7 +46,7 @@ export default function DynamicUpiQr({
     })
       .then(url => setQrDataUrl(url))
       .catch(err => console.error("Error generating UPI QR code:", err));
-  }, [safeUpiId, safePayee, safeAmount, transactionNote, transactionRef, size, upiUrl]);
+  }, [safeUpiId, upiUrl, size]);
 
   if (!safeUpiId) return null;
 
