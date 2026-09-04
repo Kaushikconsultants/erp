@@ -44,7 +44,7 @@ const ALL_SECTIONS = [
   { id: 'credit_notes', label: '📄 Credit Notes', desc: 'Credit notes & sales returns' },
   { id: 'payments', label: '💳 Payments (Inward)', desc: 'Payment tracking & receipts' },
   { id: 'accounting', label: '⚖️ Accounting & Ledgers', desc: 'P&L, Balance Sheet, COA, JV, Ageing & BRS' },
-  { id: 'products', label: '📦 Products Catalog', desc: 'Item pricing & inventory' },
+  { id: 'products', label: '📦 Product Master', desc: 'Item pricing & inventory' },
   { id: 'delivery-challans', label: '🚚 Delivery Challans', desc: 'Material dispatch & invoice converter' },
   { id: 'dispatches', label: '📦 Dispatches', desc: 'Shipping & logistics tracking' },
   { id: 'eway_bills', label: '📜 E-Way Bills', desc: 'E-way bill generation & transport tracking' },

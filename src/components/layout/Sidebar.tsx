@@ -269,7 +269,7 @@ const Sidebar = ({
                 {canAccess('products') && (
                   <Link href="/products" onClick={onClose} className={`category-sub-item ${isActive('/products') ? 'active' : ''}`}>
                     <Package size={16} />
-                    <span>Products Catalog</span>
+                    <span>Product Master</span>
                   </Link>
                 )}
 
