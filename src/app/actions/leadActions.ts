@@ -48,6 +48,12 @@ export async function getPipelineData() {
             select: { id: true, callType: true, outcome: true, followUpDate: true, notes: true, createdAt: true },
             orderBy: { createdAt: 'desc' },
             take: 1
+          },
+          followUps: {
+            select: { id: true, date: true, notes: true, priority: true, status: true, followUpType: true },
+            where: { status: 'Pending' },
+            orderBy: { date: 'asc' },
+            take: 1
           }
         },
         orderBy: { updatedAt: 'desc' }
@@ -64,7 +70,8 @@ export async function getPipelineData() {
             take: 1
           },
           followUps: {
-            select: { id: true, date: true, notes: true, priority: true, status: true },
+            select: { id: true, date: true, notes: true, priority: true, status: true, followUpType: true },
+            where: { status: 'Pending' },
             orderBy: { date: 'asc' },
             take: 1
           }
@@ -103,11 +110,6 @@ export async function getPipelineData() {
       }
 
       // Accurate Order / Quotation / Deal Value calculation:
-      // 1. If explicit expectedValue is set (> 0), use it
-      // 2. Else if customer has confirmed quote, use confirmed quote value
-      // 3. Else if customer has orders, use the latest order value (or totalPurchaseValue)
-      // 4. Else if customer has any quote, use the latest quote value
-      // 5. Otherwise 0
       let dealVal = 0;
       if (c.expectedValue && Number(c.expectedValue) > 0) {
         dealVal = Number(c.expectedValue);
@@ -123,12 +125,21 @@ export async function getPipelineData() {
         dealVal = 0;
       }
 
+      const nextFu = c.nextFollowUp || c.followUps?.[0]?.date || c.calls?.[0]?.followUpDate || null;
+      const nextFuNotes = c.followUps?.[0]?.notes || c.calls?.[0]?.notes || '';
+      const nextFuPriority = c.followUps?.[0]?.priority || 'Medium';
+      const nextFuType = c.followUps?.[0]?.followUpType || 'Call';
+
       return {
         ...c,
         isLeadRecord: false,
         leadStage: effectiveStage,
         expectedValue: dealVal,
-        computedDealValue: dealVal
+        computedDealValue: dealVal,
+        nextFollowUpDate: nextFu ? new Date(nextFu).toISOString() : null,
+        nextFollowUpNotes: nextFuNotes,
+        nextFollowUpPriority: nextFuPriority,
+        nextFollowUpType: nextFuType
       };
     });
 
@@ -144,6 +155,11 @@ export async function getPipelineData() {
         else if (l.status === 'Qualified' || l.status === 'In Progress') stage = 'Qualified';
         else if (l.status === 'Converted') stage = 'Won';
         else if (l.status === 'Lost') stage = 'Lost';
+
+        const nextFu = l.followUps?.[0]?.date || l.calls?.[0]?.followUpDate || null;
+        const nextFuNotes = l.followUps?.[0]?.notes || l.calls?.[0]?.notes || '';
+        const nextFuPriority = l.followUps?.[0]?.priority || 'Medium';
+        const nextFuType = l.followUps?.[0]?.followUpType || 'Call';
 
         return {
           id: l.id,
@@ -162,6 +178,10 @@ export async function getPipelineData() {
           computedDealValue: 0,
           calls: l.calls || [],
           followUps: l.followUps || [],
+          nextFollowUpDate: nextFu ? new Date(nextFu).toISOString() : null,
+          nextFollowUpNotes: nextFuNotes,
+          nextFollowUpPriority: nextFuPriority,
+          nextFollowUpType: nextFuType,
           createdAt: l.createdAt,
           updatedAt: l.updatedAt
         };
@@ -397,5 +417,146 @@ export async function advanceLeadStep(leadId: string, nextStage: string, notes?:
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to advance lead step: " + error.message };
+  }
+}
+
+export async function scheduleLeadFollowUp(
+  leadId: string,
+  followUpDate: string,
+  notes?: string,
+  priority: string = "Medium",
+  followUpType: string = "Call"
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const userId = (session.user as any).id;
+  const organizationId = await getTenantOrgId();
+
+  try {
+    const customer = await prisma.customer.findUnique({ where: { id: leadId } });
+    const employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
+
+    const fDate = new Date(followUpDate);
+    if (isNaN(fDate.getTime())) {
+      return { error: "Invalid follow-up date" };
+    }
+
+    if (customer) {
+      const empId = employee?.id || customer.assignedSalespersonId;
+
+      await prisma.customer.update({
+        where: { id: leadId },
+        data: {
+          nextFollowUp: fDate,
+          notes: notes ? (customer.notes ? `${customer.notes}\n[${new Date().toLocaleDateString('en-IN')}] ${notes}` : notes) : undefined
+        }
+      });
+
+      if (empId) {
+        await prisma.followUp.create({
+          data: {
+            customerId: leadId,
+            employeeId: empId,
+            date: fDate,
+            followUpType,
+            priority,
+            notes: notes || "Scheduled from Sales Pipeline",
+            status: "Pending"
+          }
+        });
+
+        await prisma.call.create({
+          data: {
+            customerId: leadId,
+            employeeId: empId,
+            callType: "Outgoing",
+            status: "Scheduled",
+            outcome: "Follow-up Scheduled",
+            notes: notes || "Follow-up scheduled from Sales Pipeline",
+            followUpDate: fDate
+          }
+        });
+      }
+
+      revalidatePath("/pipeline");
+      revalidatePath("/calls");
+      revalidatePath("/customers");
+      revalidatePath("/");
+      return { success: true };
+    } else {
+      const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+      if (!lead) return { error: "Deal record not found" };
+
+      const empId = employee?.id || lead.assignedSalespersonId;
+      if (empId) {
+        await prisma.followUp.create({
+          data: {
+            leadId,
+            employeeId: empId,
+            date: fDate,
+            followUpType,
+            priority,
+            notes: notes || "Scheduled from Sales Pipeline",
+            status: "Pending"
+          }
+        });
+
+        await prisma.call.create({
+          data: {
+            leadId,
+            employeeId: empId,
+            callType: "Outgoing",
+            status: "Scheduled",
+            outcome: "Follow-up Scheduled",
+            notes: notes || "Follow-up scheduled from Sales Pipeline",
+            followUpDate: fDate
+          }
+        });
+      }
+
+      revalidatePath("/pipeline");
+      revalidatePath("/calls");
+      revalidatePath("/leads");
+      revalidatePath("/");
+      return { success: true };
+    }
+  } catch (error: any) {
+    console.error("Failed to schedule follow up:", error);
+    return { error: error.message || "Failed to schedule follow-up" };
+  }
+}
+
+export async function completeLeadFollowUp(leadId: string, notes?: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    await prisma.followUp.updateMany({
+      where: {
+        OR: [
+          { customerId: leadId, status: "Pending" },
+          { leadId: leadId, status: "Pending" }
+        ]
+      },
+      data: {
+        status: "Completed",
+        notes: notes ? `Completed: ${notes}` : undefined
+      }
+    });
+
+    await prisma.customer.update({
+      where: { id: leadId },
+      data: { nextFollowUp: null }
+    }).catch(() => {});
+
+    revalidatePath("/pipeline");
+    revalidatePath("/calls");
+    revalidatePath("/customers");
+    revalidatePath("/leads");
+    revalidatePath("/");
+    return { success: true };
+  } catch (error: any) {
+    return { error: error.message || "Failed to complete follow-up" };
   }
 }

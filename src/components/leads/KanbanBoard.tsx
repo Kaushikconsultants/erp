@@ -1,7 +1,14 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { updateLeadStage, updateLeadValue, assignLeadRep, advanceLeadStep } from '@/app/actions/leadActions';
+import { 
+  updateLeadStage, 
+  updateLeadValue, 
+  assignLeadRep, 
+  advanceLeadStep,
+  scheduleLeadFollowUp,
+  completeLeadFollowUp
+} from '@/app/actions/leadActions';
 import Link from 'next/link';
 import { 
   Phone, 
@@ -29,7 +36,11 @@ import {
   Building2,
   Check,
   SlidersHorizontal,
-  RotateCcw
+  RotateCcw,
+  AlertCircle,
+  Calendar,
+  CalendarPlus,
+  CalendarClock
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
@@ -108,6 +119,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const [activeStage, setActiveStage] = useState('Contacted');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRepFilter, setSelectedRepFilter] = useState('ALL');
+  const [followUpFilter, setFollowUpFilter] = useState<'ALL' | 'OVERDUE' | 'TODAY' | 'UPCOMING' | 'NONE'>('ALL');
   const [sortBy, setSortBy] = useState<'VALUE_HIGH' | 'VALUE_LOW' | 'NAME' | 'NEWEST'>('VALUE_HIGH');
   const [currentView, setCurrentView] = useState<'BOARD' | 'FOCUS' | 'TARGETS'>('BOARD');
   
@@ -117,6 +129,14 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const [editingStageName, setEditingStageName] = useState<string>('');
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [modalStageNames, setModalStageNames] = useState<Record<string, string>>({});
+
+  // Follow-up Schedule & Manage Modal State
+  const [managingFollowUpLead, setManagingFollowUpLead] = useState<any | null>(null);
+  const [fuDateInput, setFuDateInput] = useState('');
+  const [fuNotesInput, setFuNotesInput] = useState('');
+  const [fuPriorityInput, setFuPriorityInput] = useState('Medium');
+  const [fuTypeInput, setFuTypeInput] = useState('Call');
+  const [fuLoading, setFuLoading] = useState(false);
 
   // Load custom stage names from localStorage
   useEffect(() => {
@@ -140,6 +160,141 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
       title: customStageTitles[s.id] || s.title
     }));
   }, [customStageTitles]);
+
+  // Helper for computing follow-up status on deals
+  const getFollowUpStatus = (dateStr?: string | null) => {
+    if (!dateStr) return { type: 'NONE', label: 'No follow-up', formattedTime: '' };
+    
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return { type: 'NONE', label: 'No follow-up', formattedTime: '' };
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const startOfTomorrow = new Date(startOfToday.getTime() + 86400000);
+    const endOfTomorrow = new Date(endOfToday.getTime() + 86400000);
+
+    const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    if (d < startOfToday) {
+      const diffDays = Math.max(1, Math.round((startOfToday.getTime() - d.getTime()) / 86400000));
+      const label = diffDays === 1 ? 'Yesterday' : `${diffDays}d overdue`;
+      return { type: 'OVERDUE', label, formattedTime: timeStr, date: d };
+    } else if (d >= startOfToday && d <= endOfToday) {
+      return { type: 'TODAY', label: 'Today', formattedTime: timeStr, date: d };
+    } else if (d >= startOfTomorrow && d <= endOfTomorrow) {
+      return { type: 'UPCOMING', label: `Tomorrow ${timeStr}`, formattedTime: timeStr, date: d };
+    } else {
+      const dateFormatted = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      return { type: 'UPCOMING', label: `${dateFormatted}, ${timeStr}`, formattedTime: timeStr, date: d };
+    }
+  };
+
+  // Follow-up Count Metrics across all pipeline deals
+  const fuCounts = useMemo(() => {
+    let overdue = 0;
+    let today = 0;
+    let upcoming = 0;
+    let none = 0;
+
+    leads.forEach(l => {
+      const st = getFollowUpStatus(l.nextFollowUpDate);
+      if (st.type === 'OVERDUE') overdue++;
+      else if (st.type === 'TODAY') today++;
+      else if (st.type === 'UPCOMING') upcoming++;
+      else none++;
+    });
+
+    return { overdue, today, upcoming, none };
+  }, [leads]);
+
+  // Handle preset date selection
+  const setQuickFollowUpPreset = (hoursOffset: number, daysOffset: number, setHour?: number, setMinute?: number) => {
+    const d = new Date();
+    if (daysOffset > 0) {
+      d.setDate(d.getDate() + daysOffset);
+    }
+    if (hoursOffset > 0) {
+      d.setHours(d.getHours() + hoursOffset);
+    }
+    if (setHour !== undefined) {
+      d.setHours(setHour);
+      d.setMinutes(setMinute || 0);
+      d.setSeconds(0);
+    }
+    
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const localIso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setFuDateInput(localIso);
+  };
+
+  // Open follow-up modal
+  const handleOpenFollowUpModal = (lead: any) => {
+    setManagingFollowUpLead(lead);
+    if (lead.nextFollowUpDate) {
+      const d = new Date(lead.nextFollowUpDate);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const localIso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setFuDateInput(localIso);
+    } else {
+      setQuickFollowUpPreset(0, 1, 11, 0); // Default: Tomorrow at 11:00 AM
+    }
+    setFuNotesInput(lead.nextFollowUpNotes || '');
+    setFuPriorityInput(lead.nextFollowUpPriority || 'Medium');
+    setFuTypeInput(lead.nextFollowUpType || 'Call');
+  };
+
+  // Save Follow-up Action
+  const handleSaveFollowUp = async () => {
+    if (!managingFollowUpLead || !fuDateInput) return;
+    setFuLoading(true);
+
+    const res = await scheduleLeadFollowUp(
+      managingFollowUpLead.id,
+      fuDateInput,
+      fuNotesInput,
+      fuPriorityInput,
+      fuTypeInput
+    );
+
+    setFuLoading(false);
+
+    if (res.success) {
+      setLeads(leads.map(l => l.id === managingFollowUpLead.id ? {
+        ...l,
+        nextFollowUpDate: new Date(fuDateInput).toISOString(),
+        nextFollowUpNotes: fuNotesInput,
+        nextFollowUpPriority: fuPriorityInput,
+        nextFollowUpType: fuTypeInput
+      } : l));
+      setManagingFollowUpLead(null);
+    } else {
+      alert(res.error || "Failed to schedule follow-up");
+    }
+  };
+
+  // Mark Follow-up Completed
+  const handleCompleteFollowUp = async () => {
+    if (!managingFollowUpLead) return;
+    setFuLoading(true);
+
+    const res = await completeLeadFollowUp(managingFollowUpLead.id, fuNotesInput);
+
+    setFuLoading(false);
+
+    if (res.success) {
+      setLeads(leads.map(l => l.id === managingFollowUpLead.id ? {
+        ...l,
+        nextFollowUpDate: null,
+        nextFollowUpNotes: '',
+        nextFollowUpPriority: 'Medium',
+        nextFollowUpType: 'Call'
+      } : l));
+      setManagingFollowUpLead(null);
+    } else {
+      alert(res.error || "Failed to complete follow-up");
+    }
+  };
 
   // Handle saving individual stage name
   const handleSaveStageName = (stageId: string, customName?: string) => {
@@ -256,7 +411,12 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
       
       const matchesRep = selectedRepFilter === 'ALL' || l.assignedSalespersonId === selectedRepFilter;
 
-      return matchesSearch && matchesRep;
+      const fuStatus = getFollowUpStatus(l.nextFollowUpDate);
+      const matchesFu = 
+        followUpFilter === 'ALL' ||
+        fuStatus.type === followUpFilter;
+
+      return matchesSearch && matchesRep && matchesFu;
     });
 
     // Sorting
@@ -272,7 +432,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
     });
 
     return result;
-  }, [leads, searchQuery, selectedRepFilter, sortBy]);
+  }, [leads, searchQuery, selectedRepFilter, followUpFilter, sortBy]);
 
   const activeStageConfig = stages.find(s => s.id === activeStage) || stages[1];
   const activeStageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === activeStage);
@@ -436,6 +596,56 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           )}
         </div>
 
+        {/* Row 2.5: Next Follow-Up Status */}
+        {(() => {
+          const fuStatus = getFollowUpStatus(lead.nextFollowUpDate);
+          return (
+            <div className="deal-fu-row">
+              {fuStatus.type === 'OVERDUE' && (
+                <div 
+                  className="fu-tag overdue" 
+                  onClick={() => handleOpenFollowUpModal(lead)}
+                  title={`Overdue since ${fuStatus.formattedTime}. Click to reschedule or mark complete.`}
+                >
+                  <AlertCircle size={10} />
+                  <span>Overdue: {fuStatus.label}</span>
+                </div>
+              )}
+              {fuStatus.type === 'TODAY' && (
+                <div 
+                  className="fu-tag today" 
+                  onClick={() => handleOpenFollowUpModal(lead)}
+                  title={`Due today at ${fuStatus.formattedTime}. Click to reschedule or mark complete.`}
+                >
+                  <Clock size={10} />
+                  <span>Today {fuStatus.formattedTime}</span>
+                </div>
+              )}
+              {fuStatus.type === 'UPCOMING' && (
+                <div 
+                  className="fu-tag upcoming" 
+                  onClick={() => handleOpenFollowUpModal(lead)}
+                  title={`Follow-up on ${fuStatus.label}. Click to manage.`}
+                >
+                  <Calendar size={10} />
+                  <span>{fuStatus.label}</span>
+                </div>
+              )}
+              {fuStatus.type === 'NONE' && (
+                <button 
+                  type="button"
+                  className="fu-tag none" 
+                  onClick={() => handleOpenFollowUpModal(lead)}
+                  title="Schedule a follow-up date and reminder"
+                >
+                  <CalendarPlus size={10} />
+                  <span>+ Follow-up</span>
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Row 3: Sales Rep & Stage Selector */}
         <div className="deal-rep-stage-row">
           <div className="deal-rep-group">
@@ -478,6 +688,16 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
               <ArrowRight size={10} /> Advance
             </button>
           )}
+
+          {/* Quick Schedule / Manage Follow-up */}
+          <button
+            type="button"
+            onClick={() => handleOpenFollowUpModal(lead)}
+            className="action-icon-pill fu"
+            title="Schedule or manage follow-up"
+          >
+            <CalendarClock size={11} />
+          </button>
 
           {/* Quick Call */}
           {cleanPhone && (
@@ -641,6 +861,19 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 ))}
               </select>
             )}
+
+            {/* Follow-up Status Filter */}
+            <select
+              value={followUpFilter}
+              onChange={(e) => setFollowUpFilter(e.target.value as any)}
+              className="filter-select-input"
+            >
+              <option value="ALL">All Follow-ups</option>
+              <option value="OVERDUE">🔴 Overdue Follow-ups ({fuCounts.overdue})</option>
+              <option value="TODAY">🟢 Due Today ({fuCounts.today})</option>
+              <option value="UPCOMING">🔵 Upcoming ({fuCounts.upcoming})</option>
+              <option value="NONE">⚪ No Follow-up Set ({fuCounts.none})</option>
+            </select>
 
             {/* Sort Dropdown */}
             <select
@@ -1140,6 +1373,191 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                   Save Stage Names
                 </button>
               </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ─── 7. SCHEDULE & MANAGE FOLLOW-UP MODAL ─── */}
+      {managingFollowUpLead && (
+        <div 
+          className="modal-backdrop" 
+          style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        >
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '480px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+            
+            {/* Modal Header */}
+            <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Clock size={18} style={{ color: '#a78bfa' }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700 }}>
+                    Schedule Follow-up
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
+                    {managingFollowUpLead.businessName || managingFollowUpLead.contactPerson} • Stage: {managingFollowUpLead.leadStage || 'New Lead'}
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setManagingFollowUpLead(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              
+              {/* Quick Presets */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', marginBottom: '6px' }}>
+                  Quick Presets
+                </label>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUpPreset(2, 0)}
+                    className="fu-preset-btn"
+                  >
+                    ⚡ In 2 Hours
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUpPreset(0, 1, 11, 0)}
+                    className="fu-preset-btn"
+                  >
+                    📅 Tomorrow 11 AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUpPreset(0, 1, 16, 30)}
+                    className="fu-preset-btn"
+                  >
+                    🕒 Tomorrow 4:30 PM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUpPreset(0, 3, 11, 0)}
+                    className="fu-preset-btn"
+                  >
+                    🗓️ In 3 Days
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickFollowUpPreset(0, 7, 11, 0)}
+                    className="fu-preset-btn"
+                  >
+                    📆 Next Week
+                  </button>
+                </div>
+              </div>
+
+              {/* Date & Time Field */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  Follow-up Date & Time *
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={fuDateInput}
+                  onChange={(e) => setFuDateInput(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, color: '#0f172a', backgroundColor: '#f8fafc', outline: 'none', fontFamily: 'inherit' }}
+                />
+              </div>
+
+              {/* Type & Priority Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                    Follow-up Type
+                  </label>
+                  <select
+                    value={fuTypeInput}
+                    onChange={(e) => setFuTypeInput(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', backgroundColor: '#f8fafc', outline: 'none' }}
+                  >
+                    <option value="Call">📞 Outbound Call</option>
+                    <option value="WhatsApp">💬 WhatsApp Follow-up</option>
+                    <option value="Meeting">🤝 In-Person Meeting</option>
+                    <option value="Email">✉️ Email Follow-up</option>
+                    <option value="Sampling">📦 Sample Delivery / Feedback</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                    Priority
+                  </label>
+                  <select
+                    value={fuPriorityInput}
+                    onChange={(e) => setFuPriorityInput(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', backgroundColor: '#f8fafc', outline: 'none' }}
+                  >
+                    <option value="High">🔴 High (Hot Deal)</option>
+                    <option value="Medium">🟡 Medium (Normal)</option>
+                    <option value="Low">⚪ Low (Casual Check-in)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Agenda / Notes */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  Agenda / Call Objective Notes
+                </label>
+                <textarea
+                  placeholder="E.g. Discuss bulk pricing quote, confirm fabric sample selection, verify payment terms..."
+                  value={fuNotesInput}
+                  onChange={(e) => setFuNotesInput(e.target.value)}
+                  rows={3}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', fontFamily: 'inherit', resize: 'none', outline: 'none' }}
+                />
+              </div>
+
+              {/* Footer Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
+                {managingFollowUpLead.nextFollowUpDate ? (
+                  <button
+                    type="button"
+                    disabled={fuLoading}
+                    onClick={handleCompleteFollowUp}
+                    style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #a7f3d0', backgroundColor: '#ecfdf5', color: '#065f46', fontWeight: 650, fontSize: '0.78rem', cursor: fuLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <CheckCircle2 size={13} /> Mark Done
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setManagingFollowUpLead(null)}
+                    style={{ padding: '7px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={fuLoading || !fuDateInput}
+                    onClick={handleSaveFollowUp}
+                    style={{ 
+                      padding: '7px 16px', 
+                      borderRadius: '6px', 
+                      border: 'none', 
+                      backgroundColor: '#4f46e5', 
+                      color: '#ffffff', 
+                      fontWeight: 600, 
+                      fontSize: '0.8rem', 
+                      cursor: fuLoading || !fuDateInput ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {fuLoading ? "Saving..." : "Save Follow-up"}
+                  </button>
+                </div>
+              </div>
+
             </div>
 
           </div>

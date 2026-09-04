@@ -633,6 +633,16 @@
   color: #ffffff;
 }
 
+.action-icon-pill.fu {
+  color: #7c3aed;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+.action-icon-pill.fu:hover {
+  background: #7c3aed;
+  color: #ffffff;
+}
+
 .action-pill-text {
   padding: 2px 6px;
   border-radius: 5px;
@@ -665,6 +675,87 @@
 .action-pill-text.convert:hover {
   background: #7c3aed;
   color: #ffffff;
+}
+
+/* Follow-up Badges on Deal Cards */
+.deal-fu-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.fu-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+}
+
+.fu-tag.overdue {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+.fu-tag.overdue:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.fu-tag.today {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+.fu-tag.today:hover {
+  background-color: #d1fae5;
+  border-color: #6ee7b7;
+}
+
+.fu-tag.upcoming {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+.fu-tag.upcoming:hover {
+  background-color: #dbeafe;
+  border-color: #93c5fd;
+}
+
+.fu-tag.none {
+  background-color: #f8fafc;
+  color: #64748b;
+  border: 1px dashed #cbd5e1;
+}
+.fu-tag.none:hover {
+  background-color: #f1f5f9;
+  color: #4f46e5;
+  border-color: #818cf8;
+}
+
+/* Quick Presets for Follow-up Scheduling */
+.fu-preset-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.fu-preset-btn:hover {
+  border-color: #6366f1;
+  background-color: #eef2ff;
+  color: #4f46e5;
 }
 
 .empty-col-state {
