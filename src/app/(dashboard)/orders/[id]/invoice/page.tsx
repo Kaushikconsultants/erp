@@ -181,8 +181,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         {/* Invoice Metadata Bar */}
         <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '6px 0', display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
           <div>
-            <div style={{ fontWeight: 'bold' }}># : {order.orderNumber}</div>
-            <div>: {new Date(order.createdAt).toLocaleDateString('en-GB')}</div>
+            <div style={{ fontWeight: 'bold' }}>Invoice # : {order.orderNumber}</div>
+            <div>Invoice Date : {new Date(order.createdAt).toLocaleDateString('en-GB')}</div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div><strong>Place Of Supply</strong> : {order.placeOfSupply || order.customer.state || company.state}</div>
@@ -214,39 +214,29 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         {/* Item Table */}
         <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #9ca3af', marginBottom: '16px' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid #9ca3af', backgroundColor: '#f9fafb', fontSize: '11px' }}>
-              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left', width: '30px' }}>#</th>
-              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'left' }}>Item & Description</th>
-              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'center', width: '70px' }}>HSN/SAC</th>
-              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Qty</th>
-              <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Rate</th>
+            <tr style={{ borderBottom: '1px solid #9ca3af', backgroundColor: '#f9fafb', fontSize: '11px', height: '30px' }}>
+              <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'left', width: '30px', verticalAlign: 'middle' }}>#</th>
+              <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'left', verticalAlign: 'middle' }}>Item & Description</th>
+              <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'center', width: '70px', verticalAlign: 'middle' }}>HSN/SAC</th>
+              <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px', verticalAlign: 'middle' }}>Qty</th>
+              <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px', verticalAlign: 'middle' }}>Rate</th>
               {hasDiscount && (
-                <th rowSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px' }}>Discount</th>
+                <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '65px', verticalAlign: 'middle' }}>Discount</th>
               )}
               {isInterstate ? (
-                <th colSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', borderBottom: '1px solid #9ca3af', textAlign: 'center' }}>IGST</th>
-              ) : (
                 <>
-                  <th colSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', borderBottom: '1px solid #9ca3af', textAlign: 'center' }}>CGST</th>
-                  <th colSpan={2} style={{ padding: '6px', borderRight: '1px solid #9ca3af', borderBottom: '1px solid #9ca3af', textAlign: 'center' }}>SGST</th>
-                </>
-              )}
-              <th rowSpan={2} style={{ padding: '6px', textAlign: 'right', width: '90px' }}>Amount</th>
-            </tr>
-            <tr style={{ borderBottom: '1px solid #9ca3af', backgroundColor: '#f9fafb', fontSize: '11px' }}>
-              {isInterstate ? (
-                <>
-                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px' }}>%</th>
-                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '65px' }}>Amt</th>
+                  <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px', verticalAlign: 'middle' }}>IGST %</th>
+                  <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '65px', verticalAlign: 'middle' }}>IGST Amt</th>
                 </>
               ) : (
                 <>
-                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px' }}>%</th>
-                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
-                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px' }}>%</th>
-                  <th style={{ padding: '4px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px' }}>Amt</th>
+                  <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px', verticalAlign: 'middle' }}>CGST %</th>
+                  <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px', verticalAlign: 'middle' }}>CGST Amt</th>
+                  <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '45px', verticalAlign: 'middle' }}>SGST %</th>
+                  <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px', verticalAlign: 'middle' }}>SGST Amt</th>
                 </>
               )}
+              <th style={{ padding: '8px 6px', textAlign: 'right', width: '90px', verticalAlign: 'middle' }}>Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -254,8 +244,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
               <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                 <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', verticalAlign: 'top' }}>{index + 1}</td>
                 <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', verticalAlign: 'top' }}>
-                  <div style={{ fontWeight: 'bold' }}>{item.product.articleNumber || item.product.name}</div>
-                  <div style={{ color: '#4b5563', fontSize: '11px', marginTop: '2px' }}>{item.product.name}</div>
+                  <div style={{ fontWeight: 'bold', fontSize: '11.5px', color: '#0f172a' }}>{item.product.articleNumber || item.product.name}</div>
+                  <div style={{ color: '#334155', whiteSpace: 'pre-line', fontSize: '10.5px', marginTop: '3px', lineHeight: '1.45' }}>{item.product.name}</div>
                 </td>
                 <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'center', verticalAlign: 'top' }}>
                   {item.hsnCode || item.product.hsnCode || '6103'}
