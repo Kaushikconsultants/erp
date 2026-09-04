@@ -351,7 +351,7 @@
 }
 
 .dashboard-table th, .dashboard-table td {
-  padding: 14px 16px;
+  padding: 8px 12px;
   text-align: left;
   border-bottom: 1px solid var(--border, #e2e8f0);
 }

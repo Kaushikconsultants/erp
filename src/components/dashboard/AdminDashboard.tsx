@@ -992,11 +992,11 @@ export default function AdminDashboard({
             <table className="dashboard-table">
               <thead>
                 <tr style={{ borderBottom: '2px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-                  <th style={{ minWidth: '180px', padding: '14px 18px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employee</th>
-                  <th style={{ minWidth: '200px', padding: '14px 18px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Monthly Sales (MTD)</th>
-                  <th style={{ minWidth: '270px', padding: '14px 18px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Sprint (Week {orgSprintSummary?.currentWeekNum || 1} Bar)</th>
-                  <th style={{ minWidth: '210px', padding: '14px 18px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sprint Health Score</th>
-                  <th style={{ textAlign: 'right', minWidth: '260px', padding: '14px 18px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target & Task Management</th>
+                  <th style={{ minWidth: '160px', padding: '8px 12px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employee</th>
+                  <th style={{ minWidth: '190px', padding: '8px 24px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Monthly Sales (MTD)</th>
+                  <th style={{ minWidth: '260px', padding: '8px 24px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Sprint (Week {orgSprintSummary?.currentWeekNum || 1} Bar)</th>
+                  <th style={{ minWidth: '200px', padding: '8px 24px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sprint Health Score</th>
+                  <th style={{ textAlign: 'right', minWidth: '230px', padding: '8px 12px', fontWeight: 600, fontSize: '0.82rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Target & Task Management</th>
                 </tr>
               </thead>
               <tbody>
@@ -1044,56 +1044,56 @@ export default function AdminDashboard({
                     <tr key={emp.id} style={{ transition: 'background-color 0.15s ease', borderBottom: '1px solid #f1f5f9' }}>
                       
                       {/* Employee Column */}
-                      <td className="font-medium" style={{ padding: '16px 18px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <td className="font-medium" style={{ padding: '8px 12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>{emp.name}</span>
+                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{emp.name}</span>
                             {streak > 0 && (
                               <span style={{ fontSize: '10px', fontWeight: 700, backgroundColor: '#fef08a', color: '#854d0e', padding: '1px 5px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
                                 <Flame size={10} color="#d97706" /> {streak}d
                               </span>
                             )}
                           </div>
-                          <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
                             Today: <span style={{ fontWeight: 600, color: '#334155' }}>{todayCalls} calls</span> • <span style={{ fontWeight: 600, color: '#334155' }}>{todayQuotes} quotes</span>
                           </div>
                         </div>
                       </td>
 
                       {/* Monthly Sales (MTD) */}
-                      <td style={{ padding: '16px 18px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <td style={{ padding: '8px 24px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 800, fontSize: '0.92rem', color: '#0f172a' }}>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>
                               ₹{emp.sales.toLocaleString('en-IN')}
                             </span>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: employeeTargetPercent >= 80 ? '#16a34a' : '#4f46e5' }}>
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: employeeTargetPercent >= 80 ? '#16a34a' : '#4f46e5' }}>
                               {employeeTargetPercent}% MTD
                             </span>
                           </div>
                           
                           {/* Mini Progress Bar */}
-                          <div className="mini-progress-bar" style={{ height: '5px', margin: 0, backgroundColor: '#e2e8f0' }}>
+                          <div className="mini-progress-bar" style={{ height: '4px', margin: '1px 0', backgroundColor: '#e2e8f0' }}>
                             <div 
                               className={`mini-progress-fill ${employeeTargetPercent >= 100 ? 'bg-success' : 'bg-primary'}`} 
                               style={{ width: `${Math.min(100, employeeTargetPercent)}%`, height: '100%' }} 
                             />
                           </div>
-                          <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>
+                          <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>
                             Target: <span style={{ fontWeight: 600, color: '#334155' }}>₹{Number(employeeMonthlyTarget).toLocaleString('en-IN')}</span>
                           </span>
                         </div>
                       </td>
 
                       {/* Current Sprint Progress Bar (Week X) */}
-                      <td style={{ padding: '16px 18px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '8px 24px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', backgroundColor: '#f8fafc', padding: '5px 10px', borderRadius: '6px', border: '1px solid #f1f5f9' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a' }}>
-                              ₹{sprintRevenue.toLocaleString('en-IN')} <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#64748b' }}>/ ₹{sprintTarget.toLocaleString('en-IN')}</span>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a' }}>
+                              ₹{sprintRevenue.toLocaleString('en-IN')} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: '#64748b' }}>/ ₹{sprintTarget.toLocaleString('en-IN')}</span>
                             </span>
                             <span style={{
-                              fontSize: '0.73rem',
+                              fontSize: '0.72rem',
                               fontWeight: 700,
                               color: sprintProgress >= 100 ? '#15803d' : sprintProgress >= 60 ? '#4338ca' : '#b91c1c'
                             }}>
@@ -1102,7 +1102,7 @@ export default function AdminDashboard({
                           </div>
 
                           {/* Dynamic Sprint Pacing Health Bar */}
-                          <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
                             <div style={{
                               width: `${Math.min(100, sprintProgress)}%`,
                               height: '100%',
@@ -1117,7 +1117,7 @@ export default function AdminDashboard({
                           </div>
 
                           {/* Gap & Daily Pace indicator */}
-                          <div style={{ fontSize: '0.7rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontSize: '0.68rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             {sprintProgress >= 100 ? (
                               <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ Sprint Target Met 🎉</span>
                             ) : (
@@ -1131,13 +1131,13 @@ export default function AdminDashboard({
                       </td>
 
                       {/* Sprint Health Score & Health Velocity Meter */}
-                      <td style={{ padding: '16px 18px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <td style={{ padding: '8px 24px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{
-                              padding: '3px 8px',
-                              borderRadius: '6px',
-                              fontSize: '11px',
+                              padding: '2px 7px',
+                              borderRadius: '5px',
+                              fontSize: '10.5px',
                               fontWeight: 700,
                               backgroundColor: healthStatus === 'EXCELLENT' ? '#dcfce7' : healthStatus === 'ON_TRACK' ? '#e0e7ff' : '#fee2e2',
                               color: healthStatus === 'EXCELLENT' ? '#15803d' : healthStatus === 'ON_TRACK' ? '#4338ca' : '#b91c1c',
@@ -1146,8 +1146,8 @@ export default function AdminDashboard({
                               gap: '4px'
                             }}>
                               <span style={{
-                                width: '6px',
-                                height: '6px',
+                                width: '5px',
+                                height: '5px',
                                 borderRadius: '50%',
                                 backgroundColor: healthStatus === 'EXCELLENT' ? '#16a34a' : healthStatus === 'ON_TRACK' ? '#4f46e5' : '#dc2626'
                               }} />
@@ -1156,7 +1156,7 @@ export default function AdminDashboard({
                           </div>
 
                           {/* Health Velocity Meter Bar */}
-                          <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ width: '100%', height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
                             <div style={{
                               width: `${Math.min(100, Math.max(5, healthScore))}%`,
                               height: '100%',
@@ -1165,20 +1165,20 @@ export default function AdminDashboard({
                                 : healthStatus === 'ON_TRACK'
                                   ? 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)'
                                   : 'linear-gradient(90deg, #f87171 0%, #ef4444 100%)',
-                              borderRadius: '3px',
+                              borderRadius: '2px',
                               transition: 'width 0.3s ease'
                             }} />
                           </div>
 
-                          <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                          <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
                             Calls: <strong style={{ color: '#334155' }}>{todayCalls}/{employeeTargetObj.dailyCallsTarget || 15}</strong> • Quotes: <strong style={{ color: '#334155' }}>{todayQuotes}/{employeeTargetObj.dailyQuotesTarget || 2}</strong>
                           </span>
                         </div>
                       </td>
 
                       {/* Actions */}
-                      <td style={{ textAlign: 'right', padding: '16px 18px' }}>
-                        <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'flex-end' }}>
+                      <td style={{ textAlign: 'right', padding: '8px 12px' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-end' }}>
                           
                           {/* Edit Targets */}
                           <button
