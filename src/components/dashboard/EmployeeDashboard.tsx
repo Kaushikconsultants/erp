@@ -63,8 +63,21 @@ function FollowUpCard({ call }: { call: any }) {
     setIsEditing(false);
   };
 
-  const cleanPhone = (call.customer?.mobile || '').replace(/[^0-9]/g, '');
-  const priority = call.priority || (call.customer?.leadStage === 'Negotiation' ? 'HIGH' : 'MEDIUM');
+  const isLead = !call.customer && !!call.lead;
+  const customerName = (call.customer?.businessName || call.lead?.shopName || call.lead?.name || '').trim();
+  const contactPerson = (call.customer?.contactPerson || (call.lead?.shopName ? call.lead?.name : '') || '').trim();
+  const rawPhone = call.customer?.mobile || call.customer?.phone || call.customer?.whatsappNumber || call.lead?.whatsappNumber || call.lead?.mobile || '';
+  const cleanPhone = (rawPhone || '').replace(/[^0-9]/g, '');
+  const priority = call.priority || ((call.customer?.leadStage === 'Negotiation' || call.lead?.stage === 'Negotiation') ? 'HIGH' : 'MEDIUM');
+
+  // If this record has neither customer nor lead data, suppress the ghost card
+  if (!customerName && !contactPerson && !call.customerId && !call.leadId) {
+    return null;
+  }
+
+  const displayName = customerName || contactPerson || 'Customer';
+  const detailsHref = call.customerId ? `/customers/${call.customerId}` : call.leadId ? `/leads/${call.leadId}` : '/calls';
+  const logCallHref = call.customerId ? `/calls?customerId=${call.customerId}` : call.leadId ? `/calls?leadId=${call.leadId}` : '/calls';
 
   return (
     <div style={{ 
@@ -79,10 +92,22 @@ function FollowUpCard({ call }: { call: any }) {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
-              {call.customer?.businessName || 'Unknown Customer'}
-            </h4>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <Link href={detailsHref} style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', textDecoration: 'none' }}>
+              {displayName}
+            </Link>
+            {isLead && (
+              <span style={{ 
+                fontSize: '10px', 
+                fontWeight: 700, 
+                padding: '1px 6px', 
+                borderRadius: '6px', 
+                backgroundColor: '#eef2ff', 
+                color: '#4f46e5' 
+              }}>
+                Lead
+              </span>
+            )}
             <span style={{ 
               fontSize: '10px', 
               fontWeight: 700, 
@@ -95,7 +120,7 @@ function FollowUpCard({ call }: { call: any }) {
             </span>
           </div>
           <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-            {call.customer?.contactPerson || 'Contact Person'} • {call.notes || 'Scheduled follow-up call'}
+            {contactPerson && contactPerson !== displayName ? `${contactPerson} • ` : ''}{call.notes || 'Scheduled follow-up call'}
           </p>
         </div>
       </div>
@@ -134,7 +159,7 @@ function FollowUpCard({ call }: { call: any }) {
               </a>
             </>
           )}
-          <Link href={`/calls?customerId=${call.customerId}`} className="action-btn outline-primary" style={{ textDecoration: 'none', padding: '6px 10px', fontSize: '12px' }}>
+          <Link href={logCallHref} className="action-btn outline-primary" style={{ textDecoration: 'none', padding: '6px 10px', fontSize: '12px' }}>
             Log Call
           </Link>
           <button onClick={() => setIsEditing(true)} className="action-btn" style={{ padding: '6px 10px', fontSize: '12px', cursor: 'pointer', border: '1px solid #cbd5e1', color: '#475569', background: 'transparent' }}>
@@ -211,25 +236,38 @@ export default function EmployeeDashboard({
   const todayDateStr = new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
   const targetMonthlyGoal = employee?.target || 500000;
 
-  // Compute date ranges
+  // Filter out any ghost/orphan follow-ups that lack valid customer/lead identification
+  const validTodayFollowUps = useMemo(() => {
+    return todayFollowUps.filter((c: any) => 
+      (c.customer && Boolean((c.customer.businessName || '').trim() || (c.customer.contactPerson || '').trim())) ||
+      (c.lead && Boolean((c.lead.shopName || '').trim() || (c.lead.name || '').trim()))
+    );
+  }, [todayFollowUps]);
+
+  const validAllFollowUps = useMemo(() => {
+    return allFollowUps.filter((c: any) => 
+      (c.customer && Boolean((c.customer.businessName || '').trim() || (c.customer.contactPerson || '').trim())) ||
+      (c.lead && Boolean((c.lead.shopName || '').trim() || (c.lead.name || '').trim()))
+    );
+  }, [allFollowUps]);
+
+  // Dynamic Time-Period calculations based on selected filter
   const { filteredOrders, previousOrders, filteredFollowUps, periodLabel, targetPeriodGoal } = useMemo(() => {
     const now = new Date();
-    
-    // Today
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-    const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    
+    // Week Start (Monday)
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const weekStart = new Date(now.getFullYear(), now.getMonth(), diff);
+    const prevWeekStart = new Date(now.getFullYear(), now.getMonth(), diff - 7);
 
-    // This Week (Monday to Sunday)
-    const dayOfWeek = now.getDay();
-    const diffToMonday = (dayOfWeek + 6) % 7;
-    const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday);
-    const prevWeekStart = new Date(weekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    // This Month
+    // Month Start
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
     let orders: any[] = [];
     let prevOrders: any[] = [];
@@ -250,7 +288,7 @@ export default function EmployeeDashboard({
         const d = new Date(o.orderDate);
         return d >= yesterdayStart && d < todayStart;
       });
-      followUps = allFollowUps.filter(f => {
+      followUps = validAllFollowUps.filter(f => {
         if (!f.followUpDate) return false;
         const d = new Date(f.followUpDate);
         return d >= todayStart && d < todayEnd;
@@ -268,7 +306,7 @@ export default function EmployeeDashboard({
         const d = new Date(o.orderDate);
         return d >= prevWeekStart && d < weekStart;
       });
-      followUps = allFollowUps.filter(f => {
+      followUps = validAllFollowUps.filter(f => {
         if (!f.followUpDate) return false;
         const d = new Date(f.followUpDate);
         return d >= weekStart;
@@ -286,7 +324,7 @@ export default function EmployeeDashboard({
         const d = new Date(o.orderDate);
         return d >= prevMonthStart && d <= prevMonthEnd;
       });
-      followUps = allFollowUps.filter(f => {
+      followUps = validAllFollowUps.filter(f => {
         if (!f.followUpDate) return false;
         const d = new Date(f.followUpDate);
         return d >= monthStart;
@@ -296,7 +334,7 @@ export default function EmployeeDashboard({
       periodGoal = targetMonthlyGoal * 6;
       orders = allOrders;
       prevOrders = [];
-      followUps = allFollowUps;
+      followUps = validAllFollowUps;
     }
 
     return {
@@ -306,7 +344,7 @@ export default function EmployeeDashboard({
       periodLabel: label,
       targetPeriodGoal: periodGoal
     };
-  }, [allOrders, allFollowUps, timeFilter, targetMonthlyGoal]);
+  }, [allOrders, validAllFollowUps, timeFilter, targetMonthlyGoal]);
 
   // Calculate Sales Amount using totalValue as true order value
   const totalSales = filteredOrders.reduce((sum, o) => sum + Number(o.totalValue !== null && o.totalValue !== undefined ? o.totalValue : (o.subtotal || 0)), 0);
@@ -386,7 +424,7 @@ export default function EmployeeDashboard({
         
         {/* LEFT: TODAY'S FOLLOW-UPS */}
         <div className="zoho-card" style={{
-          borderLeft: todayFollowUps.length > 0 ? '4px solid #ef4444' : '1px solid #cbd5e1',
+          borderLeft: validTodayFollowUps.length > 0 ? '4px solid #ef4444' : '1px solid #cbd5e1',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -400,7 +438,7 @@ export default function EmployeeDashboard({
                 </div>
                 <div>
                   <h2 className="zoho-title" style={{ fontSize: '1rem' }}>
-                    Today's Follow-ups ({todayFollowUps.length})
+                    Today's Follow-ups ({validTodayFollowUps.length})
                   </h2>
                   <p className="zoho-subtitle" style={{ fontSize: '0.75rem' }}>Priority calls scheduled for today</p>
                 </div>
@@ -411,9 +449,9 @@ export default function EmployeeDashboard({
             </div>
 
             <div style={{ padding: '4px 6px', maxHeight: '270px', overflowY: 'auto' }}>
-              {todayFollowUps.length > 0 ? (
+              {validTodayFollowUps.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {todayFollowUps.map((call: any) => (
+                  {validTodayFollowUps.map((call: any) => (
                     <FollowUpCard key={call.id} call={call} />
                   ))}
                 </div>

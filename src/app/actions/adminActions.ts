@@ -112,12 +112,21 @@ export async function getKPIDetails(type: 'customers' | 'orders' | 'calls', time
     if (type === 'calls') {
       const data = await prisma.call.findMany({
         where: {
-          ...(orgId ? { customer: { organizationId: orgId } } : {}),
-          ...(timeRange !== 'all' ? { followUpDate: { gte: startDate } } : {}),
-          followUpDate: { not: null }
+          followUpDate: { not: null },
+          ...(orgId ? {
+            OR: [
+              { customer: { organizationId: orgId } },
+              { lead: { organizationId: orgId } }
+            ]
+          } : {}),
+          ...(timeRange !== 'all' ? { followUpDate: { gte: startDate } } : {})
         },
         orderBy: { followUpDate: 'desc' },
-        include: { customer: true, employee: { include: { user: true } } }
+        include: {
+          customer: true,
+          lead: true,
+          employee: { include: { user: true } }
+        }
       });
       return { success: true, data };
     }

@@ -168,7 +168,11 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
       prisma.call.count({
         where: {
           employeeId: employee.id,
-          followUpDate: { gte: todayStart, lte: todayEnd }
+          followUpDate: { gte: todayStart, lte: todayEnd },
+          OR: [
+            { customer: { organizationId: employee.organizationId } },
+            { lead: { organizationId: employee.organizationId } }
+          ]
         }
       })
     ]);

@@ -114,13 +114,15 @@ export default function CallsTableClient({
           <tbody>
             {calls.map(call => {
               const isOverdue = call.followUpDate && new Date(call.followUpDate) < new Date();
-              const customerName = call.customer?.businessName || call.customer?.contactPerson || call.lead?.name || 'Unknown';
+              const customerName = call.customer?.businessName || call.lead?.shopName || call.lead?.name || call.customer?.contactPerson || 'Customer';
               return (
                 <tr key={call.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{new Date(call.createdAt).toLocaleDateString('en-GB')}</td>
                   <td>
-                    <strong>{call.customer?.businessName || call.lead?.name || 'Unknown'}</strong>
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{call.customer?.contactPerson || (call.lead ? 'Lead' : '')}</div>
+                    <strong>{customerName}</strong>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      {call.customer?.contactPerson || (call.lead ? `Lead • ${call.lead.name || ''}` : '')}
+                    </div>
                   </td>
                   <td>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: call.callType === 'INBOUND' ? '#e0e7ff' : '#f1f5f9', color: call.callType === 'INBOUND' ? '#4338ca' : '#475569' }}>

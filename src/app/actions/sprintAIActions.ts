@@ -85,11 +85,15 @@ export async function generateAISalespersonSprintPlan(employeeId: string): Promi
     const pendingFollowUps = await prisma.call.findMany({
       where: {
         employeeId: employee.id,
-        followUpDate: { gte: new Date(new Date().setDate(new Date().getDate() - 2)) }
+        followUpDate: { gte: new Date(new Date().setDate(new Date().getDate() - 2)) },
+        OR: [
+          { customer: { organizationId: employee.organizationId } },
+          { lead: { organizationId: employee.organizationId } }
+        ]
       },
       take: 10,
       orderBy: { followUpDate: "asc" },
-      include: { customer: true }
+      include: { customer: true, lead: true }
     });
 
     const gap = sprint.sprintGap;
@@ -122,7 +126,7 @@ Hot / Negotiation Customers Assigned:
 ${employee.customers.filter(c => c.leadStage === 'Negotiation' || c.temperature === 'HOT').map(c => `- ${c.businessName} (Contact: ${c.contactPerson}, Total History: ₹${c.totalPurchaseValue})`).join("\n")}
 
 Pending Follow-up Calls:
-${pendingFollowUps.map(f => `- ${f.customer?.businessName}: ${f.notes || 'Follow-up'} (Scheduled: ${f.followUpDate?.toISOString().split('T')[0]})`).join("\n")}
+${pendingFollowUps.map(f => `- ${f.customer?.businessName || f.lead?.shopName || f.lead?.name || 'Customer'}: ${f.notes || 'Follow-up'} (Scheduled: ${f.followUpDate?.toISOString().split('T')[0]})`).join("\n")}
 
 Output a strict JSON object with:
 {

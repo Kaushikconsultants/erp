@@ -109,17 +109,21 @@ export default function TelecallerDashboard({
             {missedCalls.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No missed calls to retry.</p>
             ) : (
-              missedCalls.map(call => (
-                <div key={call.id} style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{call.customer?.businessName || 'Unknown Customer'}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Outcome: {call.outcome}</div>
+              missedCalls.map(call => {
+                const name = call.customer?.businessName || call.lead?.shopName || call.lead?.name || 'Customer';
+                const targetLink = call.customerId ? `/customers/${call.customerId}` : call.leadId ? `/leads/${call.leadId}` : '/calls';
+                return (
+                  <div key={call.id} style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{name}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Outcome: {call.outcome}</div>
+                    </div>
+                    <Link href={targetLink} className="action-btn outline-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', border: '1px solid var(--border)', borderRadius: '6px', textDecoration: 'none' }}>
+                      Call Now
+                    </Link>
                   </div>
-                  <Link href={`/customers/${call.customerId}`} className="action-btn outline-primary" style={{ padding: '6px 12px', fontSize: '0.8rem', border: '1px solid var(--border)', borderRadius: '6px', textDecoration: 'none' }}>
-                    Call Now
-                  </Link>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

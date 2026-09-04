@@ -272,10 +272,13 @@ export default async function Home() {
       }),
       prisma.call.findMany({
         where: { 
-          customer: { organizationId: orgId },
-          createdAt: { gte: todayStart } 
+          createdAt: { gte: todayStart },
+          OR: [
+            { customer: { organizationId: orgId } },
+            { lead: { organizationId: orgId } }
+          ]
         },
-        include: { customer: true }
+        include: { customer: true, lead: true }
       })
     ]);
 
@@ -321,15 +324,23 @@ export default async function Home() {
         where: {
           employeeId: employee.id,
           outcome: { in: ["Missed", "No Answer", "Busy", "Voicemail"] },
+          OR: [
+            { customer: { organizationId: orgId } },
+            { lead: { organizationId: orgId } }
+          ]
         },
-        include: { customer: true },
+        include: { customer: true, lead: true },
         orderBy: { createdAt: 'desc' },
         take: 10
       }) : Promise.resolve([]),
       employee ? prisma.call.count({
         where: {
           employeeId: employee.id,
-          createdAt: { gte: todayStart }
+          createdAt: { gte: todayStart },
+          OR: [
+            { customer: { organizationId: orgId } },
+            { lead: { organizationId: orgId } }
+          ]
         }
       }) : Promise.resolve(0),
       getFollowUpRecommendations()
@@ -425,9 +436,16 @@ export default async function Home() {
       employee ? prisma.call.findMany({
         where: {
           employeeId: employee.id,
-          followUpDate: { not: null }
+          followUpDate: { not: null },
+          OR: [
+            { customer: { organizationId: orgId } },
+            { lead: { organizationId: orgId } }
+          ]
         },
-        include: { customer: true },
+        include: {
+          customer: { select: { id: true, businessName: true, contactPerson: true, mobile: true, phone: true, whatsappNumber: true, leadStage: true, status: true, city: true, state: true } },
+          lead: { select: { id: true, name: true, shopName: true, mobile: true, whatsappNumber: true, stage: true, city: true, state: true } }
+        },
         orderBy: { followUpDate: 'asc' }
       }) : Promise.resolve([]),
       prisma.order.findMany({
@@ -513,8 +531,15 @@ export default async function Home() {
     const targetGoal = employee?.target || 500000;
     const incentiveData = calculateIncentives(formattedOrders, targetGoal, activePolicy);
 
-    const todayFollowUps = allFollowUps.filter(c => {
+    // Filter out orphan/ghost calls without real customer or lead data
+    const validFollowUps = allFollowUps.filter(c => {
       if (!c.followUpDate) return false;
+      const hasCustomer = c.customer && Boolean((c.customer.businessName || '').trim() || (c.customer.contactPerson || '').trim());
+      const hasLead = c.lead && Boolean((c.lead.shopName || '').trim() || (c.lead.name || '').trim());
+      return hasCustomer || hasLead;
+    });
+
+    const todayFollowUps = validFollowUps.filter(c => {
       const d = new Date(c.followUpDate);
       return d >= todayStart && d < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
     });
@@ -522,7 +547,7 @@ export default async function Home() {
     // Serialize cleanly for client component props - include confirmed quotations
     const serializedOrders = allCombinedSales;
 
-    const serializedFollowUps = allFollowUps.map(f => ({
+    const serializedFollowUps = validFollowUps.map(f => ({
       ...f,
       followUpDate: f.followUpDate ? f.followUpDate.toISOString() : null,
       createdAt: f.createdAt ? f.createdAt.toISOString() : null

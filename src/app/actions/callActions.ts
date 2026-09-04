@@ -8,17 +8,19 @@ import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 
 export async function logCall(formData: FormData) {
-  const customerId = formData.get("customerId") as string;
-  const leadId = formData.get("leadId") as string;
+  const rawCustomerId = (formData.get("customerId") as string || "").trim();
+  const rawLeadId = (formData.get("leadId") as string || "").trim();
+  const customerId = (rawCustomerId && rawCustomerId !== "undefined" && rawCustomerId !== "null") ? rawCustomerId : null;
+  const leadId = (rawLeadId && rawLeadId !== "undefined" && rawLeadId !== "null") ? rawLeadId : null;
   const type = formData.get("type") as string || "OUTBOUND";
   const outcome = formData.get("outcome") as string;
   const notes = formData.get("notes") as string;
-  const followUpDateStr = formData.get("followUpDate") as string;
+  const followUpDateStr = (formData.get("followUpDate") as string || "").trim();
   const recordingUrl = formData.get("recordingUrl") as string;
   const summary = formData.get("summary") as string;
 
   if ((!customerId && !leadId) || !outcome) {
-    return { error: "Customer/Lead and Outcome are required" };
+    return { error: "A valid Customer or Lead and Outcome are required" };
   }
 
   try {
@@ -42,7 +44,10 @@ export async function logCall(formData: FormData) {
 
     let followUpDate = null;
     if (followUpDateStr) {
-      followUpDate = new Date(followUpDateStr);
+      const parsed = new Date(followUpDateStr);
+      if (!isNaN(parsed.getTime())) {
+        followUpDate = parsed;
+      }
     }
 
     // Build base data
@@ -168,7 +173,33 @@ export async function rescheduleFollowUp(callId: string, newDateStr: string) {
   }
 }
 
+export async function cleanupOrphanFollowUps() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { error: "Unauthorized" };
+
+    // Nullify followUpDate on any calls that have neither customerId nor leadId
+    const res = await prisma.call.updateMany({
+      where: {
+        followUpDate: { not: null },
+        customerId: null,
+        leadId: null
+      },
+      data: { followUpDate: null }
+    });
+
+    revalidatePath("/");
+    revalidatePath("/calls");
+    revalidatePath("/follow-ups");
+    return { success: true, count: res.count };
+  } catch (error: any) {
+    console.error("Failed to cleanup orphan follow-ups:", error);
+    return { error: error.message || "Failed to cleanup orphan follow-ups" };
+  }
+}
+
 async function generateCallSummary(notes: string, outcome: string) {
   if (!notes) return `Call resulted in ${outcome}.`;
   return `[AI Summary] Customer discussed: ${notes}. Result: ${outcome}.`;
 }
+

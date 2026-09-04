@@ -126,14 +126,21 @@ export default function KPIDetailsModal({ type, onClose }: KPIDetailsModalProps)
             </tr>
           </thead>
           <tbody>
-            {data.map(c => (
-              <tr key={c.id}>
-                <td style={{ fontWeight: 500 }}>{c.customer?.businessName || 'Unknown'}</td>
-                <td>{c.employee?.user?.name || 'Unassigned'}</td>
-                <td>{c.outcome}</td>
-                <td className="text-success">{new Date(c.followUpDate).toLocaleDateString()}</td>
-              </tr>
-            ))}
+            {data
+              .filter(c => (c.customer && c.customer.businessName) || (c.lead && (c.lead.shopName || c.lead.name)))
+              .map(c => {
+                const name = c.customer?.businessName || c.lead?.shopName || c.lead?.name || 'Customer';
+                return (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 500 }}>
+                      {name} {c.lead && !c.customer && <span style={{ fontSize: '10px', color: '#4f46e5', backgroundColor: '#eef2ff', padding: '1px 5px', borderRadius: '4px', marginLeft: '6px' }}>Lead</span>}
+                    </td>
+                    <td>{c.employee?.user?.name || 'Unassigned'}</td>
+                    <td>{c.outcome}</td>
+                    <td className="text-success">{c.followUpDate ? new Date(c.followUpDate).toLocaleDateString('en-IN') : '-'}</td>
+                  </tr>
+                );
+              })}
           </tbody>
         </table>
       );
