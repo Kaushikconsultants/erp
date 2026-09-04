@@ -356,6 +356,13 @@ export async function createCustomer(formData: FormData) {
       return { error: `Customer with this mobile number already exists and is assigned to ${agentName}.` };
     }
 
+    const creditLimitRaw = parseFloat(formData.get("creditLimit") as string);
+    const creditLimit = isNaN(creditLimitRaw) ? 0 : creditLimitRaw;
+    const creditDaysRaw = parseInt(formData.get("creditDays") as string, 10);
+    const creditDays = isNaN(creditDaysRaw) ? 30 : creditDaysRaw;
+    const creditHold = formData.get("creditHold") === "true" || formData.get("creditHold") === "on";
+    const creditHoldReason = (formData.get("creditHoldReason") as string)?.trim() || null;
+
     const customer = await prisma.customer.create({
       data: {
         organizationId,
@@ -372,6 +379,10 @@ export async function createCustomer(formData: FormData) {
         pan: pan || null,
         openingBalance,
         openingBalanceType,
+        creditLimit,
+        creditDays,
+        creditHold,
+        creditHoldReason,
         regularDiscount: regularDiscount || null,
         preferredPaymentMethod: preferredPaymentMethod || null,
         status,
@@ -386,6 +397,102 @@ export async function createCustomer(formData: FormData) {
     return { error: "Failed to create customer. Please try again." };
   }
 }
+
+/**
+ * Check real-time credit status, overdue invoices and billing lock for a customer
+ */
+export async function checkCustomerCreditStatus(customerId: string, proposedAmount: number = 0) {
+  try {
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId },
+      include: {
+        invoices: {
+          where: { status: { in: ['Unpaid', 'Partially Paid', 'Overdue', 'Sent'] } },
+          select: { invoiceNumber: true, invoiceDate: true, dueDate: true, amountDue: true, totalAmount: true }
+        }
+      }
+    });
+
+    if (!customer) return { success: false, error: "Customer not found" };
+
+    const totalUnpaidInvoices = customer.invoices.reduce((sum, inv) => sum + (inv.amountDue || 0), 0);
+    const currentOutstanding = (customer.openingBalanceType === 'DEBIT' ? customer.openingBalance : -customer.openingBalance) + totalUnpaidInvoices;
+    const creditLimit = customer.creditLimit || 0;
+    const creditDays = customer.creditDays || 30;
+    const isHold = Boolean(customer.creditHold);
+
+    const now = Date.now();
+    const overdueInvoices = customer.invoices.filter(inv => {
+      const invDate = inv.dueDate ? new Date(inv.dueDate).getTime() : new Date(inv.invoiceDate).getTime() + creditDays * 24 * 60 * 60 * 1000;
+      return invDate < now && (inv.amountDue || 0) > 0;
+    });
+
+    const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + (inv.amountDue || 0), 0);
+    const projectedOutstanding = currentOutstanding + proposedAmount;
+    const limitExceeded = creditLimit > 0 && projectedOutstanding > creditLimit;
+    const hasOverdue = overdueInvoices.length > 0;
+
+    let lockReason = null;
+    if (isHold) {
+      lockReason = customer.creditHoldReason || "Customer account is placed on credit freeze / lock.";
+    } else if (limitExceeded) {
+      lockReason = `Credit limit exceeded! Projected balance ₹${projectedOutstanding.toLocaleString('en-IN')} exceeds approved limit of ₹${creditLimit.toLocaleString('en-IN')}.`;
+    } else if (hasOverdue) {
+      lockReason = `Overdue balance of ₹${overdueAmount.toLocaleString('en-IN')} pending across ${overdueInvoices.length} invoice(s) beyond ${creditDays} days.`;
+    }
+
+    return {
+      success: true,
+      allowed: !isHold && !limitExceeded && !hasOverdue,
+      isHold,
+      limitExceeded,
+      hasOverdue,
+      lockReason,
+      currentOutstanding,
+      projectedOutstanding,
+      creditLimit,
+      creditDays,
+      overdueAmount,
+      overdueCount: overdueInvoices.length
+    };
+  } catch (err: any) {
+    console.error("Credit status check error:", err);
+    return { success: false, error: err.message || "Failed to check credit status" };
+  }
+}
+
+/**
+ * Update credit terms, limit and billing hold on a customer
+ */
+export async function updateCustomerCreditTerms(input: {
+  customerId: string;
+  creditLimit: number;
+  creditDays: number;
+  creditHold: boolean;
+  creditHoldReason?: string;
+}) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, error: "Unauthorized" };
+
+    const updated = await prisma.customer.update({
+      where: { id: input.customerId },
+      data: {
+        creditLimit: Number(input.creditLimit) || 0,
+        creditDays: Number(input.creditDays) || 30,
+        creditHold: Boolean(input.creditHold),
+        creditHoldReason: input.creditHoldReason || null
+      }
+    });
+
+    revalidatePath(`/customers/${input.customerId}`);
+    revalidatePath("/customers");
+    return { success: true, customer: updated };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to update credit terms" };
+  }
+}
+
 
 export async function getCustomerTimeline(customerId: string) {
   try {

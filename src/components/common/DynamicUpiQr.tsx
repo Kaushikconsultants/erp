@@ -11,6 +11,7 @@ interface DynamicUpiQrProps {
   transactionRef?: string;
   size?: number;
   showDetails?: boolean;
+  layout?: 'standard' | 'compact' | 'receipt';
 }
 
 export default function DynamicUpiQr({
@@ -19,8 +20,9 @@ export default function DynamicUpiQr({
   amount,
   transactionNote = 'Payment',
   transactionRef,
-  size = 140,
-  showDetails = true
+  size = 130,
+  showDetails = true,
+  layout = 'standard'
 }: DynamicUpiQrProps) {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
@@ -48,16 +50,19 @@ export default function DynamicUpiQr({
 
   if (!safeUpiId) return null;
 
+  const isReceipt = layout === 'receipt';
+  const isCompact = layout === 'compact';
+
   return (
     <div style={{
       display: 'inline-flex',
       flexDirection: 'column',
       alignItems: 'center',
-      padding: '8px 10px',
-      borderRadius: '8px',
+      padding: isReceipt ? '4px' : '8px 10px',
+      borderRadius: isReceipt ? '4px' : '8px',
       backgroundColor: '#ffffff',
-      border: '1px solid #e2e8f0',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+      border: isReceipt ? '1px dashed #94a3b8' : '1px solid #e2e8f0',
+      boxShadow: isReceipt ? 'none' : '0 1px 3px rgba(0,0,0,0.03)',
       maxWidth: `${size + 30}px`,
       textAlign: 'center'
     }}>
@@ -66,7 +71,7 @@ export default function DynamicUpiQr({
         <img
           src={qrDataUrl}
           alt={`Scan to Pay ₹${safeAmount.toLocaleString('en-IN')}`}
-          style={{ width: `${size}px`, height: `${size}px`, display: 'block', borderRadius: '4px' }}
+          style={{ width: `${size}px`, height: `${size}px`, display: 'block', borderRadius: isReceipt ? '0px' : '4px' }}
         />
       ) : (
         <div style={{ width: `${size}px`, height: `${size}px`, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', color: '#94a3b8', fontSize: '0.72rem' }}>
@@ -75,15 +80,16 @@ export default function DynamicUpiQr({
       )}
 
       {showDetails && (
-        <div style={{ marginTop: '6px', fontSize: '0.68rem', color: '#475569', lineHeight: 1.3 }}>
-          <div style={{ fontWeight: 600, color: '#0f172a' }}>
+        <div style={{ marginTop: '4px', fontSize: isReceipt ? '0.64rem' : '0.68rem', color: '#475569', lineHeight: 1.25 }}>
+          <div style={{ fontWeight: 700, color: '#0f172a' }}>
             Scan & Pay {safeAmount > 0 ? `₹${safeAmount.toLocaleString('en-IN')}` : ''}
           </div>
-          <div style={{ color: '#64748b', fontSize: '0.62rem' }}>
-            Google Pay • PhonePe • Paytm • UPI
+          <div style={{ color: '#64748b', fontSize: isReceipt ? '0.58rem' : '0.62rem', marginTop: '1px' }}>
+            GPay • PhonePe • Paytm • UPI
           </div>
         </div>
       )}
     </div>
   );
 }
+

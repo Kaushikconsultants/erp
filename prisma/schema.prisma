@@ -85,6 +85,9 @@ model Organization {
   workOrders            WorkOrder[]
   billsOfMaterials      BillOfMaterials[]
   integrations          AppIntegration[]
+  postDatedCheques      PostDatedCheque[]
+  documentSequences     DocumentSequence[]
+  stockTransfers        StockTransfer[]
 }
 
 model SubscriptionHistory {
@@ -322,6 +325,11 @@ model Customer {
   territoryId          String?
   territory            Territory? @relation(fields: [territoryId], references: [id])
 
+  creditLimit          Float    @default(0) // Max allowed outstanding balance in INR (0 = unlimited/disabled)
+  creditDays           Int      @default(30) // Payment grace period days before flagging as overdue
+  creditHold           Boolean  @default(false) // Hard lock on billing if set to true
+  creditHoldReason     String?  // Reason for credit freeze/lock
+
   totalPurchaseValue Float @default(0)
   totalOrders        Int   @default(0)
   retentionStatus    String @default("Active")
@@ -347,6 +355,7 @@ model Customer {
   whatsAppFormSubmissions WhatsAppFormSubmission[]
   deliveryChallans      DeliveryChallan[]
   billAllocations       BillAllocation[]
+  postDatedCheques      PostDatedCheque[]
 
   @@index([organizationId])
   @@index([assignedSalespersonId])
@@ -526,6 +535,7 @@ model Product {
   workOrderMaterials WorkOrderMaterial[]
   bomItems        BomItem[]
   billsOfMaterials BillOfMaterials[]
+  stockTransferItems StockTransferItem[]
 
   @@index([organizationId])
   @@index([category])
@@ -977,6 +987,8 @@ model Warehouse {
 
   inventoryTransactions InventoryTransaction[]
   productBatches        ProductBatch[]
+  transfersFrom         StockTransfer[] @relation("SourceWarehouse")
+  transfersTo           StockTransfer[] @relation("DestinationWarehouse")
 
   @@index([organizationId])
 }
@@ -1005,6 +1017,7 @@ model Vendor {
   payments        VendorPayment[]
   vendorCredits   VendorCredit[]
   deliveryChallans DeliveryChallan[]
+  postDatedCheques PostDatedCheque[]
 
   @@index([organizationId])
 }
@@ -2504,3 +2517,127 @@ model WebhookLog {
   @@index([organizationId])
   @@index([createdAt])
 }
+
+// ---------------------------------------------------------
+// Post-Dated Cheques (PDC) Management
+// ---------------------------------------------------------
+model PostDatedCheque {
+  id                    String        @id @default(uuid())
+  organizationId        String?
+  organization          Organization? @relation(fields: [organizationId], references: [id])
+  type                  String        // "RECEIVED" (from Customer) or "ISSUED" (to Vendor)
+  chequeNumber          String        // e.g. "042918"
+  chequeDate            DateTime      @default(now())
+  maturityDate          DateTime      // Date when cheque can be presented/deposited
+  amount                Float
+  bankName              String        // e.g. "HDFC Bank", "State Bank of India"
+  branchName            String?
+  accountNumber         String?
+  
+  customerId            String?
+  customer              Customer?     @relation(fields: [customerId], references: [id])
+  vendorId              String?
+  vendor                Vendor?       @relation(fields: [vendorId], references: [id])
+  
+  invoiceId             String?
+  billId                String?
+  
+  status                String        @default("PENDING_DEPOSIT") // PENDING_DEPOSIT, DEPOSITED, CLEARED, BOUNCED, CANCELLED, RETURNED
+  clearedDate           DateTime?
+  clearingBankLedgerId  String?
+  clearingJournalId     String?
+  bounceReason          String?
+  bounceCharges         Float         @default(0)
+  
+  notes                 String?
+  receivedDate          DateTime      @default(now())
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([status])
+  @@index([maturityDate])
+  @@index([customerId])
+  @@index([vendorId])
+}
+
+// ---------------------------------------------------------
+// Document Numbering Sequences
+// ---------------------------------------------------------
+model DocumentSequence {
+  id              String        @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  docType         String        // "INVOICE", "QUOTATION", "ORDER", "PURCHASE_ORDER", "BILL", "DELIVERY_CHALLAN", "CREDIT_NOTE", "DEBIT_NOTE", "PAYMENT", "VENDOR_PAYMENT"
+  prefix          String        // e.g. "INV/{FY}/", "QT/{YY}-{YY}/"
+  suffix          String?       // e.g. "/HO"
+  nextNumber      Int           @default(1001)
+  zeroPadding     Int           @default(4)
+  financialYear   String?       // e.g. "2026-27"
+  branchId        String?
+  isDefault       Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([organizationId, docType, financialYear, branchId])
+  @@index([organizationId])
+  @@index([docType])
+}
+
+// ---------------------------------------------------------
+// Inter-Branch / Warehouse Stock Transfers
+// ---------------------------------------------------------
+model StockTransfer {
+  id              String              @id @default(uuid())
+  organizationId  String?
+  organization    Organization?       @relation(fields: [organizationId], references: [id])
+  transferNumber  String              @unique // STN-2026-0001
+  transferDate    DateTime            @default(now())
+  
+  fromWarehouseId String
+  fromWarehouse   Warehouse           @relation("SourceWarehouse", fields: [fromWarehouseId], references: [id])
+  toWarehouseId   String
+  toWarehouse     Warehouse           @relation("DestinationWarehouse", fields: [toWarehouseId], references: [id])
+  
+  transporterName String?
+  vehicleNumber   String?
+  lrNumber        String?
+  
+  status          String              @default("IN_TRANSIT") // DRAFT, IN_TRANSIT, RECEIVED, PARTIALLY_RECEIVED, CANCELLED
+  dispatchedDate  DateTime?
+  receivedDate    DateTime?
+  
+  totalQuantity   Float               @default(0)
+  totalValue      Float               @default(0)
+  notes           String?
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  
+  items           StockTransferItem[]
+
+  @@index([organizationId])
+  @@index([fromWarehouseId])
+  @@index([toWarehouseId])
+  @@index([status])
+}
+
+model StockTransferItem {
+  id               String        @id @default(uuid())
+  transferId       String
+  transfer         StockTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id])
+  
+  quantitySent     Float         @default(1)
+  quantityReceived Float         @default(0)
+  unitPrice        Float         @default(0)
+  totalPrice       Float         @default(0)
+  batchNumber      String?
+  notes            String?
+
+  @@index([transferId])
+  @@index([productId])
+}
+

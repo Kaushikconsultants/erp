@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { fetchRealTimeTracking, aggregateShippingRates } from "@/lib/shippingAggregator";
 import { calculateItemGst } from "@/lib/gstUtils";
 import { getCompanySettings } from "./companyActions";
+import { checkCustomerCreditStatus } from "./customerActions";
 import { shipmozoService, RateCalculationParams } from "@/lib/shipmozoService";
 import { getTenantOrgId } from "@/lib/tenant";
 
@@ -16,6 +17,7 @@ export async function createOrder(formData: FormData) {
   const quantity = parseInt(formData.get("quantity") as string, 10);
   const status = formData.get("status") as string || "Processing";
   const providedSalespersonId = formData.get("salespersonId") as string;
+  const bypassCreditHold = formData.get("bypassCreditHold") === "true";
 
   if (!customerId || !productId || isNaN(quantity) || quantity <= 0) {
     return { error: "Customer, Product, and a valid Quantity are required" };
@@ -39,6 +41,23 @@ export async function createOrder(formData: FormData) {
     const rawRole = (session?.user as any)?.role || 'SALES';
     const normRole = String(rawRole).trim().toUpperCase();
     const isAdmin = normRole === 'ADMIN' || normRole === 'SUPER_ADMIN';
+
+    // Credit limit & billing lock validation
+    const proposedValue = (product.sellingPrice || 0) * quantity;
+    const creditCheck = await checkCustomerCreditStatus(customerId, proposedValue);
+
+    if (!creditCheck.allowed && !bypassCreditHold) {
+      if (creditCheck.isHold && !isAdmin) {
+        return { error: `Billing Locked: ${creditCheck.lockReason}` };
+      }
+      if (!isAdmin && (creditCheck.limitExceeded || creditCheck.hasOverdue)) {
+        return {
+          error: `Credit Warning: ${creditCheck.lockReason}`,
+          requiresAdminOverride: true,
+          creditDetails: creditCheck
+        };
+      }
+    }
 
     let finalSalespersonId = providedSalespersonId;
 

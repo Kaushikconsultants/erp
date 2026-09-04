@@ -354,9 +354,15 @@ const Sidebar = ({
                   <span>Vendor Credits</span>
                 </Link>
 
-                <Link href="/warehouses" onClick={onClose} className={`category-sub-item ${isActive('/warehouses') ? 'active' : ''}`}>
+                <Link href="/warehouses" onClick={onClose} className={`category-sub-item ${isActive('/warehouses') && !isActive('/warehouses/transfers') ? 'active' : ''}`}>
                   <Warehouse size={16} />
                   <span>Warehouses</span>
+                </Link>
+
+                <Link href="/warehouses/transfers" onClick={onClose} className={`category-sub-item ${isActive('/warehouses/transfers') ? 'active' : ''}`}>
+                  <Truck size={16} style={{ color: '#0284c7' }} />
+                  <span>Stock Transfers</span>
+                  <span style={{ marginLeft: 'auto', background: '#e0f2fe', color: '#0369a1', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>STN</span>
                 </Link>
               </div>
             )}
@@ -411,6 +417,12 @@ const Sidebar = ({
                 <Link href="/accounting/bank-reconciliation" onClick={onClose} className={`category-sub-item ${isActive('/accounting/bank-reconciliation') ? 'active' : ''}`}>
                   <Landmark size={16} style={{ color: '#059669' }} />
                   <span>Bank Reconciliation (BRS)</span>
+                </Link>
+
+                <Link href="/accounting/pdc" onClick={onClose} className={`category-sub-item ${isActive('/accounting/pdc') ? 'active' : ''}`}>
+                  <FileText size={16} style={{ color: '#0284c7' }} />
+                  <span>Cheque & PDC Register</span>
+                  <span style={{ marginLeft: 'auto', background: '#e0f2fe', color: '#0369a1', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>PDC</span>
                 </Link>
               </div>
             )}

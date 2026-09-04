@@ -32,6 +32,8 @@ import AddProductButton from '@/components/ui/AddProductButton';
 import ManageCategoriesModal from '@/components/products/ManageCategoriesModal';
 import EditProductModal from '@/components/ui/EditProductModal';
 import BarcodeLabelModal from '@/components/products/BarcodeLabelModal';
+import BarcodePrintModal from '@/components/products/BarcodePrintModal';
+import DataImportWizardModal from '@/components/common/DataImportWizardModal';
 import ArticleHistoryModal from '@/components/products/ArticleHistoryModal';
 import ProductCatalogModal from '@/components/products/ProductCatalogModal';
 import ProductMatrixModal from '@/components/inventory/ProductMatrixModal';
@@ -80,6 +82,8 @@ export default function ProductListClient({ products, categories, categoriesData
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showMatrixModal, setShowMatrixModal] = useState(false);
   const [showDeadStockModal, setShowDeadStockModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showBatchBarcodeModal, setShowBatchBarcodeModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [printLabelProduct, setPrintLabelProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -550,6 +554,58 @@ export default function ProductListClient({ products, categories, categoriesData
               >
                 <BookOpen size={13} color="#0284c7" />
                 Wholesale Catalog
+              </button>
+
+              {/* Thermal Barcode Labels Studio Button */}
+              <button
+                onClick={() => setShowBatchBarcodeModal(true)}
+                style={{
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '0 11px',
+                  borderRadius: '7px',
+                  border: '1px solid #fed7aa',
+                  backgroundColor: '#fff7ed',
+                  color: '#c2410c',
+                  fontSize: '0.76rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffedd5'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff7ed'}
+                title="Print Thermal Barcode & QR Sticker Labels (50x25mm, 38x25mm, A4)"
+              >
+                <Tag size={13} color="#ea580c" />
+                Print Barcode Labels
+              </button>
+
+              {/* Universal Bulk Excel/CSV Import Button */}
+              <button
+                onClick={() => setShowImportModal(true)}
+                style={{
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '0 11px',
+                  borderRadius: '7px',
+                  border: '1px solid #bbf7d0',
+                  backgroundColor: '#f0fdf4',
+                  color: '#15803d',
+                  fontSize: '0.76rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                title="Bulk Import Products from Excel / CSV"
+              >
+                <Download size={13} color="#16a34a" />
+                Import Excel / CSV
               </button>
 
               {canManage && (
@@ -1483,6 +1539,38 @@ export default function ProductListClient({ products, categories, categoriesData
           isOpen={showMatrixModal}
           onClose={() => setShowMatrixModal(false)}
           categories={categories}
+        />
+      )}
+
+      {/* Universal Bulk Excel/CSV Import Wizard Modal */}
+      {showImportModal && (
+        <DataImportWizardModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          defaultEntityType="PRODUCTS"
+          onSuccess={() => {
+            setShowImportModal(false);
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* Batch Barcode Label Printing Studio Modal */}
+      {showBatchBarcodeModal && (
+        <BarcodePrintModal
+          isOpen={showBatchBarcodeModal}
+          onClose={() => setShowBatchBarcodeModal(false)}
+          products={filteredProducts.slice(0, 50).map(p => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            articleNumber: p.articleNumber,
+            mrp: p.mrp,
+            sellingPrice: p.sellingPrice,
+            size: p.size,
+            color: p.color,
+            printQty: 1
+          }))}
         />
       )}
     </div>

@@ -2,9 +2,8 @@
 
 import React, { useState } from "react";
 import AddCustomerModal from "./AddCustomerModal";
-import BulkImportModal from "./BulkImportModal";
+import DataImportWizardModal from "@/components/common/DataImportWizardModal";
 import { FileSpreadsheet } from "lucide-react";
-
 import { useSearchParams } from "next/navigation";
 
 export default function AddCustomerButton({ employees = [] }: { employees?: { id: string; name: string }[] }) {
@@ -25,9 +24,9 @@ export default function AddCustomerButton({ employees = [] }: { employees?: { id
         <button 
           className="action-btn hover-lift" 
           onClick={() => setIsBulkOpen(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--success)', color: 'var(--success)', background: 'transparent' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--success)', color: 'var(--success)', background: 'transparent', fontWeight: 600 }}
         >
-          <FileSpreadsheet size={16} /> Bulk Import
+          <FileSpreadsheet size={16} /> Bulk Import Excel / CSV
         </button>
         <button 
           className="primary-btn hover-lift" 
@@ -45,11 +44,14 @@ export default function AddCustomerButton({ employees = [] }: { employees?: { id
       )}
 
       {isBulkOpen && (
-        <BulkImportModal 
+        <DataImportWizardModal 
+          isOpen={isBulkOpen}
           onClose={() => setIsBulkOpen(false)} 
+          defaultEntityType="CUSTOMERS"
           onSuccess={() => setIsBulkOpen(false)}
         />
       )}
     </>
   );
 }
+
