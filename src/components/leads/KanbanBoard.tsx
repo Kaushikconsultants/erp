@@ -13,29 +13,87 @@ import {
   ArrowRight, 
   FileText, 
   UserCheck, 
-  Calendar, 
   Search, 
+  Edit2, 
+  X, 
+  Target, 
+  LayoutGrid, 
+  UserPlus, 
+  DollarSign,
+  ArrowUpDown,
+  Building2,
   Sparkles,
-  Edit2,
-  X,
-  Target,
-  LayoutGrid,
-  Filter,
-  UserPlus,
-  Clock,
+  Inbox,
   CheckCircle2,
-  DollarSign
+  PhoneCall,
+  Clock,
+  Briefcase
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
+import './KanbanBoard.css';
 
 export const STAGES = [
-  { id: 'New Lead', title: 'New Lead', color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe', nextStep: 'Contacted', nextActionLabel: 'Mark Contacted' },
-  { id: 'Contacted', title: 'Contacted', color: '#4f46e5', bg: '#eef2ff', border: '#c7d2fe', nextStep: 'Qualified', nextActionLabel: 'Qualify Lead' },
-  { id: 'Qualified', title: 'Qualified', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe', nextStep: 'Opportunity', nextActionLabel: 'Move to Opportunity' },
-  { id: 'Opportunity', title: 'Opportunity', color: '#d97706', bg: '#fffbeb', border: '#fde68a', nextStep: 'Won', nextActionLabel: 'Close & Win Deal' },
-  { id: 'Won', title: 'Won', color: '#059669', bg: '#ecfdf5', border: '#a7f3d0', nextStep: null, nextActionLabel: 'Deal Won' },
-  { id: 'Lost', title: 'Lost', color: '#dc2626', bg: '#fef2f2', border: '#fecaca', nextStep: null, nextActionLabel: 'Lost' },
+  { 
+    id: 'New Lead', 
+    title: 'New Lead', 
+    color: '#3b82f6', 
+    bg: '#eff6ff', 
+    border: '#bfdbfe', 
+    badgeBg: '#dbeafe',
+    nextStep: 'Contacted', 
+    nextActionLabel: 'Mark Contacted' 
+  },
+  { 
+    id: 'Contacted', 
+    title: 'Contacted', 
+    color: '#6366f1', 
+    bg: '#eef2ff', 
+    border: '#c7d2fe', 
+    badgeBg: '#e0e7ff',
+    nextStep: 'Qualified', 
+    nextActionLabel: 'Qualify Lead' 
+  },
+  { 
+    id: 'Qualified', 
+    title: 'Qualified', 
+    color: '#8b5cf6', 
+    bg: '#f5f3ff', 
+    border: '#ddd6fe', 
+    badgeBg: '#ede9fe',
+    nextStep: 'Opportunity', 
+    nextActionLabel: 'Move to Opportunity' 
+  },
+  { 
+    id: 'Opportunity', 
+    title: 'Opportunity', 
+    color: '#d97706', 
+    bg: '#fffbeb', 
+    border: '#fde68a', 
+    badgeBg: '#fef3c7',
+    nextStep: 'Won', 
+    nextActionLabel: 'Close & Win Deal' 
+  },
+  { 
+    id: 'Won', 
+    title: 'Won', 
+    color: '#059669', 
+    bg: '#ecfdf5', 
+    border: '#a7f3d0', 
+    badgeBg: '#d1fae5',
+    nextStep: null, 
+    nextActionLabel: 'Deal Won' 
+  },
+  { 
+    id: 'Lost', 
+    title: 'Lost', 
+    color: '#dc2626', 
+    bg: '#fef2f2', 
+    border: '#fecaca', 
+    badgeBg: '#fee2e2',
+    nextStep: null, 
+    nextActionLabel: 'Lost' 
+  },
 ];
 
 interface KanbanBoardProps {
@@ -48,6 +106,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const [activeStage, setActiveStage] = useState('Contacted');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRepFilter, setSelectedRepFilter] = useState('ALL');
+  const [sortBy, setSortBy] = useState<'VALUE_HIGH' | 'VALUE_LOW' | 'NAME' | 'NEWEST'>('VALUE_HIGH');
   const [currentView, setCurrentView] = useState<'BOARD' | 'FOCUS' | 'TARGETS'>('BOARD');
   
   // Advance Modal State
@@ -86,14 +145,13 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const totalOpenValue = openLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
   const wonLeads = leads.filter(l => l.leadStage === 'Won');
   const wonValue = wonLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
-  const lostLeads = leads.filter(l => l.leadStage === 'Lost');
   
   const winRate = totalLeadsCount > 0 ? Math.round((wonLeads.length / totalLeadsCount) * 100) : 0;
   const avgDealSize = openLeads.length > 0 ? Math.round(totalOpenValue / (openLeads.length || 1)) : 0;
 
-  // Filtered Leads
+  // Filtered & Sorted Leads
   const filteredLeads = useMemo(() => {
-    return leads.filter(l => {
+    let result = leads.filter(l => {
       const q = searchQuery.toLowerCase();
       const matchesSearch = 
         (l.businessName || '').toLowerCase().includes(q) ||
@@ -105,7 +163,21 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
 
       return matchesSearch && matchesRep;
     });
-  }, [leads, searchQuery, selectedRepFilter]);
+
+    // Sorting
+    result.sort((a, b) => {
+      const valA = a.computedDealValue || a.expectedValue || 0;
+      const valB = b.computedDealValue || b.expectedValue || 0;
+
+      if (sortBy === 'VALUE_HIGH') return valB - valA;
+      if (sortBy === 'VALUE_LOW') return valA - valB;
+      if (sortBy === 'NAME') return (a.businessName || a.contactPerson || '').localeCompare(b.businessName || b.contactPerson || '');
+      if (sortBy === 'NEWEST') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      return 0;
+    });
+
+    return result;
+  }, [leads, searchQuery, selectedRepFilter, sortBy]);
 
   const activeStageConfig = STAGES.find(s => s.id === activeStage) || STAGES[1];
   const activeStageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === activeStage);
@@ -175,129 +247,97 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
     await assignLeadRep(leadId, empId || null);
   };
 
-  // Render a single deal card (used in both multi-column board and focused stage list)
-  const renderLeadCard = (lead: any, isCompactColumn: boolean = false) => {
+  // Helper to extract Rep Initials
+  const getRepInitials = (repName?: string) => {
+    if (!repName) return 'UN';
+    const parts = repName.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return repName.slice(0, 2).toUpperCase();
+  };
+
+  // Render a Single Modern Deal Card
+  const renderLeadCard = (lead: any, isCompact: boolean = false) => {
     const cleanPhone = (lead.mobile || lead.whatsappNumber || '').replace(/[^0-9]/g, '');
     const dealVal = lead.computedDealValue || lead.expectedValue || 0;
     const isCustomer = !lead.isLeadRecord;
     const detailsUrl = isCustomer ? `/customers/${lead.id}` : `/leads/${lead.id}`;
+    const assignedRep = employees.find(e => e.id === lead.assignedSalespersonId);
+    const repName = assignedRep?.user?.name || assignedRep?.employeeId || (lead.assignedSalesperson?.user?.name) || '';
 
     return (
       <div 
         key={lead.id}
-        style={{
-          backgroundColor: '#ffffff',
-          padding: isCompactColumn ? '10px 12px' : '14px 16px',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: isCompactColumn ? '8px' : '10px',
-          transition: 'all 0.15s ease'
-        }}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.boxShadow = '0 3px 8px rgba(0,0,0,0.06)'; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)'; }}
+        className="deal-card"
       >
-        {/* Top: Name, Lead/Customer Badge, Value */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+        {/* Top: Name, Badge & Value */}
+        <div className="deal-card-header">
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
               <Link 
                 href={detailsUrl} 
-                style={{ 
-                  fontWeight: 650, 
-                  color: '#0f172a', 
-                  fontSize: isCompactColumn ? '0.84rem' : '0.92rem', 
-                  textDecoration: 'none',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  maxWidth: isCompactColumn ? '160px' : '220px'
-                }}
-                className="hover:underline"
+                className="deal-title-link"
+                title={lead.businessName || lead.contactPerson}
               >
                 {lead.businessName || lead.contactPerson || 'Unnamed Deal'}
               </Link>
-              {lead.isLeadRecord && (
-                <span style={{ fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '4px', backgroundColor: '#eef2ff', color: '#4f46e5' }}>
-                  Lead
-                </span>
+              {lead.isLeadRecord ? (
+                <span className="deal-lead-tag">LEAD</span>
+              ) : (
+                <span className="deal-customer-tag">CLIENT</span>
               )}
             </div>
 
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.74rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {lead.contactPerson && lead.contactPerson !== lead.businessName ? `${lead.contactPerson} • ` : ''}
-              {lead.city ? `${lead.city} • ` : ''}
-              {lead.mobile || lead.whatsappNumber || 'No Phone'}
-            </p>
+            <div className="deal-meta-text" style={{ marginTop: '3px' }}>
+              {lead.city && <span>📍 {lead.city}</span>}
+              {lead.contactPerson && lead.contactPerson !== lead.businessName && <span>👤 {lead.contactPerson}</span>}
+            </div>
           </div>
 
-          {/* Deal Value */}
-          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          {/* Deal Value Pill */}
+          <div style={{ flexShrink: 0 }}>
             {editingValueLeadId === lead.id ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
                 <input 
                   type="number" 
                   autoFocus
                   value={customValueInput}
                   onChange={(e) => setCustomValueInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSaveDealValue(lead.id); }}
-                  style={{ width: '75px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #3b82f6', fontSize: '0.75rem' }}
+                  style={{ width: '70px', padding: '2px 4px', borderRadius: '4px', border: '1px solid #3b82f6', fontSize: '0.74rem', outline: 'none' }}
                 />
                 <button 
                   onClick={() => handleSaveDealValue(lead.id)}
-                  style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: '#059669', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '0.7rem', fontWeight: 600 }}
+                  style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: '#059669', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '0.68rem', fontWeight: 700 }}
                 >
-                  Save
+                  ✓
                 </button>
               </div>
             ) : (
               <div 
+                className="deal-value-pill"
                 onClick={() => {
                   setEditingValueLeadId(lead.id);
                   setCustomValueInput(String(dealVal));
                 }}
-                style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px', justifyContent: 'flex-end' }}
                 title="Click to edit deal value"
               >
-                <span style={{ fontWeight: 700, fontSize: isCompactColumn ? '0.82rem' : '0.88rem', color: '#059669' }}>
-                  ₹{Number(dealVal || 0).toLocaleString('en-IN')}
-                </span>
-                <Edit2 size={10} color="#94a3b8" />
+                <span>₹{Number(dealVal || 0).toLocaleString('en-IN')}</span>
+                <Edit2 size={9} style={{ opacity: 0.6 }} />
               </div>
             )}
           </div>
         </div>
 
-        {/* Middle: Rep Assignment & Stage Selector */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          flexWrap: 'wrap', 
-          gap: '6px', 
-          paddingTop: '6px', 
-          borderTop: '1px solid #f8fafc',
-          fontSize: '0.74rem',
-          color: '#64748b'
-        }}>
-          {/* Rep Selector */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '0.7rem' }}>Rep:</span>
+        {/* Middle Row: Rep Assignment & Stage Jumper */}
+        <div className="deal-mid-row">
+          <div className="deal-rep-selector">
+            <div className="deal-rep-avatar" title={repName || 'Unassigned'}>
+              {getRepInitials(repName)}
+            </div>
             <select
               value={lead.assignedSalespersonId || ''}
               onChange={(e) => handleRepAssign(lead.id, e.target.value)}
-              style={{
-                padding: '1px 6px',
-                borderRadius: '4px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                fontSize: '0.72rem',
-                fontWeight: 500,
-                color: '#334155',
-                maxWidth: '110px'
-              }}
+              className="deal-select-mini"
             >
               <option value="">Unassigned</option>
               {employees.map(emp => (
@@ -306,165 +346,83 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             </select>
           </div>
 
-          {/* Quick Stage Jumper */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <select
-              value={lead.leadStage || 'New Lead'}
-              onChange={(e) => handleStageChange(lead.id, e.target.value)}
-              style={{
-                padding: '1px 6px',
-                borderRadius: '4px',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#f8fafc',
-                color: '#334155'
-              }}
-            >
-              {STAGES.map(s => (
-                <option key={s.id} value={s.id}>{s.title}</option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={lead.leadStage || 'New Lead'}
+            onChange={(e) => handleStageChange(lead.id, e.target.value)}
+            className="deal-stage-badge-select"
+          >
+            {STAGES.map(s => (
+              <option key={s.id} value={s.id}>{s.title}</option>
+            ))}
+          </select>
         </div>
 
         {/* Action Row */}
-        <div style={{ 
-          display: 'flex', 
-          gap: '4px', 
-          alignItems: 'center', 
-          flexWrap: 'wrap', 
-          paddingTop: '6px',
-          borderTop: '1px solid #f1f5f9'
-        }}>
-          {/* Advance Step Button */}
-          {activeStageConfig.nextStep && lead.leadStage !== 'Won' && lead.leadStage !== 'Lost' && (
+        <div className="deal-actions-row">
+          {/* Primary Advance Button */}
+          {lead.leadStage !== 'Won' && lead.leadStage !== 'Lost' && (
             <button
               type="button"
               onClick={() => handleOpenAdvanceModal(lead, STAGES.find(s => s.id === (lead.leadStage || 'New Lead'))?.nextStep || 'Qualified')}
-              style={{
-                padding: '3px 8px',
-                borderRadius: '4px',
-                backgroundColor: '#4f46e5',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                cursor: 'pointer'
-              }}
+              className="btn-advance-primary"
+              title="Advance to next pipeline stage"
             >
-              <ArrowRight size={11} /> Advance ➔
+              <ArrowRight size={11} /> Advance
             </button>
           )}
 
-          {/* Call button */}
+          {/* Quick Call */}
           {cleanPhone && (
             <a
               href={`tel:${cleanPhone}`}
-              style={{
-                padding: '3px 7px',
-                borderRadius: '4px',
-                backgroundColor: '#f0fdf4',
-                color: '#15803d',
-                border: '1px solid #bbf7d0',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px'
-              }}
+              className="btn-icon-action call"
+              title={`Call ${lead.businessName || 'Lead'}`}
             >
-              <Phone size={11} /> Call
+              <Phone size={12} />
             </a>
           )}
 
-          {/* WhatsApp button */}
+          {/* Quick WhatsApp */}
           {cleanPhone && (
             <a
               href={`https://wa.me/91${cleanPhone}`}
               target="_blank"
               rel="noreferrer"
-              style={{
-                padding: '3px 7px',
-                borderRadius: '4px',
-                backgroundColor: '#25D366',
-                color: '#ffffff',
-                border: 'none',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px'
-              }}
+              className="btn-icon-action wa"
+              title="Chat on WhatsApp"
             >
-              <MessageSquare size={11} /> WhatsApp
+              <MessageSquare size={12} />
             </a>
           )}
 
-          {/* Convert Lead to Customer if raw lead */}
+          {/* Convert or +Quote Shortcut */}
           {lead.isLeadRecord ? (
             <button
               type="button"
               onClick={() => setConvertingLead(lead)}
-              style={{
-                padding: '3px 7px',
-                borderRadius: '4px',
-                backgroundColor: '#ecfdf5',
-                color: '#059669',
-                border: '1px solid #a7f3d0',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px',
-                cursor: 'pointer'
-              }}
+              className="btn-pill-action convert"
+              title="Convert Lead into Client"
             >
               <UserPlus size={11} /> Convert
             </button>
           ) : (
             <Link
               href={`/quotations/new?customerId=${lead.id}`}
-              style={{
-                padding: '3px 7px',
-                borderRadius: '4px',
-                backgroundColor: '#eff6ff',
-                color: '#2563eb',
-                border: '1px solid #bfdbfe',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '3px'
-              }}
+              className="btn-pill-action quote"
+              title="Generate New Quotation"
             >
               <FileText size={11} /> + Quote
             </Link>
           )}
 
+          {/* Card Details Link */}
           <Link
             href={detailsUrl}
-            style={{
-              padding: '3px 6px',
-              borderRadius: '4px',
-              backgroundColor: '#f8fafc',
-              color: '#475569',
-              border: '1px solid #e2e8f0',
-              fontSize: '0.72rem',
-              fontWeight: 500,
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              marginLeft: 'auto'
-            }}
+            className="btn-icon-action"
+            style={{ marginLeft: 'auto' }}
+            title="View Full Details"
           >
-            <ChevronRight size={12} />
+            <ChevronRight size={13} />
           </Link>
         </div>
       </div>
@@ -472,72 +430,33 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="pipeline-wrapper">
       
       {/* ─── 0. TOP VIEW SWITCHER TABS ─── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-        <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="pipeline-tab-switcher">
           <button
             type="button"
             onClick={() => setCurrentView('BOARD')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              border: 'none',
-              backgroundColor: currentView === 'BOARD' ? '#ffffff' : 'transparent',
-              color: currentView === 'BOARD' ? '#4f46e5' : '#64748b',
-              fontWeight: currentView === 'BOARD' ? 700 : 500,
-              fontSize: '0.82rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-              boxShadow: currentView === 'BOARD' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
-            }}
+            className={`pipeline-tab-btn ${currentView === 'BOARD' ? 'is-active' : ''}`}
           >
-            <LayoutGrid size={14} /> Multi-Column Board
+            <LayoutGrid size={15} /> Multi-Column Board
           </button>
 
           <button
             type="button"
             onClick={() => setCurrentView('FOCUS')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              border: 'none',
-              backgroundColor: currentView === 'FOCUS' ? '#ffffff' : 'transparent',
-              color: currentView === 'FOCUS' ? '#4f46e5' : '#64748b',
-              fontWeight: currentView === 'FOCUS' ? 700 : 500,
-              fontSize: '0.82rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-              boxShadow: currentView === 'FOCUS' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
-            }}
+            className={`pipeline-tab-btn ${currentView === 'FOCUS' ? 'is-active' : ''}`}
           >
-            <Layers size={14} /> Stage Flow View
+            <Layers size={15} /> Stage Flow View
           </button>
 
           <button
             type="button"
             onClick={() => setCurrentView('TARGETS')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '6px',
-              border: 'none',
-              backgroundColor: currentView === 'TARGETS' ? '#ffffff' : 'transparent',
-              color: currentView === 'TARGETS' ? '#4f46e5' : '#64748b',
-              fontWeight: currentView === 'TARGETS' ? 700 : 500,
-              fontSize: '0.82rem',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-              boxShadow: currentView === 'TARGETS' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
-            }}
+            className={`pipeline-tab-btn ${currentView === 'TARGETS' ? 'is-active' : ''}`}
           >
-            <Target size={14} color="#4f46e5" /> Rep Targets & Closing
+            <Target size={15} /> Rep Targets & Closing
           </button>
         </div>
       </div>
@@ -547,183 +466,91 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
       ) : (
         <>
           {/* ─── 1. TOP PIPELINE METRICS CARDS ─── */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: '12px' 
-          }}>
+          <div className="pipeline-kpi-grid">
             {/* Card 1: Total Leads */}
-            <div style={{ 
-              backgroundColor: '#ffffff', 
-              padding: '12px 16px', 
-              borderRadius: '10px', 
-              border: '1px solid #e2e8f0', 
-              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <div style={{ 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '8px', 
-                backgroundColor: '#eff6ff', 
-                color: '#3b82f6', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Layers size={18} />
+            <div className="pipeline-kpi-card">
+              <div className="kpi-icon-box blue">
+                <Layers size={20} />
               </div>
-              <div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Total Pipeline Leads
-                </div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', lineHeight: 1.2, marginTop: '1px' }}>
-                  {leads.length}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                  {openLeads.length} active in pipeline
-                </div>
+              <div className="kpi-content">
+                <span className="kpi-label">Total Pipeline Deals</span>
+                <span className="kpi-value">{leads.length}</span>
+                <span className="kpi-subtext">{openLeads.length} active in workflow</span>
               </div>
             </div>
 
-            {/* Card 2: Pipeline Value */}
-            <div style={{ 
-              backgroundColor: '#ffffff', 
-              padding: '12px 16px', 
-              borderRadius: '10px', 
-              border: '1px solid #e2e8f0', 
-              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <div style={{ 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '8px', 
-                backgroundColor: '#eef2ff', 
-                color: '#4f46e5', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <TrendingUp size={18} />
+            {/* Card 2: Open Pipeline Value */}
+            <div className="pipeline-kpi-card">
+              <div className="kpi-icon-box purple">
+                <TrendingUp size={20} />
               </div>
-              <div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Open Pipeline Value
-                </div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#4f46e5', lineHeight: 1.2, marginTop: '1px' }}>
-                  {formatCurrency(totalOpenValue)}
-                </div>
-                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
-                  Avg ~{formatCurrency(avgDealSize)} / deal
-                </div>
+              <div className="kpi-content">
+                <span className="kpi-label">Open Pipeline Value</span>
+                <span className="kpi-value" style={{ color: '#4f46e5' }}>{formatCurrency(totalOpenValue)}</span>
+                <span className="kpi-subtext">Avg ~{formatCurrency(avgDealSize)} / deal</span>
               </div>
             </div>
 
-            {/* Card 3: Win Rate & Deals Won */}
-            <div style={{ 
-              backgroundColor: '#ffffff', 
-              padding: '12px 16px', 
-              borderRadius: '10px', 
-              border: '1px solid #e2e8f0', 
-              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
-              <div style={{ 
-                width: '36px', 
-                height: '36px', 
-                borderRadius: '8px', 
-                backgroundColor: '#ecfdf5', 
-                color: '#059669', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Award size={18} />
+            {/* Card 3: Deals Won & Win Rate */}
+            <div className="pipeline-kpi-card">
+              <div className="kpi-icon-box emerald">
+                <Award size={20} />
               </div>
-              <div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Deals Won & Win Rate
-                </div>
-                <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#059669', lineHeight: 1.2, marginTop: '1px' }}>
-                  {wonLeads.length} Won ({winRate}%)
-                </div>
-                <div style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 600 }}>
+              <div className="kpi-content">
+                <span className="kpi-label">Deals Won & Win Rate</span>
+                <span className="kpi-value" style={{ color: '#059669' }}>{wonLeads.length} Won ({winRate}%)</span>
+                <span className="kpi-subtext" style={{ color: '#059669', fontWeight: 600 }}>
                   {formatCurrency(wonValue)} closed
-                </div>
+                </span>
               </div>
             </div>
           </div>
 
-          {/* ─── 2. SEARCH & REP FILTER TOOLBAR ─── */}
-          <div style={{ 
-            backgroundColor: '#ffffff', 
-            padding: '10px 14px', 
-            borderRadius: '10px', 
-            border: '1px solid #e2e8f0', 
-            display: 'flex', 
-            gap: '10px',
-            alignItems: 'center',
-            flexWrap: 'wrap'
-          }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
-              <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+          {/* ─── 2. SEARCH, REP & SORT FILTER TOOLBAR ─── */}
+          <div className="pipeline-filter-bar">
+            {/* Search Input */}
+            <div className="pipeline-search-box">
+              <Search size={15} className="pipeline-search-icon" />
               <input 
                 type="text"
-                placeholder="Search leads by name, shop, mobile, or city..."
+                placeholder="Search deals by customer, shop, phone or city..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '7px 10px 7px 30px',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#f8fafc',
-                  fontSize: '0.82rem',
-                  color: '#0f172a',
-                  outline: 'none'
-                }}
+                className="pipeline-search-input"
               />
             </div>
 
+            {/* Rep Selector */}
             {employees.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <UserCheck size={14} color="#64748b" />
-                <select
-                  value={selectedRepFilter}
-                  onChange={(e) => setSelectedRepFilter(e.target.value)}
-                  style={{
-                    padding: '7px 10px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '0.82rem',
-                    fontWeight: 500,
-                    color: '#334155',
-                    backgroundColor: '#ffffff'
-                  }}
-                >
-                  <option value="ALL">All Sales Representatives</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.user?.name || emp.employeeId}</option>
-                  ))}
-                </select>
-              </div>
+              <select
+                value={selectedRepFilter}
+                onChange={(e) => setSelectedRepFilter(e.target.value)}
+                className="pipeline-filter-select"
+              >
+                <option value="ALL">All Sales Representatives ({employees.length})</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.user?.name || emp.employeeId}</option>
+                ))}
+              </select>
             )}
+
+            {/* Sort Dropdown */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="pipeline-filter-select"
+            >
+              <option value="VALUE_HIGH">Sort: Highest Deal Value</option>
+              <option value="VALUE_LOW">Sort: Lowest Deal Value</option>
+              <option value="NEWEST">Sort: Newest First</option>
+              <option value="NAME">Sort: Customer Name (A-Z)</option>
+            </select>
 
             {searchQuery && (
               <button 
                 type="button" 
                 onClick={() => setSearchQuery('')}
-                style={{ padding: '6px 10px', fontSize: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+                style={{ padding: '6px 12px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', color: '#64748b', cursor: 'pointer', fontWeight: 600 }}
               >
                 Clear
               </button>
@@ -733,13 +560,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           {/* ─── 3. VIEW MODE RENDERING ─── */}
           {currentView === 'BOARD' ? (
             /* MULTI-COLUMN KANBAN BOARD */
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', 
-              gap: '14px',
-              overflowX: 'auto',
-              paddingBottom: '12px'
-            }}>
+            <div className="kanban-board-track">
               {STAGES.map(stage => {
                 const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                 const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
@@ -747,63 +568,36 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 return (
                   <div 
                     key={stage.id}
-                    style={{
-                      backgroundColor: '#f8fafc',
-                      borderRadius: '10px',
-                      border: `1px solid ${stage.border}`,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      minHeight: '480px',
-                      maxHeight: '80vh',
-                      overflow: 'hidden'
-                    }}
+                    className="kanban-column"
                   >
                     {/* Column Header */}
-                    <div style={{
-                      padding: '10px 12px',
-                      backgroundColor: stage.bg,
-                      borderBottom: `1px solid ${stage.border}`,
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: stage.color }}></span>
-                        <span style={{ fontWeight: 700, fontSize: '0.84rem', color: stage.color }}>
+                    <div className="column-header">
+                      <div className="column-header-left">
+                        <span className="column-status-dot" style={{ backgroundColor: stage.color }}></span>
+                        <span className="column-title" style={{ color: '#0f172a' }}>
                           {stage.title}
                         </span>
-                        <span style={{ 
-                          fontSize: '0.7rem', 
-                          fontWeight: 700, 
-                          backgroundColor: '#ffffff', 
-                          color: stage.color, 
-                          padding: '1px 6px', 
-                          borderRadius: '10px', 
-                          border: `1px solid ${stage.border}` 
-                        }}>
+                        <span 
+                          className="column-count-badge" 
+                          style={{ backgroundColor: stage.badgeBg, color: stage.color, borderColor: stage.border }}
+                        >
                           {stageLeads.length}
                         </span>
                       </div>
 
-                      <span style={{ fontSize: '0.74rem', fontWeight: 700, color: stage.color }}>
+                      <span className="column-total-val">
                         {formatCurrency(stageVal)}
                       </span>
                     </div>
 
                     {/* Column Cards Stack */}
-                    <div style={{
-                      padding: '8px',
-                      overflowY: 'auto',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      flex: 1
-                    }}>
+                    <div className="column-cards-container">
                       {stageLeads.length > 0 ? (
                         stageLeads.map(lead => renderLeadCard(lead, true))
                       ) : (
-                        <div style={{ padding: '24px 12px', textAlign: 'center', color: '#94a3b8', fontSize: '0.75rem' }}>
-                          No leads in {stage.title}
+                        <div className="empty-column-box">
+                          <Inbox size={24} style={{ color: '#cbd5e1' }} />
+                          <span>No deals in {stage.title}</span>
                         </div>
                       )}
                     </div>
@@ -817,14 +611,14 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
               backgroundColor: '#ffffff', 
               borderRadius: '12px', 
               border: '1px solid #e2e8f0', 
-              padding: '16px',
+              padding: '18px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '14px'
+              gap: '16px'
             }}>
-              {/* Horizontal Stage Selector Pills */}
-              <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
-                {STAGES.map(stage => {
+              {/* Horizontal Stage Stepper Pills */}
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+                {STAGES.map((stage, idx) => {
                   const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                   const count = stageLeads.length;
                   const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
@@ -835,33 +629,34 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                       key={stage.id}
                       onClick={() => setActiveStage(stage.id)}
                       style={{
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        border: isSelected ? `1px solid ${stage.color}` : '1px solid #e2e8f0',
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        border: isSelected ? `1.5px solid ${stage.color}` : '1px solid #e2e8f0',
                         backgroundColor: isSelected ? stage.bg : '#ffffff',
                         color: isSelected ? stage.color : '#475569',
-                        fontSize: '0.8rem',
-                        fontWeight: isSelected ? 700 : 500,
+                        fontSize: '0.82rem',
+                        fontWeight: isSelected ? 750 : 500,
                         whiteSpace: 'nowrap',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '6px',
-                        cursor: 'pointer'
+                        gap: '8px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease'
                       }}
                     >
                       <span>{stage.title}</span>
                       <span style={{ 
                         backgroundColor: isSelected ? stage.color : '#f1f5f9', 
                         color: isSelected ? '#ffffff' : '#64748b',
-                        padding: '1px 6px', 
+                        padding: '2px 7px', 
                         borderRadius: '10px', 
-                        fontSize: '0.7rem',
+                        fontSize: '0.72rem',
                         fontWeight: 700
                       }}>
                         {count}
                       </span>
                       {stageVal > 0 && (
-                        <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>
+                        <span style={{ fontSize: '0.72rem', opacity: 0.85, fontWeight: 600 }}>
                           • {formatCurrency(stageVal)}
                         </span>
                       )}
@@ -871,14 +666,22 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
               </div>
 
               {/* Stage Header Summary */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: activeStageConfig.color }}></span>
-                  <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{activeStageConfig.title} Stage</span>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b' }}>({activeStageLeads.length} Deals)</span>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                padding: '10px 14px', 
+                backgroundColor: '#f8fafc', 
+                borderRadius: '8px', 
+                border: '1px solid #e2e8f0' 
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: activeStageConfig.color }}></span>
+                  <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>{activeStageConfig.title} Stage</span>
+                  <span style={{ fontSize: '0.78rem', color: '#64748b' }}>({activeStageLeads.length} Deals)</span>
                 </div>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#059669' }}>
-                  Total: {formatCurrency(activeStageTotalValue)}
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669' }}>
+                  Total Value: {formatCurrency(activeStageTotalValue)}
                 </span>
               </div>
 
@@ -887,13 +690,13 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                 {activeStageLeads.length > 0 ? (
                   activeStageLeads.map(lead => renderLeadCard(lead, false))
                 ) : (
-                  <div style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                    <Layers size={32} style={{ color: '#94a3b8', margin: '0 auto 8px auto' }} />
-                    <h4 style={{ margin: 0, fontWeight: 600, fontSize: '0.92rem', color: '#1e293b' }}>
-                      No leads in {activeStageConfig.title} stage
+                  <div style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>
+                    <Inbox size={32} style={{ color: '#94a3b8', margin: '0 auto 8px auto' }} />
+                    <h4 style={{ margin: 0, fontWeight: 650, fontSize: '0.92rem', color: '#1e293b' }}>
+                      No deals currently in {activeStageConfig.title}
                     </h4>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem' }}>
-                      Switch tabs or add a new lead to populate this stage.
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                      Advance deals from earlier stages or create new leads.
                     </p>
                   </div>
                 )}
@@ -907,18 +710,18 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
       {advancingLead && (
         <div 
           className="modal-backdrop" 
-          style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(3px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+          style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
         >
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', width: '100%', maxWidth: '480px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
             
             {/* Modal Header */}
-            <div style={{ backgroundColor: '#1e293b', color: '#ffffff', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600 }}>
-                  Advance Lead Pipeline Step
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                  Advance Pipeline Stage
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-                  {advancingLead.businessName} ({advancingLead.contactPerson})
+                <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                  {advancingLead.businessName || advancingLead.contactPerson}
                 </p>
               </div>
               <button onClick={() => setAdvancingLead(null)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
@@ -927,55 +730,55 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             </div>
 
             {/* Modal Body */}
-            <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  Target Stage
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 650, color: '#334155', marginBottom: '6px' }}>
+                  Move To Target Stage
                 </label>
                 <select
                   value={advanceNextStage}
                   onChange={(e) => setAdvanceNextStage(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 500, color: '#1e293b' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.84rem', fontWeight: 600, color: '#1e293b', backgroundColor: '#f8fafc', outline: 'none' }}
                 >
                   {STAGES.map(s => (
                     <option key={s.id} value={s.id}>
-                      {s.title} {s.id === 'Won' ? '🏆 (Close Deal)' : s.id === 'Lost' ? '❌ (Archive)' : ''}
+                      {s.title} {s.id === 'Won' ? '🏆 (Close Deal)' : s.id === 'Lost' ? '❌ (Lost/Dropped)' : ''}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  Progress Note / Discussion Summary
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 650, color: '#334155', marginBottom: '6px' }}>
+                  Progress Note / Discussion Details
                 </label>
                 <textarea
-                  placeholder="e.g., Customer agreed on pricing, scheduled follow-up call..."
+                  placeholder="Add meeting notes, customer feedback, next steps..."
                   value={advanceNotes}
                   onChange={(e) => setAdvanceNotes(e.target.value)}
                   rows={3}
-                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', fontFamily: 'inherit', resize: 'none' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontFamily: 'inherit', resize: 'none', outline: 'none' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  Next Follow-up Date & Time (Optional)
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 650, color: '#334155', marginBottom: '6px' }}>
+                  Schedule Next Follow-up (Optional)
                 </label>
                 <input
                   type="datetime-local"
                   value={advanceFollowUp}
                   onChange={(e) => setAdvanceFollowUp(e.target.value)}
-                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem' }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none' }}
                 />
               </div>
 
               {/* Actions */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '4px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
                 <button
                   type="button"
                   onClick={() => setAdvancingLead(null)}
-                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: 500, fontSize: '0.8rem', cursor: 'pointer' }}
+                  style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -983,9 +786,19 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                   type="button"
                   disabled={advancingLoading}
                   onClick={handleConfirmAdvance}
-                  style={{ padding: '6px 14px', borderRadius: '6px', border: 'none', backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 600, fontSize: '0.8rem', cursor: advancingLoading ? 'not-allowed' : 'pointer' }}
+                  style={{ 
+                    padding: '8px 18px', 
+                    borderRadius: '8px', 
+                    border: 'none', 
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)', 
+                    color: '#ffffff', 
+                    fontWeight: 650, 
+                    fontSize: '0.82rem', 
+                    cursor: advancingLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)'
+                  }}
                 >
-                  {advancingLoading ? "Advancing..." : `Confirm Move to ${advanceNextStage} ➔`}
+                  {advancingLoading ? "Advancing..." : `Move to ${advanceNextStage} ➔`}
                 </button>
               </div>
             </div>
