@@ -82,6 +82,7 @@ export default async function NewQuotationPage() {
   }
 
   const employees = employeesRaw.map(e => ({ id: e.id, name: e.user?.name || 'Unknown' }));
+  const companyState = companyRes?.settings?.state || 'Haryana';
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
@@ -91,6 +92,7 @@ export default async function NewQuotationPage() {
         employees={employees} 
         categoriesData={categoriesData} 
         defaultQuotationNumber={defaultQuotationNumber}
+        companyState={companyState}
       />
     </div>
   );

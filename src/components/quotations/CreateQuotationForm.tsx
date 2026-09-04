@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { 
   Search, Plus, Trash2, Save, Send, ArrowLeft, FileText, 
   CheckCircle2, Building, Calendar, Package, DollarSign, 
-  Sparkles, Info, HelpCircle, Scale, Truck, X, ChevronDown, Check, UserPlus, MapPin
+  Sparkles, Info, HelpCircle, Scale, Truck, X, ChevronDown, Check, UserPlus, MapPin,
+  Phone, Mail, Copy, CheckCheck, Tag, ShieldCheck, Layers
 } from 'lucide-react';
 import Link from 'next/link';
 import { createQuotation, updateQuotationFull } from '@/app/actions/quotationActions';
@@ -21,7 +22,56 @@ import { numberToWordsINR } from '@/lib/gstUtils';
 
 import { useSearchParams } from 'next/navigation';
 
-export default function CreateQuotationForm({ customers, products, employees, categoriesData = [], defaultQuotationNumber = 'QT-1001', initialQuotation = null }: any) {
+export const INDIAN_GST_STATES = [
+  { code: "01", name: "Jammu and Kashmir" },
+  { code: "02", name: "Himachal Pradesh" },
+  { code: "03", name: "Punjab" },
+  { code: "04", name: "Chandigarh" },
+  { code: "05", name: "Uttarakhand" },
+  { code: "06", name: "Haryana" },
+  { code: "07", name: "Delhi" },
+  { code: "08", name: "Rajasthan" },
+  { code: "09", name: "Uttar Pradesh" },
+  { code: "10", name: "Bihar" },
+  { code: "11", name: "Sikkim" },
+  { code: "12", name: "Arunachal Pradesh" },
+  { code: "13", name: "Nagaland" },
+  { code: "14", name: "Manipur" },
+  { code: "15", name: "Mizoram" },
+  { code: "16", name: "Tripura" },
+  { code: "17", name: "Meghalaya" },
+  { code: "18", name: "Assam" },
+  { code: "19", name: "West Bengal" },
+  { code: "20", name: "Jharkhand" },
+  { code: "21", name: "Odisha" },
+  { code: "22", name: "Chhattisgarh" },
+  { code: "23", name: "Madhya Pradesh" },
+  { code: "24", name: "Gujarat" },
+  { code: "26", name: "Dadra and Nagar Haveli and Daman and Diu" },
+  { code: "27", name: "Maharashtra" },
+  { code: "28", name: "Andhra Pradesh" },
+  { code: "29", name: "Karnataka" },
+  { code: "30", name: "Goa" },
+  { code: "31", name: "Lakshadweep" },
+  { code: "32", name: "Kerala" },
+  { code: "33", name: "Tamil Nadu" },
+  { code: "34", name: "Puducherry" },
+  { code: "35", name: "Andaman and Nicobar Islands" },
+  { code: "36", name: "Telangana" },
+  { code: "37", name: "Andhra Pradesh (New)" },
+  { code: "38", name: "Ladakh" },
+  { code: "97", name: "Other Territory" }
+];
+
+export default function CreateQuotationForm({ 
+  customers, 
+  products, 
+  employees, 
+  categoriesData = [], 
+  defaultQuotationNumber = 'QT-1001', 
+  initialQuotation = null,
+  companyState = 'Haryana'
+}: any) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
@@ -61,7 +111,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
     customerPhone: initialQuotation?.customer?.mobile || '',
     customerEmail: initialQuotation?.customer?.email || '',
     customerGst: initialQuotation?.customer?.gstNumber || '',
-    placeOfSupply: initialQuotation?.placeOfSupply || 'Haryana',
+    placeOfSupply: initialQuotation?.placeOfSupply || '',
     quotationNumber: initialQuotation?.quotationNumber || defaultQuotationNumber,
     referenceNumber: initialQuotation?.referenceNumber || '',
     quoteDate: initialQuotation?.date ? new Date(initialQuotation.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -236,13 +286,21 @@ export default function CreateQuotationForm({ customers, products, employees, ca
        shipping += ` - ${cust.pincode}`;
     }
 
+    // Resolve place of supply: customer state, or derived from GSTIN, or retain existing
+    let resolvedState = cust.state || '';
+    if (!resolvedState && cust.gstNumber && cust.gstNumber.length >= 2) {
+      const code = cust.gstNumber.substring(0, 2);
+      const match = INDIAN_GST_STATES.find(s => s.code === code);
+      if (match) resolvedState = match.name;
+    }
+
     setFormData((prev: any) => ({
       ...prev,
       customerId: cust.id,
       customerPhone: cust.mobile || cust.phone || prev.customerPhone || '',
       customerEmail: cust.email || prev.customerEmail || '',
       customerGst: cust.gstNumber || prev.customerGst || '',
-      placeOfSupply: cust.state || prev.placeOfSupply || 'Haryana',
+      placeOfSupply: resolvedState || prev.placeOfSupply || '',
       billingAddress: billing,
       shippingAddress: shipping,
       salespersonId: cust.assignedSalespersonId || prev.salespersonId
@@ -495,7 +553,10 @@ export default function CreateQuotationForm({ customers, products, employees, ca
     });
 
     const pos = (formData.placeOfSupply || '').trim().toLowerCase();
-    const isIntrastate = pos === 'haryana' || pos.startsWith('haryana') || (!pos && true);
+    const orgState = (companyState || 'Haryana').trim().toLowerCase();
+    const isIntrastate = Boolean(pos)
+      ? (pos === orgState || pos.startsWith(orgState) || orgState.startsWith(pos) || pos.includes(orgState) || orgState.includes(pos))
+      : true;
     const cgst = isIntrastate ? taxTotal / 2 : 0;
     const sgst = isIntrastate ? taxTotal / 2 : 0;
     const igst = isIntrastate ? 0 : taxTotal;
@@ -520,7 +581,8 @@ export default function CreateQuotationForm({ customers, products, employees, ca
       cgst, 
       sgst, 
       igst, 
-      isIntrastate, 
+      isIntrastate,
+      hasPlaceOfSupply: Boolean(formData.placeOfSupply), 
       effectiveGstRate,
       shippingCharges, 
       rawTotal, 
@@ -560,6 +622,7 @@ export default function CreateQuotationForm({ customers, products, employees, ca
         referenceNumber: formData.referenceNumber || undefined,
         quoteDate: formData.quoteDate,
         expiryDate: formData.expiryDate,
+        placeOfSupply: formData.placeOfSupply || undefined,
         salespersonId: formData.salespersonId || undefined,
         status: resolvedStatus,
         subject: formData.subject || undefined,
@@ -691,13 +754,20 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                  shipping += ` - ${newCustomer.pincode}`;
               }
 
+              let resolvedState = newCustomer.state || '';
+              if (!resolvedState && newCustomer.gstNumber && newCustomer.gstNumber.length >= 2) {
+                const code = newCustomer.gstNumber.substring(0, 2);
+                const match = INDIAN_GST_STATES.find(s => s.code === code);
+                if (match) resolvedState = match.name;
+              }
+
               setFormData((prev: any) => ({ 
                 ...prev, 
                 customerId: newCustomer.id,
                 customerPhone: newCustomer.mobile || newCustomer.phone || prev.customerPhone || '',
                 customerEmail: newCustomer.email || prev.customerEmail || '',
                 customerGst: newCustomer.gstNumber || prev.customerGst || '',
-                placeOfSupply: newCustomer.state || prev.placeOfSupply || 'Haryana',
+                placeOfSupply: resolvedState || prev.placeOfSupply || '',
                 billingAddress: billing,
                 shippingAddress: shipping,
                 salespersonId: newCustomer.assignedSalespersonId || prev.salespersonId
@@ -753,132 +823,149 @@ export default function CreateQuotationForm({ customers, products, employees, ca
       </div>
 
       {/* ─── ZOHO DIGITAL SHEET CANVAS ─── */}
-      <div className="quotation-canvas-card" style={{ maxWidth: '1200px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', padding: '36px 40px' }}>
+      <div className="quotation-canvas-card" style={{ maxWidth: '1200px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03)', padding: '32px 36px' }}>
         
-        {/* TOP SECTION: CUSTOMER & QUOTATION META */}
-        <div className="quotation-top-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', paddingBottom: '32px', borderBottom: '1px solid #e2e8f0' }}>
+        {/* TOP SECTION: CUSTOMER & QUOTATION SPECIFICATIONS */}
+        <div className="quotation-top-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.18fr) minmax(0, 1fr)', gap: '32px', paddingBottom: '28px', borderBottom: '1px solid #e2e8f0' }}>
           
-          {/* LEFT: CUSTOMER INFORMATION (EDITABLE) */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.03em', margin: 0 }}>
-                Customer Name <span style={{ color: '#ef4444' }}>*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setShowAddCustomerModal(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: '#2563eb',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '2px 6px',
-                  borderRadius: '4px'
-                }}
-              >
-                <UserPlus size={14} /> Add New Customer
-              </button>
-            </div>
+          {/* LEFT: CUSTOMER & BILLING PROFILE */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            
+            {/* Customer Search & Quick Add */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.02em', margin: 0 }}>
+                  <Building size={15} color="#2563eb" />
+                  Customer Name <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomerModal(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    color: '#2563eb',
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    cursor: 'pointer',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <UserPlus size={13} /> Add New Customer
+                </button>
+              </div>
 
-            {/* SEARCHABLE CUSTOMER INPUT */}
-            <div style={{ position: 'relative', width: '100%' }}>
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  border: showCustomerSearch ? '2px solid #2563eb' : '1px solid #cbd5e1', 
-                  borderRadius: '6px', 
-                  padding: '8px 12px', 
-                  backgroundColor: '#ffffff',
-                  boxShadow: showCustomerSearch ? '0 0 0 3px rgba(37, 99, 235, 0.12)' : 'none',
-                  transition: 'all 0.15s ease',
-                  cursor: 'text'
-                }}
-                onClick={() => {
-                  setShowCustomerSearch(true);
-                  updateCustomerDropdownCoords();
-                  customerInputRef.current?.focus();
-                }}
-              >
-                <Search size={16} color={showCustomerSearch ? "#2563eb" : "#64748b"} style={{ flexShrink: 0 }} />
-                <input 
-                  ref={customerInputRef}
-                  type="text" 
-                  placeholder="Type to search customer by name, contact, mobile, GST..." 
-                  value={customerSearchTerm}
-                  onChange={(e) => {
-                    setCustomerSearchTerm(e.target.value);
-                    setShowCustomerSearch(true);
-                    updateCustomerDropdownCoords();
-                  }}
-                  onFocus={(e) => {
-                    e.target.select();
-                    setShowCustomerSearch(true);
-                    updateCustomerDropdownCoords();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Escape') {
-                      setShowCustomerSearch(false);
-                    }
-                  }}
+              {/* Searchable Customer Input Box */}
+              <div style={{ position: 'relative', width: '100%' }}>
+                <div 
                   style={{ 
-                    border: 'none', 
-                    outline: 'none', 
-                    marginLeft: '10px', 
-                    width: '100%', 
-                    fontSize: '0.88rem', 
-                    color: '#0f172a',
-                    fontWeight: selectedCustomer && customerSearchTerm === (selectedCustomer.businessName || selectedCustomer.companyName) ? 600 : 400,
-                    backgroundColor: 'transparent' 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    border: showCustomerSearch ? '2px solid #2563eb' : '1px solid #cbd5e1', 
+                    borderRadius: '8px', 
+                    padding: '8px 12px', 
+                    backgroundColor: '#ffffff',
+                    boxShadow: showCustomerSearch ? '0 0 0 3px rgba(37, 99, 235, 0.12)' : '0 1px 2px 0 rgba(0,0,0,0.03)',
+                    transition: 'all 0.15s ease',
+                    cursor: 'text'
                   }}
-                />
-                {customerSearchTerm ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCustomerSearchTerm('');
-                      setSelectedCustomer(null);
-                      setFormData((prev: any) => ({
-                        ...prev,
-                        customerId: '',
-                        customerPhone: '',
-                        customerEmail: '',
-                        customerGst: '',
-                        billingAddress: '',
-                        shippingAddress: ''
-                      }));
+                  onClick={() => {
+                    setShowCustomerSearch(true);
+                    updateCustomerDropdownCoords();
+                    customerInputRef.current?.focus();
+                  }}
+                >
+                  <Search size={16} color={showCustomerSearch ? "#2563eb" : "#64748b"} style={{ flexShrink: 0 }} />
+                  <input 
+                    ref={customerInputRef}
+                    type="text" 
+                    placeholder="Search customer by name, contact, mobile, GSTIN..." 
+                    value={customerSearchTerm}
+                    onChange={(e) => {
+                      setCustomerSearchTerm(e.target.value);
+                      setShowCustomerSearch(true);
                       updateCustomerDropdownCoords();
-                      customerInputRef.current?.focus();
                     }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '2px',
-                      cursor: 'pointer',
-                      color: '#94a3b8',
-                      display: 'flex',
-                      alignItems: 'center'
+                    onFocus={(e) => {
+                      e.target.select();
+                      setShowCustomerSearch(true);
+                      updateCustomerDropdownCoords();
                     }}
-                  >
-                    <X size={16} />
-                  </button>
-                ) : (
-                  <ChevronDown size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
-                )}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setShowCustomerSearch(false);
+                      }
+                    }}
+                    style={{ 
+                      border: 'none', 
+                      outline: 'none', 
+                      marginLeft: '8px', 
+                      width: '100%', 
+                      fontSize: '0.88rem', 
+                      color: '#0f172a',
+                      fontWeight: selectedCustomer && customerSearchTerm === (selectedCustomer.businessName || selectedCustomer.companyName) ? 600 : 400,
+                      backgroundColor: 'transparent' 
+                    }}
+                  />
+                  {customerSearchTerm ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCustomerSearchTerm('');
+                        setSelectedCustomer(null);
+                        setFormData((prev: any) => ({
+                          ...prev,
+                          customerId: '',
+                          customerPhone: '',
+                          customerEmail: '',
+                          customerGst: '',
+                          placeOfSupply: '',
+                          billingAddress: '',
+                          shippingAddress: ''
+                        }));
+                        updateCustomerDropdownCoords();
+                        customerInputRef.current?.focus();
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '2px',
+                        cursor: 'pointer',
+                        color: '#94a3b8',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <X size={16} />
+                    </button>
+                  ) : (
+                    <ChevronDown size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* EDITABLE CUSTOMER DETAILS CARD */}
-            <div style={{ marginTop: '16px', padding: '16px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
+            {/* CUSTOMER PROFILE CARD (EDITABLE METADATA) */}
+            <div style={{ 
+              padding: '16px 18px', 
+              backgroundColor: '#f8fafc', 
+              borderRadius: '10px', 
+              border: '1px solid #e2e8f0', 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '12px' 
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', textTransform: 'uppercase' }}>Customer Details</span>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    Customer Details
+                  </span>
                   {selectedCustomer && (() => {
                     const tier = getCustomerTierDiscount(selectedCustomer);
                     return (
@@ -896,106 +983,232 @@ export default function CreateQuotationForm({ customers, products, employees, ca
                     );
                   })()}
                 </div>
-                <span style={{ fontSize: '0.75rem', backgroundColor: totals.isIntrastate ? '#dcfce7' : '#e0e7ff', color: totals.isIntrastate ? '#15803d' : '#3730a3', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
-                  {totals.isIntrastate ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
-                </span>
+
+                {/* Tax Treatment Status Pill */}
+                {formData.placeOfSupply ? (
+                  <span style={{
+                    fontSize: '0.74rem',
+                    backgroundColor: totals.isIntrastate ? '#ecfdf5' : '#eff6ff',
+                    color: totals.isIntrastate ? '#047857' : '#1d4ed8',
+                    border: `1px solid ${totals.isIntrastate ? '#a7f3d0' : '#bfdbfe'}`,
+                    padding: '3px 10px',
+                    borderRadius: '16px',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: totals.isIntrastate ? '#10b981' : '#3b82f6' }} />
+                    {totals.isIntrastate ? 'Intra-State (CGST + SGST)' : 'Inter-State (IGST)'}
+                  </span>
+                ) : (
+                  <span style={{
+                    fontSize: '0.74rem',
+                    backgroundColor: '#f1f5f9',
+                    color: '#64748b',
+                    border: '1px solid #e2e8f0',
+                    padding: '3px 10px',
+                    borderRadius: '16px',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#94a3b8' }} />
+                    Place of Supply (Select Below)
+                  </span>
+                )}
               </div>
 
+              {/* Row 1: Phone & Email */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Phone Number</label>
-                  <input 
-                    type="text" 
-                    value={formData.customerPhone} 
-                    onChange={e => setFormData({...formData, customerPhone: e.target.value})}
-                    placeholder="Mobile number" 
-                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', backgroundColor: '#ffffff' }}
-                  />
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Phone Number
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input 
+                      type="text" 
+                      value={formData.customerPhone} 
+                      onChange={e => setFormData({...formData, customerPhone: e.target.value})}
+                      placeholder="e.g. +91 98765 43210" 
+                      style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', color: '#0f172a', backgroundColor: '#ffffff', outline: 'none' }}
+                    />
+                  </div>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Email Address</label>
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Email Address
+                  </label>
                   <input 
                     type="email" 
                     value={formData.customerEmail} 
                     onChange={e => setFormData({...formData, customerEmail: e.target.value})}
-                    placeholder="Email" 
-                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', backgroundColor: '#ffffff' }}
+                    placeholder="e.g. customer@company.com" 
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', color: '#0f172a', backgroundColor: '#ffffff', outline: 'none' }}
                   />
                 </div>
               </div>
 
+              {/* Row 2: GSTIN & Place of Supply (Dropdown) */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>GSTIN / Tax ID</label>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>
+                      GSTIN / Tax ID
+                    </label>
+                    {formData.customerGst && formData.customerGst.length >= 2 && (() => {
+                      const code = formData.customerGst.substring(0, 2);
+                      const matched = INDIAN_GST_STATES.find(s => s.code === code);
+                      return matched ? (
+                        <span style={{ fontSize: '0.68rem', color: '#2563eb', fontWeight: 600 }}>
+                          Code {matched.code}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
                   <input 
                     type="text" 
                     value={formData.customerGst} 
-                    onChange={e => setFormData({...formData, customerGst: e.target.value})}
-                    placeholder="GSTIN" 
-                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', fontFamily: 'monospace', fontWeight: 600, backgroundColor: '#ffffff' }}
+                    onChange={e => {
+                      const upper = e.target.value.toUpperCase();
+                      let nextState = formData.placeOfSupply;
+                      if (upper.length >= 2 && !nextState) {
+                        const code = upper.substring(0, 2);
+                        const matched = INDIAN_GST_STATES.find(s => s.code === code);
+                        if (matched) nextState = matched.name;
+                      }
+                      setFormData(prev => ({
+                        ...prev,
+                        customerGst: upper,
+                        placeOfSupply: nextState
+                      }));
+                    }}
+                    placeholder="e.g. 06AAHCE7721Q1Z4" 
+                    maxLength={15}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', color: '#0f172a', fontFamily: 'monospace', fontWeight: 600, backgroundColor: '#ffffff', outline: 'none' }}
                   />
                 </div>
+
+                {/* Place of Supply (Indian State Dropdown) */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Place of Supply (State)</label>
-                  <input 
-                    type="text" 
-                    value={formData.placeOfSupply} 
-                    onChange={e => setFormData({...formData, placeOfSupply: e.target.value})}
-                    placeholder="e.g. Haryana, Delhi, Punjab" 
-                    style={{ width: '100%', padding: '6px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', color: '#0f172a', fontWeight: 600, backgroundColor: '#ffffff' }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>
+                      Place of Supply (State)
+                    </label>
+                    {formData.placeOfSupply && (
+                      <button 
+                        type="button" 
+                        onClick={() => setFormData(prev => ({ ...prev, placeOfSupply: '' }))}
+                        style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.7rem', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <select 
+                      value={formData.placeOfSupply} 
+                      onChange={e => setFormData({...formData, placeOfSupply: e.target.value})}
+                      style={{ 
+                        width: '100%', 
+                        padding: '7px 28px 7px 10px', 
+                        borderRadius: '6px', 
+                        border: '1px solid #cbd5e1', 
+                        fontSize: '0.84rem', 
+                        color: formData.placeOfSupply ? '#0f172a' : '#64748b', 
+                        fontWeight: formData.placeOfSupply ? 600 : 400, 
+                        backgroundColor: '#ffffff',
+                        appearance: 'none',
+                        cursor: 'pointer',
+                        outline: 'none'
+                      }}
+                    >
+                      <option value="">-- Select State / UT --</option>
+                      {INDIAN_GST_STATES.map((st) => {
+                        const isOrgHome = st.name.toLowerCase() === (companyState || 'haryana').toLowerCase();
+                        return (
+                          <option key={st.code} value={st.name}>
+                            {st.code} - {st.name} {isOrgHome ? '(Home - Intra)' : ''}
+                          </option>
+                        );
+                      })}
+                      {/* Fallback for custom state value */}
+                      {formData.placeOfSupply && !INDIAN_GST_STATES.some(s => s.name.toLowerCase() === formData.placeOfSupply.toLowerCase()) && (
+                        <option value={formData.placeOfSupply}>{formData.placeOfSupply}</option>
+                      )}
+                    </select>
+                    <ChevronDown size={15} color="#64748b" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* ADDRESS BOXES */}
-            <div style={{ marginTop: '20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: showShippingAddress ? '1fr 1fr' : '1fr', gap: '20px' }}>
-                <div style={{ padding: '16px', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.02)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: showShippingAddress ? '1fr 1fr' : '1fr', gap: '14px' }}>
+                {/* Billing Address */}
+                <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <MapPin size={16} color="#3b82f6" />
-                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Billing Address</label>
+                      <MapPin size={15} color="#2563eb" />
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em', margin: 0 }}>
+                        Billing Address
+                      </label>
                     </div>
                     {!showShippingAddress && (
                       <button 
                         type="button"
                         onClick={() => setShowShippingAddress(true)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600, color: '#2563eb', background: '#eff6ff', border: 'none', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', transition: 'background 0.2s' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', fontWeight: 600, color: '#2563eb', background: '#eff6ff', border: '1px solid #dbeafe', padding: '3px 8px', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.15s' }}
                       >
-                        <Plus size={14} /> Add Shipping Address
+                        <Plus size={13} /> Add Shipping Address
                       </button>
                     )}
                   </div>
                   <textarea 
                     value={formData.billingAddress}
                     onChange={e => setFormData({...formData, billingAddress: e.target.value})}
-                    rows={4}
-                    style={{ width: '100%', minHeight: '80px', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a', lineHeight: '1.5', resize: 'vertical', backgroundColor: '#f8fafc', fontFamily: 'inherit', outline: 'none', transition: 'border-color 0.2s' }}
+                    rows={3}
+                    style={{ width: '100%', minHeight: '72px', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', color: '#0f172a', lineHeight: '1.4', resize: 'vertical', backgroundColor: '#ffffff', fontFamily: 'inherit', outline: 'none' }}
                     placeholder="Enter complete billing address..."
                   />
                 </div>
 
+                {/* Shipping Address */}
                 {showShippingAddress && (
-                  <div style={{ padding: '16px', backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.02)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <MapPin size={16} color="#8b5cf6" />
-                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Shipping Address</label>
+                        <MapPin size={15} color="#7c3aed" />
+                        <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.02em', margin: 0 }}>
+                          Shipping Address
+                        </label>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => setShowShippingAddress(false)}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, shippingAddress: prev.billingAddress }))}
+                          style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.72rem', fontWeight: 600, color: '#475569', background: '#ffffff', border: '1px solid #cbd5e1', padding: '2px 6px', borderRadius: '4px', cursor: 'pointer' }}
+                          title="Copy billing address"
+                        >
+                          <Copy size={11} /> Same as Billing
+                        </button>
+                        <button 
+                          type="button"
+                          onClick={() => setShowShippingAddress(false)}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', borderRadius: '4px' }}
+                          title="Remove shipping address"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
                     <textarea 
                       value={formData.shippingAddress}
                       onChange={e => setFormData({...formData, shippingAddress: e.target.value})}
-                      rows={4}
-                      style={{ width: '100%', minHeight: '80px', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', color: '#0f172a', lineHeight: '1.5', resize: 'vertical', backgroundColor: '#f8fafc', fontFamily: 'inherit', outline: 'none', transition: 'border-color 0.2s' }}
+                      rows={3}
+                      style={{ width: '100%', minHeight: '72px', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', color: '#0f172a', lineHeight: '1.4', resize: 'vertical', backgroundColor: '#ffffff', fontFamily: 'inherit', outline: 'none' }}
                       placeholder="Enter complete shipping address..."
                     />
                   </div>
@@ -1004,55 +1217,129 @@ export default function CreateQuotationForm({ customers, products, employees, ca
             </div>
           </div>
 
-          {/* RIGHT: QUOTATION DATES & TERMS */}
-          <div style={{ backgroundColor: '#f8fafc', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          {/* RIGHT: QUOTATION SPECIFICATIONS & LOGISTICS */}
+          <div style={{ 
+            backgroundColor: '#f8fafc', 
+            padding: '20px 22px', 
+            borderRadius: '12px', 
+            border: '1px solid #e2e8f0', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '14px',
+            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.02)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <FileText size={16} color="#059669" />
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                  Document Specifications
+                </span>
+              </div>
+              <span style={{ fontSize: '0.68rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '2px 8px', borderRadius: '6px', fontWeight: 600, border: '1px solid #a7f3d0', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                <Sparkles size={11} /> Auto-increment
+              </span>
+            </div>
+
+            {/* Row 1: Quotation # & Reference # */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569', margin: 0 }}>Quotation #</label>
-                  <span style={{ fontSize: '0.68rem', color: '#059669', backgroundColor: '#ecfdf5', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, border: '1px solid #a7f3d0' }}>Auto-increment</span>
-                </div>
-                <input type="text" placeholder="Auto-generated (e.g. QT-1001)" value={formData.quotationNumber} onChange={e => setFormData({...formData, quotationNumber: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600, color: '#0f172a' }} />
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Quotation # <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. QT-1001" 
+                  value={formData.quotationNumber} 
+                  onChange={e => setFormData({...formData, quotationNumber: e.target.value})} 
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600, color: '#0f172a', outline: 'none' }} 
+                />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Reference #</label>
-                <input type="text" placeholder="PO / Ref Number" value={formData.referenceNumber} onChange={e => setFormData({...formData, referenceNumber: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }} />
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Reference # (PO/Order)
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. PO-2026-089" 
+                  value={formData.referenceNumber} 
+                  onChange={e => setFormData({...formData, referenceNumber: e.target.value})} 
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none' }} 
+                />
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            {/* Row 2: Quote Date & Expiry Date */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Quote Date <span style={{ color: '#ef4444' }}>*</span></label>
-                <DatePicker  value={formData.quoteDate} onChange={e => setFormData({...formData, quoteDate: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }} />
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Quote Date <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <DatePicker 
+                  value={formData.quoteDate} 
+                  onChange={e => setFormData({...formData, quoteDate: e.target.value})} 
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }} 
+                />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Expiry Date</label>
-                <DatePicker  value={formData.expiryDate} onChange={e => setFormData({...formData, expiryDate: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }} />
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Expiry Date
+                </label>
+                <DatePicker 
+                  value={formData.expiryDate} 
+                  onChange={e => setFormData({...formData, expiryDate: e.target.value})} 
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }} 
+                />
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            {/* Row 3: Payment Terms & Salesperson */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Payment Terms</label>
-                <select value={formData.paymentTerms} onChange={e => setFormData({...formData, paymentTerms: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}>
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Payment Terms
+                </label>
+                <select 
+                  value={formData.paymentTerms} 
+                  onChange={e => setFormData({...formData, paymentTerms: e.target.value})} 
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none', cursor: 'pointer' }}
+                >
                   <option value="Due on Receipt">Due on Receipt</option>
                   <option value="Net 15">Net 15 Days</option>
                   <option value="Net 30">Net 30 Days</option>
+                  <option value="Net 45">Net 45 Days</option>
+                  <option value="Net 60">Net 60 Days</option>
                   <option value="50% Advance">50% Advance</option>
+                  <option value="100% Advance">100% Advance</option>
+                  <option value="Cash on Delivery">Cash on Delivery (COD)</option>
                 </select>
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Salesperson</label>
-                <select value={formData.salespersonId} onChange={e => setFormData({...formData, salespersonId: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}>
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Salesperson
+                </label>
+                <select 
+                  value={formData.salespersonId} 
+                  onChange={e => setFormData({...formData, salespersonId: e.target.value})} 
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none', cursor: 'pointer' }}
+                >
                   <option value="">Select Salesperson</option>
                   {employees.map((e: any) => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
               </div>
             </div>
 
+            {/* Row 4: Subject / Headline */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Subject / Headline</label>
-              <input type="text" placeholder="e.g. Bulk Order Quotation for Festive Season" value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }} />
+              <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                Subject / Headline
+              </label>
+              <input 
+                type="text" 
+                placeholder="e.g. Bulk Order Quotation for Festive Season 2026" 
+                value={formData.subject} 
+                onChange={e => setFormData({...formData, subject: e.target.value})} 
+                style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', color: '#0f172a', outline: 'none' }} 
+              />
             </div>
           </div>
 

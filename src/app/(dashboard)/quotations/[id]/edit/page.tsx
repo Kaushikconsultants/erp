@@ -105,6 +105,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
   }
 
   const employees = employeesRaw.map(e => ({ id: e.id, name: e.user?.name || 'Unknown' }));
+  const companyState = companyRes?.settings?.state || 'Haryana';
 
   return (
     <div className="min-h-screen bg-[#f8fafc]">
@@ -115,6 +116,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
         categoriesData={categoriesData} 
         defaultQuotationNumber={quotation.quotationNumber}
         initialQuotation={quotation}
+        companyState={companyState}
       />
     </div>
   );

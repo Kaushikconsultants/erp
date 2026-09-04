@@ -88,6 +88,7 @@ export async function createQuotation(data: {
   referenceNumber?: string;
   quoteDate?: string;
   expiryDate?: string;
+  placeOfSupply?: string;
   salespersonId?: string;
   status?: string;
   subject?: string;
@@ -158,7 +159,7 @@ export async function createQuotation(data: {
 
     const companyRes = await getCompanySettings();
     const companyState = companyRes.settings?.state || "Haryana";
-    const customerState = customer.state || companyState;
+    const customerState = data.placeOfSupply || customer.state || companyState;
 
     const isInterstate = companyState.trim().toLowerCase() !== customerState.trim().toLowerCase();
 
@@ -260,7 +261,7 @@ export async function createQuotation(data: {
           salespersonId: resolvedSalespersonId,
           date: data.quoteDate ? new Date(data.quoteDate) : new Date(),
           expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
-          placeOfSupply: `${customerState} (${customer.pincode ? customer.pincode.slice(0, 2) : '27'})`,
+          placeOfSupply: data.placeOfSupply || customerState || null,
           subject: data.subject || null,
           billingAddress: data.billingAddress || customer.billingAddress || null,
           shippingAddress: data.shippingAddress || customer.shippingAddress || customer.billingAddress || null,
@@ -427,6 +428,7 @@ export async function updateQuotationFull(id: string, data: {
   referenceNumber?: string;
   quoteDate?: string;
   expiryDate?: string;
+  placeOfSupply?: string;
   salespersonId?: string;
   status?: string;
   subject?: string;
@@ -477,7 +479,7 @@ export async function updateQuotationFull(id: string, data: {
 
     const companyRes = await getCompanySettings();
     const companyState = companyRes.settings?.state || "Haryana";
-    const customerState = customer.state || companyState;
+    const customerState = data.placeOfSupply || customer.state || companyState;
 
     const isInterstate = companyState.trim().toLowerCase() !== customerState.trim().toLowerCase();
 
@@ -576,7 +578,7 @@ export async function updateQuotationFull(id: string, data: {
         ...(data.status ? { status: data.status } : {}),
         date: data.quoteDate ? new Date(data.quoteDate) : new Date(),
         expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
-        placeOfSupply: `${customerState} (${customer.pincode ? customer.pincode.slice(0, 2) : '27'})`,
+        placeOfSupply: data.placeOfSupply || customerState || null,
         subject: data.subject || null,
         billingAddress: data.billingAddress || customer.billingAddress || null,
         shippingAddress: data.shippingAddress || customer.shippingAddress || customer.billingAddress || null,
