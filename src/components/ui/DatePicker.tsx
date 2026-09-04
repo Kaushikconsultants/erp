@@ -1,9 +1,8 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import DatePicker from 'react-datepicker';
 import { format } from 'date-fns';
-import { Calendar } from 'lucide-react';
 
 interface CustomDatePickerProps {
   value?: string; // YYYY-MM-DD
@@ -22,10 +21,28 @@ interface CustomDatePickerProps {
   id?: string;
 }
 
-const parseDateString = (dateStr?: string) => {
+const parseDateString = (dateStr?: string | Date | null): Date | null => {
   if (!dateStr) return null;
-  const [y, m, d] = dateStr.split('-');
-  return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+  if (dateStr instanceof Date) return isNaN(dateStr.getTime()) ? null : dateStr;
+  
+  if (typeof dateStr === 'string') {
+    const trimmed = dateStr.trim();
+    if (!trimmed) return null;
+    
+    // Check YYYY-MM-DD or YYYY/MM/DD
+    if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed)) {
+      const parts = trimmed.substring(0, 10).split(/[-/]/);
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      const dt = new Date(y, m, d);
+      return isNaN(dt.getTime()) ? null : dt;
+    }
+    
+    const parsed = new Date(trimmed);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return null;
 };
 
 const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
@@ -37,15 +54,47 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
   disabled,
   minDate,
   defaultValue,
+  name,
+  required,
+  id,
+  title,
+  onFocus,
+  onBlur,
   ...rest
 }) => {
-  const selectedDate = parseDateString(value || defaultValue);
-  const minDateObj = minDate ? parseDateString(minDate) : undefined;
+  const isControlled = value !== undefined;
+  const [internalValue, setInternalValue] = useState<string>(() => {
+    return isControlled ? (value || '') : (defaultValue || '');
+  });
 
-  const handleChange = (date: Date | null) => {
+  useEffect(() => {
+    if (isControlled) {
+      setInternalValue(value || '');
+    }
+  }, [value, isControlled]);
+
+  const effectiveValue = isControlled ? (value || '') : internalValue;
+  const selectedDate = parseDateString(effectiveValue);
+  const minDateObj = minDate ? (parseDateString(minDate) || undefined) : undefined;
+
+  const handleChange = (date: Date | null, event?: React.SyntheticEvent<any>) => {
     const val = date ? format(date, 'yyyy-MM-dd') : '';
+    if (!isControlled) {
+      setInternalValue(val);
+    }
     if (onChange) {
-      onChange({ target: { value: val } });
+      onChange({
+        target: {
+          value: val,
+          name: name || id || '',
+        },
+        currentTarget: {
+          value: val,
+          name: name || id || '',
+        },
+        type: 'change',
+        nativeEvent: event?.nativeEvent
+      });
     }
   };
 
@@ -58,11 +107,23 @@ const CustomDatePicker: React.FC<CustomDatePickerProps> = ({
         placeholderText={placeholder || "Select date"}
         className={`custom-datepicker-input ${className || ''}`}
         disabled={disabled}
-        minDate={minDateObj || undefined}
+        minDate={minDateObj}
         isClearable
         showPopperArrow={false}
+        id={id}
+        title={title}
+        required={required}
+        onFocus={onFocus}
+        onBlur={onBlur}
         {...rest}
       />
+      {name && (
+        <input
+          type="hidden"
+          name={name}
+          value={effectiveValue}
+        />
+      )}
     </div>
   );
 };

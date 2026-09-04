@@ -526,19 +526,34 @@ export default async function Home() {
       }).catch(() => []) : Promise.resolve([]),
       employee?.id ? prisma.call.findMany({
         where: {
-          employeeId: employee.id,
           followUpDate: { not: null },
           OR: [
-            { customer: orgId ? { organizationId: orgId } : {} },
-            { lead: orgId ? { organizationId: orgId } : {} }
-          ]
+            { employeeId: employee.id },
+            { customer: { assignedSalespersonId: employee.id } },
+            { lead: { assignedSalespersonId: employee.id } }
+          ],
+          ...(orgId ? {
+            AND: [
+              {
+                OR: [
+                  { customer: { organizationId: orgId } },
+                  { lead: { organizationId: orgId } },
+                  { employee: { organizationId: orgId } }
+                ]
+              }
+            ]
+          } : {})
         },
         include: {
-          customer: { select: { id: true, businessName: true, contactPerson: true, mobile: true, phone: true, whatsappNumber: true, leadStage: true, status: true, city: true, state: true } },
-          lead: { select: { id: true, name: true, shopName: true, mobile: true, whatsappNumber: true, stage: true, city: true, state: true } }
+          customer: true,
+          lead: true,
+          employee: { include: { user: true } }
         },
         orderBy: { followUpDate: 'asc' }
-      }).catch(() => []) : Promise.resolve([]),
+      }).catch((err) => {
+        console.error("Employee dashboard follow-ups fetch error:", err);
+        return [];
+      }) : Promise.resolve([]),
       prisma.order.findMany({
         where: {
           ...(orgId ? { organizationId: orgId } : {}),
@@ -633,12 +648,12 @@ export default async function Home() {
       if (!c.followUpDate) return false;
       const hasCustomer = c.customer && Boolean((c.customer.businessName || '').trim() || (c.customer.contactPerson || '').trim());
       const hasLead = c.lead && Boolean((c.lead.shopName || '').trim() || (c.lead.name || '').trim());
-      return hasCustomer || hasLead;
+      return hasCustomer || hasLead || Boolean(c.customerId || c.leadId);
     });
 
     const todayFollowUps = validFollowUps.filter((c: any) => {
       const d = new Date(c.followUpDate);
-      return d >= todayStart && d < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+      return d < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
     });
 
     // Serialize cleanly for client component props - include confirmed quotations

@@ -22,6 +22,22 @@ interface EmployeeLeavePanelProps {
 export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeavePanelProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [numberOfDays, setNumberOfDays] = useState('');
+
+  const calculateDays = (start: string, end: string) => {
+    if (!start || !end) return;
+    const d1 = new Date(start);
+    const d2 = new Date(end);
+    if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+      const diffTime = d2.getTime() - d1.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      if (diffDays > 0) {
+        setNumberOfDays(String(diffDays));
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,12 +46,16 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
     
     const form = e.currentTarget;
     const formData = new FormData(form);
+    const sDate = startDate || (formData.get('startDate') as string);
+    const eDate = endDate || (formData.get('endDate') as string);
+    const nDays = numberOfDays ? Number(numberOfDays) : Number(formData.get('numberOfDays'));
+    
     const data = {
       employeeId,
       leaveType: formData.get('leaveType') as string,
-      startDate: formData.get('startDate') as string,
-      endDate: formData.get('endDate') as string,
-      numberOfDays: Number(formData.get('numberOfDays')),
+      startDate: sDate,
+      endDate: eDate,
+      numberOfDays: nDays,
       reason: formData.get('reason') as string,
     };
 
@@ -43,6 +63,9 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
     if (res.success) {
       setMessage({ text: '🎉 Leave request submitted successfully! Your manager has been notified.', type: 'success' });
       form.reset();
+      setStartDate('');
+      setEndDate('');
+      setNumberOfDays('');
     } else {
       setMessage({ text: `Failed to submit: ${res.error}`, type: 'error' });
     }
@@ -162,6 +185,12 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
                 </label>
                 <DatePicker 
                   name="startDate" 
+                  value={startDate}
+                  onChange={(e: any) => {
+                    const newStart = e.target.value;
+                    setStartDate(newStart);
+                    calculateDays(newStart, endDate);
+                  }}
                   required 
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', backgroundColor: '#ffffff', outline: 'none' }} 
                 />
@@ -172,6 +201,13 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
                 </label>
                 <DatePicker 
                   name="endDate" 
+                  value={endDate}
+                  minDate={startDate || undefined}
+                  onChange={(e: any) => {
+                    const newEnd = e.target.value;
+                    setEndDate(newEnd);
+                    calculateDays(startDate, newEnd);
+                  }}
                   required 
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', backgroundColor: '#ffffff', outline: 'none' }} 
                 />
@@ -187,6 +223,8 @@ export default function EmployeeLeavePanel({ employeeId, leaves }: EmployeeLeave
                 step="0.5" 
                 min="0.5" 
                 name="numberOfDays" 
+                value={numberOfDays}
+                onChange={(e) => setNumberOfDays(e.target.value)}
                 required 
                 placeholder="e.g. 1 or 0.5"
                 style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', backgroundColor: '#ffffff', outline: 'none' }} 

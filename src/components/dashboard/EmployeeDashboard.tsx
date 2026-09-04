@@ -237,19 +237,23 @@ export default function EmployeeDashboard({
   const targetMonthlyGoal = employee?.target || 500000;
 
   // Filter out any ghost/orphan follow-ups that lack valid customer/lead identification
-  const validTodayFollowUps = useMemo(() => {
-    return todayFollowUps.filter((c: any) => 
-      (c.customer && Boolean((c.customer.businessName || '').trim() || (c.customer.contactPerson || '').trim())) ||
-      (c.lead && Boolean((c.lead.shopName || '').trim() || (c.lead.name || '').trim()))
-    );
-  }, [todayFollowUps]);
-
   const validAllFollowUps = useMemo(() => {
     return allFollowUps.filter((c: any) => 
       (c.customer && Boolean((c.customer.businessName || '').trim() || (c.customer.contactPerson || '').trim())) ||
-      (c.lead && Boolean((c.lead.shopName || '').trim() || (c.lead.name || '').trim()))
+      (c.lead && Boolean((c.lead.shopName || '').trim() || (c.lead.name || '').trim())) ||
+      Boolean(c.customerId || c.leadId)
     );
   }, [allFollowUps]);
+
+  const validTodayFollowUps = useMemo(() => {
+    const now = new Date();
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return validAllFollowUps.filter((c: any) => {
+      if (!c.followUpDate) return false;
+      const d = new Date(c.followUpDate);
+      return d < todayEnd;
+    });
+  }, [validAllFollowUps]);
 
   // Dynamic Time-Period calculations based on selected filter
   const { filteredOrders, previousOrders, filteredFollowUps, periodLabel, targetPeriodGoal } = useMemo(() => {
@@ -258,14 +262,16 @@ export default function EmployeeDashboard({
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
     
-    // Week Start (Monday)
+    // Week Start (Monday) & End
     const day = now.getDay();
     const diff = now.getDate() - day + (day === 0 ? -6 : 1);
     const weekStart = new Date(now.getFullYear(), now.getMonth(), diff);
+    const weekEnd = new Date(now.getFullYear(), now.getMonth(), diff + 7);
     const prevWeekStart = new Date(now.getFullYear(), now.getMonth(), diff - 7);
 
-    // Month Start
+    // Month Start & End
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
     const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
@@ -291,7 +297,7 @@ export default function EmployeeDashboard({
       followUps = validAllFollowUps.filter(f => {
         if (!f.followUpDate) return false;
         const d = new Date(f.followUpDate);
-        return d >= todayStart && d < todayEnd;
+        return d < todayEnd;
       });
     } else if (timeFilter === "WEEKLY") {
       label = "This Week";
@@ -299,7 +305,7 @@ export default function EmployeeDashboard({
       orders = allOrders.filter(o => {
         if (!o.orderDate) return false;
         const d = new Date(o.orderDate);
-        return d >= weekStart;
+        return d >= weekStart && d < weekEnd;
       });
       prevOrders = allOrders.filter(o => {
         if (!o.orderDate) return false;
@@ -309,7 +315,7 @@ export default function EmployeeDashboard({
       followUps = validAllFollowUps.filter(f => {
         if (!f.followUpDate) return false;
         const d = new Date(f.followUpDate);
-        return d >= weekStart;
+        return d < weekEnd;
       });
     } else if (timeFilter === "MONTHLY") {
       label = "This Month";
@@ -317,7 +323,7 @@ export default function EmployeeDashboard({
       orders = allOrders.filter(o => {
         if (!o.orderDate) return false;
         const d = new Date(o.orderDate);
-        return d >= monthStart;
+        return d >= monthStart && d <= monthEnd;
       });
       prevOrders = allOrders.filter(o => {
         if (!o.orderDate) return false;
@@ -327,7 +333,7 @@ export default function EmployeeDashboard({
       followUps = validAllFollowUps.filter(f => {
         if (!f.followUpDate) return false;
         const d = new Date(f.followUpDate);
-        return d >= monthStart;
+        return d <= monthEnd;
       });
     } else {
       label = "All Time";
