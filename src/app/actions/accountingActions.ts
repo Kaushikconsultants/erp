@@ -282,6 +282,80 @@ export async function syncSystemLedgers() {
     const salaryExpLedger = codeLedgerMap.get("SYS_SALARY_EXP");
     const salesReturnLedger = codeLedgerMap.get("SYS_SALES_RETURN") || salesLedger;
 
+    // 4.5. PRUNE ORPHANED & CANCELLED JOURNAL ENTRIES
+    const allSystemJVs = await prisma.journalEntry.findMany({
+      where: {
+        OR: [{ organizationId }, { organizationId: null }],
+        isSystemGenerated: true
+      },
+      select: {
+        id: true,
+        sourceDocType: true,
+        sourceDocId: true,
+        voucherNumber: true
+      }
+    });
+
+    for (const jv of allSystemJVs) {
+      let isOrphan = false;
+
+      if (jv.sourceDocType === "EXPENSE" || jv.voucherNumber?.startsWith("EXP-")) {
+        if (!jv.sourceDocId) {
+          isOrphan = true;
+        } else {
+          const exp = await prisma.expense.findUnique({ where: { id: jv.sourceDocId }, select: { id: true, status: true } });
+          if (!exp || exp.status === "Rejected") isOrphan = true;
+        }
+      } else if (jv.sourceDocType === "INVOICE" || jv.voucherNumber?.startsWith("SLS-")) {
+        if (!jv.sourceDocId) {
+          isOrphan = true;
+        } else {
+          const inv = await prisma.invoice.findUnique({ where: { id: jv.sourceDocId }, select: { id: true, status: true } });
+          if (!inv || inv.status === "Cancelled") isOrphan = true;
+        }
+      } else if (jv.sourceDocType === "BILL" || jv.voucherNumber?.startsWith("PUR-")) {
+        if (!jv.sourceDocId) {
+          isOrphan = true;
+        } else {
+          const bill = await prisma.bill.findUnique({ where: { id: jv.sourceDocId }, select: { id: true, status: true } });
+          if (!bill || bill.status === "Void") isOrphan = true;
+        }
+      } else if (jv.sourceDocType === "PAYMENT" || jv.voucherNumber?.startsWith("RCPT-")) {
+        if (!jv.sourceDocId) {
+          isOrphan = true;
+        } else {
+          const pmt = await prisma.payment.findUnique({ where: { id: jv.sourceDocId }, select: { id: true } });
+          if (!pmt) isOrphan = true;
+        }
+      } else if (jv.sourceDocType === "VENDOR_PAYMENT" || jv.voucherNumber?.startsWith("PMT-")) {
+        if (!jv.sourceDocId) {
+          isOrphan = true;
+        } else {
+          const vp = await prisma.vendorPayment.findUnique({ where: { id: jv.sourceDocId }, select: { id: true, status: true } });
+          if (!vp || vp.status === "Failed" || vp.status === "Cancelled") isOrphan = true;
+        }
+      } else if (jv.sourceDocType === "SALARY" || jv.voucherNumber?.startsWith("SAL-")) {
+        if (!jv.sourceDocId) {
+          isOrphan = true;
+        } else {
+          const sal = await prisma.salary.findUnique({ where: { id: jv.sourceDocId }, select: { id: true } });
+          if (!sal) isOrphan = true;
+        }
+      } else if (jv.sourceDocType === "CREDIT_NOTE" || jv.voucherNumber?.startsWith("CN-")) {
+        if (!jv.sourceDocId) {
+          isOrphan = true;
+        } else {
+          const cn = await prisma.creditNote.findUnique({ where: { id: jv.sourceDocId }, select: { id: true, status: true } });
+          if (!cn || cn.status === "CANCELLED") isOrphan = true;
+        }
+      }
+
+      if (isOrphan) {
+        await prisma.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+        await prisma.journalEntry.delete({ where: { id: jv.id } });
+      }
+    }
+
     const existingJVs = await prisma.journalEntry.findMany({
       where: { organizationId, sourceDocId: { not: null } },
       select: { sourceDocType: true, sourceDocId: true }
@@ -810,6 +884,12 @@ export async function syncSystemLedgers() {
     console.error("Error syncing system ledgers:", error);
     return { success: false, error: error.message || "Failed to sync system ledgers" };
   }
+}
+
+export async function reconcileAccountingData() {
+  const organizationId = await getAuthOrgId();
+  if (!organizationId) return { success: false, error: "Unauthorized" };
+  return await syncSystemLedgers();
 }
 
 // ============================================================================

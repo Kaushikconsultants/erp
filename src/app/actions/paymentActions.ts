@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
 import { getCompanySettings } from "@/app/actions/companyActions";
+import { syncSystemLedgers } from "@/app/actions/accountingActions";
 
 export async function getPayments(filters?: {
   search?: string;
@@ -550,6 +551,20 @@ export async function deletePayment(paymentId: string) {
         }
       }
 
+      // Delete associated JournalEntry & line items
+      const jvs = await tx.journalEntry.findMany({
+        where: {
+          OR: [
+            { sourceDocId: paymentId, sourceDocType: "PAYMENT" },
+            { voucherNumber: `RCPT-${payment.paymentNumber}` }
+          ]
+        }
+      });
+      for (const jv of jvs) {
+        await tx.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+        await tx.journalEntry.delete({ where: { id: jv.id } });
+      }
+
       await tx.auditLog.create({
         data: {
           userId: (session.user as any).id,
@@ -571,10 +586,16 @@ export async function deletePayment(paymentId: string) {
       });
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/invoices");
     revalidatePath("/payments");
     revalidatePath("/customers");
     revalidatePath("/orders");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true };
   } catch (error: any) {
     console.error("Failed to delete payment:", error);

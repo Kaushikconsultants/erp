@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
 import { getCompanySettings } from "./companyActions";
+import { syncSystemLedgers } from "./accountingActions";
 
 async function canManageInvoices() {
   const session = await getServerSession(authOptions);
@@ -302,6 +303,20 @@ export async function deleteInvoice(id: string) {
         data: { invoiceId: null }
       });
 
+      // Delete associated JournalEntry & line items
+      const jvs = await tx.journalEntry.findMany({
+        where: {
+          OR: [
+            { sourceDocId: id, sourceDocType: "INVOICE" },
+            { voucherNumber: `SLS-${existing.invoiceNumber}` }
+          ]
+        }
+      });
+      for (const jv of jvs) {
+        await tx.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+        await tx.journalEntry.delete({ where: { id: jv.id } });
+      }
+
       // Delete invoice
       await tx.invoice.delete({
         where: { id }
@@ -315,8 +330,14 @@ export async function deleteInvoice(id: string) {
       }
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/invoices");
     revalidatePath("/orders");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to delete invoice: " + error.message };

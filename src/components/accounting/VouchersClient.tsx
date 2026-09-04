@@ -13,9 +13,10 @@ import {
   Calendar,
   Layers,
   Trash2,
-  X
+  X,
+  RefreshCw
 } from "lucide-react";
-import { createJournalEntry } from "@/app/actions/accountingActions";
+import { createJournalEntry, reconcileAccountingData } from "@/app/actions/accountingActions";
 
 interface Props {
   vouchers?: any[];
@@ -28,6 +29,28 @@ export default function VouchersClient({ vouchers, initialVouchers, ledgers }: P
   const [voucherList, setVoucherList] = useState<any[]>(allVouchers);
   const [selectedType, setSelectedType] = useState<string>("ALL");
   const [search, setSearch] = useState("");
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcileMsg, setReconcileMsg] = useState<string | null>(null);
+
+  const handleReconcile = async () => {
+    setIsReconciling(true);
+    setReconcileMsg(null);
+    try {
+      const res = await reconcileAccountingData();
+      if (res.success) {
+        setReconcileMsg("Audit & Reconciliation complete: All figures verified!");
+        setTimeout(() => {
+          window.location.reload();
+        }, 800);
+      } else {
+        setReconcileMsg(res.error || "Failed to reconcile");
+      }
+    } catch (e: any) {
+      setReconcileMsg(e.message || "An error occurred");
+    } finally {
+      setIsReconciling(false);
+    }
+  };
 
   // Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -175,7 +198,41 @@ export default function VouchersClient({ vouchers, initialVouchers, ledgers }: P
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={handleReconcile}
+            disabled={isReconciling}
+            title="Scan, prune deleted records, and reconcile all ledger balances"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 16px",
+              borderRadius: "10px",
+              backgroundColor: "#f8fafc",
+              border: "1px solid var(--border, #cbd5e1)",
+              color: "var(--text-primary, #334155)",
+              fontSize: "0.85rem",
+              fontWeight: 600,
+              cursor: isReconciling ? "not-allowed" : "pointer",
+              boxShadow: "0 1px 2px rgba(0, 0, 0, 0.04)",
+              transition: "all 0.15s ease"
+            }}
+            onMouseOver={(e) => {
+              if (!isReconciling) {
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--accent-primary, #4f46e5)";
+                (e.currentTarget as HTMLElement).style.color = "var(--accent-primary, #4f46e5)";
+              }
+            }}
+            onMouseOut={(e) => {
+              (e.currentTarget as HTMLElement).style.borderColor = "var(--border, #cbd5e1)";
+              (e.currentTarget as HTMLElement).style.color = "var(--text-primary, #334155)";
+            }}
+          >
+            <RefreshCw size={15} style={{ color: "var(--accent-primary, #4f46e5)", animation: isReconciling ? "spin 1s linear infinite" : "none" }} />
+            {isReconciling ? "Reconciling..." : "Audit & Reconcile"}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -236,6 +293,24 @@ export default function VouchersClient({ vouchers, initialVouchers, ledgers }: P
           </button>
         </div>
       </div>
+
+      {reconcileMsg && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          padding: "12px 18px",
+          borderRadius: "10px",
+          backgroundColor: "#f0fdf4",
+          border: "1px solid #bbf7d0",
+          color: "#166534",
+          fontSize: "0.875rem",
+          fontWeight: 600
+        }}>
+          <CheckCircle2 size={18} style={{ color: "#16a34a" }} />
+          {reconcileMsg}
+        </div>
+      )}
 
       {/* Filter Tabs */}
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>

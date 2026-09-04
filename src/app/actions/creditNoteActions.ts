@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
+import { syncSystemLedgers } from "./accountingActions";
 
 export interface CreateCreditNoteInput {
   customerId: string;
@@ -312,6 +313,20 @@ export async function cancelCreditNote(id: string, reason?: string) {
       }
     }
 
+    // Delete associated JournalEntry & line items
+    const jvs = await prisma.journalEntry.findMany({
+      where: {
+        OR: [
+          { sourceDocId: id, sourceDocType: "CREDIT_NOTE" },
+          { voucherNumber: `CN-${cn.creditNoteNumber}` }
+        ]
+      }
+    });
+    for (const jv of jvs) {
+      await prisma.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+      await prisma.journalEntry.delete({ where: { id: jv.id } });
+    }
+
     await prisma.creditNote.update({
       where: { id },
       data: {
@@ -320,9 +335,15 @@ export async function cancelCreditNote(id: string, reason?: string) {
       }
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/credit-notes");
     revalidatePath("/invoices");
     revalidatePath("/products");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
 
     return { success: true };
   } catch (error: any) {

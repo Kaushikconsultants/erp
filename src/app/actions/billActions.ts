@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import { canUserAccessSection } from "@/lib/authPermissions";
 import { getTenantOrgId } from "@/lib/tenant";
+import { syncSystemLedgers } from "@/app/actions/accountingActions";
 
 async function canManagePurchases() {
   const session = await getServerSession(authOptions);
@@ -306,16 +307,35 @@ export async function deleteBill(id: string) {
         where: { billId: id }
       });
 
+      // 5.5 Delete associated JournalEntry & line items
+      const jvs = await tx.journalEntry.findMany({
+        where: {
+          OR: [
+            { sourceDocId: id, sourceDocType: "BILL" },
+            { voucherNumber: `PUR-${bill.billNumber}` }
+          ]
+        }
+      });
+      for (const jv of jvs) {
+        await tx.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+        await tx.journalEntry.delete({ where: { id: jv.id } });
+      }
+
       // 6. Delete the bill itself
       await tx.bill.delete({
         where: { id }
       });
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/bills");
     revalidatePath("/vendors");
     revalidatePath("/purchases");
     revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     revalidatePath("/products");
     return { success: true };
   } catch (error: any) {

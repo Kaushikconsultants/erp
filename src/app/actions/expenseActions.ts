@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
+import { syncSystemLedgers } from "./accountingActions";
 
 export interface ExpenseDetails {
   account?: string;
@@ -357,8 +358,30 @@ export async function deleteExpense(id: string) {
       return { error: "You can only delete your own claims." };
     }
 
+    // Delete associated JournalEntry and line items
+    const jvs = await prisma.journalEntry.findMany({
+      where: {
+        OR: [
+          { sourceDocId: id, sourceDocType: "EXPENSE" },
+          { voucherNumber: `EXP-${existing.expenseNumber}` }
+        ]
+      }
+    });
+
+    for (const jv of jvs) {
+      await prisma.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+      await prisma.journalEntry.delete({ where: { id: jv.id } });
+    }
+
     await prisma.expense.delete({ where: { id } });
+
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/expenses");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to delete expense: " + error.message };
