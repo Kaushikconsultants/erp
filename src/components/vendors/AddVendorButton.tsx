@@ -150,10 +150,9 @@ export default function AddVendorButton() {
       </button>
 
       {open && (
-        <div className="modal-backdrop" onClick={handleClose}>
+        <div className="modal-backdrop">
           <div
             className="modal-content animate-in"
-            onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: "640px", width: "95%" }}
           >
             {/* Modal Header */}

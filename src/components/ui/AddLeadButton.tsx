@@ -85,8 +85,8 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
       </div>
 
       {isModalOpen && (
-        <div className="modal-backdrop" onClick={() => setIsModalOpen(false)}>
-          <div className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{maxWidth: '500px'}}>
+        <div className="modal-backdrop">
+          <div className="modal-content glass-panel" style={{maxWidth: '500px'}}>
             <div className="modal-header">
               <h2>Add New Lead</h2>
               <button className="modal-close" onClick={() => setIsModalOpen(false)}>×</button>
@@ -158,8 +158,8 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
         </div>
       )}
       {isApiGuideOpen && (
-        <div className="modal-backdrop" onClick={() => setIsApiGuideOpen(false)}>
-          <div className="modal-content" style={{maxWidth: '650px', width: '90%', maxHeight: '90vh', overflowY: 'auto'}} onClick={e => e.stopPropagation()}>
+        <div className="modal-backdrop">
+          <div className="modal-content" style={{maxWidth: '650px', width: '90%', maxHeight: '90vh', overflowY: 'auto'}}>
             <div className="modal-header">
               <h3 style={{display: 'flex', alignItems: 'center', gap: '8px'}}><Code size={20} color="var(--accent-primary)"/> WhatsApp API & Webhooks</h3>
               <button className="modal-close" onClick={() => setIsApiGuideOpen(false)}>×</button>

@@ -748,10 +748,9 @@ export default function WarehouseManagerClient({
 
       {/* CREATE / EDIT WAREHOUSE MODAL */}
       {modalOpen && (
-        <div className="modal-backdrop" onClick={closeModal}>
+        <div className="modal-backdrop">
           <div
             className="modal-content animate-in"
-            onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: "600px", width: "95%" }}
           >
             {/* Modal Header */}
