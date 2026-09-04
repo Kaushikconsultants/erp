@@ -11,9 +11,10 @@ import {
   Clock, 
   ChevronRight, 
   Award,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
-import { getCandidates, getEmployeesForHiring } from '@/app/actions/hiringActions';
+import { getCandidates, getEmployeesForHiring, deleteCandidate } from '@/app/actions/hiringActions';
 import ManageQuestionsModal from '@/components/hiring/ManageQuestionsModal';
 import AddCandidateModal from '@/components/hiring/AddCandidateModal';
 import InterviewEvaluationModal from '@/components/hiring/InterviewEvaluationModal';
@@ -48,6 +49,16 @@ export default function HiringClient() {
       setEmployees(empRes.employees);
     }
     setLoading(false);
+  };
+
+  const handleDeleteCandidate = async (candidateId: string, candidateName: string) => {
+    if (!confirm(`Are you sure you want to delete candidate "${candidateName}" and all associated round evaluations?`)) return;
+    const res = await deleteCandidate(candidateId);
+    if (res.success) {
+      setCandidates(prev => prev.filter(c => c.id !== candidateId));
+    } else {
+      alert(res.error || "Failed to delete candidate");
+    }
   };
 
   const filteredCandidates = candidates.filter(c => {
@@ -329,24 +340,43 @@ export default function HiringClient() {
 
                       {/* Actions */}
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                        <button
-                          onClick={() => setSelectedCandidateForEval(c)}
-                          style={{
-                            padding: '7px 14px',
-                            borderRadius: 'var(--radius-md, 6px)',
-                            backgroundColor: 'var(--accent-primary, #4f46e5)',
-                            color: '#ffffff',
-                            border: 'none',
-                            fontWeight: 600,
-                            fontSize: '0.78rem',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                        >
-                          <FileText size={13} /> Conduct / Evaluate <ChevronRight size={13} />
-                        </button>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                          <button
+                            onClick={() => setSelectedCandidateForEval(c)}
+                            style={{
+                              padding: '7px 14px',
+                              borderRadius: 'var(--radius-md, 6px)',
+                              backgroundColor: 'var(--accent-primary, #4f46e5)',
+                              color: '#ffffff',
+                              border: 'none',
+                              fontWeight: 600,
+                              fontSize: '0.78rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <FileText size={13} /> Conduct / Evaluate <ChevronRight size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCandidate(c.id, c.name)}
+                            title="Delete Candidate"
+                            style={{
+                              padding: '7px 8px',
+                              borderRadius: 'var(--radius-md, 6px)',
+                              backgroundColor: '#fef2f2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

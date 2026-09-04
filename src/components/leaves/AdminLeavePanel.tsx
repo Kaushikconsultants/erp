@@ -11,9 +11,10 @@ import {
   Check, 
   X, 
   RotateCcw,
-  UserCheck
+  UserCheck,
+  Trash2
 } from "lucide-react";
-import { updateLeaveStatus } from "@/app/actions/leaveActions";
+import { updateLeaveStatus, deleteLeaveRequest } from "@/app/actions/leaveActions";
 
 interface AdminLeavePanelProps {
   leaves: any[];
@@ -33,6 +34,21 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
       }
     } catch (e: any) {
       alert(`Error updating leave: ${e.message}`);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const handleDeleteLeave = async (leaveId: string) => {
+    if (!confirm("Are you sure you want to delete this leave request? Any attendance records will be updated.")) return;
+    setIsUpdating(leaveId);
+    try {
+      const res = await deleteLeaveRequest(leaveId);
+      if (res.error) {
+        alert(`Failed to delete leave: ${res.error}`);
+      }
+    } catch (e: any) {
+      alert(`Error deleting leave: ${e.message}`);
     } finally {
       setIsUpdating(null);
     }
@@ -481,76 +497,96 @@ export default function AdminLeavePanel({ leaves }: AdminLeavePanelProps) {
 
                       {/* Actions */}
                       <td style={{ padding: '12px 18px', textAlign: 'right', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>
-                        {leave.status === 'Pending' ? (
-                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          {leave.status === 'Pending' ? (
+                            <>
+                              <button 
+                                type="button"
+                                onClick={() => handleStatusUpdate(leave.id, 'Approved')}
+                                disabled={isUpdating === leave.id}
+                                style={{ 
+                                  padding: '5px 12px', 
+                                  fontSize: '0.78rem', 
+                                  fontWeight: 600,
+                                  backgroundColor: '#10b981',
+                                  color: '#ffffff',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  boxShadow: '0 1px 2px rgba(16, 185, 129, 0.2)',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <Check size={13} /> Approve
+                              </button>
+                              <button 
+                                type="button"
+                                onClick={() => handleStatusUpdate(leave.id, 'Rejected')}
+                                disabled={isUpdating === leave.id}
+                                style={{ 
+                                  padding: '5px 12px', 
+                                  fontSize: '0.78rem', 
+                                  fontWeight: 600,
+                                  backgroundColor: '#fee2e2',
+                                  color: '#dc2626',
+                                  border: '1px solid #fecaca',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <X size={13} /> Reject
+                              </button>
+                            </>
+                          ) : (
                             <button 
                               type="button"
-                              onClick={() => handleStatusUpdate(leave.id, 'Approved')}
+                              onClick={() => handleStatusUpdate(leave.id, 'Pending')}
                               disabled={isUpdating === leave.id}
                               style={{ 
-                                padding: '5px 12px', 
-                                fontSize: '0.78rem', 
-                                fontWeight: 600,
-                                backgroundColor: '#10b981',
-                                color: '#ffffff',
-                                border: 'none',
+                                padding: '4px 10px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 500,
+                                backgroundColor: '#f8fafc',
+                                color: '#64748b',
+                                border: '1px solid #cbd5e1',
                                 borderRadius: '6px',
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
-                                boxShadow: '0 1px 2px rgba(16, 185, 129, 0.2)',
                                 transition: 'all 0.15s ease'
                               }}
+                              title="Revert back to Pending status"
                             >
-                              <Check size={13} /> Approve
+                              <RotateCcw size={12} /> Revert to Pending
                             </button>
-                            <button 
-                              type="button"
-                              onClick={() => handleStatusUpdate(leave.id, 'Rejected')}
-                              disabled={isUpdating === leave.id}
-                              style={{ 
-                                padding: '5px 12px', 
-                                fontSize: '0.78rem', 
-                                fontWeight: 600,
-                                backgroundColor: '#fee2e2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              <X size={13} /> Reject
-                            </button>
-                          </div>
-                        ) : (
-                          <button 
+                          )}
+                          <button
                             type="button"
-                            onClick={() => handleStatusUpdate(leave.id, 'Pending')}
+                            onClick={() => handleDeleteLeave(leave.id)}
                             disabled={isUpdating === leave.id}
-                            style={{ 
-                              padding: '4px 10px', 
-                              fontSize: '0.75rem', 
-                              fontWeight: 500,
-                              backgroundColor: '#f8fafc',
-                              color: '#64748b',
-                              border: '1px solid #cbd5e1',
+                            style={{
+                              padding: '5px 8px',
+                              backgroundColor: '#fef2f2',
+                              color: '#dc2626',
+                              border: '1px solid #fecaca',
                               borderRadius: '6px',
                               cursor: 'pointer',
                               display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'all 0.15s ease'
+                              alignItems: 'center'
                             }}
-                            title="Revert back to Pending status"
+                            title="Delete Leave Request"
                           >
-                            <RotateCcw size={12} /> Revert to Pending
+                            <Trash2 size={13} />
                           </button>
-                        )}
+                        </div>
                       </td>
                     </tr>
                   );

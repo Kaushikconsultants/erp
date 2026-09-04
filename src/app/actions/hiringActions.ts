@@ -265,7 +265,7 @@ export async function submitRoundEvaluation(
       } else if (roundNumber === 2) {
         nextStatus = 'ROUND_2_PASSED';
       } else if (roundNumber === 3) {
-        nextStatus = 'ROUND_3_PENDING';
+        nextStatus = 'ROUND_3_PASSED';
       }
     }
 
@@ -314,5 +314,21 @@ export async function finalizeCandidateDecision(
     return { success: true };
   } catch (error: any) {
     return { error: error.message || "Failed to finalize candidate decision" };
+  }
+}
+
+export async function deleteCandidate(candidateId: string) {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.candidateEvaluation.deleteMany({ where: { candidateId } });
+      await tx.candidateRoundSummary.deleteMany({ where: { candidateId } });
+      await tx.candidate.delete({ where: { id: candidateId } });
+    });
+
+    revalidatePath("/hiring");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error deleting candidate:", error);
+    return { error: error.message || "Failed to delete candidate" };
   }
 }
