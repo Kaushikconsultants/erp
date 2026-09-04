@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
+import { syncSystemLedgers } from "./accountingActions";
 
 const GST_STATE_CODES: Record<string, string> = {
   "01": "Jammu and Kashmir",
@@ -518,13 +519,13 @@ export async function getCustomerTimeline(customerId: string) {
 
     const timeline = [
       ...customer.calls.map(c => ({ type: "CALL", date: c.createdAt, data: c })),
-      ...customer.followUps.map(f => ({ type: "FOLLOW_UP", date: f.date, data: f })),
-      ...customer.orders.map(o => ({ type: "ORDER", date: o.orderDate, data: o })),
+      ...customer.followUps.map(f => ({ type: "FOLLOW_UP", date: f.date || f.createdAt, data: f })),
+      ...customer.orders.map(o => ({ type: "ORDER", date: o.orderDate || o.createdAt, data: o })),
       ...customer.tasks.map(t => ({ type: "TASK", date: t.createdAt, data: t })),
-      ...customer.quotations.map(q => ({ type: "QUOTATION", date: q.createdAt, data: q })),
-      ...customer.invoices.map(i => ({ type: "INVOICE", date: i.invoiceDate, data: i })),
-      ...payments.map(p => ({ type: "PAYMENT", date: p.paymentDate, data: p })),
-    ].sort((a, b) => b.date.getTime() - a.date.getTime());
+      ...customer.quotations.map(q => ({ type: "QUOTATION", date: q.date || q.createdAt, data: q })),
+      ...customer.invoices.map(i => ({ type: "INVOICE", date: i.invoiceDate || i.createdAt, data: i })),
+      ...payments.map(p => ({ type: "PAYMENT", date: p.paymentDate || p.createdAt, data: p })),
+    ].sort((a, b) => (new Date(b.date).getTime() || 0) - (new Date(a.date).getTime() || 0));
 
     return { success: true, timeline };
   } catch (error) {
@@ -696,9 +697,19 @@ export async function updateCustomer(id: string, formData: FormData) {
   const assignedSalespersonId = formData.get("assignedSalespersonId") as string;
   
   const gstNumber = (formData.get("gstNumber") as string)?.trim() || null;
+  const panInput = (formData.get("pan") as string)?.trim();
+  const pan = panInput || (gstNumber && gstNumber.length >= 12 ? gstNumber.slice(2, 12) : null);
+  const whatsappNumber = (formData.get("whatsappNumber") as string)?.trim() || null;
+  const alternatePhone = (formData.get("alternatePhone") as string)?.trim() || null;
   const landmark = (formData.get("landmark") as string)?.trim() || null;
   const regularDiscount = (formData.get("regularDiscount") as string)?.trim() || null;
   const preferredPaymentMethod = (formData.get("preferredPaymentMethod") as string)?.trim() || null;
+
+  const creditLimitRaw = formData.get("creditLimit") !== null ? parseFloat(formData.get("creditLimit") as string) : undefined;
+  const creditDaysRaw = formData.get("creditDays") !== null ? parseInt(formData.get("creditDays") as string, 10) : undefined;
+  const creditHoldRaw = formData.get("creditHold");
+  const creditHold = creditHoldRaw !== null ? (creditHoldRaw === "true" || creditHoldRaw === "on") : undefined;
+  const creditHoldReason = (formData.get("creditHoldReason") as string)?.trim();
 
   if (!companyName || !phone || phone === "+91" || phone === "+91 ") {
     return { error: "Company Name and Phone Number are required" };
@@ -721,7 +732,7 @@ export async function updateCustomer(id: string, formData: FormData) {
     const organizationId = await getTenantOrgId();
     const existing = await prisma.customer.findUnique({
       where: { id },
-      select: { id: true, organizationId: true }
+      select: { id: true, businessName: true, organizationId: true }
     });
 
     if (!existing) return { error: "Customer not found." };
@@ -742,8 +753,15 @@ export async function updateCustomer(id: string, formData: FormData) {
         state: state || null,
         landmark: landmark || null,
         gstNumber: gstNumber || null,
+        pan: pan || undefined,
+        whatsappNumber: whatsappNumber || undefined,
+        alternatePhone: alternatePhone || undefined,
         regularDiscount: regularDiscount || null,
         preferredPaymentMethod: preferredPaymentMethod || null,
+        ...(creditLimitRaw !== undefined && !isNaN(creditLimitRaw) ? { creditLimit: creditLimitRaw } : {}),
+        ...(creditDaysRaw !== undefined && !isNaN(creditDaysRaw) ? { creditDays: creditDaysRaw } : {}),
+        ...(creditHold !== undefined ? { creditHold } : {}),
+        ...(creditHoldReason !== undefined ? { creditHoldReason: creditHoldReason || null } : {}),
         ...(openingBalanceRaw !== undefined && !isNaN(openingBalanceRaw) ? { openingBalance: openingBalanceRaw } : {}),
         ...(openingBalanceType ? { openingBalanceType } : {}),
         ...(status ? { status } : {}),
@@ -751,7 +769,22 @@ export async function updateCustomer(id: string, formData: FormData) {
       },
     });
 
+    // Update corresponding LedgerAccount if name or GST changed
+    await prisma.ledgerAccount.updateMany({
+      where: { partyType: "CUSTOMER", partyId: id },
+      data: {
+        name: `${companyName}${phone ? ` (${phone.slice(-4)})` : ''}`,
+        ...(openingBalanceRaw !== undefined && !isNaN(openingBalanceRaw) ? { openingBalance: openingBalanceRaw } : {}),
+        ...(openingBalanceType ? { openingBalanceType } : {})
+      }
+    }).catch(() => {});
+
+    // Sync ledgers to keep double-entry books updated
+    await syncSystemLedgers().catch(() => {});
+
     revalidatePath("/customers");
+    revalidatePath(`/customers/${id}`);
+    revalidatePath("/accounting");
     return { success: true };
   } catch (error) {
     console.error("Failed to update customer:", error);
@@ -816,7 +849,10 @@ export async function deleteCustomer(id: string) {
       await tx.whatsAppPaymentLink.deleteMany({ where: { customerId: id } });
       await tx.whatsAppFormSubmission.deleteMany({ where: { customerId: id } });
 
-      // 3. Delete Delivery Challans
+      // 3. Delete Post Dated Cheques (PDC)
+      await tx.postDatedCheque.deleteMany({ where: { customerId: id } });
+
+      // 4. Delete Delivery Challans
       const challans = await tx.deliveryChallan.findMany({
         where: { customerId: id },
         select: { id: true }
@@ -828,10 +864,10 @@ export async function deleteCustomer(id: string) {
         await tx.deliveryChallan.deleteMany({ where: { customerId: id } });
       }
 
-      // 4. Delete EWayBills
+      // 5. Delete EWayBills
       await tx.eWayBill.deleteMany({ where: { customerId: id } });
 
-      // 5. Delete Credit Notes
+      // 6. Delete Credit Notes
       const creditNotes = await tx.creditNote.findMany({
         where: { customerId: id },
         select: { id: true }
@@ -843,16 +879,16 @@ export async function deleteCustomer(id: string) {
         await tx.creditNote.deleteMany({ where: { customerId: id } });
       }
 
-      // 6. Delete Bill Allocations
+      // 7. Delete Bill Allocations
       await tx.billAllocation.deleteMany({ where: { customerId: id } });
 
-      // 7. Delete Payments
+      // 8. Delete Payments
       await tx.payment.deleteMany({ where: { customerId: id } });
 
-      // 8. Delete Invoices
+      // 9. Delete Invoices
       await tx.invoice.deleteMany({ where: { customerId: id } });
 
-      // 9. Delete Quotations
+      // 10. Delete Quotations
       const quotes = await tx.quotation.findMany({
         where: { customerId: id },
         select: { id: true }
@@ -867,7 +903,7 @@ export async function deleteCustomer(id: string) {
         await tx.quotation.deleteMany({ where: { customerId: id } });
       }
 
-      // 10. Delete Orders
+      // 11. Delete Orders
       const orders = await tx.order.findMany({
         where: { customerId: id },
         select: { id: true }
@@ -879,7 +915,23 @@ export async function deleteCustomer(id: string) {
         await tx.order.deleteMany({ where: { customerId: id } });
       }
 
-      // 11. Create Audit Log
+      // 12. Delete unlinked Party Ledger Account if no journal line items
+      const partyLedgers = await tx.ledgerAccount.findMany({
+        where: { partyType: "CUSTOMER", partyId: id },
+        include: { journalLineItems: true }
+      });
+      for (const pl of partyLedgers) {
+        if (pl.journalLineItems.length === 0) {
+          await tx.ledgerAccount.delete({ where: { id: pl.id } });
+        } else {
+          await tx.ledgerAccount.update({
+            where: { id: pl.id },
+            data: { partyId: null, name: `${pl.name} [Archived/Deleted Customer]` }
+          });
+        }
+      }
+
+      // 13. Create Audit Log
       await tx.auditLog.create({
         data: {
           userId: (session.user as any).id,
@@ -894,9 +946,12 @@ export async function deleteCustomer(id: string) {
         }
       });
 
-      // 12. Delete Customer record
+      // 14. Delete Customer record
       await tx.customer.delete({ where: { id } });
     });
+
+    // Re-sync system ledgers
+    await syncSystemLedgers().catch(() => {});
 
     revalidatePath("/customers");
     revalidatePath("/analytics");
@@ -904,6 +959,7 @@ export async function deleteCustomer(id: string) {
     revalidatePath("/invoices");
     revalidatePath("/payments");
     revalidatePath("/quotations");
+    revalidatePath("/accounting");
     return { success: true };
   } catch (error: any) {
     console.error("Failed to delete customer:", error);

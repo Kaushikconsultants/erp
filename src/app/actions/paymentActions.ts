@@ -275,9 +275,12 @@ export async function recordCustomerPayment(data: {
 
       const [payment] = await prisma.$transaction(txOps);
 
+      await syncSystemLedgers().catch(() => {});
+
       revalidatePath("/invoices");
       revalidatePath("/payments");
       revalidatePath("/customers");
+      revalidatePath("/accounting");
       return { success: true, paymentNumber, paymentId: payment.id };
 
     } else {
@@ -309,9 +312,12 @@ export async function recordCustomerPayment(data: {
         }
       });
 
+      await syncSystemLedgers().catch(() => {});
+
       revalidatePath("/invoices");
       revalidatePath("/payments");
       revalidatePath("/customers");
+      revalidatePath("/accounting");
       return { success: true, paymentNumber, paymentId: payment.id };
     }
   } catch (error: any) {
@@ -494,8 +500,12 @@ export async function cancelPayment(paymentId: string, reason: string) {
       });
     });
 
+    await syncSystemLedgers().catch(() => {});
+
     revalidatePath("/invoices");
     revalidatePath("/payments");
+    revalidatePath("/customers");
+    revalidatePath("/accounting");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to cancel payment: " + error.message };

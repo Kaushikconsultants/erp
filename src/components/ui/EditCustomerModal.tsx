@@ -135,13 +135,24 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
             </div>
           </div>
 
+          <div className="grid-row">
+            <div className="vertical-group">
+              <label>WhatsApp Number</label>
+              <input type="tel" name="whatsappNumber" defaultValue={(customer as any).whatsappNumber || ""} placeholder="e.g. +91 9876543210" />
+            </div>
+            <div className="vertical-group">
+              <label>PAN (Permanent Account Number)</label>
+              <input type="text" name="pan" defaultValue={(customer as any).pan || ""} maxLength={10} placeholder="e.g. ABCDE1234F" style={{ textTransform: 'uppercase' }} />
+            </div>
+          </div>
+
           <div className="section-header">
             <div className="section-badge">2</div>
             <h3>TAX & COMPLIANCE</h3>
           </div>
           <div className="vertical-group">
-            <label>GST Number</label>
-            <input type="text" name="gstNumber" defaultValue={customer.gstNumber || ""} placeholder="e.g. 22AAAAA0000A1Z5" />
+            <label>GST Number (GSTIN)</label>
+            <input type="text" name="gstNumber" defaultValue={customer.gstNumber || ""} placeholder="e.g. 22AAAAA0000A1Z5" style={{ textTransform: 'uppercase' }} />
           </div>
 
           <div className="section-header">
@@ -194,10 +205,10 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
 
           <div className="section-header">
             <div className="section-badge" style={{ background: '#059669' }}>4</div>
-            <h3>FINANCIALS & OPENING BALANCE</h3>
+            <h3>FINANCIALS & CREDIT TERMS</h3>
           </div>
 
-          <div className="grid-row" style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+          <div className="grid-row" style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
             <div className="vertical-group">
               <label style={{ fontWeight: 700 }}>Opening Balance (₹)</label>
               <input 
@@ -221,6 +232,34 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
                 <option value="CREDIT">Credit / To Pay (Cr) - Advance from customer</option>
               </select>
               <div className="sub-label">Debit = Receivable, Credit = Advance</div>
+            </div>
+          </div>
+
+          <div className="grid-row" style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+            <div className="vertical-group">
+              <label style={{ fontWeight: 700 }}>Credit Limit (₹)</label>
+              <input 
+                type="number" 
+                step="1" 
+                min="0"
+                name="creditLimit" 
+                defaultValue={(customer as any).creditLimit || 0} 
+                placeholder="0 for Unlimited"
+                style={{ backgroundColor: '#ffffff', fontWeight: 600 }}
+              />
+              <div className="sub-label">Max allowed unpaid balance (0 = Unlimited)</div>
+            </div>
+            <div className="vertical-group">
+              <label style={{ fontWeight: 700 }}>Credit Grace Period (Days)</label>
+              <input 
+                type="number" 
+                min="0"
+                max="365"
+                name="creditDays" 
+                defaultValue={(customer as any).creditDays !== undefined ? (customer as any).creditDays : 30} 
+                style={{ backgroundColor: '#ffffff', fontWeight: 600 }}
+              />
+              <div className="sub-label">Days before unpaid invoices flag overdue</div>
             </div>
           </div>
 

@@ -10,14 +10,20 @@ export async function getCustomerPortalData(targetCustomerId?: string) {
   
   let customer: any = null;
 
+  const invoiceInclude = {
+    where: { status: { not: "Cancelled" } },
+    orderBy: { invoiceDate: 'desc' as const },
+    take: 20
+  };
+
   // 1. If explicit customerId is provided (e.g. previewing from CRM dashboard)
   if (targetCustomerId) {
     customer = await prisma.customer.findUnique({
       where: { id: targetCustomerId },
       include: {
-        orders: { orderBy: { orderDate: 'desc' }, take: 10 },
-        invoices: { orderBy: { invoiceDate: 'desc' }, take: 10 },
-        quotations: { orderBy: { createdAt: 'desc' }, take: 10 }
+        orders: { orderBy: { orderDate: 'desc' }, take: 20 },
+        invoices: invoiceInclude,
+        quotations: { orderBy: { createdAt: 'desc' }, take: 20 }
       }
     });
   }
@@ -27,9 +33,9 @@ export async function getCustomerPortalData(targetCustomerId?: string) {
     customer = await prisma.customer.findUnique({
       where: { portalUserId: userId },
       include: {
-        orders: { orderBy: { orderDate: 'desc' }, take: 10 },
-        invoices: { orderBy: { invoiceDate: 'desc' }, take: 10 },
-        quotations: { orderBy: { createdAt: 'desc' }, take: 10 }
+        orders: { orderBy: { orderDate: 'desc' }, take: 20 },
+        invoices: invoiceInclude,
+        quotations: { orderBy: { createdAt: 'desc' }, take: 20 }
       }
     });
   }
@@ -39,9 +45,9 @@ export async function getCustomerPortalData(targetCustomerId?: string) {
     customer = await prisma.customer.findFirst({
       where: { orders: { some: {} } },
       include: {
-        orders: { orderBy: { orderDate: 'desc' }, take: 10 },
-        invoices: { orderBy: { invoiceDate: 'desc' }, take: 10 },
-        quotations: { orderBy: { createdAt: 'desc' }, take: 10 }
+        orders: { orderBy: { orderDate: 'desc' }, take: 20 },
+        invoices: invoiceInclude,
+        quotations: { orderBy: { createdAt: 'desc' }, take: 20 }
       }
     });
   }
@@ -50,9 +56,9 @@ export async function getCustomerPortalData(targetCustomerId?: string) {
   if (!customer) {
     customer = await prisma.customer.findFirst({
       include: {
-        orders: { orderBy: { orderDate: 'desc' }, take: 10 },
-        invoices: { orderBy: { invoiceDate: 'desc' }, take: 10 },
-        quotations: { orderBy: { createdAt: 'desc' }, take: 10 }
+        orders: { orderBy: { orderDate: 'desc' }, take: 20 },
+        invoices: invoiceInclude,
+        quotations: { orderBy: { createdAt: 'desc' }, take: 20 }
       }
     });
   }
@@ -75,9 +81,25 @@ export async function acceptQuotationFromPortal(quotationId: string) {
   if (!session?.user) return { success: false, error: "Unauthorized" };
 
   try {
+    const quote = await prisma.quotation.findUnique({
+      where: { id: quotationId },
+      include: { customer: true }
+    });
+    if (!quote) return { success: false, error: "Quotation not found" };
+
     const updated = await prisma.quotation.update({
       where: { id: quotationId },
-      data: { status: "Approved" }
+      data: {
+        status: "Approved",
+        activities: {
+          create: {
+            userId: (session.user as any)?.id || null,
+            userName: quote.customer?.businessName || "Client Portal",
+            action: "Quotation Accepted",
+            details: `Approved via Client Self-Service Portal by ${quote.customer?.contactPerson || 'Client'}`
+          }
+        }
+      }
     });
 
     return { success: true, quotation: updated };
