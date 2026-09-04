@@ -142,7 +142,11 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
     setLoading(true);
     setErrorMessage(null);
 
-    const res = await updateAttendanceAdmin(emp.id, dateStr, newStatus);
+    const dateStart = new Date(year, mon - 1, editingDay.day, 0, 0, 0, 0).toISOString();
+    const dateEnd = new Date(year, mon - 1, editingDay.day, 23, 59, 59, 999).toISOString();
+    const defaultCheckIn = new Date(year, mon - 1, editingDay.day, 9, 0, 0, 0).toISOString();
+
+    const res = await updateAttendanceAdmin(emp.id, dateStr, newStatus, dateStart, dateEnd, defaultCheckIn);
     setLoading(false);
 
     if (res?.error) {
@@ -158,7 +162,7 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
       }
       const existing = prev.find(a => getDayFromDate(a.date) === editingDay.day);
       const updatedRecord = {
-        ...(existing || { id: `temp-${Date.now()}`, employeeId: emp.id, date: new Date(year, mon - 1, editingDay.day) }),
+        ...(existing || { id: `temp-${Date.now()}`, employeeId: emp.id, date: new Date(year, mon - 1, editingDay.day, 0, 0, 0) }),
         status: newStatus
       };
       return [...filtered, updatedRecord];
@@ -179,24 +183,35 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
     const checkIn24 = to24h(ciH, ciM, ciAmpm);
     const checkOut24 = hasCheckOut ? to24h(coH, coM, coAmpm) : '';
 
-    if (hasCheckOut) {
-      const [ih, im] = checkIn24.split(':').map(Number);
+    const [ih, im] = checkIn24.split(':').map(Number);
+    const checkInDate = new Date(year, mon - 1, editingDay.day, ih, im, 0, 0);
+    const checkInIso = checkInDate.toISOString();
+
+    let checkOutDate: Date | null = null;
+    let checkOutIso: string | null = null;
+
+    if (hasCheckOut && checkOut24) {
       const [oh, om] = checkOut24.split(':').map(Number);
-      const startMin = ih * 60 + im;
-      const endMin = oh * 60 + om;
-      if (endMin <= startMin) {
+      checkOutDate = new Date(year, mon - 1, editingDay.day, oh, om, 0, 0);
+      if (checkOutDate.getTime() <= checkInDate.getTime()) {
         setErrorMessage('Check-out time must be after check-in time.');
         return;
       }
+      checkOutIso = checkOutDate.toISOString();
     }
+
+    const dateStartIso = new Date(year, mon - 1, editingDay.day, 0, 0, 0, 0).toISOString();
+    const dateEndIso = new Date(year, mon - 1, editingDay.day, 23, 59, 59, 999).toISOString();
 
     setLoading(true);
     const res = await updateCheckInOut(
       editingDay.record?.id || '',
       emp.id,
       dateStr,
-      checkIn24,
-      checkOut24
+      checkInIso,
+      checkOutIso,
+      dateStartIso,
+      dateEndIso
     );
     setLoading(false);
 
@@ -207,19 +222,8 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
 
     // Calculate updated working hours for optimistic display
     let calcWorkingHours: number | null = null;
-    let checkInDate: Date | null = null;
-    let checkOutDate: Date | null = null;
-
-    if (checkIn24) {
-      const [ih, im] = checkIn24.split(':').map(Number);
-      checkInDate = new Date(year, mon - 1, editingDay.day, ih, im, 0);
-    }
-    if (hasCheckOut && checkOut24) {
-      const [oh, om] = checkOut24.split(':').map(Number);
-      checkOutDate = new Date(year, mon - 1, editingDay.day, oh, om, 0);
-      if (checkInDate && checkOutDate) {
-        calcWorkingHours = Math.round(((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60)) * 100) / 100;
-      }
+    if (checkInDate && checkOutDate) {
+      calcWorkingHours = Math.round(((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60)) * 100) / 100;
     }
 
     // Optimistic local state update
@@ -227,7 +231,7 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
       const filtered = prev.filter(a => getDayFromDate(a.date) !== editingDay.day);
       const existing = prev.find(a => getDayFromDate(a.date) === editingDay.day);
       const updatedRecord = {
-        ...(existing || { id: `temp-${Date.now()}`, employeeId: emp.id, date: new Date(year, mon - 1, editingDay.day) }),
+        ...(existing || { id: `temp-${Date.now()}`, employeeId: emp.id, date: checkInDate }),
         checkIn: checkInDate,
         checkOut: checkOutDate,
         workingHours: calcWorkingHours,

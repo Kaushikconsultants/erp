@@ -91,7 +91,14 @@ export async function toggleAttendance() {
   }
 }
 
-export async function updateAttendanceAdmin(employeeId: string, dateStr: string, status: string) {
+export async function updateAttendanceAdmin(
+  employeeId: string, 
+  dateStr: string, 
+  status: string,
+  dateStartIso?: string,
+  dateEndIso?: string,
+  defaultCheckInIso?: string
+) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized. Please log in." };
@@ -104,10 +111,17 @@ export async function updateAttendanceAdmin(employeeId: string, dateStr: string,
       return { error: "Unauthorized. Administrator or HR privileges required." };
     }
 
-    // dateStr format: YYYY-MM-DD
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const targetDate = new Date(year, month - 1, day, 0, 0, 0);
-    const targetDateEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+    let targetDate: Date;
+    let targetDateEnd: Date;
+
+    if (dateStartIso && dateEndIso) {
+      targetDate = new Date(dateStartIso);
+      targetDateEnd = new Date(dateEndIso);
+    } else {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      targetDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+      targetDateEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    }
 
     const existingAttendance = await prisma.attendance.findFirst({
       where: {
@@ -132,12 +146,13 @@ export async function updateAttendanceAdmin(employeeId: string, dateStr: string,
           data: { status }
         });
       } else {
+        const checkInDate = defaultCheckInIso ? new Date(defaultCheckInIso) : targetDate;
         await prisma.attendance.create({
           data: {
             employeeId,
             date: targetDate,
             status,
-            checkIn: new Date(year, month - 1, day, 9, 0, 0) // Default 9 AM check-in
+            checkIn: checkInDate
           }
         });
       }
@@ -158,8 +173,10 @@ export async function updateCheckInOut(
   attendanceId: string,
   employeeId: string,
   dateStr: string,
-  checkInTime: string,   // "HH:MM" 24h format
-  checkOutTime: string   // "HH:MM" 24h format or ""
+  checkInTimeOrIso: string,         // Exact ISO string timestamp or "HH:MM"
+  checkOutTimeOrIso?: string | null, // Exact ISO string timestamp or "HH:MM" or null
+  dateStartIso?: string,
+  dateEndIso?: string
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -173,18 +190,29 @@ export async function updateCheckInOut(
       return { error: "Unauthorized. Only administrators or HR can edit check-in/out times." };
     }
 
-    const [year, month, day] = dateStr.split("-").map(Number);
-    if (!year || !month || !day) {
-      return { error: "Invalid date specified." };
+    // Parse or convert Check-in Date
+    let checkIn: Date | null = null;
+    if (checkInTimeOrIso) {
+      if (checkInTimeOrIso.includes("T") || checkInTimeOrIso.includes("-")) {
+        checkIn = new Date(checkInTimeOrIso);
+      } else {
+        const [year, month, day] = dateStr.split("-").map(Number);
+        const [h, m] = checkInTimeOrIso.split(":").map(Number);
+        checkIn = new Date(Date.UTC(year, month - 1, day, h, m, 0));
+      }
     }
 
-    const buildDateTime = (timeStr: string) => {
-      const [h, m] = timeStr.split(":").map(Number);
-      return new Date(year, month - 1, day, h, m, 0);
-    };
-
-    const checkIn = checkInTime ? buildDateTime(checkInTime) : null;
-    const checkOut = checkOutTime ? buildDateTime(checkOutTime) : null;
+    // Parse or convert Check-out Date
+    let checkOut: Date | null = null;
+    if (checkOutTimeOrIso) {
+      if (checkOutTimeOrIso.includes("T") || checkOutTimeOrIso.includes("-")) {
+        checkOut = new Date(checkOutTimeOrIso);
+      } else {
+        const [year, month, day] = dateStr.split("-").map(Number);
+        const [h, m] = checkOutTimeOrIso.split(":").map(Number);
+        checkOut = new Date(Date.UTC(year, month - 1, day, h, m, 0));
+      }
+    }
 
     let workingHours: number | null = null;
     if (checkIn && checkOut) {
@@ -195,8 +223,17 @@ export async function updateCheckInOut(
       workingHours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
     }
 
-    const targetDate = new Date(year, month - 1, day, 0, 0, 0);
-    const targetDateEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
+    let targetDate: Date;
+    let targetDateEnd: Date;
+
+    if (dateStartIso && dateEndIso) {
+      targetDate = new Date(dateStartIso);
+      targetDateEnd = new Date(dateEndIso);
+    } else {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      targetDate = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+      targetDateEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+    }
 
     let targetRecord = null;
     if (attendanceId) {
