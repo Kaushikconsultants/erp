@@ -84,89 +84,180 @@ function FollowUpCard({ call }: { call: any }) {
       display: 'flex', 
       flexDirection: 'column', 
       backgroundColor: '#ffffff', 
-      padding: '14px', 
-      borderRadius: '12px', 
-      border: priority === 'HIGH' ? '1px solid #f87171' : '1px solid #cbd5e1', 
+      padding: '7px 10px', 
+      borderRadius: '8px', 
+      border: priority === 'HIGH' ? '1px solid #fecaca' : '1px solid #e2e8f0', 
+      borderLeft: priority === 'HIGH' ? '3px solid #ef4444' : '3px solid #cbd5e1',
       opacity: isProcessing ? 0.6 : 1,
-      boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+      boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+      transition: 'all 0.15s ease'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <Link href={detailsHref} style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', textDecoration: 'none' }}>
-              {displayName}
-            </Link>
-            {isLead && (
-              <span style={{ 
-                fontSize: '10px', 
-                fontWeight: 700, 
-                padding: '1px 6px', 
-                borderRadius: '6px', 
-                backgroundColor: '#eef2ff', 
-                color: '#4f46e5' 
-              }}>
-                Lead
-              </span>
-            )}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
+          <Link 
+            href={detailsHref} 
+            title={displayName}
+            style={{ 
+              margin: 0, 
+              fontSize: '0.82rem', 
+              fontWeight: 650, 
+              color: '#0f172a', 
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '220px'
+            }}
+          >
+            {displayName}
+          </Link>
+          {isLead && (
             <span style={{ 
-              fontSize: '10px', 
+              fontSize: '9px', 
               fontWeight: 700, 
-              padding: '2px 8px', 
-              borderRadius: '10px',
-              backgroundColor: priority === 'HIGH' ? '#fee2e2' : '#fef3c7',
-              color: priority === 'HIGH' ? '#dc2626' : '#d97706'
+              padding: '1px 5px', 
+              borderRadius: '4px', 
+              backgroundColor: '#eef2ff', 
+              color: '#4f46e5',
+              lineHeight: '1.2'
             }}>
-              {priority}
+              Lead
             </span>
-          </div>
-          <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-            {contactPerson && contactPerson !== displayName ? `${contactPerson} • ` : ''}{call.notes || 'Scheduled follow-up call'}
-          </p>
+          )}
+          <span style={{ 
+            fontSize: '9px', 
+            fontWeight: 700, 
+            padding: '1px 5px', 
+            borderRadius: '4px',
+            backgroundColor: priority === 'HIGH' ? '#fee2e2' : '#fef3c7',
+            color: priority === 'HIGH' ? '#dc2626' : '#d97706',
+            lineHeight: '1.2'
+          }}>
+            {priority}
+          </span>
         </div>
       </div>
       
+      <p style={{ 
+        margin: '2px 0 0 0', 
+        fontSize: '0.72rem', 
+        color: '#64748b',
+        whiteSpace: 'nowrap',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis'
+      }}>
+        {contactPerson && contactPerson !== displayName ? `${contactPerson} • ` : ''}{call.notes || 'Scheduled follow-up call'}
+      </p>
+      
       {isEditing ? (
-        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '6px', padding: '6px 8px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
           <DatePicker 
-             
             value={newDate} 
             onChange={(e) => setNewDate(e.target.value)}
             className="zoho-input-field" 
-            style={{ padding: '6px 10px', fontSize: '13px' }}
+            style={{ padding: '3px 7px', fontSize: '11.5px', height: '26px' }}
           />
-          <button onClick={handleReschedule} disabled={!newDate} className="primary-btn" style={{ padding: '6px 12px', fontSize: '13px' }}>Save</button>
-          <button onClick={() => setIsEditing(false)} className="secondary-btn" style={{ padding: '6px 12px', fontSize: '13px' }}>Cancel</button>
+          <button onClick={handleReschedule} disabled={!newDate} className="primary-btn" style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}>Save</button>
+          <button onClick={() => setIsEditing(false)} className="secondary-btn" style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}>Cancel</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center', marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #f1f5f9' }}>
           {cleanPhone && (
             <>
               <a 
                 href={`tel:${cleanPhone}`} 
-                className="action-btn outline-success" 
-                style={{ textDecoration: 'none', padding: '6px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{ 
+                  textDecoration: 'none', 
+                  padding: '2px 7px', 
+                  fontSize: '11px', 
+                  fontWeight: 600, 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '3px',
+                  borderRadius: '4px',
+                  backgroundColor: '#f0fdf4',
+                  color: '#15803d',
+                  border: '1px solid #bbf7d0'
+                }}
               >
-                <PhoneCall size={13} /> Call Now
+                <PhoneCall size={11} /> Call
               </a>
               <a 
                 href={`https://wa.me/91${cleanPhone}`} 
                 target="_blank" 
                 rel="noreferrer" 
-                className="action-btn" 
-                style={{ textDecoration: 'none', padding: '6px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#25D366', color: '#fff' }}
+                style={{ 
+                  textDecoration: 'none', 
+                  padding: '2px 7px', 
+                  fontSize: '11px', 
+                  fontWeight: 600, 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '3px', 
+                  borderRadius: '4px',
+                  backgroundColor: '#25D366', 
+                  color: '#ffffff'
+                }}
               >
-                <MessageSquare size={13} /> WhatsApp
+                <MessageSquare size={11} /> WhatsApp
               </a>
             </>
           )}
-          <Link href={logCallHref} className="action-btn outline-primary" style={{ textDecoration: 'none', padding: '6px 10px', fontSize: '12px' }}>
+          <Link 
+            href={logCallHref} 
+            style={{ 
+              textDecoration: 'none', 
+              padding: '2px 7px', 
+              fontSize: '11px', 
+              fontWeight: 600, 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: '3px',
+              borderRadius: '4px',
+              backgroundColor: '#eff6ff', 
+              color: '#2563eb',
+              border: '1px solid #bfdbfe'
+            }}
+          >
             Log Call
           </Link>
-          <button onClick={() => setIsEditing(true)} className="action-btn" style={{ padding: '6px 10px', fontSize: '12px', cursor: 'pointer', border: '1px solid #cbd5e1', color: '#475569', background: 'transparent' }}>
-            <Pencil size={13} /> Reschedule
+          <button 
+            type="button"
+            onClick={() => setIsEditing(true)} 
+            style={{ 
+              padding: '2px 7px', 
+              fontSize: '11px', 
+              fontWeight: 600, 
+              cursor: 'pointer', 
+              borderRadius: '4px',
+              border: '1px solid #cbd5e1', 
+              color: '#475569', 
+              background: '#f8fafc',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px'
+            }}
+          >
+            <Pencil size={11} /> Reschedule
           </button>
-          <button onClick={handleRemove} className="action-btn" style={{ padding: '6px 10px', fontSize: '12px', cursor: 'pointer', border: '1px solid #ef4444', color: '#ef4444', background: 'transparent' }}>
-            <CheckCircle2 size={13} /> Done
+          <button 
+            type="button"
+            onClick={handleRemove} 
+            style={{ 
+              padding: '2px 7px', 
+              fontSize: '11px', 
+              fontWeight: 600, 
+              cursor: 'pointer', 
+              borderRadius: '4px',
+              border: '1px solid #fecdd3', 
+              color: '#e11d48', 
+              background: '#fff1f2',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '3px'
+            }}
+          >
+            <CheckCircle2 size={11} /> Done
           </button>
         </div>
       )}
@@ -426,53 +517,53 @@ export default function EmployeeDashboard({
       </div>
 
       {/* ─── TOP DUAL WORKFLOW & PERFORMANCE HUB: TODAY'S FOLLOW-UPS + SALES LEADERBOARD ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '20px' }}>
         
         {/* LEFT: TODAY'S FOLLOW-UPS */}
         <div className="zoho-card" style={{
-          borderLeft: validTodayFollowUps.length > 0 ? '4px solid #ef4444' : '1px solid #cbd5e1',
+          borderLeft: validTodayFollowUps.length > 0 ? '3px solid #ef4444' : '1px solid #cbd5e1',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          minHeight: '340px'
+          minHeight: '260px'
         }}>
           <div>
-            <div className="zoho-header" style={{ paddingBottom: '12px' }}>
+            <div className="zoho-header" style={{ paddingBottom: '8px' }}>
               <div className="zoho-title-group">
-                <div className="zoho-title-icon" style={{ backgroundColor: '#fee2e2', color: '#ef4444' }}>
-                  <PhoneForwarded size={18} />
+                <div className="zoho-title-icon" style={{ backgroundColor: '#fee2e2', color: '#ef4444', width: '32px', height: '32px', borderRadius: '8px' }}>
+                  <PhoneForwarded size={16} />
                 </div>
                 <div>
-                  <h2 className="zoho-title" style={{ fontSize: '1rem' }}>
+                  <h2 className="zoho-title" style={{ fontSize: '0.92rem' }}>
                     Today's Follow-ups ({validTodayFollowUps.length})
                   </h2>
-                  <p className="zoho-subtitle" style={{ fontSize: '0.75rem' }}>Priority calls scheduled for today</p>
+                  <p className="zoho-subtitle" style={{ fontSize: '0.72rem' }}>Priority calls scheduled for today</p>
                 </div>
               </div>
-              <Link href="/calls" style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
+              <Link href="/calls" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
                 View All →
               </Link>
             </div>
 
-            <div style={{ padding: '4px 6px', maxHeight: '270px', overflowY: 'auto' }}>
+            <div style={{ padding: '2px 4px', maxHeight: '220px', overflowY: 'auto' }}>
               {validTodayFollowUps.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {validTodayFollowUps.map((call: any) => (
                     <FollowUpCard key={call.id} call={call} />
                   ))}
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '36px 10px', color: '#64748b' }}>
-                  <CheckCircle2 size={32} style={{ color: '#10b981', margin: '0 auto 8px auto' }} />
-                  <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>No pending follow-ups today!</p>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem' }}>You're all caught up. Schedule new leads or log fresh calls.</p>
+                <div style={{ textAlign: 'center', padding: '28px 10px', color: '#64748b' }}>
+                  <CheckCircle2 size={28} style={{ color: '#10b981', margin: '0 auto 6px auto' }} />
+                  <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>No pending follow-ups today!</p>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem' }}>You're all caught up. Schedule new leads or log fresh calls.</p>
                 </div>
               )}
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 14px', borderTop: '1px solid #f1f5f9' }}>
-            <Link href="/calls" style={{ fontSize: '0.74rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 12px', borderTop: '1px solid #f1f5f9' }}>
+            <Link href="/calls" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
               Open Call Center →
             </Link>
           </div>
@@ -480,21 +571,21 @@ export default function EmployeeDashboard({
 
         {/* RIGHT: TEAM SALES LEADERBOARD (DAILY & MONTHLY) */}
         <div className="zoho-card" style={{
-          borderLeft: '4px solid #8b5cf6',
+          borderLeft: '3px solid #8b5cf6',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          minHeight: '340px'
+          minHeight: '260px'
         }}>
           <div>
             {/* Header with Title, Live Badge, and Timeframe Tabs */}
-            <div className="zoho-header" style={{ paddingBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <div className="zoho-header" style={{ paddingBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
               <div className="zoho-title-group">
-                <div className="zoho-title-icon" style={{ backgroundColor: '#f5f3ff', color: '#7c3aed' }}>
-                  <Trophy size={18} />
+                <div className="zoho-title-icon" style={{ backgroundColor: '#f5f3ff', color: '#7c3aed', width: '32px', height: '32px', borderRadius: '8px' }}>
+                  <Trophy size={16} />
                 </div>
                 <div>
-                  <h2 className="zoho-title" style={{ fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <h2 className="zoho-title" style={{ fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Sales Leaderboard
                     {leaderboardTimeframe === 'DAILY' && todayOrdersCount > 0 && (
                       <span style={{
