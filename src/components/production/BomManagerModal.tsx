@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { X, BookOpen, Plus, Trash2, Edit2, Save, ChevronDown } from "lucide-react";
-import { saveBom } from "@/app/actions/productionActions";
+import { saveBom, deleteBom } from "@/app/actions/productionActions";
 
 const UNITS = ["pcs","mtr","kg","ltr","roll","box","sheet","set","pair","bundle","gm","ml"];
 const SECTORS = ["Apparel","Electronics","FMCG","Fabrication","General"];
@@ -20,6 +20,7 @@ export default function BomManagerModal({ boms: initialBoms, products, onClose, 
   const [editingBom, setEditingBom] = useState<any | null>(null);
   const [expandedBom, setExpandedBom] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -55,6 +56,20 @@ export default function BomManagerModal({ boms: initialBoms, products, onClose, 
       unitCost: i.unitCost
     })));
     setShowForm(true);
+  };
+
+  const handleDelete = async (bom: any) => {
+    if (!confirm(`Are you sure you want to delete BOM "${bom.bomCode} - ${bom.name}"?\n\nThis will remove all associated material components.`)) return;
+    setDeletingId(bom.id);
+    const res = await deleteBom(bom.id);
+    setDeletingId(null);
+    if (res.error) {
+      alert("Error: " + res.error);
+      return;
+    }
+    const updated = boms.filter(b => b.id !== bom.id);
+    setBoms(updated);
+    onSaved(updated);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -294,7 +309,8 @@ export default function BomManagerModal({ boms: initialBoms, products, onClose, 
                         <div style={{ fontSize: "0.7rem", color: "#64748b" }}>Cost/Unit</div>
                         <div style={{ fontSize: "0.9rem", fontWeight: 800, color: "#059669", fontVariantNumeric: "tabular-nums" }}>₹{Number(bom.estimatedCostPerUnit).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
                       </div>
-                      <button onClick={e => { e.stopPropagation(); handleEdit(bom); }} style={{ padding: "5px", borderRadius: "6px", border: "1px solid #e2e8f0", background: "#fff", color: "#2563eb", cursor: "pointer" }}><Edit2 size={13} /></button>
+                      <button title="Edit BOM" onClick={e => { e.stopPropagation(); handleEdit(bom); }} style={{ padding: "5px", borderRadius: "6px", border: "1px solid #e2e8f0", background: "#fff", color: "#2563eb", cursor: "pointer" }}><Edit2 size={13} /></button>
+                      <button title="Delete BOM" disabled={deletingId === bom.id} onClick={e => { e.stopPropagation(); handleDelete(bom); }} style={{ padding: "5px", borderRadius: "6px", border: "1px solid #fecdd3", background: "#fff1f2", color: "#e11d48", cursor: deletingId === bom.id ? "wait" : "pointer" }}><Trash2 size={13} /></button>
                       <ChevronDown size={16} color="#94a3b8" style={{ transform: expandedBom === bom.id ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
                     </div>
                   </div>

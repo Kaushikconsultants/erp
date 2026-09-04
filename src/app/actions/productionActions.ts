@@ -53,7 +53,7 @@ export async function getWorkOrders(filters?: {
 
     // KPIs
     const total = workOrders.length;
-    const active = workOrders.filter((w) => ["In Production", "Material Allocated", "In Planning"].includes(w.status)).length;
+    const active = workOrders.filter((w) => ["In Production", "Material Allocated", "In Planning", "QA & Packing"].includes(w.status)).length;
     const completed = workOrders.filter((w) => w.status === "Completed").length;
     const totalTargetQty = workOrders.reduce((acc, w) => acc + w.targetQty, 0);
     const totalCompletedQty = workOrders.reduce((acc, w) => acc + w.completedQty, 0);
@@ -109,8 +109,17 @@ export async function createWorkOrder(data: {
 
   try {
     const organizationId = await getTenantOrgId();
-    const count = await prisma.workOrder.count({ where: { organizationId } });
-    const woNumber = `WO-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
+
+    // Safe collision-resistant sequence generation
+    const year = new Date().getFullYear();
+    let count = await prisma.workOrder.count({ where: { organizationId } });
+    let woNumber = `WO-${year}-${String(count + 1).padStart(4, "0")}`;
+    let exists = await prisma.workOrder.findUnique({ where: { woNumber } });
+    while (exists) {
+      count++;
+      woNumber = `WO-${year}-${String(count + 1).padStart(4, "0")}`;
+      exists = await prisma.workOrder.findUnique({ where: { woNumber } });
+    }
 
     const totalMaterialCost = data.materials.reduce(
       (acc, m) => acc + (m.requiredQty * (m.unitCost || 0)),
@@ -131,14 +140,14 @@ export async function createWorkOrder(data: {
         plannedStartDate: data.plannedStartDate ? new Date(data.plannedStartDate) : null,
         plannedEndDate: data.plannedEndDate ? new Date(data.plannedEndDate) : null,
         priority: data.priority || "Normal",
-        estimatedCost: data.estimatedCost || totalMaterialCost,
+        estimatedCost: data.estimatedCost !== undefined ? data.estimatedCost : totalMaterialCost,
         notes: data.notes || null,
         status: "In Planning",
         currentStage: data.stages?.[0]?.stageName || "Not Started",
         stages: {
-          create: data.stages.map((s) => ({
+          create: data.stages.map((s, idx) => ({
             stageName: s.stageName,
-            stageOrder: s.stageOrder,
+            stageOrder: s.stageOrder !== undefined ? s.stageOrder : idx,
             targetQty: data.targetQty,
             assignedTo: s.assignedTo || null,
             status: "Pending",
@@ -178,6 +187,12 @@ export async function updateWorkOrderStage(data: {
   if (!(await canManageProduction())) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+    const wo = await prisma.workOrder.findFirst({
+      where: { id: data.workOrderId, organizationId },
+    });
+    if (!wo) return { error: "Work Order not found." };
+
     const stage = await prisma.workOrderStage.update({
       where: { id: data.stageId },
       data: {
@@ -218,8 +233,9 @@ export async function completeWorkOrder(id: string, completedQty: number, reject
   if (!(await canManageProduction())) return { error: "Unauthorized" };
 
   try {
-    const workOrder = await prisma.workOrder.findUnique({
-      where: { id },
+    const organizationId = await getTenantOrgId();
+    const workOrder = await prisma.workOrder.findFirst({
+      where: { id, organizationId },
       include: { materials: { include: { product: true } }, product: true },
     });
     if (!workOrder) return { error: "Work Order not found." };
@@ -227,21 +243,34 @@ export async function completeWorkOrder(id: string, completedQty: number, reject
     await prisma.$transaction(async (tx) => {
       // 1. Deduct raw material stocks that have linked products
       for (const mat of workOrder.materials) {
-        if (mat.productId && mat.consumedQty > 0) {
+        const qtyToDeduct = mat.consumedQty > 0
+          ? mat.consumedQty
+          : (workOrder.targetQty > 0 ? (completedQty / workOrder.targetQty) * mat.requiredQty : mat.requiredQty);
+
+        if (mat.productId && qtyToDeduct > 0) {
           await tx.product.update({
             where: { id: mat.productId },
-            data: { stockQuantity: { decrement: Math.round(mat.consumedQty) } },
+            data: { stockQuantity: { decrement: Math.round(qtyToDeduct) } },
           });
           await tx.inventoryTransaction.create({
             data: {
               productId: mat.productId,
               type: "OUT",
-              quantity: Math.round(mat.consumedQty),
+              quantity: Math.round(qtyToDeduct),
               reference: workOrder.woNumber,
               notes: `Raw material consumed for Work Order ${workOrder.woNumber}`,
             },
           });
         }
+
+        // Update material status and consumed quantity in the Work Order
+        await tx.workOrderMaterial.update({
+          where: { id: mat.id },
+          data: {
+            consumedQty: qtyToDeduct,
+            status: "Consumed",
+          },
+        });
       }
 
       // 2. Inward finished goods if product is linked
@@ -303,6 +332,12 @@ export async function logWorkerPieceRate(data: {
   if (!(await canManageProduction())) return { error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+    const wo = await prisma.workOrder.findFirst({
+      where: { id: data.workOrderId, organizationId },
+    });
+    if (!wo) return { error: "Work Order not found." };
+
     const earnedAmount = data.qtyProduced * data.pieceRate;
     const log = await prisma.workerProductionLog.create({
       data: {
@@ -380,6 +415,11 @@ export async function saveBom(data: {
     let bom;
     if (data.id) {
       // Update existing BOM
+      const existing = await prisma.billOfMaterials.findFirst({
+        where: { id: data.id, organizationId },
+      });
+      if (!existing) return { error: "Bill of Materials not found." };
+
       await prisma.bomItem.deleteMany({ where: { bomId: data.id } });
       bom = await prisma.billOfMaterials.update({
         where: { id: data.id },
@@ -408,8 +448,15 @@ export async function saveBom(data: {
         },
       });
     } else {
-      const count = await prisma.billOfMaterials.count({ where: { organizationId } });
-      const bomCode = `BOM-${String(count + 1).padStart(3, "0")}`;
+      let count = await prisma.billOfMaterials.count({ where: { organizationId } });
+      let bomCode = `BOM-${String(count + 1).padStart(3, "0")}`;
+      let exists = await prisma.billOfMaterials.findUnique({ where: { bomCode } });
+      while (exists) {
+        count++;
+        bomCode = `BOM-${String(count + 1).padStart(3, "0")}`;
+        exists = await prisma.billOfMaterials.findUnique({ where: { bomCode } });
+      }
+
       bom = await prisma.billOfMaterials.create({
         data: {
           organizationId,
@@ -443,6 +490,39 @@ export async function saveBom(data: {
     return { success: true, bom: JSON.parse(JSON.stringify(bom)) };
   } catch (error: any) {
     return { error: "Failed to save BOM: " + error.message };
+  }
+}
+
+// ─── DELETE BOM ───────────────────────────────────────────────
+export async function deleteBom(id: string) {
+  if (!(await canManageProduction())) return { error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+    const bom = await prisma.billOfMaterials.findFirst({
+      where: { id, organizationId },
+      include: { workOrders: { select: { id: true, woNumber: true, status: true } } },
+    });
+    if (!bom) return { error: "Bill of Materials not found." };
+
+    const activeWorkOrders = bom.workOrders.filter(
+      (wo) => !["Completed", "Cancelled"].includes(wo.status)
+    );
+    if (activeWorkOrders.length > 0) {
+      return {
+        error: `Cannot delete BOM. It is currently linked to ${activeWorkOrders.length} active Work Order(s) (${activeWorkOrders.map((w) => w.woNumber).join(", ")}).`,
+      };
+    }
+
+    await prisma.$transaction([
+      prisma.bomItem.deleteMany({ where: { bomId: id } }),
+      prisma.billOfMaterials.delete({ where: { id } }),
+    ]);
+
+    revalidatePath("/production");
+    return { success: true };
+  } catch (error: any) {
+    return { error: "Failed to delete BOM: " + error.message };
   }
 }
 

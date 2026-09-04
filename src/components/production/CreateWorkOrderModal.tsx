@@ -75,14 +75,36 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
     const bom = boms.find(b => b.id === id);
     if (bom) {
       setFinishedGoodsName(bom.finishedGoodsName);
+      if (bom.productId) setProductId(bom.productId);
+      const qty = parseFloat(targetQty) || 1;
+      const multiplier = qty / (bom.outputQty || 1);
       setMaterials(bom.items.map((item: any) => ({
         productId: item.productId || "",
         materialName: item.materialName,
         unit: item.unit,
-        requiredQty: Number(item.quantity),
+        requiredQty: Math.round((Number(item.quantity) * multiplier * (1 + (item.wastagePercent || 0) / 100)) * 100) / 100,
         unitCost: Number(item.unitCost)
       })));
-      setEstimatedCost(String(bom.estimatedCostPerUnit * (parseFloat(targetQty) || 1)));
+      setEstimatedCost(String(Math.round(bom.estimatedCostPerUnit * qty * 100) / 100));
+    }
+  };
+
+  const handleTargetQtyChange = (val: string) => {
+    setTargetQty(val);
+    const qty = parseFloat(val) || 0;
+    if (bomId) {
+      const bom = boms.find(b => b.id === bomId);
+      if (bom && qty > 0) {
+        const multiplier = qty / (bom.outputQty || 1);
+        setMaterials(bom.items.map((item: any) => ({
+          productId: item.productId || "",
+          materialName: item.materialName,
+          unit: item.unit,
+          requiredQty: Math.round((Number(item.quantity) * multiplier * (1 + (item.wastagePercent || 0) / 100)) * 100) / 100,
+          unitCost: Number(item.unitCost)
+        })));
+        setEstimatedCost(String(Math.round(bom.estimatedCostPerUnit * qty * 100) / 100));
+      }
     }
   };
 
@@ -215,7 +237,7 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
             </div>
             <div>
               <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Target Qty *</label>
-              <input type="number" value={targetQty} onChange={e => setTargetQty(e.target.value)} min="1" required style={{ ...inputStyle, textAlign: "center", fontVariantNumeric: "tabular-nums" }} />
+              <input type="number" value={targetQty} onChange={e => handleTargetQtyChange(e.target.value)} min="1" required style={{ ...inputStyle, textAlign: "center", fontVariantNumeric: "tabular-nums" }} />
             </div>
             <div>
               <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Priority</label>
@@ -243,7 +265,9 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
           {showVariants && (
             <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "14px", marginBottom: "14px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1e40af" }}>📐 Size / Variant Matrix (Apparel)</span>
+                <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1e40af" }}>
+                  📐 Size / Variant Matrix (Total: {variantRows.reduce((acc, r) => acc + (r.qty || 0), 0)} pcs)
+                </span>
                 <button type="button" onClick={() => setVariantRows([...variantRows, { label: "", qty: 0 }])} style={{ padding: "3px 8px", borderRadius: "5px", border: "1px solid #bfdbfe", backgroundColor: "#fff", color: "#2563eb", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer" }}>+ Add Size</button>
               </div>
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
