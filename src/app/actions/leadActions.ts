@@ -102,17 +102,32 @@ export async function getPipelineData() {
         }).catch(() => {});
       }
 
-      let dealVal = c.expectedValue || 0;
-      if (!dealVal || dealVal === 0) {
-        const latestOrderVal = c.orders?.[0]?.totalValue;
-        const latestQuoteVal = c.quotations?.[0]?.totalValue;
-        dealVal = confirmedQuote?.totalValue || latestOrderVal || latestQuoteVal || (c.totalPurchaseValue > 0 ? c.totalPurchaseValue : 15000);
+      // Accurate Order / Quotation / Deal Value calculation:
+      // 1. If explicit expectedValue is set (> 0), use it
+      // 2. Else if customer has confirmed quote, use confirmed quote value
+      // 3. Else if customer has orders, use the latest order value (or totalPurchaseValue)
+      // 4. Else if customer has any quote, use the latest quote value
+      // 5. Otherwise 0
+      let dealVal = 0;
+      if (c.expectedValue && Number(c.expectedValue) > 0) {
+        dealVal = Number(c.expectedValue);
+      } else if (confirmedQuote?.totalValue && Number(confirmedQuote.totalValue) > 0) {
+        dealVal = Number(confirmedQuote.totalValue);
+      } else if (c.orders && c.orders.length > 0 && Number(c.orders[0]?.totalValue) > 0) {
+        dealVal = Number(c.orders[0].totalValue);
+      } else if (c.quotations && c.quotations.length > 0 && Number(c.quotations[0]?.totalValue) > 0) {
+        dealVal = Number(c.quotations[0].totalValue);
+      } else if (c.totalPurchaseValue && Number(c.totalPurchaseValue) > 0) {
+        dealVal = Number(c.totalPurchaseValue);
+      } else {
+        dealVal = 0;
       }
 
       return {
         ...c,
         isLeadRecord: false,
         leadStage: effectiveStage,
+        expectedValue: dealVal,
         computedDealValue: dealVal
       };
     });
@@ -143,8 +158,8 @@ export async function getPipelineData() {
           status: l.status || 'New',
           assignedSalespersonId: l.assignedSalespersonId,
           assignedSalesperson: l.assignedSalesperson,
-          expectedValue: 10000,
-          computedDealValue: 10000,
+          expectedValue: 0,
+          computedDealValue: 0,
           calls: l.calls || [],
           followUps: l.followUps || [],
           createdAt: l.createdAt,
@@ -174,9 +189,11 @@ export async function updateLeadStage(leadId: string, newStage: string, newStatu
         dataToUpdate.status = newStatus;
       } else {
         if (newStage === 'Won') dataToUpdate.status = 'Active Lead';
-        if (newStage === 'Lost') dataToUpdate.status = 'Inactive';
-        if (newStage === 'Opportunity') dataToUpdate.status = 'Opportunity';
-        if (newStage === 'Qualified') dataToUpdate.status = 'Contacted';
+        else if (newStage === 'Lost') dataToUpdate.status = 'Inactive';
+        else if (newStage === 'Opportunity') dataToUpdate.status = 'Opportunity';
+        else if (newStage === 'Qualified') dataToUpdate.status = 'Contacted';
+        else if (newStage === 'Contacted') dataToUpdate.status = 'Contacted';
+        else if (newStage === 'New Lead') dataToUpdate.status = 'New Lead';
       }
 
       await prisma.customer.update({
@@ -185,7 +202,7 @@ export async function updateLeadStage(leadId: string, newStage: string, newStatu
       });
     } else {
       // It's a raw Lead record
-      const leadStatus = newStage === 'Won' ? 'Converted' : newStage === 'Lost' ? 'Lost' : newStage === 'Contacted' ? 'Contacted' : 'New';
+      const leadStatus = newStage === 'Won' ? 'Converted' : newStage === 'Lost' ? 'Lost' : newStage === 'Contacted' ? 'Contacted' : newStage === 'Qualified' ? 'Qualified' : 'New';
       await prisma.lead.update({
         where: { id: leadId },
         data: { status: leadStatus }
@@ -212,10 +229,29 @@ export async function updateLeadValue(leadId: string, expectedValue: number) {
         where: { id: leadId },
         data: { expectedValue }
       });
+    } else {
+      const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+      if (lead) {
+        const orgId = await getTenantOrgId();
+        await prisma.customer.create({
+          data: {
+            organizationId: orgId,
+            businessName: lead.shopName || lead.name,
+            contactPerson: lead.name,
+            mobile: lead.whatsappNumber,
+            whatsappNumber: lead.whatsappNumber,
+            assignedSalespersonId: lead.assignedSalespersonId,
+            expectedValue,
+            leadStage: lead.status === 'Contacted' ? 'Contacted' : 'New Lead',
+            status: 'New Lead'
+          }
+        });
+      }
     }
     
     revalidatePath("/pipeline");
     revalidatePath("/leads");
+    revalidatePath("/customers");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to update lead value: " + error.message };
