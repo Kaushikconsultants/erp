@@ -49,19 +49,26 @@ export async function POST(
         
         if (awb && currentStatus) {
           summaryMessage = `Shiprocket Tracking Update: AWB ${awb} status changed to "${currentStatus}"`;
-          // If we have orderId, update Order tracking in DB
-          if (orderId) {
-            await prisma.order.updateMany({
-              where: {
-                organizationId: integration.organizationId || undefined,
-                OR: [{ orderNumber: String(orderId) }, { awbNumber: String(awb) }]
-              },
-              data: {
-                shippingStatus: String(currentStatus),
-                awbNumber: String(awb),
-                courierName: payload.courier_name || "Shiprocket Express"
-              }
-            }).catch(() => {});
+          if (orderId || awb) {
+            const orderWhere: any = {
+              OR: [
+                ...(orderId ? [{ orderNumber: String(orderId) }] : []),
+                ...(awb ? [{ awbNumber: String(awb) }] : [])
+              ]
+            };
+            if (integration.organizationId) {
+              orderWhere.organizationId = integration.organizationId;
+            }
+            if (orderWhere.OR.length > 0) {
+              await prisma.order.updateMany({
+                where: orderWhere,
+                data: {
+                  shippingStatus: String(currentStatus),
+                  ...(awb ? { awbNumber: String(awb) } : {}),
+                  courierName: payload.courier_name || "Shiprocket Express"
+                }
+              }).catch(() => {});
+            }
           }
         }
         break;

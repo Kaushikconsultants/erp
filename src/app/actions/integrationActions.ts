@@ -407,7 +407,10 @@ export async function testIntegrationConnection(
       }
 
       case "woocommerce": {
-        const storeUrl = resolvedCreds.storeUrl?.replace(/\/$/, "");
+        const rawUrl = (resolvedCreds.storeUrl || "").trim();
+        const storeUrl = rawUrl.startsWith("http://") || rawUrl.startsWith("https://") 
+          ? rawUrl.replace(/\/$/, "") 
+          : `https://${rawUrl}`.replace(/\/$/, "");
         const consumerKey = resolvedCreds.consumerKey;
         const consumerSecret = resolvedCreds.consumerSecret;
 
@@ -443,7 +446,10 @@ export async function testIntegrationConnection(
       }
 
       case "magento": {
-        const storeUrl = resolvedCreds.storeUrl?.replace(/\/$/, "");
+        const rawUrl = (resolvedCreds.storeUrl || "").trim();
+        const storeUrl = rawUrl.startsWith("http://") || rawUrl.startsWith("https://") 
+          ? rawUrl.replace(/\/$/, "") 
+          : `https://${rawUrl}`.replace(/\/$/, "");
         const bearerToken = resolvedCreds.bearerToken;
         if (storeUrl && bearerToken) {
           connectionSuccess = true;

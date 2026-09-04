@@ -100,6 +100,7 @@ const CACHE_TTL_MS = 30000; // 30s per-tenant in-memory cache
 export async function invalidateCompanySettingsCache(orgId?: string) {
   if (orgId) {
     settingsCache.delete(orgId);
+    settingsCache.delete("default");
   } else {
     settingsCache.clear();
   }

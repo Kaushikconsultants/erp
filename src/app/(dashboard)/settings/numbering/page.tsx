@@ -11,34 +11,27 @@ import {
   Layers,
   ArrowRight
 } from 'lucide-react';
-import { getFinancialYear } from '@/lib/documentNumbering';
-
-interface DocSeriesSetting {
-  docType: string;
-  title: string;
-  prefix: string;
-  suffix: string;
-  nextNumber: number;
-  zeroPadding: number;
-}
-
-const DEFAULT_SERIES: DocSeriesSetting[] = [
-  { docType: 'INVOICE', title: 'Tax Invoices', prefix: 'INV/{FY}/', suffix: '', nextNumber: 1001, zeroPadding: 4 },
-  { docType: 'QUOTATION', title: 'Sales Quotations', prefix: 'QT/{FY}/', suffix: '', nextNumber: 1001, zeroPadding: 4 },
-  { docType: 'ORDER', title: 'Sales Orders', prefix: 'ORD/{FY}/', suffix: '', nextNumber: 1001, zeroPadding: 4 },
-  { docType: 'DELIVERY_CHALLAN', title: 'Delivery Challans (DC)', prefix: 'DC/{FY}/', suffix: '', nextNumber: 1001, zeroPadding: 4 },
-  { docType: 'CREDIT_NOTE', title: 'Credit Notes', prefix: 'CN/{FY}/', suffix: '', nextNumber: 1001, zeroPadding: 4 },
-  { docType: 'PURCHASE_ORDER', title: 'Purchase Orders (PO)', prefix: 'PO/{FY}/', suffix: '', nextNumber: 1001, zeroPadding: 4 },
-  { docType: 'BILL', title: 'Vendor Bills', prefix: 'BILL/{FY}/', suffix: '', nextNumber: 1001, zeroPadding: 4 },
-  { docType: 'DEBIT_NOTE', title: 'Vendor Debit Notes', prefix: 'DN/{FY}/', suffix: '', nextNumber: 1001, zeroPadding: 4 }
-];
+import { getDocumentSequences, saveDocumentSequences, DocSeriesItem } from '@/app/actions/numberingActions';
 
 export default function DocumentNumberingSettingsPage() {
-  const [seriesList, setSeriesList] = useState<DocSeriesSetting[]>(DEFAULT_SERIES);
+  const [seriesList, setSeriesList] = useState<DocSeriesItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const currentFy = getFinancialYear();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [currentFy, setCurrentFy] = useState<string>(() => getFinancialYear());
 
-  const handleUpdate = (idx: number, field: keyof DocSeriesSetting, value: any) => {
+  useEffect(() => {
+    getDocumentSequences().then(res => {
+      if (res.success && res.seriesList) {
+        setSeriesList(res.seriesList);
+        if (res.currentFy) setCurrentFy(res.currentFy);
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  const handleUpdate = (idx: number, field: keyof DocSeriesItem, value: any) => {
     setSeriesList(prev => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], [field]: value };
@@ -46,15 +39,37 @@ export default function DocumentNumberingSettingsPage() {
     });
   };
 
-  const getPreview = (s: DocSeriesSetting) => {
-    const formattedPrefix = s.prefix.replace(/{FY}/g, currentFy).replace(/{YY}/g, '26').replace(/{BRANCH}/g, 'HO');
-    const num = String(s.nextNumber).padStart(s.zeroPadding, '0');
+  const getPreview = (s: DocSeriesItem) => {
+    const now = new Date();
+    const yy = String(now.getFullYear()).slice(-2);
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const formattedPrefix = (s.prefix || '')
+      .replace(/{FY}/g, currentFy)
+      .replace(/{YYYY}/g, yyyy)
+      .replace(/{YY}/g, yy)
+      .replace(/{MM}/g, mm)
+      .replace(/{BRANCH}/g, 'HO');
+    const num = String(s.nextNumber || 1001).padStart(s.zeroPadding || 4, '0');
     return `${formattedPrefix}${num}${s.suffix || ''}`;
   };
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    setSaving(true);
+    setErrorMsg(null);
+    try {
+      const res = await saveDocumentSequences(seriesList);
+      if (res.success) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3500);
+      } else {
+        setErrorMsg(res.error || "Failed to save numbering rules");
+      }
+    } catch (e: any) {
+      setErrorMsg(e.message || "An unexpected error occurred");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -79,6 +94,7 @@ export default function DocumentNumberingSettingsPage() {
         <button
           type="button"
           onClick={handleSave}
+          disabled={saving || loading}
           style={{
             padding: '10px 22px',
             borderRadius: '8px',
@@ -89,17 +105,24 @@ export default function DocumentNumberingSettingsPage() {
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            cursor: 'pointer',
+            cursor: saving || loading ? 'not-allowed' : 'pointer',
+            opacity: saving || loading ? 0.7 : 1,
             boxShadow: '0 2px 4px rgba(79, 70, 229, 0.2)'
           }}
         >
-          <Save size={16} /> Save Numbering Rules
+          <Save size={16} /> {saving ? "Saving Rules..." : "Save Numbering Rules"}
         </button>
       </div>
 
       {saved && (
         <div style={{ padding: '12px 16px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', color: '#065f46', fontSize: '0.84rem', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <CheckCircle2 size={16} /> Document numbering rules successfully saved!
+          <CheckCircle2 size={16} /> Document numbering rules successfully saved to database!
+        </div>
+      )}
+
+      {errorMsg && (
+        <div style={{ padding: '12px 16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#991b1b', fontSize: '0.84rem', fontWeight: 600, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {errorMsg}
         </div>
       )}
 

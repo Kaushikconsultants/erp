@@ -46,7 +46,7 @@ interface SettingItem {
 export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuProps) {
   const [activeFeature, setActiveFeature] = useState<string | null>(null);
 
-  // Group 1: Organization & Branding (4 items)
+  // Group 1: Organization & Branding
   const orgSettings: SettingItem[] = [
     {
       label: "Organization Profile & Logo",
@@ -71,6 +71,14 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
       iconBg: "#f5f3ff",
       iconColor: "#7c3aed",
       href: "/settings/templates"
+    },
+    {
+      label: "Document Numbering & Series",
+      desc: "Custom auto-increment prefixes, fiscal years & zero padding",
+      icon: <FileText size={18} />,
+      iconBg: "#fef3c7",
+      iconColor: "#d97706",
+      href: "/settings/numbering"
     },
     {
       label: "Appearance & Color Theme",
@@ -119,8 +127,17 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
     }
   ];
 
-  // Group 3: Automation & Cloud Billing (3 items)
+  // Group 3: Automation & Cloud Billing
   const automationSettings: SettingItem[] = [
+    {
+      label: "Integrations & APIs Hub",
+      desc: "Connect Shiprocket, Shipmozo, Shopify, WooCommerce & webhooks",
+      icon: <Layers size={18} />,
+      iconBg: "#f5f3ff",
+      iconColor: "#7c3aed",
+      href: "/integrations",
+      badge: "REST APIs"
+    },
     {
       label: "AI Workflows & Automation",
       desc: "Auto lead qualification, AI follow-ups & event webhooks",
@@ -131,6 +148,14 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
       badge: "AI Powered"
     },
     {
+      label: "Universal Data Import & Migration",
+      desc: "Migrate customers, items, vendors & ledgers from Excel / Tally",
+      icon: <FileSpreadsheet size={18} />,
+      iconBg: "#ecfdf5",
+      iconColor: "#059669",
+      href: "/settings/import-export"
+    },
+    {
       label: "Subscription & Cloud Billing",
       desc: "Active subscription plan, user seat limits & billing invoices",
       icon: <CreditCard size={18} />,
@@ -139,12 +164,12 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
       href: "/settings/billing"
     },
     {
-      label: "Data Backup & Sync",
-      desc: "Offline database export, customer CSV dumps & sync logs",
+      label: "Data Backup & Full Export",
+      desc: "1-Click complete JSON / Excel database download & snapshot",
       icon: <Database size={18} />,
       iconBg: "#f0fdf4",
       iconColor: "#16a34a",
-      modal: "Backup Data"
+      href: "/settings/backup"
     }
   ];
 
