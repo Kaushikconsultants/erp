@@ -482,8 +482,8 @@ export default function AdminDashboard({
                       }} title={att.name}>
                         {att.name}
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                        In: <span style={{ fontWeight: 600, color: '#334155' }}>
+                      <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '1px' }}>
+                        In: <span style={{ fontWeight: 700, color: '#0f172a' }}>
                           {att.checkIn ? (
                             new Date(att.checkIn).toLocaleTimeString('en-IN', {
                               timeZone: 'Asia/Kolkata',

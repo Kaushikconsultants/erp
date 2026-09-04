@@ -325,10 +325,15 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
               onClick={() => handleCellClick(day, record)}
               style={{
                 textAlign: 'center', 
-                padding: '8px 4px 6px 4px', 
+                padding: '8px 6px', 
+                minHeight: '52px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
                 borderRadius: '8px',
                 background: color, 
-                fontSize: '0.82rem', 
+                fontSize: '0.92rem', 
                 fontWeight: record ? 700 : 500,
                 color: record ? '#ffffff' : (isPast ? '#64748b' : 'var(--text-muted)'),
                 cursor: isAdmin ? 'pointer' : 'default', 
@@ -341,11 +346,22 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
               onMouseEnter={e => isAdmin && (e.currentTarget.style.transform = 'translateY(-2px)')}
               onMouseLeave={e => isAdmin && (e.currentTarget.style.transform = 'translateY(0)')}
             >
-              <div>{day}</div>
+              <div style={{ lineHeight: 1.1 }}>{day}</div>
               {hasTime && (
-                <div style={{ fontSize: '8px', opacity: 0.9, lineHeight: 1, marginTop: '3px', fontWeight: 600 }}>
-                  {toTimeDisplay(record.checkIn)}
-                  {record.checkOut ? `–${toTimeDisplay(record.checkOut)}` : '…'}
+                <div style={{ 
+                  fontSize: '0.74rem', 
+                  opacity: 0.95, 
+                  lineHeight: 1.2, 
+                  marginTop: '4px', 
+                  fontWeight: 600,
+                  letterSpacing: '-0.2px',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {record.checkOut ? (
+                    <span>{toTimeDisplay(record.checkIn)} – {toTimeDisplay(record.checkOut)}</span>
+                  ) : (
+                    <span>{toTimeDisplay(record.checkIn)}</span>
+                  )}
                 </div>
               )}
             </div>
