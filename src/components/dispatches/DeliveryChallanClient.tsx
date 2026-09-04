@@ -15,9 +15,10 @@ import {
   Printer,
   FileText,
   Receipt,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from "lucide-react";
-import { createDeliveryChallan, convertChallanToInvoice } from "@/app/actions/deliveryChallanActions";
+import { createDeliveryChallan, convertChallanToInvoice, deleteDeliveryChallan } from "@/app/actions/deliveryChallanActions";
 
 interface Props {
   initialChallans: any[];
@@ -107,6 +108,8 @@ export default function DeliveryChallanClient({
     }
   };
 
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
   const handleConvert = async (challanId: string) => {
     if (!confirm("Are you sure you want to convert this Delivery Challan into a GST Sales Invoice?")) return;
     setIsConverting(challanId);
@@ -122,6 +125,23 @@ export default function DeliveryChallanClient({
       alert(e.message || "Error converting");
     } finally {
       setIsConverting(null);
+    }
+  };
+
+  const handleDelete = async (challanId: string, challanNumber: string) => {
+    if (!confirm(`Are you sure you want to delete Delivery Challan #${challanNumber}? Any unconverted items will be restocked to inventory.`)) return;
+    setIsDeleting(challanId);
+    try {
+      const res = await deleteDeliveryChallan(challanId);
+      if (res.success) {
+        setChallans(prev => prev.filter(c => c.id !== challanId));
+      } else {
+        alert(res.error || "Failed to delete delivery challan");
+      }
+    } catch (e: any) {
+      alert(e.message || "Error deleting delivery challan");
+    } finally {
+      setIsDeleting(null);
     }
   };
 
@@ -283,43 +303,65 @@ export default function DeliveryChallanClient({
                       </span>
                     </td>
                     <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                      {c.customerId && c.status !== "CONVERTED_TO_INVOICE" && (
-                        <button
-                          onClick={() => handleConvert(c.id)}
-                          disabled={isConverting === c.id}
-                          className="action-btn"
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            padding: "4px 10px",
-                            fontSize: "0.75rem",
-                            color: "#4f46e5",
-                            fontWeight: 600
-                          }}
-                        >
-                          <FileCheck size={13} />
-                          {isConverting === c.id ? "Converting..." : "Convert to Inv"}
-                        </button>
-                      )}
-                      {c.status === "CONVERTED_TO_INVOICE" && (
-                        <Link
-                          href="/invoices"
-                          className="action-btn"
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            padding: "4px 10px",
-                            fontSize: "0.75rem",
-                            color: "#059669",
-                            textDecoration: "none",
-                            fontWeight: 600
-                          }}
-                        >
-                          <Receipt size={13} /> View Inv
-                        </Link>
-                      )}
+                      <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                        {c.customerId && c.status !== "CONVERTED_TO_INVOICE" && (
+                          <button
+                            onClick={() => handleConvert(c.id)}
+                            disabled={isConverting === c.id || isDeleting === c.id}
+                            className="action-btn"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              padding: "4px 10px",
+                              fontSize: "0.75rem",
+                              color: "#4f46e5",
+                              fontWeight: 600
+                            }}
+                          >
+                            <FileCheck size={13} />
+                            {isConverting === c.id ? "Converting..." : "Convert to Inv"}
+                          </button>
+                        )}
+                        {c.status === "CONVERTED_TO_INVOICE" && (
+                          <Link
+                            href="/invoices"
+                            className="action-btn"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              padding: "4px 10px",
+                              fontSize: "0.75rem",
+                              color: "#059669",
+                              textDecoration: "none",
+                              fontWeight: 600
+                            }}
+                          >
+                            <Receipt size={13} /> View Inv
+                          </Link>
+                        )}
+                        {c.status !== "CONVERTED_TO_INVOICE" && (
+                          <button
+                            onClick={() => handleDelete(c.id, c.challanNumber)}
+                            disabled={isDeleting === c.id || isConverting === c.id}
+                            className="action-btn"
+                            title="Delete Delivery Challan (Restock Inventory)"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              padding: "4px 8px",
+                              fontSize: "0.75rem",
+                              color: "#dc2626",
+                              fontWeight: 600
+                            }}
+                          >
+                            <Trash2 size={13} />
+                            {isDeleting === c.id ? "..." : "Delete"}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))

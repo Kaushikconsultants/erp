@@ -217,6 +217,7 @@ export async function generateEWayBill(input: GenerateEWayBillInput) {
           awbNumber: input.docNoOrLorryReceipt || input.vehicleNumber || ewbNumber,
           courierName: input.transporterName || "Logistics",
           dispatchDate: new Date(),
+          orderStatus: "Dispatched",
           shippingStatus: "In Transit"
         }
       });

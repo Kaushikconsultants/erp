@@ -152,9 +152,50 @@ export async function convertChallanToInvoice(challanId: string) {
     const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invCount + 1).padStart(5, "0")}`;
 
     const subtotal = challan.totalValue;
-    const taxRate = 12; // Standard 12% for apparel or from items
+    const taxRate = 12; // Standard 12% for apparel
     const taxAmount = Number(((subtotal * taxRate) / 100).toFixed(2));
     const totalAmount = subtotal + taxAmount;
+
+    // Create underlying Order with line items
+    const defaultEmp = await prisma.employee.findFirst({
+      where: organizationId ? { organizationId } : undefined
+    });
+
+    const order = await prisma.order.create({
+      data: {
+        organizationId,
+        orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
+        customerId: challan.customerId,
+        salespersonId: defaultEmp?.id || "",
+        orderDate: new Date(),
+        subtotal,
+        discount: 0,
+        tax: taxAmount,
+        cgst: Number((taxAmount / 2).toFixed(2)),
+        sgst: Number((taxAmount / 2).toFixed(2)),
+        igst: 0,
+        totalValue: totalAmount,
+        paymentReceived: 0,
+        outstandingAmount: totalAmount,
+        paymentStatus: "Unpaid",
+        orderStatus: "Dispatched",
+        shippingStatus: "Delivered",
+        notes: `Converted from Delivery Challan #${challan.challanNumber}`,
+        items: {
+          create: challan.items.map(it => ({
+            productId: it.productId,
+            quantity: Math.round(it.quantity),
+            rate: it.rate,
+            hsnCode: it.hsnCode || "6109",
+            gstRate: taxRate,
+            cgst: Number(((it.total * (taxRate / 2)) / 100).toFixed(2)),
+            sgst: Number(((it.total * (taxRate / 2)) / 100).toFixed(2)),
+            igst: 0,
+            total: it.total + Number(((it.total * taxRate) / 100).toFixed(2))
+          }))
+        }
+      }
+    });
 
     // Create Invoice
     const invoice = await prisma.invoice.create({
@@ -162,6 +203,7 @@ export async function convertChallanToInvoice(challanId: string) {
         organizationId,
         invoiceNumber,
         customerId: challan.customerId,
+        orderId: order.id,
         invoiceDate: new Date(),
         subtotal,
         taxAmount,
@@ -185,6 +227,7 @@ export async function convertChallanToInvoice(challanId: string) {
 
     revalidatePath("/delivery-challans", "page");
     revalidatePath("/invoices", "page");
+    revalidatePath("/orders", "page");
 
     return {
       success: true,
@@ -194,5 +237,56 @@ export async function convertChallanToInvoice(challanId: string) {
     };
   } catch (error: any) {
     return { success: false, error: error.message || "Failed to convert challan to invoice" };
+  }
+}
+
+export async function deleteDeliveryChallan(challanId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { success: false, error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+
+    const challan = await prisma.deliveryChallan.findFirst({
+      where: { id: challanId, ...(organizationId ? { organizationId } : {}) },
+      include: { items: true }
+    });
+
+    if (!challan) return { success: false, error: "Delivery Challan not found" };
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Restock inventory if challan was not converted to invoice
+      if (challan.status !== "CONVERTED_TO_INVOICE") {
+        for (const it of challan.items) {
+          if (it.productId && it.quantity > 0) {
+            await tx.product.update({
+              where: { id: it.productId },
+              data: { stockQuantity: { increment: it.quantity } }
+            }).catch(() => {});
+
+            await tx.inventoryTransaction.create({
+              data: {
+                productId: it.productId,
+                type: "IN",
+                quantity: it.quantity,
+                reference: challan.challanNumber,
+                notes: `Stock returned upon deletion of Delivery Challan #${challan.challanNumber}`
+              }
+            }).catch(() => {});
+          }
+        }
+      }
+
+      // 2. Delete items & challan
+      await tx.deliveryChallanItem.deleteMany({ where: { challanId } });
+      await tx.deliveryChallan.delete({ where: { id: challanId } });
+    });
+
+    revalidatePath("/delivery-challans", "page");
+    revalidatePath("/products", "page");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to delete delivery challan:", error);
+    return { success: false, error: error.message || "Failed to delete delivery challan" };
   }
 }
