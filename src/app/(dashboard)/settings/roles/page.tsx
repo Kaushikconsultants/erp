@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { Shield } from 'lucide-react';
 import RoleManager from '@/components/settings/RoleManager';
 
+export const dynamic = 'force-dynamic';
+
 export default async function RolesSettingsPage() {
   const roles = await prisma.role.findMany({
     include: { _count: { select: { users: true } } },

@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { getTenantOrgId } from "@/lib/tenant";
 import ProductionClient from "@/components/production/ProductionClient";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Production & Workshop | Manufacturing Operations",
   description: "Universal manufacturing hub — Work Orders, Stage Tracking, Bill of Materials, and Piece-Rate Wage Ledger."

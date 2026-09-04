@@ -9,6 +9,8 @@ import { getOrCreateEmployee } from '@/lib/employeeHelper';
 import { CheckSquare } from 'lucide-react';
 import { getTenantOrgId } from '@/lib/tenant';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TasksPage() {
   const session = await getServerSession(authOptions);
   

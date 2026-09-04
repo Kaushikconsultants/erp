@@ -27,6 +27,8 @@ import OrderDetailActions from '@/components/orders/OrderDetailActions';
 
 import { getTenantOrgId } from '@/lib/tenant';
 
+export const dynamic = 'force-dynamic';
+
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/login');

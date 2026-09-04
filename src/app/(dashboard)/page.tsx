@@ -16,6 +16,8 @@ import './dashboard.css';
 
 import { getTenantOrgId } from '@/lib/tenant';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const session = await getServerSession(authOptions);
   

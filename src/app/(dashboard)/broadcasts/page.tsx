@@ -6,6 +6,8 @@ import { getBroadcasts, getEmployeesForBroadcastTargeting } from "@/app/actions/
 import BroadcastListClient from "@/components/broadcasts/BroadcastListClient";
 import { Megaphone } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Team Notices & Broadcasts | Antigravity CRM",
   description: "Official team announcements, offers of the day, holiday notices, and discussions.",

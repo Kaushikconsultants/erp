@@ -9,6 +9,8 @@ import { getCategories } from '@/app/actions/categoryActions';
 
 import { getTenantOrgId } from '@/lib/tenant';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ProductsPage() {
   const session = await getServerSession(authOptions);
   const orgId = await getTenantOrgId();

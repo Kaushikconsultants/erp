@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { getTenantIntegrations } from "@/app/actions/integrationActions";
 import IntegrationsHubClient from "@/components/integrations/IntegrationsHubClient";
 
+export const dynamic = 'force-dynamic';
+
 export const metadata = {
   title: "Integrations & APIs Hub | Heart of Business",
   description: "Connect multi-carrier shipping aggregators (Shiprocket, Shipmozo) and e-commerce platforms (Shopify, WooCommerce, Magento) directly via API."

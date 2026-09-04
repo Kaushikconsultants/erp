@@ -14,6 +14,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getTenantOrgId } from '@/lib/tenant';
 
+export const dynamic = 'force-dynamic';
+
 export default async function QuotationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) notFound();

@@ -32,6 +32,8 @@ import { authOptions } from '@/lib/auth';
 import { getTenantOrgId } from '@/lib/tenant';
 import './analytics.css';
 
+export const dynamic = 'force-dynamic';
+
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
 export default async function AnalyticsPage(props: { searchParams: SearchParams }) {
