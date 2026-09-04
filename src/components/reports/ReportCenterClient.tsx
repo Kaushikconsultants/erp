@@ -198,11 +198,38 @@ export default function ReportCenterClient({
     return list.filter(r => r.category === activeCategory);
   }, [activeCategory, searchQuery, favorites]);
 
-  // Overall Financial Calculations from database
+  const isWithinDateRange = (dateInput: any, range: string) => {
+    if (!dateInput || range === "ALL_TIME") return true;
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return true;
+    const now = new Date();
+
+    if (range === "THIS_MONTH") {
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    }
+    if (range === "LAST_30_DAYS") {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+      return d >= thirtyDaysAgo && d <= now;
+    }
+    if (range === "THIS_QUARTER") {
+      const currentQ = Math.floor(now.getMonth() / 3);
+      const itemQ = Math.floor(d.getMonth() / 3);
+      return d.getFullYear() === now.getFullYear() && itemQ === currentQ;
+    }
+    if (range === "FY_2026_27") {
+      const fyStart = new Date(2026, 3, 1);
+      const fyEnd = new Date(2027, 2, 31, 23, 59, 59);
+      return d >= fyStart && d <= fyEnd;
+    }
+    return true;
+  };
+
+  // Overall Financial Calculations from database with active date filtering
   const financialsCalculated = useMemo(() => {
-    const grossSales = salesData.reduce((s, o) => s + (Number(o.totalValue) || 0), 0);
-    const totalTax = salesData.reduce((s, o) => s + (Number(o.tax) || 0), 0);
-    const totalDiscounts = salesData.reduce((s, o) => s + (Number(o.discount) || 0), 0);
+    const filteredSales = salesData.filter(o => isWithinDateRange(o.orderDate, dateRangeFilter));
+    const grossSales = filteredSales.reduce((s, o) => s + (Number(o.totalValue) || 0), 0);
+    const totalTax = filteredSales.reduce((s, o) => s + (Number(o.tax) || 0), 0);
+    const totalDiscounts = filteredSales.reduce((s, o) => s + (Number(o.discount) || 0), 0);
     const netSales = Math.max(0, grossSales - totalDiscounts);
     
     const products = inventoryData.products || [];
@@ -210,15 +237,19 @@ export default function ReportCenterClient({
     const totalInventoryValue = inventoryData.totalInventoryValue || products.reduce((s: number, p: any) => s + ((p.stockQuantity || 0) * (p.sellingPrice || 0)), 0);
     const totalCostValue = inventoryData.totalCostValue || products.reduce((s: number, p: any) => s + ((p.stockQuantity || 0) * (p.purchasePrice || (p.sellingPrice * 0.7) || 0)), 0);
     
-    const invoices = financialData.invoices || [];
-    const payments = financialData.payments || [];
-    const expenses = financialData.expenses || [];
+    const rawInvoices = financialData.invoices || [];
+    const rawPayments = financialData.payments || [];
+    const rawExpenses = financialData.expenses || [];
     const customers = financialData.customers || [];
 
-    const totalInvoiced = financialData.totalInvoiced || invoices.reduce((s: number, i: any) => s + (Number(i.totalAmount) || 0), 0);
-    const totalCollected = financialData.totalCollected || payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
-    const totalOutstanding = financialData.totalOutstanding || invoices.reduce((s: number, i: any) => s + (Number(i.amountDue) || 0), 0);
-    const totalExpenses = financialData.totalExpenses || expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+    const invoices = rawInvoices.filter((i: any) => isWithinDateRange(i.invoiceDate, dateRangeFilter));
+    const payments = rawPayments.filter((p: any) => isWithinDateRange(p.paymentDate, dateRangeFilter));
+    const expenses = rawExpenses.filter((e: any) => isWithinDateRange(e.date, dateRangeFilter));
+
+    const totalInvoiced = invoices.reduce((s: number, i: any) => s + (Number(i.totalAmount) || 0), 0);
+    const totalCollected = payments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0);
+    const totalOutstanding = invoices.reduce((s: number, i: any) => s + (Number(i.amountDue) || 0), 0);
+    const totalExpenses = expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
     
     const estimatedCOGS = totalCostValue > 0 ? Math.min(grossSales * 0.65, totalCostValue) : grossSales * 0.65;
     const grossProfit = grossSales - estimatedCOGS;
@@ -226,6 +257,7 @@ export default function ReportCenterClient({
     const netMarginPercent = grossSales > 0 ? ((netProfit / grossSales) * 100).toFixed(1) : "0";
 
     return {
+      filteredSales,
       grossSales,
       totalTax,
       totalDiscounts,
@@ -247,7 +279,7 @@ export default function ReportCenterClient({
       expenses,
       customers
     };
-  }, [salesData, inventoryData, financialData]);
+  }, [salesData, inventoryData, financialData, dateRangeFilter]);
 
   // ─── REPORT DATA ENGINE: Dynamic computation for each individual report ───
   const activeReportData = useMemo(() => {
@@ -857,7 +889,7 @@ export default function ReportCenterClient({
     }
 
     // Default Sales Transactions Table
-    const rows = salesData.map((s: any, idx: number) => {
+    const rows = (financialsCalculated.filteredSales || salesData).map((s: any, idx: number) => {
       const isQuote = !!s.isQuotation || (s.orderNumber && s.orderNumber.startsWith("QT-"));
       return {
         id: s.id || idx,

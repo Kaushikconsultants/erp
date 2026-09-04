@@ -65,6 +65,7 @@ export async function getDeadStockLiquidationInsights(): Promise<{
       prisma.orderItem.findMany({
         where: { order: { organizationId } },
         include: {
+          product: { select: { id: true, category: true } },
           order: {
             include: {
               customer: true
@@ -130,22 +131,24 @@ export async function getDeadStockLiquidationInsights(): Promise<{
 
       const clearanceRate = Math.round(p.sellingPrice * (1 - discPercent / 100));
 
-      // Find matched buyers who buy this product's category
+      // Find matched buyers who buy this product or category
       const matchedBuyerMap: Record<string, MatchedBuyer> = {};
-      orderItems.forEach(item => {
-        if (!item.order?.customer) return;
-        const c = item.order.customer;
-        if (!matchedBuyerMap[c.id]) {
-          matchedBuyerMap[c.id] = {
-            customerId: c.id,
-            businessName: c.businessName,
-            contactPerson: c.contactPerson,
-            mobile: c.mobile,
-            totalCategorySpend: 0
-          };
-        }
-        matchedBuyerMap[c.id].totalCategorySpend += (item.quantity || 0) * (item.rate || 0);
-      });
+      orderItems
+        .filter(item => item.productId === p.id || (p.category && item.product?.category === p.category))
+        .forEach(item => {
+          if (!item.order?.customer) return;
+          const c = item.order.customer;
+          if (!matchedBuyerMap[c.id]) {
+            matchedBuyerMap[c.id] = {
+              customerId: c.id,
+              businessName: c.businessName,
+              contactPerson: c.contactPerson,
+              mobile: c.mobile,
+              totalCategorySpend: 0
+            };
+          }
+          matchedBuyerMap[c.id].totalCategorySpend += (item.quantity || 0) * (item.rate || 0);
+        });
 
       const matchedBuyers = Object.values(matchedBuyerMap)
         .sort((a, b) => b.totalCategorySpend - a.totalCategorySpend)

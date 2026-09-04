@@ -262,21 +262,52 @@ export default async function AnalyticsPage(props: { searchParams: SearchParams 
   const salesTrendData = [];
   const customerGrowthData = [];
   
+  const tenDaysAgo = new Date();
+  tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+  tenDaysAgo.setHours(0, 0, 0, 0);
+
+  const recentCustomers = await prisma.customer.findMany({
+    where: { ...customerWhere, createdAt: { gte: tenDaysAgo } },
+    select: { createdAt: true, totalOrders: true }
+  });
+
   for (let i = 9; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    const dayStart = new Date();
+    dayStart.setDate(dayStart.getDate() - i);
+    dayStart.setHours(0, 0, 0, 0);
     
+    const dayEnd = new Date(dayStart);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    const dateStr = dayStart.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+
+    const dayOrders = allOrders.filter(o => {
+      if (!o.orderDate) return false;
+      const od = new Date(o.orderDate);
+      return od >= dayStart && od <= dayEnd;
+    });
+
+    const dayRevenue = dayOrders.reduce((sum, o) => sum + (Number(o.totalValue) || 0), 0);
+    const dayOrderCount = dayOrders.length;
+
     salesTrendData.push({
       date: dateStr,
-      revenue: Math.floor(currentRunRate * (0.8 + Math.random() * 0.4)) || (50000 + Math.random() * 50000),
-      orders: Math.floor(totalOrdersCount / 30) || Math.floor(2 + Math.random() * 5)
+      revenue: Math.round(dayRevenue),
+      orders: dayOrderCount
     });
+
+    const dayNewCustomers = recentCustomers.filter(c => {
+      if (!c.createdAt) return false;
+      const cd = new Date(c.createdAt);
+      return cd >= dayStart && cd <= dayEnd;
+    });
+
+    const dayMatured = dayNewCustomers.filter(c => (c.totalOrders || 0) > 0).length;
 
     customerGrowthData.push({
       date: dateStr,
-      newCustomers: Math.floor(1 + Math.random() * 10),
-      matured: Math.floor(0 + Math.random() * 5)
+      newCustomers: dayNewCustomers.length,
+      matured: dayMatured
     });
   }
 
