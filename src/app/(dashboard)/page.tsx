@@ -286,11 +286,12 @@ export default async function Home() {
 
       const salesMTD = empOrdersMTD.reduce((sum: number, o: any) => sum + Number(o.totalValue || 0), 0) +
                        empStandaloneQuotesMTD.reduce((sum: number, q: any) => sum + Number(q.totalValue || 0), 0);
-      const target = emp.target || 500000;
+      const target = (emp.target !== null && emp.target !== undefined && Number(emp.target) > 0) ? Number(emp.target) : 500000;
       return {
         id: emp.id,
         name: emp.user?.name || 'Unknown',
         sales: salesMTD,
+        target: target,
         targetPercent: target > 0 ? Math.min(100, Math.round((salesMTD / target) * 100)) : 0
       };
     }).sort((a: any, b: any) => b.sales - a.sales);
