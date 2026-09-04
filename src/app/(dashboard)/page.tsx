@@ -480,14 +480,20 @@ export default async function Home() {
     // Deduplicate confirmed quotations already converted to orders
     const convertedQuoteNumbersForEmp = new Set<string>();
     allEmployeeOrders.forEach((o: any) => {
-      const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9-]+)/i);
       if (match && match[1]) {
         convertedQuoteNumbersForEmp.add(match[1].trim());
       }
     });
 
     const standaloneConfirmedQuotAsOrders = allConfirmedQuotations
-      .filter((q: any) => q.status === 'Confirmed' && !convertedQuoteNumbersForEmp.has((q.quotationNumber || '').trim()))
+      .filter((q: any) => {
+        if (q.status !== 'Confirmed') return false;
+        const qNum = (q.quotationNumber || '').trim();
+        if (qNum && convertedQuoteNumbersForEmp.has(qNum)) return false;
+        if (qNum && allEmployeeOrders.some((o: any) => (o.notes || '').includes(qNum))) return false;
+        return true;
+      })
       .map((q: any) => ({
         id: q.id,
         orderNumber: q.quotationNumber,
@@ -566,6 +572,24 @@ export default async function Home() {
     // ---------------------------------------------------------
     // ORG-WIDE LEADERBOARDS: DAILY & MONTHLY
     // ---------------------------------------------------------
+    // Find all quotation numbers that already have an order created
+    const allConvertedQuoteNumbers = new Set<string>();
+    allOrgOrdersMTD.forEach((o: any) => {
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9-]+)/i);
+      if (match && match[1]) {
+        allConvertedQuoteNumbers.add(match[1].trim());
+      }
+    });
+
+    // Standalone confirmed quotations (ONLY 'Confirmed' that are NOT yet converted and NOT represented in orders)
+    const standaloneOrgConfirmedQuotes = allOrgQuotesMTD.filter((q: any) => {
+      if (q.status !== 'Confirmed') return false;
+      const qNum = (q.quotationNumber || '').trim();
+      if (qNum && allConvertedQuoteNumbers.has(qNum)) return false;
+      if (qNum && allOrgOrdersMTD.some((o: any) => (o.notes || '').includes(qNum))) return false;
+      return true;
+    });
+
     // 1. Daily Leaderboard (Today)
     const dailyMap: Record<string, { id: string, name: string, orders: number, total: number, isCurrentEmployee: boolean }> = {};
     let todayOrgOrdersCount = 0;
@@ -580,10 +604,10 @@ export default async function Home() {
           dailyMap[spId] = { id: spId, name, orders: 0, total: 0, isCurrentEmployee: spId === employee?.id };
         }
         dailyMap[spId].orders += 1;
-        dailyMap[spId].total += Number(o.totalValue || 0);
+        dailyMap[spId].total += Number(o.totalValue ?? o.subtotal ?? 0);
       });
 
-    allOrgQuotesMTD
+    standaloneOrgConfirmedQuotes
       .filter(q => (q.date && new Date(q.date) >= todayStart) || (q.createdAt && new Date(q.createdAt) >= todayStart))
       .forEach(q => {
         todayOrgOrdersCount += 1;
@@ -593,7 +617,7 @@ export default async function Home() {
           dailyMap[spId] = { id: spId, name, orders: 0, total: 0, isCurrentEmployee: spId === employee?.id };
         }
         dailyMap[spId].orders += 1;
-        dailyMap[spId].total += Number(q.totalValue || 0);
+        dailyMap[spId].total += Number(q.totalValue ?? q.subtotal ?? 0);
       });
 
     const dailyLeaderboard = Object.values(dailyMap).sort((a, b) => b.total - a.total);
@@ -619,15 +643,15 @@ export default async function Home() {
       const spId = o.salespersonId;
       if (spId && monthlyMap[spId]) {
         monthlyMap[spId].orders += 1;
-        monthlyMap[spId].total += Number(o.totalValue || 0);
+        monthlyMap[spId].total += Number(o.totalValue ?? o.subtotal ?? 0);
       }
     });
 
-    allOrgQuotesMTD.forEach(q => {
+    standaloneOrgConfirmedQuotes.forEach(q => {
       const spId = q.salespersonId;
       if (spId && monthlyMap[spId]) {
         monthlyMap[spId].orders += 1;
-        monthlyMap[spId].total += Number(q.totalValue || 0);
+        monthlyMap[spId].total += Number(q.totalValue ?? q.subtotal ?? 0);
       }
     });
 

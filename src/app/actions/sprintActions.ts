@@ -180,7 +180,7 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
     // Collect quotation numbers that already exist in orders to prevent duplicate counting
     const convertedQuoteNumbers = new Set<string>();
     monthOrders.forEach(o => {
-      const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9-]+)/i);
       if (match && match[1]) {
         convertedQuoteNumbers.add(match[1].trim());
       }
@@ -200,8 +200,9 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
     });
 
     monthQuotations.forEach(q => {
+      const qNum = (q.quotationNumber || '').trim();
       // If already converted/represented as an order in monthOrders, skip to avoid double counting
-      if (q.status === "Converted" || convertedQuoteNumbers.has((q.quotationNumber || '').trim())) {
+      if (q.status !== "Confirmed" || (qNum && convertedQuoteNumbers.has(qNum)) || (qNum && monthOrders.some(o => (o.notes || '').includes(qNum)))) {
         return;
       }
       const qDate = q.date ? new Date(q.date) : new Date(q.createdAt);
