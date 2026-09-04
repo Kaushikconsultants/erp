@@ -2,7 +2,7 @@
 
 import DatePicker from '@/components/ui/DatePicker';
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   FileMinus, 
@@ -17,13 +17,14 @@ import {
   AlertCircle, 
   CheckCircle2, 
   Wallet, 
-  Filter,
-  Receipt,
-  RotateCcw,
-  MessageSquare,
-  BellRing,
-  FileSpreadsheet,
-  Download
+  Filter, 
+  Receipt, 
+  RotateCcw, 
+  MessageSquare, 
+  BellRing, 
+  FileSpreadsheet, 
+  Download,
+  MoreHorizontal
 } from "lucide-react";
 import { recordPayment } from "@/app/actions/paymentActions";
 import { updateInvoice, deleteInvoice } from "@/app/actions/invoiceActions";
@@ -48,12 +49,23 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
   const [paymentModal, setPaymentModal] = useState<any | null>(null);
   const [editModal, setEditModal] = useState<any | null>(null);
   const [deleteModal, setDeleteModal] = useState<any | null>(null);
+  const [actionMenuOpenId, setActionMenuOpenId] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.invoice-action-menu-container')) {
+        setActionMenuOpenId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const filtered = invoices.filter(inv => {
     const matchStatus = filterStatus === "All" || inv.status === filterStatus;
@@ -448,7 +460,7 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Paid</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right' }}>Outstanding</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'center' }}>Actions</th>
+                <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'right', whiteSpace: 'nowrap' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -520,8 +532,8 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                     </td>
 
                     {/* ACTIONS */}
-                    <td style={{ padding: '12px 14px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'center' }}>
+                    <td style={{ padding: '10px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end', verticalAlign: 'middle' }}>
                         
                         {/* 1. Print Button */}
                         {inv.orderId && (
@@ -530,8 +542,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
-                              padding: '4px 8px',
-                              borderRadius: '5px',
+                              height: '28px',
+                              padding: '0 8px',
+                              borderRadius: '6px',
                               backgroundColor: '#ffffff',
                               color: '#334155',
                               border: '1px solid #cbd5e1',
@@ -539,15 +552,17 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                               fontWeight: 500,
                               display: 'inline-flex',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               gap: '4px',
                               textDecoration: 'none',
-                              transition: 'all 0.15s ease'
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
                             }}
                             title="Print Tax Invoice"
-                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
-                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.color = '#334155'; }}
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.color = '#0f172a'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#334155'; }}
                           >
-                            <Printer size={12} /> Print
+                            <Printer size={13} /> Print
                           </a>
                         )}
 
@@ -556,8 +571,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           type="button"
                           onClick={() => handleSendWhatsApp(inv)}
                           style={{
-                            padding: '4px 8px',
-                            borderRadius: '5px',
+                            height: '28px',
+                            padding: '0 8px',
+                            borderRadius: '6px',
                             backgroundColor: '#f0fdf4',
                             color: '#15803d',
                             border: '1px solid #bbf7d0',
@@ -566,14 +582,16 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
+                            justifyContent: 'center',
                             gap: '4px',
-                            transition: 'all 0.15s ease'
+                            transition: 'all 0.15s ease',
+                            boxSizing: 'border-box'
                           }}
                           title="Send Invoice on WhatsApp"
-                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dcfce7'; }}
-                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f0fdf4'; }}
+                          onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dcfce7'; e.currentTarget.style.borderColor = '#86efac'; }}
+                          onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f0fdf4'; e.currentTarget.style.borderColor = '#bbf7d0'; }}
                         >
-                          <MessageSquare size={12} /> WhatsApp
+                          <MessageSquare size={13} /> WhatsApp
                         </button>
 
                         {/* 3. Overdue Payment Reminder Button */}
@@ -582,8 +600,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             type="button"
                             onClick={() => handleReminder(inv)}
                             style={{
-                              padding: '4px 8px',
-                              borderRadius: '5px',
+                              height: '28px',
+                              padding: '0 8px',
+                              borderRadius: '6px',
                               backgroundColor: '#fffbeb',
                               color: '#b45309',
                               border: '1px solid #fde68a',
@@ -592,14 +611,16 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               gap: '4px',
-                              transition: 'all 0.15s ease'
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
                             }}
                             title="Send Overdue WhatsApp Payment Reminder"
-                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fef3c7'; }}
-                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fffbeb'; }}
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fef3c7'; e.currentTarget.style.borderColor = '#fcd34d'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#fffbeb'; e.currentTarget.style.borderColor = '#fde68a'; }}
                           >
-                            <BellRing size={12} /> Remind
+                            <BellRing size={13} /> Remind
                           </button>
                         )}
 
@@ -609,8 +630,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             type="button"
                             onClick={() => { setError(""); setPaymentModal(inv); }}
                             style={{
-                              padding: '4px 8px',
-                              borderRadius: '5px',
+                              height: '28px',
+                              padding: '0 8px',
+                              borderRadius: '6px',
                               backgroundColor: '#eff6ff',
                               color: '#2563eb',
                               border: '1px solid #bfdbfe',
@@ -619,14 +641,16 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
+                              justifyContent: 'center',
                               gap: '4px',
-                              transition: 'all 0.15s ease'
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
                             }}
                             title="Record Customer Payment"
-                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dbeafe'; }}
-                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#eff6ff'; }}
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dbeafe'; e.currentTarget.style.borderColor = '#93c5fd'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
                           >
-                            <CreditCard size={12} /> Pay
+                            <CreditCard size={13} /> Pay
                           </button>
                         )}
 
@@ -635,8 +659,10 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           type="button"
                           onClick={() => { setError(""); setEditModal(inv); }}
                           style={{
-                            padding: '4px 6px',
-                            borderRadius: '5px',
+                            height: '28px',
+                            width: '28px',
+                            padding: '0',
+                            borderRadius: '6px',
                             backgroundColor: '#f8fafc',
                             color: '#4f46e5',
                             border: '1px solid #e2e8f0',
@@ -645,7 +671,8 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'all 0.15s ease'
+                            transition: 'all 0.15s ease',
+                            boxSizing: 'border-box'
                           }}
                           title="Edit Invoice Details"
                           onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#eef2ff'; e.currentTarget.style.borderColor = '#c7d2fe'; }}
@@ -659,8 +686,10 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           type="button"
                           onClick={() => { setError(""); setDeleteModal(inv); }}
                           style={{
-                            padding: '4px 6px',
-                            borderRadius: '5px',
+                            height: '28px',
+                            width: '28px',
+                            padding: '0',
+                            borderRadius: '6px',
                             backgroundColor: '#f8fafc',
                             color: '#e11d48',
                             border: '1px solid #e2e8f0',
@@ -669,7 +698,8 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            transition: 'all 0.15s ease'
+                            transition: 'all 0.15s ease',
+                            boxSizing: 'border-box'
                           }}
                           title="Delete Invoice"
                           onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fff1f2'; e.currentTarget.style.borderColor = '#fecdd3'; }}
@@ -677,6 +707,247 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                         >
                           <Trash2 size={13} />
                         </button>
+
+                        {/* 7. Action Dropdown Menu Button */}
+                        <div className="invoice-action-menu-container" style={{ position: 'relative', display: 'inline-flex' }}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActionMenuOpenId(actionMenuOpenId === inv.id ? null : inv.id);
+                            }}
+                            style={{
+                              height: '28px',
+                              width: '28px',
+                              padding: '0',
+                              borderRadius: '6px',
+                              backgroundColor: actionMenuOpenId === inv.id ? '#e2e8f0' : '#f8fafc',
+                              color: '#475569',
+                              border: '1px solid #cbd5e1',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
+                            }}
+                            title="More Action Menu Options"
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = actionMenuOpenId === inv.id ? '#e2e8f0' : '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                          >
+                            <MoreHorizontal size={14} />
+                          </button>
+
+                          {/* Action Menu Dropdown List */}
+                          {actionMenuOpenId === inv.id && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                right: 0,
+                                top: 'calc(100% + 4px)',
+                                backgroundColor: '#ffffff',
+                                borderRadius: '8px',
+                                border: '1px solid #e2e8f0',
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                                zIndex: 100,
+                                minWidth: '200px',
+                                padding: '6px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '2px',
+                                textAlign: 'left'
+                              }}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {/* Print */}
+                              {inv.orderId && (
+                                <a
+                                  href={`/orders/${inv.orderId}/invoice`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setActionMenuOpenId(null)}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '7px 10px',
+                                    borderRadius: '6px',
+                                    color: '#334155',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 500,
+                                    textDecoration: 'none',
+                                    transition: 'background-color 0.15s ease'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+                                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  <Printer size={14} color="#64748b" />
+                                  <span>Print Tax Invoice</span>
+                                </a>
+                              )}
+
+                              {/* WhatsApp */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionMenuOpenId(null);
+                                  handleSendWhatsApp(inv);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '7px 10px',
+                                  borderRadius: '6px',
+                                  color: '#15803d',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 500,
+                                  border: 'none',
+                                  backgroundColor: 'transparent',
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  transition: 'background-color 0.15s ease'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f0fdf4'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <MessageSquare size={14} color="#16a34a" />
+                                <span>Send on WhatsApp</span>
+                              </button>
+
+                              {/* Payment Reminder */}
+                              {inv.amountDue > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionMenuOpenId(null);
+                                    handleReminder(inv);
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '7px 10px',
+                                    borderRadius: '6px',
+                                    color: '#b45309',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 500,
+                                    border: 'none',
+                                    backgroundColor: 'transparent',
+                                    cursor: 'pointer',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    transition: 'background-color 0.15s ease'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fffbeb'}
+                                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  <BellRing size={14} color="#d97706" />
+                                  <span>Send Payment Reminder</span>
+                                </button>
+                              )}
+
+                              {/* Record Payment */}
+                              {inv.status !== 'Paid' && inv.status !== 'Cancelled' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionMenuOpenId(null);
+                                    setError("");
+                                    setPaymentModal(inv);
+                                  }}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '7px 10px',
+                                    borderRadius: '6px',
+                                    color: '#2563eb',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 500,
+                                    border: 'none',
+                                    backgroundColor: 'transparent',
+                                    cursor: 'pointer',
+                                    width: '100%',
+                                    textAlign: 'left',
+                                    transition: 'background-color 0.15s ease'
+                                  }}
+                                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#eff6ff'}
+                                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                  <CreditCard size={14} color="#2563eb" />
+                                  <span>Record Payment</span>
+                                </button>
+                              )}
+
+                              <div style={{ height: '1px', backgroundColor: '#f1f5f9', margin: '3px 0' }} />
+
+                              {/* Edit */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionMenuOpenId(null);
+                                  setError("");
+                                  setEditModal(inv);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '7px 10px',
+                                  borderRadius: '6px',
+                                  color: '#4f46e5',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 500,
+                                  border: 'none',
+                                  backgroundColor: 'transparent',
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  transition: 'background-color 0.15s ease'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#eef2ff'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <Edit3 size={14} color="#4f46e5" />
+                                <span>Edit Invoice Details</span>
+                              </button>
+
+                              {/* Delete */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionMenuOpenId(null);
+                                  setError("");
+                                  setDeleteModal(inv);
+                                }}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  padding: '7px 10px',
+                                  borderRadius: '6px',
+                                  color: '#dc2626',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 500,
+                                  border: 'none',
+                                  backgroundColor: 'transparent',
+                                  cursor: 'pointer',
+                                  width: '100%',
+                                  textAlign: 'left',
+                                  transition: 'background-color 0.15s ease'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fef2f2'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <Trash2 size={14} color="#dc2626" />
+                                <span>Delete Invoice</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
 
                       </div>
                     </td>

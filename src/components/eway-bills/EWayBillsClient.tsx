@@ -475,7 +475,7 @@ export default function EWayBillsClient({
                 <th style={{ padding: '12px 16px', textAlign: 'right' }}>Value</th>
                 <th style={{ padding: '12px 16px' }}>Validity</th>
                 <th style={{ padding: '12px 16px' }}>Status</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center' }}>Actions</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -552,22 +552,29 @@ export default function EWayBillsClient({
                           {ewb.status}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                      <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
                           <Link
                             href={`/eway-bills/${ewb.id}`}
                             title="Print Official E-Way Slip"
                             style={{
-                              padding: '4px 8px',
+                              height: '28px',
+                              padding: '0 8px',
                               borderRadius: '6px',
                               backgroundColor: '#f1f5f9',
                               color: '#475569',
                               textDecoration: 'none',
-                              display: 'flex',
-                              alignItems: 'center'
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              border: '1px solid #cbd5e1',
+                              boxSizing: 'border-box'
                             }}
                           >
-                            <Printer size={14} />
+                            <Printer size={13} /> Print
                           </Link>
 
                           {ewb.status !== 'CANCELLED' && (
@@ -581,30 +588,42 @@ export default function EWayBillsClient({
                                 }}
                                 title="Update Vehicle / Part-B"
                                 style={{
-                                  padding: '4px 8px',
+                                  height: '28px',
+                                  width: '28px',
+                                  padding: 0,
                                   borderRadius: '6px',
-                                  border: 'none',
+                                  border: '1px solid #c7d2fe',
                                   backgroundColor: '#e0e7ff',
                                   color: '#4338ca',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  boxSizing: 'border-box'
                                 }}
                               >
-                                <Edit3 size={14} />
+                                <Edit3 size={13} />
                               </button>
 
                               <button
                                 onClick={() => handleCancel(ewb.id, ewb.ewbNumber)}
                                 title="Cancel E-Way Bill"
                                 style={{
-                                  padding: '4px 8px',
+                                  height: '28px',
+                                  width: '28px',
+                                  padding: 0,
                                   borderRadius: '6px',
-                                  border: 'none',
+                                  border: '1px solid #fecdd3',
                                   backgroundColor: '#fee2e2',
                                   color: '#dc2626',
-                                  cursor: 'pointer'
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  boxSizing: 'border-box'
                                 }}
                               >
-                                <Trash2 size={14} />
+                                <Trash2 size={13} />
                               </button>
                             </>
                           )}

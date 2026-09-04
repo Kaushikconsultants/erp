@@ -661,7 +661,7 @@ export default function VendorCreditsClient({
                 <th style={{ textAlign: 'right' }}>Allocated (₹)</th>
                 <th style={{ textAlign: 'right' }}>Available Balance (₹)</th>
                 <th>Status</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -713,13 +713,13 @@ export default function VendorCreditsClient({
                       {cred.status}
                     </span>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                       <button
                         type="button"
                         onClick={() => setViewCredit(cred)}
                         title="View Voucher"
-                        style={{ padding: '4px', border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                        style={{ height: '28px', width: '28px', padding: 0, border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}
                       >
                         <Eye size={13} />
                       </button>
@@ -733,7 +733,7 @@ export default function VendorCreditsClient({
                             setApplyAmount(String(cred.balanceAmount));
                           }}
                           className="primary-btn"
-                          style={{ fontSize: '0.72rem', padding: '3px 8px', display: 'flex', alignItems: 'center', gap: '3px', backgroundColor: '#2563eb' }}
+                          style={{ height: '28px', fontSize: '0.75rem', padding: '0 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#2563eb', borderRadius: '6px', boxSizing: 'border-box' }}
                         >
                           <Receipt size={12} /> Apply to Bill
                         </button>
@@ -743,7 +743,20 @@ export default function VendorCreditsClient({
                         type="button"
                         onClick={() => handleDeleteCredit(cred.id, cred.creditNoteNumber)}
                         title="Delete Debit Note"
-                        style={{ padding: '4px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                        style={{
+                          height: '28px',
+                          width: '28px',
+                          padding: 0,
+                          border: '1px solid #fecdd3',
+                          borderRadius: '6px',
+                          background: '#fff1f2',
+                          color: '#e11d48',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxSizing: 'border-box'
+                        }}
                       >
                         <Trash2 size={13} />
                       </button>

@@ -917,7 +917,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 <th>Mode & Channel</th>
                 <th>Reference / UTR</th>
                 <th>Status</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -986,13 +986,13 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                       {pay.status}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '5px' }}>
                       <button
                         type="button"
                         onClick={() => setViewReceipt(pay)}
                         className="action-btn outline-primary"
-                        style={{ padding: '4px 8px', fontSize: '0.74rem', display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '6px' }}
+                        style={{ height: '28px', padding: '0 8px', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', borderRadius: '6px', boxSizing: 'border-box' }}
                         title="Print Receipt Voucher"
                       >
                         <Receipt size={13} /> Receipt
@@ -1002,17 +1002,20 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                         type="button"
                         onClick={() => handleOpenEdit(pay)}
                         style={{
-                          padding: '4px 8px',
-                          fontSize: '0.74rem',
+                          height: '28px',
+                          padding: '0 8px',
+                          fontSize: '0.75rem',
                           backgroundColor: '#f8fafc',
                           color: 'var(--text-primary)',
                           border: '1px solid var(--border)',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
+                          justifyContent: 'center',
                           gap: '4px',
-                          transition: 'all 0.15s ease'
+                          transition: 'all 0.15s ease',
+                          boxSizing: 'border-box'
                         }}
                         title="Edit Payment Details"
                       >
@@ -1023,21 +1026,24 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                         type="button"
                         onClick={() => handleOpenDelete(pay)}
                         style={{
-                          padding: '4px 8px',
-                          fontSize: '0.74rem',
+                          height: '28px',
+                          width: '28px',
+                          padding: 0,
+                          fontSize: '0.75rem',
                           backgroundColor: '#fff1f2',
                           color: '#e11d48',
                           border: '1px solid #fecdd3',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '3px',
-                          transition: 'all 0.15s ease'
+                          justifyContent: 'center',
+                          transition: 'all 0.15s ease',
+                          boxSizing: 'border-box'
                         }}
                         title="Delete Payment Record"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </td>

@@ -227,7 +227,7 @@ export default function DeliveryChallanClient({
                 <th style={{ padding: "10px 12px", textAlign: "right" }}>Total Qty</th>
                 <th style={{ padding: "10px 12px", textAlign: "right" }}>Total Value (₹)</th>
                 <th style={{ padding: "10px 12px", textAlign: "center" }}>Status</th>
-                <th style={{ padding: "10px 12px", textAlign: "center" }}>Actions</th>
+                <th style={{ padding: "10px 12px", textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -302,8 +302,8 @@ export default function DeliveryChallanClient({
                         {c.status.replace(/_/g, " ")}
                       </span>
                     </td>
-                    <td style={{ padding: "10px 12px", textAlign: "center" }}>
-                      <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                    <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                      <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
                         {c.customerId && c.status !== "CONVERTED_TO_INVOICE" && (
                           <button
                             onClick={() => handleConvert(c.id)}
@@ -312,11 +312,14 @@ export default function DeliveryChallanClient({
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
+                              justifyContent: "center",
                               gap: "4px",
-                              padding: "4px 10px",
+                              height: "28px",
+                              padding: "0 10px",
                               fontSize: "0.75rem",
                               color: "#4f46e5",
-                              fontWeight: 600
+                              fontWeight: 600,
+                              boxSizing: "border-box"
                             }}
                           >
                             <FileCheck size={13} />
@@ -330,12 +333,15 @@ export default function DeliveryChallanClient({
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
+                              justifyContent: "center",
                               gap: "4px",
-                              padding: "4px 10px",
+                              height: "28px",
+                              padding: "0 10px",
                               fontSize: "0.75rem",
                               color: "#059669",
                               textDecoration: "none",
-                              fontWeight: 600
+                              fontWeight: 600,
+                              boxSizing: "border-box"
                             }}
                           >
                             <Receipt size={13} /> View Inv
@@ -350,11 +356,14 @@ export default function DeliveryChallanClient({
                             style={{
                               display: "inline-flex",
                               alignItems: "center",
+                              justifyContent: "center",
                               gap: "4px",
-                              padding: "4px 8px",
+                              height: "28px",
+                              padding: "0 8px",
                               fontSize: "0.75rem",
                               color: "#dc2626",
-                              fontWeight: 600
+                              fontWeight: 600,
+                              boxSizing: "border-box"
                             }}
                           >
                             <Trash2 size={13} />

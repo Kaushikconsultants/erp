@@ -908,7 +908,7 @@ export default function BillsClient({
                 <th style={{ textAlign: 'right' }}>Paid (₹)</th>
                 <th style={{ textAlign: 'right' }}>Balance Due (₹)</th>
                 <th>Status</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -959,17 +959,17 @@ export default function BillsClient({
                       {bill.status}
                     </span>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                       
                       {/* View Voucher */}
                       <button
                         type="button"
                         onClick={() => setViewBill(bill)}
                         title="View Bill Details"
-                        style={{ padding: '5px', border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                        style={{ height: '28px', width: '28px', padding: 0, border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}
                       >
-                        <Eye size={14} />
+                        <Eye size={13} />
                       </button>
 
                       {/* Download / Print PDF */}
@@ -977,9 +977,9 @@ export default function BillsClient({
                         type="button"
                         onClick={() => handlePrintBill(bill)}
                         title="Download PDF / Print Voucher"
-                        style={{ padding: '5px', border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: '#2563eb', cursor: 'pointer' }}
+                        style={{ height: '28px', width: '28px', padding: 0, border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}
                       >
-                        <Printer size={14} />
+                        <Printer size={13} />
                       </button>
 
                       {/* Record Payment if open */}
@@ -991,7 +991,7 @@ export default function BillsClient({
                             setPayAmount(String(bill.amountDue));
                           }}
                           className="primary-btn"
-                          style={{ fontSize: '0.72rem', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '3px', backgroundColor: '#059669' }}
+                          style={{ height: '28px', fontSize: '0.75rem', padding: '0 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '4px', backgroundColor: '#059669', borderRadius: '6px', boxSizing: 'border-box' }}
                         >
                           <Wallet size={12} /> Pay
                         </button>
@@ -1004,15 +1004,21 @@ export default function BillsClient({
                         onClick={() => handleDeleteBill(bill)}
                         title="Delete Purchase Bill"
                         style={{
-                          padding: '5px',
+                          height: '28px',
+                          width: '28px',
+                          padding: 0,
                           border: '1px solid #fecdd3',
                           borderRadius: '6px',
                           background: '#fff1f2',
                           color: '#e11d48',
-                          cursor: deletingBillId === bill.id ? 'wait' : 'pointer'
+                          cursor: deletingBillId === bill.id ? 'wait' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxSizing: 'border-box'
                         }}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </td>

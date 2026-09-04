@@ -421,7 +421,7 @@ export default function CreditNotesClient({
                 <th style={{ padding: '12px 16px', textAlign: 'right' }}>Open Balance</th>
                 <th style={{ padding: '12px 16px' }}>Restocked</th>
                 <th style={{ padding: '12px 16px' }}>Status</th>
-                <th style={{ padding: '12px 16px', textAlign: 'center' }}>Actions</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -494,37 +494,52 @@ export default function CreditNotesClient({
                         {cn.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', gap: '6px' }}>
+                    <td style={{ padding: '10px 16px', textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
                         <Link
                           href={`/credit-notes/${cn.id}`}
                           title="Print / View Credit Note"
                           style={{
-                            padding: '4px 8px',
+                            height: '28px',
+                            padding: '0 8px',
                             borderRadius: '6px',
                             backgroundColor: '#f1f5f9',
                             color: '#475569',
                             textDecoration: 'none',
-                            display: 'flex',
-                            alignItems: 'center'
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            border: '1px solid #cbd5e1',
+                            boxSizing: 'border-box'
                           }}
                         >
-                          <Printer size={14} />
+                          <Printer size={13} /> Print
                         </Link>
                         {cn.status !== 'CANCELLED' && (
                           <button
                             onClick={() => handleCancel(cn.id, cn.creditNoteNumber)}
                             title="Cancel Credit Note"
                             style={{
-                              padding: '4px 8px',
+                              height: '28px',
+                              padding: '0 8px',
                               borderRadius: '6px',
-                              border: 'none',
+                              border: '1px solid #fecdd3',
                               backgroundColor: '#fee2e2',
                               color: '#dc2626',
-                              cursor: 'pointer'
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              boxSizing: 'border-box'
                             }}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={13} /> Cancel
                           </button>
                         )}
                       </div>

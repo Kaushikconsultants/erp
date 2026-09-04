@@ -620,7 +620,7 @@ export default function PaymentsMadeClient({
                 <th>Paid From Account</th>
                 <th>UTR / Ref #</th>
                 <th>Status</th>
-                <th style={{ textAlign: 'center' }}>Actions</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -685,13 +685,13 @@ export default function PaymentsMadeClient({
                       {pay.status}
                     </span>
                   </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                       <button
                         type="button"
                         onClick={() => setViewVoucher(pay)}
                         title="Print Advice"
-                        style={{ padding: '4px', border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                        style={{ height: '28px', width: '28px', padding: 0, border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--text-secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}
                       >
                         <Eye size={13} />
                       </button>
@@ -701,7 +701,7 @@ export default function PaymentsMadeClient({
                           type="button"
                           onClick={() => setCancelModalPay(pay)}
                           title="Cancel / Reverse Payment"
-                          style={{ padding: '4px', border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--danger)', cursor: 'pointer' }}
+                          style={{ height: '28px', width: '28px', padding: 0, border: '1px solid var(--border)', borderRadius: '6px', background: '#ffffff', color: 'var(--danger)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}
                         >
                           <Ban size={13} />
                         </button>
