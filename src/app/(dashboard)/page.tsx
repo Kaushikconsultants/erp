@@ -12,6 +12,7 @@ import { calculateIncentives, OrderData } from '@/lib/incentiveEngine';
 import { getFollowUpRecommendations } from '@/app/actions/customerActions';
 import { getSprintData, getAdminSprintTeamHealth } from '@/app/actions/sprintActions';
 import { getDormantAndReorderInsights } from '@/app/actions/aiReorderActions';
+import { getOrCreateEmployee } from '@/lib/employeeHelper';
 import './dashboard.css';
 
 import { getTenantOrgId } from '@/lib/tenant';
@@ -19,21 +20,79 @@ import { getTenantOrgId } from '@/lib/tenant';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (e) {
+    console.error("Session lookup error on dashboard:", e);
+  }
   
   if (!session?.user) {
     redirect('/login');
   }
 
-  const orgId = await getTenantOrgId();
-  const userRole = (session.user as any).role || 'SALES';
-  const userId = (session.user as any).id;
+  const userEmail = session.user.email ? session.user.email.trim().toLowerCase() : null;
+  let userId = (session.user as any)?.id || (session.user as any)?.sub;
+  let userRole = (session.user as any)?.role || 'SALES';
 
-  // Find the employee profile linked to this user
-  const employee = await prisma.employee.findUnique({
-    where: { userId: userId },
-    include: { user: true }
-  });
+  // If userId or role is missing from session, fetch directly from DB
+  if ((!userId || !userRole) && userEmail) {
+    try {
+      const dbUser = await prisma.user.findFirst({
+        where: { email: { equals: userEmail, mode: 'insensitive' } }
+      });
+      if (dbUser) {
+        userId = dbUser.id;
+        userRole = dbUser.role || userRole;
+      }
+    } catch (e) {
+      console.error("User DB lookup error:", e);
+    }
+  }
+
+  let orgId = (session.user as any)?.organizationId;
+  if (!orgId) {
+    try {
+      orgId = await getTenantOrgId();
+    } catch (e) {
+      console.error("Failed to get tenant org id:", e);
+    }
+  }
+
+  // Find the employee profile linked to this user safely
+  let employee = null;
+  if (userId) {
+    try {
+      employee = await prisma.employee.findUnique({
+        where: { userId: userId },
+        include: { user: true }
+      });
+    } catch (e) {
+      console.error("Employee lookup error by userId:", e);
+    }
+  }
+
+  if (!employee && userEmail) {
+    try {
+      employee = await prisma.employee.findFirst({
+        where: {
+          user: { email: { equals: userEmail, mode: 'insensitive' } }
+        },
+        include: { user: true }
+      });
+    } catch (e) {
+      console.error("Employee lookup error by email:", e);
+    }
+  }
+
+  // For non-admin roles without an employee record, auto-create one
+  if (!employee && userId && userRole !== 'SUPER_ADMIN' && userRole !== 'ADMIN') {
+    try {
+      employee = await getOrCreateEmployee(userId, session.user);
+    } catch (e) {
+      console.error("Failed to auto-create employee profile:", e);
+    }
+  }
 
   const today = new Date();
   const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -56,97 +115,113 @@ export default async function Home() {
       employees,
       hotLeads
     ] = await Promise.all([
-      prisma.customer.count({ where: { organizationId: orgId } }),
+      prisma.customer.count({ where: orgId ? { organizationId: orgId } : {} }).catch(() => 0),
       prisma.order.findMany({
-        where: { organizationId: orgId },
+        where: orgId ? { organizationId: orgId } : {},
         include: { salesperson: { include: { user: true } }, customer: true }
-      }),
+      }).catch(() => []),
       prisma.quotation.findMany({
-        where: { organizationId: orgId, status: { in: ['Confirmed', 'Converted'] } },
+        where: { 
+          ...(orgId ? { organizationId: orgId } : {}), 
+          status: { in: ['Confirmed', 'Converted'] } 
+        },
         include: { salesperson: { include: { user: true } }, customer: true }
-      }),
+      }).catch(() => []),
       prisma.call.count({
         where: { 
-          customer: { organizationId: orgId },
+          OR: [
+            { customer: orgId ? { organizationId: orgId } : {} },
+            { lead: orgId ? { organizationId: orgId } : {} }
+          ],
           followUpDate: { gte: todayStartOfDay }
         }
-      }),
-      employee ? prisma.attendance.findFirst({
+      }).catch(() => 0),
+      (employee?.id) ? prisma.attendance.findFirst({
         where: {
           employeeId: employee.id,
           date: { gte: todayStartOfDay }
         }
-      }) : Promise.resolve(null),
+      }).catch(() => null) : Promise.resolve(null),
       prisma.attendance.findMany({
         where: {
           date: { gte: todayStartOfDay },
-          employee: { organizationId: orgId }
+          ...(orgId ? { employee: { organizationId: orgId } } : {})
         },
         include: { employee: { include: { user: true } } },
         orderBy: { checkIn: 'desc' }
-      }),
+      }).catch(() => []),
       prisma.orderItem.findMany({
-        where: { order: { organizationId: orgId } },
+        where: orgId ? { order: { organizationId: orgId } } : {},
         include: { product: true },
         take: 100
-      }),
+      }).catch(() => []),
       prisma.employee.findMany({
-        where: { organizationId: orgId },
+        where: orgId ? { organizationId: orgId } : {},
         include: {
           user: true,
           orders: {
-            where: { organizationId: orgId, orderDate: { gte: startOfMonth } },
+            where: { ...(orgId ? { organizationId: orgId } : {}), orderDate: { gte: startOfMonth } },
             select: { totalValue: true }
           }
         }
-      }),
+      }).catch(() => []),
       prisma.customer.findMany({
-        where: { organizationId: orgId, leadStage: 'Negotiation' },
+        where: { ...(orgId ? { organizationId: orgId } : {}), leadStage: 'Negotiation' },
         include: { assignedSalesperson: { include: { user: true } } },
         take: 5,
         orderBy: { updatedAt: 'desc' }
-      })
+      }).catch(() => [])
     ]);
 
     // Quotation numbers already represented as Orders
     const convertedQuoteNumbers = new Set<string>();
-    allOrdersInOrg.forEach(o => {
-      const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+    allOrdersInOrg.forEach((o: any) => {
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9-]+)/i);
       if (match && match[1]) {
         convertedQuoteNumbers.add(match[1].trim());
       }
     });
 
     // Standalone confirmed quotations (not yet an Order in prisma.order)
-    const standaloneConfirmedQuotes = allConfirmedQuotesInOrg.filter(q => 
+    const standaloneConfirmedQuotes = allConfirmedQuotesInOrg.filter((q: any) => 
       q.status === 'Confirmed' && !convertedQuoteNumbers.has((q.quotationNumber || '').trim())
     );
 
     // Total Revenue & Combined Total Orders
-    const ordersRevenue = allOrdersInOrg.reduce((sum, o) => sum + Number(o.totalValue || 0), 0);
-    const standaloneQuotRevenue = standaloneConfirmedQuotes.reduce((sum, q) => sum + Number(q.totalValue || 0), 0);
+    const ordersRevenue = allOrdersInOrg.reduce((sum: number, o: any) => sum + Number(o.totalValue || 0), 0);
+    const standaloneQuotRevenue = standaloneConfirmedQuotes.reduce((sum: number, q: any) => sum + Number(q.totalValue || 0), 0);
     const totalRevenue = ordersRevenue + standaloneQuotRevenue;
     const combinedTotalOrders = allOrdersInOrg.length + standaloneConfirmedQuotes.length;
 
     const adminCheckedIn = !!adminAtt;
     const adminCheckedOut = !!adminAtt?.checkOut;
 
-    const liveAttendance = activeAttendances.map(a => ({
-      id: a.id,
-      name: a.employee?.user?.name || 'Team Member',
-      checkInStr: a.checkIn ? new Date(a.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' }) : 'Just now',
-      isShiftActive: !a.checkOut
-    }));
+    const liveAttendance = activeAttendances.map((a: any) => {
+      let checkInStr = 'Just now';
+      if (a.checkIn) {
+        try {
+          checkInStr = new Date(a.checkIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        } catch {
+          checkInStr = new Date(a.checkIn).toLocaleTimeString();
+        }
+      }
+      return {
+        id: a.id,
+        name: a.employee?.user?.name || 'Team Member',
+        checkInStr,
+        isShiftActive: !a.checkOut
+      };
+    });
 
     // Today's orders count and live leaderboard
     const salesMap: Record<string, { name: string, total: number, orders: number }> = {};
     let todayOrdersCount = 0;
 
     allOrdersInOrg
-      .filter(o => o.orderDate && new Date(o.orderDate) >= todayStartOfDay)
-      .forEach(o => {
+      .filter((o: any) => o.orderDate && new Date(o.orderDate) >= todayStartOfDay)
+      .forEach((o: any) => {
         todayOrdersCount += 1;
-        const spId = o.salespersonId;
+        const spId = o.salespersonId || 'unassigned';
         if (!salesMap[spId]) {
           salesMap[spId] = { name: o.salesperson?.user?.name || 'Unknown', total: 0, orders: 0 };
         }
@@ -155,10 +230,10 @@ export default async function Home() {
       });
 
     standaloneConfirmedQuotes
-      .filter(q => (q.date && new Date(q.date) >= todayStartOfDay) || (q.createdAt && new Date(q.createdAt) >= todayStartOfDay))
-      .forEach(q => {
+      .filter((q: any) => (q.date && new Date(q.date) >= todayStartOfDay) || (q.createdAt && new Date(q.createdAt) >= todayStartOfDay))
+      .forEach((q: any) => {
         todayOrdersCount += 1;
-        const spId = q.salespersonId || '';
+        const spId = q.salespersonId || 'unassigned';
         if (spId) {
           if (!salesMap[spId]) {
             salesMap[spId] = { name: q.salesperson?.user?.name || 'Unknown', total: 0, orders: 0 };
@@ -183,9 +258,9 @@ export default async function Home() {
 
     // Calculate Top Categories from real DB order items if available
     const categoryMap: Record<string, number> = {};
-    allOrderItemsForTopCat.forEach(item => {
+    allOrderItemsForTopCat.forEach((item: any) => {
       const catName = item.product?.category || 'Uncategorized';
-      categoryMap[catName] = (categoryMap[catName] || 0) + item.total;
+      categoryMap[catName] = (categoryMap[catName] || 0) + (Number(item.total) || 0);
     });
 
     const realTopCategories = Object.entries(categoryMap)
@@ -199,28 +274,28 @@ export default async function Home() {
       { name: 'Jackets', category: 'Jackets', value: 15000, revenue: 15000 },
     ];
 
-    const teamPerformance = employees.map(emp => {
-      const empOrdersMTD = allOrdersInOrg.filter(o => 
+    const teamPerformance = (employees || []).map((emp: any) => {
+      const empOrdersMTD = (allOrdersInOrg || []).filter((o: any) => 
         (o.salespersonId === emp.id || (o as any).customer?.assignedSalespersonId === emp.id) &&
         o.orderDate && new Date(o.orderDate) >= startOfMonth
       );
-      const empStandaloneQuotesMTD = standaloneConfirmedQuotes.filter(q => 
+      const empStandaloneQuotesMTD = (standaloneConfirmedQuotes || []).filter((q: any) => 
         (q.salespersonId === emp.id || (q as any).customer?.assignedSalespersonId === emp.id) &&
         ((q.date && new Date(q.date) >= startOfMonth) || (q.createdAt && new Date(q.createdAt) >= startOfMonth))
       );
 
-      const salesMTD = empOrdersMTD.reduce((sum, o) => sum + Number(o.totalValue || 0), 0) +
-                       empStandaloneQuotesMTD.reduce((sum, q) => sum + Number(q.totalValue || 0), 0);
+      const salesMTD = empOrdersMTD.reduce((sum: number, o: any) => sum + Number(o.totalValue || 0), 0) +
+                       empStandaloneQuotesMTD.reduce((sum: number, q: any) => sum + Number(q.totalValue || 0), 0);
       const target = emp.target || 500000;
       return {
         id: emp.id,
         name: emp.user?.name || 'Unknown',
         sales: salesMTD,
-        targetPercent: Math.min(100, Math.round((salesMTD / target) * 100))
+        targetPercent: target > 0 ? Math.min(100, Math.round((salesMTD / target) * 100)) : 0
       };
-    }).sort((a, b) => b.sales - a.sales);
+    }).sort((a: any, b: any) => b.sales - a.sales);
 
-    const hotCustomers = hotLeads.map(lead => ({
+    const hotCustomers = (hotLeads || []).map((lead: any) => ({
       id: lead.id,
       businessName: lead.businessName,
       contactPerson: lead.contactPerson,
@@ -228,19 +303,25 @@ export default async function Home() {
       salesperson: lead.assignedSalesperson?.user?.name || 'Unassigned'
     }));
 
-    const [sprintTeamHealth, reorderInsightsRes] = await Promise.all([
-      getAdminSprintTeamHealth(orgId),
-      getDormantAndReorderInsights()
-    ]);
+    let sprintTeamHealth: any[] = [];
+    let reorderInsightsRes: any = { success: false, data: null };
+    try {
+      [sprintTeamHealth, reorderInsightsRes] = await Promise.all([
+        getAdminSprintTeamHealth(orgId).catch(() => []),
+        getDormantAndReorderInsights().catch(() => ({ success: false }))
+      ]);
+    } catch (e) {
+      console.error("Admin sprint/reorder insights fetch error:", e);
+    }
 
-    const atRiskCount = reorderInsightsRes.success && reorderInsightsRes.data 
-      ? (reorderInsightsRes.data.highRiskCount + reorderInsightsRes.data.dueForReorderCount) 
+    const atRiskCount = reorderInsightsRes?.success && reorderInsightsRes.data 
+      ? ((reorderInsightsRes.data.highRiskCount || 0) + (reorderInsightsRes.data.dueForReorderCount || 0)) 
       : 0;
 
     return (
       <>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
-          <BroadcastBanner userId={userId} userRole={userRole} />
+          <BroadcastBanner userId={userId || ''} userRole={userRole} />
         </div>
         <AdminDashboard 
           totalRevenue={totalRevenue}
@@ -269,25 +350,25 @@ export default async function Home() {
 
     const [teamMembers, teamCallsToday] = await Promise.all([
       prisma.employee.findMany({
-        where: { organizationId: orgId },
+        where: orgId ? { organizationId: orgId } : {},
         include: { user: true }
-      }),
+      }).catch(() => []),
       prisma.call.findMany({
         where: { 
           createdAt: { gte: todayStart },
           OR: [
-            { customer: { organizationId: orgId } },
-            { lead: { organizationId: orgId } }
+            { customer: orgId ? { organizationId: orgId } : {} },
+            { lead: orgId ? { organizationId: orgId } : {} }
           ]
         },
         include: { customer: true, lead: true }
-      })
+      }).catch(() => [])
     ]);
 
     return (
       <>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
-          <BroadcastBanner userId={userId} userRole={userRole} />
+          <BroadcastBanner userId={userId || ''} userRole={userRole} />
         </div>
         <TeamLeaderDashboard 
           teamMembers={teamMembers}
@@ -306,7 +387,7 @@ export default async function Home() {
       todayCallsCount,
       recommendations
     ] = await Promise.all([
-      employee ? prisma.attendance.findFirst({
+      employee?.id ? prisma.attendance.findFirst({
         where: {
           employeeId: employee.id,
           date: {
@@ -314,38 +395,38 @@ export default async function Home() {
             lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
           }
         }
-      }) : Promise.resolve(null),
-      employee ? prisma.task.findMany({
+      }).catch(() => null) : Promise.resolve(null),
+      employee?.id ? prisma.task.findMany({
         where: {
           assigneeId: employee.id,
           status: { not: 'Completed' },
           dueDate: { lte: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000) }
         }
-      }) : Promise.resolve([]),
-      employee ? prisma.call.findMany({
+      }).catch(() => []) : Promise.resolve([]),
+      employee?.id ? prisma.call.findMany({
         where: {
           employeeId: employee.id,
           outcome: { in: ["Missed", "No Answer", "Busy", "Voicemail"] },
           OR: [
-            { customer: { organizationId: orgId } },
-            { lead: { organizationId: orgId } }
+            { customer: orgId ? { organizationId: orgId } : {} },
+            { lead: orgId ? { organizationId: orgId } : {} }
           ]
         },
         include: { customer: true, lead: true },
         orderBy: { createdAt: 'desc' },
         take: 10
-      }) : Promise.resolve([]),
-      employee ? prisma.call.count({
+      }).catch(() => []) : Promise.resolve([]),
+      employee?.id ? prisma.call.count({
         where: {
           employeeId: employee.id,
           createdAt: { gte: todayStart },
           OR: [
-            { customer: { organizationId: orgId } },
-            { lead: { organizationId: orgId } }
+            { customer: orgId ? { organizationId: orgId } : {} },
+            { lead: orgId ? { organizationId: orgId } : {} }
           ]
         }
-      }) : Promise.resolve(0),
-      getFollowUpRecommendations()
+      }).catch(() => 0) : Promise.resolve(0),
+      getFollowUpRecommendations().catch(() => ({ success: false, overdue: [], reorderDue: [] }))
     ]);
 
     const isCheckedIn = !!attendanceRecord;
@@ -354,7 +435,7 @@ export default async function Home() {
     return (
       <>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
-          <BroadcastBanner userId={userId} userRole={userRole} />
+          <BroadcastBanner userId={userId || ''} userRole={userRole} />
         </div>
         <TelecallerDashboard 
           employee={employee}
@@ -365,7 +446,7 @@ export default async function Home() {
           todayTasks={todayTasks}
           missedCalls={missedCalls}
           todayCallsCount={todayCallsCount}
-          recommendations={recommendations.success ? recommendations : { overdue: [], reorderDue: [] }}
+          recommendations={recommendations?.success ? recommendations : { overdue: [], reorderDue: [] }}
         />
       </>
     );
@@ -386,7 +467,7 @@ export default async function Home() {
       allOrgQuotesMTD,
       allOrgEmployees
     ] = await Promise.all([
-      employee ? prisma.attendance.findFirst({
+      employee?.id ? prisma.attendance.findFirst({
         where: {
           employeeId: employee.id,
           date: {
@@ -394,8 +475,8 @@ export default async function Home() {
             lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
           }
         }
-      }) : Promise.resolve(null),
-      employee ? prisma.order.findMany({
+      }).catch(() => null) : Promise.resolve(null),
+      employee?.id ? prisma.order.findMany({
         where: {
           OR: [
             { salespersonId: employee.id },
@@ -414,9 +495,9 @@ export default async function Home() {
           customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } } 
         },
         orderBy: { orderDate: 'desc' }
-      }) : Promise.resolve([]),
+      }).catch(() => []) : Promise.resolve([]),
       // Confirmed quotations count as sales for this salesperson
-      employee ? prisma.quotation.findMany({
+      employee?.id ? prisma.quotation.findMany({
         where: {
           status: 'Confirmed',
           OR: [
@@ -424,24 +505,25 @@ export default async function Home() {
             { customer: { assignedSalespersonId: employee.id } }
           ]
         },
-        select: {
-          id: true,
-          quotationNumber: true,
-          date: true,
-          subtotal: true,
-          totalValue: true,
-          status: true,
-          customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } }
+        select: { 
+          id: true, 
+          quotationNumber: true, 
+          date: true, 
+          subtotal: true, 
+          totalValue: true, 
+          status: true, 
+          createdAt: true,
+          customer: { select: { id: true, businessName: true, contactPerson: true, status: true, preferredPaymentMethod: true } } 
         },
         orderBy: { date: 'desc' }
-      }) : Promise.resolve([]),
-      employee ? prisma.call.findMany({
+      }).catch(() => []) : Promise.resolve([]),
+      employee?.id ? prisma.call.findMany({
         where: {
           employeeId: employee.id,
           followUpDate: { not: null },
           OR: [
-            { customer: { organizationId: orgId } },
-            { lead: { organizationId: orgId } }
+            { customer: orgId ? { organizationId: orgId } : {} },
+            { lead: orgId ? { organizationId: orgId } : {} }
           ]
         },
         include: {
@@ -449,17 +531,17 @@ export default async function Home() {
           lead: { select: { id: true, name: true, shopName: true, mobile: true, whatsappNumber: true, stage: true, city: true, state: true } }
         },
         orderBy: { followUpDate: 'asc' }
-      }) : Promise.resolve([]),
+      }).catch(() => []) : Promise.resolve([]),
       prisma.order.findMany({
         where: {
-          organizationId: orgId,
+          ...(orgId ? { organizationId: orgId } : {}),
           orderDate: { gte: startOfMonth }
         },
         include: { salesperson: { include: { user: true } } }
-      }),
+      }).catch(() => []),
       prisma.quotation.findMany({
         where: {
-          organizationId: orgId,
+          ...(orgId ? { organizationId: orgId } : {}),
           status: { in: ['Confirmed', 'Converted'] },
           OR: [
             { date: { gte: startOfMonth } },
@@ -467,11 +549,11 @@ export default async function Home() {
           ]
         },
         include: { salesperson: { include: { user: true } } }
-      }),
+      }).catch(() => []),
       prisma.employee.findMany({
-        where: { organizationId: orgId },
+        where: orgId ? { organizationId: orgId } : {},
         include: { user: true }
-      })
+      }).catch(() => [])
     ]);
 
     const isCheckedIn = !!attendanceRecord;
@@ -497,7 +579,7 @@ export default async function Home() {
       .map((q: any) => ({
         id: q.id,
         orderNumber: q.quotationNumber,
-        orderDate: q.date ? q.date.toISOString() : null,
+        orderDate: q.date ? q.date.toISOString() : (q.createdAt ? q.createdAt.toISOString() : null),
         subtotal: Number(q.subtotal ?? q.totalValue ?? 0),
         totalValue: Number(q.totalValue ?? q.subtotal ?? 0),
         discount: 0,
@@ -509,7 +591,7 @@ export default async function Home() {
     const allCombinedSales = [
       ...allEmployeeOrders.map((o: any) => ({
         ...o,
-        orderDate: o.orderDate ? o.orderDate.toISOString() : null,
+        orderDate: o.orderDate ? (typeof o.orderDate === 'string' ? o.orderDate : o.orderDate.toISOString()) : null,
         totalValue: Number(o.totalValue ?? o.subtotal ?? 0),
         subtotal: Number(o.subtotal ?? o.totalValue ?? 0)
       })),
@@ -540,14 +622,14 @@ export default async function Home() {
     const incentiveData = calculateIncentives(formattedOrders, targetGoal, activePolicy);
 
     // Filter out orphan/ghost calls without real customer or lead data
-    const validFollowUps = allFollowUps.filter(c => {
+    const validFollowUps = allFollowUps.filter((c: any) => {
       if (!c.followUpDate) return false;
       const hasCustomer = c.customer && Boolean((c.customer.businessName || '').trim() || (c.customer.contactPerson || '').trim());
       const hasLead = c.lead && Boolean((c.lead.shopName || '').trim() || (c.lead.name || '').trim());
       return hasCustomer || hasLead;
     });
 
-    const todayFollowUps = validFollowUps.filter(c => {
+    const todayFollowUps = validFollowUps.filter((c: any) => {
       const d = new Date(c.followUpDate);
       return d >= todayStart && d < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
     });
@@ -555,19 +637,26 @@ export default async function Home() {
     // Serialize cleanly for client component props - include confirmed quotations
     const serializedOrders = allCombinedSales;
 
-    const serializedFollowUps = validFollowUps.map(f => ({
+    const serializedFollowUps = validFollowUps.map((f: any) => ({
       ...f,
-      followUpDate: f.followUpDate ? f.followUpDate.toISOString() : null,
-      createdAt: f.createdAt ? f.createdAt.toISOString() : null
+      followUpDate: f.followUpDate ? (typeof f.followUpDate === 'string' ? f.followUpDate : f.followUpDate.toISOString()) : null,
+      createdAt: f.createdAt ? (typeof f.createdAt === 'string' ? f.createdAt : f.createdAt.toISOString()) : null
     }));
 
-    const serializedTodayFollowUps = todayFollowUps.map(c => ({
+    const serializedTodayFollowUps = todayFollowUps.map((c: any) => ({
       ...c,
-      followUpDate: c.followUpDate ? c.followUpDate.toISOString() : null,
-      createdAt: c.createdAt ? c.createdAt.toISOString() : null
+      followUpDate: c.followUpDate ? (typeof c.followUpDate === 'string' ? c.followUpDate : c.followUpDate.toISOString()) : null,
+      createdAt: c.createdAt ? (typeof c.createdAt === 'string' ? c.createdAt : c.createdAt.toISOString()) : null
     }));
 
-    const sprintData = employee ? await getSprintData(employee.id) : null;
+    let sprintData = null;
+    if (employee?.id) {
+      try {
+        sprintData = await getSprintData(employee.id);
+      } catch (e) {
+        console.error("Sprint data fetch error:", e);
+      }
+    }
 
     // ---------------------------------------------------------
     // ORG-WIDE LEADERBOARDS: DAILY & MONTHLY
@@ -595,8 +684,8 @@ export default async function Home() {
     let todayOrgOrdersCount = 0;
 
     allOrgOrdersMTD
-      .filter(o => o.orderDate && new Date(o.orderDate) >= todayStart)
-      .forEach(o => {
+      .filter((o: any) => o.orderDate && new Date(o.orderDate) >= todayStart)
+      .forEach((o: any) => {
         todayOrgOrdersCount += 1;
         const spId = o.salespersonId || 'unassigned';
         const name = o.salesperson?.user?.name || 'Sales Champion';
@@ -608,8 +697,8 @@ export default async function Home() {
       });
 
     standaloneOrgConfirmedQuotes
-      .filter(q => (q.date && new Date(q.date) >= todayStart) || (q.createdAt && new Date(q.createdAt) >= todayStart))
-      .forEach(q => {
+      .filter((q: any) => (q.date && new Date(q.date) >= todayStart) || (q.createdAt && new Date(q.createdAt) >= todayStart))
+      .forEach((q: any) => {
         todayOrgOrdersCount += 1;
         const spId = q.salespersonId || 'unassigned';
         const name = q.salesperson?.user?.name || 'Sales Champion';
@@ -625,7 +714,7 @@ export default async function Home() {
     // 2. Monthly Leaderboard (MTD)
     const monthlyMap: Record<string, { id: string, name: string, orders: number, total: number, target: number, targetPercent: number, isCurrentEmployee: boolean }> = {};
     
-    allOrgEmployees.forEach(emp => {
+    allOrgEmployees.forEach((emp: any) => {
       const spId = emp.id;
       const target = emp.target || 500000;
       monthlyMap[spId] = {
@@ -639,7 +728,7 @@ export default async function Home() {
       };
     });
 
-    allOrgOrdersMTD.forEach(o => {
+    allOrgOrdersMTD.forEach((o: any) => {
       const spId = o.salespersonId;
       if (spId && monthlyMap[spId]) {
         monthlyMap[spId].orders += 1;
@@ -647,7 +736,7 @@ export default async function Home() {
       }
     });
 
-    standaloneOrgConfirmedQuotes.forEach(q => {
+    standaloneOrgConfirmedQuotes.forEach((q: any) => {
       const spId = q.salespersonId;
       if (spId && monthlyMap[spId]) {
         monthlyMap[spId].orders += 1;
@@ -664,7 +753,7 @@ export default async function Home() {
     return (
       <>
         <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
-          <BroadcastBanner userId={userId} userRole={userRole} />
+          <BroadcastBanner userId={userId || ''} userRole={userRole} />
         </div>
         <EmployeeDashboard 
           employee={employee}

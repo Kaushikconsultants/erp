@@ -88,6 +88,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.role = (user as any).role;
         token.id = user.id;
+        token.sub = user.id;
         token.image = (user as any).image || (user as any).avatarUrl;
         token.avatarUrl = (user as any).avatarUrl || (user as any).image;
         token.canManageSettings = (user as any).canManageSettings;
@@ -111,7 +112,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).role = token.role;
-        (session.user as any).id = token.id;
+        (session.user as any).id = token.id || (token.sub as string);
         session.user.image = (token.avatarUrl as string) || (token.image as string) || (token.picture as string);
         (session.user as any).avatarUrl = (token.avatarUrl as string) || (token.image as string);
         (session.user as any).canManageSettings = token.canManageSettings;

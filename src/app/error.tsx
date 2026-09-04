@@ -59,7 +59,14 @@ export default function GlobalError({
         </div>
 
         <button
-          onClick={() => reset()}
+          onClick={() => {
+            try {
+              reset();
+            } catch {}
+            if (typeof window !== "undefined") {
+              window.location.href = "/";
+            }
+          }}
           style={{
             marginTop: '8px',
             backgroundColor: '#4f46e5',

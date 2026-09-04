@@ -76,44 +76,65 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     };
   }
 
-  const userEmail = session.user.email;
-  const userId = (session.user as any).id;
+  const userEmail = session.user.email ? session.user.email.trim().toLowerCase() : null;
+  const userId = (session.user as any)?.id || (session.user as any)?.sub;
 
   // 1. Always verify the current user in the database to get their actual organizationId
   let dbUser = null;
   if (userId || userEmail) {
-    dbUser = await prisma.user.findFirst({
-      where: userId ? { id: userId } : { email: userEmail! },
-      include: { organization: true }
-    });
+    try {
+      dbUser = await prisma.user.findFirst({
+        where: userId 
+          ? { id: userId } 
+          : { email: { equals: userEmail!, mode: 'insensitive' } },
+        include: { organization: true }
+      });
+    } catch (e) {
+      console.error("Tenant dbUser lookup error:", e);
+    }
   }
 
-  let orgId = dbUser?.organizationId || (session.user as any).organizationId;
-  let org = dbUser?.organization || (orgId ? await prisma.organization.findUnique({ where: { id: orgId } }) : null);
+  let orgId = dbUser?.organizationId || (session.user as any)?.organizationId;
+  let org = dbUser?.organization;
+  if (!org && orgId) {
+    try {
+      org = await prisma.organization.findUnique({ where: { id: orgId } });
+    } catch (e) {
+      console.error("Org lookup error:", e);
+    }
+  }
 
   // 2. Only if the database has zero organizations at all, create root org
   if (!org) {
-    const totalOrgs = await prisma.organization.count();
-    if (totalOrgs === 0) {
-      org = await ensureDefaultOrganization();
-      orgId = org?.id;
+    try {
+      const totalOrgs = await prisma.organization.count();
+      if (totalOrgs === 0) {
+        org = await ensureDefaultOrganization();
+        orgId = org?.id;
+      }
+    } catch (e) {
+      console.error("Org count error:", e);
     }
   }
 
   if (!org) {
     // If user is truly unlinked to any org, find root org
-    org = await prisma.organization.findFirst({
-      where: { slug: "espon-global" }
-    }) || await prisma.organization.findFirst();
-    orgId = org?.id;
+    try {
+      org = await prisma.organization.findFirst({
+        where: { slug: "espon-global" }
+      }) || await prisma.organization.findFirst();
+      orgId = org?.id;
+    } catch (e) {
+      console.error("Root org fallback lookup error:", e);
+    }
   }
 
   if (!org) {
     return null;
   }
 
-  const effectiveRole = dbUser?.role || (session.user as any).role || "SALES";
-  const canManageSettings = dbUser?.canManageSettings ?? (session.user as any).canManageSettings ?? false;
+  const effectiveRole = dbUser?.role || (session.user as any)?.role || "SALES";
+  const canManageSettings = dbUser?.canManageSettings ?? (session.user as any)?.canManageSettings ?? false;
   
   let allowedSectionsList: string[] | null = null;
   if (dbUser?.allowedSections) {
@@ -172,32 +193,51 @@ export const getTenantScope = cache(async function getTenantScope() {
   }
 
   const orgId = await getTenantOrgId();
-  const rawRole = (session.user as any).role || "SALES";
+  const rawRole = (session.user as any)?.role || "SALES";
   const userRole = String(rawRole).trim().toUpperCase();
-  const userId = (session.user as any).id;
-  const userName = session.user.name || "Sales Candidate";
+  let userId = (session.user as any)?.id || (session.user as any)?.sub;
+  const userEmail = session.user.email ? session.user.email.trim().toLowerCase() : null;
+  const userName = session.user.name || "Team Member";
   const isAdmin = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
 
+  if (!userId && userEmail) {
+    try {
+      const u = await prisma.user.findFirst({ where: { email: { equals: userEmail, mode: 'insensitive' } } });
+      if (u) userId = u.id;
+    } catch {}
+  }
+
   let employeeId: string | null = null;
-  if (!isAdmin && userId) {
-    let employee = await prisma.employee.findUnique({
-      where: { userId }
-    });
-    if (!employee && orgId) {
-      employee = await prisma.employee.findFirst({
-        where: { organizationId: orgId, userId }
-      });
+  if (!isAdmin && (userId || userEmail)) {
+    let employee = null;
+    if (userId) {
+      try {
+        employee = await prisma.employee.findUnique({
+          where: { userId }
+        });
+      } catch {}
     }
-    if (!employee && session.user.email) {
-      employee = await prisma.employee.findFirst({
-        where: {
-          organizationId: orgId,
-          user: { email: { equals: session.user.email.trim(), mode: 'insensitive' } }
-        }
-      });
+    if (!employee && orgId && userId) {
+      try {
+        employee = await prisma.employee.findFirst({
+          where: { organizationId: orgId, userId }
+        });
+      } catch {}
+    }
+    if (!employee && userEmail) {
+      try {
+        employee = await prisma.employee.findFirst({
+          where: {
+            organizationId: orgId || undefined,
+            user: { email: { equals: userEmail, mode: 'insensitive' } }
+          }
+        });
+      } catch {}
     }
     if (!employee && userId) {
-      employee = await getOrCreateEmployee(userId, session.user);
+      try {
+        employee = await getOrCreateEmployee(userId, session.user);
+      } catch {}
     }
     employeeId = employee?.id || null;
   }
