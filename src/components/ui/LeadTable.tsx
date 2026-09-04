@@ -89,6 +89,25 @@ export default function LeadTable({ initialLeads, allEmployees }: { initialLeads
         >
           Reset
         </button>
+        <Link 
+          href="/pipeline"
+          style={{ 
+            marginLeft: 'auto', 
+            padding: '9px 16px', 
+            borderRadius: '8px', 
+            backgroundColor: '#eff6ff', 
+            color: '#2563eb', 
+            border: '1px solid #bfdbfe', 
+            textDecoration: 'none', 
+            fontWeight: 600, 
+            fontSize: '0.85rem',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          <span>⚡ View Sales Pipeline Kanban</span> ➔
+        </Link>
       </div>
 
       <div className="table-responsive">

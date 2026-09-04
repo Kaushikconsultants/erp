@@ -74,7 +74,7 @@ const Sidebar = ({
     if (!allowedSections || allowedSections.length === 0) {
       // Default Role Fallbacks if no custom allowedSections specified
       if (userRole === 'DISPATCH') return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
-      if (userRole === 'SALES') return ['dashboard', 'customers', 'leads', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
+      if (userRole === 'SALES') return ['dashboard', 'customers', 'leads', 'pipeline', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
       if (userRole === 'HR') return ['dashboard', 'hrms', 'hiring'].includes(sectionKey);
       if (userRole === 'ACCOUNTS') return ['dashboard', 'accounting', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
       if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches', 'eway_bills', 'eway-bills', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
@@ -96,7 +96,8 @@ const Sidebar = ({
       (sectionKey === 'purchases' && allowedSections.includes('procurement')) ||
       (sectionKey === 'procurement' && allowedSections.includes('purchases')) ||
       (sectionKey === 'integrations' && (allowedSections.includes('integrations') || allowedSections.includes('settings') || allowedSections.includes('dispatches'))) ||
-      (sectionKey === 'leads' && (allowedSections.includes('leads') || allowedSections.includes('customers')))
+      (sectionKey === 'leads' && (allowedSections.includes('leads') || allowedSections.includes('customers'))) ||
+      (sectionKey === 'pipeline' && (allowedSections.includes('leads') || allowedSections.includes('customers') || allowedSections.includes('pipeline')))
     );
   };
 
@@ -118,7 +119,7 @@ const Sidebar = ({
   };
 
   // Active state indicators
-  const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups');
+  const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups') || pathname.startsWith('/pipeline');
   const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/delivery-challans') || pathname.startsWith('/eway-bills');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
   const isAccountingActive = pathname.startsWith('/accounting');
@@ -156,7 +157,7 @@ const Sidebar = ({
         )}
 
         {/* 1. CRM & CLIENTS CATEGORY DROPDOWN */}
-        {(canAccess('customers') || canAccess('calls_tasks') || canAccess('leads')) && (
+        {(canAccess('customers') || canAccess('calls_tasks') || canAccess('leads') || canAccess('pipeline')) && (
           <div className="nav-section">
             <button
               type="button"
@@ -174,11 +175,17 @@ const Sidebar = ({
 
             {openCategories.crm && (
               <div className="category-sub-list">
-                {canAccess('leads') && (
-                  <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
-                    <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
-                    <span>Leads</span>
-                  </Link>
+                {(canAccess('leads') || canAccess('pipeline')) && (
+                  <>
+                    <Link href="/pipeline" onClick={onClose} className={`category-sub-item ${isActive('/pipeline') ? 'active' : ''}`}>
+                      <Layers size={16} style={{ color: '#6366f1' }} />
+                      <span>Sales Pipeline</span>
+                    </Link>
+                    <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
+                      <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
+                      <span>Leads</span>
+                    </Link>
+                  </>
                 )}
 
                 {canAccess('calls_tasks') && (
