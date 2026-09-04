@@ -5,12 +5,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { syncSystemLedgers } from "./accountingActions";
 
 export async function getBankAccounts() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { success: false, error: "Unauthorized" };
 
   try {
+    await syncSystemLedgers();
     const organizationId = await getTenantOrgId();
 
     const bankLedgers = await prisma.ledgerAccount.findMany({
@@ -52,7 +54,25 @@ export async function getBankReconciliationOverview(ledgerAccountId: string) {
       orderBy: { statementDate: "desc" }
     });
 
-    // Fetch all journal lines for this bank account
+    // Calculate total Book Balance from all posted line items
+    const totalsAgg = await prisma.journalLineItem.aggregate({
+      where: {
+        ledgerAccountId,
+        journalEntry: { status: "POSTED" }
+      },
+      _sum: {
+        debit: true,
+        credit: true
+      }
+    });
+
+    const openBal = ledger.openingBalance || 0;
+    const isDr = ledger.openingType !== "CREDIT";
+    const totalDr = totalsAgg._sum.debit || 0;
+    const totalCr = totalsAgg._sum.credit || 0;
+    const bookBalance = (isDr ? openBal : -openBal) + totalDr - totalCr;
+
+    // Fetch transactions for reconciliation table (latest 200)
     const lines = await prisma.journalLineItem.findMany({
       where: {
         ledgerAccountId,
@@ -62,15 +82,8 @@ export async function getBankReconciliationOverview(ledgerAccountId: string) {
         journalEntry: true
       },
       orderBy: { journalEntry: { date: "desc" } },
-      take: 100
+      take: 200
     });
-
-    // Calculate Book Balance
-    const openBal = ledger.openingBalance || 0;
-    const isDr = ledger.openingType !== "CREDIT";
-    const totalDr = lines.reduce((acc, l) => acc + (l.debit || 0), 0);
-    const totalCr = lines.reduce((acc, l) => acc + (l.credit || 0), 0);
-    const bookBalance = (isDr ? openBal : -openBal) + totalDr - totalCr;
 
     // Unreconciled / In-Transit items
     const unreconciledItems = lines.filter(l => !l.isReconciled);

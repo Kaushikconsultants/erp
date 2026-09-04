@@ -86,10 +86,11 @@ export async function getCustomerLedgerStatement(
     const endDate = endDateStr ? new Date(endDateStr) : new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    // Fetch all Invoices for this customer
+    // Fetch all active Invoices for this customer
     const invoices = await prisma.invoice.findMany({
       where: {
         customerId,
+        status: { not: 'Cancelled' },
         createdAt: { lte: endDate }
       },
       orderBy: { invoiceDate: 'asc' }
@@ -114,9 +115,9 @@ export async function getCustomerLedgerStatement(
       where: {
         customerId,
         status: { not: 'CANCELLED' },
-        createdAt: { lte: endDate }
+        creditNoteDate: { lte: endDate }
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { creditNoteDate: 'asc' }
     });
 
     // Build Chronological Ledger
@@ -182,7 +183,7 @@ export async function getCustomerLedgerStatement(
     // Add Credit Notes
     for (const cn of creditNotes) {
       allEvents.push({
-        date: cn.createdAt,
+        date: cn.creditNoteDate || cn.createdAt,
         type: 'CREDIT_NOTE',
         voucherNumber: cn.creditNoteNumber,
         particulars: `Credit Note #${cn.creditNoteNumber} [Reason: ${cn.reason || 'Goods Return'}]`,

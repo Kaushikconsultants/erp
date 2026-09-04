@@ -281,6 +281,7 @@ export async function syncSystemLedgers() {
     const generalExpLedger = codeLedgerMap.get("SYS_GEN_EXP");
     const salaryExpLedger = codeLedgerMap.get("SYS_SALARY_EXP");
     const salesReturnLedger = codeLedgerMap.get("SYS_SALES_RETURN") || salesLedger;
+    const purchaseReturnLedger = codeLedgerMap.get("SYS_PURCHASE_RETURN") || purchaseLedger;
 
     // 4.5. PRUNE ORPHANED & CANCELLED JOURNAL ENTRIES
     const allSystemJVs = await prisma.journalEntry.findMany({
@@ -347,6 +348,13 @@ export async function syncSystemLedgers() {
         } else {
           const cn = await prisma.creditNote.findUnique({ where: { id: jv.sourceDocId }, select: { id: true, status: true } });
           if (!cn || cn.status === "CANCELLED") isOrphan = true;
+        }
+      } else if (jv.sourceDocType === "VENDOR_CREDIT" || jv.voucherNumber?.startsWith("DN-")) {
+        if (!jv.sourceDocId) {
+          isOrphan = true;
+        } else {
+          const vc = await prisma.vendorCredit.findUnique({ where: { id: jv.sourceDocId }, select: { id: true, status: true } });
+          if (!vc || vc.status === "Void" || vc.status === "Cancelled") isOrphan = true;
         }
       }
 
@@ -847,6 +855,78 @@ export async function syncSystemLedgers() {
       }
     }
 
+    // H. Auto-Post Double-Entry Vouchers for Vendor Credits / Debit Notes (Dr Vendor, Cr Purchase Return + ITC)
+    const vendorCredits = await prisma.vendorCredit.findMany({
+      where: {
+        vendor: { organizationId },
+        status: { in: ["Open", "Applied", "Closed"] }
+      },
+      include: { vendor: true }
+    });
+
+    for (const vc of vendorCredits) {
+      if (jvSet.has(`VENDOR_CREDIT_${vc.id}`)) continue;
+
+      if (purchaseReturnLedger) {
+        const vendorLedger = vc.vendorId ? vendLedgerMap.get(vc.vendorId) : null;
+
+        if (vendorLedger && vc.totalAmount > 0) {
+          const subtotal = vc.subtotal || (vc.totalAmount - (vc.taxAmount || 0));
+          const tax = vc.taxAmount || 0;
+          const isInter = Boolean(vc.vendor?.state && companySettings?.state && vc.vendor.state.toLowerCase() !== companySettings.state.toLowerCase());
+
+          const lines: { ledgerAccountId: string; debit: number; credit: number; particulars: string }[] = [];
+
+          // Dr Vendor (reduces liability)
+          lines.push({
+            ledgerAccountId: vendorLedger.id,
+            debit: vc.totalAmount,
+            credit: 0,
+            particulars: `Debit Note #${vc.creditNoteNumber} against ${vendorLedger.name}`
+          });
+
+          // Cr Purchase Return
+          lines.push({
+            ledgerAccountId: purchaseReturnLedger.id,
+            debit: 0,
+            credit: subtotal,
+            particulars: `Purchase Return #${vc.creditNoteNumber}`
+          });
+
+          // Cr ITC Reversed
+          if (tax > 0) {
+            if (isInter && inIgstLedger) {
+              lines.push({ ledgerAccountId: inIgstLedger.id, debit: 0, credit: tax, particulars: `ITC IGST reversal on DN #${vc.creditNoteNumber}` });
+            } else if (inCgstLedger && inSgstLedger) {
+              const half = Number((tax / 2).toFixed(2));
+              lines.push({ ledgerAccountId: inCgstLedger.id, debit: 0, credit: half, particulars: `ITC CGST reversal on DN #${vc.creditNoteNumber}` });
+              lines.push({ ledgerAccountId: inSgstLedger.id, debit: 0, credit: Number((tax - half).toFixed(2)), particulars: `ITC SGST reversal on DN #${vc.creditNoteNumber}` });
+            }
+          }
+
+          await prisma.journalEntry.create({
+            data: {
+              organizationId,
+              voucherNumber: `DN-${vc.creditNoteNumber}`,
+              voucherType: "DEBIT_NOTE",
+              date: vc.creditDate || vc.createdAt,
+              narration: `Vendor Credit / Debit Note #${vc.creditNoteNumber} to ${vendorLedger.name}`,
+              referenceNumber: vc.creditNoteNumber,
+              totalAmount: vc.totalAmount,
+              sourceDocType: "VENDOR_CREDIT",
+              sourceDocId: vc.id,
+              isSystemGenerated: true,
+              status: "POSTED",
+              lines: {
+                create: lines
+              }
+            }
+          });
+          jvSet.add(`VENDOR_CREDIT_${vc.id}`);
+        }
+      }
+    }
+
     // 6. Recalculate & Update currentBalance on ALL LedgerAccount records
     const allOrgLedgers = await prisma.ledgerAccount.findMany({
       where: { OR: [{ organizationId }, { organizationId: null }] },
@@ -1163,19 +1243,8 @@ export async function createJournalEntry(data: {
       }
     });
 
-    // Update Ledger current balances
-    for (const l of data.lines) {
-      const debit = Number(l.debit) || 0;
-      const credit = Number(l.credit) || 0;
-      const netChange = debit - credit;
-
-      await prisma.ledgerAccount.update({
-        where: { id: l.ledgerAccountId },
-        data: {
-          currentBalance: { increment: netChange }
-        }
-      });
-    }
+    // Recalculate and synchronize all ledger balances accurately
+    await syncSystemLedgers();
 
     revalidatePath("/accounting", "layout");
     return { success: true, journal: JSON.parse(JSON.stringify(journal)) };
@@ -1336,16 +1405,26 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
     const endDate = endDateStr ? new Date(endDateStr) : new Date();
     endDate.setHours(23, 59, 59, 999);
 
-    // 1. Direct Income / Sales Revenue
-    const salesInvoices = await prisma.invoice.findMany({
-      where: {
-        organizationId,
-        invoiceDate: { gte: startDate, lte: endDate },
-        status: { not: "Cancelled" }
-      }
-    });
+    // 1. Direct Income / Sales Revenue (Gross Sales minus Sales Returns / Credit Notes)
+    const [salesInvoices, creditNotes] = await Promise.all([
+      prisma.invoice.findMany({
+        where: {
+          organizationId,
+          invoiceDate: { gte: startDate, lte: endDate },
+          status: { not: "Cancelled" }
+        }
+      }),
+      prisma.creditNote.findMany({
+        where: {
+          organizationId,
+          creditNoteDate: { gte: startDate, lte: endDate },
+          status: { not: "CANCELLED" }
+        }
+      })
+    ]);
 
     const totalSalesGross = salesInvoices.reduce((acc, i) => acc + (i.subtotal || (i.totalAmount - (i.taxAmount || 0))), 0);
+    const totalSalesReturns = creditNotes.reduce((acc, c) => acc + (c.subtotal || (c.totalAmount - (c.taxAmount || 0))), 0);
     
     // Roundoff/TCS adjustments on sales
     const totalSalesRoundoff = salesInvoices.reduce((acc, i) => {
@@ -1355,17 +1434,29 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
       return acc + (diff > 0 ? diff : 0);
     }, 0);
 
-    const totalRevenue = totalSalesGross + totalSalesRoundoff;
+    const totalRevenue = Math.max(0, Number((totalSalesGross + totalSalesRoundoff - totalSalesReturns).toFixed(2)));
 
-    // 2. Direct Purchases & Procurement
-    const purchaseBills = await prisma.bill.findMany({
-      where: {
-        organizationId,
-        billDate: { gte: startDate, lte: endDate },
-        status: { not: "Void" }
-      }
-    });
-    const totalPurchases = purchaseBills.reduce((acc, b) => acc + (b.subtotal || (b.totalAmount - (b.taxAmount || 0))), 0);
+    // 2. Direct Purchases & Procurement (Gross Purchases minus Purchase Returns / Vendor Credits)
+    const [purchaseBills, vendorCredits] = await Promise.all([
+      prisma.bill.findMany({
+        where: {
+          organizationId,
+          billDate: { gte: startDate, lte: endDate },
+          status: { not: "Void" }
+        }
+      }),
+      prisma.vendorCredit.findMany({
+        where: {
+          vendor: { organizationId },
+          creditDate: { gte: startDate, lte: endDate },
+          status: { in: ["Open", "Applied", "Closed"] }
+        }
+      })
+    ]);
+
+    const totalPurchasesGross = purchaseBills.reduce((acc, b) => acc + (b.subtotal || (b.totalAmount - (b.taxAmount || 0))), 0);
+    const totalPurchaseReturns = vendorCredits.reduce((acc, vc) => acc + (vc.subtotal || (vc.totalAmount - (vc.taxAmount || 0))), 0);
+    const totalPurchases = Math.max(0, Number((totalPurchasesGross - totalPurchaseReturns).toFixed(2)));
 
     // 3. Physical Inventory Stock
     const products = await prisma.product.findMany({ where: { organizationId } });
@@ -1377,25 +1468,31 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
     }, 0);
 
     // In a continuous entity: Opening Stock + Direct Purchases = Goods Available
-    // If no prior period closing is recorded, opening stock equals starting inventory
     const openingStock = Math.max(0, closingStockValue - totalPurchases);
     const cogs = Math.max(0, Number((openingStock + totalPurchases - closingStockValue).toFixed(2)));
     const grossProfit = Number((totalRevenue - cogs).toFixed(2));
 
     // 4. Indirect Expenses (Operating Overheads, Payroll, Admin)
-    const expenses = await prisma.expense.findMany({
-      where: {
-        date: { gte: startDate, lte: endDate },
-        status: { not: "Rejected" }
-      }
-    });
+    const [expenses, salaries] = await Promise.all([
+      prisma.expense.findMany({
+        where: {
+          OR: [
+            { employee: { organizationId } },
+            { employeeId: null }
+          ],
+          date: { gte: startDate, lte: endDate },
+          status: { not: "Rejected" }
+        }
+      }),
+      prisma.salary.findMany({
+        where: {
+          employee: { organizationId },
+          status: { in: ["Processed", "Paid"] },
+          createdAt: { gte: startDate, lte: endDate }
+        }
+      })
+    ]);
 
-    const salaries = await prisma.salary.findMany({
-      where: {
-        status: { in: ["Processed", "Paid"] },
-        createdAt: { gte: startDate, lte: endDate }
-      }
-    });
     const totalPayroll = salaries.reduce((acc, s) => acc + s.netSalary, 0);
 
     // Categorized expense breakdown
@@ -1418,8 +1515,12 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
       endDate: endDate.toISOString().split("T")[0],
       tradingAccount: {
         salesRevenue: Number(totalRevenue.toFixed(2)),
+        grossSales: Number((totalSalesGross + totalSalesRoundoff).toFixed(2)),
+        salesReturns: Number(totalSalesReturns.toFixed(2)),
         openingStock: Number(openingStock.toFixed(2)),
         purchases: Number(totalPurchases.toFixed(2)),
+        grossPurchases: Number(totalPurchasesGross.toFixed(2)),
+        purchaseReturns: Number(totalPurchaseReturns.toFixed(2)),
         closingStock: Number(closingStockValue.toFixed(2)),
         costOfGoodsSold: Number(cogs.toFixed(2)),
         grossProfit: Number(grossProfit.toFixed(2))
@@ -1638,26 +1739,55 @@ export async function getDayBook(dateStr?: string) {
     const endOfDay = new Date(targetDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const [vouchers, invoices, bills, payments, vendorPayments] = await Promise.all([
+    const [vouchers, invoices, bills, payments, vendorPayments, expenses, creditNotes] = await Promise.all([
       prisma.journalEntry.findMany({
         where: { organizationId, date: { gte: startOfDay, lte: endOfDay } },
         include: { lines: { include: { ledgerAccount: true } } }
       }),
       prisma.invoice.findMany({
-        where: { organizationId, invoiceDate: { gte: startOfDay, lte: endOfDay } },
+        where: { organizationId, invoiceDate: { gte: startOfDay, lte: endOfDay }, status: { not: "Cancelled" } },
         include: { customer: true }
       }),
       prisma.bill.findMany({
-        where: { organizationId, billDate: { gte: startOfDay, lte: endOfDay } },
+        where: { organizationId, billDate: { gte: startOfDay, lte: endOfDay }, status: { not: "Void" } },
         include: { vendor: true }
       }),
       prisma.payment.findMany({
-        where: { paymentDate: { gte: startOfDay, lte: endOfDay } },
+        where: {
+          OR: [
+            { customer: { organizationId } },
+            { invoice: { organizationId } }
+          ],
+          paymentDate: { gte: startOfDay, lte: endOfDay },
+          status: { in: ["Completed", "Processed"] }
+        },
         include: { customer: true, invoice: true }
       }),
       prisma.vendorPayment.findMany({
-        where: { paymentDate: { gte: startOfDay, lte: endOfDay } },
+        where: {
+          vendor: { organizationId },
+          paymentDate: { gte: startOfDay, lte: endOfDay },
+          status: { in: ["Completed", "Processed"] }
+        },
         include: { vendor: true, bill: true }
+      }),
+      prisma.expense.findMany({
+        where: {
+          OR: [
+            { employee: { organizationId } },
+            { employeeId: null }
+          ],
+          date: { gte: startOfDay, lte: endOfDay },
+          status: { not: "Rejected" }
+        }
+      }),
+      prisma.creditNote.findMany({
+        where: {
+          organizationId,
+          creditNoteDate: { gte: startOfDay, lte: endOfDay },
+          status: { not: "CANCELLED" }
+        },
+        include: { customer: true }
       })
     ]);
 
@@ -1702,7 +1832,7 @@ export async function getDayBook(dateStr?: string) {
       });
     });
 
-    // Add Payments Made
+    // Add Vendor Payments
     vendorPayments.forEach(vp => {
       allEvents.push({
         id: `vpay-${vp.id}`,
@@ -1711,7 +1841,33 @@ export async function getDayBook(dateStr?: string) {
         voucherNumber: vp.paymentNumber,
         particulars: vp.vendor?.companyName || "Vendor",
         amount: vp.amount,
-        notes: `Payment Paid via ${vp.paymentMode}`
+        notes: `Payment Paid to Vendor via ${vp.paymentMode}`
+      });
+    });
+
+    // Add General & Operational Expenses
+    expenses.forEach(exp => {
+      allEvents.push({
+        id: `exp-${exp.id}`,
+        time: exp.date,
+        type: "EXPENSE",
+        voucherNumber: exp.expenseNumber,
+        particulars: `Expense: ${exp.category}`,
+        amount: exp.amount,
+        notes: exp.description ? (typeof exp.description === "string" ? exp.description.slice(0, 50) : "") : "Operational Expense"
+      });
+    });
+
+    // Add Credit Notes (Sales Returns)
+    creditNotes.forEach(cn => {
+      allEvents.push({
+        id: `cn-${cn.id}`,
+        time: cn.creditNoteDate,
+        type: "CREDIT_NOTE",
+        voucherNumber: cn.creditNoteNumber,
+        particulars: cn.customer?.businessName || "Customer",
+        amount: cn.totalAmount,
+        notes: `Credit Note issued (${cn.reason})`
       });
     });
 
@@ -1732,8 +1888,8 @@ export async function getDayBook(dateStr?: string) {
 
     allEvents.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
-    const totalInflow = payments.reduce((a, b) => a + b.amount, 0);
-    const totalOutflow = vendorPayments.reduce((a, b) => a + b.amount, 0);
+    const totalInflow = Number(payments.reduce((a, b) => a + b.amount, 0).toFixed(2));
+    const totalOutflow = Number((vendorPayments.reduce((a, b) => a + b.amount, 0) + expenses.reduce((a, b) => a + b.amount, 0)).toFixed(2));
 
     return {
       success: true,
@@ -1741,11 +1897,11 @@ export async function getDayBook(dateStr?: string) {
       events: allEvents,
       summary: {
         totalVouchers: allEvents.length,
-        totalSales: invoices.reduce((a, b) => a + b.totalAmount, 0),
-        totalPurchases: bills.reduce((a, b) => a + b.totalAmount, 0),
+        totalSales: Number(invoices.reduce((a, b) => a + b.totalAmount, 0).toFixed(2)),
+        totalPurchases: Number(bills.reduce((a, b) => a + b.totalAmount, 0).toFixed(2)),
         totalInflow,
         totalOutflow,
-        netCashFlow: totalInflow - totalOutflow
+        netCashFlow: Number((totalInflow - totalOutflow).toFixed(2))
       }
     };
   } catch (error: any) {

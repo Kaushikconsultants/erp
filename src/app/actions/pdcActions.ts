@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { syncSystemLedgers } from "./accountingActions";
 
 export interface CreatePdcInput {
   type: 'RECEIVED' | 'ISSUED';
@@ -174,11 +175,54 @@ export async function clearPostDatedCheque(input: {
     if (!bankLedger) return { success: false, error: "Target bank ledger not found" };
 
     const clearDate = input.clearanceDate ? new Date(input.clearanceDate) : new Date();
-    const partyName = cheque.type === 'RECEIVED' ? (cheque.customer?.businessName || 'Customer') : (cheque.vendor?.companyName || 'Vendor');
+    const isReceived = cheque.type === 'RECEIVED';
+    const partyName = isReceived ? (cheque.customer?.businessName || 'Customer') : (cheque.vendor?.companyName || 'Vendor');
+
+    // Find party ledger (Customer or Vendor)
+    let partyLedger = null;
+    if (cheque.customerId) {
+      partyLedger = await prisma.ledgerAccount.findFirst({
+        where: { partyType: "CUSTOMER", partyId: cheque.customerId }
+      });
+    } else if (cheque.vendorId) {
+      partyLedger = await prisma.ledgerAccount.findFirst({
+        where: { partyType: "VENDOR", partyId: cheque.vendorId }
+      });
+    }
+
+    if (!partyLedger) {
+      const defaultGroupCode = isReceived ? "SUNDRY_DEBTORS" : "SUNDRY_CREDITORS";
+      partyLedger = await prisma.ledgerAccount.findFirst({
+        where: { accountGroup: { code: defaultGroupCode } }
+      }) || await prisma.ledgerAccount.findFirst({
+        where: { code: isReceived ? "SYS_CASH" : "SYS_GEN_EXP" }
+      });
+    }
+
+    const lines = [
+      {
+        ledgerAccountId: bankLedger.id,
+        debit: isReceived ? cheque.amount : 0,
+        credit: isReceived ? 0 : cheque.amount,
+        particulars: `Bank ${isReceived ? 'Receipt' : 'Payment'} - Cheque #${cheque.chequeNumber}`,
+        isReconciled: true,
+        bankClearanceDate: clearDate
+      }
+    ];
+
+    if (partyLedger) {
+      lines.push({
+        ledgerAccountId: partyLedger.id,
+        debit: isReceived ? 0 : cheque.amount,
+        credit: isReceived ? cheque.amount : 0,
+        particulars: `PDC Clearance #${cheque.chequeNumber} for ${partyName}`,
+        isReconciled: true,
+        bankClearanceDate: clearDate
+      });
+    }
 
     // 1. Create Double-Entry Journal Entry
     const voucherNumber = `JV-PDC-${Date.now().toString().slice(-6)}`;
-    const isReceived = cheque.type === 'RECEIVED';
 
     const journal = await prisma.journalEntry.create({
       data: {
@@ -193,29 +237,12 @@ export async function clearPostDatedCheque(input: {
         isSystemGenerated: true,
         createdBy: session.user.name || "System",
         lines: {
-          create: [
-            {
-              ledgerAccountId: bankLedger.id,
-              debit: isReceived ? cheque.amount : 0,
-              credit: isReceived ? 0 : cheque.amount,
-              particulars: `Bank ${isReceived ? 'Receipt' : 'Payment'} - Cheque #${cheque.chequeNumber}`,
-              isReconciled: true,
-              bankClearanceDate: clearDate
-            }
-          ]
+          create: lines
         }
       }
     });
 
-    // 2. Update Bank Ledger Balance
-    await prisma.ledgerAccount.update({
-      where: { id: bankLedger.id },
-      data: {
-        currentBalance: isReceived ? bankLedger.currentBalance + cheque.amount : bankLedger.currentBalance - cheque.amount
-      }
-    });
-
-    // 3. Update PDC Status
+    // 2. Update PDC Status
     await prisma.postDatedCheque.update({
       where: { id: cheque.id },
       data: {
@@ -226,8 +253,13 @@ export async function clearPostDatedCheque(input: {
       }
     });
 
+    // 3. Recalculate & Synchronize all Ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/accounting/pdc");
     revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true, message: `Cheque #${cheque.chequeNumber} cleared successfully into ${bankLedger.name}.` };
   } catch (err: any) {
     console.error("Error clearing PDC:", err);

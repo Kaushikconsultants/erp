@@ -18,7 +18,8 @@ export async function exportTallySalesInvoices(startDateStr?: string, endDateStr
 
     const invoices = await prisma.invoice.findMany({
       where: {
-        customer: { organizationId },
+        OR: [{ organizationId }, { customer: { organizationId } }],
+        status: { not: "Cancelled" },
         createdAt: { gte: startDate, lte: endDate }
       },
       include: {
@@ -105,6 +106,8 @@ export async function exportTallySalesInvoices(startDateStr?: string, endDateStr
         });
       } else {
         // Fallback row for summary invoice
+        const halfTax = (Number(inv.taxAmount) || 0) / 2;
+        const sub = Number(inv.subtotal) || (Number(inv.totalAmount) - (Number(inv.taxAmount) || 0));
         csvRows.push([
           invDate,
           "Sales",
@@ -115,15 +118,15 @@ export async function exportTallySalesInvoices(startDateStr?: string, endDateStr
           "Sales Account",
           "6109",
           "1",
-          String(inv.subtotal),
-          inv.subtotal.toFixed(2),
+          String(sub),
+          sub.toFixed(2),
           "2.5",
-          (inv.taxAmount / 2).toFixed(2),
+          halfTax.toFixed(2),
           "2.5",
-          (inv.taxAmount / 2).toFixed(2),
+          halfTax.toFixed(2),
           "0",
           "0.00",
-          inv.totalAmount.toFixed(2),
+          Number(inv.totalAmount).toFixed(2),
           inv.status,
           `"Invoice #${inv.invoiceNumber}"`
         ]);
