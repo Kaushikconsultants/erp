@@ -233,12 +233,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 42px;
 }
 
 .col-header-left {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  flex: 1;
 }
 
 .col-dot {
@@ -248,11 +251,123 @@
   flex-shrink: 0;
 }
 
+.col-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  min-width: 0;
+}
+
+.col-title-wrap:hover {
+  background-color: #f1f5f9;
+}
+
 .col-title {
   font-weight: 700;
   font-size: 0.84rem;
   color: #0f172a;
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.col-edit-icon {
+  opacity: 0;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  transition: opacity 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.col-title-wrap:hover .col-edit-icon {
+  opacity: 1;
+  color: #4f46e5;
+}
+
+.col-title-inline-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.col-title-input {
+  font-size: 0.78rem;
+  font-weight: 700;
+  font-family: inherit;
+  color: #0f172a;
+  background: #ffffff;
+  border: 1.5px solid #4f46e5;
+  border-radius: 4px;
+  padding: 2px 6px;
+  width: 100px;
+  min-width: 60px;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.12);
+}
+
+.col-title-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.col-title-action-btn.save {
+  background-color: #059669;
+  color: #ffffff;
+}
+
+.col-title-action-btn.save:hover {
+  background-color: #047857;
+}
+
+.col-title-action-btn.cancel {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+}
+
+.col-title-action-btn.cancel:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.stage-customize-btn {
+  padding: 7px 11px;
+  border-radius: 7px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  font-size: 0.8rem;
+  font-family: inherit;
+  color: #475569;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  margin-left: auto;
+}
+
+.stage-customize-btn:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+  color: #4f46e5;
 }
 
 .col-badge {
@@ -261,12 +376,15 @@
   padding: 1px 6px;
   border-radius: 8px;
   border: 1px solid transparent;
+  flex-shrink: 0;
 }
 
 .col-sum {
   font-size: 0.74rem;
   font-weight: 700;
   color: #475569;
+  flex-shrink: 0;
+  margin-left: 4px;
 }
 
 .kanban-col-cards {

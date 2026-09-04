@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { updateLeadStage, updateLeadValue, assignLeadRep, advanceLeadStep } from '@/app/actions/leadActions';
 import Link from 'next/link';
 import { 
@@ -26,7 +26,10 @@ import {
   PhoneCall,
   Clock,
   Sparkles,
-  Building2
+  Building2,
+  Check,
+  SlidersHorizontal,
+  RotateCcw
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
@@ -108,6 +111,98 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const [sortBy, setSortBy] = useState<'VALUE_HIGH' | 'VALUE_LOW' | 'NAME' | 'NEWEST'>('VALUE_HIGH');
   const [currentView, setCurrentView] = useState<'BOARD' | 'FOCUS' | 'TARGETS'>('BOARD');
   
+  // Custom Stage Titles State & Persistence
+  const [customStageTitles, setCustomStageTitles] = useState<Record<string, string>>({});
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [editingStageName, setEditingStageName] = useState<string>('');
+  const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
+  const [modalStageNames, setModalStageNames] = useState<Record<string, string>>({});
+
+  // Load custom stage names from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('crm_pipeline_stage_names');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          setCustomStageTitles(parsed);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load custom stage names', e);
+    }
+  }, []);
+
+  // Compute dynamic stages with custom titles
+  const stages = useMemo(() => {
+    return STAGES.map(s => ({
+      ...s,
+      title: customStageTitles[s.id] || s.title
+    }));
+  }, [customStageTitles]);
+
+  // Handle saving individual stage name
+  const handleSaveStageName = (stageId: string, customName?: string) => {
+    const nameToSave = (customName !== undefined ? customName : editingStageName).trim();
+    const defaultStage = STAGES.find(s => s.id === stageId);
+    const newTitles = { ...customStageTitles };
+
+    if (!nameToSave || nameToSave === defaultStage?.title) {
+      delete newTitles[stageId];
+    } else {
+      newTitles[stageId] = nameToSave;
+    }
+
+    setCustomStageTitles(newTitles);
+    setEditingStageId(null);
+
+    try {
+      localStorage.setItem('crm_pipeline_stage_names', JSON.stringify(newTitles));
+    } catch (e) {
+      console.error('Failed to save custom stage names', e);
+    }
+  };
+
+  // Handle opening customize modal
+  const handleOpenCustomizeModal = () => {
+    const initial: Record<string, string> = {};
+    STAGES.forEach(s => {
+      initial[s.id] = customStageTitles[s.id] || s.title;
+    });
+    setModalStageNames(initial);
+    setIsCustomizeModalOpen(true);
+  };
+
+  // Handle saving from customize modal
+  const handleSaveModalStageNames = () => {
+    const newTitles: Record<string, string> = {};
+    STAGES.forEach(s => {
+      const val = (modalStageNames[s.id] || '').trim();
+      if (val && val !== s.title) {
+        newTitles[s.id] = val;
+      }
+    });
+
+    setCustomStageTitles(newTitles);
+    setIsCustomizeModalOpen(false);
+
+    try {
+      localStorage.setItem('crm_pipeline_stage_names', JSON.stringify(newTitles));
+    } catch (e) {
+      console.error('Failed to save stage names', e);
+    }
+  };
+
+  // Handle reset to default stage names
+  const handleResetStages = () => {
+    setCustomStageTitles({});
+    setModalStageNames({});
+    try {
+      localStorage.removeItem('crm_pipeline_stage_names');
+    } catch (e) {}
+    setIsCustomizeModalOpen(false);
+  };
+
   // Advance Modal State
   const [advancingLead, setAdvancingLead] = useState<any | null>(null);
   const [advanceNextStage, setAdvanceNextStage] = useState('');
@@ -179,7 +274,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
     return result;
   }, [leads, searchQuery, selectedRepFilter, sortBy]);
 
-  const activeStageConfig = STAGES.find(s => s.id === activeStage) || STAGES[1];
+  const activeStageConfig = stages.find(s => s.id === activeStage) || stages[1];
   const activeStageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === activeStage);
   const activeStageTotalValue = activeStageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
 
@@ -196,7 +291,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   };
 
   const handleOpenAdvanceModal = (lead: any, defaultNextStage?: string) => {
-    const currentConfig = STAGES.find(s => s.id === (lead.leadStage || 'New Lead'));
+    const currentConfig = stages.find(s => s.id === (lead.leadStage || 'New Lead'));
     setAdvancingLead(lead);
     setAdvanceNextStage(defaultNextStage || currentConfig?.nextStep || 'Qualified');
     setAdvanceNotes('');
@@ -364,7 +459,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             onChange={(e) => handleStageChange(lead.id, e.target.value)}
             className="deal-stage-select"
           >
-            {STAGES.map(s => (
+            {stages.map(s => (
               <option key={s.id} value={s.id}>{s.title}</option>
             ))}
           </select>
@@ -376,7 +471,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           {lead.leadStage !== 'Won' && lead.leadStage !== 'Lost' && (
             <button
               type="button"
-              onClick={() => handleOpenAdvanceModal(lead, STAGES.find(s => s.id === (lead.leadStage || 'New Lead'))?.nextStep || 'Qualified')}
+              onClick={() => handleOpenAdvanceModal(lead, stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.nextStep || 'Qualified')}
               className="btn-step-adv"
               title="Advance to next pipeline stage"
             >
@@ -559,6 +654,17 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
               <option value="NAME">Sort: Customer Name (A-Z)</option>
             </select>
 
+            {/* Rename / Customize Stages Button */}
+            <button
+              type="button"
+              onClick={handleOpenCustomizeModal}
+              className="stage-customize-btn"
+              title="Edit and rename pipeline stage options"
+            >
+              <SlidersHorizontal size={13} />
+              <span>Rename Stages</span>
+            </button>
+
             {searchQuery && (
               <button 
                 type="button" 
@@ -574,7 +680,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           {currentView === 'BOARD' ? (
             /* MULTI-COLUMN KANBAN BOARD */
             <div className="kanban-track">
-              {STAGES.map(stage => {
+              {stages.map(stage => {
                 const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                 const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
 
@@ -587,9 +693,57 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                     <div className="kanban-col-header">
                       <div className="col-header-left">
                         <span className="col-dot" style={{ backgroundColor: stage.color }}></span>
-                        <span className="col-title">
-                          {stage.title}
-                        </span>
+                        
+                        {editingStageId === stage.id ? (
+                          <div className="col-title-inline-edit" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              autoFocus
+                              value={editingStageName}
+                              onChange={(e) => setEditingStageName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveStageName(stage.id);
+                                if (e.key === 'Escape') setEditingStageId(null);
+                              }}
+                              onBlur={() => handleSaveStageName(stage.id)}
+                              className="col-title-input"
+                              maxLength={30}
+                            />
+                            <button
+                              type="button"
+                              onMouseDown={(e) => { e.preventDefault(); handleSaveStageName(stage.id); }}
+                              className="col-title-action-btn save"
+                              title="Save name"
+                            >
+                              <Check size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onMouseDown={(e) => { e.preventDefault(); setEditingStageId(null); }}
+                              className="col-title-action-btn cancel"
+                              title="Cancel"
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div 
+                            className="col-title-wrap"
+                            onClick={() => {
+                              setEditingStageId(stage.id);
+                              setEditingStageName(stage.title);
+                            }}
+                            title="Click to rename this stage column"
+                          >
+                            <span className="col-title">
+                              {stage.title}
+                            </span>
+                            <span className="col-edit-icon" title="Rename column">
+                              <Edit2 size={10} />
+                            </span>
+                          </div>
+                        )}
+
                         <span 
                           className="col-badge" 
                           style={{ backgroundColor: stage.badgeBg, color: stage.color, borderColor: stage.border }}
@@ -631,7 +785,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
             }}>
               {/* Horizontal Stepper */}
               <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                {STAGES.map((stage) => {
+                {stages.map((stage) => {
                   const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                   const count = stageLeads.length;
                   const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
@@ -753,7 +907,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                   onChange={(e) => setAdvanceNextStage(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, color: '#1e293b', backgroundColor: '#f8fafc', outline: 'none' }}
                 >
-                  {STAGES.map(s => (
+                  {stages.map(s => (
                     <option key={s.id} value={s.id}>
                       {s.title} {s.id === 'Won' ? '🏆 (Close Deal)' : s.id === 'Lost' ? '❌ (Lost/Dropped)' : ''}
                     </option>
@@ -810,7 +964,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                     cursor: advancingLoading ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  {advancingLoading ? "Advancing..." : `Move to ${advanceNextStage} ➔`}
+                  {advancingLoading ? "Advancing..." : `Move to ${stages.find(s => s.id === advanceNextStage)?.title || advanceNextStage} ➔`}
                 </button>
               </div>
             </div>
@@ -831,6 +985,165 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
           employees={employees}
           leadToConvert={convertingLead}
         />
+      )}
+
+      {/* ─── 6. CUSTOMIZE PIPELINE STAGES MODAL ─── */}
+      {isCustomizeModalOpen && (
+        <div 
+          className="modal-backdrop" 
+          style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        >
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+            
+            {/* Modal Header */}
+            <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <SlidersHorizontal size={16} style={{ color: '#818cf8' }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700 }}>
+                    Rename Pipeline Stages
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
+                    Customize the display names of each column in your sales workflow
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsCustomizeModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '70vh', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {STAGES.map((s, idx) => {
+                  const currentCustomVal = modalStageNames[s.id] ?? s.title;
+                  return (
+                    <div 
+                      key={s.id} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '12px', 
+                        padding: '10px 12px', 
+                        backgroundColor: '#f8fafc', 
+                        borderRadius: '8px', 
+                        border: '1px solid #e2e8f0' 
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '130px' }}>
+                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: s.color, flexShrink: 0 }}></span>
+                        <div>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1e293b' }}>
+                            Step {idx + 1}
+                          </div>
+                          <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                            Default: {s.title}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <input
+                          type="text"
+                          value={currentCustomVal}
+                          placeholder={`Enter name for ${s.title}...`}
+                          onChange={(e) => setModalStageNames({
+                            ...modalStageNames,
+                            [s.id]: e.target.value
+                          })}
+                          maxLength={30}
+                          style={{
+                            width: '100%',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.82rem',
+                            fontWeight: 600,
+                            color: '#0f172a',
+                            backgroundColor: '#ffffff',
+                            outline: 'none',
+                            fontFamily: 'inherit'
+                          }}
+                        />
+                      </div>
+
+                      {currentCustomVal !== s.title && (
+                        <button
+                          type="button"
+                          onClick={() => setModalStageNames({ ...modalStageNames, [s.id]: s.title })}
+                          title="Reset to default name"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#94a3b8',
+                            cursor: 'pointer',
+                            fontSize: '0.7rem',
+                            padding: '4px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <RotateCcw size={12} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderTop: '1px solid #f1f5f9', backgroundColor: '#fafafa' }}>
+              <button
+                type="button"
+                onClick={handleResetStages}
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '5px', 
+                  padding: '7px 12px', 
+                  borderRadius: '6px', 
+                  border: '1px solid #e2e8f0', 
+                  backgroundColor: '#fff', 
+                  color: '#dc2626', 
+                  fontWeight: 600, 
+                  fontSize: '0.78rem', 
+                  cursor: 'pointer' 
+                }}
+              >
+                <RotateCcw size={12} /> Reset to Defaults
+              </button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomizeModalOpen(false)}
+                  style={{ padding: '7px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveModalStageNames}
+                  style={{ 
+                    padding: '7px 16px', 
+                    borderRadius: '6px', 
+                    border: 'none', 
+                    backgroundColor: '#4f46e5', 
+                    color: '#ffffff', 
+                    fontWeight: 600, 
+                    fontSize: '0.8rem', 
+                    cursor: 'pointer' 
+                  }}
+                >
+                  Save Stage Names
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
       )}
 
     </div>

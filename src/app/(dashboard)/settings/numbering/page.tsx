@@ -13,6 +13,14 @@ import {
 } from 'lucide-react';
 import { getDocumentSequences, saveDocumentSequences, DocSeriesItem } from '@/app/actions/numberingActions';
 
+function getFinancialYear(date: Date = new Date()): string {
+  const month = date.getMonth();
+  const fullYear = date.getFullYear();
+  const startYear = month >= 3 ? fullYear : fullYear - 1;
+  const endYear = startYear + 1;
+  return `${startYear}-${String(endYear).slice(-2)}`;
+}
+
 export default function DocumentNumberingSettingsPage() {
   const [seriesList, setSeriesList] = useState<DocSeriesItem[]>([]);
   const [loading, setLoading] = useState(true);
