@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import { canUserAccessSection } from "@/lib/authPermissions";
 import { getTenantOrgId } from "@/lib/tenant";
+import { syncSystemLedgers } from "@/app/actions/accountingActions";
 
 async function canManagePurchases() {
   const session = await getServerSession(authOptions);
@@ -117,7 +118,14 @@ export async function createVendorCredit(data: {
         vendor: { organizationId }
       }
     });
-    const creditNoteNumber = `DN-${String(count + 1).padStart(4, '0')}`;
+    let nextNum = count + 1;
+    let creditNoteNumber = `DN-${String(nextNum).padStart(4, '0')}`;
+    let exists = await prisma.vendorCredit.findUnique({ where: { creditNoteNumber } });
+    while (exists) {
+      nextNum++;
+      creditNoteNumber = `DN-${String(nextNum).padStart(4, '0')}`;
+      exists = await prisma.vendorCredit.findUnique({ where: { creditNoteNumber } });
+    }
 
     let subtotal = 0;
     let taxAmount = 0;
@@ -191,10 +199,16 @@ export async function createVendorCredit(data: {
       return newCredit;
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/vendor-credits");
     revalidatePath("/bills");
     revalidatePath("/vendors");
     revalidatePath("/products");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true, credit };
   } catch (error: any) {
     console.error("Failed to create vendor credit:", error);
@@ -245,10 +259,91 @@ export async function applyVendorCreditToBill(vendorCreditId: string, billId: st
       });
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/vendor-credits");
     revalidatePath("/bills");
+    revalidatePath("/vendors");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to apply vendor credit: " + error.message };
+  }
+}
+
+export async function deleteVendorCredit(creditId: string) {
+  if (!await canManagePurchases()) return { error: "Unauthorized" };
+
+  try {
+    const credit = await prisma.vendorCredit.findUnique({
+      where: { id: creditId },
+      include: {
+        items: true,
+        bill: true
+      }
+    });
+
+    if (!credit) return { error: "Vendor Credit not found" };
+
+    await prisma.$transaction(async (tx) => {
+      // 1. If credit was applied to a Bill, reverse bill paid/due amounts
+      if (credit.allocatedAmount > 0 && credit.billId) {
+        const bill = await tx.bill.findUnique({ where: { id: credit.billId } });
+        if (bill) {
+          const newPaid = Math.max(0, bill.amountPaid - credit.allocatedAmount);
+          const newDue = Math.min(bill.totalAmount, bill.amountDue + credit.allocatedAmount);
+          await tx.bill.update({
+            where: { id: credit.billId },
+            data: {
+              amountPaid: newPaid,
+              amountDue: newDue,
+              status: newPaid <= 0 ? 'Open' : 'Partially Paid'
+            }
+          });
+        }
+      }
+
+      // 2. Replenish product inventory for items
+      for (const it of credit.items) {
+        if (it.productId && it.quantity > 0) {
+          await tx.product.update({
+            where: { id: it.productId },
+            data: { stockQuantity: { increment: it.quantity } }
+          }).catch(() => {});
+
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: it.productId,
+              type: 'IN',
+              quantity: it.quantity,
+              reference: `CANCEL-${credit.creditNoteNumber}`,
+              notes: `Stock restocked due to deletion of Debit Note ${credit.creditNoteNumber}`
+            }
+          }).catch(() => {});
+        }
+      }
+
+      // 3. Delete items & credit
+      await tx.vendorCreditItem.deleteMany({ where: { vendorCreditId: creditId } });
+      await tx.vendorCredit.delete({ where: { id: creditId } });
+    });
+
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
+    revalidatePath("/vendor-credits");
+    revalidatePath("/bills");
+    revalidatePath("/vendors");
+    revalidatePath("/products");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to delete vendor credit:", error);
+    return { error: error.message || "Failed to delete vendor credit" };
   }
 }

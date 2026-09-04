@@ -4,7 +4,7 @@ import DatePicker from '@/components/ui/DatePicker';
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { createPurchaseOrder, updatePOStatus, receiveGRN } from "@/app/actions/purchaseActions";
+import { createPurchaseOrder, updatePOStatus, receiveGRN, deletePurchaseOrder } from "@/app/actions/purchaseActions";
 import ModernSearchableSelect, { SelectOption } from "@/components/ui/ModernSearchableSelect";
 import {
   ShoppingBag,
@@ -293,6 +293,18 @@ export default function PurchasesClient({
     }
     setGrnOpen(null);
     window.location.reload();
+  }
+
+  async function handleDeletePO(poId: string, poNumber: string) {
+    if (!confirm(`Are you sure you want to delete Purchase Order #${poNumber}? Any received GRN stock will be reversed.`)) return;
+    setLoading(true);
+    const res = await deletePurchaseOrder(poId);
+    setLoading(false);
+    if (res.error) {
+      alert(res.error);
+    } else {
+      setOrders(prev => prev.filter(o => o.id !== poId));
+    }
   }
 
   return (
@@ -888,6 +900,17 @@ export default function PurchasesClient({
                           style={{ padding: "4px 10px", fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "4px" }}
                         >
                           <Printer size={12} /> Voucher
+                        </button>
+
+                        {/* Delete PO Button */}
+                        <button
+                          type="button"
+                          className="action-btn text-red"
+                          onClick={() => handleDeletePO(po.id, po.poNumber)}
+                          title="Delete / Cancel Purchase Order"
+                          style={{ padding: "4px 8px", fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "4px", color: "#dc2626" }}
+                        >
+                          <Trash2 size={12} />
                         </button>
                       </div>
                     </td>

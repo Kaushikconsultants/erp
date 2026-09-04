@@ -118,17 +118,56 @@ export async function deleteVendor(id: string) {
   if (!await canManageVendors()) return { error: "Unauthorized" };
   try {
     const organizationId = await getTenantOrgId();
-    const existing = await prisma.vendor.findUnique({ where: { id }, select: { organizationId: true } });
+    const existing = await prisma.vendor.findUnique({
+      where: { id },
+      include: {
+        purchaseOrders: { select: { id: true } },
+        bills: { select: { id: true } },
+        payments: { select: { id: true } },
+        vendorCredits: { select: { id: true } },
+        deliveryChallans: { select: { id: true } },
+        postDatedCheques: { select: { id: true } }
+      }
+    });
+
     if (!existing) return { error: "Vendor not found" };
     if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
       return { error: "Unauthorized access to vendor" };
     }
 
-    await prisma.vendor.delete({ where: { id } });
+    const linkedRecords: string[] = [];
+    if (existing.purchaseOrders.length > 0) linkedRecords.push(`${existing.purchaseOrders.length} Purchase Order(s)`);
+    if (existing.bills.length > 0) linkedRecords.push(`${existing.bills.length} Bill(s)`);
+    if (existing.payments.length > 0) linkedRecords.push(`${existing.payments.length} Payment(s)`);
+    if (existing.vendorCredits.length > 0) linkedRecords.push(`${existing.vendorCredits.length} Debit Note(s)`);
+    if (existing.deliveryChallans.length > 0) linkedRecords.push(`${existing.deliveryChallans.length} Delivery Challan(s)`);
+    if (existing.postDatedCheques.length > 0) linkedRecords.push(`${existing.postDatedCheques.length} Cheque(s)`);
+
+    if (linkedRecords.length > 0) {
+      return {
+        error: `Cannot delete vendor "${existing.companyName}" because active records exist: ${linkedRecords.join(", ")}. Please remove or reassign these records first.`
+      };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Clean up orphaned ledger account if any
+      await tx.ledgerAccount.deleteMany({
+        where: {
+          organizationId: existing.organizationId,
+          code: `VEN-${id.slice(0, 8).toUpperCase()}`
+        }
+      }).catch(() => {});
+
+      await tx.vendor.delete({ where: { id } });
+    });
+
     revalidatePath("/vendors");
+    revalidatePath("/bills");
+    revalidatePath("/purchases");
     return { success: true };
   } catch (error: any) {
-    return { error: "Cannot delete vendor with associated purchase orders." };
+    console.error("Failed to delete vendor:", error);
+    return { error: error.message || "Failed to delete vendor" };
   }
 }
 

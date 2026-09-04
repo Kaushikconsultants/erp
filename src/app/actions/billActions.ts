@@ -151,7 +151,14 @@ export async function createBill(data: {
 
     // Generate unique Bill Number e.g. BILL-0001
     const count = await prisma.bill.count({ where: { organizationId } });
-    const billNumber = `BILL-${String(count + 1).padStart(4, '0')}`;
+    let nextNum = count + 1;
+    let billNumber = `BILL-${String(nextNum).padStart(4, '0')}`;
+    let exists = await prisma.bill.findUnique({ where: { billNumber } });
+    while (exists) {
+      nextNum++;
+      billNumber = `BILL-${String(nextNum).padStart(4, '0')}`;
+      exists = await prisma.bill.findUnique({ where: { billNumber } });
+    }
 
     // Calculate item totals
     let subtotal = 0;
@@ -232,10 +239,16 @@ export async function createBill(data: {
       return newBill;
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/bills");
     revalidatePath("/vendors");
     revalidatePath("/purchases");
     revalidatePath("/products");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true, bill: JSON.parse(JSON.stringify(bill)) };
   } catch (error: any) {
     console.error("Failed to create bill:", error);

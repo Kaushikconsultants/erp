@@ -52,9 +52,16 @@ export async function createPurchaseOrder(data: {
   if (!data.vendorId || !data.items?.length) return { error: "Vendor and at least one item are required" };
 
   try {
-    // Generate PO number
+    // Generate unique PO number
     const count = await prisma.purchaseOrder.count();
-    const poNumber = `PO-${String(count + 1).padStart(5, '0')}`;
+    let nextNum = count + 1;
+    let poNumber = `PO-${String(nextNum).padStart(5, '0')}`;
+    let exists = await prisma.purchaseOrder.findUnique({ where: { poNumber } });
+    while (exists) {
+      nextNum++;
+      poNumber = `PO-${String(nextNum).padStart(5, '0')}`;
+      exists = await prisma.purchaseOrder.findUnique({ where: { poNumber } });
+    }
 
     const totalValue = data.items.reduce((sum, item) => sum + item.quantity * item.rate, 0);
     const taxAmount = data.items.reduce((sum, item) => sum + (item.taxAmount || 0), 0);
@@ -99,6 +106,64 @@ export async function updatePOStatus(id: string, status: string) {
   }
 }
 
+export async function deletePurchaseOrder(poId: string) {
+  if (!await canManagePurchases()) return { error: "Unauthorized" };
+
+  try {
+    const po = await prisma.purchaseOrder.findUnique({
+      where: { id: poId },
+      include: {
+        items: true,
+        bills: true
+      }
+    });
+
+    if (!po) return { error: "Purchase Order not found" };
+
+    if (po.bills && po.bills.length > 0) {
+      return {
+        error: `Cannot delete PO #${po.poNumber} because it is linked to ${po.bills.length} vendor bill(s). Please delete or unlink the bills first.`
+      };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. If any items were received (GRN), reverse the inventory additions
+      for (const it of po.items) {
+        if (it.receivedQty > 0) {
+          await tx.product.update({
+            where: { id: it.productId },
+            data: { stockQuantity: { decrement: it.receivedQty } }
+          }).catch(() => {});
+
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: it.productId,
+              type: 'OUT',
+              quantity: it.receivedQty,
+              reference: `CANCEL-${po.poNumber}`,
+              notes: `Stock reversed due to cancellation/deletion of Purchase Order #${po.poNumber}`
+            }
+          }).catch(() => {});
+        }
+      }
+
+      // 2. Delete PO Items
+      await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: poId } });
+
+      // 3. Delete PO
+      await tx.purchaseOrder.delete({ where: { id: poId } });
+    });
+
+    revalidatePath("/purchases");
+    revalidatePath("/products");
+    revalidatePath("/vendors");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to delete purchase order:", error);
+    return { error: error.message || "Failed to delete purchase order" };
+  }
+}
+
 export async function receiveGRN(poId: string, receivedItems: { itemId: string; receivedQty: number }[], warehouseId?: string) {
   if (!await canManagePurchases()) return { error: "Unauthorized" };
 
@@ -109,6 +174,9 @@ export async function receiveGRN(poId: string, receivedItems: { itemId: string; 
 
     // Process each received item
     await prisma.$transaction(async (tx) => {
+      const po = await tx.purchaseOrder.findUnique({ where: { id: poId } });
+      const refCode = po ? po.poNumber : poId;
+
       for (const ri of receivedItems) {
         const poItem = await tx.purchaseOrderItem.findUnique({
           where: { id: ri.itemId },
@@ -136,10 +204,10 @@ export async function receiveGRN(poId: string, receivedItems: { itemId: string; 
             productId: poItem.productId,
             type: 'IN',
             quantity: ri.receivedQty,
-            reference: `GRN-${poId}`,
+            reference: `GRN-${refCode}`,
             warehouseId: warehouseId || null,
             employeeId: employee?.id || null,
-            notes: `Goods received against PO`
+            notes: `Goods received against PO #${refCode}`
           }
         });
       }

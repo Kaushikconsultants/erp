@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 
 import { canUserAccessSection } from "@/lib/authPermissions";
 import { getTenantOrgId } from "@/lib/tenant";
+import { syncSystemLedgers } from "@/app/actions/accountingActions";
 
 async function canManagePayments() {
   const session = await getServerSession(authOptions);
@@ -94,7 +95,14 @@ export async function recordVendorPayment(data: {
 
     // Generate unique payment number
     const count = await prisma.vendorPayment.count();
-    const paymentNumber = `VPAY-${String(count + 1).padStart(4, '0')}`;
+    let nextNum = count + 1;
+    let paymentNumber = `VPAY-${String(nextNum).padStart(4, '0')}`;
+    let exists = await prisma.vendorPayment.findUnique({ where: { paymentNumber } });
+    while (exists) {
+      nextNum++;
+      paymentNumber = `VPAY-${String(nextNum).padStart(4, '0')}`;
+      exists = await prisma.vendorPayment.findUnique({ where: { paymentNumber } });
+    }
 
     const payment = await prisma.$transaction(async (tx) => {
       const newPayment = await tx.vendorPayment.create({
@@ -140,9 +148,15 @@ export async function recordVendorPayment(data: {
       return newPayment;
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/payments-made");
     revalidatePath("/bills");
     revalidatePath("/vendors");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true, payment };
   } catch (error: any) {
     console.error("Failed to record vendor payment:", error);
@@ -187,8 +201,15 @@ export async function cancelVendorPayment(paymentId: string, reason: string) {
       });
     });
 
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
     revalidatePath("/payments-made");
     revalidatePath("/bills");
+    revalidatePath("/vendors");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to cancel vendor payment: " + error.message };

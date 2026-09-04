@@ -24,7 +24,7 @@ import {
   Receipt,
   Scale
 } from 'lucide-react';
-import { createVendorCredit, applyVendorCreditToBill } from '@/app/actions/vendorCreditActions';
+import { createVendorCredit, applyVendorCreditToBill, deleteVendorCredit } from '@/app/actions/vendorCreditActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
 
 interface VendorOption {
@@ -338,6 +338,16 @@ export default function VendorCreditsClient({
     } else {
       setApplyModalCredit(null);
       window.location.reload();
+    }
+  };
+
+  const handleDeleteCredit = async (creditId: string, creditNumber: string) => {
+    if (!confirm(`Are you sure you want to delete Debit Note #${creditNumber}? Any inventory returned will be restocked, and bill balances will be updated.`)) return;
+    const res = await deleteVendorCredit(creditId);
+    if (res.error) {
+      alert("Error deleting vendor credit: " + res.error);
+    } else {
+      setCredits(prev => prev.filter(c => c.id !== creditId));
     }
   };
 
@@ -728,6 +738,15 @@ export default function VendorCreditsClient({
                           <Receipt size={12} /> Apply to Bill
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCredit(cred.id, cred.creditNoteNumber)}
+                        title="Delete Debit Note"
+                        style={{ padding: '4px', border: '1px solid #fecaca', borderRadius: '6px', background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </td>
                 </tr>
