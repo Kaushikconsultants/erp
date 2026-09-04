@@ -438,7 +438,20 @@ export async function getAdminSprintTeamHealth(organizationId: string | null) {
           sprintProgressPercent: sprint?.sprintProgressPercent || 0,
           todayCalls: sprint?.todayCalls || 0,
           todayQuotesSent: sprint?.todayQuotesSent || 0,
-          streakDays: sprint?.streakDays || 0
+          todayFollowUps: sprint?.todayFollowUps || 0,
+          todayQuotesConfirmed: sprint?.todayQuotesConfirmed || 0,
+          streakDays: sprint?.streakDays || 0,
+          weekNumber: sprint?.weekNumber || 1,
+          weekName: sprint?.weekName || "Sprint 1: Pipeline & Prospecting",
+          weekStartStr: sprint?.weekStartStr || "",
+          weekEndStr: sprint?.weekEndStr || "",
+          daysRemainingInSprint: sprint?.daysRemainingInSprint || 1,
+          dailyRunRateNeeded: sprint?.dailyRunRateNeeded || 0,
+          sprintGap: sprint?.sprintGap || 0,
+          mtdRevenue: sprint?.mtdRevenue || 0,
+          mtdProgressPercent: sprint?.mtdProgressPercent || 0,
+          mtdGap: sprint?.mtdGap || 0,
+          sprints: sprint?.sprints || []
         };
       })
     );

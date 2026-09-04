@@ -110,6 +110,42 @@ export default function AdminDashboard({
     return Math.max(...currentLeaderboardList.map((emp: any) => Number(emp.total) || 0), 1);
   }, [currentLeaderboardList]);
 
+  // Organization-wide Sprint Summary for Executive Pacing Bar
+  const orgSprintSummary = useMemo(() => {
+    if (!sprintTeamHealth || sprintTeamHealth.length === 0) {
+      return null;
+    }
+    const totalSprintRevenue = sprintTeamHealth.reduce((sum: number, s: any) => sum + (Number(s.currentSprintRevenue) || 0), 0);
+    const totalSprintTarget = sprintTeamHealth.reduce((sum: number, s: any) => sum + (Number(s.currentSprintTarget) || 0), 0);
+    const avgHealthScore = Math.round(
+      sprintTeamHealth.reduce((sum: number, s: any) => sum + (Number(s.sprintHealthScore) || 0), 0) / Math.max(1, sprintTeamHealth.length)
+    );
+    const excellentCount = sprintTeamHealth.filter((s: any) => s.healthStatus === 'EXCELLENT').length;
+    const onTrackCount = sprintTeamHealth.filter((s: any) => s.healthStatus === 'ON_TRACK').length;
+    const atRiskCount = sprintTeamHealth.filter((s: any) => s.healthStatus === 'AT_RISK').length;
+    const currentWeekNum = sprintTeamHealth[0]?.weekNumber || 1;
+    const currentWeekName = sprintTeamHealth[0]?.weekName || `Sprint ${currentWeekNum}: Pipeline & Prospecting`;
+    const daysLeft = sprintTeamHealth[0]?.daysRemainingInSprint || 1;
+    const weekStartStr = sprintTeamHealth[0]?.weekStartStr || '';
+    const weekEndStr = sprintTeamHealth[0]?.weekEndStr || '';
+    const sprintOverallPercent = totalSprintTarget > 0 ? Math.min(100, Math.round((totalSprintRevenue / totalSprintTarget) * 100)) : 0;
+
+    return {
+      totalSprintRevenue,
+      totalSprintTarget,
+      avgHealthScore,
+      excellentCount,
+      onTrackCount,
+      atRiskCount,
+      currentWeekNum,
+      currentWeekName,
+      daysLeft,
+      weekStartStr,
+      weekEndStr,
+      sprintOverallPercent
+    };
+  }, [sprintTeamHealth]);
+
   return (
     <div className="dashboard-container admin-dashboard">
       <div className="dashboard-header">
@@ -747,26 +783,209 @@ export default function AdminDashboard({
       {/* Two-Column Detail Section */}
       <div className="dashboard-details-grid">
         
-        {/* Team Leaderboard with Sprint Health Velocity */}
+        {/* Team Leaderboard with Sprint Health Velocity & Weekly Pacing */}
         <div className="detail-card glass-panel" style={{ gridColumn: 'span 2' }}>
-          <div className="detail-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={18} color="#4f46e5"/>
-              <h3 style={{ margin: 0 }}>Team Performance, Sprint Targets & AI Delegation</h3>
+          <div className="detail-header" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', paddingBottom: '14px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Users size={19} color="#4f46e5"/>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
+                  Team Performance, Sprint Targets & Weekly Pacing
+                </h3>
+              </div>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                Real-time weekly sprint velocity, activity health meters, and AI delegation.
+              </p>
             </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <Link href="/payroll" className="view-all-link">Payroll & Team</Link>
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {orgSprintSummary && (
+                <div style={{
+                  backgroundColor: '#f5f3ff',
+                  border: '1px solid #ddd6fe',
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#6d28d9'
+                }}>
+                  <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#7c3aed', animation: 'pulse 2s infinite' }} />
+                  <span>Week {orgSprintSummary.currentWeekNum} Active</span>
+                  <span style={{ color: '#8b5cf6' }}>•</span>
+                  <span>{orgSprintSummary.daysLeft} {orgSprintSummary.daysLeft === 1 ? 'day' : 'days'} left in sprint</span>
+                </div>
+              )}
+              <Link href="/payroll" className="view-all-link" style={{ fontSize: '0.8rem' }}>Payroll & Team →</Link>
             </div>
           </div>
+
+          {/* Executive Active Sprint Health & Pacing Overview Banner */}
+          {orgSprintSummary && (
+            <div style={{
+              margin: '0 0 16px 0',
+              padding: '14px 16px',
+              backgroundColor: '#f8fafc',
+              borderRadius: '10px',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                
+                {/* Sprint Revenue & Pacing Progress */}
+                <div style={{ flex: '1 1 260px', minWidth: '240px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <Zap size={14} color="#7c3aed" /> Current Sprint Pacing (Week {orgSprintSummary.currentWeekNum})
+                    </span>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a' }}>
+                      ₹{orgSprintSummary.totalSprintRevenue.toLocaleString('en-IN')} <span style={{ fontWeight: 500, color: '#64748b' }}>/ ₹{orgSprintSummary.totalSprintTarget.toLocaleString('en-IN')}</span>
+                      <span style={{ marginLeft: '6px', color: orgSprintSummary.sprintOverallPercent >= 75 ? '#16a34a' : '#6366f1', fontWeight: 700 }}>
+                        ({orgSprintSummary.sprintOverallPercent}%)
+                      </span>
+                    </span>
+                  </div>
+
+                  {/* Team-wide Sprint Progress Bar */}
+                  <div style={{ width: '100%', height: '7px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{
+                      width: `${Math.min(100, orgSprintSummary.sprintOverallPercent)}%`,
+                      height: '100%',
+                      background: orgSprintSummary.sprintOverallPercent >= 80 
+                        ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' 
+                        : 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)',
+                      borderRadius: '4px',
+                      transition: 'width 0.4s ease'
+                    }} />
+                  </div>
+                </div>
+
+                {/* Team Momentum & Status Badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <div style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#ffffff',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>TEAM MOMENTUM</span>
+                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: orgSprintSummary.avgHealthScore >= 70 ? '#16a34a' : orgSprintSummary.avgHealthScore >= 45 ? '#4f46e5' : '#dc2626' }}>
+                      {orgSprintSummary.avgHealthScore}% Health
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: '#dcfce7',
+                      color: '#15803d',
+                      border: '1px solid #bbf7d0',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      🚀 {orgSprintSummary.excellentCount} Ahead
+                    </span>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: '#e0e7ff',
+                      color: '#4338ca',
+                      border: '1px solid #c7d2fe',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      🎯 {orgSprintSummary.onTrackCount} On Track
+                    </span>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: '#fee2e2',
+                      color: '#b91c1c',
+                      border: '1px solid #fecaca',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      ⚠️ {orgSprintSummary.atRiskCount} At Risk
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4-Week Month Sprint Timeline Bar */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: '8px',
+                paddingTop: '8px',
+                borderTop: '1px dashed #e2e8f0'
+              }}>
+                {[
+                  { week: 1, label: 'Sprint 1 (Days 1–7)', weight: '20% Vol', title: 'Pipeline & Prospecting' },
+                  { week: 2, label: 'Sprint 2 (Days 8–14)', weight: '25% Vol', title: 'Warm Conversions' },
+                  { week: 3, label: 'Sprint 3 (Days 15–21)', weight: '30% Vol', title: 'Peak Volume' },
+                  { week: 4, label: 'Sprint 4 (Days 22–End)', weight: '25% Vol', title: 'Closing & Buffer' },
+                ].map((s) => {
+                  const isActive = s.week === orgSprintSummary.currentWeekNum;
+                  const isCompleted = s.week < orgSprintSummary.currentWeekNum;
+                  return (
+                    <div
+                      key={s.week}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        backgroundColor: isActive ? '#f5f3ff' : isCompleted ? '#f8fafc' : '#ffffff',
+                        border: isActive ? '1.5px solid #8b5cf6' : '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        boxShadow: isActive ? '0 2px 6px rgba(139, 92, 246, 0.12)' : 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: isActive ? '#6d28d9' : '#334155' }}>
+                          {s.label}
+                        </span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: isActive ? '#7c3aed' : '#94a3b8' }}>
+                          {s.weight}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: isActive ? '#5b21b6' : '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {isActive ? `⚡ Active (${orgSprintSummary.daysLeft}d left)` : isCompleted ? '✓ Passed' : s.title}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Performance & Sprint Health Table */}
           <div className="table-responsive">
             <table className="dashboard-table">
               <thead>
                 <tr>
-                  <th>Employee</th>
-                  <th>Sales (MTD)</th>
-                  <th>Target %</th>
-                  <th>Sprint Health</th>
-                  <th style={{ textAlign: 'right' }}>Target & Task Management</th>
+                  <th style={{ minWidth: '170px' }}>Employee</th>
+                  <th style={{ minWidth: '150px' }}>Monthly Sales (MTD)</th>
+                  <th style={{ minWidth: '220px' }}>Current Sprint (Week {orgSprintSummary?.currentWeekNum || 1} Bar)</th>
+                  <th style={{ minWidth: '180px' }}>Sprint Health Score</th>
+                  <th style={{ textAlign: 'right', minWidth: '240px' }}>Target & Task Management</th>
                 </tr>
               </thead>
               <tbody>
@@ -775,6 +994,17 @@ export default function AdminDashboard({
                   const healthScore = sprintInfo?.sprintHealthScore ?? 0;
                   const healthStatus = sprintInfo?.healthStatus ?? "ON_TRACK";
                   const streak = sprintInfo?.streakDays ?? 0;
+
+                  // Current sprint calculations
+                  const sprintTarget = sprintInfo?.currentSprintTarget || Math.round((emp.target || 500000) * 0.25);
+                  const sprintRevenue = sprintInfo?.currentSprintRevenue || 0;
+                  const sprintProgress = sprintInfo?.sprintProgressPercent || (sprintTarget > 0 ? Math.round((sprintRevenue / sprintTarget) * 100) : 0);
+                  const daysRemaining = sprintInfo?.daysRemainingInSprint || orgSprintSummary?.daysLeft || 1;
+                  const gap = Math.max(0, sprintTarget - sprintRevenue);
+                  const dailyRunRate = sprintInfo?.dailyRunRateNeeded || Math.round(gap / daysRemaining);
+
+                  const todayCalls = sprintInfo?.todayCalls ?? 0;
+                  const todayQuotes = sprintInfo?.todayQuotesSent ?? 0;
 
                   const employeeTargetObj = {
                     employeeId: emp.id,
@@ -786,56 +1016,150 @@ export default function AdminDashboard({
                     dailyQuotesTarget: sprintInfo?.dailyQuotesTarget,
                     dailyDealsTarget: sprintInfo?.dailyDealsTarget,
                     sprintWeightsJson: sprintInfo?.sprintWeightsJson,
-                    currentSprintTarget: sprintInfo?.currentSprintTarget,
-                    currentSprintRevenue: sprintInfo?.currentSprintRevenue,
-                    sprintProgressPercent: sprintInfo?.sprintProgressPercent,
+                    currentSprintTarget: sprintTarget,
+                    currentSprintRevenue: sprintRevenue,
+                    sprintProgressPercent: sprintProgress,
                     sprintHealthScore: healthScore,
                     healthStatus
                   };
 
                   return (
-                    <tr key={emp.id}>
+                    <tr key={emp.id} style={{ transition: 'background-color 0.15s ease' }}>
+                      
+                      {/* Employee Column */}
                       <td className="font-medium">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontWeight: 600 }}>{emp.name}</span>
-                          {streak > 0 && (
-                            <span style={{ fontSize: '10px', fontWeight: 700, backgroundColor: '#fef08a', color: '#854d0e', padding: '1px 5px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
-                              <Flame size={10} color="#d97706" /> {streak}d
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#0f172a' }}>{emp.name}</span>
+                            {streak > 0 && (
+                              <span style={{ fontSize: '10px', fontWeight: 700, backgroundColor: '#fef08a', color: '#854d0e', padding: '1px 5px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                <Flame size={10} color="#d97706" /> {streak}d
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                            Today: <span style={{ fontWeight: 600, color: '#334155' }}>{todayCalls} calls</span> • <span style={{ fontWeight: 600, color: '#334155' }}>{todayQuotes} quotes</span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Monthly Sales (MTD) */}
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                            <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>
+                              ₹{emp.sales.toLocaleString('en-IN')}
                             </span>
-                          )}
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: emp.targetPercent >= 80 ? '#16a34a' : '#4f46e5' }}>
+                              {emp.targetPercent}% MTD
+                            </span>
+                          </div>
+                          
+                          {/* Mini Progress Bar */}
+                          <div className="mini-progress-bar" style={{ height: '5px', margin: 0 }}>
+                            <div 
+                              className={`mini-progress-fill ${emp.targetPercent >= 100 ? 'bg-success' : 'bg-primary'}`} 
+                              style={{ width: `${Math.min(100, emp.targetPercent)}%`, height: '100%' }} 
+                            />
+                          </div>
+                          <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                            Target: ₹{Number(emp.target || 500000).toLocaleString('en-IN')}
+                          </span>
                         </div>
                       </td>
-                      <td style={{ fontVariantNumeric: 'tabular-nums' }}>₹{emp.sales.toLocaleString('en-IN')}</td>
+
+                      {/* Current Sprint Progress Bar (Week X) */}
                       <td>
-                        <div className="mini-progress-bar">
-                          <div 
-                            className={`mini-progress-fill ${emp.targetPercent >= 100 ? 'bg-success' : 'bg-primary'}`} 
-                            style={{ width: `${Math.min(100, emp.targetPercent)}%` }} 
-                          />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a' }}>
+                              ₹{sprintRevenue.toLocaleString('en-IN')} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: '#64748b' }}>/ ₹{sprintTarget.toLocaleString('en-IN')}</span>
+                            </span>
+                            <span style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 700,
+                              color: sprintProgress >= 100 ? '#15803d' : sprintProgress >= 60 ? '#4338ca' : '#b91c1c'
+                            }}>
+                              {sprintProgress}% pace
+                            </span>
+                          </div>
+
+                          {/* Dynamic Sprint Pacing Health Bar */}
+                          <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${Math.min(100, sprintProgress)}%`,
+                              height: '100%',
+                              background: sprintProgress >= 100 
+                                ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)' 
+                                : sprintProgress >= 60 
+                                  ? 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)' 
+                                  : 'linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)',
+                              borderRadius: '3px',
+                              transition: 'width 0.3s ease'
+                            }} />
+                          </div>
+
+                          {/* Gap & Daily Pace indicator */}
+                          <div style={{ fontSize: '0.68rem', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+                            {sprintProgress >= 100 ? (
+                              <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ Sprint Target Met 🎉</span>
+                            ) : (
+                              <>
+                                <span>Gap: ₹{gap.toLocaleString('en-IN')}</span>
+                                <span style={{ fontWeight: 600, color: '#d97706' }}>₹{dailyRunRate.toLocaleString('en-IN')}/day</span>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <span className="mini-progress-text">{emp.targetPercent}%</span>
                       </td>
+
+                      {/* Sprint Health Score & Health Velocity Meter */}
                       <td>
-                        <span style={{
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          fontSize: '11px',
-                          fontWeight: 600,
-                          backgroundColor: healthStatus === 'EXCELLENT' ? '#dcfce7' : healthStatus === 'ON_TRACK' ? '#e0e7ff' : '#fee2e2',
-                          color: healthStatus === 'EXCELLENT' ? '#15803d' : healthStatus === 'ON_TRACK' ? '#4338ca' : '#b91c1c',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          <span style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            backgroundColor: healthStatus === 'EXCELLENT' ? '#16a34a' : healthStatus === 'ON_TRACK' ? '#4f46e5' : '#dc2626'
-                          }} />
-                          {healthScore}% {healthStatus === 'EXCELLENT' ? 'Strong' : healthStatus === 'ON_TRACK' ? 'On Track' : 'At Risk'}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              backgroundColor: healthStatus === 'EXCELLENT' ? '#dcfce7' : healthStatus === 'ON_TRACK' ? '#e0e7ff' : '#fee2e2',
+                              color: healthStatus === 'EXCELLENT' ? '#15803d' : healthStatus === 'ON_TRACK' ? '#4338ca' : '#b91c1c',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <span style={{
+                                width: '6px',
+                                height: '6px',
+                                borderRadius: '50%',
+                                backgroundColor: healthStatus === 'EXCELLENT' ? '#16a34a' : healthStatus === 'ON_TRACK' ? '#4f46e5' : '#dc2626'
+                              }} />
+                              {healthScore}% {healthStatus === 'EXCELLENT' ? 'Strong' : healthStatus === 'ON_TRACK' ? 'On Track' : 'At Risk'}
+                            </span>
+                          </div>
+
+                          {/* Health Velocity Meter Bar */}
+                          <div style={{ width: '100%', height: '5px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                            <div style={{
+                              width: `${Math.min(100, Math.max(5, healthScore))}%`,
+                              height: '100%',
+                              background: healthStatus === 'EXCELLENT'
+                                ? 'linear-gradient(90deg, #10b981 0%, #059669 100%)'
+                                : healthStatus === 'ON_TRACK'
+                                  ? 'linear-gradient(90deg, #6366f1 0%, #3b82f6 100%)'
+                                  : 'linear-gradient(90deg, #f87171 0%, #ef4444 100%)',
+                              borderRadius: '3px',
+                              transition: 'width 0.3s ease'
+                            }} />
+                          </div>
+
+                          <span style={{ fontSize: '0.67rem', color: '#94a3b8' }}>
+                            Calls: {todayCalls}/{employeeTargetObj.dailyCallsTarget || 15} • Quotes: {todayQuotes}/{employeeTargetObj.dailyQuotesTarget || 2}
+                          </span>
+                        </div>
                       </td>
+
+                      {/* Actions */}
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'flex-end' }}>
                           
@@ -847,14 +1171,15 @@ export default function AdminDashboard({
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
-                              padding: '5px 9px',
+                              padding: '6px 9px',
                               borderRadius: '6px',
                               border: '1px solid #cbd5e1',
                               backgroundColor: '#ffffff',
                               color: '#334155',
                               fontSize: '0.75rem',
-                              fontWeight: 500,
+                              fontWeight: 600,
                               cursor: 'pointer',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                               transition: 'all 0.15s ease'
                             }}
                             title="Edit Monthly Target and Daily Action Goals"
@@ -871,14 +1196,15 @@ export default function AdminDashboard({
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
-                              padding: '5px 9px',
+                              padding: '6px 9px',
                               borderRadius: '6px',
                               border: '1px solid #cbd5e1',
                               backgroundColor: '#ffffff',
                               color: '#334155',
                               fontSize: '0.75rem',
-                              fontWeight: 500,
+                              fontWeight: 600,
                               cursor: 'pointer',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                               transition: 'all 0.15s ease'
                             }}
                             title="Assign a Sales Task to this Employee"
@@ -895,14 +1221,15 @@ export default function AdminDashboard({
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '4px',
-                              padding: '5px 10px',
+                              padding: '6px 10px',
                               borderRadius: '6px',
                               border: '1px solid #ddd6fe',
                               backgroundColor: '#f5f3ff',
                               color: '#7c3aed',
                               fontSize: '0.75rem',
-                              fontWeight: 600,
+                              fontWeight: 700,
                               cursor: 'pointer',
+                              boxShadow: '0 1px 3px rgba(124, 58, 237, 0.12)',
                               transition: 'all 0.15s ease'
                             }}
                             title="AI Target Recovery & Action Plan"
