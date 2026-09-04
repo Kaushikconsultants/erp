@@ -94,24 +94,27 @@ export async function toggleAttendance() {
 export async function updateAttendanceAdmin(employeeId: string, dateStr: string, status: string) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) return { error: "Unauthorized" };
+    if (!session?.user) return { error: "Unauthorized. Please log in." };
     
-    const role = (session.user as any).role;
-    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
-      return { error: "Unauthorized. Admin only." };
+    const userRole = ((session.user as any).role || "").toUpperCase();
+    const canManage = (session.user as any).canManageSettings;
+    const isAuthorized = userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "HR" || userRole === "MANAGER" || userRole === "OWNER" || canManage;
+    
+    if (!isAuthorized) {
+      return { error: "Unauthorized. Administrator or HR privileges required." };
     }
 
     // dateStr format: YYYY-MM-DD
-    const targetDate = new Date(dateStr);
-    targetDate.setHours(0, 0, 0, 0);
-    const targetDateEnd = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000);
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const targetDate = new Date(year, month - 1, day, 0, 0, 0);
+    const targetDateEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
 
     const existingAttendance = await prisma.attendance.findFirst({
       where: {
         employeeId: employeeId,
         date: {
           gte: targetDate,
-          lt: targetDateEnd
+          lte: targetDateEnd
         }
       }
     });
@@ -134,7 +137,7 @@ export async function updateAttendanceAdmin(employeeId: string, dateStr: string,
             employeeId,
             date: targetDate,
             status,
-            checkIn: new Date(targetDate.getTime() + 9 * 60 * 60 * 1000) // Default 9 AM check-in for manual records
+            checkIn: new Date(year, month - 1, day, 9, 0, 0) // Default 9 AM check-in
           }
         });
       }
@@ -142,6 +145,7 @@ export async function updateAttendanceAdmin(employeeId: string, dateStr: string,
 
     revalidatePath("/attendance");
     revalidatePath("/payroll");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.error("Failed to update attendance admin:", error);
@@ -159,14 +163,20 @@ export async function updateCheckInOut(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) return { error: "Unauthorized" };
+    if (!session?.user) return { error: "Unauthorized. Please log in." };
 
-    const role = (session.user as any).role;
-    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
-      return { error: "Only admins can edit check-in/out times." };
+    const userRole = ((session.user as any).role || "").toUpperCase();
+    const canManage = (session.user as any).canManageSettings;
+    const isAuthorized = userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "HR" || userRole === "MANAGER" || userRole === "OWNER" || canManage;
+
+    if (!isAuthorized) {
+      return { error: "Unauthorized. Only administrators or HR can edit check-in/out times." };
     }
 
     const [year, month, day] = dateStr.split("-").map(Number);
+    if (!year || !month || !day) {
+      return { error: "Invalid date specified." };
+    }
 
     const buildDateTime = (timeStr: string) => {
       const [h, m] = timeStr.split(":").map(Number);
@@ -178,51 +188,61 @@ export async function updateCheckInOut(
 
     let workingHours: number | null = null;
     if (checkIn && checkOut) {
-      workingHours = Math.round(((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60)) * 100) / 100;
+      const diffMs = checkOut.getTime() - checkIn.getTime();
+      if (diffMs < 0) {
+        return { error: "Check-out time cannot be earlier than check-in time." };
+      }
+      workingHours = Math.round((diffMs / (1000 * 60 * 60)) * 100) / 100;
     }
 
     const targetDate = new Date(year, month - 1, day, 0, 0, 0);
-    const targetDateEnd = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000);
+    const targetDateEnd = new Date(year, month - 1, day, 23, 59, 59, 999);
 
+    let targetRecord = null;
     if (attendanceId) {
+      targetRecord = await prisma.attendance.findUnique({ where: { id: attendanceId } });
+    }
+
+    if (!targetRecord) {
+      targetRecord = await prisma.attendance.findFirst({
+        where: {
+          employeeId,
+          date: { gte: targetDate, lte: targetDateEnd }
+        }
+      });
+    }
+
+    if (targetRecord) {
       // Update existing record
       await prisma.attendance.update({
-        where: { id: attendanceId },
+        where: { id: targetRecord.id },
         data: {
-          checkIn: checkIn ?? undefined,
-          checkOut: checkOut ?? null,
-          workingHours: workingHours ?? undefined,
+          checkIn: checkIn,
+          checkOut: checkOut,
+          workingHours: workingHours,
+          status: targetRecord.status === "Absent" ? "Present" : targetRecord.status
         }
       });
     } else {
       // Create new attendance record for this day
-      const existing = await prisma.attendance.findFirst({
-        where: { employeeId, date: { gte: targetDate, lt: targetDateEnd } }
+      await prisma.attendance.create({
+        data: {
+          employeeId,
+          date: targetDate,
+          checkIn: checkIn,
+          checkOut: checkOut,
+          workingHours: workingHours,
+          status: "Present"
+        }
       });
-      if (existing) {
-        await prisma.attendance.update({
-          where: { id: existing.id },
-          data: { checkIn: checkIn ?? undefined, checkOut: checkOut ?? null, workingHours: workingHours ?? undefined }
-        });
-      } else {
-        await prisma.attendance.create({
-          data: {
-            employeeId,
-            date: targetDate,
-            checkIn: checkIn ?? undefined,
-            checkOut: checkOut ?? null,
-            workingHours: workingHours ?? undefined,
-            status: "Present"
-          }
-        });
-      }
     }
 
     revalidatePath("/attendance");
     revalidatePath("/payroll");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.error("Failed to update check-in/out:", error);
-    return { error: "Failed to update check-in/out times." };
+    return { error: "Failed to update check-in/out times. Please try again." };
   }
 }
