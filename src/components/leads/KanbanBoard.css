@@ -677,6 +677,17 @@
   color: #ffffff;
 }
 
+.action-icon-pill.delete {
+  color: #dc2626;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.action-icon-pill.delete:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
 .action-pill-text {
   padding: 2px 5px;
   border-radius: 5px;

@@ -9,7 +9,8 @@ import {
   scheduleLeadFollowUp,
   completeLeadFollowUp,
   savePipelineStageNames,
-  getPipelineStageNames
+  getPipelineStageNames,
+  deletePipelineLead
 } from '@/app/actions/leadActions';
 import Link from 'next/link';
 import { 
@@ -42,7 +43,9 @@ import {
   AlertCircle,
   Calendar,
   CalendarPlus,
-  CalendarClock
+  CalendarClock,
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
@@ -140,6 +143,10 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
   const [fuPriorityInput, setFuPriorityInput] = useState('Medium');
   const [fuTypeInput, setFuTypeInput] = useState('Call');
   const [fuLoading, setFuLoading] = useState(false);
+
+  // Delete Junk Lead State
+  const [leadToDelete, setLeadToDelete] = useState<any | null>(null);
+  const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
 
   // Load custom stage names from props, localStorage, and server action
   useEffect(() => {
@@ -535,6 +542,31 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     return repName.slice(0, 2).toUpperCase();
   };
 
+  const handleConfirmDeleteLead = async () => {
+    if (!leadToDelete) return;
+    const target = leadToDelete;
+    setDeletingLeadId(target.id);
+
+    const prevLeads = [...leads];
+    setLeads(leads.filter(l => l.id !== target.id));
+
+    try {
+      const res = await deletePipelineLead(target.id, !!target.isLeadRecord);
+      setDeletingLeadId(null);
+      setLeadToDelete(null);
+
+      if (res?.error) {
+        alert(res.error);
+        setLeads(prevLeads);
+      }
+    } catch (err: any) {
+      setDeletingLeadId(null);
+      setLeadToDelete(null);
+      alert(err?.message || "Failed to delete lead");
+      setLeads(prevLeads);
+    }
+  };
+
   // Render a Single Enterprise Deal Card
   const renderLeadCard = (lead: any, isCompact: boolean = false) => {
     const rawPhone = lead.mobile || lead.whatsappNumber || '';
@@ -766,6 +798,26 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
             >
               <FileText size={10} /> + Quote
             </Link>
+          )}
+
+          {/* Delete Junk Lead Button (ONLY in New Lead section) */}
+          {(lead.leadStage || 'New Lead') === 'New Lead' && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setLeadToDelete(lead);
+              }}
+              disabled={deletingLeadId === lead.id}
+              className="action-icon-pill delete"
+              title="Delete junk lead"
+            >
+              {deletingLeadId === lead.id ? (
+                <Loader2 size={11} className="animate-spin" />
+              ) : (
+                <Trash2 size={11} />
+              )}
+            </button>
           )}
 
           {/* Card Details Link */}
@@ -1581,6 +1633,101 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                     {fuLoading ? "Saving..." : "Save Follow-up"}
                   </button>
                 </div>
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ─── 8. DELETE JUNK LEAD CONFIRMATION MODAL ─── */}
+      {leadToDelete && (
+        <div 
+          className="modal-backdrop" 
+          style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
+        >
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+            
+            {/* Modal Header */}
+            <div style={{ backgroundColor: '#dc2626', color: '#ffffff', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Trash2 size={18} />
+                <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700 }}>
+                  Delete Junk Lead
+                </h3>
+              </div>
+              <button 
+                onClick={() => !deletingLeadId && setLeadToDelete(null)} 
+                disabled={!!deletingLeadId}
+                style={{ background: 'none', border: 'none', color: '#fecaca', cursor: 'pointer' }}
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ margin: 0, fontSize: '0.84rem', color: '#334155', lineHeight: 1.5 }}>
+                Are you sure you want to permanently delete this lead?
+              </p>
+              
+              <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 12px' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#991b1b' }}>
+                  {leadToDelete.businessName || leadToDelete.contactPerson || 'Unnamed Lead'}
+                </div>
+                {(leadToDelete.mobile || leadToDelete.whatsappNumber) && (
+                  <div style={{ fontSize: '0.78rem', color: '#b91c1c', marginTop: '2px' }}>
+                    📞 {leadToDelete.mobile || leadToDelete.whatsappNumber}
+                  </div>
+                )}
+                <div style={{ fontSize: '0.72rem', color: '#dc2626', marginTop: '4px', fontWeight: 600 }}>
+                  Stage: New Lead • {leadToDelete.isLeadRecord ? 'Raw Lead Record' : 'Customer Record'}
+                </div>
+              </div>
+
+              <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+                This will permanently remove the lead, activity logs, and scheduled follow-ups. This action cannot be undone.
+              </p>
+
+              {/* Modal Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
+                <button
+                  type="button"
+                  disabled={!!deletingLeadId}
+                  onClick={() => setLeadToDelete(null)}
+                  style={{ padding: '7px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!!deletingLeadId}
+                  onClick={handleConfirmDeleteLead}
+                  style={{ 
+                    padding: '7px 16px', 
+                    borderRadius: '6px', 
+                    border: 'none', 
+                    backgroundColor: '#dc2626', 
+                    color: '#ffffff', 
+                    fontWeight: 600, 
+                    fontSize: '0.8rem', 
+                    cursor: deletingLeadId ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                >
+                  {deletingLeadId ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" /> Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={13} /> Delete Lead
+                    </>
+                  )}
+                </button>
               </div>
 
             </div>

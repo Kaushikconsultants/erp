@@ -651,3 +651,112 @@ export async function completeLeadFollowUp(leadId: string, notes?: string) {
     return { error: error.message || "Failed to complete follow-up" };
   }
 }
+
+export async function deletePipelineLead(leadId: string, isLeadRecord: boolean) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const organizationId = await getTenantOrgId();
+  if (!organizationId) return { error: "Unauthorized" };
+
+  try {
+    if (isLeadRecord) {
+      // It's in prisma.lead
+      const lead = await prisma.lead.findFirst({
+        where: { id: leadId, organizationId }
+      });
+      if (!lead) return { error: "Lead not found" };
+
+      await prisma.$transaction(async (tx) => {
+        await tx.call.deleteMany({ where: { leadId } });
+        await tx.followUp.deleteMany({ where: { leadId } });
+        await tx.task.deleteMany({ where: { leadId } });
+        await tx.lead.delete({ where: { id: leadId } });
+      });
+
+      revalidatePath("/pipeline");
+      revalidatePath("/leads");
+      revalidatePath("/calls");
+      revalidatePath("/");
+      return { success: true };
+    } else {
+      // It's in prisma.customer
+      const customer = await prisma.customer.findFirst({
+        where: { id: leadId, organizationId }
+      });
+      if (!customer) return { error: "Lead not found" };
+
+      await prisma.$transaction(async (tx) => {
+        // Activity & CRM logs
+        await tx.call.deleteMany({ where: { customerId: leadId } });
+        await tx.followUp.deleteMany({ where: { customerId: leadId } });
+        await tx.task.deleteMany({ where: { customerId: leadId } });
+
+        // WhatsApp communications
+        const convos = await tx.whatsAppConversation.findMany({
+          where: { customerId: leadId },
+          select: { id: true }
+        });
+        if (convos.length > 0) {
+          await tx.whatsAppMessage.deleteMany({
+            where: { conversationId: { in: convos.map(c => c.id) } }
+          });
+          await tx.whatsAppConversation.deleteMany({ where: { customerId: leadId } });
+        }
+        await tx.whatsAppPaymentLink.deleteMany({ where: { customerId: leadId } });
+        await tx.whatsAppFormSubmission.deleteMany({ where: { customerId: leadId } });
+
+        // Financial & transactional entities
+        await tx.postDatedCheque.deleteMany({ where: { customerId: leadId } });
+
+        const challans = await tx.deliveryChallan.findMany({
+          where: { customerId: leadId },
+          select: { id: true }
+        });
+        if (challans.length > 0) {
+          await tx.deliveryChallanItem.deleteMany({
+            where: { challanId: { in: challans.map(c => c.id) } }
+          });
+          await tx.deliveryChallan.deleteMany({ where: { customerId: leadId } });
+        }
+
+        await tx.eWayBill.deleteMany({ where: { customerId: leadId } });
+
+        const creditNotes = await tx.creditNote.findMany({
+          where: { customerId: leadId },
+          select: { id: true }
+        });
+        if (creditNotes.length > 0) {
+          await tx.creditNoteItem.deleteMany({
+            where: { creditNoteId: { in: creditNotes.map(c => c.id) } }
+          });
+          await tx.creditNote.deleteMany({ where: { customerId: leadId } });
+        }
+
+        const quotes = await tx.quotation.findMany({
+          where: { customerId: leadId },
+          select: { id: true }
+        });
+        if (quotes.length > 0) {
+          await tx.quotationItem.deleteMany({
+            where: { quotationId: { in: quotes.map(q => q.id) } }
+          });
+          await tx.quotation.deleteMany({ where: { customerId: leadId } });
+        }
+
+        await tx.customer.delete({ where: { id: leadId } });
+      });
+
+      revalidatePath("/pipeline");
+      revalidatePath("/customers");
+      revalidatePath("/leads");
+      revalidatePath("/calls");
+      revalidatePath("/");
+      return { success: true };
+    }
+  } catch (error: any) {
+    console.error("Error deleting pipeline lead:", error);
+    return { error: error.message || "Failed to delete lead" };
+  }
+}
+
