@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import MobileBottomNav from './MobileBottomNav';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { initNativeMobileShell } from '@/lib/capacitor';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -27,6 +28,14 @@ export default function DashboardShell({
 }: DashboardShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  // Initialize native Capacitor listeners (Android back button, status bar, splash screen)
+  useEffect(() => {
+    initNativeMobileShell(() => {
+      router.back();
+    });
+  }, [router]);
 
   // Close sidebar on navigation (mobile)
   useEffect(() => {

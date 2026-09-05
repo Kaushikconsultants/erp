@@ -9,9 +9,22 @@
     "vercel-build": "prisma generate && prisma db push --accept-data-loss && next build",
     "railway-build": "prisma generate && next build",
     "start": "prisma db push --accept-data-loss && next start -H 0.0.0.0",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cap:sync": "cap sync",
+    "cap:android": "cap open android",
+    "cap:ios": "cap open ios",
+    "cap:copy": "cap copy"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.1",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.5.1",
+    "@capacitor/core": "^8.5.1",
+    "@capacitor/device": "^8.0.3",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/network": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "@google/genai": "^2.17.1",
     "@prisma/client": "^5.21.1",
     "@types/jsbarcode": "^3.11.4",
