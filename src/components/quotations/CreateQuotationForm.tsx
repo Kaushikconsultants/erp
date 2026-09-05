@@ -669,15 +669,29 @@ export default function CreateQuotationForm({
         })
       };
 
-      const res = initialQuotation 
-        ? await updateQuotationFull(initialQuotation.id, payload) 
-        : await createQuotation(payload);
+      let res: any;
+      try {
+        res = initialQuotation 
+          ? await updateQuotationFull(initialQuotation.id, payload) 
+          : await createQuotation(payload);
+      } catch (actionErr: any) {
+        console.warn("Server action failed, using API fallback:", actionErr);
+        const apiRes = await fetch('/api/quotations/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            isEdit: Boolean(initialQuotation),
+            id: initialQuotation?.id,
+            ...payload
+          })
+        });
+        res = await apiRes.json();
+      }
 
-
-      if (res.error) {
+      if (res?.error) {
         alert(res.error);
       } else {
-        const savedId = res.quotation?.id || initialQuotation?.id;
+        const savedId = res?.quotation?.id || initialQuotation?.id;
         if (savedId) {
           router.refresh();
           router.push(`/quotations/${savedId}`);
@@ -1958,16 +1972,7 @@ export default function CreateQuotationForm({
                 </span>
               </div>
 
-              {/* Additional Discount Input (if applicable) */}
-              {formData.additionalDiscount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '28px' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: 500 }}>Additional Discount</span>
-                  <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>
-                    - ₹{Number(formData.additionalDiscount).toFixed(2)}
-                  </span>
-                </div>
-              )}
-
+              {/* Additional Discount (₹) */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '34px' }}>
                 <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Additional Discount (₹)</span>
                 <div style={{ display: 'flex', alignItems: 'center', width: '130px', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
@@ -1983,15 +1988,6 @@ export default function CreateQuotationForm({
                   />
                 </div>
               </div>
-
-              {formData.additionalDiscount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '26px' }}>
-                  <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Taxable Amount</span>
-                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                    ₹{totals.taxableAmount.toFixed(2)}
-                  </span>
-                </div>
-              )}
 
               {/* Tax Divider */}
               <div style={{ borderTop: '1px dashed #cbd5e1', margin: '2px 0' }} />
