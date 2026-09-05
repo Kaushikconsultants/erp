@@ -799,3 +799,34 @@ export async function deletePipelineLead(leadId: string, isLeadRecord: boolean) 
   }
 }
 
+export async function createQuickLead(data: { name: string; shopName?: string; whatsappNumber?: string; notes?: string }) {
+  try {
+    const organizationId = await getTenantOrgId();
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    let employeeId = null;
+    if (userId) {
+      const emp = await prisma.employee.findUnique({ where: { userId } });
+      if (emp) employeeId = emp.id;
+    }
+
+    const lead = await prisma.lead.create({
+      data: {
+        name: data.name,
+        shopName: data.shopName || null,
+        whatsappNumber: data.whatsappNumber || null,
+        status: "New Lead",
+        organizationId,
+        assignedSalespersonId: employeeId
+      }
+    });
+
+    revalidatePath("/leads");
+    return { success: true, lead };
+  } catch (err: any) {
+    console.error("Failed to create quick lead:", err);
+    return { success: false, error: err.message };
+  }
+}
+
+

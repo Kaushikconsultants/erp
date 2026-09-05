@@ -186,8 +186,6 @@ export default function GlobalSearch() {
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-  return (
     <div ref={containerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
       <div
         className="search-container" 
@@ -243,7 +241,7 @@ export default function GlobalSearch() {
           title={isListening ? "Listening... Click to stop" : "AI Voice Search (Click & Speak)"}
           style={{
             position: 'absolute',
-            right: '5px',
+            right: '6px',
             top: '50%',
             transform: 'translateY(-50%)',
             background: isListening
@@ -268,22 +266,6 @@ export default function GlobalSearch() {
           }}
         >
           {isAiProcessing ? <Sparkles size={14} color="#fff" /> : isListening ? <MicOff size={14} color="#fff" /> : <Mic size={14} color="#fff" />}
-        </button>
-      </div>
-            boxShadow: isListening
-              ? '0 0 0 4px rgba(16, 185, 129, 0.35), 0 2px 8px rgba(16, 185, 129, 0.4)'
-              : isAiProcessing
-                ? '0 0 0 4px rgba(139, 92, 246, 0.35), 0 2px 8px rgba(139, 92, 246, 0.4)'
-                : '0 2px 8px rgba(79, 70, 229, 0.35)',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.transform = 'translateY(-50%) scale(1.08)';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.transform = 'translateY(-50%) scale(1)';
-          }}
-        >
-          {isAiProcessing ? <Sparkles size={16} color="#fff" /> : isListening ? <MicOff size={16} color="#fff" /> : <Mic size={16} color="#fff" />}
         </button>
       </div>
 

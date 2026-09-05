@@ -21,7 +21,7 @@ import {
   Loader2
 } from "lucide-react";
 import { logCall, getCustomersForCallModal } from "@/app/actions/callActions";
-import { createLead } from "@/app/actions/leadActions";
+import { createQuickLead } from "@/app/actions/leadActions";
 
 interface PhoneDialerModalProps {
   isOpen: boolean;
@@ -186,11 +186,10 @@ export default function PhoneDialerModal({
       // If user typed a new lead name for an unsaved contact
       if (showNewLeadForm && (newLeadName || newLeadShop)) {
         setIsCreatingLead(true);
-        const leadRes = await createLead({
+        const leadRes = await createQuickLead({
           name: newLeadName || "New Phone Lead",
           shopName: newLeadShop || "Phone Inquiry",
           whatsappNumber: phoneDigits,
-          status: "NEW",
           notes: `Created from Phone Dialer call (${outcome})`
         });
         setIsCreatingLead(false);
