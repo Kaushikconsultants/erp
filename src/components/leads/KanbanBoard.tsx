@@ -455,12 +455,26 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     result.sort((a, b) => {
       const valA = a.computedDealValue || a.expectedValue || 0;
       const valB = b.computedDealValue || b.expectedValue || 0;
+      const timeA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const timeB = new Date(b.updatedAt || b.createdAt || 0).getTime();
 
-      if (sortBy === 'VALUE_HIGH') return valB - valA;
-      if (sortBy === 'VALUE_LOW') return valA - valB;
-      if (sortBy === 'NAME') return (a.businessName || a.contactPerson || '').localeCompare(b.businessName || b.contactPerson || '');
-      if (sortBy === 'NEWEST') return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
-      return 0;
+      if (sortBy === 'VALUE_HIGH') {
+        if (valB !== valA) return valB - valA;
+        return timeB - timeA; // Tie breaker: most recently moved / updated first
+      }
+      if (sortBy === 'VALUE_LOW') {
+        if (valA !== valB) return valA - valB;
+        return timeB - timeA; // Tie breaker: most recently moved / updated first
+      }
+      if (sortBy === 'NAME') {
+        const nameA = (a.businessName || a.contactPerson || '').toLowerCase();
+        const nameB = (b.businessName || b.contactPerson || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      }
+      if (sortBy === 'NEWEST') {
+        return timeB - timeA;
+      }
+      return timeB - timeA;
     });
 
     return result;
@@ -473,7 +487,14 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
   // Handlers
   const handleStageChange = async (leadId: string, targetStage: string) => {
     const previousLeads = [...leads];
-    setLeads(leads.map(l => l.id === leadId ? { ...l, leadStage: targetStage } : l));
+    const nowIso = new Date().toISOString();
+    
+    // Put updated lead at the top of the array with fresh updatedAt timestamp
+    const targetLead = leads.find(l => l.id === leadId);
+    if (targetLead) {
+      const updatedLead = { ...targetLead, leadStage: targetStage, updatedAt: nowIso };
+      setLeads([updatedLead, ...leads.filter(l => l.id !== leadId)]);
+    }
 
     const res = await updateLeadStage(leadId, targetStage);
     if (res?.error) {
@@ -492,10 +513,18 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
 
   const handleConfirmAdvance = async () => {
     if (!advancingLead || !advanceNextStage) return;
+    const previousLeads = [...leads];
+    const targetLead = advancingLead;
     setAdvancingLoading(true);
 
+    const nowIso = new Date().toISOString();
+    const updatedLead = { ...targetLead, leadStage: advanceNextStage, updatedAt: nowIso };
+    
+    // Optimistically put updated lead at the top of the list
+    setLeads([updatedLead, ...leads.filter(l => l.id !== targetLead.id)]);
+
     const res = await advanceLeadStep(
-      advancingLead.id, 
+      targetLead.id, 
       advanceNextStage, 
       advanceNotes, 
       advanceFollowUp || undefined
@@ -504,10 +533,10 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     setAdvancingLoading(false);
 
     if (res.success) {
-      setLeads(leads.map(l => l.id === advancingLead.id ? { ...l, leadStage: advanceNextStage } : l));
       setAdvancingLead(null);
     } else {
       alert(res.error || "Failed to advance lead step");
+      setLeads(previousLeads);
     }
   };
 

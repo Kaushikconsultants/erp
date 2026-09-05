@@ -72,7 +72,10 @@ export default function LeadTable({ initialLeads, allEmployees }: { initialLeads
           <option value="All Statuses">All Statuses</option>
           <option value="New">New</option>
           <option value="Contacted">Contacted</option>
+          <option value="Qualified">Qualified</option>
+          <option value="Opportunity">Opportunity</option>
           <option value="In Progress">In Progress</option>
+          <option value="Converted">Converted / Won</option>
           <option value="Lost">Lost</option>
         </select>
         <select 
@@ -158,7 +161,10 @@ export default function LeadTable({ initialLeads, allEmployees }: { initialLeads
                     >
                       <option value="New" style={{background: '#fff', color: '#000'}}>New</option>
                       <option value="Contacted" style={{background: '#fff', color: '#000'}}>Contacted</option>
+                      <option value="Qualified" style={{background: '#fff', color: '#000'}}>Qualified</option>
+                      <option value="Opportunity" style={{background: '#fff', color: '#000'}}>Opportunity</option>
                       <option value="In Progress" style={{background: '#fff', color: '#000'}}>In Progress</option>
+                      <option value="Converted" style={{background: '#fff', color: '#000'}}>Converted</option>
                       <option value="Lost" style={{background: '#fff', color: '#000'}}>Lost</option>
                     </select>
                   </td>

@@ -76,7 +76,7 @@ export async function getPipelineData() {
             take: 1
           }
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { updatedAt: 'desc' }
       }),
       prisma.employee.findMany({
         where: { organizationId, employmentStatus: 'Active' },
@@ -151,10 +151,14 @@ export async function getPipelineData() {
       })
       .map(l => {
         let stage = 'New Lead';
-        if (l.status === 'Contacted') stage = 'Contacted';
-        else if (l.status === 'Qualified' || l.status === 'In Progress') stage = 'Qualified';
-        else if (l.status === 'Converted') stage = 'Won';
-        else if (l.status === 'Lost') stage = 'Lost';
+        const st = (l.status || '').trim();
+        if (st === 'Contacted') stage = 'Contacted';
+        else if (st === 'Qualified' || st === 'In Progress' || st === 'Interested') stage = 'Qualified';
+        else if (st === 'Opportunity') stage = 'Opportunity';
+        else if (st === 'Converted' || st === 'Won') stage = 'Won';
+        else if (st === 'Lost') stage = 'Lost';
+        else if (st === 'New' || st === 'New Lead') stage = 'New Lead';
+        else stage = st || 'New Lead';
 
         const nextFu = l.followUps?.[0]?.date || l.calls?.[0]?.followUpDate || null;
         const nextFuNotes = l.followUps?.[0]?.notes || l.calls?.[0]?.notes || '';
@@ -302,9 +306,10 @@ export async function updateLeadStage(leadId: string, newStage: string, newStatu
         if (newStage === 'Won') dataToUpdate.status = 'Active Lead';
         else if (newStage === 'Lost') dataToUpdate.status = 'Inactive';
         else if (newStage === 'Opportunity') dataToUpdate.status = 'Opportunity';
-        else if (newStage === 'Qualified') dataToUpdate.status = 'Contacted';
+        else if (newStage === 'Qualified') dataToUpdate.status = 'Qualified';
         else if (newStage === 'Contacted') dataToUpdate.status = 'Contacted';
         else if (newStage === 'New Lead') dataToUpdate.status = 'New Lead';
+        else dataToUpdate.status = newStage;
       }
 
       await prisma.customer.update({
@@ -313,7 +318,15 @@ export async function updateLeadStage(leadId: string, newStage: string, newStatu
       });
     } else {
       // It's a raw Lead record
-      const leadStatus = newStage === 'Won' ? 'Converted' : newStage === 'Lost' ? 'Lost' : newStage === 'Contacted' ? 'Contacted' : newStage === 'Qualified' ? 'Qualified' : 'New';
+      let leadStatus = 'New';
+      if (newStage === 'Won') leadStatus = 'Converted';
+      else if (newStage === 'Lost') leadStatus = 'Lost';
+      else if (newStage === 'Opportunity') leadStatus = 'Opportunity';
+      else if (newStage === 'Qualified') leadStatus = 'Qualified';
+      else if (newStage === 'Contacted') leadStatus = 'Contacted';
+      else if (newStage === 'New Lead') leadStatus = 'New';
+      else leadStatus = newStage;
+
       await prisma.lead.update({
         where: { id: leadId },
         data: { status: leadStatus }
@@ -344,6 +357,14 @@ export async function updateLeadValue(leadId: string, expectedValue: number) {
       const lead = await prisma.lead.findUnique({ where: { id: leadId } });
       if (lead) {
         const orgId = await getTenantOrgId();
+        let mappedStage = 'New Lead';
+        const st = (lead.status || '').trim();
+        if (st === 'Contacted') mappedStage = 'Contacted';
+        else if (st === 'Qualified' || st === 'In Progress') mappedStage = 'Qualified';
+        else if (st === 'Opportunity') mappedStage = 'Opportunity';
+        else if (st === 'Converted' || st === 'Won') mappedStage = 'Won';
+        else if (st === 'Lost') mappedStage = 'Lost';
+
         await prisma.customer.create({
           data: {
             organizationId: orgId,
@@ -353,8 +374,8 @@ export async function updateLeadValue(leadId: string, expectedValue: number) {
             whatsappNumber: lead.whatsappNumber,
             assignedSalespersonId: lead.assignedSalespersonId,
             expectedValue,
-            leadStage: lead.status === 'Contacted' ? 'Contacted' : 'New Lead',
-            status: 'New Lead'
+            leadStage: mappedStage,
+            status: mappedStage === 'Won' ? 'Active Lead' : mappedStage === 'Lost' ? 'Inactive' : mappedStage
           }
         });
       }
@@ -409,9 +430,12 @@ export async function advanceLeadStep(leadId: string, nextStage: string, notes?:
     if (customer) {
       let status = customer.status;
       if (nextStage === 'Won') status = 'Active Lead';
-      if (nextStage === 'Lost') status = 'Inactive';
-      if (nextStage === 'Opportunity') status = 'Opportunity';
-      if (nextStage === 'Qualified') status = 'Contacted';
+      else if (nextStage === 'Lost') status = 'Inactive';
+      else if (nextStage === 'Opportunity') status = 'Opportunity';
+      else if (nextStage === 'Qualified') status = 'Qualified';
+      else if (nextStage === 'Contacted') status = 'Contacted';
+      else if (nextStage === 'New Lead') status = 'New Lead';
+      else status = nextStage;
 
       const updatePayload: any = {
         leadStage: nextStage,
@@ -464,7 +488,15 @@ export async function advanceLeadStep(leadId: string, nextStage: string, notes?:
       const lead = await prisma.lead.findUnique({ where: { id: leadId } });
       if (!lead) return { error: "Lead record not found" };
 
-      const leadStatus = nextStage === 'Won' ? 'Converted' : nextStage === 'Lost' ? 'Lost' : nextStage === 'Contacted' ? 'Contacted' : 'New';
+      let leadStatus = 'New';
+      if (nextStage === 'Won') leadStatus = 'Converted';
+      else if (nextStage === 'Lost') leadStatus = 'Lost';
+      else if (nextStage === 'Opportunity') leadStatus = 'Opportunity';
+      else if (nextStage === 'Qualified') leadStatus = 'Qualified';
+      else if (nextStage === 'Contacted') leadStatus = 'Contacted';
+      else if (nextStage === 'New Lead') leadStatus = 'New';
+      else leadStatus = nextStage;
+
       await prisma.lead.update({
         where: { id: leadId },
         data: { status: leadStatus }
