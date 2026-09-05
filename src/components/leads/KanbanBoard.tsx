@@ -200,7 +200,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     const startOfTomorrow = new Date(startOfToday.getTime() + 86400000);
     const endOfTomorrow = new Date(endOfToday.getTime() + 86400000);
 
-    const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase();
 
     if (d < startOfToday) {
       const diffDays = Math.max(1, Math.round((startOfToday.getTime() - d.getTime()) / 86400000));

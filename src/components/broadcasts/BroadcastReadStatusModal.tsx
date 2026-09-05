@@ -245,7 +245,7 @@ export default function BroadcastReadStatusModal({
                           </span>
                           {m.readAt && (
                             <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "2px" }}>
-                              {new Date(m.readAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                              {new Date(m.readAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase()}
                             </div>
                           )}
                         </div>

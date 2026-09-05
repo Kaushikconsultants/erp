@@ -144,7 +144,7 @@ export default function OrderTrackingModal({ orderId, orderNumber, awbNumber, on
                             {ev.status}
                           </span>
                           <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500, backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '12px' }}>
-                            {new Date(ev.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(ev.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()}
                           </span>
                         </div>
                         <div style={{ fontSize: '0.85rem', color: '#475569', marginBottom: '8px', lineHeight: 1.4 }}>

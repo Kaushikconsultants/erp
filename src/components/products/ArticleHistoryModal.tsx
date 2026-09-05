@@ -1255,7 +1255,7 @@ export default function ArticleHistoryModal({
                                   {new Date(item.date).toLocaleDateString()}
                                 </div>
                                 <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                                  {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()}
                                 </div>
                               </td>
 

@@ -137,7 +137,7 @@ export default function CallsTableClient({
                   <td>
                     {call.followUpDate ? (
                       <span style={{ color: isOverdue ? '#dc2626' : '#16a34a', fontWeight: isOverdue ? 700 : 500, display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.82rem' }}>
-                        <Calendar size={13} /> {new Date(call.followUpDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} at {new Date(call.followUpDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+                        <Calendar size={13} /> {new Date(call.followUpDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} at {new Date(call.followUpDate).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toUpperCase()}
                         {isOverdue && <span style={{ fontSize: '0.68rem', backgroundColor: '#fee2e2', padding: '1px 5px', borderRadius: '4px', marginLeft: '4px' }}>Overdue</span>}
                       </span>
                     ) : (

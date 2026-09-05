@@ -164,7 +164,7 @@ export default function CompanyBackupPage() {
         {lastBackupSummary && (
           <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #f1f5f9' }}>
             <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: 700, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <CheckCircle2 size={16} /> Snapshot Successfully Downloaded at {new Date(lastBackupSummary.timestamp).toLocaleTimeString()}
+              <CheckCircle2 size={16} /> Snapshot Successfully Downloaded at {new Date(lastBackupSummary.timestamp).toLocaleTimeString().toUpperCase()}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
               <div style={{ padding: '10px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.76rem' }}>

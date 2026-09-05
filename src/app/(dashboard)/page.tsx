@@ -225,9 +225,9 @@ export default async function Home() {
             hour: '2-digit',
             minute: '2-digit',
             hour12: true
-          });
+          }).toUpperCase();
         } catch {
-          checkInStr = new Date(a.checkIn).toLocaleTimeString();
+          checkInStr = new Date(a.checkIn).toLocaleTimeString().toUpperCase();
         }
       }
       return {

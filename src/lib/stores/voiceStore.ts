@@ -55,7 +55,7 @@ let state: VoiceState = {
       id: 'welcome-1',
       role: 'assistant',
       text: "Namaste! I'm your ERP & CRM Voice AI Assistant. You can ask me about Balance Sheet, Net Profit, Stock, Payroll, Customer receivables, or tell me to log an expense or add a customer.",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()
     }
   ],
   voiceEnabled: true,
@@ -89,7 +89,7 @@ let state: VoiceState = {
     const newMsg: VoiceMessage = {
       ...msg,
       id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()
     };
     updateState({
       messages: [...state.messages.slice(-30), newMsg]

@@ -33,7 +33,7 @@ const toTimeDisplay = (dt: string | Date | null | undefined): string => {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
-    });
+    }).toUpperCase();
   } catch {
     return '';
   }

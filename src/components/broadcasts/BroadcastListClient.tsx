@@ -362,7 +362,7 @@ export default function BroadcastListClient({
                         </span>
                         <span>•</span>
                         <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                          <Clock size={12} /> {new Date(b.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} at {new Date(b.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                          <Clock size={12} /> {new Date(b.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} at {new Date(b.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase()}
                         </span>
                         {b.expiresAt && (
                           <>
@@ -581,7 +581,7 @@ export default function BroadcastListClient({
                                 )}
                               </div>
                               <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
-                                {new Date(rep.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                                {new Date(rep.createdAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase()}
                               </span>
                             </div>
 

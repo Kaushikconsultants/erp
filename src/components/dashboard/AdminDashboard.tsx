@@ -507,9 +507,9 @@ export default function AdminDashboard({
                               hour: '2-digit',
                               minute: '2-digit',
                               hour12: true
-                            })
+                            }).toUpperCase()
                           ) : (
-                            att.checkInStr || 'Just now'
+                            typeof att.checkInStr === 'string' ? att.checkInStr.toUpperCase() : 'Just now'
                           )}
                         </span>
                       </div>

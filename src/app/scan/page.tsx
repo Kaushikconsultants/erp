@@ -141,7 +141,7 @@ function MobileScanClient() {
         setIsPaired(true);
         const newEntry = {
           code: cleanCode,
-          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
+          time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }).toUpperCase()
         };
         setSentItems((prev) => [newEntry, ...prev.slice(0, 7)]);
         setStatusMessage({

@@ -529,7 +529,7 @@ export async function syncGstReturns() {
     revalidatePath('/settings/taxes');
     return { 
       success: true, 
-      syncedAt: new Date().toLocaleTimeString(),
+      syncedAt: new Date().toLocaleTimeString().toUpperCase(),
       message: "GSTR-1, GSTR-3B & GSTR-2B ITC live data successfully reconciled with GSTN Portal API."
     };
   } catch (error: any) {

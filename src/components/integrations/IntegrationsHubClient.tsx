@@ -393,7 +393,7 @@ export default function IntegrationsHubClient({
                   <div className="card-meta-row">
                     <div>
                       {item.lastSyncAt ? (
-                        <span>Last sync: <strong>{new Date(item.lastSyncAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</strong></span>
+                        <span>Last sync: <strong>{new Date(item.lastSyncAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }).toUpperCase()}</strong></span>
                       ) : (
                         <span>Last sync: <em>Never</em></span>
                       )}

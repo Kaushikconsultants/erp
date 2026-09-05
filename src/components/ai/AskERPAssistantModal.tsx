@@ -59,7 +59,7 @@ export default function AskERPAssistantModal({ onClose }: AskERPAssistantModalPr
             "What is our pending receivables and cash flow position?"
           ]
         },
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()
       }
     ]);
   }, []);
@@ -80,7 +80,7 @@ export default function AskERPAssistantModal({ onClose }: AskERPAssistantModalPr
       id: `user-${Date.now()}`,
       sender: "user",
       text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()
     };
 
     setMessages(prev => [...prev, userMsg]);
@@ -96,7 +96,7 @@ export default function AskERPAssistantModal({ onClose }: AskERPAssistantModalPr
         sender: "ai",
         text: res.data.answer,
         data: res.data,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()
       };
       setMessages(prev => [...prev, aiMsg]);
     } else {
@@ -104,7 +104,7 @@ export default function AskERPAssistantModal({ onClose }: AskERPAssistantModalPr
         id: `ai-err-${Date.now()}`,
         sender: "ai",
         text: res.error || "I encountered an error processing your query. Please try asking again.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()
       };
       setMessages(prev => [...prev, errorMsg]);
     }

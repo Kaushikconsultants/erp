@@ -143,7 +143,7 @@ export default function InventoryScanner() {
       // Add to session history
       const newHistoryItem: ScanHistoryItem = {
         id: Math.random().toString(),
-        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+        time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }).toUpperCase(),
         name: result.product.name,
         sku: result.product.sku,
         type: type,

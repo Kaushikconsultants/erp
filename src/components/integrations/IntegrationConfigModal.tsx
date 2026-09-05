@@ -707,7 +707,7 @@ export default function IntegrationConfigModal({
                       {logs.map((log) => (
                         <tr key={log.id}>
                           <td style={{ whiteSpace: "nowrap", color: "#64748b" }}>
-                            {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                            {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }).toUpperCase()}
                           </td>
                           <td style={{ fontWeight: 600, fontFamily: "monospace", fontSize: "11px" }}>
                             {log.syncType}
