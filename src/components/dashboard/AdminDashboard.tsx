@@ -165,8 +165,41 @@ export default function AdminDashboard({
 
   return (
     <div className="dashboard-container admin-dashboard">
-      {/* ─── MODERN ENTERPRISE EXECUTIVE HERO BANNER ─── */}
-      <div className="executive-hero-banner">
+      {/* ─── DESKTOP HEADER (Desktop Web View) ─── */}
+      <div className="dashboard-header desktop-only-header">
+        <div>
+          <h1 className="page-title">Admin Command Center 👑</h1>
+          <p className="page-subtitle">Overview of your entire business, sales velocity, and executive AI intelligence.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setShowAskERPModal(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              backgroundColor: '#7c3aed',
+              color: '#ffffff',
+              border: 'none',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <Sparkles size={15} />
+            <span>Ask ERP Copilot</span>
+          </button>
+          <Link href="/reports" className="primary-btn hover-lift">View Full Reports</Link>
+        </div>
+      </div>
+
+      {/* ─── MOBILE APP EXECUTIVE HERO BANNER (Mobile Phones / App Only) ─── */}
+      <div className="executive-hero-banner mobile-only-block">
         <div className="hero-top-row">
           <div className="hero-live-badge">
             <span className="hero-pulse-dot" />
@@ -222,8 +255,8 @@ export default function AdminDashboard({
         </div>
       </div>
 
-      {/* ─── QUICK MOBILE OPERATIONS BAR ─── */}
-      <div className="mobile-quick-actions-bar">
+      {/* ─── QUICK MOBILE OPERATIONS BAR (Mobile Phones / App Only) ─── */}
+      <div className="mobile-quick-actions-bar mobile-only-block">
         <Link href="/quotations/new" className="quick-action-tile">
           <div className="quick-action-icon-box" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}>
             <FileText size={18} />

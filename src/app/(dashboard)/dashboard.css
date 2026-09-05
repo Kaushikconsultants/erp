@@ -660,7 +660,28 @@
   color: #ffffff;
 }
 
+/* Responsive Desktop vs Mobile Isolation */
+.mobile-only-block {
+  display: none !important;
+}
+
+.desktop-only-header {
+  display: flex !important;
+}
+
 @media (max-width: 768px) {
+  .mobile-only-block {
+    display: block !important;
+  }
+
+  .mobile-quick-actions-bar.mobile-only-block {
+    display: grid !important;
+  }
+
+  .desktop-only-header {
+    display: none !important;
+  }
+
   .hero-metrics-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
@@ -675,6 +696,7 @@
     font-size: 1.15rem;
   }
 }
+
 
 
 
