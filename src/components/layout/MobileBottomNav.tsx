@@ -24,6 +24,7 @@ import {
   Mic
 } from "lucide-react";
 import { useVoiceStore } from "@/lib/stores/voiceStore";
+import PhoneDialerModal from "../ui/PhoneDialerModal";
 import "./MobileBottomNav.css";
 
 interface MobileBottomNavProps {
@@ -35,6 +36,7 @@ interface MobileBottomNavProps {
 export default function MobileBottomNav({ userRole, allowedSections, onMenuClick }: MobileBottomNavProps) {
   const pathname = usePathname();
   const [showActionSheet, setShowActionSheet] = useState<boolean>(false);
+  const [isDialerOpen, setIsDialerOpen] = useState<boolean>(false);
 
   const isActive = (path: string) => {
     if (path === "/" && pathname !== "/") return false;
@@ -150,6 +152,21 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
                 className="action-sheet-tile"
                 onClick={() => {
                   setShowActionSheet(false);
+                  setIsDialerOpen(true);
+                }}
+                style={{ background: "none", border: "none", cursor: "pointer", textAlign: "center" }}
+              >
+                <div className="tile-icon-box green" style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff" }}>
+                  <PhoneCall size={20} />
+                </div>
+                <span>Phone Dialer</span>
+              </button>
+
+              <button
+                type="button"
+                className="action-sheet-tile"
+                onClick={() => {
+                  setShowActionSheet(false);
                   openAssistant();
                 }}
                 style={{ background: "none", border: "none", cursor: "pointer", textAlign: "center" }}
@@ -229,6 +246,8 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
           </div>
         </div>
       )}
+
+      <PhoneDialerModal isOpen={isDialerOpen} onClose={() => setIsDialerOpen(false)} />
     </>
   );
 }

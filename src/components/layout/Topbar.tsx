@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, LogOut, Settings, Menu } from 'lucide-react';
+import { Bell, Search, User, LogOut, Settings, Menu, PhoneCall } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
 import InstallPwaPrompt from '../ui/InstallPwaPrompt';
+import PhoneDialerModal from '../ui/PhoneDialerModal';
 import './Topbar.css';
 
 interface TopbarProps {
@@ -16,6 +17,7 @@ interface TopbarProps {
 const Topbar = ({ onMenuClick }: TopbarProps) => {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isDialerOpen, setIsDialerOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || 'Loading...';
@@ -46,6 +48,29 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
       </div>
 
       <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Phone Dialer Quick Action */}
+        <button
+          type="button"
+          onClick={() => setIsDialerOpen(true)}
+          title="Open Phone Dialer & Lead Tracker"
+          style={{
+            background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: "50%",
+            width: "36px",
+            height: "36px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(16, 185, 129, 0.35)",
+            flexShrink: 0
+          }}
+        >
+          <PhoneCall size={18} color="#fff" />
+        </button>
+
         <InstallPwaPrompt />
         <NotificationBell />
         
@@ -96,6 +121,8 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
           )}
         </div>
       </div>
+
+      <PhoneDialerModal isOpen={isDialerOpen} onClose={() => setIsDialerOpen(false)} />
     </header>
   );
 };
