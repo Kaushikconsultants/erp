@@ -167,8 +167,8 @@ export default async function CreditNoteDetailPage({ params }: { params: Promise
         </div>
 
         {/* Bill To Details */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '32px' }}>
-          <div>
+        <div style={{ display: 'flex', gap: '32px', marginBottom: '32px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', marginBottom: '8px' }}>
               Credit Issued To (Buyer)
             </div>
@@ -186,7 +186,7 @@ export default async function CreditNoteDetailPage({ params }: { params: Promise
             </div>
           </div>
 
-          <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <div style={{ flex: 1, minWidth: 0, backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
               Transaction Summary
             </div>

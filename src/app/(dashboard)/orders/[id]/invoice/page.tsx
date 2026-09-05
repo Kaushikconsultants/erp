@@ -190,8 +190,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Bill To & Ship To */}
-        <div style={{ border: '1px solid #9ca3af', display: 'grid', gridTemplateColumns: '1fr 1fr', marginBottom: '16px' }}>
-          <div style={{ padding: '10px', borderRight: '1px solid #9ca3af' }}>
+        <div style={{ border: '1px solid #9ca3af', display: 'flex', marginBottom: '16px' }}>
+          <div style={{ flex: 1, padding: '10px', borderRight: '1px solid #9ca3af', minWidth: 0 }}>
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Bill To</div>
             <div style={{ fontWeight: 'bold' }}>{order.customer.businessName}</div>
             {order.customer.contactPerson && <div>{order.customer.contactPerson}</div>}
@@ -202,7 +202,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             {order.customer.gstNumber && <div style={{ marginTop: '4px' }}>GSTIN: {order.customer.gstNumber}</div>}
           </div>
 
-          <div style={{ padding: '10px' }}>
+          <div style={{ flex: 1, padding: '10px', minWidth: 0 }}>
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Ship To</div>
             <div>{order.customer.shippingAddress || order.customer.billingAddress || order.customer.businessName}</div>
             {order.customer.city && <div>{order.customer.city}</div>}
@@ -300,10 +300,10 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </table>
 
         {/* Bottom Section: Notes & Bank on Left | Totals & Signature on Right */}
-        <div style={{ border: '1px solid #9ca3af', display: 'grid', gridTemplateColumns: '1fr 300px' }}>
+        <div style={{ border: '1px solid #9ca3af', display: 'flex' }}>
 
           {/* Left Column */}
-          <div style={{ padding: '12px', borderRight: '1px solid #9ca3af', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ flex: 1, padding: '12px', borderRight: '1px solid #9ca3af', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}>
             <div>
               <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Total In Words</div>
               <div style={{ fontStyle: 'italic', fontWeight: 'bold', marginBottom: '16px' }}>
@@ -341,7 +341,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </div>
 
           {/* Right Column: Financial Totals */}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div style={{ padding: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span>Sub Total</span>

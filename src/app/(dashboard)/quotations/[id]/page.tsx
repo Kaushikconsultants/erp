@@ -180,8 +180,8 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
         </div>
 
         {/* Bill To & Ship To 2-Column Section */}
-        <div style={{ border: '1px solid #9ca3af', display: 'grid', gridTemplateColumns: '1fr 1fr', marginBottom: '16px' }}>
-          <div style={{ padding: '10px', borderRight: '1px solid #9ca3af' }}>
+        <div style={{ border: '1px solid #9ca3af', display: 'flex', marginBottom: '16px' }}>
+          <div style={{ flex: 1, padding: '10px', borderRight: '1px solid #9ca3af', minWidth: 0 }}>
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Bill To</div>
             <div style={{ fontWeight: 'bold' }}>{quotation.customer.businessName}</div>
             {quotation.customer.contactPerson && <div>{quotation.customer.contactPerson}</div>}
@@ -191,7 +191,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             <div>{quotation.customer.mobile}</div>
           </div>
 
-          <div style={{ padding: '10px' }}>
+          <div style={{ flex: 1, padding: '10px', minWidth: 0 }}>
             <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Ship To</div>
             <div>{quotation.shippingAddress || quotation.customer.shippingAddress || quotation.customer.billingAddress || quotation.customer.businessName}</div>
             {quotation.customer.city && <div>{quotation.customer.city}</div>}
@@ -298,10 +298,10 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
         })()}
 
         {/* Bottom Section: Notes & Terms on Left | Totals & Signature on Right */}
-        <div style={{ border: '1px solid #9ca3af', display: 'grid', gridTemplateColumns: '1fr 300px' }}>
+        <div style={{ border: '1px solid #9ca3af', display: 'flex' }}>
           
           {/* Left Column */}
-          <div style={{ padding: '12px', borderRight: '1px solid #9ca3af', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ flex: 1, padding: '12px', borderRight: '1px solid #9ca3af', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minWidth: 0 }}>
             <div>
               <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>Total In Words</div>
               <div style={{ fontStyle: 'italic', fontWeight: 'bold', marginBottom: '16px' }}>
@@ -337,7 +337,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
           </div>
 
           {/* Right Column: Financial Totals */}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div style={{ width: '300px', flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div style={{ padding: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span>Sub Total</span>
