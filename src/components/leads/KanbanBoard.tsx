@@ -870,43 +870,95 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
         <SalesTargetTracker />
       ) : (
         <>
-          {/* ─── 1. TOP PIPELINE METRICS CARDS ─── */}
-          <div className="pipeline-kpi-row">
-            {/* Card 1: Total Leads */}
-            <div className="kpi-card">
-              <div className="kpi-icon-wrap blue">
-                <Layers size={18} />
+          {/* ─── 1. TOP EXECUTIVE PIPELINE METRICS ─── */}
+          <div className="pipeline-metrics-bar">
+            {/* Card 1: Total Deals */}
+            <div className="pipeline-metric-card">
+              <div className="pipeline-metric-top">
+                <div className="pipeline-metric-left">
+                  <div className="pipeline-metric-icon blue">
+                    <Layers size={16} />
+                  </div>
+                  <span className="pipeline-metric-label">Total Deals</span>
+                </div>
+                <span className="pipeline-metric-badge blue">
+                  {openLeads.length} Active
+                </span>
               </div>
-              <div className="kpi-data">
-                <span className="kpi-title">Total Deals in Pipeline</span>
-                <span className="kpi-metric">{leads.length}</span>
-                <span className="kpi-sub">{openLeads.length} active in workflow</span>
+              <div className="pipeline-metric-val">
+                {leads.length}
+              </div>
+              <div className="pipeline-metric-footer">
+                <span><strong>{openLeads.length}</strong> active in sales workflow</span>
               </div>
             </div>
 
             {/* Card 2: Open Pipeline Value */}
-            <div className="kpi-card">
-              <div className="kpi-icon-wrap indigo">
-                <TrendingUp size={18} />
+            <div className="pipeline-metric-card">
+              <div className="pipeline-metric-top">
+                <div className="pipeline-metric-left">
+                  <div className="pipeline-metric-icon indigo">
+                    <TrendingUp size={16} />
+                  </div>
+                  <span className="pipeline-metric-label">Pipeline Value</span>
+                </div>
+                <span className="pipeline-metric-badge indigo">
+                  Funnel
+                </span>
               </div>
-              <div className="kpi-data">
-                <span className="kpi-title">Open Pipeline Value</span>
-                <span className="kpi-metric" style={{ color: '#4f46e5' }}>{formatCurrency(totalOpenValue)}</span>
-                <span className="kpi-sub">Avg ~{formatCurrency(avgDealSize)} / deal</span>
+              <div className="pipeline-metric-val" style={{ color: '#4f46e5' }}>
+                {formatCurrency(totalOpenValue)}
+              </div>
+              <div className="pipeline-metric-footer">
+                <span>Avg ~<strong>{formatCurrency(avgDealSize)}</strong> / active deal</span>
               </div>
             </div>
 
             {/* Card 3: Deals Won & Win Rate */}
-            <div className="kpi-card">
-              <div className="kpi-icon-wrap emerald">
-                <Award size={18} />
-              </div>
-              <div className="kpi-data">
-                <span className="kpi-title">Deals Won & Win Rate</span>
-                <span className="kpi-metric" style={{ color: '#059669' }}>{wonLeads.length} Won ({winRate}%)</span>
-                <span className="kpi-sub" style={{ color: '#059669', fontWeight: 600 }}>
-                  {formatCurrency(wonValue)} closed
+            <div className="pipeline-metric-card">
+              <div className="pipeline-metric-top">
+                <div className="pipeline-metric-left">
+                  <div className="pipeline-metric-icon emerald">
+                    <Award size={16} />
+                  </div>
+                  <span className="pipeline-metric-label">Won Revenue</span>
+                </div>
+                <span className="pipeline-metric-badge emerald">
+                  {winRate}% Win Rate
                 </span>
+              </div>
+              <div className="pipeline-metric-val" style={{ color: '#059669' }}>
+                {formatCurrency(wonValue)}
+              </div>
+              <div className="pipeline-metric-footer">
+                <span><strong>{wonLeads.length} deals</strong> successfully closed</span>
+              </div>
+            </div>
+
+            {/* Card 4: Follow-up Cadence & Overdue */}
+            <div className="pipeline-metric-card">
+              <div className="pipeline-metric-top">
+                <div className="pipeline-metric-left">
+                  <div className={`pipeline-metric-icon ${fuCounts.overdue > 0 ? 'red' : 'purple'}`}>
+                    <CalendarClock size={16} />
+                  </div>
+                  <span className="pipeline-metric-label">Follow-up Due</span>
+                </div>
+                {fuCounts.overdue > 0 ? (
+                  <span className="pipeline-metric-badge red">
+                    {fuCounts.overdue} Overdue
+                  </span>
+                ) : (
+                  <span className="pipeline-metric-badge purple">
+                    On Schedule
+                  </span>
+                )}
+              </div>
+              <div className="pipeline-metric-val" style={{ color: fuCounts.overdue > 0 ? '#dc2626' : '#0f172a' }}>
+                {fuCounts.today + fuCounts.overdue}
+              </div>
+              <div className="pipeline-metric-footer">
+                <span><strong>{fuCounts.today}</strong> due today • <strong>{fuCounts.upcoming}</strong> upcoming</span>
               </div>
             </div>
           </div>
