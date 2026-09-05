@@ -70,21 +70,38 @@ export default function AdminDashboard({
   // Live Leaderboard Timeframe Switcher
   const [leaderboardMode, setLeaderboardMode] = useState<'DAILY' | 'MONTHLY'>('DAILY');
 
-  const activeTeamCount = useMemo(() => {
-    return liveAttendance.filter((att: any) => att.isShiftActive).length;
+  // Deduplicate liveAttendance by employee to guarantee each candidate is unique
+  const uniqueLiveAttendance = useMemo(() => {
+    const seen = new Map<string, any>();
+    (liveAttendance || []).forEach((att: any) => {
+      const key = att.employeeId || att.name || att.id;
+      if (!seen.has(key)) {
+        seen.set(key, att);
+      } else {
+        const existing = seen.get(key);
+        if (att.isShiftActive && !existing.isShiftActive) {
+          seen.set(key, att);
+        }
+      }
+    });
+    return Array.from(seen.values());
   }, [liveAttendance]);
+
+  const activeTeamCount = useMemo(() => {
+    return uniqueLiveAttendance.filter((att: any) => att.isShiftActive).length;
+  }, [uniqueLiveAttendance]);
 
   const checkedOutTeamCount = useMemo(() => {
-    return liveAttendance.filter((att: any) => !att.isShiftActive).length;
-  }, [liveAttendance]);
+    return uniqueLiveAttendance.filter((att: any) => !att.isShiftActive).length;
+  }, [uniqueLiveAttendance]);
 
   const filteredAttendance = useMemo(() => {
-    return liveAttendance.filter((att: any) => {
+    return uniqueLiveAttendance.filter((att: any) => {
       if (teamAttendanceFilter === 'ACTIVE') return att.isShiftActive;
       if (teamAttendanceFilter === 'CHECKED_OUT') return !att.isShiftActive;
       return true;
     });
-  }, [liveAttendance, teamAttendanceFilter]);
+  }, [uniqueLiveAttendance, teamAttendanceFilter]);
 
   const currentLeaderboardList = useMemo(() => {
     if (leaderboardMode === 'DAILY') {
@@ -326,7 +343,7 @@ export default function AdminDashboard({
                       borderRadius: '12px',
                       border: '1px solid #a7f3d0'
                     }}>
-                      {liveAttendance.length} Total
+                      {uniqueLiveAttendance.length} Total
                     </span>
                   </h3>
                   <div style={{ fontSize: '0.72rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1px' }}>
@@ -364,7 +381,7 @@ export default function AdminDashboard({
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  All ({liveAttendance.length})
+                  All ({uniqueLiveAttendance.length})
                 </button>
                 <button
                   type="button"

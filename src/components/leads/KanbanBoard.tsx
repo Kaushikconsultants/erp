@@ -7,7 +7,9 @@ import {
   assignLeadRep, 
   advanceLeadStep,
   scheduleLeadFollowUp,
-  completeLeadFollowUp
+  completeLeadFollowUp,
+  savePipelineStageNames,
+  getPipelineStageNames
 } from '@/app/actions/leadActions';
 import Link from 'next/link';
 import { 
@@ -112,9 +114,10 @@ export const STAGES = [
 interface KanbanBoardProps {
   initialLeads: any[];
   employees?: any[];
+  initialStageTitles?: Record<string, string>;
 }
 
-export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoardProps) {
+export default function KanbanBoard({ initialLeads, employees = [], initialStageTitles = {} }: KanbanBoardProps) {
   const [leads, setLeads] = useState(initialLeads || []);
   const [activeStage, setActiveStage] = useState('Contacted');
   const [searchQuery, setSearchQuery] = useState('');
@@ -124,7 +127,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const [currentView, setCurrentView] = useState<'BOARD' | 'FOCUS' | 'TARGETS'>('BOARD');
   
   // Custom Stage Titles State & Persistence
-  const [customStageTitles, setCustomStageTitles] = useState<Record<string, string>>({});
+  const [customStageTitles, setCustomStageTitles] = useState<Record<string, string>>(initialStageTitles || {});
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const [editingStageName, setEditingStageName] = useState<string>('');
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
@@ -138,20 +141,36 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   const [fuTypeInput, setFuTypeInput] = useState('Call');
   const [fuLoading, setFuLoading] = useState(false);
 
-  // Load custom stage names from localStorage
+  // Load custom stage names from props, localStorage, and server action
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('crm_pipeline_stage_names');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') {
-          setCustomStageTitles(parsed);
+    if (initialStageTitles && Object.keys(initialStageTitles).length > 0) {
+      setCustomStageTitles(initialStageTitles);
+      try {
+        localStorage.setItem('crm_pipeline_stage_names', JSON.stringify(initialStageTitles));
+      } catch (e) {}
+    } else {
+      try {
+        const saved = localStorage.getItem('crm_pipeline_stage_names');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object') {
+            setCustomStageTitles(parsed);
+          }
         }
+      } catch (e) {
+        console.error('Failed to load custom stage names', e);
       }
-    } catch (e) {
-      console.error('Failed to load custom stage names', e);
+
+      getPipelineStageNames().then(res => {
+        if (res?.success && res.stageNames && Object.keys(res.stageNames).length > 0) {
+          setCustomStageTitles(res.stageNames);
+          try {
+            localStorage.setItem('crm_pipeline_stage_names', JSON.stringify(res.stageNames));
+          } catch (e) {}
+        }
+      }).catch(() => {});
     }
-  }, []);
+  }, [initialStageTitles]);
 
   // Compute dynamic stages with custom titles
   const stages = useMemo(() => {
@@ -297,7 +316,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   };
 
   // Handle saving individual stage name
-  const handleSaveStageName = (stageId: string, customName?: string) => {
+  const handleSaveStageName = async (stageId: string, customName?: string) => {
     const nameToSave = (customName !== undefined ? customName : editingStageName).trim();
     const defaultStage = STAGES.find(s => s.id === stageId);
     const newTitles = { ...customStageTitles };
@@ -316,6 +335,8 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
     } catch (e) {
       console.error('Failed to save custom stage names', e);
     }
+
+    await savePipelineStageNames(newTitles);
   };
 
   // Handle opening customize modal
@@ -329,7 +350,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
   };
 
   // Handle saving from customize modal
-  const handleSaveModalStageNames = () => {
+  const handleSaveModalStageNames = async () => {
     const newTitles: Record<string, string> = {};
     STAGES.forEach(s => {
       const val = (modalStageNames[s.id] || '').trim();
@@ -346,16 +367,20 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
     } catch (e) {
       console.error('Failed to save stage names', e);
     }
+
+    await savePipelineStageNames(newTitles);
   };
 
   // Handle reset to default stage names
-  const handleResetStages = () => {
+  const handleResetStages = async () => {
     setCustomStageTitles({});
     setModalStageNames({});
     try {
       localStorage.removeItem('crm_pipeline_stage_names');
     } catch (e) {}
     setIsCustomizeModalOpen(false);
+
+    await savePipelineStageNames({});
   };
 
   // Advance Modal State
@@ -1396,7 +1421,7 @@ export default function KanbanBoard({ initialLeads, employees = [] }: KanbanBoar
                     Schedule Follow-up
                   </h3>
                   <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-                    {managingFollowUpLead.businessName || managingFollowUpLead.contactPerson} • Stage: {managingFollowUpLead.leadStage || 'New Lead'}
+                    {managingFollowUpLead.businessName || managingFollowUpLead.contactPerson} • Stage: {stages.find(s => s.id === (managingFollowUpLead.leadStage || 'New Lead'))?.title || managingFollowUpLead.leadStage || 'New Lead'}
                   </p>
                 </div>
               </div>

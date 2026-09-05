@@ -39,7 +39,11 @@ export default async function SalesPipelinePage() {
         <AddLeadButton employees={employees} organizationId={organizationId || undefined} isAdmin={isAdmin} />
       </div>
 
-      <KanbanBoard initialLeads={leads} employees={pipelineRes.employees || []} />
+      <KanbanBoard 
+        initialLeads={leads} 
+        employees={pipelineRes.employees || []} 
+        initialStageTitles={pipelineRes.customStageTitles || {}} 
+      />
     </div>
   );
 }

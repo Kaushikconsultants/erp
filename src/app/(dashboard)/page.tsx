@@ -196,7 +196,27 @@ export default async function Home() {
     const adminCheckedIn = !!adminAtt;
     const adminCheckedOut = !!adminAtt?.checkOut;
 
-    const liveAttendance = activeAttendances.map((a: any) => {
+    // Deduplicate attendance records per employee so each candidate shows only once
+    const attendanceByEmployee = new Map<string, any>();
+    activeAttendances.forEach((a: any) => {
+      const empKey = a.employeeId || a.employee?.id || a.employee?.user?.name || a.id;
+      if (!attendanceByEmployee.has(empKey)) {
+        attendanceByEmployee.set(empKey, a);
+      } else {
+        const existing = attendanceByEmployee.get(empKey);
+        // Prioritize currently active shift (!checkOut) over checked out
+        if (!a.checkOut && existing.checkOut) {
+          attendanceByEmployee.set(empKey, a);
+        } else if ((!a.checkOut === !existing.checkOut) && a.checkIn && existing.checkIn) {
+          // If both have same active status, take the more recent checkIn
+          if (new Date(a.checkIn).getTime() > new Date(existing.checkIn).getTime()) {
+            attendanceByEmployee.set(empKey, a);
+          }
+        }
+      }
+    });
+
+    const liveAttendance = Array.from(attendanceByEmployee.values()).map((a: any) => {
       let checkInStr = 'Just now';
       if (a.checkIn) {
         try {
@@ -212,6 +232,7 @@ export default async function Home() {
       }
       return {
         id: a.id,
+        employeeId: a.employeeId || a.employee?.id,
         name: a.employee?.user?.name || 'Team Member',
         checkIn: a.checkIn ? new Date(a.checkIn).toISOString() : null,
         checkInStr,
