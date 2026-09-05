@@ -187,12 +187,15 @@ export default function GlobalSearch() {
 
   return (
     <div ref={containerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-      <div 
+  return (
+    <div ref={containerRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+      <div
         className="search-container" 
         style={{ 
           position: 'relative', 
-          paddingRight: '42px', 
-          width: '380px',
+          paddingRight: query ? '72px' : '44px',
+          width: '100%',
+          maxWidth: '380px',
           borderColor: isListening ? '#10b981' : undefined,
           boxShadow: isListening ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : undefined
         }}
@@ -200,15 +203,15 @@ export default function GlobalSearch() {
         <button
           type="button"
           onClick={() => executeSearch(query)}
-          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, marginRight: '10px' }}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0, marginRight: '8px' }}
           title="Click to Search"
         >
-          <Search size={18} style={{ color: '#64748b', cursor: 'pointer' }} />
+          <Search size={16} style={{ color: '#64748b', cursor: 'pointer' }} />
         </button>
 
         <input 
           type="text" 
-          placeholder={isListening ? "Listening... speak now..." : "Ask AI or search software (Voice 🎙️)..."} 
+          placeholder={isListening ? "Listening..." : "Ask AI or search..."}
           className="search-input"
           value={query}
           onFocus={() => setShowDropdown(true)}
@@ -219,7 +222,7 @@ export default function GlobalSearch() {
               executeSearch(query);
             }
           }}
-          style={{ width: '100%', paddingLeft: 0, color: '#0f172a', fontWeight: 500 }}
+          style={{ width: '100%', paddingLeft: 0, paddingRight: '12px', color: '#0f172a', fontWeight: 500, fontSize: '0.85rem' }}
         />
 
         {query && !isListening && (
@@ -240,24 +243,47 @@ export default function GlobalSearch() {
           title={isListening ? "Listening... Click to stop" : "AI Voice Search (Click & Speak)"}
           style={{
             position: 'absolute',
-            right: '8px',
+            right: '5px',
             top: '50%',
             transform: 'translateY(-50%)',
-            background: isListening ? '#10b981' : isAiProcessing ? 'var(--accent-primary, #4f46e5)' : 'transparent',
-            border: isListening ? 'none' : 'none',
+            background: isListening
+              ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+              : isAiProcessing
+                ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'
+                : 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+            border: 'none',
             borderRadius: '50%',
-            width: '30px',
-            height: '30px',
+            width: '28px',
+            height: '28px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: (isListening || isAiProcessing) ? '#ffffff' : 'var(--accent-primary, #6366f1)',
+            color: '#ffffff',
+            flexShrink: 0,
             transition: 'all 0.2s ease',
-            boxShadow: isListening ? '0 0 0 4px rgba(16, 185, 129, 0.35)' : isAiProcessing ? '0 0 0 4px rgba(79, 70, 229, 0.25)' : 'none',
+            boxShadow: isListening
+              ? '0 0 0 3px rgba(16, 185, 129, 0.35)'
+              : '0 2px 6px rgba(79, 70, 229, 0.3)',
           }}
         >
-          {isAiProcessing ? <Sparkles size={16} /> : isListening ? <MicOff size={16} /> : <Mic size={18} />}
+          {isAiProcessing ? <Sparkles size={14} color="#fff" /> : isListening ? <MicOff size={14} color="#fff" /> : <Mic size={14} color="#fff" />}
+        </button>
+      </div>
+            boxShadow: isListening
+              ? '0 0 0 4px rgba(16, 185, 129, 0.35), 0 2px 8px rgba(16, 185, 129, 0.4)'
+              : isAiProcessing
+                ? '0 0 0 4px rgba(139, 92, 246, 0.35), 0 2px 8px rgba(139, 92, 246, 0.4)'
+                : '0 2px 8px rgba(79, 70, 229, 0.35)',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.transform = 'translateY(-50%) scale(1.08)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.transform = 'translateY(-50%) scale(1)';
+          }}
+        >
+          {isAiProcessing ? <Sparkles size={16} color="#fff" /> : isListening ? <MicOff size={16} color="#fff" /> : <Mic size={16} color="#fff" />}
         </button>
       </div>
 

@@ -51,7 +51,7 @@ export default function InstallPwaPrompt() {
   };
 
   return (
-    <div style={{ position: "relative", display: "inline-block" }}>
+    <div className="install-pwa-container" style={{ position: "relative", display: "inline-block" }}>
       {/* Topbar Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}

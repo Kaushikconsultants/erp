@@ -176,3 +176,34 @@
   color: var(--danger);
 }
 
+/* Mobile Responsive Voice Search & Topbar Tweaks */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .topbar-left {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .search-container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .install-pwa-container {
+    display: none !important; /* Hide 'Install App' prompt on mobile viewports since user is in mobile app */
+  }
+
+  .topbar-actions {
+    gap: 10px;
+  }
+
+  .user-info {
+    display: none; /* Keep avatar clean on mobile header */
+  }
+}
+
+
