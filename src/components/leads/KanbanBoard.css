@@ -392,10 +392,12 @@
 .kanban-col-cards {
   padding: 8px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .kanban-col-cards::-webkit-scrollbar {
@@ -421,7 +423,7 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .deal-box:hover {
@@ -601,7 +603,6 @@
   width: 100%;
   box-sizing: border-box;
   min-width: 0;
-  overflow: hidden;
 }
 
 .btn-step-adv {
