@@ -132,6 +132,7 @@ export async function syncSystemLedgers() {
     const purchaseGroup = groupMap.get("DIRECT_EXPENSE") || await prisma.accountGroup.findFirst({ where: { code: "DIRECT_EXPENSE" } });
     const taxGroup = groupMap.get("DUTIES_TAXES") || await prisma.accountGroup.findFirst({ where: { code: "DUTIES_TAXES" } });
     const indirectExpGroup = groupMap.get("INDIRECT_EXPENSE") || await prisma.accountGroup.findFirst({ where: { code: "INDIRECT_EXPENSE" } });
+    const indirectIncGroup = groupMap.get("INDIRECT_INCOME") || await prisma.accountGroup.findFirst({ where: { code: "INDIRECT_INCOME" } });
     const payrollGroup = groupMap.get("PAYROLL_EXPENSE") || indirectExpGroup;
     const capitalGroup = groupMap.get("CAPITAL_ACCT") || await prisma.accountGroup.findFirst({ where: { code: "CAPITAL_ACCT" } });
     const fixedAssetGroup = groupMap.get("FIXED_ASSETS") || await prisma.accountGroup.findFirst({ where: { code: "FIXED_ASSETS" } });
@@ -159,11 +160,14 @@ export async function syncSystemLedgers() {
       { name: "TCS Receivable (Section 206C)", code: "SYS_TCS_RECEIVABLE", groupId: taxGroup?.id, partyType: "TAX", isSystem: true },
       { name: "Cash in Hand", code: "SYS_CASH", groupId: cashGroup?.id, partyType: "CASH", isSystem: true },
       { name: "General & Administrative Expenses", code: "SYS_GEN_EXP", groupId: indirectExpGroup?.id, partyType: "EXPENSE", isSystem: true },
+      { name: "Discount Allowed", code: "SYS_DISCOUNT_ALLOWED", groupId: indirectExpGroup?.id, partyType: "EXPENSE", isSystem: true },
+      { name: "Discount Received", code: "SYS_DISCOUNT_RECEIVED", groupId: indirectIncGroup?.id || capitalGroup?.id, partyType: "INCOME", isSystem: true },
       { name: "Salaries & Employee Costs", code: "SYS_SALARY_EXP", groupId: payrollGroup?.id, partyType: "EXPENSE", isSystem: true },
       { name: "Round Off Account", code: "SYS_ROUNDOFF", groupId: indirectExpGroup?.id, partyType: "GENERAL", isSystem: true },
       { name: "Sales Returns & Allowances", code: "SYS_SALES_RETURN", groupId: salesGroup?.id, partyType: "INCOME", isSystem: true },
       { name: "Purchase Returns & Allowances", code: "SYS_PURCHASE_RETURN", groupId: purchaseGroup?.id, partyType: "EXPENSE", isSystem: true },
       { name: "Proprietor / Shareholder Capital", code: "SYS_CAPITAL", groupId: capitalGroup?.id, partyType: "GENERAL", isSystem: true },
+      { name: "Opening Balance Equity", code: "SYS_OPENING_EQUITY", groupId: capitalGroup?.id, partyType: "GENERAL", isSystem: true },
       { name: "Office Equipment & Computers", code: "SYS_FIXED_ASSETS", groupId: fixedAssetGroup?.id, partyType: "GENERAL", isSystem: true },
     ];
 
@@ -282,6 +286,9 @@ export async function syncSystemLedgers() {
     const salaryExpLedger = codeLedgerMap.get("SYS_SALARY_EXP");
     const salesReturnLedger = codeLedgerMap.get("SYS_SALES_RETURN") || salesLedger;
     const purchaseReturnLedger = codeLedgerMap.get("SYS_PURCHASE_RETURN") || purchaseLedger;
+    const discountAllowedLedger = codeLedgerMap.get("SYS_DISCOUNT_ALLOWED") || generalExpLedger;
+    const discountReceivedLedger = codeLedgerMap.get("SYS_DISCOUNT_RECEIVED");
+    const openingEquityLedger = codeLedgerMap.get("SYS_OPENING_EQUITY");
 
     // 4.5. PRUNE ORPHANED & CANCELLED JOURNAL ENTRIES
     const allSystemJVs = await prisma.journalEntry.findMany({
@@ -385,6 +392,7 @@ export async function syncSystemLedgers() {
         if (customerLedger) {
           const taxable = inv.subtotal || (inv.totalAmount - (inv.taxAmount || 0));
           const tax = inv.taxAmount || 0;
+          const discount = inv.discountAmount || 0;
           const isInter = Boolean(inv.customer?.state && companySettings?.state && inv.customer.state.toLowerCase() !== companySettings.state.toLowerCase());
 
           const lines: { ledgerAccountId: string; debit: number; credit: number; particulars: string }[] = [];
@@ -397,11 +405,22 @@ export async function syncSystemLedgers() {
             particulars: `To Sales A/c against Inv #${inv.invoiceNumber}`
           });
 
-          // Cr Sales A/c (Taxable Amount)
+          // Dr Discount Allowed if discount given
+          if (discount > 0 && discountAllowedLedger) {
+            lines.push({
+              ledgerAccountId: discountAllowedLedger.id,
+              debit: discount,
+              credit: 0,
+              particulars: `Discount Allowed on Inv #${inv.invoiceNumber}`
+            });
+          }
+
+          // Cr Sales A/c (Gross Taxable Amount)
+          const grossSales = Number((taxable + discount).toFixed(2));
           lines.push({
             ledgerAccountId: salesLedger.id,
             debit: 0,
-            credit: taxable,
+            credit: grossSales,
             particulars: `By ${customerLedger.name}`
           });
 
@@ -432,8 +451,8 @@ export async function syncSystemLedgers() {
           }
 
           // Round Off adjustment if discrepancy exists
-          const sumDr = lines.reduce((acc, l) => acc + l.debit, 0);
-          const sumCr = lines.reduce((acc, l) => acc + l.credit, 0);
+          const sumDr = Number(lines.reduce((acc, l) => acc + l.debit, 0).toFixed(2));
+          const sumCr = Number(lines.reduce((acc, l) => acc + l.credit, 0).toFixed(2));
           const diff = Number((sumDr - sumCr).toFixed(2));
 
           if (Math.abs(diff) > 0.001 && roundoffLedger) {
@@ -474,7 +493,7 @@ export async function syncSystemLedgers() {
           { customer: { organizationId } },
           { invoice: { organizationId } }
         ],
-        status: { in: ["Completed", "Processed"] }
+        status: { in: ["Completed", "Processed", "Success", "Received"] }
       },
       include: { customer: true, invoice: true }
     });
@@ -541,14 +560,16 @@ export async function syncSystemLedgers() {
         if (vendorLedger) {
           const taxable = b.subtotal || (b.totalAmount - (b.taxAmount || 0));
           const tax = b.taxAmount || 0;
+          const discount = b.discountAmount || 0;
           const isInter = Boolean(b.vendor?.state && companySettings?.state && b.vendor.state.toLowerCase() !== companySettings.state.toLowerCase());
 
           const lines: { ledgerAccountId: string; debit: number; credit: number; particulars: string }[] = [];
 
-          // Dr Purchase Account
+          // Dr Purchase Account (Gross purchases)
+          const grossPurchases = Number((taxable + discount).toFixed(2));
           lines.push({
             ledgerAccountId: purchaseLedger.id,
-            debit: taxable,
+            debit: grossPurchases,
             credit: 0,
             particulars: `Purchase Bill #${b.billNumber} from ${vendorLedger.name}`
           });
@@ -587,9 +608,19 @@ export async function syncSystemLedgers() {
             particulars: `By Purchase Bill #${b.billNumber}`
           });
 
+          // Cr Discount Received if discount exists
+          if (discount > 0 && discountReceivedLedger) {
+            lines.push({
+              ledgerAccountId: discountReceivedLedger.id,
+              debit: 0,
+              credit: discount,
+              particulars: `Discount Received on Bill #${b.billNumber}`
+            });
+          }
+
           // Round Off adjustment if discrepancy exists
-          const sumDr = lines.reduce((acc, l) => acc + l.debit, 0);
-          const sumCr = lines.reduce((acc, l) => acc + l.credit, 0);
+          const sumDr = Number(lines.reduce((acc, l) => acc + l.debit, 0).toFixed(2));
+          const sumCr = Number(lines.reduce((acc, l) => acc + l.credit, 0).toFixed(2));
           const diff = Number((sumDr - sumCr).toFixed(2));
 
           if (Math.abs(diff) > 0.001 && roundoffLedger) {
@@ -627,7 +658,7 @@ export async function syncSystemLedgers() {
     const vendorPayments = await prisma.vendorPayment.findMany({
       where: {
         vendor: { organizationId },
-        status: { in: ["Completed", "Processed"] }
+        status: { in: ["Completed", "Processed", "Paid", "Success"] }
       },
       include: { vendor: true }
     });
@@ -1204,7 +1235,7 @@ export async function createJournalEntry(data: {
     return { success: false, error: "Voucher amounts must be greater than zero." };
   }
 
-  if (Math.abs(totalDebit - totalCredit) > 0.01) {
+  if (Math.abs(totalDebit - totalCredit) > 0.001) {
     return {
       success: false,
       error: `Accounting Equation Mismatch: Total Debit (₹${totalDebit}) must equal Total Credit (₹${totalCredit}). Difference: ₹${(totalDebit - totalCredit).toFixed(2)}`
@@ -1212,7 +1243,6 @@ export async function createJournalEntry(data: {
   }
 
   try {
-    const organizationId = await getTenantOrgId();
     const count = await prisma.journalEntry.count({ where: { organizationId, voucherType: data.voucherType } });
     const prefix = data.voucherType === "CONTRA" ? "CNT" : data.voucherType === "PAYMENT" ? "PMT" : data.voucherType === "RECEIPT" ? "RCP" : "JV";
     const voucherNumber = `${prefix}-${new Date().getFullYear()}-${String(count + 1).padStart(5, "0")}`;
@@ -1380,12 +1410,51 @@ export async function getTrialBalance(asOfDateStr?: string) {
       };
     }).filter(r => r.closingDebit > 0 || r.closingCredit > 0 || r.transactionDebit > 0 || r.transactionCredit > 0);
 
+    // Dynamic Opening Balance Equity balancing row if net opening balance exists across subledgers
+    const diff = Number((totalDebit - totalCredit).toFixed(2));
+    if (Math.abs(diff) > 0.001) {
+      if (diff > 0) {
+        // Debits exceed credits: Add Opening Balance Equity on Credit side
+        rows.push({
+          id: "SYS_OPENING_EQUITY_DIFF",
+          code: "SYS_OPENING_EQUITY",
+          name: "Opening Balance Equity (Offset)",
+          groupName: "Capital Account",
+          nature: "LIABILITY",
+          openingDebit: 0,
+          openingCredit: diff,
+          transactionDebit: 0,
+          transactionCredit: 0,
+          closingDebit: 0,
+          closingCredit: diff
+        });
+        totalCredit += diff;
+      } else {
+        // Credits exceed debits: Add Opening Balance Equity on Debit side
+        const absDiff = Math.abs(diff);
+        rows.push({
+          id: "SYS_OPENING_EQUITY_DIFF",
+          code: "SYS_OPENING_EQUITY",
+          name: "Opening Balance Equity (Offset)",
+          groupName: "Capital Account",
+          nature: "ASSET",
+          openingDebit: absDiff,
+          openingCredit: 0,
+          transactionDebit: 0,
+          transactionCredit: 0,
+          closingDebit: absDiff,
+          closingCredit: 0
+        });
+        totalDebit += absDiff;
+      }
+    }
+
     return {
       success: true,
       asOfDate: asOfDate.toISOString().split("T")[0],
       totalDebit: Number(totalDebit.toFixed(2)),
       totalCredit: Number(totalCredit.toFixed(2)),
-      isBalanced: Math.abs(totalDebit - totalCredit) < 0.05,
+      isBalanced: Math.abs(totalDebit - totalCredit) < 0.01,
       rows
     };
   } catch (error: any) {
@@ -1458,18 +1527,39 @@ export async function getProfitAndLossStatement(startDateStr?: string, endDateSt
     const totalPurchaseReturns = vendorCredits.reduce((acc, vc) => acc + (vc.subtotal || (vc.totalAmount - (vc.taxAmount || 0))), 0);
     const totalPurchases = Math.max(0, Number((totalPurchasesGross - totalPurchaseReturns).toFixed(2)));
 
-    // 3. Physical Inventory Stock
+    // 3. Physical Inventory Stock & COGS
     const products = await prisma.product.findMany({ where: { organizationId } });
-    const closingStockValue = products.reduce((acc, p) => {
+    const closingStockValue = Number(products.reduce((acc, p) => {
       const cost = (p.purchasePrice && p.purchasePrice > 0)
         ? p.purchasePrice
         : (p.sellingPrice ? p.sellingPrice * 0.7 : 0);
       return acc + ((p.stockQuantity || 0) * cost);
-    }, 0);
+    }, 0).toFixed(2));
 
-    // In a continuous entity: Opening Stock + Direct Purchases = Goods Available
-    const openingStock = Math.max(0, closingStockValue - totalPurchases);
-    const cogs = Math.max(0, Number((openingStock + totalPurchases - closingStockValue).toFixed(2)));
+    // Calculate COGS from sold order items
+    const orderItems = await prisma.orderItem.findMany({
+      where: {
+        order: {
+          invoices: {
+            some: {
+              organizationId,
+              invoiceDate: { gte: startDate, lte: endDate },
+              status: { not: "Cancelled" }
+            }
+          }
+        }
+      },
+      include: { product: true }
+    });
+
+    let calculatedCogs = 0;
+    for (const item of orderItems) {
+      const cost = item.product?.purchasePrice || (item.product?.sellingPrice ? item.product.sellingPrice * 0.7 : item.rate * 0.7);
+      calculatedCogs += (item.quantity || 1) * cost;
+    }
+
+    const cogs = Number(calculatedCogs.toFixed(2));
+    const openingStock = Math.max(0, Number((closingStockValue + cogs - totalPurchases).toFixed(2)));
     const grossProfit = Number((totalRevenue - cogs).toFixed(2));
 
     // 4. Indirect Expenses (Operating Overheads, Payroll, Admin)

@@ -410,6 +410,14 @@ export async function checkCustomerCreditStatus(customerId: string, proposedAmou
         invoices: {
           where: { status: { in: ['Unpaid', 'Partially Paid', 'Overdue', 'Sent'] } },
           select: { invoiceNumber: true, invoiceDate: true, dueDate: true, amountDue: true, totalAmount: true }
+        },
+        creditNotes: {
+          where: { status: 'OPEN' },
+          select: { totalAmount: true }
+        },
+        payments: {
+          where: { invoiceId: null, status: { in: ['Completed', 'Processed', 'Received', 'Success'] } },
+          select: { amount: true }
         }
       }
     });
@@ -417,7 +425,11 @@ export async function checkCustomerCreditStatus(customerId: string, proposedAmou
     if (!customer) return { success: false, error: "Customer not found" };
 
     const totalUnpaidInvoices = customer.invoices.reduce((sum, inv) => sum + (inv.amountDue || 0), 0);
-    const currentOutstanding = (customer.openingBalanceType === 'DEBIT' ? customer.openingBalance : -customer.openingBalance) + totalUnpaidInvoices;
+    const totalOpenCreditNotes = customer.creditNotes?.reduce((sum, cn) => sum + (cn.totalAmount || 0), 0) || 0;
+    const totalAdvancePayments = customer.payments?.reduce((sum, p) => sum + (p.amount || 0), 0) || 0;
+    const openingBal = customer.openingBalanceType === 'DEBIT' ? customer.openingBalance : -customer.openingBalance;
+    const netOutstanding = openingBal + totalUnpaidInvoices - totalOpenCreditNotes - totalAdvancePayments;
+    const currentOutstanding = Math.max(0, Number(netOutstanding.toFixed(2)));
     const creditLimit = customer.creditLimit || 0;
     const creditDays = customer.creditDays || 30;
     const isHold = Boolean(customer.creditHold);

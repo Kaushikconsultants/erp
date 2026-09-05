@@ -199,6 +199,10 @@ export async function clearPostDatedCheque(input: {
       });
     }
 
+    if (!partyLedger) {
+      return { success: false, error: "Cannot clear PDC: No offsetting party ledger or system account found." };
+    }
+
     const lines = [
       {
         ledgerAccountId: bankLedger.id,
@@ -207,18 +211,21 @@ export async function clearPostDatedCheque(input: {
         particulars: `Bank ${isReceived ? 'Receipt' : 'Payment'} - Cheque #${cheque.chequeNumber}`,
         isReconciled: true,
         bankClearanceDate: clearDate
-      }
-    ];
-
-    if (partyLedger) {
-      lines.push({
+      },
+      {
         ledgerAccountId: partyLedger.id,
         debit: isReceived ? 0 : cheque.amount,
         credit: isReceived ? cheque.amount : 0,
         particulars: `PDC Clearance #${cheque.chequeNumber} for ${partyName}`,
         isReconciled: true,
         bankClearanceDate: clearDate
-      });
+      }
+    ];
+
+    const totDr = lines.reduce((s, l) => s + (l.debit || 0), 0);
+    const totCr = lines.reduce((s, l) => s + (l.credit || 0), 0);
+    if (Math.abs(totDr - totCr) > 0.001) {
+      return { success: false, error: `PDC clearance failed: Unbalanced journal voucher (Dr: ₹${totDr}, Cr: ₹${totCr}).` };
     }
 
     // 1. Create Double-Entry Journal Entry

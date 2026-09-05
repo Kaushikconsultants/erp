@@ -301,15 +301,43 @@ export async function deleteBill(id: string) {
         });
       }
 
-      // 3. Delete payments associated with this bill
+      // 3. Delete payments associated with this bill and their journal vouchers
       if (bill.payments && bill.payments.length > 0) {
+        for (const payment of bill.payments) {
+          const pmtJvs = await tx.journalEntry.findMany({
+            where: {
+              OR: [
+                { sourceDocId: payment.id, sourceDocType: "VENDOR_PAYMENT" },
+                { voucherNumber: `PMT-${payment.paymentNumber}` }
+              ]
+            }
+          });
+          for (const jv of pmtJvs) {
+            await tx.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+            await tx.journalEntry.delete({ where: { id: jv.id } });
+          }
+        }
         await tx.vendorPayment.deleteMany({
           where: { billId: id }
         });
       }
 
-      // 4. Delete vendor credits linked to this bill
+      // 4. Delete vendor credits linked to this bill and their journal vouchers
       if (bill.vendorCredits && bill.vendorCredits.length > 0) {
+        for (const vc of bill.vendorCredits) {
+          const vcJvs = await tx.journalEntry.findMany({
+            where: {
+              OR: [
+                { sourceDocId: vc.id, sourceDocType: "VENDOR_CREDIT" },
+                { voucherNumber: `DN-${vc.creditNoteNumber}` }
+              ]
+            }
+          });
+          for (const jv of vcJvs) {
+            await tx.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+            await tx.journalEntry.delete({ where: { id: jv.id } });
+          }
+        }
         await tx.vendorCredit.deleteMany({
           where: { billId: id }
         });
