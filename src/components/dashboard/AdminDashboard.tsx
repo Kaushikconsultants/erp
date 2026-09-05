@@ -165,12 +165,13 @@ export default function AdminDashboard({
 
   return (
     <div className="dashboard-container admin-dashboard">
-      <div className="dashboard-header">
-        <div>
-          <h1 className="page-title">Admin Command Center 👑</h1>
-          <p className="page-subtitle">Overview of your entire business, sales velocity, and executive AI intelligence.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* ─── MODERN ENTERPRISE EXECUTIVE HERO BANNER ─── */}
+      <div className="executive-hero-banner">
+        <div className="hero-top-row">
+          <div className="hero-live-badge">
+            <span className="hero-pulse-dot" />
+            <span>LIVE ENTERPRISE COMMAND</span>
+          </div>
           <button
             type="button"
             onClick={() => setShowAskERPModal(true)}
@@ -178,23 +179,78 @@ export default function AdminDashboard({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '8px',
-              backgroundColor: '#7c3aed',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              backgroundColor: 'rgba(255, 255, 255, 0.15)',
               color: '#ffffff',
-              border: 'none',
-              fontSize: '0.8125rem',
-              fontWeight: 600,
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              fontSize: '0.78rem',
+              fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+              backdropFilter: 'blur(8px)',
               transition: 'all 0.15s ease'
             }}
           >
-            <Sparkles size={15} />
-            <span>Ask ERP Copilot</span>
+            <Sparkles size={14} color="#f59e0b" />
+            <span>Ask Copilot</span>
           </button>
-          <Link href="/reports" className="primary-btn hover-lift">View Full Reports</Link>
         </div>
+
+        <div>
+          <h1 className="hero-title">Admin Command Center 👑</h1>
+          <p className="hero-subtitle">Real-Time Operations, Sales Velocity & Executive Intelligence</p>
+        </div>
+
+        {/* 4-KPI Metric Strip */}
+        <div className="hero-metrics-grid">
+          <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('orders')}>
+            <div className="hero-metric-label">Revenue MTD</div>
+            <div className="hero-metric-val">₹{totalRevenue ? (totalRevenue / 1000).toFixed(1) + 'k' : '0'}</div>
+          </div>
+          <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('orders')}>
+            <div className="hero-metric-label">Total Orders</div>
+            <div className="hero-metric-val">{totalOrders}</div>
+          </div>
+          <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('customers')}>
+            <div className="hero-metric-label">B2B Clients</div>
+            <div className="hero-metric-val">{totalCustomers}</div>
+          </div>
+          <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('calls')}>
+            <div className="hero-metric-label">Pending Calls</div>
+            <div className="hero-metric-val" style={{ color: pendingCalls > 0 ? '#f87171' : '#34d399' }}>{pendingCalls}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── QUICK MOBILE OPERATIONS BAR ─── */}
+      <div className="mobile-quick-actions-bar">
+        <Link href="/quotations/new" className="quick-action-tile">
+          <div className="quick-action-icon-box" style={{ background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }}>
+            <FileText size={18} />
+          </div>
+          <span>New Quote</span>
+        </Link>
+
+        <Link href="/orders" className="quick-action-tile">
+          <div className="quick-action-icon-box" style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' }}>
+            <Package size={18} />
+          </div>
+          <span>New Order</span>
+        </Link>
+
+        <Link href="/customers" className="quick-action-tile">
+          <div className="quick-action-icon-box" style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' }}>
+            <Users size={18} />
+          </div>
+          <span>Directory</span>
+        </Link>
+
+        <Link href="/reports" className="quick-action-tile">
+          <div className="quick-action-icon-box" style={{ background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)' }}>
+            <TrendingUp size={18} />
+          </div>
+          <span>Reports</span>
+        </Link>
       </div>
 
       {/* EXECUTIVE AI INTELLIGENCE BANNER */}
@@ -210,25 +266,25 @@ export default function AdminDashboard({
           style={{
             backgroundColor: '#f5f3ff',
             border: '1px solid #ddd6fe',
-            borderRadius: '12px',
+            borderRadius: '16px',
             padding: '14px 16px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
             transition: 'all 0.15s ease',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            boxShadow: '0 2px 8px rgba(124, 58, 237, 0.08)'
           }}
         >
-          <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#7c3aed', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 10px rgba(124, 58, 237, 0.3)' }}>
             <Sparkles size={20} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#5b21b6' }}>Ask ERP Assistant</span>
-              <span style={{ fontSize: '0.68rem', backgroundColor: '#ede9fe', color: '#6d28d9', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>Gemini 2.5</span>
+              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#5b21b6' }}>Ask ERP Copilot</span>
+              <span style={{ fontSize: '0.68rem', backgroundColor: '#ede9fe', color: '#6d28d9', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>Gemini AI</span>
             </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#6d28d9' }}>
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.76rem', color: '#6d28d9', lineHeight: 1.3 }}>
               Voice & text Q&A on revenue, profit, cash flow & KPIs.
             </p>
           </div>
@@ -240,25 +296,25 @@ export default function AdminDashboard({
           style={{
             backgroundColor: '#eff6ff',
             border: '1px solid #bfdbfe',
-            borderRadius: '12px',
+            borderRadius: '16px',
             padding: '14px 16px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
             transition: 'all 0.15s ease',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.08)'
           }}
         >
-          <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <RefreshCw size={19} />
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)' }}>
+            <RefreshCw size={20} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e40af' }}>Re-Order & Churn Engine</span>
-              <span style={{ fontSize: '0.68rem', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>Smart Nudge</span>
+              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e40af' }}>Re-Order & Churn Engine</span>
+              <span style={{ fontSize: '0.68rem', backgroundColor: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>Smart Nudge</span>
             </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#1d4ed8' }}>
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.76rem', color: '#1d4ed8', lineHeight: 1.3 }}>
               Detect overdue buyers & send 1-click repeat quotations.
             </p>
           </div>
@@ -270,25 +326,25 @@ export default function AdminDashboard({
           style={{
             backgroundColor: '#fff7ed',
             border: '1px solid #fed7aa',
-            borderRadius: '12px',
+            borderRadius: '16px',
             padding: '14px 16px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
             transition: 'all 0.15s ease',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+            boxShadow: '0 2px 8px rgba(234, 88, 12, 0.08)'
           }}
         >
-          <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#ea580c', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 100%)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 10px rgba(234, 88, 12, 0.3)' }}>
             <Flame size={20} />
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#9a3412' }}>Dead Stock Liquidation</span>
-              <span style={{ fontSize: '0.68rem', backgroundColor: '#ffedd5', color: '#c2410c', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>Clearance</span>
+              <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#9a3412' }}>Dead Stock Liquidation</span>
+              <span style={{ fontSize: '0.68rem', backgroundColor: '#ffedd5', color: '#c2410c', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>Clearance</span>
             </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#c2410c' }}>
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.76rem', color: '#c2410c', lineHeight: 1.3 }}>
               Liquidate slow-moving articles with flash B2B deals.
             </p>
           </div>
