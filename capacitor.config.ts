@@ -1,14 +1,18 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.antigravity.erp',
-  appName: 'Antigravity ERP',
+  appId: 'com.espon.heartofbusiness',
+  appName: 'Heart of Business ERP',
   webDir: 'public',
   server: {
-    // Set to your live production or staging URL for live SSR & Server Actions
-    // Example: url: process.env.CAPACITOR_SERVER_URL || 'https://your-domain.com',
-    androidScheme: 'https',
-    cleartext: true
+    url: 'https://effective-palm-tree.vercel.app',
+    cleartext: true,
+    androidScheme: 'https'
+  },
+  android: {
+    allowMixedContent: true,
+    captureInput: true,
+    backgroundColor: '#ffffff'
   },
   plugins: {
     SplashScreen: {
