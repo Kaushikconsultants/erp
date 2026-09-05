@@ -26,46 +26,47 @@ export default function DownloadPdfButton({
         return;
       }
 
-      // Dynamically load html2pdf if not available
-      if (!(window as any).html2pdf) {
+      // Load html2pdf bundle (which bundles html2canvas & jsPDF) if not present
+      if (!(window as any).html2canvas || !(window as any).html2pdf) {
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement("script");
           script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
           script.onload = () => resolve();
-          script.onerror = () => reject(new Error("Failed to load html2pdf script"));
+          script.onerror = () => reject(new Error("Failed to load PDF library"));
           document.body.appendChild(script);
         });
       }
 
-      // Ensure all custom fonts are completely ready before canvas rendering
+      // Ensure all custom web fonts are fully loaded
       if (document.fonts) {
         await document.fonts.ready;
       }
 
-      // Create an isolated container to ensure exact A4 printable width and prevent cropping from sidebar/screen offsets
+      // Create an isolated container for clean rendering
       cloneContainer = document.createElement('div');
       cloneContainer.style.position = 'fixed';
       cloneContainer.style.top = '0';
       cloneContainer.style.left = '0';
-      cloneContainer.style.width = '800px';
+      cloneContainer.style.width = '760px';
       cloneContainer.style.zIndex = '-9999';
       cloneContainer.style.backgroundColor = '#ffffff';
       cloneContainer.style.pointerEvents = 'none';
 
       const clone = sourceElement.cloneNode(true) as HTMLElement;
       clone.id = `${elementId}-pdf-export`;
-      clone.style.maxWidth = '800px';
-      clone.style.width = '800px';
-      clone.style.minWidth = '800px';
+      clone.style.width = '760px';
+      clone.style.maxWidth = '760px';
+      clone.style.minWidth = '760px';
       clone.style.margin = '0';
+      clone.style.padding = '24px 28px';
+      clone.style.border = '1px solid #9ca3af';
       clone.style.boxSizing = 'border-box';
-      clone.style.boxShadow = 'none';
       clone.style.backgroundColor = '#ffffff';
 
       cloneContainer.appendChild(clone);
       document.body.appendChild(cloneContainer);
 
-      // Wait for any images inside the clone to be fully loaded
+      // Ensure all images (logo, signature, QR) inside the clone are loaded
       const images = Array.from(clone.querySelectorAll('img'));
       await Promise.all(
         images.map((img) => {
@@ -77,26 +78,77 @@ export default function DownloadPdfButton({
         })
       );
 
-      const opt = {
-        margin: [6, 6, 6, 6],
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          letterRendering: true,
-          scrollY: 0,
-          scrollX: 0,
-          logging: false
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-      };
+      // Brief tick for font & layout settlement
+      await new Promise((r) => setTimeout(r, 120));
 
-      await (window as any).html2pdf().set(opt).from(clone).save();
+      const html2canvas = (window as any).html2canvas;
+      const jsPDFClass = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
+
+      if (!html2canvas || !jsPDFClass) {
+        // Fallback to standard html2pdf invocation
+        const opt = {
+          margin: [8, 8, 8, 8],
+          filename: filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        await (window as any).html2pdf().set(opt).from(clone).save();
+        return;
+      }
+
+      // Render high-res crisp canvas
+      const canvas = await html2canvas(clone, {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+
+      const pdf = new jsPDFClass({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = 210; // A4 width mm
+      const pageHeight = 297; // A4 height mm
+      const margin = 8; // 8mm margin
+      const printableWidth = pageWidth - (margin * 2); // 194mm
+      const printableHeight = pageHeight - (margin * 2); // 281mm
+
+      // Scale proportionally so the full document width fits exactly within printable area
+      const imgWidth = printableWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      if (imgHeight <= printableHeight) {
+        // Fits entirely on a single page
+        pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+      } else {
+        // Multi-page document support
+        let heightLeft = imgHeight;
+        let position = margin;
+
+        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+        heightLeft -= printableHeight;
+
+        while (heightLeft > 0) {
+          position -= printableHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
+          heightLeft -= printableHeight;
+        }
+      }
+
+      pdf.save(filename);
     } catch (err) {
       console.error("PDF generation error:", err);
-      // Fallback to print dialog if html2pdf fails
+      // Fallback to print dialog if canvas generation fails
       window.print();
     } finally {
       if (cloneContainer && cloneContainer.parentNode) {

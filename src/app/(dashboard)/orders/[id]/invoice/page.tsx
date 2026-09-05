@@ -250,44 +250,44 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
                 <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'center', verticalAlign: 'top' }}>
                   {item.hsnCode || item.product.hsnCode || '6103'}
                 </td>
-                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                   <div>{item.quantity.toFixed(2)}</div>
                   <div style={{ color: '#6b7280', fontSize: '10px' }}>pcs</div>
                 </td>
-                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                   {fmt(item.rate)}
                 </td>
                 {hasDiscount && (
-                  <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                  <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                     {getItemDiscountPct(item) > 0 ? `${getItemDiscountPct(item).toFixed(2)}%` : '0.00%'}
                   </td>
                 )}
                 {isInterstate ? (
                   <>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                       {item.gstRate || 0}%
                     </td>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                       {fmt(item.igst || 0)}
                     </td>
                   </>
                 ) : (
                   <>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                       {(item.gstRate || 0) / 2}%
                     </td>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                       {fmt(item.cgst || ((item.total - (item.total / (1 + (item.gstRate || 0) / 100))) / 2))}
                     </td>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                       {(item.gstRate || 0) / 2}%
                     </td>
-                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top' }}>
+                    <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                       {fmt(item.sgst || item.cgst || ((item.total - (item.total / (1 + (item.gstRate || 0) / 100))) / 2))}
                     </td>
                   </>
                 )}
-                <td style={{ padding: '8px 6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold' }}>
+                <td style={{ padding: '8px 6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                   {(() => {
                     const gst = (item.gstRate || 0) / 100;
                     const totalWithTax = item.total || (item.rate * item.quantity);
