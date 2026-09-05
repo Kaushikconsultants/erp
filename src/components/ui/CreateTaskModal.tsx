@@ -142,13 +142,13 @@ export default function CreateTaskModal({ onClose, employees, customers: initial
                     >
                       <Plus size={15} /> Add New Customer...
                     </div>
-                    <div onClick={() => { setSelectedCustomerId(""); setSelectedCustomerLabel(""); setDropdownOpen(false); }} style={{ padding: "10px 14px", cursor: "pointer", color: "#94a3b8", fontSize: "0.85rem", borderBottom: "1px solid #f1f5f9" }}>None</div>
+                    <div onClick={() => { setSelectedCustomerId(""); setSelectedCustomerLabel(""); setDropdownOpen(false); }} style={{ padding: "10px 14px", cursor: "pointer", color: "#94a3b8", fontSize: "0.85rem", borderBottom: "1px solid #f1f5f9", textAlign: "left" }}>None</div>
                     {filteredCustomers.length === 0 ? (
                       <div style={{ padding: "12px 14px", color: "#94a3b8", fontSize: "0.85rem", textAlign: "center" }}>No customers found</div>
                     ) : (
                       filteredCustomers.map((c) => (
                         <div key={c.id} onClick={() => { setSelectedCustomerId(c.id); setSelectedCustomerLabel(c.name); setCustomerSearch(""); setDropdownOpen(false); }}
-                          style={{ padding: "10px 14px", cursor: "pointer", fontSize: "0.875rem", background: selectedCustomerId === c.id ? "#eff6ff" : "transparent" }}
+                          style={{ padding: "10px 14px", cursor: "pointer", fontSize: "0.875rem", textAlign: "left", background: selectedCustomerId === c.id ? "#eff6ff" : "transparent" }}
                           onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
                           onMouseLeave={(e) => (e.currentTarget.style.background = selectedCustomerId === c.id ? "#eff6ff" : "transparent")}
                         >

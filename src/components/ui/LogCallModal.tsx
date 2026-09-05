@@ -435,26 +435,41 @@ export default function LogCallModal({
                             return (
                               <div 
                                 key={c.id} 
-                                className="dropdown-item hover-bg"
                                 onClick={() => {
                                   const contactStr = c.contactPerson && c.contactPerson !== c.companyName ? ` (${c.contactPerson})` : '';
                                   const phoneStr = phone ? ` • 📞 ${phone}` : '';
                                   handleSelectCustomer(c.id, `${c.companyName}${contactStr}${phoneStr}`);
                                 }}
-                                style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '3px' }}
+                                style={{ 
+                                  padding: '10px 14px', 
+                                  cursor: 'pointer', 
+                                  borderBottom: '1px solid #f1f5f9', 
+                                  display: 'flex', 
+                                  flexDirection: 'column', 
+                                  alignItems: 'stretch',
+                                  width: '100%',
+                                  boxSizing: 'border-box',
+                                  textAlign: 'left',
+                                  gap: '3px',
+                                  transition: 'background-color 0.15s ease'
+                                }}
+                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                               >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#0f172a' }}>{c.companyName}</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                  <div style={{ fontWeight: 600, fontSize: '0.92rem', color: '#0f172a', textAlign: 'left' }}>{c.companyName}</div>
                                   {(c as any).type === 'Lead' ? (
-                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#eef2ff', color: '#4f46e5', borderRadius: '4px', fontWeight: 600 }}>Lead</span>
+                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#eef2ff', color: '#4f46e5', borderRadius: '4px', fontWeight: 600, flexShrink: 0 }}>Lead</span>
                                   ) : (
-                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#ecfdf5', color: '#059669', borderRadius: '4px', fontWeight: 600 }}>Customer</span>
+                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#ecfdf5', color: '#059669', borderRadius: '4px', fontWeight: 600, flexShrink: 0 }}>Customer</span>
                                   )}
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
-                                  <div>{c.contactPerson ? `Contact: ${c.contactPerson}` : ''} {(c as any).city ? `• ${c.city}` : ''}</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', fontSize: '0.8rem', color: '#64748b', gap: '8px' }}>
+                                  <div style={{ textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {c.contactPerson ? `Contact: ${c.contactPerson}` : ''} {(c as any).city ? `• ${c.city}` : ''}
+                                  </div>
                                   {phone && (
-                                    <div style={{ color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <div style={{ color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, textAlign: 'right' }}>
                                       <span>📞 {phone}</span>
                                     </div>
                                   )}

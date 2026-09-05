@@ -195,7 +195,7 @@ export default function CreateOrderModal({ onClose, customers: initialCustomers,
                   ) : (
                     filteredCustomers.map((c) => (
                       <div key={c.id} onClick={() => { setSelectedCustomerId(c.id); setSelectedCustomerLabel(c.companyName); setCustomerSearch(""); setCustomerDropdownOpen(false); }}
-                        style={{ padding: "10px 14px", cursor: "pointer", fontSize: "0.875rem", background: selectedCustomerId === c.id ? "#eff6ff" : "transparent" }}
+                        style={{ padding: "10px 14px", cursor: "pointer", fontSize: "0.875rem", textAlign: "left", background: selectedCustomerId === c.id ? "#eff6ff" : "transparent" }}
                         onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
                         onMouseLeave={(e) => (e.currentTarget.style.background = selectedCustomerId === c.id ? "#eff6ff" : "transparent")}
                       >
