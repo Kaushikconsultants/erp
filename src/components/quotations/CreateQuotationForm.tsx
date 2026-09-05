@@ -124,9 +124,9 @@ export default function CreateQuotationForm({
     paymentTerms: initialQuotation?.paymentTerms || 'Net 15',
     priceList: initialQuotation?.priceList || '',
     expectedDeliveryDate: initialQuotation?.expectedDeliveryDate ? new Date(initialQuotation.expectedDeliveryDate).toISOString().split('T')[0] : '',
-    shippingCharges: initialQuotation?.shippingCharges || 0,
-    additionalDiscount: initialQuotation?.additionalDiscount || 0,
-    adjustment: initialQuotation?.adjustment || 0,
+    shippingCharges: initialQuotation?.shippingCharges !== undefined ? Number(initialQuotation.shippingCharges) : 0,
+    additionalDiscount: initialQuotation?.additionalDiscount !== undefined ? Number(initialQuotation.additionalDiscount) : 0,
+    adjustment: initialQuotation?.adjustment !== undefined ? Number(initialQuotation.adjustment) : 0,
     receivedAmount: initialQuotation?.receivedAmount !== undefined ? Number(initialQuotation.receivedAmount) : 0,
     discountSlab: initialQuotation?.discountSlab || '1-15',
     notes: initialQuotation?.notes || 'Thank you for your business! Please reach out if you have any questions regarding this quotation.',
@@ -139,16 +139,16 @@ export default function CreateQuotationForm({
       ? initialQuotation.items.map((i: any) => ({
           productId: i.productId,
           productName: i.product?.name || i.product?.articleNumber || '',
-          sku: i.sku || '',
-          description: i.description || '',
-          hsnCode: i.hsnCode || '6109',
-          quantity: i.quantity,
-          rate: i.rate,
-          unitWeight: i.unitWeight || 0,
-          discountType: i.discountPercent > 0 ? 'percent' : 'amount',
-          discountPercent: i.discountPercent || 0,
-          discountAmount: i.discountAmount || 0,
-          gstRate: i.gstRate || 5,
+          sku: i.sku || i.product?.sku || i.product?.articleNumber || '',
+          description: i.description || i.product?.description || '',
+          hsnCode: i.hsnCode || i.product?.hsnCode || '6109',
+          quantity: Number(i.quantity) || 1,
+          rate: Number(i.rate) || 0,
+          unitWeight: Number(i.unitWeight) || (i.product?.weight ? Number(i.product.weight) : 0),
+          discountType: (Number(i.discountPercent) || 0) > 0 ? 'percent' : 'amount',
+          discountPercent: Number(i.discountPercent) || 0,
+          discountAmount: Number(i.discountAmount) || 0,
+          gstRate: Number(i.gstRate) || 5,
           availableStock: i.product?.stockQuantity || 0
         }))
       : [
@@ -170,8 +170,10 @@ export default function CreateQuotationForm({
         ]
   );
 
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [customerSearchTerm, setCustomerSearchTerm] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(initialQuotation?.customer || null);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState(
+    initialQuotation?.customer?.businessName || initialQuotation?.customer?.contactPerson || ""
+  );
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const customerInputRef = useRef<HTMLInputElement | null>(null);
   const [customerDropdownCoords, setCustomerDropdownCoords] = useState<{ top: number; left: number; width: number; placeAbove?: boolean } | null>(null);
@@ -1981,6 +1983,15 @@ export default function CreateQuotationForm({
                   />
                 </div>
               </div>
+
+              {formData.additionalDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '26px' }}>
+                  <span style={{ fontSize: '0.82rem', color: '#475569', fontWeight: 600 }}>Taxable Amount</span>
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
+                    ₹{totals.taxableAmount.toFixed(2)}
+                  </span>
+                </div>
+              )}
 
               {/* Tax Divider */}
               <div style={{ borderTop: '1px dashed #cbd5e1', margin: '2px 0' }} />

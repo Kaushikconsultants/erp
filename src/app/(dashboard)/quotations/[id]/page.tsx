@@ -202,9 +202,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
 
         {/* Calculate if discount was given anywhere */}
         {(() => {
-          const totalItemDiscount = quotation.items.reduce((sum, item) => sum + (item.discountPercent || 0), 0);
-          const totalAdditionalDiscount = quotation.additionalDiscount || quotation.itemDiscount || 0;
-          const hasDiscount = totalItemDiscount > 0 || totalAdditionalDiscount > 0;
+          const hasItemDiscount = quotation.items.some(item => (item.discountPercent || 0) > 0 || (item.discountAmount || 0) > 0);
 
           return (
             <>
@@ -217,7 +215,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                     <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'center', width: '70px', verticalAlign: 'middle' }}>HSN/SAC</th>
                     <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '60px', verticalAlign: 'middle' }}>Qty</th>
                     <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '70px', verticalAlign: 'middle' }}>Rate</th>
-                    {hasDiscount && (
+                    {hasItemDiscount && (
                       <th style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', width: '65px', verticalAlign: 'middle' }}>Discount</th>
                     )}
                     {isInterstate ? (
@@ -256,9 +254,9 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                       <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
                         {fmt(item.rate)}
                       </td>
-                      {hasDiscount && (
+                      {hasItemDiscount && (
                         <td style={{ padding: '8px 6px', borderRight: '1px solid #9ca3af', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap' }}>
-                          {item.discountPercent > 0 ? `${item.discountPercent.toFixed(2)}%` : '0.00%'}
+                          {item.discountPercent > 0 ? `${item.discountPercent.toFixed(2)}%` : item.discountAmount > 0 ? `₹${fmt(item.discountAmount)}` : '0.00%'}
                         </td>
                       )}
                       {isInterstate ? (
@@ -287,7 +285,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                         </>
                       )}
                       <td style={{ padding: '8px 6px', textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                        {fmt(item.total / (1 + (item.gstRate || 0) / 100))}
+                        {fmt(item.taxableAmount ?? (item.total / (1 + (item.gstRate || 0) / 100)))}
                       </td>
                     </tr>
                   ))}
@@ -341,27 +339,53 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             <div style={{ padding: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                 <span>Sub Total</span>
-                <span style={{ fontWeight: 'bold' }}>{fmt(quotation.taxableAmount || quotation.subtotal)}</span>
+                <span style={{ fontWeight: 'bold' }}>{fmt(quotation.subtotal || quotation.taxableAmount)}</span>
               </div>
 
-
-              {isInterstate ? (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                  <span>IGST {quotation.taxableAmount > 0 && quotation.igst > 0 ? `(${Math.round((quotation.igst / quotation.taxableAmount) * 100)}%)` : ''}</span>
-                  <span>{fmt(quotation.igst)}</span>
+              {quotation.itemDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#64748b' }}>
+                  <span>Item Discount</span>
+                  <span>(-) {fmt(quotation.itemDiscount)}</span>
                 </div>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                    <span>CGST {quotation.taxableAmount > 0 && quotation.cgst > 0 ? `(${Math.round((quotation.cgst / quotation.taxableAmount) * 100 * 10) / 10}%)` : ''}</span>
-                    <span>{fmt(quotation.cgst)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
-                    <span>SGST {quotation.taxableAmount > 0 && quotation.sgst > 0 ? `(${Math.round((quotation.sgst / quotation.taxableAmount) * 100 * 10) / 10}%)` : ''}</span>
-                    <span>{fmt(quotation.sgst)}</span>
-                  </div>
-                </>
               )}
+
+              {quotation.additionalDiscount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', color: '#dc2626' }}>
+                  <span style={{ fontWeight: 500 }}>Additional Discount</span>
+                  <span style={{ fontWeight: 600 }}>(-) {fmt(quotation.additionalDiscount)}</span>
+                </div>
+              )}
+
+              {(quotation.additionalDiscount > 0 || quotation.itemDiscount > 0) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderTop: '1px dashed #cbd5e1', color: '#334155', fontWeight: 600, fontSize: '11.5px' }}>
+                  <span>Taxable Amount</span>
+                  <span>{fmt(quotation.taxableAmount || (quotation.subtotal - (quotation.itemDiscount || 0) - (quotation.additionalDiscount || 0)))}</span>
+                </div>
+              )}
+
+              {(() => {
+                const effectiveTaxBase = quotation.taxableAmount > 0 
+                  ? quotation.taxableAmount 
+                  : (quotation.subtotal - (quotation.itemDiscount || 0) - (quotation.additionalDiscount || 0));
+
+                return isInterstate ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                    <span>IGST {effectiveTaxBase > 0 && quotation.igst > 0 ? `(${Math.round((quotation.igst / effectiveTaxBase) * 100)}%)` : ''}</span>
+                    <span>{fmt(quotation.igst)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span>CGST {effectiveTaxBase > 0 && quotation.cgst > 0 ? `(${Math.round((quotation.cgst / effectiveTaxBase) * 100 * 10) / 10}%)` : ''}</span>
+                      <span>{fmt(quotation.cgst)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span>SGST {effectiveTaxBase > 0 && quotation.sgst > 0 ? `(${Math.round((quotation.sgst / effectiveTaxBase) * 100 * 10) / 10}%)` : ''}</span>
+                      <span>{fmt(quotation.sgst)}</span>
+                    </div>
+                  </>
+                );
+              })()}
 
               {quotation.shippingCharges > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
@@ -372,12 +396,13 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
 
               {(() => {
                 const totalTax = isInterstate ? quotation.igst : (quotation.cgst + quotation.sgst);
-                const calculatedSum = (quotation.taxableAmount || quotation.subtotal) + totalTax + (quotation.shippingCharges || 0);
+                const baseTaxable = quotation.taxableAmount || (quotation.subtotal - (quotation.additionalDiscount || 0) - (quotation.itemDiscount || 0));
+                const calculatedSum = baseTaxable + totalTax + (quotation.shippingCharges || 0);
                 const rounding = Math.round((quotation.totalValue - calculatedSum) * 100) / 100;
                 return rounding !== 0 ? (
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
                     <span>Rounding</span>
-                    <span>{fmt(rounding)}</span>
+                    <span>{rounding > 0 ? `+${fmt(rounding)}` : fmt(rounding)}</span>
                   </div>
                 ) : null;
               })()}
