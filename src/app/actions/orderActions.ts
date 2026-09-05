@@ -185,9 +185,22 @@ export async function createOrder(formData: FormData) {
       }
     });
 
+    // Advance customer to Won in pipeline on confirmed order
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: {
+        leadStage: 'Won',
+        status: 'Active Lead',
+        totalOrders: { increment: 1 },
+        totalPurchaseValue: { increment: totalValue }
+      }
+    }).catch(() => {});
+
     revalidatePath("/orders");
     revalidatePath("/invoices");
     revalidatePath("/products");
+    revalidatePath("/pipeline");
+    revalidatePath("/customers");
     revalidatePath("/", "layout");
     return { success: true, order };
   } catch (error) {

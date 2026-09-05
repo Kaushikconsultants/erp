@@ -92,20 +92,27 @@ export async function getPipelineData() {
       if (p) customerPhones.add(p);
     });
 
-    // Normalize deal values & auto-mark confirmed/converted quotations or orders as Won
+    // Normalize deal values & auto-mark confirmed/converted quotations or orders as Won, and active quotes as Opportunity
     const formattedCustomers = (customers as any[]).map(c => {
       const confirmedQuote = (c.quotations || []).find((q: any) => ['Confirmed', 'Converted', 'Accepted'].includes(q.status));
       const hasConfirmedQuote = !!confirmedQuote;
       const hasOrders = (c.orders || []).length > 0 || (c.totalPurchaseValue || 0) > 0;
       const isMatureWon = hasConfirmedQuote || hasOrders || c.leadStage === 'Won';
+      const hasQuotations = (c.quotations || []).length > 0;
 
-      const effectiveStage = isMatureWon ? 'Won' : (c.leadStage || 'New Lead');
+      let effectiveStage = c.leadStage || 'New Lead';
+      if (isMatureWon) {
+        effectiveStage = 'Won';
+      } else if (hasQuotations && (effectiveStage === 'Contacted' || effectiveStage === 'New Lead')) {
+        // If a customer has a quotation created/sent, they automatically belong in Opportunity stage
+        effectiveStage = 'Opportunity';
+      }
 
       // Auto-sync in background if DB is not updated
-      if (c.leadStage !== 'Won' && isMatureWon) {
+      if (c.leadStage !== effectiveStage) {
         prisma.customer.update({
           where: { id: c.id },
-          data: { leadStage: 'Won', status: 'Active Lead' }
+          data: { leadStage: effectiveStage, status: effectiveStage === 'Won' ? 'Active Lead' : effectiveStage }
         }).catch(() => {});
       }
 

@@ -411,9 +411,32 @@ export async function createQuotation(data: {
       }).catch(() => {});
     }
 
+    // Advance customer to 'Opportunity' stage in pipeline if not already Won
+    try {
+      const currentCustomer = await prisma.customer.findUnique({
+        where: { id: data.customerId },
+        select: { leadStage: true, expectedValue: true }
+      });
+      if (currentCustomer && currentCustomer.leadStage !== "Won" && currentCustomer.leadStage !== "Converted") {
+        await prisma.customer.update({
+          where: { id: data.customerId },
+          data: {
+            leadStage: "Opportunity",
+            status: "Opportunity",
+            expectedValue: Math.max(currentCustomer.expectedValue || 0, totalValue),
+            ...(resolvedSalespersonId ? { assignedSalespersonId: resolvedSalespersonId } : {})
+          }
+        });
+      }
+    } catch (cErr) {
+      console.warn("Could not update customer lead stage on quotation create:", cErr);
+    }
+
     revalidatePath("/quotations");
     revalidatePath("/quotations", "page");
     revalidatePath("/orders");
+    revalidatePath("/pipeline");
+    revalidatePath("/customers");
     revalidatePath("/");
     return { success: true, quotation };
   } catch (error: any) {
@@ -684,11 +707,34 @@ export async function updateQuotationFull(id: string, data: {
       console.error("Error syncing linked order on quotation edit:", syncErr);
     }
 
+    // Advance customer to 'Opportunity' stage in pipeline if not already Won
+    try {
+      const currentCustomer = await prisma.customer.findUnique({
+        where: { id: data.customerId },
+        select: { leadStage: true, expectedValue: true }
+      });
+      if (currentCustomer && currentCustomer.leadStage !== "Won" && currentCustomer.leadStage !== "Converted") {
+        await prisma.customer.update({
+          where: { id: data.customerId },
+          data: {
+            leadStage: "Opportunity",
+            status: "Opportunity",
+            expectedValue: Math.max(currentCustomer.expectedValue || 0, totalValue),
+            ...(resolvedSalespersonId ? { assignedSalespersonId: resolvedSalespersonId } : {})
+          }
+        });
+      }
+    } catch (cErr) {
+      console.warn("Could not update customer lead stage on quotation update:", cErr);
+    }
+
     revalidatePath("/quotations");
     revalidatePath("/quotations", "page");
     revalidatePath(`/quotations/${id}`);
     revalidatePath(`/quotations/${id}/edit`);
     revalidatePath("/orders");
+    revalidatePath("/pipeline");
+    revalidatePath("/customers");
     revalidatePath("/");
     return { success: true, quotation };
   } catch (error: any) {
