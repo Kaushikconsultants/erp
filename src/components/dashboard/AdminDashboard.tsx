@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import SalesChart from '@/components/dashboard/SalesChart';
 import TopProductsChart from '@/components/dashboard/TopProductsChart';
 import Link from 'next/link';
-import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy, Zap, Rocket, AlertCircle, ShieldCheck, Target, ClipboardList, Sparkles, Plus, Pencil, MessageSquare, RefreshCw, Package } from 'lucide-react';
+import { ArrowUpRight, Flame, Users, CalendarClock, TrendingUp, Activity, UserCheck, Trophy, Zap, Rocket, AlertCircle, ShieldCheck, Target, ClipboardList, Sparkles, Plus, Pencil, MessageSquare, RefreshCw, Package, FileText } from 'lucide-react';
 import KPIDetailsModal from './KPIDetailsModal';
 import EditSalespersonTargetsModal from './EditSalespersonTargetsModal';
 import AssignTaskModal from './AssignTaskModal';

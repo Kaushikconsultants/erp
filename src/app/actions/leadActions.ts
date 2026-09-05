@@ -814,7 +814,7 @@ export async function createQuickLead(data: { name: string; shopName?: string; w
       data: {
         name: data.name,
         shopName: data.shopName || null,
-        whatsappNumber: data.whatsappNumber || null,
+        whatsappNumber: data.whatsappNumber || "",
         status: "New Lead",
         organizationId,
         assignedSalespersonId: employeeId
