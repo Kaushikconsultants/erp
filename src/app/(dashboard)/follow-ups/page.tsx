@@ -54,12 +54,12 @@ export default async function FollowUpsDashboard() {
     }),
     prisma.customer.findMany({
       where: customerWhereClause,
-      select: { id: true, businessName: true, contactPerson: true },
+      select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true },
       orderBy: { businessName: 'asc' }
     }),
     prisma.lead.findMany({
       where: leadWhereClause,
-      select: { id: true, name: true, shopName: true },
+      select: { id: true, name: true, shopName: true, whatsappNumber: true },
       orderBy: { name: 'asc' }
     })
   ]);
@@ -69,12 +69,16 @@ export default async function FollowUpsDashboard() {
       id: c.id,
       companyName: c.businessName,
       contactPerson: c.contactPerson,
+      phone: c.mobile || c.whatsappNumber || '',
+      city: c.city || '',
       type: 'Customer'
     })),
     ...leads.map(l => ({
       id: l.id,
       companyName: l.shopName || l.name,
       contactPerson: l.name,
+      phone: l.whatsappNumber || '',
+      city: '',
       type: 'Lead'
     }))
   ];

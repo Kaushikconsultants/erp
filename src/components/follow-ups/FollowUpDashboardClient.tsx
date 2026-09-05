@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 interface FollowUpDashboardClientProps {
   initialCalls: any[];
-  mappedCustomers: { id: string; companyName: string; contactPerson: string; type?: string }[];
+  mappedCustomers: { id: string; companyName: string; contactPerson?: string; phone?: string; mobile?: string; city?: string; type?: string }[];
   isAdmin: boolean;
 }
 

@@ -203,3 +203,48 @@ async function generateCallSummary(notes: string, outcome: string) {
   return `[AI Summary] Customer discussed: ${notes}. Result: ${outcome}.`;
 }
 
+export async function getCustomersForCallModal() {
+  try {
+    const orgId = await getTenantOrgId();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, customers: [] };
+
+    const [customers, leads] = await Promise.all([
+      prisma.customer.findMany({
+        where: orgId ? { organizationId: orgId } : {},
+        select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true },
+        orderBy: { businessName: 'asc' }
+      }),
+      prisma.lead.findMany({
+        where: orgId ? { organizationId: orgId } : {},
+        select: { id: true, name: true, shopName: true, whatsappNumber: true },
+        orderBy: { name: 'asc' }
+      })
+    ]);
+
+    const mapped = [
+      ...customers.map(c => ({
+        id: c.id,
+        companyName: c.businessName,
+        contactPerson: c.contactPerson,
+        phone: c.mobile || c.whatsappNumber || '',
+        city: c.city || '',
+        type: 'Customer'
+      })),
+      ...leads.map(l => ({
+        id: l.id,
+        companyName: l.shopName || l.name,
+        contactPerson: l.name,
+        phone: l.whatsappNumber || '',
+        city: '',
+        type: 'Lead'
+      }))
+    ];
+
+    return { success: true, customers: mapped };
+  } catch (err) {
+    console.error("Failed to fetch customers for call modal:", err);
+    return { success: false, customers: [] };
+  }
+}
+

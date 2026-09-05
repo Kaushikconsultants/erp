@@ -4,15 +4,26 @@ import DatePicker from '@/components/ui/DatePicker';
 
 import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { logCall } from "@/app/actions/callActions";
+import { logCall, getCustomersForCallModal } from "@/app/actions/callActions";
 import { getCompanySettings, updateCallOutcomes, updateCallTypes } from "@/app/actions/companyActions";
 import AddCustomerModal from "./AddCustomerModal";
-import { Search, ChevronDown, Settings2, Plus, Trash2, Edit2, Check, X } from "lucide-react";
+import { Search, ChevronDown, Settings2, Plus, Trash2, Edit2, Check, X, Phone } from "lucide-react";
 import "@/components/ui/modal.css";
+
+export interface LogCallCustomer {
+  id: string;
+  companyName: string;
+  contactPerson?: string;
+  phone?: string;
+  mobile?: string;
+  whatsappNumber?: string;
+  city?: string;
+  type?: string;
+}
 
 interface LogCallModalProps {
   onClose: () => void;
-  customers?: { id: string; companyName: string; contactPerson: string; type?: string }[];
+  customers?: LogCallCustomer[];
   isAdmin?: boolean;
   leadId?: string;
   leadName?: string;
@@ -55,7 +66,18 @@ export default function LogCallModal({
   const [selectedOutcome, setSelectedOutcome] = useState<string>("");
 
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [customers, setCustomers] = useState(initialCustomers || []);
+  const [customers, setCustomers] = useState<LogCallCustomer[]>(initialCustomers || []);
+
+  // Fetch customers if not provided
+  useEffect(() => {
+    if (!initialCustomers || initialCustomers.length === 0) {
+      getCustomersForCallModal().then((res) => {
+        if (res?.success && res.customers && res.customers.length > 0) {
+          setCustomers(res.customers);
+        }
+      });
+    }
+  }, [initialCustomers]);
 
   // Keep customers in sync if parent props change
   useEffect(() => {
@@ -88,7 +110,10 @@ export default function LogCallModal({
       setSelectedCustomerId(customerId);
       const found = customers.find(c => c.id === customerId);
       if (found) {
-        setSelectedCustomerLabel(found.companyName || found.contactPerson);
+        const phone = found.phone || found.mobile || found.whatsappNumber || '';
+        const phoneStr = phone ? ` • 📞 ${phone}` : '';
+        const contactStr = found.contactPerson && found.contactPerson !== found.companyName ? ` (${found.contactPerson})` : '';
+        setSelectedCustomerLabel(`${found.companyName}${contactStr}${phoneStr}`);
       } else if (customerName) {
         setSelectedCustomerLabel(customerName);
       }
@@ -241,10 +266,17 @@ export default function LogCallModal({
   }, []);
 
   const filteredCustomers = customers.filter((c) => {
-    const q = customerSearch.toLowerCase();
+    const q = customerSearch.trim().toLowerCase();
+    if (!q) return true;
+    const company = (c.companyName || "").toLowerCase();
+    const contact = (c.contactPerson || "").toLowerCase();
+    const phone = ((c as any).phone || (c as any).mobile || (c as any).whatsappNumber || "").toLowerCase();
+    const city = ((c as any).city || "").toLowerCase();
     return (
-      (c.companyName && c.companyName.toLowerCase().includes(q)) ||
-      (c.contactPerson && c.contactPerson.toLowerCase().includes(q))
+      company.includes(q) ||
+      contact.includes(q) ||
+      phone.includes(q) ||
+      city.includes(q)
     );
   });
 
@@ -341,64 +373,104 @@ export default function LogCallModal({
             <input type="hidden" name="customerId" value={selectedCustomerId} />
 
             {!leadId && (
-              <div style={{ marginBottom: '24px' }}>
+              <div style={{ marginBottom: '24px', position: 'relative' }}>
                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
                   Select Customer
                 </label>
-                <div className="custom-dropdown" ref={dropdownRef}>
+                <div className="custom-dropdown" ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
                   <div 
                     className="dropdown-trigger" 
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    style={{ padding: '10px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff' }}
+                    style={{ 
+                      padding: '10px 14px', 
+                      border: '1px solid #cbd5e1', 
+                      borderRadius: '8px', 
+                      cursor: 'pointer', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      backgroundColor: '#fff',
+                      transition: 'border-color 0.15s ease'
+                    }}
                   >
-                    <span style={{ color: selectedCustomerLabel ? '#0f172a' : '#94a3b8' }}>
+                    <span style={{ color: selectedCustomerLabel ? '#0f172a' : '#94a3b8', fontWeight: selectedCustomerLabel ? 600 : 400, fontSize: '0.9rem' }}>
                       {selectedCustomerLabel || "Search or select a customer..."}
                     </span>
                     <ChevronDown size={18} color="#64748b" />
                   </div>
 
                   {dropdownOpen && (
-                    <div className="dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', marginTop: '4px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', overflow: 'hidden' }}>
-                      <div style={{ padding: '8px', borderBottom: '1px solid #f1f5f9' }}>
+                    <div 
+                      className="dropdown-menu" 
+                      style={{ 
+                        position: 'absolute', 
+                        top: 'calc(100% + 4px)', 
+                        left: 0, 
+                        right: 0, 
+                        zIndex: 100, 
+                        background: '#ffffff', 
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: '8px', 
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)', 
+                        overflow: 'hidden' 
+                      }}
+                    >
+                      <div style={{ padding: '8px', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc' }}>
                         <div style={{ position: 'relative' }}>
                           <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                           <input 
                             type="text" 
-                            placeholder="Search customers..." 
+                            placeholder="Search by name, contact, phone number..." 
                             value={customerSearch}
                             onChange={(e) => setCustomerSearch(e.target.value)}
-                            style={{ width: '100%', padding: '8px 10px 8px 32px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
+                            style={{ width: '100%', padding: '8px 10px 8px 32px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', backgroundColor: '#ffffff' }}
                             autoFocus
                           />
                         </div>
                       </div>
-                      <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                      <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
                         {filteredCustomers.length > 0 ? (
-                          filteredCustomers.map(c => (
-                            <div 
-                              key={c.id} 
-                              className="dropdown-item hover-bg"
-                              onClick={() => {
-                                setSelectedCustomerId(c.id);
-                                setSelectedCustomerLabel(c.companyName + (c.contactPerson ? ` (${c.contactPerson})` : ''));
-                                setDropdownOpen(false);
-                              }}
-                              style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f8fafc' }}
-                            >
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ fontWeight: 500, fontSize: '0.95rem', color: '#1e293b' }}>{c.companyName}</div>
-                                {(c as any).type === 'Lead' && <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#eef2ff', color: '#4f46e5', borderRadius: '4px', fontWeight: 600 }}>Lead</span>}
+                          filteredCustomers.map(c => {
+                            const phone = (c as any).phone || (c as any).mobile || (c as any).whatsappNumber || '';
+                            return (
+                              <div 
+                                key={c.id} 
+                                className="dropdown-item hover-bg"
+                                onClick={() => {
+                                  const contactStr = c.contactPerson && c.contactPerson !== c.companyName ? ` (${c.contactPerson})` : '';
+                                  const phoneStr = phone ? ` • 📞 ${phone}` : '';
+                                  handleSelectCustomer(c.id, `${c.companyName}${contactStr}${phoneStr}`);
+                                }}
+                                style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: '3px' }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ fontWeight: 600, fontSize: '0.95rem', color: '#0f172a' }}>{c.companyName}</div>
+                                  {(c as any).type === 'Lead' ? (
+                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#eef2ff', color: '#4f46e5', borderRadius: '4px', fontWeight: 600 }}>Lead</span>
+                                  ) : (
+                                    <span style={{ fontSize: '0.7rem', padding: '2px 6px', background: '#ecfdf5', color: '#059669', borderRadius: '4px', fontWeight: 600 }}>Customer</span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#64748b' }}>
+                                  <div>{c.contactPerson ? `Contact: ${c.contactPerson}` : ''} {(c as any).city ? `• ${c.city}` : ''}</div>
+                                  {phone && (
+                                    <div style={{ color: '#2563eb', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      <span>📞 {phone}</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              {c.contactPerson && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{c.contactPerson}</div>}
-                            </div>
-                          ))
+                            );
+                          })
                         ) : (
-                          <div style={{ padding: '12px 16px', color: '#64748b', fontSize: '0.9rem', textAlign: 'center' }}>No customers found.</div>
+                          <div style={{ padding: '16px', color: '#64748b', fontSize: '0.9rem', textAlign: 'center' }}>
+                            No matching customers or leads found.
+                          </div>
                         )}
                       </div>
                       <div 
                         onClick={() => { setDropdownOpen(false); setShowAddCustomer(true); }}
-                        style={{ padding: '10px 16px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', color: '#2563eb', fontWeight: 500, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        style={{ padding: '10px 16px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', cursor: 'pointer', color: '#2563eb', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
                       >
                         <Plus size={16} /> Add New Customer
                       </div>
@@ -747,15 +819,19 @@ export default function LogCallModal({
             if (newCustomer && newCustomer.id) {
               const cName = newCustomer.businessName || newCustomer.companyName || "New Customer";
               const cPerson = newCustomer.contactPerson && newCustomer.contactPerson !== cName ? newCustomer.contactPerson : "";
-              const formattedCustomer = {
+              const cPhone = newCustomer.mobile || newCustomer.phone || newCustomer.whatsappNumber || "";
+              const formattedCustomer: LogCallCustomer = {
                 id: newCustomer.id,
                 companyName: cName,
-                contactPerson: cPerson || cName
+                contactPerson: cPerson || cName,
+                phone: cPhone,
+                type: 'Customer'
               };
               setCustomers((prev) => [formattedCustomer, ...prev.filter(c => c.id !== newCustomer.id)]);
-              const label = cPerson ? `${cName} (${cPerson})` : cName;
+              const contactPart = cPerson ? ` (${cPerson})` : '';
+              const phonePart = cPhone ? ` • 📞 ${cPhone}` : '';
               setSelectedCustomerId(formattedCustomer.id);
-              setSelectedCustomerLabel(label);
+              setSelectedCustomerLabel(`${cName}${contactPart}${phonePart}`);
               setCustomerSearch("");
               setDropdownOpen(false);
             }

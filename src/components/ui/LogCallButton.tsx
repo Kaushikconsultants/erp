@@ -6,7 +6,7 @@ import LogCallModal from "./LogCallModal";
 import { useSearchParams } from "next/navigation";
 
 interface LogCallButtonProps {
-  customers: { id: string; companyName: string; contactPerson: string }[];
+  customers: { id: string; companyName: string; contactPerson?: string; phone?: string; mobile?: string; city?: string; type?: string }[];
   isAdmin?: boolean;
 }
 
