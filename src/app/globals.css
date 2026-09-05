@@ -669,192 +669,16 @@ button {
 
 @media (max-width: 768px) {
   html, body {
+    width: 100%;
+    max-width: 100vw;
     overflow-x: hidden !important;
     position: relative;
     touch-action: manipulation;
-  }
-
-  /* Layout Overrides for Mobile App */
-  .app-container {
-    flex-direction: column;
-    padding-bottom: 64px; /* Space for MobileBottomNav */
-  }
-  .main-content {
-    padding: 12px 10px 80px 10px !important;
-  }
-
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: -280px;
-    width: 280px;
-    height: 100vh;
-    z-index: 1000;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  .app-container.sidebar-open .sidebar {
-    transform: translateX(280px);
-  }
-  .sidebar-overlay {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(15, 23, 42, 0.5);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
-    z-index: 999;
-  }
-
-  /* Mobile App Header & Topbar */
-  .topbar {
-    padding: 0 12px;
-    gap: 8px;
-    height: 58px;
-  }
-  .search-container {
-    width: 140px; /* shrink search bar */
-    padding: 6px 10px;
-  }
-  .topbar-actions {
-    gap: 8px;
-  }
-  .user-info {
-    display: none; /* hide name on mobile */
-  }
-
-  /* Grids & Cards - Single Column Mobile Stack */
-  .kpi-grid,
-  .dashboard-charts,
-  .zoho-kpi-grid,
-  .zoho-form-grid-2,
-  .zoho-form-grid-3,
-  .dashboard-details-grid,
-  .employee-actions-grid,
-  .quick-actions-row,
-  .grid-row,
-  .quotation-top-grid,
-  .quotation-address-grid,
-  .quotation-bottom-grid {
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-
-  .quotation-page-container {
-    padding: 8px 6px !important;
-  }
-
-  .quotation-canvas-card {
-    padding: 14px 10px !important;
-    border-radius: 8px !important;
-  }
-
-  .quotation-header-bar {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    gap: 10px !important;
-  }
-
-  .quotation-header-actions {
-    width: 100% !important;
-    justify-content: flex-start !important;
-    flex-wrap: wrap !important;
-    gap: 8px !important;
-  }
-
-  /* Full mobile table responsiveness */
-  /* Mobile Cards vs Desktop Table Overrides */
-  .mobile-order-cards {
-    display: flex !important;
-  }
-  .desktop-order-table {
-    display: none !important;
-  }
-
-  /* ── Quotation Item Table ↔ Card Toggle ── */
-  .quot-items-desktop {
-    display: none !important;
-  }
-  .quot-items-mobile {
-    display: flex !important;
-  }
-
-  /* Prevent generic table from forcing min-width inside quot items (they are hidden anyway) */
-  .quot-items-desktop table {
-    min-width: 0 !important;
-  }
-
-  .table-responsive,
-  .data-table-container {
-    width: 100% !important;
-    max-width: 100vw !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    border-radius: 8px;
-  }
-
-  table {
-    min-width: 580px !important;
-  }
-
-  /* But inside quotation form, tables don't need min-width since we hide them on mobile */
-  .quotation-canvas-card table {
-    min-width: 0 !important;
-  }
-
-  /* Touch Targets & Native Input Size */
-  input[type="text"],
-  input[type="number"],
-  input[type="email"],
-  input[type="password"],
-  input[type="date"],
-  select,
-  textarea {
-    font-size: 16px !important; /* Prevents auto-zoom on iOS safari & Android Chrome */
-    min-height: 42px;
-  }
-
-  .page-header-actions,
-  .dashboard-header {
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 10px !important;
-  }
-
-  /* Charts & Page Titles */
-  .chart-container {
-    min-height: 240px;
-  }
-  .page-title {
-    font-size: 1.15rem;
-  }
-
-  /* Mobile Bottom Sheets / Modals */
-  .modal-content,
-  .zoho-form-card {
-    max-width: 95vw !important;
-    max-height: 88vh !important;
-    margin: 8px auto !important;
-    width: 95vw !important;
-    border-radius: 14px !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  .modal-body {
-    padding: 12px !important;
-  }
-}
-
-/* ------------------------------------------------------------- */
-/* NATIVE MOBILE APP-STYLE ARCHITECTURE */
-/* ------------------------------------------------------------- */
-@media (max-width: 768px) {
-  html, body {
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden;
     -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
   }
 
+  /* App Shell Container for Mobile View */
   .app-container {
     display: flex;
     flex-direction: column;
@@ -865,7 +689,7 @@ button {
     position: relative;
   }
 
-  /* Mobile Drawer */
+  /* Smooth Drawer Sidebar on Mobile */
   .sidebar {
     position: fixed !important;
     top: 0 !important;
@@ -887,6 +711,7 @@ button {
   }
 
   .sidebar-overlay {
+    display: block !important;
     position: fixed !important;
     inset: 0 !important;
     background: rgba(15, 23, 42, 0.6) !important;
@@ -896,11 +721,13 @@ button {
     animation: fadeIn 0.2s ease-out !important;
   }
 
-  /* Top App Bar */
+  /* Native Mobile App Header Topbar */
   .topbar {
     height: 56px !important;
     padding: 0 12px !important;
-    background: #ffffff !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
     border-bottom: 1px solid #e2e8f0 !important;
     gap: 8px !important;
   }
@@ -915,6 +742,11 @@ button {
     background: #f1f5f9 !important;
     color: #0f172a !important;
     cursor: pointer !important;
+  }
+
+  .search-container {
+    width: 140px !important;
+    padding: 6px 10px !important;
   }
 
   .topbar-actions {
@@ -937,42 +769,160 @@ button {
   }
 
   .main-content {
-    padding: 12px 12px calc(76px + env(safe-area-inset-bottom, 8px)) 12px !important;
+    padding: 12px 10px calc(76px + env(safe-area-inset-bottom, 8px)) 10px !important;
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
   }
 
-  .page-container {
+  .page-container,
+  .dashboard-container {
     gap: 14px !important;
     width: 100% !important;
     max-width: 100% !important;
   }
 
-  .dashboard-header {
+  .dashboard-header,
+  .page-header-actions {
     flex-direction: column !important;
-    align-items: flex-start !important;
+    align-items: stretch !important;
     gap: 10px !important;
   }
 
   .page-title {
-    font-size: 1.25rem !important;
+    font-size: 1.2rem !important;
+    letter-spacing: -0.02em;
   }
 
-  /* Compact Form & Button Controls */
-  .primary-btn, .action-btn {
-    padding: 8px 14px !important;
-    font-size: 0.8rem !important;
+  /* ── 2x2 Clean Enterprise Mobile KPI Cards ── */
+  .kpi-grid,
+  .zoho-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
   }
 
-  /* Touch-Friendly Card Elevation */
-  .glass-panel {
-    border-radius: 12px !important;
+  .kpi-card,
+  .zoho-kpi-item {
+    padding: 12px 14px !important;
+    border-radius: 10px !important;
+  }
+
+  .kpi-value {
+    font-size: 1.35rem !important;
+    margin-bottom: 4px !important;
+  }
+
+  .kpi-title {
+    font-size: 0.75rem !important;
+  }
+
+  /* Single Column Stack for Detailed Forms & Heavy Containers */
+  .dashboard-charts,
+  .zoho-form-grid-2,
+  .zoho-form-grid-3,
+  .dashboard-details-grid,
+  .employee-actions-grid,
+  .grid-row,
+  .quotation-top-grid,
+  .quotation-address-grid,
+  .quotation-bottom-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .chart-container {
     padding: 14px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    min-height: 250px !important;
   }
 
-  /* Responsive Tabs Scrolling */
-  .mobile-tab-scroll {
+  /* Quotation Sheet Container */
+  .quotation-page-container {
+    padding: 8px 4px !important;
+  }
+
+  .quotation-canvas-card {
+    padding: 14px 12px !important;
+    border-radius: 10px !important;
+  }
+
+  .quotation-header-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .quotation-header-actions {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* ── Quotation Desktop Table ↔ Mobile Card Toggle ── */
+  .desktop-quotation-table,
+  .quot-items-desktop,
+  .desktop-order-table {
+    display: none !important;
+  }
+
+  .mobile-quotation-cards,
+  .quot-items-mobile,
+  .mobile-order-cards {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .quot-items-desktop table {
+    min-width: 0 !important;
+  }
+
+  .table-responsive,
+  .data-table-container {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: 8px;
+  }
+
+  /* Touch Targets & Native Form Controls */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS */
+    min-height: 40px;
+  }
+
+  .primary-btn, .action-btn, .btn-secondary {
+    min-height: 40px;
+    padding: 8px 14px !important;
+    font-size: 0.82rem !important;
+    justify-content: center;
+  }
+
+  /* Mobile Bottom Sheets / Modals */
+  .modal-content,
+  .zoho-form-card {
+    max-width: 95vw !important;
+    max-height: 88vh !important;
+    margin: 8px auto !important;
+    width: 95vw !important;
+    border-radius: 14px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .modal-body {
+    padding: 14px !important;
+  }
+
+  /* Horizontal Filter & Tab Strips */
+  .mobile-tab-scroll,
+  .mobile-filter-scroll {
     display: flex;
     gap: 8px;
     overflow-x: auto;
@@ -981,17 +931,52 @@ button {
     scrollbar-width: none;
     padding-bottom: 4px;
   }
-  .mobile-tab-scroll::-webkit-scrollbar {
+  .mobile-tab-scroll::-webkit-scrollbar,
+  .mobile-filter-scroll::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Sticky Mobile Action Bar for Forms */
+  .quotation-sticky-mobile-bar {
+    display: flex !important;
+    position: fixed;
+    bottom: 64px;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+    padding: 10px 14px calc(env(safe-area-inset-bottom, 0px) + 6px) 14px;
+    z-index: 9998;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+}
+
+@media (min-width: 769px) {
+  .quotation-sticky-mobile-bar {
+    display: none !important;
+  }
+  .mobile-quotation-cards {
+    display: none !important;
+  }
+  .quot-items-mobile {
+    display: none !important;
+  }
+  .mobile-order-cards {
+    display: none !important;
   }
 }
 
 @media (max-width: 480px) {
   .topbar {
-    padding: 0 8px;
+    padding: 0 8px !important;
   }
   .search-container {
-    width: 110px;
+    width: 110px !important;
   }
   .primary-btn, .action-btn {
     padding: 8px 10px;

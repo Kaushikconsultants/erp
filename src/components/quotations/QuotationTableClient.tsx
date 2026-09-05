@@ -294,8 +294,162 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
           </div>
         </div>
         
-        {/* TABLE */}
-        <div style={{ overflowX: 'auto' }}>
+        {/* ─── MOBILE QUOTATION CARDS VIEW (HIDDEN ON DESKTOP) ─── */}
+        <div className="mobile-quotation-cards" style={{ display: 'none', flexDirection: 'column', gap: '10px', padding: '12px' }}>
+          {filteredQuotations.map((q) => (
+            <div 
+              key={q.id}
+              style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                padding: '14px',
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-primary, #4f46e5)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace' }}>
+                    <FileText size={13} /> {q.quotationNumber} • {new Date(q.date).toLocaleDateString('en-IN')}
+                  </span>
+                  <h4 style={{ margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
+                    {q.customer?.businessName || q.customer?.contactPerson || 'Unknown Customer'}
+                  </h4>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    Rep: {q.salesperson?.user?.name || 'Unassigned'}
+                  </p>
+                </div>
+
+                <span 
+                  onClick={() => {
+                    if (q.status === 'Confirmed') setTokenModalQuote(q);
+                  }}
+                  style={{ 
+                    backgroundColor: q.status === 'Converted' || q.status === 'Accepted' ? '#dcfce7' : q.status === 'Confirmed' ? '#dbeafe' : q.status === 'Sent' ? 'var(--accent-light, #e0e7ff)' : '#f1f5f9',
+                    color: q.status === 'Converted' || q.status === 'Accepted' ? '#166534' : q.status === 'Confirmed' ? '#1d4ed8' : q.status === 'Sent' ? 'var(--accent-primary, #3730a3)' : '#475569',
+                    padding: '3px 8px', 
+                    borderRadius: '9999px', 
+                    fontSize: '0.72rem', 
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {q.status === 'Confirmed' && q.receivedAmount > 0 ? `Confirmed (₹${q.receivedAmount.toLocaleString('en-IN')})` : q.status}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', padding: '10px 12px', borderRadius: '8px' }}>
+                <div>
+                  <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Amount</span>
+                  <span style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a' }}>₹{(q.totalValue || 0).toLocaleString('en-IN')}</span>
+                </div>
+                {q.receivedAmount > 0 && (
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#059669', display: 'block', textTransform: 'uppercase' }}>Paid</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669' }}>₹{q.receivedAmount.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px', paddingTop: '8px', borderTop: '1px solid #f1f5f9', alignItems: 'center', flexWrap: 'wrap' }}>
+                <Link 
+                  href={`/quotations/${q.id}`} 
+                  style={{ 
+                    flex: 1, 
+                    textAlign: 'center', 
+                    textDecoration: 'none', 
+                    fontSize: '0.78rem', 
+                    fontWeight: 600,
+                    padding: '7px 8px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#334155'
+                  }}
+                >
+                  View
+                </Link>
+                <Link 
+                  href={`/quotations/${q.id}/edit`}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #93c5fd',
+                    backgroundColor: '#eff6ff',
+                    color: '#1d4ed8',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Pencil size={13} /> Edit
+                </Link>
+                {q.status === 'Confirmed' && (
+                  <button
+                    type="button"
+                    onClick={() => setTokenModalQuote(q)}
+                    style={{
+                      padding: '7px 10px',
+                      border: '1px solid #86efac',
+                      backgroundColor: '#f0fdf4',
+                      borderRadius: '6px',
+                      color: '#15803d',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Coins size={13} /> Token
+                  </button>
+                )}
+                <button 
+                  type="button"
+                  onClick={() => handleDelete(q.id, q.quotationNumber)} 
+                  disabled={deletingId === q.id}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #fecaca',
+                    backgroundColor: '#fef2f2',
+                    color: '#dc2626',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: deletingId === q.id ? 'not-allowed' : 'pointer',
+                    opacity: deletingId === q.id ? 0.6 : 1
+                  }}
+                >
+                  <Trash2 size={13} />
+                </button>
+                {q.status === 'Confirmed' && (
+                  <ConvertToInvoiceBtn quotationId={q.id} />
+                )}
+                {q.status !== 'Converted' && q.status !== 'Confirmed' && (
+                  <ConvertQuotationBtn quotationId={q.id} />
+                )}
+              </div>
+            </div>
+          ))}
+
+          {filteredQuotations.length === 0 && (
+            <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', backgroundColor: '#ffffff', borderRadius: '12px' }}>
+              No quotations found for this filter.
+            </div>
+          )}
+        </div>
+
+        {/* ─── DESKTOP TABLE ─── */}
+        <div className="desktop-quotation-table" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>

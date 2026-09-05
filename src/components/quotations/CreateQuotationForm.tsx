@@ -554,6 +554,8 @@ export default function CreateQuotationForm({
       totalRateWeighted += taxable * gstRate;
     });
 
+    const totalQty = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+
     const pos = (formData.placeOfSupply || '').trim().toLowerCase();
     const orgState = (companyState || 'Haryana').trim().toLowerCase();
     const isIntrastate = Boolean(pos)
@@ -590,7 +592,8 @@ export default function CreateQuotationForm({
       rawTotal, 
       roundOff, 
       finalTotal, 
-      totalWeight 
+      totalWeight,
+      totalQty
     };
   };
 
@@ -2489,6 +2492,65 @@ export default function CreateQuotationForm({
           }}
         />
       )}
+
+      {/* ─── STICKY MOBILE SUMMARY & 1-TAP SAVE ACTION BAR ─── */}
+      <div className="quotation-sticky-mobile-bar">
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+            {items.filter((i: any) => i.productId).length} items • {totals.totalQty} pcs {totals.totalWeight > 0 ? `• ${totals.totalWeight.toFixed(1)}kg` : ''}
+          </div>
+          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+            ₹{totals.finalTotal.toLocaleString('en-IN')}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {(!initialQuotation || (initialQuotation?.status !== 'Confirmed' && initialQuotation?.status !== 'Converted')) && (
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, 'Draft')}
+              disabled={loading}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#334155',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <Save size={14} /> Draft
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={(e) => handleSubmit(e, initialQuotation?.status === 'Confirmed' || initialQuotation?.status === 'Converted' ? initialQuotation.status : 'Sent')}
+            disabled={loading}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: initialQuotation?.status === 'Confirmed' ? '#10b981' : '#2563eb',
+              color: '#ffffff',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
+            }}
+          >
+            <Send size={14} /> {loading ? "Saving..." : initialQuotation ? "Save" : "Save & Send"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

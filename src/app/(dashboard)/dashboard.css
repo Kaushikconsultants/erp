@@ -430,3 +430,74 @@
   }
 }
 
+@media (max-width: 768px) {
+  .dashboard-container {
+    gap: 16px;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .kpi-card {
+    padding: 12px 14px;
+    border-radius: 10px;
+  }
+
+  .kpi-title {
+    font-size: 0.75rem;
+  }
+
+  .kpi-value {
+    font-size: 1.35rem;
+  }
+
+  .dashboard-charts {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+  }
+
+  .chart-container {
+    padding: 16px;
+    min-height: 280px;
+    border-radius: 12px;
+  }
+
+  .zoho-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    margin-bottom: 20px;
+  }
+
+  .zoho-card {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .zoho-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .zoho-payout-box {
+    text-align: left;
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .quick-actions-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .action-btn {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+    min-height: 44px;
+  }
+}
+
+

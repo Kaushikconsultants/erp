@@ -59,9 +59,10 @@
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .pipeline-metrics-bar {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
   }
 }
 
@@ -916,3 +917,106 @@
   align-items: center;
   gap: 5px;
 }
+
+/* ------------------------------------------------------------- */
+/* ENTERPRISE MOBILE RESPONSIVE PIPELINE & KANBAN STYLES */
+/* ------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .pipeline-container {
+    gap: 12px;
+  }
+
+  .pipeline-nav-tabs {
+    width: 100%;
+    display: flex;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pipeline-nav-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pipeline-nav-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .pipeline-toolbar {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .search-field {
+    min-width: 100%;
+    flex: 1 1 100%;
+  }
+
+  .filter-select-input {
+    flex: 1 1 calc(50% - 6px);
+    font-size: 0.78rem;
+    padding: 8px 8px;
+  }
+
+  .stage-customize-btn {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+    padding: 8px 12px;
+  }
+
+  /* Smooth swipeable Kanban Track on Mobile with snapping */
+  .kanban-track {
+    grid-template-columns: repeat(6, 85vw);
+    gap: 12px;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px;
+    padding-left: 4px;
+    padding-right: 16px;
+  }
+
+  .kanban-col {
+    scroll-snap-align: start;
+    min-height: 480px;
+    max-height: 72vh;
+  }
+
+  .deal-box {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .deal-name-link {
+    max-width: 160px;
+    font-size: 0.88rem;
+  }
+
+  /* 1-Tap Touch Targets for Mobile Deal Actions */
+  .deal-btn-row {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .btn-step-adv {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+  }
+
+  .action-icon-pill {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .action-pill-text {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+  }
+}
+
