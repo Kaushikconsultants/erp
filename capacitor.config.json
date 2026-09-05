@@ -4,7 +4,7 @@
   "webDir": "public",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://effective-palm-tree-production.up.railway.app",
+    "url": "https://erp.esponsports.com",
     "cleartext": true
   },
   "android": {

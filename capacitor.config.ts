@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Heart of Business ERP',
   webDir: 'public',
   server: {
-    url: 'https://effective-palm-tree-production.up.railway.app',
+    url: 'https://erp.esponsports.com',
     cleartext: true,
     androidScheme: 'https'
   },
