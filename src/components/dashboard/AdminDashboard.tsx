@@ -205,19 +205,19 @@ export default function AdminDashboard({
         <div className="hero-metrics-grid">
           <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('orders')}>
             <div className="hero-metric-label">Revenue MTD</div>
-            <div className="hero-metric-val">₹{totalRevenue ? (totalRevenue / 1000).toFixed(1) + 'k' : '0'}</div>
+            <div className="hero-metric-val">₹{Number(totalRevenue || 0) >= 1000 ? (Number(totalRevenue || 0) / 1000).toFixed(1) + 'k' : Number(totalRevenue || 0).toLocaleString('en-IN')}</div>
           </div>
           <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('orders')}>
             <div className="hero-metric-label">Total Orders</div>
-            <div className="hero-metric-val">{totalOrders}</div>
+            <div className="hero-metric-val">{Number(totalOrders || 0)}</div>
           </div>
           <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('customers')}>
             <div className="hero-metric-label">B2B Clients</div>
-            <div className="hero-metric-val">{totalCustomers}</div>
+            <div className="hero-metric-val">{Number(totalCustomers || 0)}</div>
           </div>
           <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('calls')}>
             <div className="hero-metric-label">Pending Calls</div>
-            <div className="hero-metric-val" style={{ color: pendingCalls > 0 ? '#f87171' : '#34d399' }}>{pendingCalls}</div>
+            <div className="hero-metric-val" style={{ color: Number(pendingCalls || 0) > 0 ? '#f87171' : '#34d399' }}>{Number(pendingCalls || 0)}</div>
           </div>
         </div>
       </div>
