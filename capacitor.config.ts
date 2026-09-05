@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Heart of Business ERP',
   webDir: 'public',
   server: {
-    url: 'https://effective-palm-tree.vercel.app',
+    url: 'https://effective-palm-tree-production.up.railway.app',
     cleartext: true,
     androidScheme: 'https'
   },

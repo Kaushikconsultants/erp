@@ -1,10 +1,10 @@
 {
   "appId": "com.espon.heartofbusiness",
-  "appName": "Heart of Business",
-  "webDir": "out",
+  "appName": "Heart of Business ERP",
+  "webDir": "public",
   "bundledWebRuntime": false,
   "server": {
-    "url": "https://effective-palm-tree.vercel.app",
+    "url": "https://effective-palm-tree-production.up.railway.app",
     "cleartext": true
   },
   "android": {
