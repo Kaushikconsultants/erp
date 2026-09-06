@@ -30,21 +30,18 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
   const [isSettingUpPin, setIsSettingUpPin] = useState<boolean>(false);
 
   // Native OS Hardware Biometric (Fingerprint / Face ID) Scan Trigger
-  const handleBiometricUnlock = useCallback(async () => {
-    setErrorMsg("");
+  const handleBiometricUnlock = useCallback(async (isAutoTrigger = false) => {
+    if (!isAutoTrigger) {
+      setErrorMsg("");
+    }
     if (typeof window === "undefined") return;
 
     try {
       // ─── 1. NATIVE MOBILE APP (Android / iOS) VIA CAPACITOR ───
-      if (Capacitor.isNativePlatform()) {
-        try {
-          const avail = await NativeBiometric.isAvailable().catch(() => ({ isAvailable: false }));
-          if (!avail?.isAvailable) {
-            setErrorMsg("No fingerprint/Face ID registered on device. Use 4-digit MPIN.");
-            return;
-          }
-
-          // Trigger native Android BiometricPrompt / iOS LocalAuthentication
+      // Try native Android BiometricPrompt / iOS LocalAuthentication first
+      try {
+        const avail = await NativeBiometric.isAvailable().catch(() => ({ isAvailable: false }));
+        if (avail && avail.isAvailable) {
           await NativeBiometric.verifyIdentity({
             reason: "Authenticate to unlock Heart of Business ERP",
             title: "Biometric Login",
@@ -59,31 +56,44 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
           setPin("");
           setErrorMsg("");
           return;
-        } catch (nativeErr: any) {
-          console.warn("Native biometric auth error:", nativeErr);
-          const errStr = (nativeErr?.message || nativeErr?.errorMessage || JSON.stringify(nativeErr)).toLowerCase();
-          if (errStr.includes("cancel") || errStr.includes("negative") || errStr.includes("user_cancel")) {
-            setErrorMsg("Biometric scan canceled. Enter 4-digit MPIN.");
-          } else if (errStr.includes("not_enrolled") || errStr.includes("none_enrolled") || errStr.includes("no biometric")) {
-            setErrorMsg("No fingerprint/Face ID registered on device. Use 4-digit MPIN.");
-          } else if (errStr.includes("failed") || errStr.includes("auth_failed")) {
-            setErrorMsg("Fingerprint not recognized. Please try again or use MPIN.");
-          } else {
-            setErrorMsg("Biometric verification canceled. Enter 4-digit MPIN.");
-          }
-          return;
         }
+      } catch (nativeErr: any) {
+        console.warn("Native biometric auth error:", nativeErr);
+        const errStr = (nativeErr?.message || nativeErr?.errorMessage || JSON.stringify(nativeErr)).toLowerCase();
+        if (errStr.includes("cancel") || errStr.includes("negative") || errStr.includes("user_cancel")) {
+          setErrorMsg("Biometric scan canceled. Enter 4-digit MPIN.");
+        } else if (errStr.includes("not_enrolled") || errStr.includes("none_enrolled") || errStr.includes("no biometric")) {
+          setErrorMsg("No fingerprint/Face ID registered on device. Use 4-digit MPIN.");
+        } else if (errStr.includes("failed") || errStr.includes("auth_failed")) {
+          setErrorMsg("Fingerprint not recognized. Please try again or use MPIN.");
+        } else {
+          setErrorMsg("Biometric verification canceled. Enter 4-digit MPIN.");
+        }
+        return;
+      }
+
+      // If running inside native app container but sensor wasn't available
+      const isNative = Capacitor.isNativePlatform() || (typeof window !== "undefined" && (window as any).Capacitor?.isNativePlatform?.());
+      if (isNative) {
+        if (!isAutoTrigger) {
+          setErrorMsg("Biometrics not enrolled on device. Please use 4-digit MPIN.");
+        }
+        return;
       }
 
       // ─── 2. WEB BROWSER FALLBACK (WebAuthn API) ───
       if (!window.PublicKeyCredential) {
-        setErrorMsg("Biometrics not supported on this browser. Please use 4-digit MPIN.");
+        if (!isAutoTrigger) {
+          setErrorMsg("Biometrics not supported on this browser. Please use 4-digit MPIN.");
+        }
         return;
       }
 
       const isAvailable = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => false);
       if (!isAvailable) {
-        setErrorMsg("No fingerprint/Face ID sensor registered on this device. Use 4-digit MPIN.");
+        if (!isAutoTrigger) {
+          setErrorMsg("No fingerprint/Face ID sensor registered on this device. Use 4-digit MPIN.");
+        }
         return;
       }
 
@@ -104,17 +114,19 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
         setIsLocked(false);
         setPin("");
         setErrorMsg("");
-      } else {
+      } else if (!isAutoTrigger) {
         setErrorMsg("Biometric verification failed. Please try again or enter MPIN.");
       }
     } catch (err: any) {
       console.warn("Biometric verification error:", err);
-      if (err.name === "NotAllowedError" || err.message?.includes("canceled")) {
-        setErrorMsg("Biometric scan canceled. Enter 4-digit MPIN.");
-      } else if (err.name === "InvalidStateError" || err.name === "NotSupportedError") {
-        setErrorMsg("No registered biometrics found. Use 4-digit MPIN.");
-      } else {
-        setErrorMsg("Fingerprint not recognized. Use 4-digit MPIN.");
+      if (!isAutoTrigger) {
+        if (err.name === "NotAllowedError" || err.message?.includes("canceled")) {
+          setErrorMsg("Biometric scan canceled. Enter 4-digit MPIN.");
+        } else if (err.name === "InvalidStateError" || err.name === "NotSupportedError") {
+          setErrorMsg("No registered biometrics found. Use 4-digit MPIN.");
+        } else {
+          setErrorMsg("Fingerprint not recognized. Use 4-digit MPIN.");
+        }
       }
     }
   }, []);
@@ -132,9 +144,9 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
         setIsLocked(true);
 
         // Auto trigger native fingerprint dialog on mobile app launch
-        if (Capacitor.isNativePlatform()) {
+        if (Capacitor.isNativePlatform() || (window as any).Capacitor?.isNativePlatform?.()) {
           const timer = setTimeout(() => {
-            handleBiometricUnlock();
+            handleBiometricUnlock(true);
           }, 350);
           return () => clearTimeout(timer);
         }
