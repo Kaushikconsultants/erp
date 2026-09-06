@@ -6,6 +6,8 @@ import Topbar from './Topbar';
 import MobileBottomNav from './MobileBottomNav';
 import { usePathname, useRouter } from 'next/navigation';
 import { initNativeMobileShell } from '@/lib/capacitor';
+import AppLockGuard from '../security/AppLockGuard';
+import CallReminderNotifier from '../notifications/CallReminderNotifier';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -43,39 +45,44 @@ export default function DashboardShell({
   }, [pathname]);
 
   return (
-    <div className={`app-container ${isSidebarOpen ? 'sidebar-open' : ''}`}>
-      {/* Mobile overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="sidebar-overlay" 
-          onClick={() => setIsSidebarOpen(false)}
-          aria-hidden="true"
-        ></div>
-      )}
-      
-      <Sidebar 
-        showSettings={showSettings} 
-        showAnalytics={showAnalytics}
-        showProcurement={showProcurement}
-        userRole={userRole}
-        isPlatformOwner={isPlatformOwner}
-        allowedSections={allowedSections}
-        onClose={() => setIsSidebarOpen(false)} 
-      />
-      
-      <div className="main-wrapper">
-        <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
-        <main className="main-content">
-          {children}
-        </main>
-      </div>
+    <AppLockGuard>
+      <div className={`app-container ${isSidebarOpen ? 'sidebar-open' : ''}`}>
+        {/* Mobile overlay */}
+        {isSidebarOpen && (
+          <div
+            className="sidebar-overlay"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-hidden="true"
+          ></div>
+        )}
 
-      {/* Native App-Style Bottom Navigation Bar & Action Sheet */}
-      <MobileBottomNav 
-        userRole={userRole} 
-        allowedSections={allowedSections} 
-        onMenuClick={() => setIsSidebarOpen(true)}
-      />
-    </div>
+        <Sidebar
+          showSettings={showSettings}
+          showAnalytics={showAnalytics}
+          showProcurement={showProcurement}
+          userRole={userRole}
+          isPlatformOwner={isPlatformOwner}
+          allowedSections={allowedSections}
+          onClose={() => setIsSidebarOpen(false)}
+        />
+
+        <div className="main-wrapper">
+          <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
+          <main className="main-content">
+            {children}
+          </main>
+        </div>
+
+        {/* Native App-Style Bottom Navigation Bar & Action Sheet */}
+        <MobileBottomNav
+          userRole={userRole}
+          allowedSections={allowedSections}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
+
+        {/* Real-time Call Reminders & Notifications Engine */}
+        <CallReminderNotifier />
+      </div>
+    </AppLockGuard>
   );
 }

@@ -145,7 +145,80 @@ const WHATSAPP_TEMPLATES = [
   }
 ];
 
-export default function PhoneDialerModal({
+class DialerErrorBoundary extends React.Component<
+  { children: React.ReactNode; onClose: () => void },
+  { hasError: boolean; error: any }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("Dialer error caught by boundary:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(15, 23, 42, 0.75)",
+            zIndex: 99999,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+          }}
+          onClick={this.props.onClose}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "480px",
+              backgroundColor: "#ffffff",
+              borderTopLeftRadius: "24px",
+              borderTopRightRadius: "24px",
+              padding: "24px 20px",
+              textAlign: "center"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "#fee2e2", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px auto" }}>
+              <PhoneOff size={24} />
+            </div>
+            <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", color: "#0f172a" }}>Phone Dialer Active</h3>
+            <p style={{ margin: "0 0 16px 0", fontSize: "0.82rem", color: "#64748b" }}>
+              A temporary display glitch was safely isolated. Click below to reset the dialer keypad.
+            </p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => this.setState({ hasError: false, error: null })}
+                style={{ flex: 1, padding: "10px", borderRadius: "10px", backgroundColor: "#4f46e5", color: "#ffffff", border: "none", fontWeight: 700, cursor: "pointer" }}
+              >
+                Reset Dialer
+              </button>
+              <button
+                onClick={this.props.onClose}
+                style={{ flex: 1, padding: "10px", borderRadius: "10px", backgroundColor: "#f1f5f9", color: "#475569", border: "none", fontWeight: 700, cursor: "pointer" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function PhoneDialerModalContent({
   isOpen,
   onClose,
   initialPhone = "",

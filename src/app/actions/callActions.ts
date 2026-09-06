@@ -283,8 +283,9 @@ async function generateCallSummary(notes: string, outcome: string, durationSec?:
 
 export async function getCustomersForCallModal() {
   try {
-    const orgId = await getTenantOrgId();
-    const session = await getServerSession(authOptions);
+    const rawOrgId = await getTenantOrgId().catch(() => null);
+    const orgId = (rawOrgId && rawOrgId !== "default-org") ? rawOrgId : undefined;
+    const session = await getServerSession(authOptions).catch(() => null);
     if (!session?.user) return { success: false, customers: [] };
 
     const [customers, leads] = await Promise.all([
@@ -293,17 +294,23 @@ export async function getCustomersForCallModal() {
         select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true },
         orderBy: { businessName: 'asc' },
         take: 200
+      }).catch(err => {
+        console.warn("Customer findMany error in call modal:", err);
+        return [];
       }),
       prisma.lead.findMany({
         where: orgId ? { organizationId: orgId } : {},
         select: { id: true, name: true, shopName: true, whatsappNumber: true },
         orderBy: { name: 'asc' },
         take: 200
+      }).catch(err => {
+        console.warn("Lead findMany error in call modal:", err);
+        return [];
       })
     ]);
 
     const mapped = [
-      ...customers.map(c => ({
+      ...(Array.isArray(customers) ? customers : []).map(c => ({
         id: c.id,
         companyName: c.businessName || "Customer",
         contactPerson: c.contactPerson || "",
@@ -311,7 +318,7 @@ export async function getCustomersForCallModal() {
         city: c.city || '',
         type: 'Customer'
       })),
-      ...leads.map(l => ({
+      ...(Array.isArray(leads) ? leads : []).map(l => ({
         id: l.id,
         companyName: l.shopName || l.name || "Lead",
         contactPerson: l.name || "",
@@ -333,8 +340,9 @@ export async function getCustomersForCallModal() {
  */
 export async function getDialerRecentCalls(limit: number = 40) {
   try {
-    const orgId = await getTenantOrgId();
-    const session = await getServerSession(authOptions);
+    const rawOrgId = await getTenantOrgId().catch(() => null);
+    const orgId = (rawOrgId && rawOrgId !== "default-org") ? rawOrgId : undefined;
+    const session = await getServerSession(authOptions).catch(() => null);
     if (!session?.user) return { success: false, calls: [] };
 
     const whereClause: any = orgId ? {
@@ -360,9 +368,12 @@ export async function getDialerRecentCalls(limit: number = 40) {
           select: { id: true, user: { select: { name: true } } }
         }
       }
+    }).catch(err => {
+      console.warn("Prisma call.findMany error in getDialerRecentCalls:", err);
+      return [];
     });
 
-    const formattedCalls = (calls || []).map(c => {
+    const formattedCalls = (Array.isArray(calls) ? calls : []).map(c => {
       const contactName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || "Direct Contact";
       const contactPerson = c.customer?.contactPerson || c.lead?.name || "";
       const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || "";
@@ -403,8 +414,9 @@ export async function getEmployeeCallAnalytics(options?: {
   employeeId?: string;
 }) {
   try {
-    const orgId = await getTenantOrgId();
-    const session = await getServerSession(authOptions);
+    const rawOrgId = await getTenantOrgId().catch(() => null);
+    const orgId = (rawOrgId && rawOrgId !== "default-org") ? rawOrgId : undefined;
+    const session = await getServerSession(authOptions).catch(() => null);
     if (!session?.user) return { success: false, error: "Unauthorized" };
 
     const timeframe = options?.timeframe || "today";
@@ -572,8 +584,9 @@ export async function getEmployeeCallAnalytics(options?: {
  */
 export async function getTelecallingQueue() {
   try {
-    const orgId = await getTenantOrgId();
-    const session = await getServerSession(authOptions);
+    const rawOrgId = await getTenantOrgId().catch(() => null);
+    const orgId = (rawOrgId && rawOrgId !== "default-org") ? rawOrgId : undefined;
+    const session = await getServerSession(authOptions).catch(() => null);
     if (!session?.user) return { success: false, overdue: [], todayDue: [], freshLeads: [] };
 
     const now = new Date();
@@ -600,6 +613,9 @@ export async function getTelecallingQueue() {
         orderBy: { followUpDate: "asc" },
         take: 20,
         include: { customer: true, lead: true, employee: { include: { user: true } } }
+      }).catch(err => {
+        console.warn("Overdue calls fetch err:", err);
+        return [];
       }),
 
       // Today's scheduled calls
@@ -614,6 +630,9 @@ export async function getTelecallingQueue() {
         orderBy: { followUpDate: "asc" },
         take: 30,
         include: { customer: true, lead: true, employee: { include: { user: true } } }
+      }).catch(err => {
+        console.warn("Today calls fetch err:", err);
+        return [];
       }),
 
       // Fresh uncontacted leads
@@ -625,14 +644,17 @@ export async function getTelecallingQueue() {
         },
         orderBy: { createdAt: "desc" },
         take: 20
+      }).catch(err => {
+        console.warn("Fresh leads fetch err:", err);
+        return [];
       })
     ]);
 
     return {
       success: true,
-      overdue: overdueCalls,
-      todayDue: todayCalls,
-      freshLeads
+      overdue: Array.isArray(overdueCalls) ? overdueCalls : [],
+      todayDue: Array.isArray(todayCalls) ? todayCalls : [],
+      freshLeads: Array.isArray(freshLeads) ? freshLeads : []
     };
   } catch (err: any) {
     console.error("Failed to fetch telecalling queue:", err);
