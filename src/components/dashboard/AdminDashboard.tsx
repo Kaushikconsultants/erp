@@ -598,7 +598,7 @@ export default function AdminDashboard({
                               hour12: true
                             }).toUpperCase()
                           ) : (
-                            typeof att.checkInStr === 'string' ? att.checkInStr.toUpperCase() : 'Just now'
+                            att.checkInStr || 'Not Checked In'
                           )}
                         </span>
                       </div>
@@ -606,9 +606,9 @@ export default function AdminDashboard({
                   </div>
 
                   <span style={{ 
-                    backgroundColor: att.isShiftActive ? '#ecfdf5' : '#f1f5f9', 
-                    color: att.isShiftActive ? '#059669' : '#64748b', 
-                    border: `1px solid ${att.isShiftActive ? '#a7f3d0' : '#e2e8f0'}`,
+                    backgroundColor: att.isShiftActive ? '#ecfdf5' : att.status === 'Leave' ? '#fef3c7' : '#f1f5f9', 
+                    color: att.isShiftActive ? '#059669' : att.status === 'Leave' ? '#d97706' : '#64748b', 
+                    border: `1px solid ${att.isShiftActive ? '#a7f3d0' : att.status === 'Leave' ? '#fde68a' : '#e2e8f0'}`,
                     fontSize: '0.66rem', 
                     fontWeight: 600,
                     padding: '2px 6px',
@@ -616,7 +616,7 @@ export default function AdminDashboard({
                     whiteSpace: 'nowrap',
                     flexShrink: 0
                   }}>
-                    {att.isShiftActive ? 'Active' : 'Ended'}
+                    {att.isShiftActive ? 'Active' : (att.status === 'Leave' ? 'On Leave' : 'Shift Ended')}
                   </span>
                 </div>
               )) : (

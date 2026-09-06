@@ -101,8 +101,15 @@ export default async function Home() {
     // ---------------------------------------------------------
     // ADMIN DASHBOARD DATA (Tenant Scoped - Concurrent Fetching)
     // ---------------------------------------------------------
-    const todayStartOfDay = new Date();
-    todayStartOfDay.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const istYear = istNow.getUTCFullYear();
+    const istMonth = istNow.getUTCMonth();
+    const istDate = istNow.getUTCDate();
+
+    const todayStartOfDay = new Date(Date.UTC(istYear, istMonth, istDate, 0, 0, 0) - istOffset);
+    const todayEndOfDay = new Date(Date.UTC(istYear, istMonth, istDate, 23, 59, 59, 999) - istOffset);
 
     const [
       totalCustomers,
@@ -133,18 +140,18 @@ export default async function Home() {
             { customer: orgId ? { organizationId: orgId } : {} },
             { lead: orgId ? { organizationId: orgId } : {} }
           ],
-          followUpDate: { gte: todayStartOfDay }
+          followUpDate: { gte: todayStartOfDay, lte: todayEndOfDay }
         }
       }).catch(() => 0),
       (employee?.id) ? prisma.attendance.findFirst({
         where: {
           employeeId: employee.id,
-          date: { gte: todayStartOfDay }
+          date: { gte: todayStartOfDay, lte: todayEndOfDay }
         }
       }).catch(() => null) : Promise.resolve(null),
       prisma.attendance.findMany({
         where: {
-          date: { gte: todayStartOfDay },
+          date: { gte: todayStartOfDay, lte: todayEndOfDay },
           ...(orgId ? { employee: { organizationId: orgId } } : {})
         },
         include: { employee: { include: { user: true } } },
@@ -216,29 +223,42 @@ export default async function Home() {
       }
     });
 
-    const liveAttendance = Array.from(attendanceByEmployee.values()).map((a: any) => {
-      let checkInStr = 'Just now';
-      if (a.checkIn) {
-        try {
-          checkInStr = new Date(a.checkIn).toLocaleTimeString('en-IN', {
-            timeZone: 'Asia/Kolkata',
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          }).toUpperCase();
-        } catch {
-          checkInStr = new Date(a.checkIn).toLocaleTimeString().toUpperCase();
+    const liveAttendance = Array.from(attendanceByEmployee.values())
+      .filter((a: any) => {
+        const d = new Date(a.date || a.checkIn || a.createdAt);
+        return d >= todayStartOfDay && d <= todayEndOfDay;
+      })
+      .map((a: any) => {
+        const hasActualCheckIn = !!a.checkIn;
+        const isPresent = (a.status || 'Present').toLowerCase() === 'present';
+        const isShiftActive = isPresent && hasActualCheckIn && !a.checkOut;
+
+        let checkInStr = 'Not Checked In';
+        if (a.checkIn) {
+          try {
+            checkInStr = new Date(a.checkIn).toLocaleTimeString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            }).toUpperCase();
+          } catch {
+            checkInStr = new Date(a.checkIn).toLocaleTimeString().toUpperCase();
+          }
+        } else if (a.status && a.status.toLowerCase() !== 'present') {
+          checkInStr = a.status.toUpperCase();
         }
-      }
-      return {
-        id: a.id,
-        employeeId: a.employeeId || a.employee?.id,
-        name: a.employee?.user?.name || 'Team Member',
-        checkIn: a.checkIn ? new Date(a.checkIn).toISOString() : null,
-        checkInStr,
-        isShiftActive: !a.checkOut
-      };
-    });
+
+        return {
+          id: a.id,
+          employeeId: a.employeeId || a.employee?.id,
+          name: a.employee?.user?.name || 'Team Member',
+          checkIn: a.checkIn ? new Date(a.checkIn).toISOString() : null,
+          checkInStr,
+          status: a.status || (hasActualCheckIn ? 'Present' : 'Pending'),
+          isShiftActive
+        };
+      });
 
     // Today's orders count and live leaderboard
     const salesMap: Record<string, { name: string, total: number, orders: number }> = {};
@@ -457,7 +477,7 @@ export default async function Home() {
       getFollowUpRecommendations().catch(() => ({ success: false, overdue: [], reorderDue: [] }))
     ]);
 
-    const isCheckedIn = !!attendanceRecord;
+    const isCheckedIn = !!attendanceRecord?.checkIn;
     const isCheckedOut = !!attendanceRecord?.checkOut;
 
     return (

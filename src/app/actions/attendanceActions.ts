@@ -38,16 +38,22 @@ export async function toggleAttendance() {
       });
     }
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const istYear = istNow.getUTCFullYear();
+    const istMonth = istNow.getUTCMonth();
+    const istDate = istNow.getUTCDate();
+
+    const todayStart = new Date(Date.UTC(istYear, istMonth, istDate, 0, 0, 0) - istOffset);
+    const todayEnd = new Date(Date.UTC(istYear, istMonth, istDate, 23, 59, 59, 999) - istOffset);
 
     const existingAttendance = await prisma.attendance.findFirst({
       where: {
         employeeId: employee.id,
         date: {
           gte: todayStart,
-          lt: todayEnd
+          lte: todayEnd
         }
       }
     });
@@ -55,7 +61,6 @@ export async function toggleAttendance() {
     if (existingAttendance) {
       if (!existingAttendance.checkOut) {
         // Check out
-        const now = new Date();
         const checkInTime = existingAttendance.checkIn || existingAttendance.date;
         const diffHours = (now.getTime() - new Date(checkInTime).getTime()) / (1000 * 60 * 60);
 
@@ -75,7 +80,7 @@ export async function toggleAttendance() {
         data: {
           employeeId: employee.id,
           date: todayStart,
-          checkIn: new Date(),
+          checkIn: now,
           status: "Present",
         }
       });
