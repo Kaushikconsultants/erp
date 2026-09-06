@@ -3,11 +3,9 @@ import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import LogCallButton from '@/components/ui/LogCallButton';
-import CallsTableClient from '@/components/ui/CallsTableClient';
+import TeleCrmMobileHub from '@/components/telecalling/TeleCrmMobileHub';
 import { getCompanySettings } from '@/app/actions/companyActions';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
-
 import { getTenantOrgId } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
@@ -26,8 +24,9 @@ export default async function CallsPage() {
 
   let callWhereClause: any = {
     OR: [
-      { customer: { organizationId: orgId } },
-      { lead: { organizationId: orgId } }
+      { customer: orgId ? { organizationId: orgId } : {} },
+      { lead: orgId ? { organizationId: orgId } : {} },
+      { employee: orgId ? { organizationId: orgId } : {} }
     ]
   };
   let customerWhereClause: any = {
@@ -43,8 +42,8 @@ export default async function CallsPage() {
       callWhereClause = { 
         employeeId: employee.id, 
         OR: [
-          { customer: { organizationId: orgId } },
-          { lead: { organizationId: orgId } }
+          { customer: orgId ? { organizationId: orgId } : {} },
+          { lead: orgId ? { organizationId: orgId } : {} }
         ]
       };
       customerWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
@@ -96,22 +95,29 @@ export default async function CallsPage() {
     }))
   ];
 
-  const callOutcomes = companyRes?.settings?.callOutcomes || ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support", "Call Back Later"];
-  const callTypes = companyRes?.settings?.callTypes || ["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"];
+  const callOutcomes = companyRes?.settings?.callOutcomes || [
+    "Interested / Follow-up Needed",
+    "Order Placed / Deal Closed",
+    "Quotation Requested",
+    "Price Negotiation / Discount Discussion",
+    "No Answer / Busy",
+    "Voicemail / Switched Off",
+    "Callback Scheduled",
+    "Not Interested / Lost",
+    "Wrong / Invalid Number",
+    "Support / General Inquiry"
+  ];
+  const callTypes = companyRes?.settings?.callTypes || ["OUTBOUND", "INBOUND", "In-person Meeting", "WhatsApp Chat"];
 
   return (
-    <div className="page-container">
-      <div className="dashboard-header">
-        <div>
-          <h1 className="page-title">Calls & Follow-ups</h1>
-          <p className="page-subtitle">Log calls, schedule follow-ups, and manage tasks.</p>
-        </div>
-        <LogCallButton customers={mappedCustomers} isAdmin={isAdmin} />
-      </div>
-
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <CallsTableClient calls={calls} availableOutcomes={callOutcomes} availableCallTypes={callTypes} />
-      </div>
+    <div className="page-container" style={{ padding: "16px 12px" }}>
+      <TeleCrmMobileHub
+        initialCalls={calls}
+        availableOutcomes={callOutcomes}
+        availableCallTypes={callTypes}
+        customers={mappedCustomers}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }

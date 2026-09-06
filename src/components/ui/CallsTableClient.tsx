@@ -1,10 +1,10 @@
 "use client";
 
 import DatePicker from '@/components/ui/DatePicker';
-
 import React, { useState } from 'react';
-import { Pencil, Trash2, Calendar, CheckCircle } from 'lucide-react';
+import { Pencil, Trash2, Calendar, CheckCircle, Clock, Phone, MessageSquare, PhoneCall } from 'lucide-react';
 import { updateCall, deleteCall } from '@/app/actions/callActions';
+import PhoneDialerModal from './PhoneDialerModal';
 
 interface CallsTableClientProps {
   calls: any[];
@@ -14,26 +14,52 @@ interface CallsTableClientProps {
 
 export default function CallsTableClient({ 
   calls, 
-  availableOutcomes = ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support", "Call Back Later"],
-  availableCallTypes = ["Outbound Call (Made by us)", "Inbound Call (Received from customer)", "In-person Meeting", "WhatsApp Chat"]
+  availableOutcomes = [
+    "Interested / Follow-up Needed",
+    "Order Placed / Deal Closed",
+    "Quotation Requested",
+    "Price Negotiation / Discount Discussion",
+    "No Answer / Busy",
+    "Voicemail / Switched Off",
+    "Callback Scheduled",
+    "Not Interested / Lost",
+    "Wrong / Invalid Number",
+    "Support / General Inquiry"
+  ],
+  availableCallTypes = ["OUTBOUND", "INBOUND", "In-person Meeting", "WhatsApp Chat"]
 }: CallsTableClientProps) {
   const [editingCall, setEditingCall] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Dialer
+  const [isDialerOpen, setIsDialerOpen] = useState(false);
+  const [dialerPhone, setDialerPhone] = useState("");
+  const [dialerName, setDialerName] = useState("");
+
   // Edit state
   const [editOutcome, setEditOutcome] = useState("");
   const [editCallType, setEditCallType] = useState("");
+  const [editDurationSec, setEditDurationSec] = useState<number>(0);
   const [editFollowUpDate, setEditFollowUpDate] = useState("");
   const [editFollowUpHour, setEditFollowUpHour] = useState("10");
   const [editFollowUpMinute, setEditFollowUpMinute] = useState("00");
   const [editFollowUpPeriod, setEditFollowUpPeriod] = useState<"AM" | "PM">("AM");
   const [editNotes, setEditNotes] = useState("");
 
+  const formatDuration = (sec: number | null | undefined) => {
+    if (!sec) return "0s";
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (m === 0) return `${s}s`;
+    return `${m}m ${s}s`;
+  };
+
   const handleOpenEdit = (call: any) => {
     setEditingCall(call);
-    setEditOutcome(call.outcome || "INTERESTED");
+    setEditOutcome(call.outcome || "Interested / Follow-up Needed");
     setEditCallType(call.callType || "OUTBOUND");
+    setEditDurationSec(call.durationSec || 0);
     if (call.followUpDate) {
       const d = new Date(call.followUpDate);
       const yyyy = d.getFullYear();
@@ -74,6 +100,7 @@ export default function CallsTableClient({
     await updateCall(editingCall.id, {
       outcome: editOutcome,
       callType: editCallType,
+      durationSec: editDurationSec,
       followUpDate: getCompiledEditFollowUp(),
       notes: editNotes
     });
@@ -90,10 +117,23 @@ export default function CallsTableClient({
   };
 
   const getOutcomeBadgeClass = (outcome: string) => {
-    const o = outcome.toUpperCase();
-    if (o.includes("ORDER") || o.includes("INTERESTED")) return "active";
-    if (o.includes("NOT") || o.includes("COMPLAINT")) return "inactive";
+    const o = (outcome || "").toUpperCase();
+    if (o.includes("ORDER") || o.includes("INTERESTED") || o.includes("CLOSED")) return "active";
+    if (o.includes("NOT") || o.includes("COMPLAINT") || o.includes("BUSY") || o.includes("WRONG")) return "inactive";
     return "";
+  };
+
+  const openDialer = (phone: string, name: string) => {
+    setDialerPhone(phone || "");
+    setDialerName(name || "");
+    setIsDialerOpen(true);
+  };
+
+  const openWhatsApp = (phone: string) => {
+    const cleanNum = (phone || "").replace(/\D/g, "");
+    if (!cleanNum) return;
+    const formatted = cleanNum.length === 10 ? `91${cleanNum}` : cleanNum;
+    window.open(`https://wa.me/${formatted}`, "_blank");
   };
 
   return (
@@ -103,8 +143,9 @@ export default function CallsTableClient({
           <thead>
             <tr>
               <th>Date</th>
-              <th>Customer</th>
+              <th>Customer / Lead</th>
               <th>Type</th>
+              <th>Duration</th>
               <th>Outcome</th>
               <th>Follow-up Date</th>
               <th>Rep</th>
@@ -115,6 +156,8 @@ export default function CallsTableClient({
             {calls.map(call => {
               const isOverdue = call.followUpDate && new Date(call.followUpDate) < new Date();
               const customerName = call.customer?.businessName || call.lead?.shopName || call.lead?.name || call.customer?.contactPerson || 'Customer';
+              const phone = call.customer?.mobile || call.customer?.whatsappNumber || call.lead?.whatsappNumber || '';
+              
               return (
                 <tr key={call.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{new Date(call.createdAt).toLocaleDateString('en-GB')}</td>
@@ -127,6 +170,11 @@ export default function CallsTableClient({
                   <td>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px', backgroundColor: call.callType === 'INBOUND' ? '#e0e7ff' : '#f1f5f9', color: call.callType === 'INBOUND' ? '#4338ca' : '#475569' }}>
                       {call.callType || 'OUTBOUND'}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', backgroundColor: (call.durationSec || 0) > 0 ? '#ecfdf5' : '#f8fafc', color: (call.durationSec || 0) > 0 ? '#047857' : '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                      <Clock size={12} /> {formatDuration(call.durationSec)}
                     </span>
                   </td>
                   <td>
@@ -146,24 +194,44 @@ export default function CallsTableClient({
                   </td>
                   <td>{call.employee?.user?.name || 'Unknown'}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      {phone && (
+                        <button
+                          type="button"
+                          onClick={() => openDialer(phone, customerName)}
+                          style={{ padding: '5px 8px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="Call Contact"
+                        >
+                          <PhoneCall size={13} />
+                        </button>
+                      )}
+                      {phone && (
+                        <button
+                          type="button"
+                          onClick={() => openWhatsApp(phone)}
+                          style={{ padding: '5px 8px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #a7f3d0', backgroundColor: '#ecfdf5', color: '#059669', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                          title="WhatsApp Message"
+                        >
+                          <MessageSquare size={13} />
+                        </button>
+                      )}
                       <button 
                         type="button"
                         onClick={() => handleOpenEdit(call)}
-                        style={{ padding: '5px 10px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        style={{ padding: '5px 8px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', color: '#475569', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
                         title="Edit Follow-up & Call Record"
                       >
-                        <Pencil size={13} /> Edit
+                        <Pencil size={13} />
                       </button>
 
                       <button 
                         type="button"
                         onClick={() => handleDelete(call.id, customerName)}
                         disabled={deletingId === call.id}
-                        style={{ padding: '5px 10px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #fca5a5', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', opacity: deletingId === call.id ? 0.5 : 1 }}
+                        style={{ padding: '5px 8px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #fca5a5', backgroundColor: '#fef2f2', color: '#dc2626', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', opacity: deletingId === call.id ? 0.5 : 1 }}
                         title="Delete Record"
                       >
-                        <Trash2 size={13} /> Delete
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </td>
@@ -172,7 +240,7 @@ export default function CallsTableClient({
             })}
             {calls.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
                   No call & follow-up records found. Click "+ Log Call" to add one.
                 </td>
               </tr>
@@ -184,7 +252,7 @@ export default function CallsTableClient({
       {/* EDIT CALL & FOLLOW-UP MODAL */}
       {editingCall && (
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '16px' }}>
-          <div className="modal-content glass-panel animate-in" style={{ width: '100%', maxWidth: '520px', backgroundColor: '#ffffff', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+          <div className="modal-content glass-panel animate-in" style={{ width: '100%', maxWidth: '520px', backgroundColor: '#ffffff', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             
             <div style={{ padding: '16px 20px', backgroundColor: '#4f46e5', color: '#ffffff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -217,17 +285,27 @@ export default function CallsTableClient({
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Outcome</label>
-                  <select 
-                    value={editOutcome} 
-                    onChange={e => setEditOutcome(e.target.value)}
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Duration (Seconds)</label>
+                  <input
+                    type="number"
+                    value={editDurationSec}
+                    onChange={e => setEditDurationSec(parseInt(e.target.value, 10) || 0)}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
-                  >
-                    {availableOutcomes.map(o => (
-                      <option key={o} value={o}>{o.replace('_', ' ')}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Outcome</label>
+                <select 
+                  value={editOutcome} 
+                  onChange={e => setEditOutcome(e.target.value)}
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
+                >
+                  {availableOutcomes.map(o => (
+                    <option key={o} value={o}>{o.replace('_', ' ')}</option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -236,7 +314,6 @@ export default function CallsTableClient({
                 </label>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                   <DatePicker 
-                     
                     value={editFollowUpDate}
                     onChange={e => setEditFollowUpDate(e.target.value)}
                     style={{ flex: '1 1 130px', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
@@ -293,16 +370,6 @@ export default function CallsTableClient({
                         PM
                       </button>
                     </div>
-                    {editFollowUpDate && (
-                      <button
-                        type="button"
-                        onClick={() => setEditFollowUpDate("")}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '1.2rem', padding: '0 4px' }}
-                        title="Clear Follow-up"
-                      >
-                        ×
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -340,6 +407,14 @@ export default function CallsTableClient({
           </div>
         </div>
       )}
+
+      {/* Dialer Modal for 1-tap re-dials */}
+      <PhoneDialerModal
+        isOpen={isDialerOpen}
+        onClose={() => setIsDialerOpen(false)}
+        initialPhone={dialerPhone}
+        initialName={dialerName}
+      />
     </>
   );
 }

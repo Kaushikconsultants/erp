@@ -103,6 +103,7 @@ export default function LogCallModal({
   const [followUpMinute, setFollowUpMinute] = useState("00");
   const [followUpPeriod, setFollowUpPeriod] = useState<"AM" | "PM">("AM");
   const [notes, setNotes] = useState("");
+  const [durationSec, setDurationSec] = useState<number>(60);
 
   // Preselect customer if passed via props
   useEffect(() => {
@@ -308,6 +309,7 @@ export default function LogCallModal({
     }
     formData.set("type", selectedCallType);
     formData.set("outcome", selectedOutcome);
+    formData.set("durationSec", String(durationSec || 0));
 
     const compiledFollowUp = getCompiledFollowUpDate();
     if (compiledFollowUp) {
@@ -612,6 +614,59 @@ export default function LogCallModal({
                   </option>
                 )}
               </select>
+            </div>
+
+            {/* Call Duration in Seconds */}
+            <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%", marginTop: "4px" }}>
+              <div style={{ width: "140px", flexShrink: 0, paddingTop: "8px" }}>
+                <label style={{ width: "auto", padding: 0, fontWeight: 500, fontSize: "0.875rem", color: "#475569" }}>
+                  Call Duration
+                </label>
+                <span style={{ fontSize: "0.75rem", color: "#94a3b8", display: "block" }}>
+                  {durationSec >= 60 ? `${Math.floor(durationSec / 60)}m ${durationSec % 60}s` : `${durationSec}s`}
+                </span>
+              </div>
+              <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <input
+                    type="number"
+                    min={0}
+                    value={durationSec}
+                    onChange={(e) => setDurationSec(parseInt(e.target.value, 10) || 0)}
+                    placeholder="Duration in seconds..."
+                    style={{ flex: 1, minHeight: "40px", height: "40px", padding: "8px 10px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.85rem", backgroundColor: "#f8fafc" }}
+                  />
+                  <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600 }}>seconds</span>
+                </div>
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                  {[
+                    { l: "0s (Missed)", s: 0 },
+                    { l: "30s", s: 30 },
+                    { l: "1m", s: 60 },
+                    { l: "2m", s: 120 },
+                    { l: "3m", s: 180 },
+                    { l: "5m", s: 300 }
+                  ].map(d => (
+                    <button
+                      key={d.l}
+                      type="button"
+                      onClick={() => setDurationSec(d.s)}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "12px",
+                        border: durationSec === d.s ? "1px solid #4f46e5" : "1px solid #e2e8f0",
+                        backgroundColor: durationSec === d.s ? "#eef2ff" : "#f8fafc",
+                        color: durationSec === d.s ? "#4f46e5" : "#64748b",
+                        fontSize: "0.72rem",
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {d.l}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <div className="form-group" style={{ display: "flex", alignItems: "flex-start", width: "100%", marginTop: "4px" }}>

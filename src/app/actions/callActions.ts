@@ -4,24 +4,28 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
 import { getTenantOrgId } from "@/lib/tenant";
 
 export async function logCall(formData: FormData) {
   const rawCustomerId = (formData.get("customerId") as string || "").trim();
   const rawLeadId = (formData.get("leadId") as string || "").trim();
-  const customerId = (rawCustomerId && rawCustomerId !== "undefined" && rawCustomerId !== "null") ? rawCustomerId : null;
-  const leadId = (rawLeadId && rawLeadId !== "undefined" && rawLeadId !== "null") ? rawLeadId : null;
-  const type = formData.get("type") as string || "OUTBOUND";
-  const outcome = formData.get("outcome") as string;
-  const notes = formData.get("notes") as string;
+  let customerId = (rawCustomerId && rawCustomerId !== "undefined" && rawCustomerId !== "null") ? rawCustomerId : null;
+  let leadId = (rawLeadId && rawLeadId !== "undefined" && rawLeadId !== "null") ? rawLeadId : null;
+  const type = (formData.get("type") as string || "OUTBOUND").toUpperCase();
+  const outcome = (formData.get("outcome") as string || "Connected / Follow-up Needed").trim();
+  const notes = (formData.get("notes") as string || "").trim();
   const followUpDateStr = (formData.get("followUpDate") as string || "").trim();
-  const recordingUrl = formData.get("recordingUrl") as string;
-  const summary = formData.get("summary") as string;
-
-  if ((!customerId && !leadId) || !outcome) {
-    return { error: "A valid Customer or Lead and Outcome are required" };
-  }
+  const recordingUrl = (formData.get("recordingUrl") as string || "").trim();
+  const summary = (formData.get("summary") as string || "").trim();
+  
+  // Enterprise TeleCRM Duration & Status
+  const rawDuration = formData.get("durationSec") as string;
+  const parsedDuration = rawDuration ? parseInt(rawDuration, 10) : null;
+  const durationSec = (parsedDuration !== null && !isNaN(parsedDuration) && parsedDuration >= 0) ? parsedDuration : null;
+  const status = (formData.get("status") as string || "Completed").trim();
+  const phone = (formData.get("phone") as string || "").trim();
+  const newLeadName = (formData.get("newLeadName") as string || "").trim();
+  const newLeadShop = (formData.get("newLeadShop") as string || "").trim();
 
   try {
     const organizationId = await getTenantOrgId();
@@ -34,12 +38,63 @@ export async function logCall(formData: FormData) {
       employee = await prisma.employee.findUnique({ where: { userId } });
     }
     // Fallback scoped to current organization
-    if (!employee) {
+    if (!employee && organizationId) {
       employee = await prisma.employee.findFirst({ where: { organizationId } });
+    }
+    if (!employee) {
+      employee = await prisma.employee.findFirst();
     }
 
     if (!employee) {
       return { error: "No employee record found. Please set up your profile first." };
+    }
+
+    // Auto-match or create lead if unmapped phone is provided
+    if (!customerId && !leadId && phone) {
+      const cleanPhone = phone.replace(/\D/g, "");
+      if (cleanPhone.length >= 7) {
+        // Check existing customer
+        const matchCustomer = await prisma.customer.findFirst({
+          where: {
+            organizationId: organizationId || undefined,
+            OR: [
+              { mobile: { contains: cleanPhone } },
+              { whatsappNumber: { contains: cleanPhone } }
+            ]
+          }
+        });
+        if (matchCustomer) {
+          customerId = matchCustomer.id;
+        } else {
+          // Check existing lead
+          const matchLead = await prisma.lead.findFirst({
+            where: {
+              organizationId: organizationId || undefined,
+              whatsappNumber: { contains: cleanPhone }
+            }
+          });
+          if (matchLead) {
+            leadId = matchLead.id;
+          } else if (newLeadName || newLeadShop || phone) {
+            // Auto-create a quick lead so CRM integrity is maintained
+            try {
+              const createdLead = await prisma.lead.create({
+                data: {
+                  name: newLeadName || `Contact ${cleanPhone.slice(-4)}`,
+                  shopName: newLeadShop || "Phone Inquiry",
+                  whatsappNumber: phone,
+                  status: "New",
+                  assignedSalespersonId: employee.id,
+                  organizationId: organizationId || undefined
+                }
+              });
+              leadId = createdLead.id;
+            } catch (leadErr) {
+              console.warn("Could not auto-create lead:", leadErr);
+            }
+          }
+        }
+      }
     }
 
     let followUpDate = null;
@@ -50,34 +105,45 @@ export async function logCall(formData: FormData) {
       }
     }
 
-    // Build base data
+    // Build base call data
     const dataObj: any = {
       employeeId: employee.id,
       callType: type,
-      status: "Completed",
-      outcome,
+      durationSec: durationSec,
+      status: status,
+      outcome: outcome || "Completed",
       notes: notes || null,
       followUpDate,
       recordingUrl: recordingUrl || null,
-      summary: summary || await generateCallSummary(notes, outcome),
+      summary: summary || await generateCallSummary(notes, outcome, durationSec),
     };
     if (customerId) dataObj.customerId = customerId;
     if (leadId) dataObj.leadId = leadId;
 
     const callRecord = await prisma.call.create({
       data: dataObj,
+      include: {
+        customer: true,
+        lead: true,
+        employee: {
+          include: { user: true }
+        }
+      }
     });
 
-    // --- Automated Follow-Up Sequence ---
-    const noContactOutcomes = ["No Answer", "Busy", "Voicemail", "Missed"];
-    if (noContactOutcomes.includes(outcome) && employee) {
+    // --- Automated Follow-Up Task Sequence for No-Contact Outcomes ---
+    const noContactOutcomes = ["No Answer", "Busy", "Voicemail", "Missed", "No Answer / Busy", "Voicemail / Switched Off"];
+    const isNoContact = noContactOutcomes.some(nc => outcome.toLowerCase().includes(nc.toLowerCase()));
+    
+    if (isNoContact && employee) {
       const autoDueDate = new Date();
-      autoDueDate.setDate(autoDueDate.getDate() + 2);
+      autoDueDate.setDate(autoDueDate.getDate() + 1); // follow up next day
+      autoDueDate.setHours(11, 0, 0, 0);
 
       await prisma.task.create({
         data: {
-          title: `Automated Follow-up: ${outcome} on previous call`,
-          description: `Automatically scheduled because the previous call outcome was ${outcome}. Notes: ${notes || "None"}`,
+          title: `Follow-up: ${outcome} on call (${phone || "Contact"})`,
+          description: `Automatically created for unanswered/busy call. Duration: ${durationSec || 0}s. Notes: ${notes || "None"}`,
           priority: "High",
           dueDate: autoDueDate,
           status: "To Do",
@@ -86,26 +152,38 @@ export async function logCall(formData: FormData) {
           customerId: customerId || null,
           leadId: leadId || null,
         }
-      });
+      }).catch(e => console.error("Task auto-create err:", e));
     }
 
     revalidatePath("/calls");
     revalidatePath("/follow-ups");
+    revalidatePath("/customers");
+    revalidatePath("/leads");
+    revalidatePath("/");
+    
     return { success: true, callRecord };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to log call:", error);
-    return { error: "Failed to log call. Please try again." };
+    return { error: error?.message || "Failed to log call. Please try again." };
   }
 }
 
-
-export async function updateCall(callId: string, data: { outcome?: string; callType?: string; notes?: string; followUpDate?: string | null }) {
+export async function updateCall(callId: string, data: { 
+  outcome?: string; 
+  callType?: string; 
+  status?: string;
+  durationSec?: number | null;
+  notes?: string; 
+  followUpDate?: string | null 
+}) {
   try {
-    await prisma.call.update({
+    const updated = await prisma.call.update({
       where: { id: callId },
       data: {
         ...(data.outcome ? { outcome: data.outcome } : {}),
         ...(data.callType ? { callType: data.callType } : {}),
+        ...(data.status ? { status: data.status } : {}),
+        ...(data.durationSec !== undefined ? { durationSec: data.durationSec } : {}),
         ...(data.notes !== undefined ? { notes: data.notes } : {}),
         followUpDate: data.followUpDate ? new Date(data.followUpDate) : null,
       }
@@ -113,7 +191,7 @@ export async function updateCall(callId: string, data: { outcome?: string; callT
     revalidatePath("/calls");
     revalidatePath("/follow-ups");
     revalidatePath("/");
-    return { success: true };
+    return { success: true, call: updated };
   } catch (error) {
     console.error("Failed to update call:", error);
     return { error: "Failed to update call record." };
@@ -178,7 +256,6 @@ export async function cleanupOrphanFollowUps() {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
 
-    // Nullify followUpDate on any calls that have neither customerId nor leadId
     const res = await prisma.call.updateMany({
       where: {
         followUpDate: { not: null },
@@ -198,9 +275,10 @@ export async function cleanupOrphanFollowUps() {
   }
 }
 
-async function generateCallSummary(notes: string, outcome: string) {
-  if (!notes) return `Call resulted in ${outcome}.`;
-  return `[AI Summary] Customer discussed: ${notes}. Result: ${outcome}.`;
+async function generateCallSummary(notes: string, outcome: string, durationSec?: number | null) {
+  const durationText = durationSec ? ` (${Math.floor(durationSec / 60)}m ${durationSec % 60}s)` : "";
+  if (!notes) return `Call${durationText} resulted in ${outcome}.`;
+  return `[TeleCRM Summary] Result: ${outcome}${durationText}. Discussion: ${notes}.`;
 }
 
 export async function getCustomersForCallModal() {
@@ -248,3 +326,244 @@ export async function getCustomersForCallModal() {
   }
 }
 
+/**
+ * Enterprise TeleCRM Analytics Action
+ * Calculates organization & employee call stats, talk-time, connect rates, and outcome distribution.
+ */
+export async function getEmployeeCallAnalytics(options?: {
+  timeframe?: "today" | "yesterday" | "this_week" | "this_month" | "all";
+  employeeId?: string;
+}) {
+  try {
+    const orgId = await getTenantOrgId();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, error: "Unauthorized" };
+
+    const timeframe = options?.timeframe || "today";
+    const now = new Date();
+    let startDate: Date;
+    let endDate: Date = new Date();
+
+    if (timeframe === "today") {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    } else if (timeframe === "yesterday") {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0);
+      endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 23, 59, 59);
+    } else if (timeframe === "this_week") {
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+      startDate = new Date(now.getFullYear(), now.getMonth(), diff, 0, 0, 0);
+    } else if (timeframe === "this_month") {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+    } else {
+      startDate = new Date(2020, 0, 1);
+    }
+
+    const whereClause: any = {
+      createdAt: {
+        gte: startDate,
+        lte: endDate
+      },
+      OR: [
+        { customer: orgId ? { organizationId: orgId } : {} },
+        { lead: orgId ? { organizationId: orgId } : {} },
+        { employee: orgId ? { organizationId: orgId } : {} }
+      ]
+    };
+
+    if (options?.employeeId) {
+      whereClause.employeeId = options.employeeId;
+    }
+
+    const [calls, allEmployees] = await Promise.all([
+      prisma.call.findMany({
+        where: whereClause,
+        orderBy: { createdAt: "desc" },
+        include: {
+          employee: {
+            include: { user: true }
+          },
+          customer: true,
+          lead: true
+        }
+      }),
+      prisma.employee.findMany({
+        where: orgId ? { organizationId: orgId } : {},
+        include: { user: true },
+        orderBy: { user: { name: "asc" } }
+      })
+    ]);
+
+    const totalCalls = calls.length;
+    const noContactKeywords = ["no answer", "busy", "voicemail", "missed", "switched off", "wrong number"];
+    const isConnectedCall = (outcome: string) => {
+      if (!outcome) return false;
+      const lower = outcome.toLowerCase();
+      return !noContactKeywords.some(k => lower.includes(k));
+    };
+
+    const connectedCalls = calls.filter(c => isConnectedCall(c.outcome)).length;
+    const connectRate = totalCalls > 0 ? Math.round((connectedCalls / totalCalls) * 100) : 0;
+    const totalDurationSec = calls.reduce((acc, c) => acc + (c.durationSec || 0), 0);
+    const avgDurationSec = totalCalls > 0 ? Math.round(totalDurationSec / totalCalls) : 0;
+    const outboundCalls = calls.filter(c => (c.callType || "").toUpperCase() === "OUTBOUND").length;
+    const inboundCalls = calls.filter(c => (c.callType || "").toUpperCase() === "INBOUND").length;
+
+    // Outcomes summary
+    const outcomesSummary: Record<string, number> = {};
+    calls.forEach(c => {
+      const oc = c.outcome || "Other";
+      outcomesSummary[oc] = (outcomesSummary[oc] || 0) + 1;
+    });
+
+    // Hourly distribution for today (08:00 to 20:00)
+    const hourlyActivity: { hour: number; label: string; calls: number; durationSec: number }[] = [];
+    for (let h = 8; h <= 20; h++) {
+      const hCalls = calls.filter(c => {
+        const d = new Date(c.createdAt);
+        return d.getHours() === h;
+      });
+      const hDur = hCalls.reduce((acc, c) => acc + (c.durationSec || 0), 0);
+      const label = h > 12 ? `${h - 12} PM` : h === 12 ? "12 PM" : `${h} AM`;
+      hourlyActivity.push({
+        hour: h,
+        label,
+        calls: hCalls.length,
+        durationSec: hDur
+      });
+    }
+
+    // Per-Employee stats
+    const employeeStats = allEmployees.map(emp => {
+      const empCalls = calls.filter(c => c.employeeId === emp.id);
+      const empConnected = empCalls.filter(c => isConnectedCall(c.outcome)).length;
+      const empDuration = empCalls.reduce((acc, c) => acc + (c.durationSec || 0), 0);
+      const empConnectRate = empCalls.length > 0 ? Math.round((empConnected / empCalls.length) * 100) : 0;
+      const empAvgDuration = empCalls.length > 0 ? Math.round(empDuration / empCalls.length) : 0;
+
+      const empOutcomes: Record<string, number> = {};
+      empCalls.forEach(c => {
+        const oc = c.outcome || "Other";
+        empOutcomes[oc] = (empOutcomes[oc] || 0) + 1;
+      });
+
+      const dailyTarget = 40; // Default target calls per day
+      const targetPercent = Math.min(100, Math.round((empCalls.length / dailyTarget) * 100));
+
+      return {
+        id: emp.id,
+        name: emp.user?.name || "Unknown Agent",
+        email: emp.user?.email || "",
+        role: emp.user?.role || "SALES",
+        avatar: emp.user?.avatarUrl || emp.user?.image || null,
+        totalCalls: empCalls.length,
+        connectedCalls: empConnected,
+        connectRate: empConnectRate,
+        totalDurationSec: empDuration,
+        avgDurationSec: empAvgDuration,
+        outcomes: empOutcomes,
+        target: dailyTarget,
+        targetPercent,
+        recentCalls: empCalls.slice(0, 3).map(rc => ({
+          id: rc.id,
+          createdAt: rc.createdAt,
+          outcome: rc.outcome,
+          durationSec: rc.durationSec,
+          customerName: rc.customer?.businessName || rc.lead?.shopName || rc.lead?.name || "Contact",
+          phone: rc.customer?.mobile || rc.customer?.whatsappNumber || rc.lead?.whatsappNumber || ""
+        }))
+      };
+    }).sort((a, b) => b.totalCalls - a.totalCalls);
+
+    return {
+      success: true,
+      timeframe,
+      metrics: {
+        totalCalls,
+        connectedCalls,
+        connectRate,
+        totalDurationSec,
+        avgDurationSec,
+        outboundCalls,
+        inboundCalls
+      },
+      outcomesSummary,
+      hourlyActivity,
+      employeeStats
+    };
+  } catch (err: any) {
+    console.error("Failed to get employee call analytics:", err);
+    return { success: false, error: err?.message || "Failed to fetch telecrm analytics" };
+  }
+}
+
+/**
+ * Fetch Today's Telecalling Queue for Mobile Reps
+ */
+export async function getTelecallingQueue() {
+  try {
+    const orgId = await getTenantOrgId();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, overdue: [], todayDue: [], freshLeads: [] };
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    const [overdueCalls, todayCalls, freshLeads] = await Promise.all([
+      // Overdue follow-up calls
+      prisma.call.findMany({
+        where: {
+          followUpDate: {
+            lt: startOfToday
+          },
+          OR: [
+            { customer: orgId ? { organizationId: orgId } : {} },
+            { lead: orgId ? { organizationId: orgId } : {} }
+          ]
+        },
+        orderBy: { followUpDate: "asc" },
+        take: 20,
+        include: { customer: true, lead: true, employee: { include: { user: true } } }
+      }),
+
+      // Today's scheduled calls
+      prisma.call.findMany({
+        where: {
+          followUpDate: {
+            gte: startOfToday,
+            lte: endOfToday
+          },
+          OR: [
+            { customer: orgId ? { organizationId: orgId } : {} },
+            { lead: orgId ? { organizationId: orgId } : {} }
+          ]
+        },
+        orderBy: { followUpDate: "asc" },
+        take: 30,
+        include: { customer: true, lead: true, employee: { include: { user: true } } }
+      }),
+
+      // Fresh uncontacted leads
+      prisma.lead.findMany({
+        where: {
+          organizationId: orgId || undefined,
+          status: { in: ["NEW", "New Lead", "INTERESTED", "PROSPECT"] },
+          calls: { none: {} }
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20
+      })
+    ]);
+
+    return {
+      success: true,
+      overdue: overdueCalls,
+      todayDue: todayCalls,
+      freshLeads
+    };
+  } catch (err: any) {
+    console.error("Failed to fetch telecalling queue:", err);
+    return { success: false, overdue: [], todayDue: [], freshLeads: [] };
+  }
+}
