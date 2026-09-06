@@ -291,28 +291,30 @@ export async function getCustomersForCallModal() {
       prisma.customer.findMany({
         where: orgId ? { organizationId: orgId } : {},
         select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true },
-        orderBy: { businessName: 'asc' }
+        orderBy: { businessName: 'asc' },
+        take: 200
       }),
       prisma.lead.findMany({
         where: orgId ? { organizationId: orgId } : {},
         select: { id: true, name: true, shopName: true, whatsappNumber: true },
-        orderBy: { name: 'asc' }
+        orderBy: { name: 'asc' },
+        take: 200
       })
     ]);
 
     const mapped = [
       ...customers.map(c => ({
         id: c.id,
-        companyName: c.businessName,
-        contactPerson: c.contactPerson,
+        companyName: c.businessName || "Customer",
+        contactPerson: c.contactPerson || "",
         phone: c.mobile || c.whatsappNumber || '',
         city: c.city || '',
         type: 'Customer'
       })),
       ...leads.map(l => ({
         id: l.id,
-        companyName: l.shopName || l.name,
-        contactPerson: l.name,
+        companyName: l.shopName || l.name || "Lead",
+        contactPerson: l.name || "",
         phone: l.whatsappNumber || '',
         city: '',
         type: 'Lead'
@@ -335,14 +337,16 @@ export async function getDialerRecentCalls(limit: number = 40) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { success: false, calls: [] };
 
+    const whereClause: any = orgId ? {
+      OR: [
+        { customer: { organizationId: orgId } },
+        { lead: { organizationId: orgId } },
+        { employee: { organizationId: orgId } }
+      ]
+    } : {};
+
     const calls = await prisma.call.findMany({
-      where: {
-        OR: [
-          { customer: orgId ? { organizationId: orgId } : {} },
-          { lead: orgId ? { organizationId: orgId } : {} },
-          { employee: orgId ? { organizationId: orgId } : {} }
-        ]
-      },
+      where: whereClause,
       orderBy: { createdAt: "desc" },
       take: limit,
       include: {
@@ -358,7 +362,7 @@ export async function getDialerRecentCalls(limit: number = 40) {
       }
     });
 
-    const formattedCalls = calls.map(c => {
+    const formattedCalls = (calls || []).map(c => {
       const contactName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || "Direct Contact";
       const contactPerson = c.customer?.contactPerson || c.lead?.name || "";
       const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || "";
@@ -366,13 +370,13 @@ export async function getDialerRecentCalls(limit: number = 40) {
 
       return {
         id: c.id,
-        createdAt: c.createdAt.toISOString(),
+        createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
         callType: c.callType || "OUTBOUND",
         durationSec: c.durationSec || 0,
         status: c.status || "Completed",
         outcome: c.outcome || "Completed",
         notes: c.notes || "",
-        followUpDate: c.followUpDate ? c.followUpDate.toISOString() : null,
+        followUpDate: c.followUpDate ? new Date(c.followUpDate).toISOString() : null,
         contactName,
         contactPerson,
         phone,
@@ -386,7 +390,7 @@ export async function getDialerRecentCalls(limit: number = 40) {
     return { success: true, calls: formattedCalls };
   } catch (err: any) {
     console.error("Failed to fetch dialer recent calls:", err);
-    return { success: false, calls: [], error: err.message };
+    return { success: false, calls: [], error: err?.message || "Failed to fetch calls" };
   }
 }
 

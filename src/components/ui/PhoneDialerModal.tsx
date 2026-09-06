@@ -30,9 +30,6 @@ import {
   BookOpen,
   History,
   Grid,
-  Filter,
-  Check,
-  ChevronRight,
   MapPin,
   RefreshCw,
   Plus
@@ -196,27 +193,27 @@ export default function PhoneDialerModal({
   // Speech Recognition ref
   const speechRecognitionRef = useRef<any>(null);
 
-  // Load Recent Calls action
+  // Load Recent Calls safely
   const loadRecentCalls = async () => {
     setIsLoadingCalls(true);
     try {
       const res = await getDialerRecentCalls(50);
-      if (res.success && res.calls) {
+      if (res && res.success && Array.isArray(res.calls)) {
         setRecentCalls(res.calls);
       }
     } catch (err) {
-      console.error("Failed to load dialer recent calls:", err);
+      console.warn("Could not load recent calls for dialer:", err);
     } finally {
       setIsLoadingCalls(false);
     }
   };
 
-  // Load Contacts Directory action
+  // Load Contacts Directory safely
   const loadContacts = async () => {
     setIsLoadingContacts(true);
     try {
       const res = await getCustomersForCallModal();
-      if (res.success && res.customers) {
+      if (res && res.success && Array.isArray(res.customers)) {
         setContacts(res.customers);
         if (initialCustomerId) {
           const match = res.customers.find((c: any) => c.id === initialCustomerId && c.type === "Customer");
@@ -233,7 +230,7 @@ export default function PhoneDialerModal({
         }
       }
     } catch (err) {
-      console.error("Failed to load contacts for dialer:", err);
+      console.warn("Could not load contacts for dialer:", err);
     } finally {
       setIsLoadingContacts(false);
     }
@@ -286,7 +283,6 @@ export default function PhoneDialerModal({
   }, [isTimerRunning]);
 
   // ─── CRITICAL: AUTO-STOP & FREEZE DURATION ON APP RETURN ───
-  // When returning to the app from the phone's native call screen, capture elapsed talk time & FREEZE the timer!
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible" && callStartTimeRef.current) {
@@ -327,7 +323,7 @@ export default function PhoneDialerModal({
       return;
     }
     const cleanNum = phoneDigits.replace(/\D/g, '');
-    if (cleanNum.length >= 3) {
+    if (cleanNum.length >= 3 && Array.isArray(contacts)) {
       const match = contacts.find(c => {
         const cPhone = (c.phone || '').replace(/\D/g, '');
         const cName = (c.contactPerson || c.companyName || '').toLowerCase();
@@ -345,7 +341,9 @@ export default function PhoneDialerModal({
 
   const handleVibrate = (duration = 20) => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
-      navigator.vibrate(duration);
+      try {
+        navigator.vibrate(duration);
+      } catch {}
     }
   };
 
@@ -367,7 +365,7 @@ export default function PhoneDialerModal({
 
   const handleSelectMatchedContact = (contact: any) => {
     setSelectedContact(contact);
-    if (contact.phone) {
+    if (contact?.phone) {
       setPhoneDigits(contact.phone);
     }
   };
@@ -375,7 +373,7 @@ export default function PhoneDialerModal({
   // Trigger Native Phone Dialer and start smart call duration timer
   const handleInitiateCall = (targetPhone?: string, targetContact?: any) => {
     const numberToCall = targetPhone || phoneDigits;
-    const cleanNum = numberToCall.replace(/\D/g, '');
+    const cleanNum = (numberToCall || '').replace(/\D/g, '');
     if (!cleanNum) {
       alert("Please enter a valid phone number to call.");
       return;
@@ -393,7 +391,9 @@ export default function PhoneDialerModal({
     setCallType("OUTBOUND");
 
     // Open native dialer
-    window.location.href = `tel:${cleanNum}`;
+    if (typeof window !== "undefined") {
+      window.location.href = `tel:${cleanNum}`;
+    }
 
     // Switch to post-call maintenance view
     setActiveTab("POST_CALL");
@@ -403,14 +403,16 @@ export default function PhoneDialerModal({
   // WhatsApp Message
   const handleInitiateWhatsApp = (customText?: string, targetPhone?: string) => {
     const rawNum = targetPhone || phoneDigits;
-    const cleanNum = rawNum.replace(/\D/g, '');
+    const cleanNum = (rawNum || '').replace(/\D/g, '');
     if (!cleanNum) {
       alert("Please enter a valid phone number first.");
       return;
     }
     const formatted = cleanNum.length === 10 ? `91${cleanNum}` : cleanNum;
     const textParam = customText ? `?text=${encodeURIComponent(customText)}` : '';
-    window.open(`https://wa.me/${formatted}${textParam}`, '_blank');
+    if (typeof window !== "undefined") {
+      window.open(`https://wa.me/${formatted}${textParam}`, '_blank');
+    }
   };
 
   // Format seconds to mm:ss
@@ -438,7 +440,7 @@ export default function PhoneDialerModal({
       if (diffDays === 1) return "Yesterday";
       return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
     } catch {
-      return dateStr;
+      return dateStr || "";
     }
   };
 
@@ -449,7 +451,7 @@ export default function PhoneDialerModal({
 
   // Toggle Speech to Text
   const toggleSpeechRecognition = () => {
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRec = (typeof window !== "undefined" && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
     if (!SpeechRec) {
       alert("Speech recognition is not supported on this browser.");
       return;
@@ -484,7 +486,7 @@ export default function PhoneDialerModal({
       speechRecognitionRef.current = recognition;
       recognition.start();
     } catch (err) {
-      console.error("Speech rec error:", err);
+      console.warn("Speech rec error:", err);
       setIsListeningSpeech(false);
     }
   };
@@ -522,7 +524,6 @@ export default function PhoneDialerModal({
       let activeLeadId = selectedContact?.type === "Lead" ? selectedContact.id : (initialLeadId || null);
       let activeCustomerId = selectedContact?.type === "Customer" ? selectedContact.id : (initialCustomerId || null);
 
-      // If user provided a name for an unmapped lead
       if (!activeCustomerId && !activeLeadId && (newLeadName || newLeadShop) && phoneDigits) {
         const leadRes = await createQuickLead({
           name: newLeadName || "New Phone Lead",
@@ -530,7 +531,7 @@ export default function PhoneDialerModal({
           whatsappNumber: phoneDigits,
           notes: `Created from Phone Dialer call (${outcome}) - Duration: ${callDurationSec}s`
         });
-        if (leadRes.success && leadRes.lead) {
+        if (leadRes && leadRes.success && leadRes.lead) {
           activeLeadId = leadRes.lead.id;
         }
       }
@@ -555,11 +556,10 @@ export default function PhoneDialerModal({
       const res = await logCall(formData);
       setIsSaving(false);
 
-      if (res.success) {
+      if (res && res.success) {
         setIsTimerRunning(false);
         setFeedbackMsg("✅ Call & Duration Logged to CRM!");
         
-        // Refresh call history in background
         loadRecentCalls();
 
         setTimeout(() => {
@@ -567,40 +567,44 @@ export default function PhoneDialerModal({
           setFeedbackMsg("");
         }, 900);
       } else {
-        alert(res.error || "Failed to log call record.");
+        alert(res?.error || "Failed to log call record.");
       }
     } catch (err: any) {
-      console.error("Dialer save error:", err);
+      console.warn("Dialer save error:", err);
       setIsSaving(false);
       alert("Error saving call record.");
     }
   };
 
-  // Filter contacts dropdown in keypad
-  const filteredKeypadContacts = contacts.filter(c => {
-    if (!phoneDigits) return false;
+  // Safe Filter contacts dropdown in keypad
+  const filteredKeypadContacts = useMemo(() => {
+    if (!phoneDigits || !Array.isArray(contacts)) return [];
     const q = phoneDigits.toLowerCase();
-    const cPhone = (c.phone || '').replace(/\D/g, '');
-    const cName = (c.contactPerson || '').toLowerCase();
-    const cComp = (c.companyName || '').toLowerCase();
-    return cPhone.includes(q.replace(/\D/g, '')) || cName.includes(q) || cComp.includes(q);
-  }).slice(0, 3);
+    const cleanQ = q.replace(/\D/g, '');
+    return contacts.filter(c => {
+      const cPhone = (c?.phone || '').replace(/\D/g, '');
+      const cName = (c?.contactPerson || '').toLowerCase();
+      const cComp = (c?.companyName || '').toLowerCase();
+      return (cleanQ && cPhone.includes(cleanQ)) || cName.includes(q) || cComp.includes(q);
+    }).slice(0, 3);
+  }, [contacts, phoneDigits]);
 
-  // Filtered Call Logs list
+  // Safe Filtered Call Logs list
   const filteredCallLogs = useMemo(() => {
+    if (!Array.isArray(recentCalls)) return [];
     return recentCalls.filter(c => {
-      // Search match
+      if (!c) return false;
       if (callLogSearch) {
         const q = callLogSearch.toLowerCase();
+        const cleanQ = q.replace(/\D/g, '');
         const matchName = (c.contactName || "").toLowerCase().includes(q);
         const matchPerson = (c.contactPerson || "").toLowerCase().includes(q);
-        const matchPhone = (c.phone || "").replace(/\D/g, "").includes(q.replace(/\D/g, ""));
+        const matchPhone = cleanQ ? (c.phone || "").replace(/\D/g, "").includes(cleanQ) : false;
         const matchOutcome = (c.outcome || "").toLowerCase().includes(q);
         const matchNotes = (c.notes || "").toLowerCase().includes(q);
         if (!matchName && !matchPerson && !matchPhone && !matchOutcome && !matchNotes) return false;
       }
 
-      // Filter category
       if (callLogFilter === "CONNECTED") {
         return (c.durationSec || 0) > 0 || c.status === "Connected";
       }
@@ -618,17 +622,20 @@ export default function PhoneDialerModal({
     });
   }, [recentCalls, callLogSearch, callLogFilter]);
 
-  // Filtered Contacts list
+  // Safe Filtered Contacts list
   const filteredContactsList = useMemo(() => {
+    if (!Array.isArray(contacts)) return [];
     return contacts.filter(c => {
+      if (!c) return false;
       if (contactFilter === "CUSTOMER" && c.type !== "Customer") return false;
       if (contactFilter === "LEAD" && c.type !== "Lead") return false;
 
       if (contactSearch) {
         const q = contactSearch.toLowerCase();
+        const cleanQ = q.replace(/\D/g, '');
         const matchComp = (c.companyName || "").toLowerCase().includes(q);
         const matchPerson = (c.contactPerson || "").toLowerCase().includes(q);
-        const matchPhone = (c.phone || "").replace(/\D/g, "").includes(q.replace(/\D/g, ""));
+        const matchPhone = cleanQ ? (c.phone || "").replace(/\D/g, "").includes(cleanQ) : false;
         const matchCity = (c.city || "").toLowerCase().includes(q);
         return matchComp || matchPerson || matchPhone || matchCity;
       }
@@ -775,7 +782,7 @@ export default function PhoneDialerModal({
           >
             <History size={14} />
             <span>Call Logs</span>
-            {recentCalls.length > 0 && (
+            {Array.isArray(recentCalls) && recentCalls.length > 0 && (
               <span style={{
                 fontSize: "0.65rem",
                 padding: "1px 5px",
@@ -794,7 +801,7 @@ export default function PhoneDialerModal({
             type="button"
             onClick={() => {
               setActiveTab("CONTACTS");
-              if (contacts.length === 0) loadContacts();
+              if (!Array.isArray(contacts) || contacts.length === 0) loadContacts();
             }}
             style={{
               flexShrink: 0,
@@ -1320,7 +1327,7 @@ export default function PhoneDialerModal({
 
             {/* Call Logs List */}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "55vh", overflowY: "auto" }}>
-              {isLoadingCalls && recentCalls.length === 0 ? (
+              {isLoadingCalls && (!Array.isArray(recentCalls) || recentCalls.length === 0) ? (
                 <div style={{ padding: "30px", textAlign: "center", color: "#64748b" }}>
                   <Loader2 size={24} className="animate-spin text-indigo-600" style={{ margin: "0 auto 8px auto" }} />
                   <p style={{ fontSize: "0.82rem", margin: 0 }}>Loading call history...</p>
@@ -1351,9 +1358,9 @@ export default function PhoneDialerModal({
                 </div>
               ) : (
                 filteredCallLogs.map((log: any) => {
-                  const isOutbound = (log.callType || "").toUpperCase() === "OUTBOUND";
-                  const dur = log.durationSec || 0;
-                  const isConnected = dur > 0 || log.status === "Connected";
+                  const isOutbound = (log?.callType || "").toUpperCase() === "OUTBOUND";
+                  const dur = log?.durationSec || 0;
+                  const isConnected = dur > 0 || log?.status === "Connected";
 
                   return (
                     <div
@@ -1395,9 +1402,9 @@ export default function PhoneDialerModal({
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
                           <span style={{ fontSize: "0.86rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {log.contactName || "Contact"}
+                            {log?.contactName || "Contact"}
                           </span>
-                          {log.contactType && (
+                          {log?.contactType && (
                             <span style={{
                               fontSize: "0.62rem",
                               fontWeight: 700,
@@ -1412,9 +1419,9 @@ export default function PhoneDialerModal({
                         </div>
 
                         <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.72rem", color: "#64748b", flexWrap: "wrap" }}>
-                          <span>{log.phone || "No Number"}</span>
+                          <span>{log?.phone || "No Number"}</span>
                           <span>•</span>
-                          <span>{formatRelativeTime(log.createdAt)}</span>
+                          <span>{formatRelativeTime(log?.createdAt)}</span>
                           <span>•</span>
                           {dur > 0 ? (
                             <span style={{ fontWeight: 700, color: "#059669", backgroundColor: "#ecfdf5", padding: "1px 4px", borderRadius: "4px" }}>
@@ -1435,9 +1442,9 @@ export default function PhoneDialerModal({
                             color: isConnected ? "#15803d" : "#be123c",
                             border: isConnected ? "1px solid #bbf7d0" : "1px solid #fecdd3"
                           }}>
-                            {log.outcome || log.status || "Completed"}
+                            {log?.outcome || log?.status || "Completed"}
                           </span>
-                          {log.notes && (
+                          {log?.notes && (
                             <span style={{ fontSize: "0.68rem", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "160px" }}>
                               "{log.notes}"
                             </span>
@@ -1448,7 +1455,7 @@ export default function PhoneDialerModal({
                       {/* Right 1-Tap Action Controls */}
                       <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                         {/* 1-Tap WhatsApp */}
-                        {log.phone && (
+                        {log?.phone && (
                           <button
                             type="button"
                             onClick={() => handleInitiateWhatsApp(undefined, log.phone)}
@@ -1474,7 +1481,7 @@ export default function PhoneDialerModal({
                         <button
                           type="button"
                           onClick={() => {
-                            if (log.phone) {
+                            if (log?.phone) {
                               setPhoneDigits(log.phone);
                               handleInitiateCall(log.phone, {
                                 id: log.customerId || log.leadId,
@@ -1569,9 +1576,9 @@ export default function PhoneDialerModal({
                       cursor: "pointer"
                     }}
                   >
-                    {cf === "ALL" && `All (${contacts.length})`}
-                    {cf === "CUSTOMER" && `Customers (${contacts.filter(c => c.type === 'Customer').length})`}
-                    {cf === "LEAD" && `Leads (${contacts.filter(c => c.type === 'Lead').length})`}
+                    {cf === "ALL" && `All (${Array.isArray(contacts) ? contacts.length : 0})`}
+                    {cf === "CUSTOMER" && `Customers (${Array.isArray(contacts) ? contacts.filter(c => c.type === 'Customer').length : 0})`}
+                    {cf === "LEAD" && `Leads (${Array.isArray(contacts) ? contacts.filter(c => c.type === 'Lead').length : 0})`}
                   </button>
                 ))}
               </div>
@@ -1602,7 +1609,7 @@ export default function PhoneDialerModal({
 
             {/* Contacts Directory List */}
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "55vh", overflowY: "auto" }}>
-              {isLoadingContacts && contacts.length === 0 ? (
+              {isLoadingContacts && (!Array.isArray(contacts) || contacts.length === 0) ? (
                 <div style={{ padding: "30px", textAlign: "center", color: "#64748b" }}>
                   <Loader2 size={24} className="animate-spin text-indigo-600" style={{ margin: "0 auto 8px auto" }} />
                   <p style={{ fontSize: "0.82rem", margin: 0 }}>Loading CRM contacts...</p>
@@ -1636,8 +1643,8 @@ export default function PhoneDialerModal({
                       width: "36px",
                       height: "36px",
                       borderRadius: "10px",
-                      backgroundColor: c.type === "Customer" ? "#dbeafe" : "#fef3c7",
-                      color: c.type === "Customer" ? "#1d4ed8" : "#b45309",
+                      backgroundColor: c?.type === "Customer" ? "#dbeafe" : "#fef3c7",
+                      color: c?.type === "Customer" ? "#1d4ed8" : "#b45309",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1645,30 +1652,30 @@ export default function PhoneDialerModal({
                       fontSize: "0.85rem",
                       flexShrink: 0
                     }}>
-                      {c.companyName?.charAt(0) || "C"}
+                      {c?.companyName?.charAt(0) || "C"}
                     </div>
 
                     {/* Middle Info */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
                         <span style={{ fontSize: "0.86rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {c.companyName}
+                          {c?.companyName}
                         </span>
                         <span style={{
                           fontSize: "0.62rem",
                           fontWeight: 700,
                           padding: "1px 5px",
                           borderRadius: "4px",
-                          backgroundColor: c.type === "Customer" ? "#e0e7ff" : "#fef3c7",
-                          color: c.type === "Customer" ? "#3730a3" : "#92400e"
+                          backgroundColor: c?.type === "Customer" ? "#e0e7ff" : "#fef3c7",
+                          color: c?.type === "Customer" ? "#3730a3" : "#92400e"
                         }}>
-                          {c.type}
+                          {c?.type}
                         </span>
                       </div>
 
                       <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.72rem", color: "#64748b" }}>
-                        {c.contactPerson && <span>{c.contactPerson}</span>}
-                        {c.city && (
+                        {c?.contactPerson && <span>{c.contactPerson}</span>}
+                        {c?.city && (
                           <>
                             <span>•</span>
                             <span style={{ display: "flex", alignItems: "center", gap: "2px" }}>
@@ -1677,14 +1684,14 @@ export default function PhoneDialerModal({
                           </>
                         )}
                         <span>•</span>
-                        <span style={{ fontWeight: 600, color: "#334155" }}>{c.phone || "No phone"}</span>
+                        <span style={{ fontWeight: 600, color: "#334155" }}>{c?.phone || "No phone"}</span>
                       </div>
                     </div>
 
                     {/* Right 1-Tap Calling Actions */}
                     <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                       {/* WhatsApp Button */}
-                      {c.phone && (
+                      {c?.phone && (
                         <button
                           type="button"
                           onClick={() => handleInitiateWhatsApp(undefined, c.phone)}
@@ -1707,7 +1714,7 @@ export default function PhoneDialerModal({
                       )}
 
                       {/* 1-Tap Direct Call */}
-                      {c.phone && (
+                      {c?.phone && (
                         <button
                           type="button"
                           onClick={() => handleInitiateCall(c.phone, c)}
