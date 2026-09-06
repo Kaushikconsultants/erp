@@ -12,6 +12,7 @@ import {
   getPipelineStageNames,
   deletePipelineLead,
   updateLeadCategory,
+  updateLeadSource,
   savePipelineCategories,
   getPipelineCategories
 } from '@/app/actions/leadActions';
@@ -51,7 +52,10 @@ import {
   Loader2,
   Tag,
   Plus,
-  Palette
+  Palette,
+  Radio,
+  Share2,
+  Globe
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
@@ -71,6 +75,30 @@ export const DEFAULT_STAGE_CATEGORIES: StageCategory[] = [
   { id: 'Less Interested', label: 'Less Interested', icon: '❄️', color: '#475569', bg: '#f1f5f9', border: '#cbd5e1' },
   { id: 'Big Deal', label: 'Big Deal', icon: '💎', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
   { id: 'Sample Order', label: 'Sample Order', icon: '📦', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+];
+
+export interface LeadSourceOption {
+  id: string;
+  label: string;
+  icon: string;
+  color: string;
+  bg: string;
+  border: string;
+}
+
+export const DEFAULT_LEAD_SOURCES: LeadSourceOption[] = [
+  { id: 'WhatsApp', label: 'WhatsApp', icon: '📱', color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0' },
+  { id: 'Reference', label: 'Reference / Referral', icon: '👥', color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' },
+  { id: 'IndiaMART', label: 'IndiaMART', icon: '📦', color: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
+  { id: 'Website', label: 'Website Form', icon: '🌐', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+  { id: 'Meta Ads', label: 'Meta / Facebook Ads', icon: '📢', color: '#1e40af', bg: '#eff6ff', border: '#bfdbfe' },
+  { id: 'Instagram', label: 'Instagram Direct', icon: '📷', color: '#be185d', bg: '#fdf2f8', border: '#fbcfe8' },
+  { id: 'JustDial', label: 'JustDial', icon: '💼', color: '#c2410c', bg: '#fff7ed', border: '#fed7aa' },
+  { id: 'Google Ads', label: 'Google Search / Ads', icon: '🔍', color: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
+  { id: 'Cold Call', label: 'Cold Call / Field Visit', icon: '🤝', color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
+  { id: 'Exhibition', label: 'Exhibition / Trade Fair', icon: '🏪', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+  { id: 'Direct Inbound', label: 'Direct Inbound Call', icon: '📞', color: '#0891b2', bg: '#ecfeff', border: '#a5f3fc' },
+  { id: 'Other', label: 'Other Source', icon: '🏷️', color: '#475569', bg: '#f8fafc', border: '#cbd5e1' },
 ];
 
 export const STAGES = [
@@ -186,6 +214,11 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
   const [activeCategoryPickerLeadId, setActiveCategoryPickerLeadId] = useState<string | null>(null);
 
+  // Lead Acquisition Source State
+  const [selectedSourceFilter, setSelectedSourceFilter] = useState<string>('ALL');
+  const [activeSourcePickerLeadId, setActiveSourcePickerLeadId] = useState<string | null>(null);
+  const [customReferenceInput, setCustomReferenceInput] = useState<string>('');
+
   // Customize Modal State
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [customizeModalTab, setCustomizeModalTab] = useState<'STAGES' | 'CATEGORIES'>('STAGES');
@@ -211,6 +244,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
   useEffect(() => {
     const handleWindowClick = () => {
       setActiveCategoryPickerLeadId(null);
+      setActiveSourcePickerLeadId(null);
     };
     window.addEventListener('click', handleWindowClick);
     return () => window.removeEventListener('click', handleWindowClick);
@@ -462,6 +496,55 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     }
   };
 
+  // Lead Source counts across leads
+  const sourceCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: leads.length, NONE: 0, SET: 0 };
+    DEFAULT_LEAD_SOURCES.forEach(s => { counts[s.id] = 0; });
+
+    leads.forEach(l => {
+      const src = (l.source || '').trim();
+      if (!src) {
+        counts.NONE = (counts.NONE || 0) + 1;
+      } else {
+        counts.SET = (counts.SET || 0) + 1;
+        const matched = DEFAULT_LEAD_SOURCES.find(s => 
+          s.id.toLowerCase() === src.toLowerCase() || 
+          s.label.toLowerCase() === src.toLowerCase() ||
+          src.toLowerCase().startsWith(s.id.toLowerCase())
+        );
+        if (matched) {
+          counts[matched.id] = (counts[matched.id] || 0) + 1;
+        } else {
+          counts[src] = (counts[src] || 0) + 1;
+        }
+      }
+    });
+
+    return counts;
+  }, [leads]);
+
+  // Handle setting/changing lead source
+  const handleSetLeadSource = async (leadId: string, source: string | null, isLeadRecord: boolean = false) => {
+    setLeads(prevLeads => prevLeads.map(l => l.id === leadId ? { 
+      ...l, 
+      source: source || null
+    } : l));
+    setActiveSourcePickerLeadId(null);
+    setCustomReferenceInput('');
+
+    const res = await updateLeadSource(leadId, source, isLeadRecord);
+    if (res?.error) {
+      alert("Failed to save lead source: " + res.error);
+    } else if (res?.customerId && res.customerId !== leadId) {
+      setLeads(prevLeads => prevLeads.map(l => l.id === leadId ? { 
+        ...l, 
+        id: res.customerId,
+        isLeadRecord: false,
+        source: source || null
+      } : l));
+    }
+  };
+
   // Handle saving individual stage name
   const handleSaveStageName = async (stageId: string, customName?: string) => {
     const nameToSave = (customName !== undefined ? customName : editingStageName).trim();
@@ -647,7 +730,15 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
         (selectedCategoryFilter === 'UNCATEGORIZED' ? !leadCat :
         (leadCat.toLowerCase() === selectedCategoryFilter.toLowerCase())));
 
-      return matchesSearch && matchesRep && matchesFu && matchesCat;
+      const leadSrc = (l.source || '').trim();
+      const matchesSrc = 
+        selectedSourceFilter === 'ALL' ||
+        (selectedSourceFilter === 'SET' ? !!leadSrc :
+        (selectedSourceFilter === 'NONE' ? !leadSrc :
+        (leadSrc.toLowerCase().includes(selectedSourceFilter.toLowerCase()) ||
+         selectedSourceFilter.toLowerCase().includes(leadSrc.toLowerCase()))));
+
+      return matchesSearch && matchesRep && matchesFu && matchesCat && matchesSrc;
     });
 
     // Sorting
@@ -677,7 +768,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     });
 
     return result;
-  }, [leads, searchQuery, selectedRepFilter, followUpFilter, selectedCategoryFilter, sortBy]);
+  }, [leads, searchQuery, selectedRepFilter, followUpFilter, selectedCategoryFilter, selectedSourceFilter, sortBy]);
 
   const activeStageConfig = stages.find(s => s.id === activeStage) || stages[1];
   const activeStageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === activeStage);
@@ -806,6 +897,12 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     const repName = assignedRep?.user?.name || assignedRep?.employeeId || (lead.assignedSalesperson?.user?.name) || '';
     const leadCategory = (lead.tags || lead.category || '').trim();
     const currentCatObj = categories.find(c => c.id.toLowerCase() === leadCategory.toLowerCase() || c.label.toLowerCase() === leadCategory.toLowerCase());
+    const leadSource = (lead.source || '').trim();
+    const currentSrcObj = DEFAULT_LEAD_SOURCES.find(s => 
+      s.id.toLowerCase() === leadSource.toLowerCase() || 
+      s.label.toLowerCase() === leadSource.toLowerCase() ||
+      leadSource.toLowerCase().startsWith(s.id.toLowerCase())
+    );
 
     return (
       <div 
@@ -883,118 +980,265 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
           )}
         </div>
 
-        {/* Row 2.2: Customer Category / Intent Chip & Popover */}
-        <div className="deal-cat-container" onClick={(e) => e.stopPropagation()}>
-          {leadCategory ? (
-            <div 
-              className="deal-cat-chip"
-              style={{
-                backgroundColor: currentCatObj?.bg || '#f1f5f9',
-                color: currentCatObj?.color || '#334155',
-                borderColor: currentCatObj?.border || '#cbd5e1'
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
-              }}
-              title="Click to change customer category / intent"
-            >
-              <span className="deal-cat-chip-icon">{currentCatObj?.icon || '🏷️'}</span>
-              <span className="deal-cat-chip-label">{currentCatObj?.label || leadCategory}</span>
-              <Tag size={9} style={{ opacity: 0.6, marginLeft: '2px' }} />
-            </div>
-          ) : (
-            ((lead.leadStage || 'New Lead') === 'Qualified' || activeCategoryPickerLeadId === lead.id) ? (
-              <button
-                type="button"
-                className="deal-cat-add-btn"
+        {/* Row 2.2: Customer Category / Intent & Lead Source Tags Row */}
+        <div className="deal-tags-row">
+          {/* Customer Category / Intent Chip */}
+          <div className="deal-cat-container" onClick={(e) => e.stopPropagation()}>
+            {leadCategory ? (
+              <div 
+                className="deal-cat-chip"
+                style={{
+                  backgroundColor: currentCatObj?.bg || '#f1f5f9',
+                  color: currentCatObj?.color || '#334155',
+                  borderColor: currentCatObj?.border || '#cbd5e1'
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
                 }}
-                title="Categorize customer intent (Very Interested, Big Deal, Sample Order...)"
+                title="Click to change customer category / intent"
               >
-                <Sparkles size={10} style={{ color: '#7c3aed' }} />
-                <span>+ Categorize Intent</span>
-              </button>
+                <span className="deal-cat-chip-icon">{currentCatObj?.icon || '🏷️'}</span>
+                <span className="deal-cat-chip-label">{currentCatObj?.label || leadCategory}</span>
+                <Tag size={9} style={{ opacity: 0.6, marginLeft: '2px' }} />
+              </div>
             ) : (
-              <button
-                type="button"
-                className="deal-cat-ghost-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
-                }}
-                title="Categorize customer intent"
-              >
-                <Tag size={9} />
-                <span>+ Intent</span>
-              </button>
-            )
-          )}
-
-          {/* Floating Category Picker Popover */}
-          {activeCategoryPickerLeadId === lead.id && (
-            <div className="deal-cat-popover" onClick={(e) => e.stopPropagation()}>
-              <div className="deal-cat-popover-header">
-                <span className="deal-cat-popover-title">Select Customer Intent</span>
-                <button 
-                  type="button" 
-                  onClick={() => setActiveCategoryPickerLeadId(null)}
-                  className="deal-cat-popover-close"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-
-              <div className="deal-cat-popover-list">
-                {categories.map(cat => {
-                  const isSelected = leadCategory.toLowerCase() === cat.id.toLowerCase() || leadCategory.toLowerCase() === cat.label.toLowerCase();
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      className={`deal-cat-popover-item ${isSelected ? 'selected' : ''}`}
-                      style={isSelected ? {
-                        backgroundColor: cat.bg,
-                        borderColor: cat.border,
-                        color: cat.color
-                      } : {}}
-                      onClick={() => handleSetLeadCategory(lead.id, cat.id, !!lead.isLeadRecord)}
-                    >
-                      <span className="cat-item-icon">{cat.icon || '🏷️'}</span>
-                      <span className="cat-item-label">{cat.label}</span>
-                      {isSelected && <Check size={12} className="cat-item-check" />}
-                    </button>
-                  );
-                })}
-
-                {leadCategory && (
-                  <button
-                    type="button"
-                    className="deal-cat-popover-clear"
-                    onClick={() => handleSetLeadCategory(lead.id, null, !!lead.isLeadRecord)}
-                  >
-                    <X size={11} /> Remove Category Tag
-                  </button>
-                )}
-              </div>
-
-              <div className="deal-cat-popover-footer">
+              ((lead.leadStage || 'New Lead') === 'Qualified' || activeCategoryPickerLeadId === lead.id) ? (
                 <button
                   type="button"
-                  className="deal-cat-popover-manage-btn"
-                  onClick={() => {
-                    setActiveCategoryPickerLeadId(null);
-                    handleOpenCustomizeModal();
-                    setCustomizeModalTab('CATEGORIES');
+                  className="deal-cat-add-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
                   }}
+                  title="Categorize customer intent (Very Interested, Big Deal, Sample Order...)"
                 >
-                  <SlidersHorizontal size={11} /> Customize Options
+                  <Sparkles size={10} style={{ color: '#7c3aed' }} />
+                  <span>+ Intent</span>
                 </button>
+              ) : (
+                <button
+                  type="button"
+                  className="deal-cat-ghost-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
+                  }}
+                  title="Categorize customer intent"
+                >
+                  <Tag size={9} />
+                  <span>+ Intent</span>
+                </button>
+              )
+            )}
+
+            {/* Floating Category Picker Popover */}
+            {activeCategoryPickerLeadId === lead.id && (
+              <div className="deal-cat-popover" onClick={(e) => e.stopPropagation()}>
+                <div className="deal-cat-popover-header">
+                  <span className="deal-cat-popover-title">Select Customer Intent</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setActiveCategoryPickerLeadId(null)}
+                    className="deal-cat-popover-close"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+
+                <div className="deal-cat-popover-list">
+                  {categories.map(cat => {
+                    const isSelected = leadCategory.toLowerCase() === cat.id.toLowerCase() || leadCategory.toLowerCase() === cat.label.toLowerCase();
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        className={`deal-cat-popover-item ${isSelected ? 'selected' : ''}`}
+                        style={isSelected ? {
+                          backgroundColor: cat.bg,
+                          borderColor: cat.border,
+                          color: cat.color
+                        } : {}}
+                        onClick={() => handleSetLeadCategory(lead.id, cat.id, !!lead.isLeadRecord)}
+                      >
+                        <span className="cat-item-icon">{cat.icon || '🏷️'}</span>
+                        <span className="cat-item-label">{cat.label}</span>
+                        {isSelected && <Check size={12} className="cat-item-check" />}
+                      </button>
+                    );
+                  })}
+
+                  {leadCategory && (
+                    <button
+                      type="button"
+                      className="deal-cat-popover-clear"
+                      onClick={() => handleSetLeadCategory(lead.id, null, !!lead.isLeadRecord)}
+                    >
+                      <X size={11} /> Remove Category Tag
+                    </button>
+                  )}
+                </div>
+
+                <div className="deal-cat-popover-footer">
+                  <button
+                    type="button"
+                    className="deal-cat-popover-manage-btn"
+                    onClick={() => {
+                      setActiveCategoryPickerLeadId(null);
+                      handleOpenCustomizeModal();
+                      setCustomizeModalTab('CATEGORIES');
+                    }}
+                  >
+                    <SlidersHorizontal size={11} /> Customize Options
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Lead Source Chip & Popover */}
+          <div className="deal-src-container" onClick={(e) => e.stopPropagation()}>
+            {leadSource ? (
+              <div 
+                className="deal-src-chip"
+                style={{
+                  backgroundColor: currentSrcObj?.bg || '#eff6ff',
+                  color: currentSrcObj?.color || '#1d4ed8',
+                  borderColor: currentSrcObj?.border || '#bfdbfe'
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveSourcePickerLeadId(activeSourcePickerLeadId === lead.id ? null : lead.id);
+                  setCustomReferenceInput(leadSource);
+                }}
+                title={`Lead Source: ${leadSource}. Click to change.`}
+              >
+                <span className="deal-src-chip-icon">{currentSrcObj?.icon || '📡'}</span>
+                <span className="deal-src-chip-label">{leadSource}</span>
+                <Globe size={9} style={{ opacity: 0.6, marginLeft: '2px' }} />
+              </div>
+            ) : (
+              ((lead.leadStage || 'New Lead') === 'New Lead' || activeSourcePickerLeadId === lead.id) ? (
+                <button
+                  type="button"
+                  className="deal-src-add-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSourcePickerLeadId(activeSourcePickerLeadId === lead.id ? null : lead.id);
+                    setCustomReferenceInput('');
+                  }}
+                  title="Specify Lead Source / Reference"
+                >
+                  <Radio size={10} style={{ color: '#2563eb' }} />
+                  <span>+ Source</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="deal-src-ghost-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveSourcePickerLeadId(activeSourcePickerLeadId === lead.id ? null : lead.id);
+                    setCustomReferenceInput('');
+                  }}
+                  title="Add Lead Source / Reference"
+                >
+                  <Globe size={9} />
+                  <span>+ Source</span>
+                </button>
+              )
+            )}
+
+            {/* Floating Lead Source Picker Popover */}
+            {activeSourcePickerLeadId === lead.id && (
+              <div className="deal-src-popover" onClick={(e) => e.stopPropagation()}>
+                <div className="deal-src-popover-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Radio size={13} style={{ color: '#2563eb' }} />
+                    <span className="deal-src-popover-title">Lead Source & Reference</span>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => setActiveSourcePickerLeadId(null)}
+                    className="deal-src-popover-close"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+
+                {/* Predefined Quick Sources Grid */}
+                <div className="deal-src-popover-list">
+                  {DEFAULT_LEAD_SOURCES.map(src => {
+                    const isSelected = leadSource.toLowerCase() === src.id.toLowerCase() || 
+                                       leadSource.toLowerCase() === src.label.toLowerCase() ||
+                                       leadSource.toLowerCase().startsWith(src.id.toLowerCase());
+                    return (
+                      <button
+                        key={src.id}
+                        type="button"
+                        className={`deal-src-popover-item ${isSelected ? 'selected' : ''}`}
+                        style={isSelected ? {
+                          backgroundColor: src.bg,
+                          borderColor: src.border,
+                          color: src.color
+                        } : {}}
+                        onClick={() => handleSetLeadSource(lead.id, src.id, !!lead.isLeadRecord)}
+                      >
+                        <span className="src-item-icon">{src.icon}</span>
+                        <span className="src-item-label">{src.label}</span>
+                        {isSelected && <Check size={12} className="src-item-check" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom / Reference Input Section */}
+                <div className="deal-src-custom-box">
+                  <div className="deal-src-custom-label">
+                    <span>👥 Reference Name / Custom:</span>
+                  </div>
+                  <div className="deal-src-custom-input-row">
+                    <input
+                      type="text"
+                      placeholder="e.g. Ref: Sharmaji, Exhibition..."
+                      value={customReferenceInput}
+                      onChange={(e) => setCustomReferenceInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && customReferenceInput.trim()) {
+                          handleSetLeadSource(lead.id, customReferenceInput.trim(), !!lead.isLeadRecord);
+                        }
+                      }}
+                      className="deal-src-custom-input"
+                    />
+                    <button
+                      type="button"
+                      disabled={!customReferenceInput.trim()}
+                      onClick={() => {
+                        if (customReferenceInput.trim()) {
+                          handleSetLeadSource(lead.id, customReferenceInput.trim(), !!lead.isLeadRecord);
+                        }
+                      }}
+                      className="deal-src-custom-save-btn"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+
+                {leadSource && (
+                  <div className="deal-src-popover-footer">
+                    <button
+                      type="button"
+                      className="deal-src-popover-clear"
+                      onClick={() => handleSetLeadSource(lead.id, null, !!lead.isLeadRecord)}
+                    >
+                      <X size={11} /> Remove Source Tag
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Row 2.5: Next Follow-Up Status */}
@@ -1370,6 +1614,30 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 </option>
               ))}
               <option value="UNCATEGORIZED">⚪ Uncategorized ({categoryCounts.UNCATEGORIZED || 0})</option>
+            </select>
+
+            {/* Lead Source Filter */}
+            <select
+              value={selectedSourceFilter}
+              onChange={(e) => setSelectedSourceFilter(e.target.value)}
+              className="filter-select-input"
+              style={selectedSourceFilter !== 'ALL' ? {
+                borderColor: '#2563eb',
+                backgroundColor: '#eff6ff',
+                color: '#1d4ed8',
+                fontWeight: 700
+              } : {}}
+            >
+              <option value="ALL">All Lead Sources ({leads.length})</option>
+              {sourceCounts.SET > 0 && (
+                <option value="SET">📡 Any Tagged Source ({sourceCounts.SET})</option>
+              )}
+              {DEFAULT_LEAD_SOURCES.map(src => (
+                <option key={src.id} value={src.id}>
+                  {src.icon} {src.label} ({sourceCounts[src.id] || 0})
+                </option>
+              ))}
+              <option value="NONE">⚪ No Source Specified ({sourceCounts.NONE || 0})</option>
             </select>
 
             {/* Sort Dropdown */}

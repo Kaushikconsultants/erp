@@ -145,6 +145,7 @@ export async function getPipelineData() {
         computedDealValue: dealVal,
         tags: c.tags || null,
         category: c.tags || null,
+        source: c.source || null,
         nextFollowUpDate: nextFu ? new Date(nextFu).toISOString() : null,
         nextFollowUpNotes: nextFuNotes,
         nextFollowUpPriority: nextFuPriority,
@@ -191,6 +192,7 @@ export async function getPipelineData() {
           computedDealValue: 0,
           tags: (l as any).tags || null,
           category: (l as any).tags || null,
+          source: (l as any).source || null,
           calls: l.calls || [],
           followUps: l.followUps || [],
           nextFollowUpDate: nextFu ? new Date(nextFu).toISOString() : null,
@@ -414,6 +416,101 @@ export async function updateLeadCategory(leadId: string, category: string | null
   } catch (err: any) {
     console.error("Failed to update lead category:", err);
     return { error: err.message || "Failed to update category" };
+  }
+}
+
+export async function updateLeadSource(leadId: string, source: string | null, isLeadRecord: boolean = false) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+
+    // 1. Try finding in Customer table first
+    const customer = await prisma.customer.findUnique({ where: { id: leadId } });
+    if (customer) {
+      await prisma.customer.update({
+        where: { id: leadId },
+        data: { source: source || null }
+      });
+      revalidatePath("/pipeline");
+      revalidatePath("/leads");
+      revalidatePath("/customers");
+      return { success: true, customerId: customer.id };
+    }
+
+    // 2. If not found in Customer, look in Lead table
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    if (lead) {
+      const p = (lead.whatsappNumber || '').replace(/[^0-9]/g, '');
+      
+      const existingCust = p ? await prisma.customer.findFirst({
+        where: {
+          organizationId,
+          OR: [
+            { mobile: lead.whatsappNumber },
+            { whatsappNumber: lead.whatsappNumber },
+            { mobile: p },
+            { whatsappNumber: p }
+          ]
+        }
+      }) : null;
+
+      if (existingCust) {
+        await prisma.customer.update({
+          where: { id: existingCust.id },
+          data: { source: source || null }
+        });
+        revalidatePath("/pipeline");
+        revalidatePath("/leads");
+        revalidatePath("/customers");
+        return { success: true, customerId: existingCust.id };
+      }
+
+      // Convert/promote the raw lead to Customer with the source assigned
+      let mappedStage = 'New Lead';
+      const st = (lead.status || '').trim();
+      if (st === 'Contacted') mappedStage = 'Contacted';
+      else if (st === 'Qualified' || st === 'In Progress' || st === 'Interested') mappedStage = 'Qualified';
+      else if (st === 'Opportunity') mappedStage = 'Opportunity';
+      else if (st === 'Converted' || st === 'Won') mappedStage = 'Won';
+      else if (st === 'Lost') mappedStage = 'Lost';
+
+      const newCust = await prisma.customer.create({
+        data: {
+          organizationId,
+          businessName: lead.shopName || lead.name,
+          contactPerson: lead.name,
+          mobile: lead.whatsappNumber,
+          whatsappNumber: lead.whatsappNumber,
+          assignedSalespersonId: lead.assignedSalespersonId,
+          leadStage: mappedStage,
+          status: mappedStage === 'Won' ? 'Active Lead' : mappedStage === 'Lost' ? 'Inactive' : mappedStage,
+          source: source || null
+        }
+      });
+
+      await Promise.all([
+        prisma.followUp.updateMany({
+          where: { leadId: lead.id },
+          data: { customerId: newCust.id }
+        }),
+        prisma.call.updateMany({
+          where: { leadId: lead.id },
+          data: { customerId: newCust.id }
+        })
+      ]);
+
+      revalidatePath("/pipeline");
+      revalidatePath("/leads");
+      revalidatePath("/customers");
+      return { success: true, customerId: newCust.id };
+    }
+
+    return { error: "Lead or customer record not found" };
+  } catch (err: any) {
+    console.error("Failed to update lead source:", err);
+    return { error: err.message || "Failed to update lead source" };
   }
 }
 
