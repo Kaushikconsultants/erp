@@ -132,8 +132,8 @@ const Sidebar = ({
     <aside className="sidebar">
       {/* Header */}
       <div className="sidebar-header">
-        <Link href="/" onClick={onClose} style={{ textDecoration: 'none' }}>
-          <BrandLogo size="md" showSubtitle={true} />
+        <Link href="/" onClick={onClose} style={{ textDecoration: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+          <BrandLogo size="lg" />
         </Link>
         <button className="mobile-close-btn" onClick={onClose}>×</button>
       </div>

@@ -17,13 +17,12 @@ export default function BrandLogo({
   className = "",
   style = {}
 }: BrandLogoProps) {
-  // Dimension scale based on size
-  // Original logo aspect ratio: 708 x 312 (~2.27)
+  // Dimension scale based on size (Aspect ratio: 708 x 312 ≈ 2.27)
   const sizeConfig = {
-    sm: { height: 32, maxW: 110 },
-    md: { height: 44, maxW: 160 },
-    lg: { height: 60, maxW: 220 },
-    xl: { height: 78, maxW: 280 }
+    sm: { height: 38, maxW: 130 },
+    md: { height: 54, maxW: 185 },
+    lg: { height: 72, maxW: 240 },
+    xl: { height: 92, maxW: 310 }
   };
 
   const config = sizeConfig[size] || sizeConfig.md;
@@ -36,8 +35,8 @@ export default function BrandLogo({
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: "40px",
-          height: "40px",
+          width: "44px",
+          height: "44px",
           borderRadius: "10px",
           overflow: "hidden",
           backgroundColor: "#ffffff",
@@ -50,7 +49,7 @@ export default function BrandLogo({
           src="/brand-logo.jpg"
           alt="Heart of Business"
           style={{
-            height: "36px",
+            height: "40px",
             width: "auto",
             objectFit: "contain",
             transform: "scale(1.4) translateX(-5%)"
@@ -71,6 +70,7 @@ export default function BrandLogo({
         textDecoration: "none",
         userSelect: "none",
         position: "relative",
+        width: "100%",
         ...style
       }}
     >
@@ -95,7 +95,8 @@ export default function BrandLogo({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          position: "relative"
+          position: "relative",
+          width: "100%"
         }}
       >
         <img
@@ -115,4 +116,5 @@ export default function BrandLogo({
     </div>
   );
 }
+
 

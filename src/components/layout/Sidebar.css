@@ -2,11 +2,12 @@
   height: auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 18px 16px 16px 16px;
+  justify-content: center;
+  padding: 20px 16px 18px 16px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   background: var(--bg-secondary);
   position: relative;
+  text-align: center;
 }
 
 .brand-icon-wrapper:hover {
