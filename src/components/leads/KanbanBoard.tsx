@@ -56,9 +56,13 @@ export const STAGES = [
     id: 'New Lead', 
     title: 'New Lead', 
     color: '#2563eb', 
-    bg: '#eff6ff', 
+    accentGradient: 'linear-gradient(90deg, #2563eb 0%, #60a5fa 100%)',
+    headerBg: 'linear-gradient(180deg, #eff6ff 0%, #ffffff 100%)',
+    bg: '#f8faff', 
     border: '#bfdbfe', 
     badgeBg: '#dbeafe',
+    badgeColor: '#1d4ed8',
+    glow: 'rgba(37, 99, 235, 0.3)',
     nextStep: 'Contacted', 
     nextActionLabel: 'Mark Contacted' 
   },
@@ -66,9 +70,13 @@ export const STAGES = [
     id: 'Contacted', 
     title: 'Contacted', 
     color: '#4f46e5', 
-    bg: '#eef2ff', 
+    accentGradient: 'linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)',
+    headerBg: 'linear-gradient(180deg, #eef2ff 0%, #ffffff 100%)',
+    bg: '#f9f9ff', 
     border: '#c7d2fe', 
     badgeBg: '#e0e7ff',
+    badgeColor: '#4338ca',
+    glow: 'rgba(79, 70, 229, 0.3)',
     nextStep: 'Qualified', 
     nextActionLabel: 'Qualify Lead' 
   },
@@ -76,9 +84,13 @@ export const STAGES = [
     id: 'Qualified', 
     title: 'Qualified', 
     color: '#7c3aed', 
-    bg: '#f5f3ff', 
+    accentGradient: 'linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%)',
+    headerBg: 'linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%)',
+    bg: '#faf8ff', 
     border: '#ddd6fe', 
     badgeBg: '#ede9fe',
+    badgeColor: '#6d28d9',
+    glow: 'rgba(124, 58, 237, 0.3)',
     nextStep: 'Opportunity', 
     nextActionLabel: 'Move to Opportunity' 
   },
@@ -86,9 +98,13 @@ export const STAGES = [
     id: 'Opportunity', 
     title: 'Opportunity', 
     color: '#d97706', 
-    bg: '#fffbeb', 
+    accentGradient: 'linear-gradient(90deg, #d97706 0%, #fbbf24 100%)',
+    headerBg: 'linear-gradient(180deg, #fffbeb 0%, #ffffff 100%)',
+    bg: '#fffdf5', 
     border: '#fde68a', 
     badgeBg: '#fef3c7',
+    badgeColor: '#b45309',
+    glow: 'rgba(217, 119, 6, 0.3)',
     nextStep: 'Won', 
     nextActionLabel: 'Close & Win Deal' 
   },
@@ -96,9 +112,13 @@ export const STAGES = [
     id: 'Won', 
     title: 'Won', 
     color: '#059669', 
-    bg: '#ecfdf5', 
+    accentGradient: 'linear-gradient(90deg, #059669 0%, #34d399 100%)',
+    headerBg: 'linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%)',
+    bg: '#f4fdf8', 
     border: '#a7f3d0', 
     badgeBg: '#d1fae5',
+    badgeColor: '#047857',
+    glow: 'rgba(5, 150, 105, 0.3)',
     nextStep: null, 
     nextActionLabel: 'Deal Won' 
   },
@@ -106,9 +126,13 @@ export const STAGES = [
     id: 'Lost', 
     title: 'Lost', 
     color: '#dc2626', 
-    bg: '#fef2f2', 
+    accentGradient: 'linear-gradient(90deg, #dc2626 0%, #f87171 100%)',
+    headerBg: 'linear-gradient(180deg, #fef2f2 0%, #ffffff 100%)',
+    bg: '#fff8f8', 
     border: '#fecaca', 
     badgeBg: '#fee2e2',
+    badgeColor: '#b91c1c',
+    glow: 'rgba(220, 38, 38, 0.3)',
     nextStep: null, 
     nextActionLabel: 'Lost' 
   },
@@ -1079,11 +1103,33 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                   <div 
                     key={stage.id}
                     className="kanban-col"
+                    style={{
+                      borderColor: stage.border,
+                      backgroundColor: stage.bg
+                    }}
                   >
+                    {/* Top Accent Gradient Ribbon */}
+                    <div 
+                      className="col-top-accent-bar" 
+                      style={{ background: stage.accentGradient || stage.color }}
+                    />
+
                     {/* Column Header */}
-                    <div className="kanban-col-header">
+                    <div 
+                      className="kanban-col-header"
+                      style={{
+                        background: stage.headerBg || '#ffffff',
+                        borderBottomColor: stage.border || '#e2e8f0'
+                      }}
+                    >
                       <div className="col-header-left">
-                        <span className="col-dot" style={{ backgroundColor: stage.color }}></span>
+                        <span 
+                          className="col-dot" 
+                          style={{ 
+                            backgroundColor: stage.color,
+                            boxShadow: `0 0 0 2.5px ${stage.badgeBg}, 0 0 8px ${stage.glow || 'rgba(0,0,0,0.1)'}` 
+                          }}
+                        ></span>
                         
                         {editingStageId === stage.id ? (
                           <div className="col-title-inline-edit" onClick={(e) => e.stopPropagation()}>
@@ -1098,6 +1144,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                               }}
                               onBlur={() => handleSaveStageName(stage.id)}
                               className="col-title-input"
+                              style={{ borderColor: stage.color }}
                               maxLength={30}
                             />
                             <button
@@ -1137,15 +1184,29 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
 
                         <span 
                           className="col-badge" 
-                          style={{ backgroundColor: stage.badgeBg, color: stage.color, borderColor: stage.border }}
+                          style={{ 
+                            backgroundColor: stage.badgeBg, 
+                            color: stage.badgeColor || stage.color, 
+                            borderColor: stage.border,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                          }}
                         >
                           {stageLeads.length}
                         </span>
                       </div>
 
-                      <span className="col-sum">
-                        {formatCurrency(stageVal)}
-                      </span>
+                      {/* Stage Total Revenue Pill */}
+                      <div 
+                        className={`col-sum-pill ${stageVal > 0 ? 'has-value' : 'is-zero'}`}
+                        style={stageVal > 0 ? {
+                          color: stage.color,
+                          backgroundColor: stage.badgeBg,
+                          borderColor: stage.border
+                        } : undefined}
+                        title={`Total ${stage.title} value: ${formatCurrency(stageVal)}`}
+                      >
+                        <span>{formatCurrency(stageVal)}</span>
+                      </div>
                     </div>
 
                     {/* Column Cards Container */}
@@ -1154,7 +1215,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                         stageLeads.map(lead => renderLeadCard(lead, true))
                       ) : (
                         <div className="empty-col-state">
-                          <Inbox size={22} style={{ color: '#cbd5e1' }} />
+                          <Inbox size={22} style={{ color: stage.color, opacity: 0.35 }} />
                           <span>No deals in {stage.title}</span>
                         </div>
                       )}
@@ -1167,15 +1228,16 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
             /* STAGE FLOW FOCUSED VIEW */
             <div style={{ 
               backgroundColor: '#ffffff', 
-              borderRadius: '10px', 
+              borderRadius: '12px', 
               border: '1px solid #e2e8f0', 
               padding: '16px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '14px'
+              gap: '14px',
+              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)'
             }}>
               {/* Horizontal Stepper */}
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
+              <div className="stage-flow-tabs" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                 {stages.map((stage) => {
                   const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                   const count = stageLeads.length;
@@ -1185,37 +1247,58 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                   return (
                     <button
                       key={stage.id}
+                      type="button"
                       onClick={() => setActiveStage(stage.id)}
+                      className={`stage-flow-step-btn ${isSelected ? 'is-active' : ''}`}
                       style={{
-                        padding: '7px 12px',
-                        borderRadius: '7px',
-                        border: isSelected ? `1.5px solid ${stage.color}` : '1px solid #e2e8f0',
-                        backgroundColor: isSelected ? stage.bg : '#ffffff',
-                        color: isSelected ? stage.color : '#475569',
-                        fontSize: '0.8rem',
-                        fontWeight: isSelected ? 700 : 500,
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        border: isSelected ? `1.5px solid ${stage.color}` : `1px solid ${stage.border}`,
+                        backgroundColor: isSelected ? stage.badgeBg : '#ffffff',
+                        color: isSelected ? stage.color : '#334155',
+                        fontSize: '0.82rem',
+                        fontWeight: isSelected ? 750 : 600,
                         whiteSpace: 'nowrap',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '6px',
+                        gap: '7px',
                         cursor: 'pointer',
-                        transition: 'all 0.15s ease'
+                        transition: 'all 0.18s ease',
+                        boxShadow: isSelected ? `0 2px 8px ${stage.glow || 'rgba(0,0,0,0.08)'}, 0 0 0 1px ${stage.color}` : '0 1px 2px rgba(0,0,0,0.02)'
                       }}
                     >
+                      <span 
+                        style={{ 
+                          width: '8px', 
+                          height: '8px', 
+                          borderRadius: '50%', 
+                          backgroundColor: stage.color,
+                          boxShadow: isSelected ? `0 0 0 2.5px ${stage.badgeBg}, 0 0 6px ${stage.color}` : 'none'
+                        }}
+                      />
                       <span>{stage.title}</span>
                       <span style={{ 
-                        backgroundColor: isSelected ? stage.color : '#f1f5f9', 
-                        color: isSelected ? '#ffffff' : '#64748b',
-                        padding: '1px 6px', 
-                        borderRadius: '8px', 
+                        backgroundColor: isSelected ? stage.color : stage.badgeBg, 
+                        color: isSelected ? '#ffffff' : (stage.badgeColor || stage.color),
+                        padding: '1.5px 7px', 
+                        borderRadius: '9999px', 
                         fontSize: '0.7rem',
-                        fontWeight: 700
+                        fontWeight: 750,
+                        border: `1px solid ${isSelected ? 'transparent' : stage.border}`
                       }}>
                         {count}
                       </span>
                       {stageVal > 0 && (
-                        <span style={{ fontSize: '0.7rem', opacity: 0.85, fontWeight: 600 }}>
-                          • {formatCurrency(stageVal)}
+                        <span style={{ 
+                          fontSize: '0.72rem', 
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: '5px',
+                          backgroundColor: isSelected ? 'rgba(255,255,255,0.75)' : '#ecfdf5',
+                          color: isSelected ? stage.color : '#059669',
+                          border: `1px solid ${isSelected ? stage.border : '#a7f3d0'}`
+                        }}>
+                          {formatCurrency(stageVal)}
                         </span>
                       )}
                     </button>
@@ -1228,19 +1311,47 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
-                padding: '9px 12px', 
-                backgroundColor: '#f8fafc', 
-                borderRadius: '8px', 
-                border: '1px solid #e2e8f0' 
+                padding: '10px 14px', 
+                background: activeStageConfig.headerBg || '#f8fafc', 
+                borderRadius: '9px', 
+                border: `1px solid ${activeStageConfig.border || '#e2e8f0'}`,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: activeStageConfig.color }}></span>
-                  <span style={{ fontWeight: 700, fontSize: '0.86rem', color: '#0f172a' }}>{activeStageConfig.title} Stage</span>
-                  <span style={{ fontSize: '0.74rem', color: '#64748b' }}>({activeStageLeads.length} Deals)</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ 
+                    width: '10px', 
+                    height: '10px', 
+                    borderRadius: '50%', 
+                    backgroundColor: activeStageConfig.color,
+                    boxShadow: `0 0 0 3px ${activeStageConfig.badgeBg}, 0 0 8px ${activeStageConfig.glow || 'rgba(0,0,0,0.1)'}` 
+                  }}></span>
+                  <span style={{ fontWeight: 750, fontSize: '0.88rem', color: '#0f172a' }}>{activeStageConfig.title} Stage</span>
+                  <span 
+                    style={{ 
+                      fontSize: '0.72rem', 
+                      fontWeight: 700, 
+                      backgroundColor: activeStageConfig.badgeBg, 
+                      color: activeStageConfig.badgeColor || activeStageConfig.color, 
+                      padding: '2px 8px', 
+                      borderRadius: '9999px',
+                      border: `1px solid ${activeStageConfig.border}`
+                    }}
+                  >
+                    {activeStageLeads.length} Deals
+                  </span>
                 </div>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#059669' }}>
-                  Total Value: {formatCurrency(activeStageTotalValue)}
-                </span>
+                <div 
+                  className="col-sum-pill has-value"
+                  style={{
+                    color: activeStageConfig.color,
+                    backgroundColor: activeStageConfig.badgeBg,
+                    borderColor: activeStageConfig.border,
+                    fontSize: '0.8rem',
+                    padding: '3px 10px'
+                  }}
+                >
+                  <span>Total Value: {formatCurrency(activeStageTotalValue)}</span>
+                </div>
               </div>
 
               {/* Leads List */}

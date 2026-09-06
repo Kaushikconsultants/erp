@@ -304,64 +304,89 @@
 .kanban-track {
   display: grid;
   grid-template-columns: repeat(6, minmax(295px, 1fr));
-  gap: 12px;
+  gap: 14px;
   overflow-x: auto;
-  padding-bottom: 16px;
+  padding-bottom: 18px;
   align-items: start;
 }
 
 .kanban-col {
-  background-color: #f8fafc;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  min-height: 520px;
+  min-height: 540px;
   max-height: 82vh;
-  transition: border-color 0.2s ease;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03), 0 1px 2px rgba(15, 23, 42, 0.02);
+  position: relative;
+  overflow: hidden;
 }
 
 .kanban-col:hover {
-  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 3px 8px -2px rgba(15, 23, 42, 0.04);
+}
+
+.col-top-accent-bar {
+  height: 3.5px;
+  width: 100%;
+  flex-shrink: 0;
+  border-radius: 12px 12px 0 0;
+  transition: height 0.2s ease;
+}
+
+.kanban-col:hover .col-top-accent-bar {
+  height: 4.5px;
 }
 
 .kanban-col-header {
-  padding: 10px 12px;
+  padding: 10px 13px;
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
-  border-radius: 10px 10px 0 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  min-height: 42px;
+  min-height: 44px;
+  gap: 8px;
+  backdrop-filter: blur(8px);
 }
 
 .col-header-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
   flex: 1;
 }
 
 .col-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kanban-col:hover .col-dot {
+  transform: scale(1.2);
 }
 
 .col-title-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 2px 6px;
   margin: -2px -4px;
-  border-radius: 4px;
+  border-radius: 6px;
   transition: all 0.15s ease;
   min-width: 0;
+}
+
+.col-title-wrap:hover {
+  background-color: rgba(255, 255, 255, 0.7);
 }
 
 .col-title-wrap:hover .col-edit-icon {
@@ -370,10 +395,10 @@
 }
 
 .col-title {
-  font-weight: 700;
-  font-size: 0.84rem;
+  font-weight: 750;
+  font-size: 0.85rem;
   color: #0f172a;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -386,11 +411,6 @@
   align-items: center;
   transition: opacity 0.15s ease, color 0.15s ease;
   flex-shrink: 0;
-}
-
-.col-title-wrap:hover .col-edit-icon {
-  opacity: 1;
-  color: #4f46e5;
 }
 
 .col-title-inline-edit {
@@ -473,29 +493,49 @@
 }
 
 .col-badge {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 8px;
-  border: 1px solid transparent;
+  font-size: 0.7rem;
+  font-weight: 750;
+  padding: 1.5px 7px;
+  border-radius: 9999px;
+  border: 1px solid;
   flex-shrink: 0;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
 }
 
-.col-sum {
-  font-size: 0.74rem;
+/* Stage Revenue Sum Pill */
+.col-sum-pill {
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #475569;
+  padding: 2.5px 7.5px;
+  border-radius: 6px;
   flex-shrink: 0;
-  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  line-height: 1.2;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.col-sum-pill.has-value {
+  border-style: solid;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.col-sum-pill.is-zero {
+  background-color: #f1f5f9;
+  color: #64748b;
+  border-color: #e2e8f0;
 }
 
 .kanban-col-cards {
-  padding: 8px;
+  padding: 9px;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 9px;
   flex: 1 1 auto;
   min-height: 0;
 }
