@@ -105,88 +105,113 @@ export const STAGES = [
   { 
     id: 'New Lead', 
     title: 'New Lead', 
+    stepNumber: 1,
     color: '#2563eb', 
-    accentGradient: 'linear-gradient(90deg, #2563eb 0%, #60a5fa 100%)',
-    headerBg: 'linear-gradient(180deg, #eff6ff 0%, #ffffff 100%)',
+    accentGradient: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)',
+    headerBg: 'linear-gradient(180deg, #eff6ff 0%, #f8faff 100%)',
     bg: '#f8faff', 
     border: '#bfdbfe', 
     badgeBg: '#dbeafe',
     badgeColor: '#1d4ed8',
-    glow: 'rgba(37, 99, 235, 0.3)',
+    glow: 'rgba(37, 99, 235, 0.28)',
     nextStep: 'Contacted', 
     nextActionLabel: 'Mark Contacted' 
   },
   { 
     id: 'Contacted', 
     title: 'Contacted', 
+    stepNumber: 2,
     color: '#4f46e5', 
-    accentGradient: 'linear-gradient(90deg, #4f46e5 0%, #818cf8 100%)',
-    headerBg: 'linear-gradient(180deg, #eef2ff 0%, #ffffff 100%)',
+    accentGradient: 'linear-gradient(90deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%)',
+    headerBg: 'linear-gradient(180deg, #eef2ff 0%, #f9f9ff 100%)',
     bg: '#f9f9ff', 
     border: '#c7d2fe', 
     badgeBg: '#e0e7ff',
     badgeColor: '#4338ca',
-    glow: 'rgba(79, 70, 229, 0.3)',
+    glow: 'rgba(79, 70, 229, 0.28)',
     nextStep: 'Qualified', 
     nextActionLabel: 'Qualify Lead' 
   },
   { 
     id: 'Qualified', 
     title: 'Qualified', 
+    stepNumber: 3,
     color: '#7c3aed', 
-    accentGradient: 'linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%)',
-    headerBg: 'linear-gradient(180deg, #f5f3ff 0%, #ffffff 100%)',
+    accentGradient: 'linear-gradient(90deg, #7c3aed 0%, #8b5cf6 50%, #a78bfa 100%)',
+    headerBg: 'linear-gradient(180deg, #f5f3ff 0%, #faf8ff 100%)',
     bg: '#faf8ff', 
     border: '#ddd6fe', 
     badgeBg: '#ede9fe',
     badgeColor: '#6d28d9',
-    glow: 'rgba(124, 58, 237, 0.3)',
+    glow: 'rgba(124, 58, 237, 0.28)',
     nextStep: 'Opportunity', 
     nextActionLabel: 'Move to Opportunity' 
   },
   { 
     id: 'Opportunity', 
     title: 'Opportunity', 
+    stepNumber: 4,
     color: '#d97706', 
-    accentGradient: 'linear-gradient(90deg, #d97706 0%, #fbbf24 100%)',
-    headerBg: 'linear-gradient(180deg, #fffbeb 0%, #ffffff 100%)',
+    accentGradient: 'linear-gradient(90deg, #d97706 0%, #f59e0b 50%, #fbbf24 100%)',
+    headerBg: 'linear-gradient(180deg, #fffbeb 0%, #fffdf5 100%)',
     bg: '#fffdf5', 
     border: '#fde68a', 
     badgeBg: '#fef3c7',
     badgeColor: '#b45309',
-    glow: 'rgba(217, 119, 6, 0.3)',
+    glow: 'rgba(217, 119, 6, 0.28)',
     nextStep: 'Won', 
     nextActionLabel: 'Close & Win Deal' 
   },
   { 
     id: 'Won', 
     title: 'Won', 
+    stepNumber: 5,
     color: '#059669', 
-    accentGradient: 'linear-gradient(90deg, #059669 0%, #34d399 100%)',
-    headerBg: 'linear-gradient(180deg, #ecfdf5 0%, #ffffff 100%)',
+    accentGradient: 'linear-gradient(90deg, #059669 0%, #10b981 50%, #34d399 100%)',
+    headerBg: 'linear-gradient(180deg, #ecfdf5 0%, #f4fdf8 100%)',
     bg: '#f4fdf8', 
     border: '#a7f3d0', 
     badgeBg: '#d1fae5',
     badgeColor: '#047857',
-    glow: 'rgba(5, 150, 105, 0.3)',
+    glow: 'rgba(5, 150, 105, 0.28)',
     nextStep: null, 
     nextActionLabel: 'Deal Won' 
   },
   { 
     id: 'Lost', 
     title: 'Lost', 
+    stepNumber: 6,
     color: '#dc2626', 
-    accentGradient: 'linear-gradient(90deg, #dc2626 0%, #f87171 100%)',
-    headerBg: 'linear-gradient(180deg, #fef2f2 0%, #ffffff 100%)',
+    accentGradient: 'linear-gradient(90deg, #dc2626 0%, #ef4444 50%, #f87171 100%)',
+    headerBg: 'linear-gradient(180deg, #fef2f2 0%, #fff8f8 100%)',
     bg: '#fff8f8', 
     border: '#fecaca', 
     badgeBg: '#fee2e2',
     badgeColor: '#b91c1c',
-    glow: 'rgba(220, 38, 38, 0.3)',
+    glow: 'rgba(220, 38, 38, 0.28)',
     nextStep: null, 
     nextActionLabel: 'Lost' 
   },
 ];
+
+export const getStageIcon = (stageId: string, size = 12) => {
+  switch (stageId) {
+    case 'New Lead':
+      return <Sparkles size={size} />;
+    case 'Contacted':
+      return <MessageSquare size={size} />;
+    case 'Qualified':
+      return <Target size={size} />;
+    case 'Opportunity':
+      return <TrendingUp size={size} />;
+    case 'Won':
+      return <Award size={size} />;
+    case 'Lost':
+      return <RotateCcw size={size} />;
+    default:
+      return <Sparkles size={size} />;
+  }
+};
 
 interface KanbanBoardProps {
   initialLeads: any[];
@@ -1688,7 +1713,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
           {currentView === 'BOARD' ? (
             /* MULTI-COLUMN KANBAN BOARD */
             <div className="kanban-track">
-              {stages.map(stage => {
+              {stages.map((stage, idx) => {
                 const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                 const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
 
@@ -1712,17 +1737,23 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                       className="kanban-col-header"
                       style={{
                         background: stage.headerBg || '#ffffff',
-                        borderBottomColor: stage.border || '#e2e8f0'
+                        borderBottom: `1.5px solid ${stage.border || '#e2e8f0'}`
                       }}
                     >
                       <div className="col-header-left">
-                        <span 
-                          className="col-dot" 
-                          style={{ 
-                            backgroundColor: stage.color,
-                            boxShadow: `0 0 0 2.5px ${stage.badgeBg}, 0 0 8px ${stage.glow || 'rgba(0,0,0,0.1)'}` 
+                        {/* Creative Illuminated Stage Icon Chip */}
+                        <div 
+                          className="col-stage-icon-chip"
+                          style={{
+                            backgroundColor: stage.badgeBg,
+                            borderColor: stage.border,
+                            color: stage.badgeColor || stage.color,
+                            boxShadow: `0 2px 6px ${stage.glow || 'rgba(0,0,0,0.06)'}`
                           }}
-                        ></span>
+                          title={`Stage ${idx + 1}: ${stage.title}`}
+                        >
+                          {getStageIcon(stage.id, 12)}
+                        </div>
                         
                         {editingStageId === stage.id ? (
                           <div className="col-title-inline-edit" onClick={(e) => e.stopPropagation()}>
@@ -1770,7 +1801,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                               {stage.title}
                             </span>
                             <span className="col-edit-icon" title="Rename column">
-                              <Edit2 size={10} />
+                              <Edit2 size={11} />
                             </span>
                           </div>
                         )}
@@ -1781,7 +1812,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                             backgroundColor: stage.badgeBg, 
                             color: stage.badgeColor || stage.color, 
                             borderColor: stage.border,
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
                           }}
                         >
                           {stageLeads.length}
@@ -1794,7 +1825,8 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                         style={stageVal > 0 ? {
                           color: stage.color,
                           backgroundColor: stage.badgeBg,
-                          borderColor: stage.border
+                          borderColor: stage.border,
+                          boxShadow: `0 2px 6px ${stage.glow || 'rgba(0,0,0,0.06)'}`
                         } : undefined}
                         title={`Total ${stage.title} value: ${formatCurrency(stageVal)}`}
                       >
@@ -1821,17 +1853,17 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
             /* STAGE FLOW FOCUSED VIEW */
             <div style={{ 
               backgroundColor: '#ffffff', 
-              borderRadius: '12px', 
+              borderRadius: '14px', 
               border: '1px solid #e2e8f0', 
               padding: '16px',
               display: 'flex',
               flexDirection: 'column',
               gap: '14px',
-              boxShadow: '0 1px 3px rgba(15, 23, 42, 0.03)'
+              boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
             }}>
               {/* Horizontal Stepper */}
               <div className="stage-flow-tabs" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
-                {stages.map((stage) => {
+                {stages.map((stage, idx) => {
                   const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
                   const count = stageLeads.length;
                   const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
@@ -1845,7 +1877,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                       className={`stage-flow-step-btn ${isSelected ? 'is-active' : ''}`}
                       style={{
                         padding: '8px 15px',
-                        borderRadius: '8px',
+                        borderRadius: '9px',
                         border: isSelected ? `1.5px solid ${stage.color}` : `1px solid ${stage.border}`,
                         backgroundColor: isSelected ? stage.badgeBg : '#ffffff',
                         color: isSelected ? stage.color : '#334155',
@@ -1864,13 +1896,19 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                     >
                       <span 
                         style={{ 
-                          width: '8px', 
-                          height: '8px', 
-                          borderRadius: '50%', 
-                          backgroundColor: stage.color,
-                          boxShadow: isSelected ? `0 0 0 2.5px ${stage.badgeBg}, 0 0 6px ${stage.color}` : 'none'
+                          width: '18px', 
+                          height: '18px', 
+                          borderRadius: '5px', 
+                          backgroundColor: isSelected ? stage.color : stage.badgeBg,
+                          color: isSelected ? '#ffffff' : (stage.badgeColor || stage.color),
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: isSelected ? `0 0 6px ${stage.color}` : 'none'
                         }}
-                      />
+                      >
+                        {getStageIcon(stage.id, 10)}
+                      </span>
                       <span style={{ fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif", fontWeight: 800 }}>{stage.title}</span>
                       <span style={{ 
                         fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif",
@@ -1893,7 +1931,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                           letterSpacing: '-0.015em',
                           padding: '2px 7px',
                           borderRadius: '6px',
-                          backgroundColor: isSelected ? 'rgba(255,255,255,0.75)' : '#ecfdf5',
+                          backgroundColor: isSelected ? 'rgba(255,255,255,0.85)' : '#ecfdf5',
                           color: isSelected ? stage.color : '#059669',
                           border: `1px solid ${isSelected ? stage.border : '#a7f3d0'}`
                         }}>
@@ -1910,30 +1948,38 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
-                padding: '10px 14px', 
+                padding: '12px 16px', 
                 background: activeStageConfig.headerBg || '#f8fafc', 
-                borderRadius: '9px', 
-                border: `1px solid ${activeStageConfig.border || '#e2e8f0'}`,
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                borderRadius: '10px', 
+                border: `1.5px solid ${activeStageConfig.border || '#e2e8f0'}`,
+                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.04)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ 
-                    width: '10px', 
-                    height: '10px', 
-                    borderRadius: '50%', 
-                    backgroundColor: activeStageConfig.color,
-                    boxShadow: `0 0 0 3px ${activeStageConfig.badgeBg}, 0 0 8px ${activeStageConfig.glow || 'rgba(0,0,0,0.1)'}` 
-                  }}></span>
-                  <span style={{ fontWeight: 750, fontSize: '0.88rem', color: '#0f172a' }}>{activeStageConfig.title} Stage</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div 
+                    className="col-stage-icon-chip"
+                    style={{
+                      backgroundColor: activeStageConfig.badgeBg,
+                      borderColor: activeStageConfig.border,
+                      color: activeStageConfig.badgeColor || activeStageConfig.color,
+                      boxShadow: `0 2px 8px ${activeStageConfig.glow || 'rgba(0,0,0,0.1)'}`
+                    }}
+                  >
+                    {getStageIcon(activeStageConfig.id, 13)}
+                  </div>
+                  <span style={{ fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: '0.94rem', color: '#0f172a', letterSpacing: '-0.02em' }}>
+                    {activeStageConfig.title} Stage
+                  </span>
                   <span 
                     style={{ 
-                      fontSize: '0.72rem', 
-                      fontWeight: 700, 
+                      fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif",
+                      fontSize: '0.74rem', 
+                      fontWeight: 800, 
                       backgroundColor: activeStageConfig.badgeBg, 
                       color: activeStageConfig.badgeColor || activeStageConfig.color, 
-                      padding: '2px 8px', 
+                      padding: '2.5px 9px', 
                       borderRadius: '9999px',
-                      border: `1px solid ${activeStageConfig.border}`
+                      border: `1.5px solid ${activeStageConfig.border}`,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
                     }}
                   >
                     {activeStageLeads.length} Deals
@@ -1945,8 +1991,9 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                     color: activeStageConfig.color,
                     backgroundColor: activeStageConfig.badgeBg,
                     borderColor: activeStageConfig.border,
-                    fontSize: '0.8rem',
-                    padding: '3px 10px'
+                    fontSize: '0.82rem',
+                    padding: '4px 12px',
+                    boxShadow: `0 2px 6px ${activeStageConfig.glow || 'rgba(0,0,0,0.06)'}`
                   }}
                 >
                   <span>Total Value: {formatCurrency(activeStageTotalValue)}</span>
