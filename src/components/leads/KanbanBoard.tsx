@@ -994,6 +994,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setActiveSourcePickerLeadId(null);
                   setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
                 }}
                 title="Click to change customer category / intent"
@@ -1009,6 +1010,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                   className="deal-cat-add-btn"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setActiveSourcePickerLeadId(null);
                     setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
                   }}
                   title="Categorize customer intent (Very Interested, Big Deal, Sample Order...)"
@@ -1022,6 +1024,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                   className="deal-cat-ghost-btn"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setActiveSourcePickerLeadId(null);
                     setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
                   }}
                   title="Categorize customer intent"
@@ -1031,72 +1034,9 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 </button>
               )
             )}
-
-            {/* Floating Category Picker Popover */}
-            {activeCategoryPickerLeadId === lead.id && (
-              <div className="deal-cat-popover" onClick={(e) => e.stopPropagation()}>
-                <div className="deal-cat-popover-header">
-                  <span className="deal-cat-popover-title">Select Customer Intent</span>
-                  <button 
-                    type="button" 
-                    onClick={() => setActiveCategoryPickerLeadId(null)}
-                    className="deal-cat-popover-close"
-                  >
-                    <X size={12} />
-                  </button>
-                </div>
-
-                <div className="deal-cat-popover-list">
-                  {categories.map(cat => {
-                    const isSelected = leadCategory.toLowerCase() === cat.id.toLowerCase() || leadCategory.toLowerCase() === cat.label.toLowerCase();
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        className={`deal-cat-popover-item ${isSelected ? 'selected' : ''}`}
-                        style={isSelected ? {
-                          backgroundColor: cat.bg,
-                          borderColor: cat.border,
-                          color: cat.color
-                        } : {}}
-                        onClick={() => handleSetLeadCategory(lead.id, cat.id, !!lead.isLeadRecord)}
-                      >
-                        <span className="cat-item-icon">{cat.icon || '🏷️'}</span>
-                        <span className="cat-item-label">{cat.label}</span>
-                        {isSelected && <Check size={12} className="cat-item-check" />}
-                      </button>
-                    );
-                  })}
-
-                  {leadCategory && (
-                    <button
-                      type="button"
-                      className="deal-cat-popover-clear"
-                      onClick={() => handleSetLeadCategory(lead.id, null, !!lead.isLeadRecord)}
-                    >
-                      <X size={11} /> Remove Category Tag
-                    </button>
-                  )}
-                </div>
-
-                <div className="deal-cat-popover-footer">
-                  <button
-                    type="button"
-                    className="deal-cat-popover-manage-btn"
-                    onClick={() => {
-                      setActiveCategoryPickerLeadId(null);
-                      handleOpenCustomizeModal();
-                      setCustomizeModalTab('CATEGORIES');
-                    }}
-                  >
-                    <SlidersHorizontal size={11} /> Customize Options
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Lead Source Chip & Popover */}
+          {/* Lead Source Chip */}
           <div className="deal-src-container" onClick={(e) => e.stopPropagation()}>
             {leadSource ? (
               <div 
@@ -1108,6 +1048,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setActiveCategoryPickerLeadId(null);
                   setActiveSourcePickerLeadId(activeSourcePickerLeadId === lead.id ? null : lead.id);
                   setCustomReferenceInput(leadSource);
                 }}
@@ -1124,6 +1065,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                   className="deal-src-add-btn"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setActiveCategoryPickerLeadId(null);
                     setActiveSourcePickerLeadId(activeSourcePickerLeadId === lead.id ? null : lead.id);
                     setCustomReferenceInput('');
                   }}
@@ -1138,6 +1080,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                   className="deal-src-ghost-btn"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setActiveCategoryPickerLeadId(null);
                     setActiveSourcePickerLeadId(activeSourcePickerLeadId === lead.id ? null : lead.id);
                     setCustomReferenceInput('');
                   }}
@@ -1148,97 +1091,161 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 </button>
               )
             )}
+          </div>
 
-            {/* Floating Lead Source Picker Popover */}
-            {activeSourcePickerLeadId === lead.id && (
-              <div className="deal-src-popover" onClick={(e) => e.stopPropagation()}>
-                <div className="deal-src-popover-header">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Radio size={13} style={{ color: '#2563eb' }} />
-                    <span className="deal-src-popover-title">Lead Source & Reference</span>
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={() => setActiveSourcePickerLeadId(null)}
-                    className="deal-src-popover-close"
+          {/* Floating Category Picker Popover */}
+          {activeCategoryPickerLeadId === lead.id && (
+            <div className="deal-cat-popover" onClick={(e) => e.stopPropagation()}>
+              <div className="deal-cat-popover-header">
+                <span className="deal-cat-popover-title">Select Customer Intent</span>
+                <button 
+                  type="button" 
+                  onClick={() => setActiveCategoryPickerLeadId(null)}
+                  className="deal-cat-popover-close"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+
+              <div className="deal-cat-popover-list">
+                {categories.map(cat => {
+                  const isSelected = leadCategory.toLowerCase() === cat.id.toLowerCase() || leadCategory.toLowerCase() === cat.label.toLowerCase();
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className={`deal-cat-popover-item ${isSelected ? 'selected' : ''}`}
+                      style={isSelected ? {
+                        backgroundColor: cat.bg,
+                        borderColor: cat.border,
+                        color: cat.color
+                      } : {}}
+                      onClick={() => handleSetLeadCategory(lead.id, cat.id, !!lead.isLeadRecord)}
+                    >
+                      <span className="cat-item-icon">{cat.icon || '🏷️'}</span>
+                      <span className="cat-item-label">{cat.label}</span>
+                      {isSelected && <Check size={12} className="cat-item-check" />}
+                    </button>
+                  );
+                })}
+
+                {leadCategory && (
+                  <button
+                    type="button"
+                    className="deal-cat-popover-clear"
+                    onClick={() => handleSetLeadCategory(lead.id, null, !!lead.isLeadRecord)}
                   >
-                    <X size={12} />
+                    <X size={11} /> Remove Category Tag
                   </button>
-                </div>
-
-                {/* Predefined Quick Sources Grid */}
-                <div className="deal-src-popover-list">
-                  {DEFAULT_LEAD_SOURCES.map(src => {
-                    const isSelected = leadSource.toLowerCase() === src.id.toLowerCase() || 
-                                       leadSource.toLowerCase() === src.label.toLowerCase() ||
-                                       leadSource.toLowerCase().startsWith(src.id.toLowerCase());
-                    return (
-                      <button
-                        key={src.id}
-                        type="button"
-                        className={`deal-src-popover-item ${isSelected ? 'selected' : ''}`}
-                        style={isSelected ? {
-                          backgroundColor: src.bg,
-                          borderColor: src.border,
-                          color: src.color
-                        } : {}}
-                        onClick={() => handleSetLeadSource(lead.id, src.id, !!lead.isLeadRecord)}
-                      >
-                        <span className="src-item-icon">{src.icon}</span>
-                        <span className="src-item-label">{src.label}</span>
-                        {isSelected && <Check size={12} className="src-item-check" />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Custom / Reference Input Section */}
-                <div className="deal-src-custom-box">
-                  <div className="deal-src-custom-label">
-                    <span>👥 Reference Name / Custom:</span>
-                  </div>
-                  <div className="deal-src-custom-input-row">
-                    <input
-                      type="text"
-                      placeholder="e.g. Ref: Sharmaji, Exhibition..."
-                      value={customReferenceInput}
-                      onChange={(e) => setCustomReferenceInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && customReferenceInput.trim()) {
-                          handleSetLeadSource(lead.id, customReferenceInput.trim(), !!lead.isLeadRecord);
-                        }
-                      }}
-                      className="deal-src-custom-input"
-                    />
-                    <button
-                      type="button"
-                      disabled={!customReferenceInput.trim()}
-                      onClick={() => {
-                        if (customReferenceInput.trim()) {
-                          handleSetLeadSource(lead.id, customReferenceInput.trim(), !!lead.isLeadRecord);
-                        }
-                      }}
-                      className="deal-src-custom-save-btn"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-
-                {leadSource && (
-                  <div className="deal-src-popover-footer">
-                    <button
-                      type="button"
-                      className="deal-src-popover-clear"
-                      onClick={() => handleSetLeadSource(lead.id, null, !!lead.isLeadRecord)}
-                    >
-                      <X size={11} /> Remove Source Tag
-                    </button>
-                  </div>
                 )}
               </div>
-            )}
-          </div>
+
+              <div className="deal-cat-popover-footer">
+                <button
+                  type="button"
+                  className="deal-cat-popover-manage-btn"
+                  onClick={() => {
+                    setActiveCategoryPickerLeadId(null);
+                    handleOpenCustomizeModal();
+                    setCustomizeModalTab('CATEGORIES');
+                  }}
+                >
+                  <SlidersHorizontal size={11} /> Customize Options
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Floating Lead Source Picker Popover */}
+          {activeSourcePickerLeadId === lead.id && (
+            <div className="deal-src-popover" onClick={(e) => e.stopPropagation()}>
+              <div className="deal-src-popover-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Radio size={13} style={{ color: '#2563eb' }} />
+                  <span className="deal-src-popover-title">Lead Source & Reference</span>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setActiveSourcePickerLeadId(null)}
+                  className="deal-src-popover-close"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+
+              {/* Predefined Quick Sources List (1-column full readable layout) */}
+              <div className="deal-src-popover-list">
+                {DEFAULT_LEAD_SOURCES.map(src => {
+                  const isSelected = leadSource.toLowerCase() === src.id.toLowerCase() || 
+                                     leadSource.toLowerCase() === src.label.toLowerCase() ||
+                                     leadSource.toLowerCase().startsWith(src.id.toLowerCase());
+                  return (
+                    <button
+                      key={src.id}
+                      type="button"
+                      className={`deal-src-popover-item ${isSelected ? 'selected' : ''}`}
+                      style={isSelected ? {
+                        backgroundColor: src.bg,
+                        borderColor: src.border,
+                        color: src.color
+                      } : {}}
+                      onClick={() => handleSetLeadSource(lead.id, src.id, !!lead.isLeadRecord)}
+                    >
+                      <span className="src-item-icon">{src.icon}</span>
+                      <span className="src-item-label">{src.label}</span>
+                      {isSelected && <Check size={12} className="src-item-check" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom / Reference Input Section */}
+              <div className="deal-src-custom-box">
+                <div className="deal-src-custom-label">
+                  <Share2 size={11} style={{ color: '#4338ca' }} />
+                  <span>Reference / Referral / Custom:</span>
+                </div>
+                <div className="deal-src-custom-input-row">
+                  <input
+                    type="text"
+                    placeholder="e.g. Ref: Sharmaji, Ramesh..."
+                    value={customReferenceInput}
+                    onChange={(e) => setCustomReferenceInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customReferenceInput.trim()) {
+                        handleSetLeadSource(lead.id, customReferenceInput.trim(), !!lead.isLeadRecord);
+                      }
+                    }}
+                    className="deal-src-custom-input"
+                  />
+                  <button
+                    type="button"
+                    disabled={!customReferenceInput.trim()}
+                    onClick={() => {
+                      if (customReferenceInput.trim()) {
+                        handleSetLeadSource(lead.id, customReferenceInput.trim(), !!lead.isLeadRecord);
+                      }
+                    }}
+                    className="deal-src-custom-save-btn"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              {leadSource && (
+                <div className="deal-src-popover-footer">
+                  <button
+                    type="button"
+                    className="deal-src-popover-clear"
+                    onClick={() => handleSetLeadSource(lead.id, null, !!lead.isLeadRecord)}
+                  >
+                    <X size={11} /> Remove Source Tag
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Row 2.5: Next Follow-Up Status */}
