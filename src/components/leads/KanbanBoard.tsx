@@ -2105,11 +2105,12 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                     padding: '7px 16px', 
                     borderRadius: '6px', 
                     border: 'none', 
-                    backgroundColor: '#4f46e5', 
+                    backgroundColor: '#059669', 
                     color: '#ffffff', 
                     fontWeight: 600, 
                     fontSize: '0.8rem', 
-                    cursor: advancingLoading ? 'not-allowed' : 'pointer'
+                    cursor: advancingLoading ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
                   }}
                 >
                   {advancingLoading ? "Advancing..." : `Move to ${stages.find(s => s.id === advanceNextStage)?.title || advanceNextStage} ➔`}
