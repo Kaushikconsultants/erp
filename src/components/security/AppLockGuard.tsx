@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Lock,
   Fingerprint,
@@ -14,6 +14,8 @@ import {
   Smartphone
 } from "lucide-react";
 import { signOut } from "next-auth/react";
+import { NativeBiometric } from "@capgo/capacitor-native-biometric";
+import { Capacitor } from "@capacitor/core";
 
 interface AppLockGuardProps {
   children: React.ReactNode;
@@ -27,41 +29,53 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [isSettingUpPin, setIsSettingUpPin] = useState<boolean>(false);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const enabled = localStorage.getItem("app_mpin_enabled") === "true";
-      const savedPin = localStorage.getItem("app_mpin_code");
-
-      setIsPinEnabled(enabled);
-      setStoredPin(savedPin);
-
-      // Lock on launch if MPIN enabled
-      if (enabled && savedPin) {
-        setIsLocked(true);
-      }
-
-      // Auto-lock when app is hidden / backgrounded (visibilitychange)
-      const handleVisibilityChange = () => {
-        if (document.hidden && localStorage.getItem("app_mpin_enabled") === "true") {
-          setIsLocked(true);
-          setPin("");
-        }
-      };
-
-      document.addEventListener("visibilitychange", handleVisibilityChange);
-      return () => {
-        document.removeEventListener("visibilitychange", handleVisibilityChange);
-      };
-    }
-  }, []);
-
   // Native OS Hardware Biometric (Fingerprint / Face ID) Scan Trigger
-  const handleBiometricUnlock = async () => {
+  const handleBiometricUnlock = useCallback(async () => {
     setErrorMsg("");
     if (typeof window === "undefined") return;
 
     try {
-      // 1. Check if WebAuthn / Biometrics API is supported by the browser & device hardware
+      // ─── 1. NATIVE MOBILE APP (Android / iOS) VIA CAPACITOR ───
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const avail = await NativeBiometric.isAvailable().catch(() => ({ isAvailable: false }));
+          if (!avail?.isAvailable) {
+            setErrorMsg("No fingerprint/Face ID registered on device. Use 4-digit MPIN.");
+            return;
+          }
+
+          // Trigger native Android BiometricPrompt / iOS LocalAuthentication
+          await NativeBiometric.verifyIdentity({
+            reason: "Authenticate to unlock Heart of Business ERP",
+            title: "Biometric Login",
+            subtitle: "Scan your fingerprint or Face ID",
+            description: "Touch the fingerprint sensor to continue",
+            negativeButtonText: "Use 4-digit MPIN",
+            maxAttempts: 3
+          });
+
+          // Biometric verified successfully
+          setIsLocked(false);
+          setPin("");
+          setErrorMsg("");
+          return;
+        } catch (nativeErr: any) {
+          console.warn("Native biometric auth error:", nativeErr);
+          const errStr = (nativeErr?.message || nativeErr?.errorMessage || JSON.stringify(nativeErr)).toLowerCase();
+          if (errStr.includes("cancel") || errStr.includes("negative") || errStr.includes("user_cancel")) {
+            setErrorMsg("Biometric scan canceled. Enter 4-digit MPIN.");
+          } else if (errStr.includes("not_enrolled") || errStr.includes("none_enrolled") || errStr.includes("no biometric")) {
+            setErrorMsg("No fingerprint/Face ID registered on device. Use 4-digit MPIN.");
+          } else if (errStr.includes("failed") || errStr.includes("auth_failed")) {
+            setErrorMsg("Fingerprint not recognized. Please try again or use MPIN.");
+          } else {
+            setErrorMsg("Biometric verification canceled. Enter 4-digit MPIN.");
+          }
+          return;
+        }
+      }
+
+      // ─── 2. WEB BROWSER FALLBACK (WebAuthn API) ───
       if (!window.PublicKeyCredential) {
         setErrorMsg("Biometrics not supported on this browser. Please use 4-digit MPIN.");
         return;
@@ -73,7 +87,6 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
         return;
       }
 
-      // 2. Invoke NATIVE OS HARDWARE BIOMETRIC SENSOR PROMPT via WebAuthn API
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
@@ -81,16 +94,13 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
         publicKey: {
           challenge,
           timeout: 60000,
-          userVerification: "required", // MANDATORY: OS MUST SCAN & VERIFY FINGERPRINT/FACE
+          userVerification: "required",
           allowCredentials: []
         }
       };
 
-      // Triggers native Android/iOS OS fingerprint sensor popup
       const credential = await navigator.credentials.get(options);
-
       if (credential) {
-        // Biometric Hardware Scan SUCCESS
         setIsLocked(false);
         setPin("");
         setErrorMsg("");
@@ -107,7 +117,43 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
         setErrorMsg("Fingerprint not recognized. Use 4-digit MPIN.");
       }
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const enabled = localStorage.getItem("app_mpin_enabled") === "true";
+      const savedPin = localStorage.getItem("app_mpin_code");
+
+      setIsPinEnabled(enabled);
+      setStoredPin(savedPin);
+
+      // Lock on launch if MPIN enabled
+      if (enabled && savedPin) {
+        setIsLocked(true);
+
+        // Auto trigger native fingerprint dialog on mobile app launch
+        if (Capacitor.isNativePlatform()) {
+          const timer = setTimeout(() => {
+            handleBiometricUnlock();
+          }, 350);
+          return () => clearTimeout(timer);
+        }
+      }
+
+      // Auto-lock when app is hidden / backgrounded (visibilitychange)
+      const handleVisibilityChange = () => {
+        if (document.hidden && localStorage.getItem("app_mpin_enabled") === "true") {
+          setIsLocked(true);
+          setPin("");
+        }
+      };
+
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      return () => {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      };
+    }
+  }, [handleBiometricUnlock]);
 
   const handleDigitTap = (digit: string) => {
     setErrorMsg("");
@@ -157,23 +203,27 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", marginTop: "20px" }}>
         <div
           style={{
-            width: "68px",
-            height: "68px",
-            borderRadius: "20px",
-            background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
-            color: "#ffffff",
+            backgroundColor: "#ffffff",
+            padding: "8px 16px",
+            borderRadius: "14px",
+            boxShadow: "0 10px 30px rgba(0, 0, 0, 0.3)",
+            marginBottom: "16px",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0 10px 25px rgba(79, 70, 229, 0.4)",
-            marginBottom: "16px"
+            justifyContent: "center"
           }}
         >
-          <Lock size={32} />
+          <img
+            src="/brand-logo.jpg"
+            alt="Heart of Business"
+            style={{
+              height: "40px",
+              width: "auto",
+              objectFit: "contain",
+              display: "block"
+            }}
+          />
         </div>
-        <h2 style={{ margin: "0 0 6px 0", fontSize: "1.35rem", fontWeight: 800, letterSpacing: "-0.01em" }}>
-          Heart of Business ERP
-        </h2>
         <span style={{ fontSize: "0.82rem", color: "#94a3b8", display: "flex", alignItems: "center", gap: "5px" }}>
           <ShieldCheck size={14} color="#10b981" /> 4-Digit MPIN & Biometric Security
         </span>

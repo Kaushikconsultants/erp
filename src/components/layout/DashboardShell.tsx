@@ -8,6 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { initNativeMobileShell } from '@/lib/capacitor';
 import AppLockGuard from '@/components/security/AppLockGuard';
 import CallReminderNotifier from '@/components/notifications/CallReminderNotifier';
+import AppSplashScreen from '../ui/AppSplashScreen';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -46,6 +47,7 @@ export default function DashboardShell({
 
   return (
     <AppLockGuard>
+      <AppSplashScreen />
       <div className={`app-container ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         {/* Mobile overlay */}
         {isSidebarOpen && (
