@@ -7,7 +7,7 @@ import Link from 'next/link';
 import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
 import InstallPwaPrompt from '../ui/InstallPwaPrompt';
-import PhoneDialerModal from '../ui/PhoneDialerModal';
+import PhoneDialerModal from '@/components/ui/PhoneDialerModal';
 import './Topbar.css';
 
 interface TopbarProps {

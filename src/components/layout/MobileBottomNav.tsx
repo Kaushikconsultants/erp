@@ -24,7 +24,7 @@ import {
   Mic
 } from "lucide-react";
 import { useVoiceStore } from "@/lib/stores/voiceStore";
-import PhoneDialerModal from "../ui/PhoneDialerModal";
+import PhoneDialerModal from "@/components/ui/PhoneDialerModal";
 import "./MobileBottomNav.css";
 
 interface MobileBottomNavProps {

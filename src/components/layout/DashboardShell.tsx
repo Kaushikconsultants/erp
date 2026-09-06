@@ -6,8 +6,8 @@ import Topbar from './Topbar';
 import MobileBottomNav from './MobileBottomNav';
 import { usePathname, useRouter } from 'next/navigation';
 import { initNativeMobileShell } from '@/lib/capacitor';
-import AppLockGuard from '../security/AppLockGuard';
-import CallReminderNotifier from '../notifications/CallReminderNotifier';
+import AppLockGuard from '@/components/security/AppLockGuard';
+import CallReminderNotifier from '@/components/notifications/CallReminderNotifier';
 
 interface DashboardShellProps {
   children: React.ReactNode;

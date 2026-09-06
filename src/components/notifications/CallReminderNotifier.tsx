@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { PhoneCall, Calendar, Clock, X, Bell, ExternalLink, Volume2 } from "lucide-react";
-import PhoneDialerModal from "../ui/PhoneDialerModal";
+import PhoneDialerModal from "@/components/ui/PhoneDialerModal";
 
 export default function CallReminderNotifier() {
   const [activeReminder, setActiveReminder] = useState<any | null>(null);
