@@ -904,10 +904,13 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
       leadSource.toLowerCase().startsWith(s.id.toLowerCase())
     );
 
+    const hasActivePopover = activeCategoryPickerLeadId === lead.id || activeSourcePickerLeadId === lead.id;
+
     return (
       <div 
         key={lead.id}
-        className="deal-box"
+        className={`deal-box ${hasActivePopover ? 'has-active-popover' : ''}`}
+        style={hasActivePopover ? { zIndex: 100 } : undefined}
       >
         {/* Row 1: Header with Name, Badge & Value */}
         <div className="deal-box-header">
