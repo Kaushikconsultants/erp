@@ -43,6 +43,7 @@ export default async function SalesPipelinePage() {
         initialLeads={leads} 
         employees={pipelineRes.employees || []} 
         initialStageTitles={pipelineRes.customStageTitles || {}} 
+        initialCategories={pipelineRes.customCategories || []}
       />
     </div>
   );

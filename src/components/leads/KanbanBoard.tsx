@@ -10,7 +10,10 @@ import {
   completeLeadFollowUp,
   savePipelineStageNames,
   getPipelineStageNames,
-  deletePipelineLead
+  deletePipelineLead,
+  updateLeadCategory,
+  savePipelineCategories,
+  getPipelineCategories
 } from '@/app/actions/leadActions';
 import Link from 'next/link';
 import { 
@@ -45,11 +48,30 @@ import {
   CalendarPlus,
   CalendarClock,
   Trash2,
-  Loader2
+  Loader2,
+  Tag,
+  Plus,
+  Palette
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
 import './KanbanBoard.css';
+
+export interface StageCategory {
+  id: string;
+  label: string;
+  icon?: string;
+  color?: string;
+  bg?: string;
+  border?: string;
+}
+
+export const DEFAULT_STAGE_CATEGORIES: StageCategory[] = [
+  { id: 'Very Interested', label: 'Very Interested', icon: '🔥', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  { id: 'Less Interested', label: 'Less Interested', icon: '❄️', color: '#475569', bg: '#f1f5f9', border: '#cbd5e1' },
+  { id: 'Big Deal', label: 'Big Deal', icon: '💎', color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+  { id: 'Sample Order', label: 'Sample Order', icon: '📦', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
+];
 
 export const STAGES = [
   { 
@@ -142,9 +164,10 @@ interface KanbanBoardProps {
   initialLeads: any[];
   employees?: any[];
   initialStageTitles?: Record<string, string>;
+  initialCategories?: StageCategory[];
 }
 
-export default function KanbanBoard({ initialLeads, employees = [], initialStageTitles = {} }: KanbanBoardProps) {
+export default function KanbanBoard({ initialLeads, employees = [], initialStageTitles = {}, initialCategories = [] }: KanbanBoardProps) {
   const [leads, setLeads] = useState(initialLeads || []);
   const [activeStage, setActiveStage] = useState('Contacted');
   const [searchQuery, setSearchQuery] = useState('');
@@ -157,8 +180,20 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
   const [customStageTitles, setCustomStageTitles] = useState<Record<string, string>>(initialStageTitles || {});
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const [editingStageName, setEditingStageName] = useState<string>('');
+  
+  // Stage Intent Categories & Customization
+  const [categories, setCategories] = useState<StageCategory[]>(initialCategories && initialCategories.length > 0 ? initialCategories : DEFAULT_STAGE_CATEGORIES);
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('ALL');
+  const [activeCategoryPickerLeadId, setActiveCategoryPickerLeadId] = useState<string | null>(null);
+
+  // Customize Modal State
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
+  const [customizeModalTab, setCustomizeModalTab] = useState<'STAGES' | 'CATEGORIES'>('STAGES');
   const [modalStageNames, setModalStageNames] = useState<Record<string, string>>({});
+  const [modalCategories, setModalCategories] = useState<StageCategory[]>([]);
+  const [newCatLabel, setNewCatLabel] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('🔥');
+  const [newCatColor, setNewCatColor] = useState('#7c3aed');
 
   // Follow-up Schedule & Manage Modal State
   const [managingFollowUpLead, setManagingFollowUpLead] = useState<any | null>(null);
@@ -172,7 +207,16 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
   const [leadToDelete, setLeadToDelete] = useState<any | null>(null);
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
 
-  // Load custom stage names from props, localStorage, and server action
+  // Close floating popovers on click outside
+  useEffect(() => {
+    const handleWindowClick = () => {
+      setActiveCategoryPickerLeadId(null);
+    };
+    window.addEventListener('click', handleWindowClick);
+    return () => window.removeEventListener('click', handleWindowClick);
+  }, []);
+
+  // Load custom stage names & categories from props, localStorage, and server action
   useEffect(() => {
     if (initialStageTitles && Object.keys(initialStageTitles).length > 0) {
       setCustomStageTitles(initialStageTitles);
@@ -201,7 +245,33 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
         }
       }).catch(() => {});
     }
-  }, [initialStageTitles]);
+
+    if (initialCategories && initialCategories.length > 0) {
+      setCategories(initialCategories);
+      try {
+        localStorage.setItem('crm_pipeline_categories', JSON.stringify(initialCategories));
+      } catch (e) {}
+    } else {
+      try {
+        const savedCats = localStorage.getItem('crm_pipeline_categories');
+        if (savedCats) {
+          const parsedCats = JSON.parse(savedCats);
+          if (Array.isArray(parsedCats) && parsedCats.length > 0) {
+            setCategories(parsedCats);
+          }
+        }
+      } catch (e) {}
+
+      getPipelineCategories().then(res => {
+        if (res?.success && res.categories && res.categories.length > 0) {
+          setCategories(res.categories);
+          try {
+            localStorage.setItem('crm_pipeline_categories', JSON.stringify(res.categories));
+          } catch (e) {}
+        }
+      }).catch(() => {});
+    }
+  }, [initialStageTitles, initialCategories]);
 
   // Compute dynamic stages with custom titles
   const stages = useMemo(() => {
@@ -346,6 +416,30 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     }
   };
 
+  // Category counts across leads
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { ALL: leads.length, UNCATEGORIZED: 0 };
+    categories.forEach(c => { counts[c.id] = 0; });
+
+    leads.forEach(l => {
+      const tag = l.tags || l.category;
+      if (!tag) {
+        counts.UNCATEGORIZED = (counts.UNCATEGORIZED || 0) + 1;
+      } else {
+        counts[tag] = (counts[tag] || 0) + 1;
+      }
+    });
+
+    return counts;
+  }, [leads, categories]);
+
+  // Handle setting/changing lead category
+  const handleSetLeadCategory = async (leadId: string, category: string | null, isLeadRecord: boolean = false) => {
+    setLeads(leads.map(l => l.id === leadId ? { ...l, tags: category || null } : l));
+    setActiveCategoryPickerLeadId(null);
+    await updateLeadCategory(leadId, category, isLeadRecord);
+  };
+
   // Handle saving individual stage name
   const handleSaveStageName = async (stageId: string, customName?: string) => {
     const nameToSave = (customName !== undefined ? customName : editingStageName).trim();
@@ -377,7 +471,54 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
       initial[s.id] = customStageTitles[s.id] || s.title;
     });
     setModalStageNames(initial);
+    setModalCategories([...categories]);
+    setNewCatLabel('');
+    setCustomizeModalTab('STAGES');
     setIsCustomizeModalOpen(true);
+  };
+
+  // Add new category in customize modal
+  const handleAddModalCategory = () => {
+    if (!newCatLabel.trim()) return;
+    const catId = newCatLabel.trim();
+    if (modalCategories.some(c => c.id.toLowerCase() === catId.toLowerCase() || c.label.toLowerCase() === catId.toLowerCase())) {
+      alert("A category with this name already exists");
+      return;
+    }
+
+    const paletteMap: Record<string, { bg: string; border: string }> = {
+      '#dc2626': { bg: '#fef2f2', border: '#fecaca' },
+      '#2563eb': { bg: '#eff6ff', border: '#bfdbfe' },
+      '#4f46e5': { bg: '#eef2ff', border: '#c7d2fe' },
+      '#7c3aed': { bg: '#f5f3ff', border: '#ddd6fe' },
+      '#d97706': { bg: '#fffbeb', border: '#fde68a' },
+      '#059669': { bg: '#ecfdf5', border: '#a7f3d0' },
+      '#475569': { bg: '#f1f5f9', border: '#cbd5e1' },
+      '#e11d48': { bg: '#fff1f2', border: '#fecdd3' },
+      '#0891b2': { bg: '#ecfeff', border: '#a5f3fc' },
+    };
+
+    const colors = paletteMap[newCatColor] || { bg: '#f1f5f9', border: '#cbd5e1' };
+
+    const newCat: StageCategory = {
+      id: catId,
+      label: catId,
+      icon: newCatIcon || '🏷️',
+      color: newCatColor,
+      bg: colors.bg,
+      border: colors.border
+    };
+
+    setModalCategories([...modalCategories, newCat]);
+    setNewCatLabel('');
+  };
+
+  const handleDeleteModalCategory = (id: string) => {
+    setModalCategories(modalCategories.filter(c => c.id !== id));
+  };
+
+  const handleResetModalCategories = () => {
+    setModalCategories([...DEFAULT_STAGE_CATEGORIES]);
   };
 
   // Handle saving from customize modal
@@ -391,15 +532,20 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     });
 
     setCustomStageTitles(newTitles);
+    setCategories(modalCategories);
     setIsCustomizeModalOpen(false);
 
     try {
       localStorage.setItem('crm_pipeline_stage_names', JSON.stringify(newTitles));
+      localStorage.setItem('crm_pipeline_categories', JSON.stringify(modalCategories));
     } catch (e) {
-      console.error('Failed to save stage names', e);
+      console.error('Failed to save stage/category names', e);
     }
 
-    await savePipelineStageNames(newTitles);
+    await Promise.all([
+      savePipelineStageNames(newTitles),
+      savePipelineCategories(modalCategories)
+    ]);
   };
 
   // Handle reset to default stage names
@@ -472,7 +618,12 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
         followUpFilter === 'ALL' ||
         fuStatus.type === followUpFilter;
 
-      return matchesSearch && matchesRep && matchesFu;
+      const leadCat = l.tags || l.category;
+      const matchesCat = 
+        selectedCategoryFilter === 'ALL' ||
+        (selectedCategoryFilter === 'UNCATEGORIZED' ? !leadCat : leadCat === selectedCategoryFilter);
+
+      return matchesSearch && matchesRep && matchesFu && matchesCat;
     });
 
     // Sorting
@@ -484,11 +635,11 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
 
       if (sortBy === 'VALUE_HIGH') {
         if (valB !== valA) return valB - valA;
-        return timeB - timeA; // Tie breaker: most recently moved / updated first
+        return timeB - timeA;
       }
       if (sortBy === 'VALUE_LOW') {
         if (valA !== valB) return valA - valB;
-        return timeB - timeA; // Tie breaker: most recently moved / updated first
+        return timeB - timeA;
       }
       if (sortBy === 'NAME') {
         const nameA = (a.businessName || a.contactPerson || '').toLowerCase();
@@ -502,7 +653,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     });
 
     return result;
-  }, [leads, searchQuery, selectedRepFilter, followUpFilter, sortBy]);
+  }, [leads, searchQuery, selectedRepFilter, followUpFilter, selectedCategoryFilter, sortBy]);
 
   const activeStageConfig = stages.find(s => s.id === activeStage) || stages[1];
   const activeStageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === activeStage);
@@ -629,6 +780,8 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     const detailsUrl = isCustomer ? `/customers/${lead.id}` : `/leads/${lead.id}`;
     const assignedRep = employees.find(e => e.id === lead.assignedSalespersonId);
     const repName = assignedRep?.user?.name || assignedRep?.employeeId || (lead.assignedSalesperson?.user?.name) || '';
+    const leadCategory = lead.tags || lead.category || '';
+    const currentCatObj = categories.find(c => c.id === leadCategory || c.label === leadCategory);
 
     return (
       <div 
@@ -703,6 +856,120 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', color: '#94a3b8' }}>
               • {rawPhone}
             </span>
+          )}
+        </div>
+
+        {/* Row 2.2: Customer Category / Intent Chip & Popover */}
+        <div className="deal-cat-container" onClick={(e) => e.stopPropagation()}>
+          {leadCategory ? (
+            <div 
+              className="deal-cat-chip"
+              style={{
+                backgroundColor: currentCatObj?.bg || '#f1f5f9',
+                color: currentCatObj?.color || '#334155',
+                borderColor: currentCatObj?.border || '#cbd5e1'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
+              }}
+              title="Click to change customer category / intent"
+            >
+              <span className="deal-cat-chip-icon">{currentCatObj?.icon || '🏷️'}</span>
+              <span className="deal-cat-chip-label">{currentCatObj?.label || leadCategory}</span>
+              <Tag size={9} style={{ opacity: 0.6, marginLeft: '2px' }} />
+            </div>
+          ) : (
+            ((lead.leadStage || 'New Lead') === 'Qualified' || activeCategoryPickerLeadId === lead.id) ? (
+              <button
+                type="button"
+                className="deal-cat-add-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
+                }}
+                title="Categorize customer intent (Very Interested, Big Deal, Sample Order...)"
+              >
+                <Sparkles size={10} style={{ color: '#7c3aed' }} />
+                <span>+ Categorize Intent</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="deal-cat-ghost-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveCategoryPickerLeadId(activeCategoryPickerLeadId === lead.id ? null : lead.id);
+                }}
+                title="Categorize customer intent"
+              >
+                <Tag size={9} />
+                <span>+ Intent</span>
+              </button>
+            )
+          )}
+
+          {/* Floating Category Picker Popover */}
+          {activeCategoryPickerLeadId === lead.id && (
+            <div className="deal-cat-popover" onClick={(e) => e.stopPropagation()}>
+              <div className="deal-cat-popover-header">
+                <span className="deal-cat-popover-title">Select Customer Intent</span>
+                <button 
+                  type="button" 
+                  onClick={() => setActiveCategoryPickerLeadId(null)}
+                  className="deal-cat-popover-close"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+
+              <div className="deal-cat-popover-list">
+                {categories.map(cat => {
+                  const isSelected = leadCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className={`deal-cat-popover-item ${isSelected ? 'selected' : ''}`}
+                      style={isSelected ? {
+                        backgroundColor: cat.bg,
+                        borderColor: cat.border,
+                        color: cat.color
+                      } : {}}
+                      onClick={() => handleSetLeadCategory(lead.id, cat.id, !!lead.isLeadRecord)}
+                    >
+                      <span className="cat-item-icon">{cat.icon || '🏷️'}</span>
+                      <span className="cat-item-label">{cat.label}</span>
+                      {isSelected && <Check size={12} className="cat-item-check" />}
+                    </button>
+                  );
+                })}
+
+                {leadCategory && (
+                  <button
+                    type="button"
+                    className="deal-cat-popover-clear"
+                    onClick={() => handleSetLeadCategory(lead.id, null, !!lead.isLeadRecord)}
+                  >
+                    <X size={11} /> Remove Category Tag
+                  </button>
+                )}
+              </div>
+
+              <div className="deal-cat-popover-footer">
+                <button
+                  type="button"
+                  className="deal-cat-popover-manage-btn"
+                  onClick={() => {
+                    setActiveCategoryPickerLeadId(null);
+                    handleOpenCustomizeModal();
+                    setCustomizeModalTab('CATEGORIES');
+                  }}
+                >
+                  <SlidersHorizontal size={11} /> Customize Options
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
@@ -1057,6 +1324,27 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
               <option value="NONE">⚪ No Follow-up Set ({fuCounts.none})</option>
             </select>
 
+            {/* Category / Customer Intent Filter */}
+            <select
+              value={selectedCategoryFilter}
+              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+              className="filter-select-input"
+              style={selectedCategoryFilter !== 'ALL' ? {
+                borderColor: '#7c3aed',
+                backgroundColor: '#f5f3ff',
+                color: '#6d28d9',
+                fontWeight: 700
+              } : {}}
+            >
+              <option value="ALL">All Intent Categories ({leads.length})</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.icon || '🏷️'} {cat.label} ({categoryCounts[cat.id] || 0})
+                </option>
+              ))}
+              <option value="UNCATEGORIZED">⚪ Uncategorized ({categoryCounts.UNCATEGORIZED || 0})</option>
+            </select>
+
             {/* Sort Dropdown */}
             <select
               value={sortBy}
@@ -1074,10 +1362,10 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
               type="button"
               onClick={handleOpenCustomizeModal}
               className="stage-customize-btn"
-              title="Edit and rename pipeline stage options"
+              title="Customize pipeline stage names and customer intent categories"
             >
               <SlidersHorizontal size={13} />
-              <span>Rename Stages</span>
+              <span>Customize Pipeline</span>
             </button>
 
             {searchQuery && (
@@ -1495,13 +1783,13 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
         />
       )}
 
-      {/* ─── 6. CUSTOMIZE PIPELINE STAGES MODAL ─── */}
+      {/* ─── 6. CUSTOMIZE PIPELINE & CATEGORIES MODAL ─── */}
       {isCustomizeModalOpen && (
         <div 
           className="modal-backdrop" 
           style={{ position: 'fixed', inset: 0, zIndex: 99999, backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}
         >
-          <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', width: '100%', maxWidth: '560px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             
             {/* Modal Header */}
             <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1509,10 +1797,10 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 <SlidersHorizontal size={16} style={{ color: '#818cf8' }} />
                 <div>
                   <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700 }}>
-                    Rename Pipeline Stages
+                    Customize Pipeline Settings
                   </h3>
                   <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
-                    Customize the display names of each column in your sales workflow
+                    Configure pipeline stage names and customer intent categories
                   </p>
                 </div>
               </div>
@@ -1521,107 +1809,370 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
               </button>
             </div>
 
+            {/* Modal Navigation Tabs */}
+            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', padding: '6px 14px 0 14px', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setCustomizeModalTab('STAGES')}
+                style={{
+                  padding: '8px 14px',
+                  border: 'none',
+                  borderBottom: customizeModalTab === 'STAGES' ? '2px solid #4f46e5' : '2px solid transparent',
+                  background: 'none',
+                  color: customizeModalTab === 'STAGES' ? '#4f46e5' : '#64748b',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Layers size={14} /> Stage Names ({STAGES.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setCustomizeModalTab('CATEGORIES')}
+                style={{
+                  padding: '8px 14px',
+                  border: 'none',
+                  borderBottom: customizeModalTab === 'CATEGORIES' ? '2px solid #7c3aed' : '2px solid transparent',
+                  background: 'none',
+                  color: customizeModalTab === 'CATEGORIES' ? '#7c3aed' : '#64748b',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Tag size={14} /> Intent Categories ({modalCategories.length})
+              </button>
+            </div>
+
             {/* Modal Body */}
-            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '70vh', overflowY: 'auto' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {STAGES.map((s, idx) => {
-                  const currentCustomVal = modalStageNames[s.id] ?? s.title;
-                  return (
-                    <div 
-                      key={s.id} 
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '12px', 
-                        padding: '10px 12px', 
-                        backgroundColor: '#f8fafc', 
-                        borderRadius: '8px', 
-                        border: '1px solid #e2e8f0' 
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '130px' }}>
-                        <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: s.color, flexShrink: 0 }}></span>
-                        <div>
-                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1e293b' }}>
-                            Step {idx + 1}
-                          </div>
-                          <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                            Default: {s.title}
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '60vh', overflowY: 'auto' }}>
+              
+              {customizeModalTab === 'STAGES' ? (
+                /* STAGE NAMES TAB */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '0.78rem', color: '#64748b' }}>
+                    Rename default pipeline stages to fit your sales workflow:
+                  </p>
+                  {STAGES.map((s, idx) => {
+                    const currentCustomVal = modalStageNames[s.id] ?? s.title;
+                    return (
+                      <div 
+                        key={s.id} 
+                        style={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '12px', 
+                          padding: '10px 12px', 
+                          backgroundColor: '#f8fafc', 
+                          borderRadius: '8px', 
+                          border: '1px solid #e2e8f0' 
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '130px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: s.color, flexShrink: 0 }}></span>
+                          <div>
+                            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1e293b' }}>
+                              Step {idx + 1}
+                            </div>
+                            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                              Default: {s.title}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <input
-                          type="text"
-                          value={currentCustomVal}
-                          placeholder={`Enter name for ${s.title}...`}
-                          onChange={(e) => setModalStageNames({
-                            ...modalStageNames,
-                            [s.id]: e.target.value
-                          })}
-                          maxLength={30}
-                          style={{
-                            width: '100%',
-                            padding: '6px 10px',
-                            borderRadius: '6px',
-                            border: '1px solid #cbd5e1',
-                            fontSize: '0.82rem',
-                            fontWeight: 600,
-                            color: '#0f172a',
-                            backgroundColor: '#ffffff',
-                            outline: 'none',
-                            fontFamily: 'inherit'
-                          }}
-                        />
-                      </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <input
+                            type="text"
+                            value={currentCustomVal}
+                            placeholder={`Enter name for ${s.title}...`}
+                            onChange={(e) => setModalStageNames({
+                              ...modalStageNames,
+                              [s.id]: e.target.value
+                            })}
+                            maxLength={30}
+                            style={{
+                              width: '100%',
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              border: '1px solid #cbd5e1',
+                              fontSize: '0.82rem',
+                              fontWeight: 600,
+                              color: '#0f172a',
+                              backgroundColor: '#ffffff',
+                              outline: 'none',
+                              fontFamily: 'inherit'
+                            }}
+                          />
+                        </div>
 
-                      {currentCustomVal !== s.title && (
+                        {currentCustomVal !== s.title && (
+                          <button
+                            type="button"
+                            onClick={() => setModalStageNames({ ...modalStageNames, [s.id]: s.title })}
+                            title="Reset to default name"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#94a3b8',
+                              cursor: 'pointer',
+                              fontSize: '0.7rem',
+                              padding: '4px',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <RotateCcw size={12} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* INTENT CATEGORIES TAB */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ fontSize: '0.78rem', color: '#64748b', lineHeight: 1.4 }}>
+                    Define customer intent & deal categories (e.g. <strong>Very Interested</strong>, <strong>Less Interested</strong>, <strong>Big Deal</strong>, <strong>Sample Order</strong>). These can be assigned on cards in the <strong>Interested</strong> stage and filtered in the toolbar.
+                  </div>
+
+                  {/* Existing Categories List */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b' }}>
+                      Active Categories ({modalCategories.length})
+                    </label>
+                    {modalCategories.map((cat) => (
+                      <div 
+                        key={cat.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          backgroundColor: '#f8fafc',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
+                          gap: '10px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <span 
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '3px 10px',
+                              borderRadius: '9999px',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              backgroundColor: cat.bg || '#f1f5f9',
+                              color: cat.color || '#334155',
+                              border: `1px solid ${cat.border || '#cbd5e1'}`
+                            }}
+                          >
+                            <span>{cat.icon || '🏷️'}</span>
+                            <span>{cat.label}</span>
+                          </span>
+                        </div>
+
                         <button
                           type="button"
-                          onClick={() => setModalStageNames({ ...modalStageNames, [s.id]: s.title })}
-                          title="Reset to default name"
+                          onClick={() => handleDeleteModalCategory(cat.id)}
+                          title={`Delete "${cat.label}" category`}
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#94a3b8',
+                            color: '#dc2626',
                             cursor: 'pointer',
-                            fontSize: '0.7rem',
                             padding: '4px',
                             display: 'flex',
-                            alignItems: 'center'
+                            alignItems: 'center',
+                            opacity: modalCategories.length <= 1 ? 0.4 : 1
                           }}
+                          disabled={modalCategories.length <= 1}
                         >
-                          <RotateCcw size={12} />
+                          <Trash2 size={13} />
                         </button>
-                      )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Add New Category Box */}
+                  <div style={{
+                    padding: '14px',
+                    backgroundColor: '#faf5ff',
+                    borderRadius: '10px',
+                    border: '1px solid #e9d5ff',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6b21a8' }}>
+                      + Add New Category Option
+                    </label>
+
+                    {/* Emoji Picker Selector */}
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: '#7e22ce', marginBottom: '4px', fontWeight: 600 }}>
+                        Select Icon:
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {['🔥', '❄️', '💎', '📦', '⭐', '🚀', '⚡', '🎯', '🤝', '🏷️', '💡', '👑', '📈', '🚨'].map(emoji => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => setNewCatIcon(emoji)}
+                            style={{
+                              padding: '4px 7px',
+                              borderRadius: '6px',
+                              border: newCatIcon === emoji ? '1.5px solid #7c3aed' : '1px solid #e2e8f0',
+                              backgroundColor: newCatIcon === emoji ? '#ffffff' : 'rgba(255,255,255,0.6)',
+                              fontSize: '0.9rem',
+                              cursor: 'pointer',
+                              transform: newCatIcon === emoji ? 'scale(1.15)' : 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+
+                    {/* Color Swatch Selector */}
+                    <div>
+                      <div style={{ fontSize: '0.72rem', color: '#7e22ce', marginBottom: '4px', fontWeight: 600 }}>
+                        Select Color:
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {[
+                          { color: '#dc2626', name: 'Red' },
+                          { color: '#2563eb', name: 'Blue' },
+                          { color: '#4f46e5', name: 'Indigo' },
+                          { color: '#7c3aed', name: 'Purple' },
+                          { color: '#d97706', name: 'Amber' },
+                          { color: '#059669', name: 'Emerald' },
+                          { color: '#475569', name: 'Slate' },
+                          { color: '#e11d48', name: 'Rose' },
+                          { color: '#0891b2', name: 'Cyan' },
+                        ].map(swatch => (
+                          <button
+                            key={swatch.color}
+                            type="button"
+                            onClick={() => setNewCatColor(swatch.color)}
+                            title={swatch.name}
+                            style={{
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              backgroundColor: swatch.color,
+                              border: newCatColor === swatch.color ? '2.5px solid #0f172a' : '1.5px solid transparent',
+                              cursor: 'pointer',
+                              boxShadow: newCatColor === swatch.color ? '0 0 0 2px #fff' : 'none',
+                              transform: newCatColor === swatch.color ? 'scale(1.15)' : 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Input Field & Add Button */}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        value={newCatLabel}
+                        placeholder="e.g. VIP Customer, Trial Run, Export Deal..."
+                        onChange={(e) => setNewCatLabel(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleAddModalCategory(); }}
+                        maxLength={25}
+                        style={{
+                          flex: 1,
+                          padding: '7px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.82rem',
+                          fontWeight: 600,
+                          backgroundColor: '#ffffff',
+                          outline: 'none'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddModalCategory}
+                        disabled={!newCatLabel.trim()}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          backgroundColor: newCatLabel.trim() ? '#7c3aed' : '#cbd5e1',
+                          color: '#ffffff',
+                          fontWeight: 700,
+                          fontSize: '0.78rem',
+                          cursor: newCatLabel.trim() ? 'pointer' : 'not-allowed',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Plus size={13} /> Add
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
 
             {/* Modal Footer */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderTop: '1px solid #f1f5f9', backgroundColor: '#fafafa' }}>
-              <button
-                type="button"
-                onClick={handleResetStages}
-                style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '5px', 
-                  padding: '7px 12px', 
-                  borderRadius: '6px', 
-                  border: '1px solid #e2e8f0', 
-                  backgroundColor: '#fff', 
-                  color: '#dc2626', 
-                  fontWeight: 600, 
-                  fontSize: '0.78rem', 
-                  cursor: 'pointer' 
-                }}
-              >
-                <RotateCcw size={12} /> Reset to Defaults
-              </button>
+              {customizeModalTab === 'STAGES' ? (
+                <button
+                  type="button"
+                  onClick={handleResetStages}
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '5px', 
+                    padding: '7px 12px', 
+                    borderRadius: '6px', 
+                    border: '1px solid #e2e8f0', 
+                    backgroundColor: '#fff', 
+                    color: '#dc2626', 
+                    fontWeight: 600, 
+                    fontSize: '0.78rem', 
+                    cursor: 'pointer' 
+                  }}
+                >
+                  <RotateCcw size={12} /> Reset Stage Names
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleResetModalCategories}
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '5px', 
+                    padding: '7px 12px', 
+                    borderRadius: '6px', 
+                    border: '1px solid #e2e8f0', 
+                    backgroundColor: '#fff', 
+                    color: '#dc2626', 
+                    fontWeight: 600, 
+                    fontSize: '0.78rem', 
+                    cursor: 'pointer' 
+                  }}
+                >
+                  <RotateCcw size={12} /> Reset Categories
+                </button>
+              )}
 
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
@@ -1645,7 +2196,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                     cursor: 'pointer' 
                   }}
                 >
-                  Save Stage Names
+                  Save Settings
                 </button>
               </div>
             </div>

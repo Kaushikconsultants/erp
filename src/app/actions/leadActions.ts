@@ -200,28 +200,45 @@ export async function getPipelineData() {
 
     const unifiedPipeline = [...formattedCustomers, ...formattedLeads];
 
-    // Fetch custom stage names from tenant-scoped settings
+    // Fetch custom stage names & custom categories from tenant-scoped settings
     let customStageTitles: Record<string, string> = {};
+    let customCategories: any[] = [];
     try {
       if (organizationId) {
-        const integration = await prisma.appIntegration.findUnique({
-          where: {
-            organizationId_providerId: {
-              organizationId,
-              providerId: "crm_pipeline_stages"
+        const [stageIntegration, catIntegration] = await Promise.all([
+          prisma.appIntegration.findUnique({
+            where: {
+              organizationId_providerId: {
+                organizationId,
+                providerId: "crm_pipeline_stages"
+              }
             }
-          }
-        });
-        if (integration?.settings) {
-          const parsed = JSON.parse(integration.settings);
+          }),
+          prisma.appIntegration.findUnique({
+            where: {
+              organizationId_providerId: {
+                organizationId,
+                providerId: "crm_pipeline_categories"
+              }
+            }
+          })
+        ]);
+        if (stageIntegration?.settings) {
+          const parsed = JSON.parse(stageIntegration.settings);
           if (parsed && typeof parsed === 'object') {
             customStageTitles = parsed;
+          }
+        }
+        if (catIntegration?.settings) {
+          const parsed = JSON.parse(catIntegration.settings);
+          if (Array.isArray(parsed)) {
+            customCategories = parsed;
           }
         }
       }
     } catch (e) {}
     
-    return { success: true, customers: unifiedPipeline, employees, customStageTitles };
+    return { success: true, customers: unifiedPipeline, employees, customStageTitles, customCategories };
   } catch (error: any) {
     console.error("Failed to fetch pipeline data:", error);
     return { error: "Failed to fetch pipeline data: " + error.message };
@@ -295,6 +312,104 @@ export async function getPipelineStageNames() {
     return { success: true, stageNames: {} };
   } catch (e) {
     return { success: false, stageNames: {} };
+  }
+}
+
+export async function updateLeadCategory(leadId: string, category: string | null, isLeadRecord: boolean = false) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    if (!isLeadRecord) {
+      await prisma.customer.update({
+        where: { id: leadId },
+        data: { tags: category || null }
+      });
+    } else {
+      const cust = await prisma.customer.findUnique({ where: { id: leadId } });
+      if (cust) {
+        await prisma.customer.update({
+          where: { id: leadId },
+          data: { tags: category || null }
+        });
+      }
+    }
+
+    revalidatePath("/pipeline");
+    revalidatePath("/leads");
+    revalidatePath("/customers");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Failed to update lead category:", err);
+    return { error: err.message || "Failed to update category" };
+  }
+}
+
+export async function savePipelineCategories(categories: Array<{ id: string; label: string; icon?: string; color?: string; bg?: string; border?: string }>) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const organizationId = await getTenantOrgId();
+
+  try {
+    if (organizationId) {
+      await prisma.appIntegration.upsert({
+        where: {
+          organizationId_providerId: {
+            organizationId,
+            providerId: "crm_pipeline_categories"
+          }
+        },
+        update: {
+          settings: JSON.stringify(categories),
+          isEnabled: true
+        },
+        create: {
+          organizationId,
+          providerId: "crm_pipeline_categories",
+          category: "CRM",
+          name: "Pipeline Stage Categories Customizations",
+          settings: JSON.stringify(categories),
+          isEnabled: true
+        }
+      });
+    }
+
+    revalidatePath("/pipeline");
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to save pipeline categories:", error);
+    return { error: "Failed to save pipeline categories: " + error.message };
+  }
+}
+
+export async function getPipelineCategories() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { success: false, categories: [] };
+
+  const organizationId = await getTenantOrgId();
+
+  try {
+    if (organizationId) {
+      const integration = await prisma.appIntegration.findUnique({
+        where: {
+          organizationId_providerId: {
+            organizationId,
+            providerId: "crm_pipeline_categories"
+          }
+        }
+      });
+      if (integration?.settings) {
+        const parsed = JSON.parse(integration.settings);
+        if (Array.isArray(parsed)) {
+          return { success: true, categories: parsed };
+        }
+      }
+    }
+
+    return { success: true, categories: [] };
+  } catch (e) {
+    return { success: false, categories: [] };
   }
 }
 
