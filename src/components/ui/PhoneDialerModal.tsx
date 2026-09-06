@@ -325,8 +325,8 @@ export default function PhoneDialerModal({
     const cleanNum = phoneDigits.replace(/\D/g, '');
     if (cleanNum.length >= 3 && Array.isArray(contacts)) {
       const match = contacts.find(c => {
-        const cPhone = (c.phone || '').replace(/\D/g, '');
-        const cName = (c.contactPerson || c.companyName || '').toLowerCase();
+        const cPhone = (c?.phone || '').replace(/\D/g, '');
+        const cName = (c?.contactPerson || c?.companyName || '').toLowerCase();
         return (cPhone && cPhone.includes(cleanNum)) || cName.includes(phoneDigits.toLowerCase());
       });
       if (match) {

@@ -24,21 +24,24 @@ export default async function FollowUpsDashboard() {
 
   let whereClause: any = {
     followUpDate: { not: null },
-    OR: [
-      { customer: { organizationId: orgId } },
-      { lead: { organizationId: orgId } }
-    ]
+    ...(orgId ? {
+      OR: [
+        { customer: { organizationId: orgId } },
+        { lead: { organizationId: orgId } },
+        { employee: { organizationId: orgId } }
+      ]
+    } : {})
   };
 
-  let customerWhereClause: any = { organizationId: orgId };
-  let leadWhereClause: any = { organizationId: orgId };
+  let customerWhereClause: any = orgId ? { organizationId: orgId } : {};
+  let leadWhereClause: any = orgId ? { organizationId: orgId } : {};
 
   if (!isAdmin) {
     const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
       whereClause.employeeId = employee.id;
-      customerWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
-      leadWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
+      customerWhereClause = { assignedSalespersonId: employee.id, ...(orgId ? { organizationId: orgId } : {}) };
+      leadWhereClause = { assignedSalespersonId: employee.id, ...(orgId ? { organizationId: orgId } : {}) };
     }
   }
 

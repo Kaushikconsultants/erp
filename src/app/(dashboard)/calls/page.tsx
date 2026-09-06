@@ -22,32 +22,33 @@ export default async function CallsPage() {
   const userId = (session.user as any).id;
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
 
-  let callWhereClause: any = {
+  let callWhereClause: any = orgId ? {
     OR: [
-      { customer: orgId ? { organizationId: orgId } : {} },
-      { lead: orgId ? { organizationId: orgId } : {} },
-      { employee: orgId ? { organizationId: orgId } : {} }
+      { customer: { organizationId: orgId } },
+      { lead: { organizationId: orgId } },
+      { employee: { organizationId: orgId } }
     ]
-  };
-  let customerWhereClause: any = {
-    organizationId: orgId
-  };
-  let leadWhereClause: any = {
-    organizationId: orgId
-  };
+  } : {};
+  let customerWhereClause: any = orgId ? { organizationId: orgId } : {};
+  let leadWhereClause: any = orgId ? { organizationId: orgId } : {};
 
   if (!isAdmin) {
     const employee = await getOrCreateEmployee(userId, session.user);
     if (employee) {
-      callWhereClause = { 
-        employeeId: employee.id, 
-        OR: [
-          { customer: orgId ? { organizationId: orgId } : {} },
-          { lead: orgId ? { organizationId: orgId } : {} }
-        ]
-      };
-      customerWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
-      leadWhereClause = { assignedSalespersonId: employee.id, organizationId: orgId };
+      if (orgId) {
+        callWhereClause = { 
+          employeeId: employee.id, 
+          OR: [
+            { customer: { organizationId: orgId } },
+            { lead: { organizationId: orgId } },
+            { employee: { organizationId: orgId } }
+          ]
+        };
+      } else {
+        callWhereClause = { employeeId: employee.id };
+      }
+      customerWhereClause = { assignedSalespersonId: employee.id, ...(orgId ? { organizationId: orgId } : {}) };
+      leadWhereClause = { assignedSalespersonId: employee.id, ...(orgId ? { organizationId: orgId } : {}) };
     }
   }
 

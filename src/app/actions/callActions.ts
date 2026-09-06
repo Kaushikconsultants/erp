@@ -432,11 +432,13 @@ export async function getEmployeeCallAnalytics(options?: {
         gte: startDate,
         lte: endDate
       },
-      OR: [
-        { customer: orgId ? { organizationId: orgId } : {} },
-        { lead: orgId ? { organizationId: orgId } : {} },
-        { employee: orgId ? { organizationId: orgId } : {} }
-      ]
+      ...(orgId ? {
+        OR: [
+          { customer: { organizationId: orgId } },
+          { lead: { organizationId: orgId } },
+          { employee: { organizationId: orgId } }
+        ]
+      } : {})
     };
 
     if (options?.employeeId) {
@@ -578,17 +580,22 @@ export async function getTelecallingQueue() {
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
+    const baseOrgFilter: any = orgId ? {
+      OR: [
+        { customer: { organizationId: orgId } },
+        { lead: { organizationId: orgId } },
+        { employee: { organizationId: orgId } }
+      ]
+    } : {};
+
     const [overdueCalls, todayCalls, freshLeads] = await Promise.all([
       // Overdue follow-up calls
       prisma.call.findMany({
         where: {
+          ...baseOrgFilter,
           followUpDate: {
             lt: startOfToday
-          },
-          OR: [
-            { customer: orgId ? { organizationId: orgId } : {} },
-            { lead: orgId ? { organizationId: orgId } : {} }
-          ]
+          }
         },
         orderBy: { followUpDate: "asc" },
         take: 20,
@@ -598,14 +605,11 @@ export async function getTelecallingQueue() {
       // Today's scheduled calls
       prisma.call.findMany({
         where: {
+          ...baseOrgFilter,
           followUpDate: {
             gte: startOfToday,
             lte: endOfToday
-          },
-          OR: [
-            { customer: orgId ? { organizationId: orgId } : {} },
-            { lead: orgId ? { organizationId: orgId } : {} }
-          ]
+          }
         },
         orderBy: { followUpDate: "asc" },
         take: 30,
@@ -615,7 +619,7 @@ export async function getTelecallingQueue() {
       // Fresh uncontacted leads
       prisma.lead.findMany({
         where: {
-          organizationId: orgId || undefined,
+          ...(orgId ? { organizationId: orgId } : {}),
           status: { in: ["NEW", "New Lead", "INTERESTED", "PROSPECT"] },
           calls: { none: {} }
         },
