@@ -55,35 +55,57 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     }
   }, []);
 
-  // Robust Android & iOS Biometric / Fingerprint Unlock
+  // Native OS Hardware Biometric (Fingerprint / Face ID) Scan Trigger
   const handleBiometricUnlock = async () => {
     setErrorMsg("");
+    if (typeof window === "undefined") return;
+
     try {
-      if (typeof window !== "undefined") {
-        // Check WebAuthn platform authenticator or Capacitor native shell or Mobile UserAgent
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (window as any).Capacitor;
-
-        if (window.PublicKeyCredential) {
-          const isBiometricAvailable = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => true);
-          if (isBiometricAvailable || isMobile) {
-            setIsLocked(false);
-            setPin("");
-            return;
-          }
-        }
-
-        // Direct unlock for mobile device fingerprint sensors
-        if (isMobile) {
-          setIsLocked(false);
-          setPin("");
-          return;
-        }
+      // 1. Check if WebAuthn / Biometrics API is supported by the browser & device hardware
+      if (!window.PublicKeyCredential) {
+        setErrorMsg("Biometrics not supported on this browser. Please use 4-digit MPIN.");
+        return;
       }
-      setErrorMsg("Biometric verification failed. Please enter your 4-digit MPIN.");
-    } catch (err) {
-      // Fallback unlock for mobile
-      setIsLocked(false);
-      setPin("");
+
+      const isAvailable = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().catch(() => false);
+      if (!isAvailable) {
+        setErrorMsg("No fingerprint/Face ID sensor registered on this device. Use 4-digit MPIN.");
+        return;
+      }
+
+      // 2. Invoke NATIVE OS HARDWARE BIOMETRIC SENSOR PROMPT via WebAuthn API
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const options: CredentialRequestOptions = {
+        publicKey: {
+          challenge,
+          timeout: 60000,
+          userVerification: "required", // MANDATORY: OS MUST SCAN & VERIFY FINGERPRINT/FACE
+          allowCredentials: []
+        }
+      };
+
+      // Triggers native Android/iOS OS fingerprint sensor popup
+      const credential = await navigator.credentials.get(options);
+
+      if (credential) {
+        // Biometric Hardware Scan SUCCESS
+        setIsLocked(false);
+        setPin("");
+        setErrorMsg("");
+      } else {
+        setErrorMsg("Biometric verification failed. Please try again or enter MPIN.");
+      }
+    } catch (err: any) {
+      console.warn("Biometric verification error:", err);
+      if (err.name === "NotAllowedError" || err.message?.includes("canceled")) {
+        setErrorMsg("Biometric scan canceled. Enter 4-digit MPIN.");
+      } else if (err.name === "InvalidStateError" || err.name === "NotSupportedError") {
+        setErrorMsg("No registered biometrics found. Use 4-digit MPIN.");
+      } else {
+        setErrorMsg("Fingerprint not recognized. Use 4-digit MPIN.");
+      }
     }
   };
 
