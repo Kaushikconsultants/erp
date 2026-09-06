@@ -327,6 +327,70 @@ export async function getCustomersForCallModal() {
 }
 
 /**
+ * Fetch Recent Calls for Phone Dialer Call Logs / History Tab
+ */
+export async function getDialerRecentCalls(limit: number = 40) {
+  try {
+    const orgId = await getTenantOrgId();
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, calls: [] };
+
+    const calls = await prisma.call.findMany({
+      where: {
+        OR: [
+          { customer: orgId ? { organizationId: orgId } : {} },
+          { lead: orgId ? { organizationId: orgId } : {} },
+          { employee: orgId ? { organizationId: orgId } : {} }
+        ]
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        customer: {
+          select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true }
+        },
+        lead: {
+          select: { id: true, name: true, shopName: true, whatsappNumber: true }
+        },
+        employee: {
+          select: { id: true, user: { select: { name: true } } }
+        }
+      }
+    });
+
+    const formattedCalls = calls.map(c => {
+      const contactName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || "Direct Contact";
+      const contactPerson = c.customer?.contactPerson || c.lead?.name || "";
+      const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || "";
+      const contactType = c.customer ? "Customer" : c.lead ? "Lead" : "Direct";
+
+      return {
+        id: c.id,
+        createdAt: c.createdAt.toISOString(),
+        callType: c.callType || "OUTBOUND",
+        durationSec: c.durationSec || 0,
+        status: c.status || "Completed",
+        outcome: c.outcome || "Completed",
+        notes: c.notes || "",
+        followUpDate: c.followUpDate ? c.followUpDate.toISOString() : null,
+        contactName,
+        contactPerson,
+        phone,
+        contactType,
+        customerId: c.customerId,
+        leadId: c.leadId,
+        employeeName: c.employee?.user?.name || "Agent"
+      };
+    });
+
+    return { success: true, calls: formattedCalls };
+  } catch (err: any) {
+    console.error("Failed to fetch dialer recent calls:", err);
+    return { success: false, calls: [], error: err.message };
+  }
+}
+
+/**
  * Enterprise TeleCRM Analytics Action
  * Calculates organization & employee call stats, talk-time, connect rates, and outcome distribution.
  */
