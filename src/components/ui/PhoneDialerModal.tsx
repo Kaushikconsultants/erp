@@ -2407,3 +2407,14 @@ function PhoneDialerModalContent({
     </div>
   );
 }
+
+export default function PhoneDialerModal(props: PhoneDialerModalProps) {
+  if (!props.isOpen) return null;
+
+  return (
+    <DialerErrorBoundary onClose={props.onClose}>
+      <PhoneDialerModalContent {...props} />
+    </DialerErrorBoundary>
+  );
+}
+

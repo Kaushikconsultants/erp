@@ -17,7 +17,8 @@ export default async function CallsPage() {
     redirect('/login');
   }
 
-  const orgId = await getTenantOrgId();
+  const rawOrgId = await getTenantOrgId().catch(() => null);
+  const orgId = (rawOrgId && rawOrgId !== "default-org") ? rawOrgId : undefined;
   const userRole = (session.user as any).role || 'SALES';
   const userId = (session.user as any).id;
   const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
@@ -33,7 +34,7 @@ export default async function CallsPage() {
   let leadWhereClause: any = orgId ? { organizationId: orgId } : {};
 
   if (!isAdmin) {
-    const employee = await getOrCreateEmployee(userId, session.user);
+    const employee = await getOrCreateEmployee(userId, session.user).catch(() => null);
     if (employee) {
       if (orgId) {
         callWhereClause = { 
@@ -63,33 +64,42 @@ export default async function CallsPage() {
           include: { user: true }
         }
       }
+    }).catch(err => {
+      console.warn("CallsPage call.findMany error:", err);
+      return [];
     }),
     prisma.customer.findMany({
       where: customerWhereClause,
       select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true },
       orderBy: { businessName: 'asc' }
+    }).catch(err => {
+      console.warn("CallsPage customer.findMany error:", err);
+      return [];
     }),
     prisma.lead.findMany({
       where: leadWhereClause,
       select: { id: true, name: true, shopName: true, whatsappNumber: true },
       orderBy: { name: 'asc' }
+    }).catch(err => {
+      console.warn("CallsPage lead.findMany error:", err);
+      return [];
     }),
-    getCompanySettings()
+    getCompanySettings().catch(() => null)
   ]);
 
   const mappedCustomers = [
-    ...customers.map(c => ({
+    ...(Array.isArray(customers) ? customers : []).map(c => ({
       id: c.id,
-      companyName: c.businessName,
-      contactPerson: c.contactPerson,
+      companyName: c.businessName || "Customer",
+      contactPerson: c.contactPerson || "",
       phone: c.mobile || c.whatsappNumber || '',
       city: c.city || '',
       type: 'Customer'
     })),
-    ...leads.map(l => ({
+    ...(Array.isArray(leads) ? leads : []).map(l => ({
       id: l.id,
-      companyName: l.shopName || l.name,
-      contactPerson: l.name,
+      companyName: l.shopName || l.name || "Lead",
+      contactPerson: l.name || "",
       phone: l.whatsappNumber || '',
       city: '',
       type: 'Lead'
