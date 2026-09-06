@@ -143,6 +143,8 @@ export async function getPipelineData() {
         leadStage: effectiveStage,
         expectedValue: dealVal,
         computedDealValue: dealVal,
+        tags: c.tags || null,
+        category: c.tags || null,
         nextFollowUpDate: nextFu ? new Date(nextFu).toISOString() : null,
         nextFollowUpNotes: nextFuNotes,
         nextFollowUpPriority: nextFuPriority,
@@ -187,6 +189,8 @@ export async function getPipelineData() {
           assignedSalesperson: l.assignedSalesperson,
           expectedValue: 0,
           computedDealValue: 0,
+          tags: (l as any).tags || null,
+          category: (l as any).tags || null,
           calls: l.calls || [],
           followUps: l.followUps || [],
           nextFollowUpDate: nextFu ? new Date(nextFu).toISOString() : null,
@@ -320,25 +324,93 @@ export async function updateLeadCategory(leadId: string, category: string | null
   if (!session?.user) return { error: "Unauthorized" };
 
   try {
-    if (!isLeadRecord) {
+    const organizationId = await getTenantOrgId();
+
+    // 1. Try finding in Customer table first
+    const customer = await prisma.customer.findUnique({ where: { id: leadId } });
+    if (customer) {
       await prisma.customer.update({
         where: { id: leadId },
         data: { tags: category || null }
       });
-    } else {
-      const cust = await prisma.customer.findUnique({ where: { id: leadId } });
-      if (cust) {
-        await prisma.customer.update({
-          where: { id: leadId },
-          data: { tags: category || null }
-        });
-      }
+      revalidatePath("/pipeline");
+      revalidatePath("/leads");
+      revalidatePath("/customers");
+      return { success: true, customerId: customer.id };
     }
 
-    revalidatePath("/pipeline");
-    revalidatePath("/leads");
-    revalidatePath("/customers");
-    return { success: true };
+    // 2. If not found in Customer, look in Lead table
+    const lead = await prisma.lead.findUnique({ where: { id: leadId } });
+    if (lead) {
+      const p = (lead.whatsappNumber || '').replace(/[^0-9]/g, '');
+      
+      // Check if a customer with this phone number already exists
+      const existingCust = p ? await prisma.customer.findFirst({
+        where: {
+          organizationId,
+          OR: [
+            { mobile: lead.whatsappNumber },
+            { whatsappNumber: lead.whatsappNumber },
+            { mobile: p },
+            { whatsappNumber: p }
+          ]
+        }
+      }) : null;
+
+      if (existingCust) {
+        await prisma.customer.update({
+          where: { id: existingCust.id },
+          data: { tags: category || null }
+        });
+        revalidatePath("/pipeline");
+        revalidatePath("/leads");
+        revalidatePath("/customers");
+        return { success: true, customerId: existingCust.id };
+      }
+
+      // Convert/promote the raw lead to Customer so it gains full customer tagging & quotation support
+      let mappedStage = 'Qualified';
+      const st = (lead.status || '').trim();
+      if (st === 'Contacted') mappedStage = 'Contacted';
+      else if (st === 'Qualified' || st === 'In Progress' || st === 'Interested') mappedStage = 'Qualified';
+      else if (st === 'Opportunity') mappedStage = 'Opportunity';
+      else if (st === 'Converted' || st === 'Won') mappedStage = 'Won';
+      else if (st === 'Lost') mappedStage = 'Lost';
+      else if (st === 'New' || st === 'New Lead') mappedStage = 'New Lead';
+
+      const newCust = await prisma.customer.create({
+        data: {
+          organizationId,
+          businessName: lead.shopName || lead.name,
+          contactPerson: lead.name,
+          mobile: lead.whatsappNumber,
+          whatsappNumber: lead.whatsappNumber,
+          assignedSalespersonId: lead.assignedSalespersonId,
+          leadStage: mappedStage,
+          status: mappedStage === 'Won' ? 'Active Lead' : mappedStage === 'Lost' ? 'Inactive' : mappedStage,
+          tags: category || null
+        }
+      });
+
+      // Link any existing follow-ups and calls to the new customer record
+      await Promise.all([
+        prisma.followUp.updateMany({
+          where: { leadId: lead.id },
+          data: { customerId: newCust.id }
+        }),
+        prisma.call.updateMany({
+          where: { leadId: lead.id },
+          data: { customerId: newCust.id }
+        })
+      ]);
+
+      revalidatePath("/pipeline");
+      revalidatePath("/leads");
+      revalidatePath("/customers");
+      return { success: true, customerId: newCust.id };
+    }
+
+    return { error: "Lead or customer record not found" };
   } catch (err: any) {
     console.error("Failed to update lead category:", err);
     return { error: err.message || "Failed to update category" };
@@ -487,7 +559,7 @@ export async function updateLeadValue(leadId: string, expectedValue: number) {
         else if (st === 'Converted' || st === 'Won') mappedStage = 'Won';
         else if (st === 'Lost') mappedStage = 'Lost';
 
-        await prisma.customer.create({
+        const newCust = await prisma.customer.create({
           data: {
             organizationId: orgId,
             businessName: lead.shopName || lead.name,
@@ -500,6 +572,17 @@ export async function updateLeadValue(leadId: string, expectedValue: number) {
             status: mappedStage === 'Won' ? 'Active Lead' : mappedStage === 'Lost' ? 'Inactive' : mappedStage
           }
         });
+
+        await Promise.all([
+          prisma.followUp.updateMany({
+            where: { leadId: lead.id },
+            data: { customerId: newCust.id }
+          }),
+          prisma.call.updateMany({
+            where: { leadId: lead.id },
+            data: { customerId: newCust.id }
+          })
+        ]);
       }
     }
     

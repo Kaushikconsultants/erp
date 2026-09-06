@@ -418,15 +418,21 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
 
   // Category counts across leads
   const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { ALL: leads.length, UNCATEGORIZED: 0 };
+    const counts: Record<string, number> = { ALL: leads.length, UNCATEGORIZED: 0, TAGGED: 0 };
     categories.forEach(c => { counts[c.id] = 0; });
 
     leads.forEach(l => {
-      const tag = l.tags || l.category;
+      const tag = (l.tags || l.category || '').trim();
       if (!tag) {
         counts.UNCATEGORIZED = (counts.UNCATEGORIZED || 0) + 1;
       } else {
-        counts[tag] = (counts[tag] || 0) + 1;
+        counts.TAGGED = (counts.TAGGED || 0) + 1;
+        const matched = categories.find(c => c.id.toLowerCase() === tag.toLowerCase() || c.label.toLowerCase() === tag.toLowerCase());
+        if (matched) {
+          counts[matched.id] = (counts[matched.id] || 0) + 1;
+        } else {
+          counts[tag] = (counts[tag] || 0) + 1;
+        }
       }
     });
 
@@ -435,9 +441,25 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
 
   // Handle setting/changing lead category
   const handleSetLeadCategory = async (leadId: string, category: string | null, isLeadRecord: boolean = false) => {
-    setLeads(leads.map(l => l.id === leadId ? { ...l, tags: category || null } : l));
+    setLeads(prevLeads => prevLeads.map(l => l.id === leadId ? { 
+      ...l, 
+      tags: category || null,
+      category: category || null
+    } : l));
     setActiveCategoryPickerLeadId(null);
-    await updateLeadCategory(leadId, category, isLeadRecord);
+
+    const res = await updateLeadCategory(leadId, category, isLeadRecord);
+    if (res?.error) {
+      alert("Failed to save intent category: " + res.error);
+    } else if (res?.customerId && res.customerId !== leadId) {
+      setLeads(prevLeads => prevLeads.map(l => l.id === leadId ? { 
+        ...l, 
+        id: res.customerId,
+        isLeadRecord: false,
+        tags: category || null,
+        category: category || null
+      } : l));
+    }
   };
 
   // Handle saving individual stage name
@@ -618,10 +640,12 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
         followUpFilter === 'ALL' ||
         fuStatus.type === followUpFilter;
 
-      const leadCat = l.tags || l.category;
+      const leadCat = (l.tags || l.category || '').trim();
       const matchesCat = 
         selectedCategoryFilter === 'ALL' ||
-        (selectedCategoryFilter === 'UNCATEGORIZED' ? !leadCat : leadCat === selectedCategoryFilter);
+        (selectedCategoryFilter === 'TAGGED' ? !!leadCat :
+        (selectedCategoryFilter === 'UNCATEGORIZED' ? !leadCat :
+        (leadCat.toLowerCase() === selectedCategoryFilter.toLowerCase())));
 
       return matchesSearch && matchesRep && matchesFu && matchesCat;
     });
@@ -780,8 +804,8 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     const detailsUrl = isCustomer ? `/customers/${lead.id}` : `/leads/${lead.id}`;
     const assignedRep = employees.find(e => e.id === lead.assignedSalespersonId);
     const repName = assignedRep?.user?.name || assignedRep?.employeeId || (lead.assignedSalesperson?.user?.name) || '';
-    const leadCategory = lead.tags || lead.category || '';
-    const currentCatObj = categories.find(c => c.id === leadCategory || c.label === leadCategory);
+    const leadCategory = (lead.tags || lead.category || '').trim();
+    const currentCatObj = categories.find(c => c.id.toLowerCase() === leadCategory.toLowerCase() || c.label.toLowerCase() === leadCategory.toLowerCase());
 
     return (
       <div 
@@ -925,7 +949,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
 
               <div className="deal-cat-popover-list">
                 {categories.map(cat => {
-                  const isSelected = leadCategory === cat.id;
+                  const isSelected = leadCategory.toLowerCase() === cat.id.toLowerCase() || leadCategory.toLowerCase() === cat.label.toLowerCase();
                   return (
                     <button
                       key={cat.id}
@@ -1336,7 +1360,10 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 fontWeight: 700
               } : {}}
             >
-              <option value="ALL">All Intent Categories ({leads.length})</option>
+              <option value="ALL">All Categories ({leads.length} Deals)</option>
+              {categoryCounts.TAGGED > 0 && (
+                <option value="TAGGED">✨ Any Tagged Intent ({categoryCounts.TAGGED})</option>
+              )}
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>
                   {cat.icon || '🏷️'} {cat.label} ({categoryCounts[cat.id] || 0})
