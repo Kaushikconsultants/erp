@@ -6,8 +6,9 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #0f172a;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* ─── 1. View Switcher Tabs ─── */
@@ -16,16 +17,18 @@
   align-items: center;
   background-color: #f1f5f9;
   padding: 3px;
-  border-radius: 9px;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
   width: fit-content;
 }
 
 .pipeline-nav-btn {
-  padding: 6px 14px;
-  border-radius: 7px;
-  font-size: 0.8125rem;
-  font-weight: 600;
+  padding: 7px 15px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: #64748b;
   border: none;
   background: transparent;
@@ -33,7 +36,7 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
 }
 
 .pipeline-nav-btn:hover {
@@ -154,10 +157,11 @@
 }
 
 .pipeline-metric-label {
+  font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
   font-size: 0.72rem;
-  font-weight: 700;
+  font-weight: 750;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   color: #64748b;
   white-space: nowrap;
   overflow: hidden;
@@ -165,15 +169,17 @@
 }
 
 .pipeline-metric-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 2px 7px;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2.5px 8px;
   border-radius: 9999px;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 3px;
   flex-shrink: 0;
+  letter-spacing: 0.01em;
 }
 
 .pipeline-metric-badge.blue {
@@ -207,14 +213,16 @@
 }
 
 .pipeline-metric-val {
-  font-size: 1.5rem;
-  font-weight: 800;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 1.55rem;
+  font-weight: 850;
   color: #0f172a;
   line-height: 1.15;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-feature-settings: "tnum" 1;
 }
 
 .pipeline-metric-footer {
@@ -395,13 +403,20 @@
 }
 
 .col-title {
-  font-weight: 750;
-  font-size: 0.85rem;
+  font-family: 'Outfit', 'Plus Jakarta Sans', var(--font-family), sans-serif;
+  font-weight: 800;
+  font-size: 0.88rem;
   color: #0f172a;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-rendering: optimizeLegibility;
+  transition: color 0.15s ease;
+}
+
+.col-title-wrap:hover .col-title {
+  color: #1e1b4b;
 }
 
 .col-edit-icon {
@@ -422,16 +437,17 @@
 }
 
 .col-title-input {
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 750;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  letter-spacing: -0.015em;
   color: #0f172a;
   background: #ffffff;
   border: 1.5px solid #4f46e5;
-  border-radius: 4px;
-  padding: 2px 6px;
-  width: 100px;
-  min-width: 60px;
+  border-radius: 5px;
+  padding: 2px 7px;
+  width: 110px;
+  min-width: 70px;
   outline: none;
   box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.12);
 }
@@ -440,9 +456,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 19px;
-  height: 19px;
-  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
   border: none;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -470,19 +486,20 @@
 }
 
 .stage-customize-btn {
-  padding: 7px 11px;
-  border-radius: 7px;
+  padding: 7px 12px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  font-size: 0.8rem;
-  font-family: inherit;
+  font-size: 0.8125rem;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   color: #475569;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
   margin-left: auto;
 }
 
@@ -493,29 +510,35 @@
 }
 
 .col-badge {
-  font-size: 0.7rem;
-  font-weight: 750;
-  padding: 1.5px 7px;
+  font-family: 'Outfit', 'Plus Jakarta Sans', var(--font-family), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 7.5px;
   border-radius: 9999px;
   border: 1px solid;
   flex-shrink: 0;
-  line-height: 1.2;
+  line-height: 1.15;
   letter-spacing: 0.01em;
+  font-feature-settings: "tnum" 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* Stage Revenue Sum Pill */
 .col-sum-pill {
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 2.5px 7.5px;
-  border-radius: 6px;
+  font-family: 'Outfit', 'Plus Jakarta Sans', 'Inter', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 800;
+  padding: 2.5px 8.5px;
+  border-radius: 7px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   line-height: 1.2;
+  letter-spacing: -0.015em;
   border: 1px solid transparent;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
+  font-feature-settings: "tnum" 1;
 }
 
 .col-sum-pill.has-value {
@@ -581,16 +604,18 @@
 }
 
 .deal-name-link {
-  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', 'Outfit', var(--font-family), sans-serif;
+  font-weight: 750;
   color: #0f172a;
-  font-size: 0.84rem;
+  font-size: 0.86rem;
   line-height: 1.25;
+  letter-spacing: -0.015em;
   text-decoration: none;
   display: inline-block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 135px;
+  max-width: 140px;
   transition: color 0.15s ease;
 }
 
@@ -600,20 +625,24 @@
 }
 
 .tag-lead {
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
   font-size: 0.62rem;
-  font-weight: 700;
-  padding: 1px 4px;
-  border-radius: 3px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 1.5px 5px;
+  border-radius: 4px;
   background-color: #eef2ff;
   color: #4f46e5;
   border: 1px solid #c7d2fe;
 }
 
 .tag-client {
+  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
   font-size: 0.62rem;
-  font-weight: 700;
-  padding: 1px 4px;
-  border-radius: 3px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 1.5px 5px;
+  border-radius: 4px;
   background-color: #ecfdf5;
   color: #059669;
   border: 1px solid #a7f3d0;
@@ -626,12 +655,15 @@
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   color: #166534;
-  font-size: 0.74rem;
-  font-weight: 750;
-  padding: 2px 6px;
-  border-radius: 5px;
+  font-family: 'Outfit', 'Plus Jakarta Sans', monospace, sans-serif;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  padding: 2.5px 7px;
+  border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
+  font-feature-settings: "tnum" 1;
 }
 
 .val-badge:hover {

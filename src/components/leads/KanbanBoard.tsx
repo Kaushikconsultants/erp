@@ -1251,17 +1251,19 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                       onClick={() => setActiveStage(stage.id)}
                       className={`stage-flow-step-btn ${isSelected ? 'is-active' : ''}`}
                       style={{
-                        padding: '8px 14px',
+                        padding: '8px 15px',
                         borderRadius: '8px',
                         border: isSelected ? `1.5px solid ${stage.color}` : `1px solid ${stage.border}`,
                         backgroundColor: isSelected ? stage.badgeBg : '#ffffff',
                         color: isSelected ? stage.color : '#334155',
-                        fontSize: '0.82rem',
-                        fontWeight: isSelected ? 750 : 600,
+                        fontSize: '0.84rem',
+                        fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif",
+                        fontWeight: isSelected ? 800 : 700,
+                        letterSpacing: '-0.015em',
                         whiteSpace: 'nowrap',
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: '7px',
+                        gap: '8px',
                         cursor: 'pointer',
                         transition: 'all 0.18s ease',
                         boxShadow: isSelected ? `0 2px 8px ${stage.glow || 'rgba(0,0,0,0.08)'}, 0 0 0 1px ${stage.color}` : '0 1px 2px rgba(0,0,0,0.02)'
@@ -1276,24 +1278,28 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                           boxShadow: isSelected ? `0 0 0 2.5px ${stage.badgeBg}, 0 0 6px ${stage.color}` : 'none'
                         }}
                       />
-                      <span>{stage.title}</span>
+                      <span style={{ fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif", fontWeight: 800 }}>{stage.title}</span>
                       <span style={{ 
+                        fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif",
                         backgroundColor: isSelected ? stage.color : stage.badgeBg, 
                         color: isSelected ? '#ffffff' : (stage.badgeColor || stage.color),
                         padding: '1.5px 7px', 
                         borderRadius: '9999px', 
-                        fontSize: '0.7rem',
-                        fontWeight: 750,
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.01em',
                         border: `1px solid ${isSelected ? 'transparent' : stage.border}`
                       }}>
                         {count}
                       </span>
                       {stageVal > 0 && (
                         <span style={{ 
-                          fontSize: '0.72rem', 
-                          fontWeight: 700,
-                          padding: '1px 6px',
-                          borderRadius: '5px',
+                          fontFamily: "'Outfit', 'Plus Jakarta Sans', sans-serif",
+                          fontSize: '0.74rem', 
+                          fontWeight: 800,
+                          letterSpacing: '-0.015em',
+                          padding: '2px 7px',
+                          borderRadius: '6px',
                           backgroundColor: isSelected ? 'rgba(255,255,255,0.75)' : '#ecfdf5',
                           color: isSelected ? stage.color : '#059669',
                           border: `1px solid ${isSelected ? stage.border : '#a7f3d0'}`
