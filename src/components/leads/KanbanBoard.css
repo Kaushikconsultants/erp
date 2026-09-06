@@ -2,13 +2,16 @@
    Enterprise Sales Pipeline & Deal Flow - Modern UI Design System
    ========================================================================== */
 
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 .pipeline-container {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  font-family: 'Plus Jakarta Sans', 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* ─── 1. View Switcher Tabs ─── */
@@ -26,8 +29,8 @@
   padding: 7px 15px;
   border-radius: 8px;
   font-size: 0.82rem;
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 650;
   letter-spacing: -0.01em;
   color: #64748b;
   border: none;
@@ -157,11 +160,11 @@
 }
 
 .pipeline-metric-label {
-  font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 750;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.69rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: #64748b;
   white-space: nowrap;
   overflow: hidden;
@@ -169,9 +172,9 @@
 }
 
 .pipeline-metric-badge {
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2.5px 8px;
   border-radius: 9999px;
   white-space: nowrap;
@@ -179,7 +182,7 @@
   align-items: center;
   gap: 3px;
   flex-shrink: 0;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
 }
 
 .pipeline-metric-badge.blue {
@@ -214,11 +217,11 @@
 
 .pipeline-metric-val {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-size: 1.55rem;
-  font-weight: 850;
+  font-size: 1.45rem;
+  font-weight: 800;
   color: #0f172a;
   line-height: 1.15;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.025em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -229,7 +232,9 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 0.73rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
   color: #64748b;
   padding-top: 6px;
   border-top: 1px dashed #f1f5f9;
@@ -240,7 +245,7 @@
 
 .pipeline-metric-footer strong {
   color: #334155;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* ─── 3. Toolbar & Filters ─── */
@@ -274,11 +279,12 @@
 .search-field-input {
   width: 100%;
   padding: 7px 10px 7px 32px;
-  border-radius: 7px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
   background-color: #f8fafc;
-  font-size: 0.8125rem;
-  font-family: inherit;
+  font-size: 0.8rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500;
   color: #0f172a;
   outline: none;
   transition: all 0.2s ease;
@@ -291,14 +297,15 @@
 }
 
 .filter-select-input {
-  padding: 7px 10px;
-  border-radius: 7px;
+  padding: 7px 11px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  font-size: 0.8125rem;
-  font-family: inherit;
+  font-size: 0.78rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   color: #334155;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
   outline: none;
   transition: border-color 0.2s ease;
@@ -403,11 +410,11 @@
 }
 
 .col-title {
-  font-family: 'Outfit', 'Plus Jakarta Sans', var(--font-family), sans-serif;
-  font-weight: 800;
-  font-size: 0.88rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.84rem;
   color: #0f172a;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.015em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -438,8 +445,8 @@
 
 .col-title-input {
   font-size: 0.82rem;
-  font-weight: 750;
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   letter-spacing: -0.015em;
   color: #0f172a;
   background: #ffffff;
@@ -490,8 +497,8 @@
   border-radius: 8px;
   border: 1px solid #e2e8f0;
   background-color: #ffffff;
-  font-size: 0.8125rem;
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.78rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   color: #475569;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -510,26 +517,26 @@
 }
 
 .col-badge {
-  font-family: 'Outfit', 'Plus Jakarta Sans', var(--font-family), sans-serif;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   font-size: 0.72rem;
-  font-weight: 800;
-  padding: 2px 7.5px;
+  font-weight: 750;
+  padding: 2px 7px;
   border-radius: 9999px;
   border: 1px solid;
   flex-shrink: 0;
   line-height: 1.15;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   font-feature-settings: "tnum" 1;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 /* Stage Revenue Sum Pill */
 .col-sum-pill {
-  font-family: 'Outfit', 'Plus Jakarta Sans', 'Inter', sans-serif;
-  font-size: 0.74rem;
-  font-weight: 800;
-  padding: 2.5px 8.5px;
-  border-radius: 7px;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 750;
+  padding: 2.5px 8px;
+  border-radius: 6px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -608,12 +615,12 @@
 }
 
 .deal-name-link {
-  font-family: 'Plus Jakarta Sans', 'Inter', var(--font-family), sans-serif;
-  font-weight: 600 !important;
-  color: #1e293b;
-  font-size: 0.84rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 650 !important;
+  color: #0f172a;
+  font-size: 0.83rem;
   line-height: 1.3;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.012em;
   text-decoration: none;
   display: inline-block;
   overflow: hidden;
@@ -629,11 +636,12 @@
 }
 
 .tag-lead {
-  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 750;
   letter-spacing: 0.04em;
-  padding: 1.5px 5px;
+  text-transform: uppercase;
+  padding: 1.5px 5.5px;
   border-radius: 4px;
   background-color: #eef2ff;
   color: #4f46e5;
@@ -641,11 +649,12 @@
 }
 
 .tag-client {
-  font-family: 'Space Grotesk', 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 750;
   letter-spacing: 0.04em;
-  padding: 1.5px 5px;
+  text-transform: uppercase;
+  padding: 1.5px 5.5px;
   border-radius: 4px;
   background-color: #ecfdf5;
   color: #059669;
@@ -659,9 +668,9 @@
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   color: #166534;
-  font-family: 'Outfit', 'Plus Jakarta Sans', monospace, sans-serif;
-  font-size: 0.76rem;
-  font-weight: 800;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 750;
   letter-spacing: -0.015em;
   padding: 2.5px 7px;
   border-radius: 6px;
@@ -676,8 +685,11 @@
 }
 
 .deal-details-meta {
-  font-size: 0.7rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.69rem;
+  font-weight: 500;
   color: #64748b;
+  letter-spacing: -0.005em;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -736,9 +748,9 @@
   border: 1px solid #e2e8f0;
   background-color: #ffffff;
   font-size: 0.68rem;
-  font-family: inherit;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   color: #334155;
-  font-weight: 500;
+  font-weight: 600;
   width: 100%;
   min-width: 0;
   outline: none;
@@ -753,7 +765,7 @@
   border-radius: 4px;
   font-size: 0.68rem;
   font-weight: 600;
-  font-family: inherit;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   border: 1px solid #cbd5e1;
   background-color: #f8fafc;
   color: #334155;
@@ -785,10 +797,12 @@
   background: #4f46e5;
   color: #ffffff;
   border: none;
-  padding: 3px 6px;
+  padding: 3px 7px;
   border-radius: 5px;
-  font-size: 0.68rem;
-  font-weight: 600;
+  font-size: 0.67rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -865,10 +879,12 @@
 }
 
 .action-pill-text {
-  padding: 2px 5px;
+  padding: 2.5px 6px;
   border-radius: 5px;
   font-size: 0.66rem;
-  font-weight: 600;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -910,11 +926,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2.5px 8px;
+  padding: 2.5px 7.5px;
   border-radius: 6px;
-  font-size: 0.7rem;
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-weight: 750;
+  font-size: 0.68rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 650;
   border: 1px solid;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -943,9 +959,10 @@
   gap: 4px;
   padding: 2.5px 8px;
   border-radius: 6px;
-  font-size: 0.68rem;
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-weight: 750;
+  font-size: 0.66rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: #6d28d9;
   background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
   border: 1px dashed #c4b5fd;
@@ -968,8 +985,9 @@
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.65rem;
-  font-family: inherit;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: #94a3b8;
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
@@ -998,7 +1016,7 @@
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 9px;
-  box-shadow: 0 10px 25px -3px rgba(15, 23, 42, 0.22), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.28), 0 6px 14px -2px rgba(15, 23, 42, 0.12);
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -1028,9 +1046,10 @@
 
 .deal-cat-popover-title,
 .deal-src-popover-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.72rem;
-  font-weight: 800;
-  color: #334155;
+  font-weight: 750;
+  color: #1e293b;
   letter-spacing: -0.01em;
 }
 
@@ -1083,8 +1102,8 @@
   border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
-  font-size: 0.73rem;
-  font-family: inherit;
+  font-size: 0.72rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 600;
   color: #334155;
   cursor: pointer;
@@ -1100,7 +1119,7 @@
 
 .deal-cat-popover-item.selected,
 .deal-src-popover-item.selected {
-  font-weight: 800;
+  font-weight: 750;
 }
 
 .cat-item-icon,
@@ -1149,9 +1168,10 @@
   gap: 4px;
   padding: 2.5px 7.5px;
   border-radius: 6px;
-  font-size: 0.7rem;
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-weight: 750;
+  font-size: 0.68rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   border: 1px solid;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1211,9 +1231,10 @@
   gap: 3.5px;
   padding: 2.5px 7px;
   border-radius: 6px;
-  font-size: 0.68rem;
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-weight: 750;
+  font-size: 0.66rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: #1d4ed8;
   background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
   border: 1px dashed #93c5fd;
@@ -1237,8 +1258,9 @@
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.65rem;
-  font-family: inherit;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: #94a3b8;
   background: #f8fafc;
   border: 1px dashed #cbd5e1;
@@ -1276,7 +1298,8 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.67rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.66rem;
   font-weight: 700;
   color: #475569;
   letter-spacing: -0.01em;
@@ -1297,7 +1320,8 @@
   border: 1px solid #cbd5e1;
   border-radius: 5px;
   font-size: 0.72rem;
-  font-family: inherit;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 500;
   outline: none;
   background: #ffffff;
   color: #0f172a;
@@ -1316,6 +1340,7 @@
   background: #2563eb;
   color: #ffffff;
   border: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.7rem;
   font-weight: 700;
   cursor: pointer;
@@ -1350,6 +1375,7 @@
   border-radius: 5px;
   border: none;
   background: transparent;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.68rem;
   font-weight: 600;
   color: #dc2626;
@@ -1371,6 +1397,7 @@
   border-radius: 5px;
   border: none;
   background: transparent;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 0.7rem;
   font-weight: 650;
   color: #6366f1;
@@ -1397,8 +1424,10 @@
   gap: 4px;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 0.68rem;
+  font-size: 0.67rem;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 650;
+  letter-spacing: -0.01em;
   cursor: pointer;
   transition: all 0.15s ease;
   line-height: 1.2;
