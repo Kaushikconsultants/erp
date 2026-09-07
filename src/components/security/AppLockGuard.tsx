@@ -50,6 +50,23 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     }
   }, []);
 
+  // Centralized unlock success handler that marks the active browser/app session as unlocked
+  const unlockAppSuccess = useCallback(() => {
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("app_session_unlocked", "true");
+        sessionStorage.setItem("app_session_unlocked_at", Date.now().toString());
+        sessionStorage.removeItem("app_mpin_bg_time");
+      } catch {}
+    }
+    triggerHaptic("success");
+    setIsLocked(false);
+    setPin("");
+    setErrorMsg("");
+    hasUserCanceledBiometricRef.current = false;
+    lastBackgroundTime.current = 0;
+  }, []);
+
   // Native OS Hardware Biometric (Fingerprint / Face ID) Scan Trigger
   const handleBiometricUnlock = useCallback(async (isAutoTrigger = false) => {
     // If already authenticating, abort to prevent overlapping native prompts
@@ -86,11 +103,7 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
           });
 
           // Biometric verified successfully
-          triggerHaptic("success");
-          setIsLocked(false);
-          setPin("");
-          setErrorMsg("");
-          hasUserCanceledBiometricRef.current = false;
+          unlockAppSuccess();
           return;
         }
       } catch (nativeErr: any) {
@@ -151,11 +164,7 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
 
       const credential = await navigator.credentials.get(options);
       if (credential) {
-        triggerHaptic("success");
-        setIsLocked(false);
-        setPin("");
-        setErrorMsg("");
-        hasUserCanceledBiometricRef.current = false;
+        unlockAppSuccess();
       } else if (!isAutoTrigger) {
         hasUserCanceledBiometricRef.current = true;
         triggerHaptic("error");
@@ -180,7 +189,7 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
         isAuthenticatingRef.current = false;
       }, 600);
     }
-  }, []);
+  }, [unlockAppSuccess]);
 
   const resetIdleTimer = useCallback(() => {
     if (idleTimerRef.current) {
@@ -207,7 +216,7 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
       return;
     }
 
-    const timerSec = parseInt(localStorage.getItem("app_mpin_autolock_timer") || "0", 10);
+    const timerSec = parseInt(localStorage.getItem("app_mpin_autolock_timer") || "120", 10);
     const bgTime = lastBackgroundTime.current || parseInt(sessionStorage.getItem("app_mpin_bg_time") || "0", 10);
     
     lastBackgroundTime.current = 0;
@@ -222,6 +231,9 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
 
     // Lock if instant (timerSec === 0) or if background duration exceeded the configured timer
     if (timerSec === 0 || elapsedSec >= timerSec) {
+      try {
+        sessionStorage.removeItem("app_session_unlocked");
+      } catch {}
       setIsLocked(true);
       setPin("");
       hasUserCanceledBiometricRef.current = false;
@@ -301,17 +313,25 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
       setIsPinEnabled(enabled);
       setStoredPin(savedPin);
 
-      // Lock on initial launch if MPIN enabled
-      if (enabled && savedPin) {
-        setIsLocked(true);
+      if (!enabled || !savedPin) {
+        setIsLocked(false);
+        return;
+      }
 
-        // Auto trigger native fingerprint dialog on initial launch
-        if (Capacitor.isNativePlatform() || (window as any).Capacitor?.isNativePlatform?.()) {
-          const timer = setTimeout(() => {
-            handleBiometricUnlock(true);
-          }, 400);
-          return () => clearTimeout(timer);
-        }
+      // Check if active session is already unlocked (e.g. navigating between routes/operations)
+      const isSessionUnlocked = sessionStorage.getItem("app_session_unlocked") === "true";
+      if (isSessionUnlocked) {
+        setIsLocked(false);
+        return;
+      }
+
+      // Initial Cold Start / Fresh Launch: lock and auto-trigger native fingerprint dialog once
+      setIsLocked(true);
+      if (Capacitor.isNativePlatform() || (window as any).Capacitor?.isNativePlatform?.()) {
+        const timer = setTimeout(() => {
+          handleBiometricUnlock(true);
+        }, 400);
+        return () => clearTimeout(timer);
       }
     };
 
@@ -331,6 +351,9 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     const handleTestLockEvent = () => {
       const savedPin = localStorage.getItem("app_mpin_code");
       setStoredPin(savedPin);
+      try {
+        sessionStorage.removeItem("app_session_unlocked");
+      } catch {}
       hasUserCanceledBiometricRef.current = false;
       setIsLocked(true);
       setPin("");
@@ -347,6 +370,12 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
       const savedPin = localStorage.getItem("app_mpin_code");
       setIsPinEnabled(enabled);
       setStoredPin(savedPin);
+      if (!enabled) {
+        try {
+          sessionStorage.removeItem("app_session_unlocked");
+        } catch {}
+        setIsLocked(false);
+      }
     };
     window.addEventListener("app-lock-config-updated", handleConfigUpdated);
 
@@ -408,11 +437,7 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
       if (newPin.length === 4) {
         const currentSavedPin = localStorage.getItem("app_mpin_code") || storedPin;
         if (newPin === currentSavedPin) {
-          triggerHaptic("success");
-          setIsLocked(false);
-          setPin("");
-          setErrorMsg("");
-          hasUserCanceledBiometricRef.current = false;
+          unlockAppSuccess();
         } else {
           triggerHaptic("error");
           setErrorMsg("Incorrect 4-Digit MPIN. Please try again.");
