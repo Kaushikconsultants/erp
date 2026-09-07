@@ -1,0 +1,285 @@
+/* =========================================================
+   ATTENDANCE REGISTER & MOBILE CALENDAR STYLES
+   Modern, Theme-Matched Employee Attendance Management
+   ========================================================= */
+
+.attendance-emp-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  padding: 20px;
+  margin-bottom: 20px;
+  transition: all 0.2s ease;
+}
+
+.attendance-emp-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+}
+
+/* ─── Employee Header ─── */
+.attendance-emp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.attendance-emp-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.attendance-emp-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.2);
+}
+
+.attendance-emp-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.attendance-emp-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.attendance-emp-dept {
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 500;
+  margin-top: 1px;
+}
+
+.attendance-badges-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.attendance-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.attendance-badge-present {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+.attendance-badge-absent {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.attendance-badge-halfday {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.attendance-badge-leave {
+  background-color: #f5f3ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
+}
+
+/* ─── Calendar Grid ─── */
+.attendance-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+
+.attendance-weekday-header {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 700;
+  padding: 6px 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Day Cell Base */
+.attendance-day-cell {
+  text-align: center;
+  padding: 8px 4px;
+  min-height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+  position: relative;
+  user-select: none;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.attendance-day-cell:hover {
+  filter: brightness(0.96);
+  transform: translateY(-1px);
+}
+
+.attendance-day-cell.is-today {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.25) !important;
+}
+
+.attendance-day-num {
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Timing info on Desktop */
+.attendance-day-timing {
+  font-size: 0.72rem;
+  opacity: 0.95;
+  line-height: 1.2;
+  margin-top: 4px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+/* Mini indicator on Mobile */
+.attendance-day-mobile-badge {
+  display: none;
+  font-size: 0.64rem;
+  font-weight: 700;
+  opacity: 0.9;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+/* ─── Legend Bar ─── */
+.attendance-legend-bar {
+  display: flex;
+  gap: 14px;
+  margin-top: 14px;
+  font-size: 0.78rem;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.attendance-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.attendance-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.attendance-admin-hint {
+  margin-left: auto;
+  color: #4f46e5;
+  font-weight: 600;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ─── RESPONSIVE MOBILE APP VIEWPORT (<= 768px) ─── */
+@media (max-width: 768px) {
+  .attendance-emp-card {
+    padding: 14px 12px;
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+
+  .attendance-emp-header {
+    margin-bottom: 12px;
+    gap: 8px;
+  }
+
+  .attendance-emp-name {
+    font-size: 0.98rem;
+  }
+
+  .attendance-emp-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+  }
+
+  .attendance-cal-grid {
+    gap: 4px;
+  }
+
+  .attendance-weekday-header {
+    font-size: 0.68rem;
+    padding: 2px;
+  }
+
+  /* On Mobile: Day Cell fits cleanly without text overflow */
+  .attendance-day-cell {
+    min-height: 42px;
+    padding: 4px 2px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+  }
+
+  /* Hide the wide desktop text on mobile */
+  .attendance-day-timing {
+    display: none !important;
+  }
+
+  /* Show clean compact duration badge on mobile (e.g. "8.2h") */
+  .attendance-day-mobile-badge {
+    display: block !important;
+  }
+
+  .attendance-legend-bar {
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+
+  .attendance-admin-hint {
+    margin-left: 0;
+    width: 100%;
+    margin-top: 4px;
+    font-size: 0.76rem;
+  }
+}

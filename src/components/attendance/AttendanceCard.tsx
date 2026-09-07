@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateAttendanceAdmin, updateCheckInOut } from '@/app/actions/attendanceActions';
 import "@/components/ui/modal.css";
-import { Clock, CheckCircle2, AlertCircle, Trash2, Plus, Calendar } from 'lucide-react';
+import "./attendance.css";
+import { Clock, CheckCircle2, AlertCircle, Trash2, Plus, Calendar, User, Zap } from 'lucide-react';
 
 const STATUS_COLOR: Record<string, string> = {
   Present: '#22c55e',
@@ -119,6 +120,20 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
 
   const presentDays = attendances.filter((a: any) => a.status === 'Present').length;
   const absentDays = attendances.filter((a: any) => a.status === 'Absent').length;
+  const halfDays = attendances.filter((a: any) => a.status === 'Half Day').length;
+  const leaveDays = attendances.filter((a: any) => a.status === 'Leave').length;
+
+  const empName = emp.user?.name || 'Employee';
+  const initials = empName
+    .split(' ')
+    .filter(Boolean)
+    .map((w: string) => w[0])
+    .join('')
+    .substring(0, 2)
+    .toUpperCase() || 'EM';
+
+  const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === mon;
+  const todayDateNum = today.getDate();
 
   const handleCellClick = (day: number, record: any) => {
     if (!isAdmin) return;
@@ -264,6 +279,14 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
     return `${toTimeDisplay(record.checkIn)} – ${toTimeDisplay(co)} (${hrs}h)`;
   };
 
+  // Compute short working hours for mobile cell badge
+  const getMobileHoursBadge = (record: any) => {
+    if (!record?.checkIn) return '';
+    if (!record.checkOut) return 'In';
+    const hrs = ((new Date(record.checkOut).getTime() - new Date(record.checkIn).getTime()) / (1000 * 60 * 60)).toFixed(1);
+    return `${hrs}h`;
+  };
+
   // Preset setter helper
   const applyPreset = (type: 'ci' | 'co', h: string, m: string, ampm: 'AM' | 'PM') => {
     if (type === 'ci') {
@@ -294,22 +317,44 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
   };
 
   return (
-    <div className="glass-panel" style={{ padding: '20px', marginBottom: '20px', borderRadius: '12px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--foreground, #0f172a)' }}>{emp.user.name}</div>
-          <div style={{ color: 'var(--text-muted, #64748b)', fontSize: '0.875rem' }}>{emp.department || 'Sales'}</div>
+    <div className="attendance-emp-card">
+      {/* ─── Employee Header Row ─── */}
+      <div className="attendance-emp-header">
+        <div className="attendance-emp-profile">
+          <div className="attendance-emp-avatar">
+            {initials}
+          </div>
+          <div className="attendance-emp-info">
+            <span className="attendance-emp-name">{empName}</span>
+            <span className="attendance-emp-dept">{emp.department || 'Sales & Operations'}</span>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '16px', fontSize: '0.875rem' }}>
-          <span style={{ color: '#22c55e', fontWeight: 600 }}>✓ {presentDays} Present</span>
-          <span style={{ color: '#ef4444', fontWeight: 600 }}>✗ {absentDays} Absent</span>
+
+        {/* Status Count Badges */}
+        <div className="attendance-badges-group">
+          <span className="attendance-badge-pill attendance-badge-present">
+            ✓ {presentDays} Present
+          </span>
+          <span className="attendance-badge-pill attendance-badge-absent">
+            ✗ {absentDays} Absent
+          </span>
+          {halfDays > 0 && (
+            <span className="attendance-badge-pill attendance-badge-halfday">
+              ◐ {halfDays} Half Day
+            </span>
+          )}
+          {leaveDays > 0 && (
+            <span className="attendance-badge-pill attendance-badge-leave">
+              ★ {leaveDays} Leave
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Calendar grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+      {/* ─── Calendar Grid (7 Columns) ─── */}
+      <div className="attendance-cal-grid">
         {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted, #64748b)', fontWeight: 700, padding: '4px', textTransform: 'uppercase' }}>{d}</div>
+          <div key={d} className="attendance-weekday-header">{d}</div>
         ))}
         {Array.from({ length: (new Date(year, mon - 1, 1).getDay() + 6) % 7 }).map((_, i) => (
           <div key={`empty-${i}`} />
@@ -317,46 +362,28 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
         {daysArr.map(day => {
           const record = attendanceMap[day];
           const isPast = new Date(year, mon - 1, day) <= today;
-          const color = record ? STATUS_COLOR[record.status] || '#22c55e' : (isPast ? '#e2e8f0' : 'transparent');
+          const isToday = isCurrentMonth && day === todayDateNum;
+          const color = record ? STATUS_COLOR[record.status] || '#22c55e' : (isPast ? '#f1f5f9' : 'transparent');
           const hasTime = record?.checkIn;
+          const mobileHours = getMobileHoursBadge(record);
+
           return (
             <div
               key={day}
               onClick={() => handleCellClick(day, record)}
+              className={`attendance-day-cell ${isToday ? 'is-today' : ''}`}
               style={{
-                textAlign: 'center', 
-                padding: '8px 6px', 
-                minHeight: '52px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderRadius: '8px',
                 background: color, 
-                fontSize: '0.92rem', 
-                fontWeight: record ? 700 : 500,
-                color: record ? '#ffffff' : (isPast ? '#64748b' : 'var(--text-muted)'),
-                cursor: isAdmin ? 'pointer' : 'default', 
-                border: '1px solid transparent',
-                transition: 'all 0.15s ease', 
-                position: 'relative',
-                boxShadow: record ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                color: record ? '#ffffff' : (isPast ? '#64748b' : '#94a3b8'),
+                boxShadow: record ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
               }}
-              title={record ? `${record.status}${hasTime ? '\n' + getWorkingHours(record) : ''}` : 'Not marked'}
-              onMouseEnter={e => isAdmin && (e.currentTarget.style.transform = 'translateY(-2px)')}
-              onMouseLeave={e => isAdmin && (e.currentTarget.style.transform = 'translateY(0)')}
+              title={record ? `${record.status}${hasTime ? '\n' + getWorkingHours(record) : ''}` : (isToday ? 'Today' : 'Not marked')}
             >
-              <div style={{ lineHeight: 1.1 }}>{day}</div>
+              <div className="attendance-day-num">{day}</div>
+              
+              {/* Desktop full timing view */}
               {hasTime && (
-                <div style={{ 
-                  fontSize: '0.74rem', 
-                  opacity: 0.95, 
-                  lineHeight: 1.2, 
-                  marginTop: '4px', 
-                  fontWeight: 600,
-                  letterSpacing: '-0.2px',
-                  whiteSpace: 'nowrap'
-                }}>
+                <div className="attendance-day-timing">
                   {record.checkOut ? (
                     <span>{toTimeDisplay(record.checkIn)} – {toTimeDisplay(record.checkOut)}</span>
                   ) : (
@@ -364,22 +391,30 @@ export default function AttendanceCard({ emp, isAdmin, year, mon, daysArr, today
                   )}
                 </div>
               )}
+
+              {/* Mobile compact duration badge (No text overflow!) */}
+              {hasTime && mobileHours && (
+                <div className="attendance-day-mobile-badge">
+                  {mobileHours}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: '16px', marginTop: '14px', fontSize: '0.78rem', flexWrap: 'wrap', alignItems: 'center' }}>
+      {/* ─── Legend Bar ─── */}
+      <div className="attendance-legend-bar">
         {Object.entries(STATUS_COLOR).map(([status, color]) => (
-          <div key={status} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
-            <span style={{ color: 'var(--text-muted, #64748b)', fontWeight: 500 }}>{status}</span>
+          <div key={status} className="attendance-legend-item">
+            <div className="attendance-legend-dot" style={{ background: color }} />
+            <span>{status}</span>
           </div>
         ))}
         {isAdmin && (
-          <div style={{ marginLeft: 'auto', color: 'var(--accent-primary, #4f46e5)', fontWeight: 600, fontSize: '0.8rem' }}>
-            ⚡ Click any calendar day to edit status or shift hours
+          <div className="attendance-admin-hint">
+            <Zap size={13} color="#4f46e5" />
+            <span>Click any day to edit status or shift hours</span>
           </div>
         )}
       </div>

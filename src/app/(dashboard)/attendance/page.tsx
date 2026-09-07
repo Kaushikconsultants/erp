@@ -65,8 +65,8 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const daysArr = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
-    <div className="page-container" style={{ padding: '24px' }}>
-      <div className="dashboard-header mb-6">
+    <div className="page-container">
+      <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title">Attendance Register</h1>
           <p className="page-subtitle">Monthly attendance overview for all employees.</p>
