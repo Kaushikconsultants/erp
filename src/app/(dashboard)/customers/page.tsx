@@ -6,7 +6,6 @@ import { redirect } from 'next/navigation';
 import AddCustomerButton from '@/components/ui/AddCustomerButton';
 import CustomerTable from '@/components/ui/CustomerTable';
 import { getOrCreateEmployee } from '@/lib/employeeHelper';
-
 import { getTenantScope } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
@@ -72,7 +71,7 @@ export default async function CustomersPage() {
         <AddCustomerButton employees={allEmployees} />
       </div>
 
-      <div className="glass-panel" style={{ padding: '24px' }}>
+      <div className="customer-page-panel">
         <CustomerTable initialCustomers={customers} allEmployees={allEmployees} />
       </div>
     </div>

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import AddCustomerModal from "./AddCustomerModal";
 import DataImportWizardModal from "@/components/common/DataImportWizardModal";
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, Plus } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 export default function AddCustomerButton({ employees = [] }: { employees?: { id: string; name: string }[] }) {
@@ -20,19 +20,23 @@ export default function AddCustomerButton({ employees = [] }: { employees?: { id
 
   return (
     <>
-      <div style={{ display: 'flex', gap: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
         <button 
           className="action-btn hover-lift" 
           onClick={() => setIsBulkOpen(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--success)', color: 'var(--success)', background: 'transparent', fontWeight: 600 }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 14px', borderRadius: '10px', border: '1px solid #10b981', color: '#059669', background: '#ecfdf5', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+          title="Bulk Import Customers from Excel or CSV"
         >
-          <FileSpreadsheet size={16} /> Bulk Import Excel / CSV
+          <FileSpreadsheet size={15} />
+          <span>Import CSV</span>
         </button>
         <button 
           className="primary-btn hover-lift" 
           onClick={() => setIsModalOpen(true)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 16px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
         >
-          + Add Customer
+          <Plus size={16} />
+          <span>Add Customer</span>
         </button>
       </div>
 
@@ -54,4 +58,3 @@ export default function AddCustomerButton({ employees = [] }: { employees?: { id
     </>
   );
 }
-
