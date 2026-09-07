@@ -348,15 +348,13 @@ export default function CreateQuotationForm({
   }, [formData.customerId, localCustomers]);
 
   const handleItemChange = (index: number, field: string, value: any) => {
-    const newItems = [...items];
-    newItems[index][field] = value;
-    setItems(newItems);
+    setItems(prev => prev.map((item, i) => i === index ? { ...item, [field]: value } : item));
   };
 
   const addItem = () => {
     const newIdx = items.length;
-    setItems([
-      ...items,
+    setItems(prev => [
+      ...prev,
       {
         productId: '',
         productName: '',
@@ -401,8 +399,7 @@ export default function CreateQuotationForm({
       }]);
       return;
     }
-    const newItems = items.filter((_, i) => i !== index);
-    setItems(newItems);
+    setItems(prev => prev.filter((_, i) => i !== index));
   };
 
   const selectProduct = (index: number, product: any) => {
@@ -415,18 +412,21 @@ export default function CreateQuotationForm({
     const basePrice = product.sellingPrice || 0;
     const effectiveRate = calculateTieredRate(basePrice, tierInfo.discountPercent);
 
-    const newItems = [...items];
-    newItems[index] = {
-      ...newItems[index],
-      productId: product.id,
-      productName: product.name,
-      sku: product.articleNumber || product.sku || '',
-      rate: effectiveRate,
-      unitWeight: resolvedWeight,
-      availableStock: product.stockQuantity || 0,
-      description: product.description || ''
-    };
-    setItems(newItems);
+    setItems(prev => prev.map((item, i) => {
+      if (i !== index) return item;
+      return {
+        ...item,
+        productId: product.id,
+        productName: product.name,
+        sku: product.articleNumber || product.sku || '',
+        rate: effectiveRate > 0 ? effectiveRate : (product.sellingPrice || 0),
+        unitWeight: resolvedWeight,
+        gstRate: Number(product.gstRate) || 5,
+        hsnCode: product.hsnCode || '6109',
+        availableStock: product.stockQuantity || 0,
+        description: product.description || ''
+      };
+    }));
     setShowProductSearch(-1);
     setProductSearchTerm("");
   };
@@ -605,8 +605,18 @@ export default function CreateQuotationForm({
       alert("Please select a customer before saving.");
       return;
     }
-    if (items.length === 0 || !items[0].productId) {
+
+    // Filter out rows that have neither a product selected nor custom details
+    const validItems = items.filter(i => (i.productId && i.productId.trim() !== '') || (i.productName && i.productName.trim() !== '') || (Number(i.quantity) > 0 && Number(i.rate) > 0));
+    if (validItems.length === 0) {
       alert("Please select at least one product for this quotation.");
+      return;
+    }
+
+    // Validate that every active item has an actual product chosen from the catalogue
+    const missingProductIdx = validItems.findIndex(i => !i.productId || i.productId.trim() === '');
+    if (missingProductIdx !== -1) {
+      alert(`Line item #${missingProductIdx + 1} ("${validItems[missingProductIdx].productName || 'Unselected'}") does not have a valid product selected from the catalog. Please search and select a product.`);
       return;
     }
 
@@ -645,7 +655,7 @@ export default function CreateQuotationForm({
         notes: formData.notes,
         internalNotes: formData.internalNotes,
         termsConditions: formData.termsConditions,
-        items: items.map(i => {
+        items: validItems.map(i => {
           const gross = (Number(i.rate) || 0) * (Number(i.quantity) || 1);
           let discAmt = Number(i.discountAmount) || 0;
           let discPct = Number(i.discountPercent) || 0;
@@ -657,10 +667,10 @@ export default function CreateQuotationForm({
           }
 
           return {
-            productId: i.productId,
+            productId: i.productId.trim(),
             sku: i.sku,
             description: i.description,
-            hsnCode: i.hsnCode,
+            hsnCode: i.hsnCode || '6109',
             quantity: Number(i.quantity) || 1,
             rate: Number(i.rate) || 0,
             unitWeight: Number(i.unitWeight) || 0,
@@ -2449,6 +2459,7 @@ export default function CreateQuotationForm({
 
       {showGarmentMatrix && (
         <GarmentMatrixModal
+          key={`garment_matrix_${matrixTargetIndex ?? 'new'}_${matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].productId : 'none'}`}
           products={products}
           initialProductId={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].productId : undefined}
           initialRate={matrixTargetIndex !== null && items[matrixTargetIndex] ? items[matrixTargetIndex].rate : undefined}

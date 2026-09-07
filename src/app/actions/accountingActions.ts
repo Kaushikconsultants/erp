@@ -137,9 +137,15 @@ export async function syncSystemLedgers() {
     const capitalGroup = groupMap.get("CAPITAL_ACCT") || await prisma.accountGroup.findFirst({ where: { code: "CAPITAL_ACCT" } });
     const fixedAssetGroup = groupMap.get("FIXED_ASSETS") || await prisma.accountGroup.findFirst({ where: { code: "FIXED_ASSETS" } });
 
-    // Initial fetch of all ledgers
+    // Initial fetch of all ledgers (including existing system ledgers)
     let allOrgLedgersInitial = await prisma.ledgerAccount.findMany({
-      where: { OR: [{ organizationId }, { organizationId: null }] }
+      where: {
+        OR: [
+          { organizationId },
+          { organizationId: null },
+          { isSystem: true }
+        ]
+      }
     });
 
     let codeLedgerMap = new Map(allOrgLedgersInitial.filter(l => l.code).map(l => [l.code!, l]));
@@ -173,19 +179,28 @@ export async function syncSystemLedgers() {
 
     for (const l of standardLedgers) {
       if (!l.groupId || codeLedgerMap.has(l.code)) continue;
-      const created = await prisma.ledgerAccount.create({
-        data: {
-          organizationId,
-          name: l.name,
-          code: l.code,
-          accountGroupId: l.groupId,
-          partyType: l.partyType,
-          isSystem: l.isSystem,
-          openingBalance: 0,
-          currentBalance: 0
+      try {
+        const created = await prisma.ledgerAccount.create({
+          data: {
+            organizationId,
+            name: l.name,
+            code: l.code,
+            accountGroupId: l.groupId,
+            partyType: l.partyType,
+            isSystem: l.isSystem,
+            openingBalance: 0,
+            currentBalance: 0
+          }
+        });
+        codeLedgerMap.set(l.code, created);
+      } catch (createErr) {
+        const existing = await prisma.ledgerAccount.findFirst({
+          where: { code: l.code }
+        });
+        if (existing) {
+          codeLedgerMap.set(l.code, existing);
         }
-      });
-      codeLedgerMap.set(l.code, created);
+      }
     }
 
     // 2. Sync Company Bank Accounts
@@ -193,24 +208,32 @@ export async function syncSystemLedgers() {
     let defaultBankLedger = Array.from(codeLedgerMap.values()).find(l => l.partyType === "BANK");
 
     if (companySettings?.bankAccountName && bankGroup) {
-      const bankCode = `BANK_${companySettings.ifscCode || 'PRIMARY'}`;
+      const bankCode = `BANK_${companySettings.ifscCode || 'PRIMARY'}_${organizationId ? organizationId.slice(0, 6) : '00'}`;
       if (!codeLedgerMap.has(bankCode)) {
         const bankLedgerName = `${companySettings.bankAccountName} (${companySettings.accountNumber ? '...' + companySettings.accountNumber.slice(-4) : 'Bank'})`;
-        defaultBankLedger = await prisma.ledgerAccount.create({
-          data: {
-            organizationId,
-            name: bankLedgerName,
-            code: bankCode,
-            accountGroupId: bankGroup.id,
-            partyType: "BANK",
-            bankAccountNumber: companySettings.accountNumber || undefined,
-            ifscCode: companySettings.ifscCode || undefined,
-            isSystem: false,
-            openingBalance: 0,
-            currentBalance: 0
+        try {
+          defaultBankLedger = await prisma.ledgerAccount.create({
+            data: {
+              organizationId,
+              name: bankLedgerName,
+              code: bankCode,
+              accountGroupId: bankGroup.id,
+              partyType: "BANK",
+              bankAccountNumber: companySettings.accountNumber || undefined,
+              ifscCode: companySettings.ifscCode || undefined,
+              isSystem: false,
+              openingBalance: 0,
+              currentBalance: 0
+            }
+          });
+          codeLedgerMap.set(bankCode, defaultBankLedger);
+        } catch (err) {
+          const existing = await prisma.ledgerAccount.findFirst({ where: { code: bankCode } });
+          if (existing) {
+            defaultBankLedger = existing;
+            codeLedgerMap.set(bankCode, existing);
           }
-        });
-        codeLedgerMap.set(bankCode, defaultBankLedger);
+        }
       } else {
         defaultBankLedger = codeLedgerMap.get(bankCode);
       }
@@ -228,22 +251,29 @@ export async function syncSystemLedgers() {
       for (const c of customers) {
         if (!custLedgerMap.has(c.id)) {
           const partyLedgerName = c.businessName || c.contactPerson || "Customer";
-          const created = await prisma.ledgerAccount.create({
-            data: {
-              organizationId,
-              name: partyLedgerName,
-              code: `CUST_${c.id.slice(0, 8)}`,
-              accountGroupId: debtorsGroup.id,
-              partyType: "CUSTOMER",
-              partyId: c.id,
-              gstin: c.gstNumber || undefined,
-              pan: c.pan || undefined,
-              openingBalance: c.openingBalance || 0,
-              openingType: c.openingBalanceType === "CREDIT" ? "CREDIT" : "DEBIT",
-              currentBalance: c.openingBalance || 0
-            }
-          });
-          custLedgerMap.set(c.id, created);
+          const custCode = `CUST_${c.id.slice(0, 8)}`;
+          try {
+            const created = await prisma.ledgerAccount.create({
+              data: {
+                organizationId,
+                name: partyLedgerName,
+                code: custCode,
+                accountGroupId: debtorsGroup.id,
+                partyType: "CUSTOMER",
+                partyId: c.id,
+                gstin: c.gstNumber || undefined,
+                pan: c.pan || undefined,
+                openingBalance: c.openingBalance || 0,
+                openingType: c.openingBalanceType === "CREDIT" ? "CREDIT" : "DEBIT",
+                currentBalance: c.openingBalance || 0
+              }
+            });
+            custLedgerMap.set(c.id, created);
+          } catch (err) {
+            const existing = await prisma.ledgerAccount.findFirst({ where: { partyId: c.id } }) ||
+                             await prisma.ledgerAccount.findFirst({ where: { code: custCode } });
+            if (existing) custLedgerMap.set(c.id, existing);
+          }
         }
       }
     }
@@ -253,22 +283,29 @@ export async function syncSystemLedgers() {
       const vendors = await prisma.vendor.findMany({ where: { organizationId } });
       for (const v of vendors) {
         if (!vendLedgerMap.has(v.id)) {
-          const created = await prisma.ledgerAccount.create({
-            data: {
-              organizationId,
-              name: v.companyName,
-              code: `VEND_${v.id.slice(0, 8)}`,
-              accountGroupId: creditorsGroup.id,
-              partyType: "VENDOR",
-              partyId: v.id,
-              gstin: v.gstNumber || undefined,
-              pan: v.pan || undefined,
-              openingBalance: 0,
-              openingType: "CREDIT",
-              currentBalance: 0
-            }
-          });
-          vendLedgerMap.set(v.id, created);
+          const vendCode = `VEND_${v.id.slice(0, 8)}`;
+          try {
+            const created = await prisma.ledgerAccount.create({
+              data: {
+                organizationId,
+                name: v.companyName,
+                code: vendCode,
+                accountGroupId: creditorsGroup.id,
+                partyType: "VENDOR",
+                partyId: v.id,
+                gstin: v.gstNumber || undefined,
+                pan: v.pan || undefined,
+                openingBalance: 0,
+                openingType: "CREDIT",
+                currentBalance: 0
+              }
+            });
+            vendLedgerMap.set(v.id, created);
+          } catch (err) {
+            const existing = await prisma.ledgerAccount.findFirst({ where: { partyId: v.id } }) ||
+                             await prisma.ledgerAccount.findFirst({ where: { code: vendCode } });
+            if (existing) vendLedgerMap.set(v.id, existing);
+          }
         }
       }
     }
@@ -1179,12 +1216,22 @@ export async function createLedgerAccount(data: {
       return { success: false, error: "A ledger with this name already exists." };
     }
 
+    let resolvedCode = data.code?.trim();
+    if (resolvedCode) {
+      const codeExists = await prisma.ledgerAccount.findFirst({ where: { code: resolvedCode } });
+      if (codeExists) {
+        resolvedCode = `${resolvedCode}_${Date.now().toString().slice(-4)}`;
+      }
+    } else {
+      resolvedCode = `LEDGER_${Date.now().toString().slice(-6)}_${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+    }
+
     const openBal = Number(data.openingBalance || 0);
     const ledger = await prisma.ledgerAccount.create({
       data: {
         organizationId,
         name: data.name.trim(),
-        code: data.code?.trim() || `LEDGER_${Date.now().toString().slice(-6)}`,
+        code: resolvedCode,
         accountGroupId: data.accountGroupId,
         partyType: data.partyType || "GENERAL",
         openingBalance: openBal,

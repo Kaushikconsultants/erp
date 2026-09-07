@@ -163,6 +163,66 @@ export async function createQuotation(data: {
 
     const isInterstate = companyState.trim().toLowerCase() !== customerState.trim().toLowerCase();
 
+    // Filter and clean incoming items
+    const rawItems = (data.items || []).filter(item => {
+      const hasId = Boolean(item.productId && item.productId.trim() !== "");
+      const hasContent = Boolean(item.sku || item.description);
+      const hasQty = (Number(item.quantity) || 0) > 0;
+      return (hasId || hasContent) && hasQty;
+    });
+
+    if (rawItems.length === 0) {
+      return { error: "Please provide at least one valid product line item with quantity > 0." };
+    }
+
+    // Verify product IDs exist in DB
+    const incomingProductIds = Array.from(new Set(rawItems.map(i => (i.productId || "").trim()).filter(Boolean)));
+    const existingProducts = await prisma.product.findMany({
+      where: { id: { in: incomingProductIds } },
+      select: { id: true, name: true, sku: true, articleNumber: true }
+    });
+    const productMap = new Map(existingProducts.map(p => [p.id, p]));
+
+    let defaultProduct: any = null;
+    const validatedItems: typeof rawItems = [];
+
+    for (const item of rawItems) {
+      let resolvedProdId = (item.productId || "").trim();
+      if (!resolvedProdId || !productMap.has(resolvedProdId)) {
+        const term = (item.sku || "").trim();
+        let match = term ? await prisma.product.findFirst({
+          where: {
+            OR: [
+              { sku: term },
+              { articleNumber: term },
+              { name: item.sku || undefined }
+            ]
+          }
+        }) : null;
+
+        if (match) {
+          resolvedProdId = match.id;
+          productMap.set(match.id, match);
+        } else {
+          if (!defaultProduct) {
+            defaultProduct = await prisma.product.findFirst({
+              where: organizationId ? { organizationId } : undefined
+            }) || await prisma.product.findFirst();
+          }
+          if (defaultProduct) {
+            resolvedProdId = defaultProduct.id;
+          } else {
+            return { error: `Product not found for line item "${item.sku || item.description || 'Item'}". Please select a product from your catalog.` };
+          }
+        }
+      }
+
+      validatedItems.push({
+        ...item,
+        productId: resolvedProdId
+      });
+    }
+
     let subtotal = 0;
     let itemDiscountTotal = 0;
     let totalCgst = 0;
@@ -171,7 +231,7 @@ export async function createQuotation(data: {
     let totalQuantity = 0;
     let computedTotalWeight = 0;
 
-    const preparedItems = data.items.map(item => {
+    const preparedItems = validatedItems.map(item => {
       const qty = item.quantity || 1;
       const rate = item.rate || 0;
       const uWeight = item.unitWeight || 0;
@@ -506,6 +566,64 @@ export async function updateQuotationFull(id: string, data: {
 
     const isInterstate = companyState.trim().toLowerCase() !== customerState.trim().toLowerCase();
 
+    // Filter and clean incoming items
+    const rawItems = (data.items || []).filter(item => {
+      const hasId = Boolean(item.productId && item.productId.trim() !== "");
+      const hasContent = Boolean(item.sku || item.description);
+      const hasQty = (Number(item.quantity) || 0) > 0;
+      return (hasId || hasContent) && hasQty;
+    });
+
+    if (rawItems.length === 0) {
+      return { error: "Please provide at least one valid product line item with quantity > 0." };
+    }
+
+    // Verify product IDs exist in DB
+    const incomingProductIds = Array.from(new Set(rawItems.map(i => (i.productId || "").trim()).filter(Boolean)));
+    const existingProducts = await prisma.product.findMany({
+      where: { id: { in: incomingProductIds } },
+      select: { id: true, name: true, sku: true, articleNumber: true }
+    });
+    const productMap = new Map(existingProducts.map(p => [p.id, p]));
+
+    let defaultProduct: any = null;
+    const validatedItems: typeof rawItems = [];
+
+    for (const item of rawItems) {
+      let resolvedProdId = (item.productId || "").trim();
+      if (!resolvedProdId || !productMap.has(resolvedProdId)) {
+        const term = (item.sku || "").trim();
+        let match = term ? await prisma.product.findFirst({
+          where: {
+            OR: [
+              { sku: term },
+              { articleNumber: term },
+              { name: item.sku || undefined }
+            ]
+          }
+        }) : null;
+
+        if (match) {
+          resolvedProdId = match.id;
+          productMap.set(match.id, match);
+        } else {
+          if (!defaultProduct) {
+            defaultProduct = await prisma.product.findFirst();
+          }
+          if (defaultProduct) {
+            resolvedProdId = defaultProduct.id;
+          } else {
+            return { error: `Product not found for line item "${item.sku || item.description || 'Item'}". Please select a product from your catalog.` };
+          }
+        }
+      }
+
+      validatedItems.push({
+        ...item,
+        productId: resolvedProdId
+      });
+    }
+
     let subtotal = 0;
     let itemDiscountTotal = 0;
     let totalCgst = 0;
@@ -514,7 +632,7 @@ export async function updateQuotationFull(id: string, data: {
     let totalQuantity = 0;
     let computedTotalWeight = 0;
 
-    const preparedItems = data.items.map(item => {
+    const preparedItems = validatedItems.map(item => {
       const qty = item.quantity || 1;
       const rate = item.rate || 0;
       const uWeight = item.unitWeight || 0;

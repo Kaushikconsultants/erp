@@ -34,12 +34,16 @@ function parseMatrixData(
   desc?: string,
   savedMatrixData?: { colors?: string[]; matrix?: Record<string, Record<string, number>> }
 ): { colors: string[]; matrix: Record<string, Record<string, number>> } {
-  // 1. If structured matrix was stored, use it directly
+  // 1. If structured matrix was stored, deep clone and use it directly
   if (savedMatrixData?.matrix && Object.keys(savedMatrixData.matrix).length > 0) {
+    const clonedMatrix: Record<string, Record<string, number>> = {};
+    for (const [col, sizes] of Object.entries(savedMatrixData.matrix)) {
+      clonedMatrix[col] = { ...sizes };
+    }
     const colors = savedMatrixData.colors && savedMatrixData.colors.length > 0
-      ? savedMatrixData.colors
-      : Object.keys(savedMatrixData.matrix);
-    return { colors, matrix: savedMatrixData.matrix };
+      ? [...savedMatrixData.colors]
+      : Object.keys(clonedMatrix);
+    return { colors, matrix: clonedMatrix };
   }
 
   // 2. If no description or no bracket breakdown
@@ -156,6 +160,36 @@ export default function GarmentMatrixModal({
   const [presetFormDistribution, setPresetFormDistribution] = useState<Record<string, number>>({
     S: 0, M: 2, L: 4, XL: 4, XXL: 2, '3XL': 0
   });
+
+  // Matrix quantities: { [color]: { [size]: number } }
+  const [matrix, setMatrix] = useState<Record<string, Record<string, number>>>(parsedData.matrix);
+  const [groupAsSingleLine, setGroupAsSingleLine] = useState(true);
+
+  const selectedProduct = products.find(p => p.id === selectedProductId) || (initialProductId ? products.find(p => p.id === initialProductId) : null) || products[0] || {};
+  const [rate, setRate] = useState<number>(
+    (initialRate !== undefined && initialRate > 0)
+      ? initialRate
+      : (selectedProduct?.sellingPrice || 250)
+  );
+
+  // Synchronize internal state whenever target item props change
+  useEffect(() => {
+    const targetProdId = initialProductId && products.some(p => p.id === initialProductId)
+      ? initialProductId
+      : (products[0]?.id || '');
+    setSelectedProductId(targetProdId);
+
+    const data = parseMatrixData(initialDescription, initialGarmentMatrix);
+    setSelectedColors(data.colors);
+    setMatrix(data.matrix);
+
+    const prod = products.find(p => p.id === targetProdId) || products[0] || {};
+    if (initialRate !== undefined && initialRate > 0) {
+      setRate(initialRate);
+    } else if (prod?.sellingPrice) {
+      setRate(prod.sellingPrice);
+    }
+  }, [initialProductId, initialRate, initialDescription, initialGarmentMatrix, products]);
 
   useEffect(() => {
     try {
@@ -315,6 +349,14 @@ export default function GarmentMatrixModal({
       return;
     }
 
+    const resolvedProduct = products.find(p => p.id === selectedProductId) || (initialProductId ? products.find(p => p.id === initialProductId) : null) || products[0] || {};
+    const resolvedProdId = (resolvedProduct.id || initialProductId || '').trim();
+
+    if (!resolvedProdId) {
+      alert("Please select a product from the list before adding matrix items.");
+      return;
+    }
+
     const newItems: any[] = [];
 
     if (groupAsSingleLine) {
@@ -341,19 +383,19 @@ export default function GarmentMatrixModal({
         colorBreakdowns.map(b => `• ${b}`).join('\n');
 
       newItems.push({
-        productId: selectedProduct.id || '',
-        productName: `${selectedProduct.name || 'Garment Item'}${selectedProduct.articleNumber ? ` (Art #${selectedProduct.articleNumber})` : ''}`,
-        sku: selectedProduct.articleNumber || selectedProduct.sku || 'SKU',
+        productId: resolvedProdId,
+        productName: `${resolvedProduct.name || 'Garment Item'}${resolvedProduct.articleNumber ? ` (Art #${resolvedProduct.articleNumber})` : ''}`,
+        sku: resolvedProduct.articleNumber || resolvedProduct.sku || 'SKU',
         description,
-        hsnCode: selectedProduct.category?.hsnCode || '6109',
+        hsnCode: resolvedProduct.category?.hsnCode || '6109',
         quantity: grandTotalQty,
         rate: rate,
-        unitWeight: selectedProduct.weight || 0.25,
+        unitWeight: resolvedProduct.weight || 0.25,
         discountType: 'percent',
         discountPercent: 0,
         discountAmount: 0,
         gstRate: 5,
-        availableStock: selectedProduct.stockQuantity || 100,
+        availableStock: resolvedProduct.stockQuantity || 100,
         garmentMatrix: { colors: selectedColors, matrix }
       });
     } else {
@@ -372,19 +414,19 @@ export default function GarmentMatrixModal({
 
         if (colorTotalQty > 0) {
           newItems.push({
-            productId: selectedProduct.id || '',
-            productName: `${selectedProduct.name || 'Garment Item'} - ${color}`,
-            sku: `${selectedProduct.sku || 'SKU'}-${color.substring(0, 3).toUpperCase()}`,
+            productId: resolvedProdId,
+            productName: `${resolvedProduct.name || 'Garment Item'} - ${color}`,
+            sku: `${resolvedProduct.sku || 'SKU'}-${color.substring(0, 3).toUpperCase()}`,
             description: `Set Breakdown: [${sizeBreakdown.join(', ')}] • Total ${colorTotalQty} pcs`,
-            hsnCode: selectedProduct.category?.hsnCode || '6109',
+            hsnCode: resolvedProduct.category?.hsnCode || '6109',
             quantity: colorTotalQty,
             rate: rate,
-            unitWeight: selectedProduct.weight || 0.25,
+            unitWeight: resolvedProduct.weight || 0.25,
             discountType: 'percent',
             discountPercent: 0,
             discountAmount: 0,
             gstRate: 5,
-            availableStock: selectedProduct.stockQuantity || 100,
+            availableStock: resolvedProduct.stockQuantity || 100,
             garmentMatrix: { colors: [color], matrix: { [color]: matrix[color] } }
           });
         }
