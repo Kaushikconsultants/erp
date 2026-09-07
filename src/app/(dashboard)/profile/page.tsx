@@ -2,7 +2,27 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
-import { User, Mail, Lock, ShieldCheck, Loader2, Camera, Upload, Trash2, CheckCircle2, Fingerprint, Smartphone, KeyRound } from 'lucide-react';
+import {
+  User,
+  Mail,
+  Lock,
+  ShieldCheck,
+  Loader2,
+  Camera,
+  Upload,
+  Trash2,
+  CheckCircle2,
+  Fingerprint,
+  Smartphone,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Play,
+  AlertCircle,
+  Sparkles,
+  Zap
+} from 'lucide-react';
+import { triggerHaptic } from '@/lib/capacitor';
 import './profile.css';
 
 export default function ProfilePage() {
@@ -16,7 +36,11 @@ export default function ProfilePage() {
   // MPIN & Biometric Security State
   const [mpinEnabled, setMpinEnabled] = useState<boolean>(false);
   const [mpinInput, setMpinInput] = useState<string>('');
+  const [mpinConfirmInput, setMpinConfirmInput] = useState<string>('');
+  const [showMpin, setShowMpin] = useState<boolean>(false);
+  const [showConfirmMpin, setShowConfirmMpin] = useState<boolean>(false);
   const [mpinMsg, setMpinMsg] = useState<string>('');
+  const [mpinMsgType, setMpinMsgType] = useState<'success' | 'error' | ''>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,26 +86,76 @@ export default function ProfilePage() {
       const savedPin = localStorage.getItem('app_mpin_code') || '';
       setMpinEnabled(enabled);
       setMpinInput(savedPin);
+      setMpinConfirmInput(savedPin);
     }
   }, [session]);
 
-  const handleSaveMpin = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleToggleMpin = (checked: boolean) => {
+    setMpinEnabled(checked);
     setMpinMsg('');
-    if (mpinEnabled && (!mpinInput || mpinInput.length !== 4 || isNaN(Number(mpinInput)))) {
-      setMpinMsg('⚠️ Please enter a valid 4-digit numeric MPIN.');
+    triggerHaptic('light');
+
+    if (!checked) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('app_mpin_enabled', 'false');
+        setMpinMsgType('success');
+        setMpinMsg('App Lock disabled.');
+      }
+    } else {
+      setMpinMsgType('');
+      setMpinMsg('');
+    }
+  };
+
+  const handleSaveMpin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setMpinMsg('');
+    
+    if (mpinEnabled) {
+      if (!mpinInput || mpinInput.length !== 4 || isNaN(Number(mpinInput))) {
+        setMpinMsgType('error');
+        setMpinMsg('Please enter a valid 4-digit numeric MPIN.');
+        triggerHaptic('error');
+        return;
+      }
+      
+      if (mpinConfirmInput && mpinConfirmInput !== mpinInput) {
+        setMpinMsgType('error');
+        setMpinMsg('Confirm MPIN does not match your entered MPIN.');
+        triggerHaptic('error');
+        return;
+      }
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('app_mpin_enabled', 'true');
+        localStorage.setItem('app_mpin_code', mpinInput);
+        setMpinMsgType('success');
+        setMpinMsg('4-Digit MPIN & Biometric Lock enabled successfully!');
+        triggerHaptic('success');
+      }
+    } else {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('app_mpin_enabled', 'false');
+        setMpinMsgType('success');
+        setMpinMsg('App Lock disabled.');
+        triggerHaptic('medium');
+      }
+    }
+  };
+
+  const handleTestLock = () => {
+    if (!mpinEnabled || !mpinInput || mpinInput.length !== 4) {
+      setMpinMsgType('error');
+      setMpinMsg('Please enable App Lock and save a valid 4-digit MPIN first.');
+      triggerHaptic('error');
       return;
     }
 
     if (typeof window !== 'undefined') {
-      if (mpinEnabled) {
-        localStorage.setItem('app_mpin_enabled', 'true');
-        localStorage.setItem('app_mpin_code', mpinInput);
-        setMpinMsg('✅ 4-Digit MPIN & Biometric Lock Enabled!');
-      } else {
-        localStorage.setItem('app_mpin_enabled', 'false');
-        setMpinMsg('🔒 MPIN App Lock Disabled.');
-      }
+      localStorage.setItem('app_mpin_enabled', 'true');
+      localStorage.setItem('app_mpin_code', mpinInput);
+      triggerHaptic('light');
+      window.dispatchEvent(new CustomEvent('test-app-lock'));
     }
   };
 
@@ -317,77 +391,150 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Mobile App 4-Digit MPIN & Biometric Lock Settings Block */}
-            <div style={{ marginTop: '24px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <h3 className="section-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Fingerprint size={20} color="#4f46e5" /> Mobile App Security & MPIN
-                </h3>
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 700, color: mpinEnabled ? '#10b981' : '#64748b' }}>
-                  <input
-                    type="checkbox"
-                    checked={mpinEnabled}
-                    onChange={(e) => setMpinEnabled(e.target.checked)}
-                    style={{ width: '18px', height: '18px', accentColor: '#4f46e5', cursor: 'pointer' }}
-                  />
-                  <span>{mpinEnabled ? 'Lock Active 🟢' : 'Lock Disabled'}</span>
-                </label>
+            {/* Redesigned Modern Mobile App Security & MPIN Module */}
+            <div className={`security-section-card ${mpinEnabled ? 'active-card' : ''}`}>
+              <div className="security-header-row">
+                <div className="security-header-left">
+                  <div className="security-icon-badge">
+                    <Fingerprint size={24} />
+                  </div>
+                  <div className="security-header-info">
+                    <h4 className="security-title">
+                      Mobile App Security & MPIN
+                    </h4>
+                    <p className="security-subtitle">
+                      Instant biometric authentication & 4-digit PIN lock when opening or resuming the app.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="switch-control-group">
+                  <span className={`security-status-badge ${mpinEnabled ? 'active' : 'inactive'}`}>
+                    {mpinEnabled ? '● Active' : 'Disabled'}
+                  </span>
+                  <label className="switch-toggle" title={mpinEnabled ? 'Disable App Lock' : 'Enable App Lock'}>
+                    <input
+                      type="checkbox"
+                      checked={mpinEnabled}
+                      onChange={(e) => handleToggleMpin(e.target.checked)}
+                    />
+                    <span className="switch-slider"></span>
+                  </label>
+                </div>
               </div>
 
-              <p className="field-hint" style={{ marginBottom: '12px' }}>
-                Enable a 4-Digit MPIN or Fingerprint / Face ID lock whenever opening or resuming the mobile app.
-              </p>
+              {/* Informative Capability Badges */}
+              <div className="security-features-bar">
+                <span className={`security-feature-tag ${mpinEnabled ? 'highlight' : ''}`}>
+                  <ShieldCheck size={14} /> Biometrics & MPIN
+                </span>
+                <span className="security-feature-tag">
+                  <Smartphone size={14} /> Android & iOS Ready
+                </span>
+                <span className="security-feature-tag">
+                  <Zap size={14} /> Instant Resume Lock
+                </span>
+              </div>
 
+              {/* Status & Feedback Banner */}
               {mpinMsg && (
-                <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: mpinMsg.includes('✅') ? '#ecfdf5' : '#fef2f2', color: mpinMsg.includes('✅') ? '#047857' : '#b91c1c', fontSize: '0.8rem', fontWeight: 600, marginBottom: '12px' }}>
-                  {mpinMsg}
+                <div className={`security-msg-banner ${mpinMsgType === 'error' ? 'error' : 'success'}`}>
+                  {mpinMsgType === 'error' ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                  <span>{mpinMsg}</span>
                 </div>
               )}
 
+              {/* Active MPIN Configuration Panel */}
               {mpinEnabled && (
-                <div className="form-group" style={{ marginBottom: '12px' }}>
-                  <label htmlFor="mpin-input">4-Digit Security MPIN *</label>
-                  <div className="input-with-icon">
-                    <KeyRound size={19} className="input-icon" />
-                    <input
-                      id="mpin-input"
-                      type="password"
-                      maxLength={4}
-                      value={mpinInput}
-                      onChange={(e) => setMpinInput(e.target.value.replace(/\D/g, ''))}
-                      placeholder="e.g. 1234"
-                      className="form-input"
-                      style={{ letterSpacing: '4px', fontWeight: 700 }}
-                    />
+                <div className="mpin-config-panel">
+                  <div className="mpin-inputs-grid">
+                    {/* 4-Digit MPIN Field */}
+                    <div className="mpin-field-wrapper">
+                      <label htmlFor="mpin-input">
+                        <span>4-Digit MPIN Code *</span>
+                      </label>
+                      <div className="mpin-input-container">
+                        <KeyRound size={18} className="mpin-icon" />
+                        <input
+                          id="mpin-input"
+                          type={showMpin ? 'text' : 'password'}
+                          maxLength={4}
+                          value={mpinInput}
+                          onChange={(e) => setMpinInput(e.target.value.replace(/\D/g, ''))}
+                          placeholder="••••"
+                          className="mpin-styled-input"
+                          inputMode="numeric"
+                        />
+                        <button
+                          type="button"
+                          className="mpin-eye-btn"
+                          onClick={() => setShowMpin(!showMpin)}
+                          title={showMpin ? 'Hide MPIN' : 'Show MPIN'}
+                        >
+                          {showMpin ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Confirm 4-Digit MPIN Field */}
+                    <div className="mpin-field-wrapper">
+                      <label htmlFor="mpin-confirm-input">
+                        <span>Confirm 4-Digit MPIN *</span>
+                      </label>
+                      <div className="mpin-input-container">
+                        <ShieldCheck size={18} className="mpin-icon" />
+                        <input
+                          id="mpin-confirm-input"
+                          type={showConfirmMpin ? 'text' : 'password'}
+                          maxLength={4}
+                          value={mpinConfirmInput}
+                          onChange={(e) => setMpinConfirmInput(e.target.value.replace(/\D/g, ''))}
+                          placeholder="••••"
+                          className="mpin-styled-input"
+                          inputMode="numeric"
+                        />
+                        <button
+                          type="button"
+                          className="mpin-eye-btn"
+                          onClick={() => setShowConfirmMpin(!showConfirmMpin)}
+                          title={showConfirmMpin ? 'Hide PIN' : 'Show PIN'}
+                        >
+                          {showConfirmMpin ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleSaveMpin}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  backgroundColor: '#4f46e5',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <ShieldCheck size={16} />
-                <span>Save App Lock Settings</span>
-              </button>
+              {/* Security Action Toolbar */}
+              <div className="security-actions-bar">
+                <button
+                  type="button"
+                  className="btn-save-security"
+                  onClick={() => handleSaveMpin()}
+                >
+                  <ShieldCheck size={16} />
+                  <span>Save App Lock Settings</span>
+                </button>
+
+                {mpinEnabled && (
+                  <button
+                    type="button"
+                    className="btn-test-lock"
+                    onClick={handleTestLock}
+                    title="Test Lock Screen & Biometrics preview"
+                  >
+                    <Play size={14} fill="#15803d" />
+                    <span>Test Lock Screen Now</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="form-actions mt-6">
               <button type="submit" className="primary-btn submit-btn" disabled={isLoading} style={{ padding: '12px 24px', borderRadius: '10px', fontSize: '0.9rem', fontWeight: 600 }}>
-                {isLoading ? <Loader2 size={18} className="spinner" /> : 'Save Changes'}
+                {isLoading ? <Loader2 size={18} className="spinner" /> : 'Save Profile Changes'}
               </button>
             </div>
           </form>

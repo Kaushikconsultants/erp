@@ -1,0 +1,536 @@
+/* =========================================================
+   TELECRM CALLING HUB STYLES
+   Clean, Modern, Theme-Matched Enterprise UI
+   ========================================================= */
+
+.telecrm-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 80px;
+}
+
+/* ─── Hero Banner & Header Card ─── */
+.telecrm-hero-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.04);
+  position: relative;
+  overflow: hidden;
+}
+
+.telecrm-hero-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #4f46e5 0%, #06b6d4 100%);
+}
+
+.telecrm-hero-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.telecrm-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.telecrm-icon-badge {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.telecrm-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.telecrm-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.telecrm-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.telecrm-enterprise-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #eef2ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.telecrm-subtitle {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Header Action Buttons */
+.telecrm-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-telecrm-primary {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-telecrm-primary:hover {
+  background: linear-gradient(135deg, #4338ca 0%, #3730a3 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+}
+
+.btn-telecrm-primary:active {
+  transform: translateY(0);
+}
+
+.btn-telecrm-secondary {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-telecrm-secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* ─── 4-Card KPI Stat Grid ─── */
+.telecrm-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.telecrm-kpi-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.telecrm-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
+}
+
+.telecrm-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.telecrm-kpi-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.telecrm-kpi-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.telecrm-kpi-icon-wrap.indigo {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.telecrm-kpi-icon-wrap.emerald {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.telecrm-kpi-icon-wrap.sky {
+  background: #f0f9ff;
+  color: #0284c7;
+}
+
+.telecrm-kpi-icon-wrap.violet {
+  background: #f5f3ff;
+  color: #7c3aed;
+}
+
+.telecrm-kpi-val {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.telecrm-kpi-meta {
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+/* ─── Sub-Navigation Segmented Tab Bar ─── */
+.telecrm-tabs-bar {
+  display: flex;
+  background: #ffffff;
+  padding: 5px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+  margin-bottom: 20px;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.telecrm-tab-item {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.telecrm-tab-item:hover {
+  color: #1e293b;
+  background: #f8fafc;
+}
+
+.telecrm-tab-item.active {
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.tab-count-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* ─── Timeframe Filter Bar ─── */
+.telecrm-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.telecrm-timeframe-pills {
+  display: flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 2px;
+}
+
+.telecrm-timeframe-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: #64748b;
+  transition: all 0.15s ease;
+  text-transform: capitalize;
+}
+
+.telecrm-timeframe-btn:hover {
+  color: #1e293b;
+}
+
+.telecrm-timeframe-btn.active {
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.btn-refresh-telecrm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-refresh-telecrm:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+/* ─── Employee Performance Leaderboard Cards ─── */
+.telecrm-employee-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.telecrm-emp-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.telecrm-emp-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.telecrm-emp-card.top-performer {
+  border-color: #c7d2fe;
+  background: linear-gradient(135deg, #ffffff 0%, #fafcff 100%);
+}
+
+.top-performer-tag {
+  position: absolute;
+  right: 16px;
+  top: -10px;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.25);
+  letter-spacing: 0.3px;
+}
+
+.telecrm-emp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.telecrm-emp-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.telecrm-emp-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.telecrm-emp-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.telecrm-emp-meta {
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: #64748b;
+  margin: 1px 0 0 0;
+}
+
+.telecrm-emp-target-box {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.telecrm-emp-target-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.telecrm-emp-target-sub {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.telecrm-progress-track {
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.telecrm-progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.3s ease;
+}
+
+.telecrm-emp-metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #f1f5f9;
+}
+
+.emp-metric-cell-label {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.emp-metric-cell-val {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+/* ─── Responsive Media Queries ─── */
+@media (max-width: 900px) {
+  .telecrm-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .telecrm-hero-card {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .telecrm-hero-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .telecrm-hero-actions {
+    width: 100%;
+  }
+
+  .btn-telecrm-primary,
+  .btn-telecrm-secondary {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .telecrm-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .telecrm-kpi-val {
+    font-size: 1.25rem;
+  }
+
+  .telecrm-emp-metrics-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+}

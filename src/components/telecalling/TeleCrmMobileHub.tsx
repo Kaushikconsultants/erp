@@ -29,11 +29,13 @@ import {
   BookOpen,
   Headphones,
   Flame,
-  Check
+  Check,
+  FileText
 } from "lucide-react";
 import PhoneDialerModal from "@/components/ui/PhoneDialerModal";
 import { getEmployeeCallAnalytics, getTelecallingQueue, deleteCall, updateCall } from "@/app/actions/callActions";
 import LogCallModal from "@/components/ui/LogCallModal";
+import "./telecrm.css";
 
 interface TeleCrmMobileHubProps {
   initialCalls: any[];
@@ -202,160 +204,127 @@ export default function TeleCrmMobileHub({
   };
 
   return (
-    <div style={{ width: "100%", maxWidth: "1200px", margin: "0 auto", paddingBottom: "80px" }}>
+    <div className="telecrm-container">
       
-      {/* ─── ENTERPRISE TELECRM HEADER ─── */}
-      <div style={{
-        background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)",
-        borderRadius: "24px",
-        padding: "20px 22px",
-        color: "#ffffff",
-        marginBottom: "20px",
-        boxShadow: "0 10px 30px rgba(49, 46, 129, 0.25)",
-        position: "relative",
-        overflow: "hidden"
-      }}>
-        {/* Subtle decorative glow */}
-        <div style={{ position: "absolute", top: "-40px", right: "-40px", width: "160px", height: "160px", background: "radial-gradient(circle, rgba(129, 140, 248, 0.35) 0%, rgba(0,0,0,0) 70%)", borderRadius: "50%", pointerEvents: "none" }} />
-
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: "42px", height: "42px", borderRadius: "14px", backgroundColor: "rgba(255,255,255,0.15)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Headphones size={22} color="#a5b4fc" />
+      {/* ─── THEME-MATCHED HERO BANNER & HEADER CARD ─── */}
+      <div className="telecrm-hero-card">
+        <div className="telecrm-hero-header">
+          <div className="telecrm-hero-left">
+            <div className="telecrm-icon-badge">
+              <Headphones size={24} />
             </div>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <h1 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "#ffffff", letterSpacing: "-0.02em" }}>
+            <div className="telecrm-title-group">
+              <div className="telecrm-title-row">
+                <h1 className="telecrm-title">
                   TeleCRM Calling Hub
                 </h1>
-                <span style={{ fontSize: "0.68rem", fontWeight: 800, padding: "2px 7px", borderRadius: "12px", backgroundColor: "#10b981", color: "#ffffff", letterSpacing: "0.5px" }}>
-                  ENTERPRISE
+                <span className="telecrm-enterprise-badge">
+                  Enterprise
                 </span>
               </div>
-              <span style={{ fontSize: "0.76rem", color: "#c7d2fe" }}>
-                Call tracking, duration analytics & employee metrics
-              </span>
+              <p className="telecrm-subtitle">
+                Real-time call tracking, duration analytics & employee sales performance metrics
+              </p>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "8px" }}>
+          <div className="telecrm-hero-actions">
             <button
               type="button"
+              className="btn-telecrm-secondary"
+              onClick={() => setIsLogModalOpen(true)}
+              title="Manually log a past call"
+            >
+              <FileText size={16} /> Log Call
+            </button>
+
+            <button
+              type="button"
+              className="btn-telecrm-primary"
               onClick={() => openDialerWithContact("", "")}
-              style={{
-                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "12px",
-                padding: "8px 14px",
-                fontSize: "0.82rem",
-                fontWeight: 700,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)"
-              }}
+              title="Open Smart Phone Dialer"
             >
               <PhoneCall size={16} /> Open Dialer
             </button>
           </div>
         </div>
 
-        {/* ─── LIVE KPI METRIC CHIPS ─── */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
-          <div style={{ backgroundColor: "rgba(255,255,255,0.1)", backdropFilter: "blur(6px)", borderRadius: "14px", padding: "12px 14px", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <div style={{ fontSize: "0.72rem", color: "#c7d2fe", fontWeight: 700, textTransform: "uppercase", marginBottom: "4px" }}>Total Calls</div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#ffffff", display: "flex", alignItems: "baseline", gap: "6px" }}>
+        {/* ─── LIVE KPI METRIC CARDS ─── */}
+        <div className="telecrm-kpi-grid">
+          {/* Total Calls */}
+          <div className="telecrm-kpi-card">
+            <div className="telecrm-kpi-top">
+              <span className="telecrm-kpi-label">Total Calls</span>
+              <div className="telecrm-kpi-icon-wrap indigo">
+                <PhoneCall size={16} />
+              </div>
+            </div>
+            <div className="telecrm-kpi-val">
               {metrics.totalCalls}
-              <span style={{ fontSize: "0.72rem", color: "#86efac", fontWeight: 600 }}>calls</span>
+              <span className="telecrm-kpi-meta">calls</span>
             </div>
           </div>
 
-          <div style={{ backgroundColor: "rgba(255,255,255,0.1)", backdropFilter: "blur(6px)", borderRadius: "14px", padding: "12px 14px", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <div style={{ fontSize: "0.72rem", color: "#c7d2fe", fontWeight: 700, textTransform: "uppercase", marginBottom: "4px" }}>Connect Rate</div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#ffffff", display: "flex", alignItems: "baseline", gap: "6px" }}>
+          {/* Connect Rate */}
+          <div className="telecrm-kpi-card">
+            <div className="telecrm-kpi-top">
+              <span className="telecrm-kpi-label">Connect Rate</span>
+              <div className="telecrm-kpi-icon-wrap emerald">
+                <TrendingUp size={16} />
+              </div>
+            </div>
+            <div className="telecrm-kpi-val">
               {metrics.connectRate}%
-              <span style={{ fontSize: "0.72rem", color: "#93c5fd", fontWeight: 600 }}>({metrics.connectedCalls})</span>
+              <span className="telecrm-kpi-meta">({metrics.connectedCalls} connected)</span>
             </div>
           </div>
 
-          <div style={{ backgroundColor: "rgba(255,255,255,0.1)", backdropFilter: "blur(6px)", borderRadius: "14px", padding: "12px 14px", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <div style={{ fontSize: "0.72rem", color: "#c7d2fe", fontWeight: 700, textTransform: "uppercase", marginBottom: "4px" }}>Total Talk Time</div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#ffffff", display: "flex", alignItems: "baseline", gap: "6px" }}>
+          {/* Total Talk Time */}
+          <div className="telecrm-kpi-card">
+            <div className="telecrm-kpi-top">
+              <span className="telecrm-kpi-label">Total Talk Time</span>
+              <div className="telecrm-kpi-icon-wrap sky">
+                <Clock size={16} />
+              </div>
+            </div>
+            <div className="telecrm-kpi-val">
               {formatTotalTime(metrics.totalDurationSec)}
             </div>
           </div>
 
-          <div style={{ backgroundColor: "rgba(255,255,255,0.1)", backdropFilter: "blur(6px)", borderRadius: "14px", padding: "12px 14px", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <div style={{ fontSize: "0.72rem", color: "#c7d2fe", fontWeight: 700, textTransform: "uppercase", marginBottom: "4px" }}>Avg Duration</div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 900, color: "#ffffff", display: "flex", alignItems: "baseline", gap: "6px" }}>
+          {/* Avg Duration */}
+          <div className="telecrm-kpi-card">
+            <div className="telecrm-kpi-top">
+              <span className="telecrm-kpi-label">Avg Duration</span>
+              <div className="telecrm-kpi-icon-wrap violet">
+                <Zap size={16} />
+              </div>
+            </div>
+            <div className="telecrm-kpi-val">
               {formatDuration(metrics.avgDurationSec)}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ─── SUB-NAVIGATION PILL TABS ─── */}
-      <div style={{
-        display: "flex",
-        backgroundColor: "#ffffff",
-        padding: "6px",
-        borderRadius: "16px",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
-        border: "1px solid #e2e8f0",
-        marginBottom: "20px",
-        gap: "6px",
-        overflowX: "auto"
-      }}>
+      {/* ─── SUB-NAVIGATION SEGMENTED TAB BAR ─── */}
+      <div className="telecrm-tabs-bar">
         <button
           type="button"
+          className={`telecrm-tab-item ${activeTab === "ANALYTICS" ? "active" : ""}`}
           onClick={() => setActiveTab("ANALYTICS")}
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            borderRadius: "12px",
-            border: "none",
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            backgroundColor: activeTab === "ANALYTICS" ? "#4f46e5" : "transparent",
-            color: activeTab === "ANALYTICS" ? "#ffffff" : "#475569",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            boxShadow: activeTab === "ANALYTICS" ? "0 4px 12px rgba(79, 70, 229, 0.3)" : "none",
-            whiteSpace: "nowrap"
-          }}
         >
           <BarChart3 size={16} /> Employee Analytics
         </button>
 
         <button
           type="button"
+          className={`telecrm-tab-item ${activeTab === "QUEUE" ? "active" : ""}`}
           onClick={() => setActiveTab("QUEUE")}
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            borderRadius: "12px",
-            border: "none",
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            backgroundColor: activeTab === "QUEUE" ? "#4f46e5" : "transparent",
-            color: activeTab === "QUEUE" ? "#ffffff" : "#475569",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            boxShadow: activeTab === "QUEUE" ? "0 4px 12px rgba(79, 70, 229, 0.3)" : "none",
-            whiteSpace: "nowrap"
-          }}
         >
           <Flame size={16} /> Calling Queue
           {queueData.overdue?.length > 0 && (
-            <span style={{ fontSize: "0.68rem", padding: "1px 6px", borderRadius: "10px", backgroundColor: "#ef4444", color: "#ffffff", fontWeight: 800 }}>
+            <span className="tab-count-badge">
               {queueData.overdue.length}
             </span>
           )}
@@ -363,48 +332,16 @@ export default function TeleCrmMobileHub({
 
         <button
           type="button"
+          className={`telecrm-tab-item ${activeTab === "HISTORY" ? "active" : ""}`}
           onClick={() => setActiveTab("HISTORY")}
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            borderRadius: "12px",
-            border: "none",
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            backgroundColor: activeTab === "HISTORY" ? "#4f46e5" : "transparent",
-            color: activeTab === "HISTORY" ? "#ffffff" : "#475569",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            boxShadow: activeTab === "HISTORY" ? "0 4px 12px rgba(79, 70, 229, 0.3)" : "none",
-            whiteSpace: "nowrap"
-          }}
         >
           <Clock size={16} /> Call History & Logs
         </button>
 
         <button
           type="button"
+          className={`telecrm-tab-item ${activeTab === "PLAYBOOK" ? "active" : ""}`}
           onClick={() => setActiveTab("PLAYBOOK")}
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            borderRadius: "12px",
-            border: "none",
-            fontSize: "0.85rem",
-            fontWeight: 800,
-            cursor: "pointer",
-            backgroundColor: activeTab === "PLAYBOOK" ? "#4f46e5" : "transparent",
-            color: activeTab === "PLAYBOOK" ? "#ffffff" : "#475569",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            boxShadow: activeTab === "PLAYBOOK" ? "0 4px 12px rgba(79, 70, 229, 0.3)" : "none",
-            whiteSpace: "nowrap"
-          }}
         >
           <BookOpen size={16} /> Playbook & Scripts
         </button>
@@ -414,25 +351,14 @@ export default function TeleCrmMobileHub({
       {activeTab === "ANALYTICS" && (
         <div>
           {/* Timeframe Filter Bar */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
-            <div style={{ display: "flex", gap: "6px", backgroundColor: "#f1f5f9", padding: "4px", borderRadius: "10px" }}>
+          <div className="telecrm-filter-row">
+            <div className="telecrm-timeframe-pills">
               {(["today", "yesterday", "this_week", "this_month", "all"] as const).map(tf => (
                 <button
                   key={tf}
                   type="button"
                   onClick={() => setTimeframe(tf)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "8px",
-                    border: "none",
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    backgroundColor: timeframe === tf ? "#ffffff" : "transparent",
-                    color: timeframe === tf ? "#4f46e5" : "#64748b",
-                    boxShadow: timeframe === tf ? "0 2px 4px rgba(0,0,0,0.06)" : "none",
-                    textTransform: "capitalize"
-                  }}
+                  className={`telecrm-timeframe-btn ${timeframe === tf ? "active" : ""}`}
                 >
                   {tf.replace("_", " ")}
                 </button>
@@ -442,92 +368,98 @@ export default function TeleCrmMobileHub({
             <button
               type="button"
               onClick={() => loadAnalytics(timeframe)}
-              style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "1px solid #cbd5e1", borderRadius: "8px", padding: "6px 12px", fontSize: "0.78rem", fontWeight: 600, color: "#475569", cursor: "pointer" }}
+              className="btn-refresh-telecrm"
             >
-              <RefreshCw size={13} className={loadingAnalytics ? "animate-spin" : ""} /> Refresh Stats
+              <RefreshCw size={13} className={loadingAnalytics ? "animate-spin" : ""} />
+              <span>Refresh Stats</span>
             </button>
           </div>
 
-          {/* Employee Leaderboard Cards Grid */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {analyticsData?.employeeStats?.map((emp: any, index: number) => (
-              <div
-                key={emp.id}
-                style={{
-                  backgroundColor: "#ffffff",
-                  borderRadius: "16px",
-                  padding: "16px 18px",
-                  border: index === 0 && emp.totalCalls > 0 ? "2px solid #818cf8" : "1px solid #e2e8f0",
-                  boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
-                  position: "relative"
-                }}
-              >
-                {/* Top Performer Badge */}
-                {index === 0 && emp.totalCalls > 0 && (
-                  <div style={{ position: "absolute", right: "16px", top: "-10px", backgroundColor: "#4f46e5", color: "#ffffff", fontSize: "0.68rem", fontWeight: 800, padding: "2px 8px", borderRadius: "10px", display: "flex", alignItems: "center", gap: "4px" }}>
-                    <Award size={12} /> TOP PERFORMER
-                  </div>
-                )}
+          {/* Employee Leaderboard Cards */}
+          <div className="telecrm-employee-grid">
+            {analyticsData?.employeeStats?.map((emp: any, index: number) => {
+              const isTop = index === 0 && emp.totalCalls > 0;
+              return (
+                <div
+                  key={emp.id}
+                  className={`telecrm-emp-card ${isTop ? "top-performer" : ""}`}
+                >
+                  {/* Top Performer Badge */}
+                  {isTop && (
+                    <div className="top-performer-tag">
+                      <Award size={12} /> TOP PERFORMER
+                    </div>
+                  )}
 
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)", color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "1rem" }}>
-                      {emp.name.charAt(0)}
+                  <div className="telecrm-emp-header">
+                    <div className="telecrm-emp-info">
+                      <div className="telecrm-emp-avatar">
+                        {emp.name ? emp.name.charAt(0).toUpperCase() : "U"}
+                      </div>
+                      <div>
+                        <h3 className="telecrm-emp-name">{emp.name}</h3>
+                        <p className="telecrm-emp-meta">{emp.role} • {emp.email}</p>
+                      </div>
+                    </div>
+
+                    {/* Target Achievement */}
+                    <div className="telecrm-emp-target-box">
+                      <div className="telecrm-emp-target-val">
+                        {emp.totalCalls}{" "}
+                        <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 500 }}>
+                          / {emp.target} calls
+                        </span>
+                      </div>
+                      <span
+                        className="telecrm-emp-target-sub"
+                        style={{ color: emp.targetPercent >= 100 ? "#16a34a" : "#4f46e5" }}
+                      >
+                        {emp.targetPercent}% target met
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="telecrm-progress-track">
+                    <div
+                      className="telecrm-progress-fill"
+                      style={{
+                        width: `${Math.min(100, emp.targetPercent)}%`,
+                        backgroundColor: emp.targetPercent >= 100 ? "#10b981" : "#4f46e5"
+                      }}
+                    />
+                  </div>
+
+                  {/* Metrics 4-Box Row */}
+                  <div className="telecrm-emp-metrics-row">
+                    <div>
+                      <div className="emp-metric-cell-label">Connected</div>
+                      <div className="emp-metric-cell-val">{emp.connectedCalls}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "0.96rem", fontWeight: 800, color: "#0f172a" }}>{emp.name}</div>
-                      <div style={{ fontSize: "0.74rem", color: "#64748b" }}>{emp.role} • {emp.email}</div>
+                      <div className="emp-metric-cell-label">Connect %</div>
+                      <div
+                        className="emp-metric-cell-val"
+                        style={{ color: emp.connectRate >= 40 ? "#16a34a" : "#d97706" }}
+                      >
+                        {emp.connectRate}%
+                      </div>
+                    </div>
+                    <div>
+                      <div className="emp-metric-cell-label">Talk Time</div>
+                      <div className="emp-metric-cell-val">{formatTotalTime(emp.totalDurationSec)}</div>
+                    </div>
+                    <div>
+                      <div className="emp-metric-cell-label">Avg Call</div>
+                      <div className="emp-metric-cell-val">{formatDuration(emp.avgDurationSec)}</div>
                     </div>
                   </div>
-
-                  {/* Target Achievement */}
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: "1.15rem", fontWeight: 900, color: "#0f172a" }}>
-                      {emp.totalCalls} <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 600 }}>/ {emp.target} calls</span>
-                    </div>
-                    <span style={{ fontSize: "0.72rem", color: emp.targetPercent >= 100 ? "#16a34a" : "#4f46e5", fontWeight: 700 }}>
-                      {emp.targetPercent}% target met
-                    </span>
-                  </div>
                 </div>
-
-                {/* Progress Bar */}
-                <div style={{ height: "6px", backgroundColor: "#f1f5f9", borderRadius: "3px", overflow: "hidden", marginBottom: "14px" }}>
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${emp.targetPercent}%`,
-                      backgroundColor: emp.targetPercent >= 100 ? "#10b981" : "#4f46e5",
-                      borderRadius: "3px",
-                      transition: "width 0.3s ease"
-                    }}
-                  />
-                </div>
-
-                {/* Metrics 4-Box Row */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", backgroundColor: "#f8fafc", padding: "10px", borderRadius: "10px" }}>
-                  <div>
-                    <div style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Connected</div>
-                    <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "#0f172a" }}>{emp.connectedCalls}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Connect %</div>
-                    <div style={{ fontSize: "0.92rem", fontWeight: 800, color: emp.connectRate >= 40 ? "#16a34a" : "#d97706" }}>{emp.connectRate}%</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Talk Time</div>
-                    <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "#0f172a" }}>{formatTotalTime(emp.totalDurationSec)}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Avg Call</div>
-                    <div style={{ fontSize: "0.92rem", fontWeight: 800, color: "#0f172a" }}>{formatDuration(emp.avgDurationSec)}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             {(!analyticsData?.employeeStats || analyticsData.employeeStats.length === 0) && (
-              <div style={{ textAlign: "center", padding: "36px", backgroundColor: "#ffffff", borderRadius: "16px", color: "#64748b" }}>
+              <div style={{ textAlign: "center", padding: "36px", backgroundColor: "#ffffff", borderRadius: "16px", color: "#64748b", border: "1px solid #e2e8f0" }}>
                 No employee call metrics recorded for this timeframe.
               </div>
             )}
@@ -544,7 +476,7 @@ export default function TeleCrmMobileHub({
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
                 <AlertCircle size={18} color="#dc2626" />
-                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#991b1b" }}>
+                <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#991b1b" }}>
                   Overdue Follow-ups ({queueData.overdue.length})
                 </h3>
               </div>
@@ -553,10 +485,23 @@ export default function TeleCrmMobileHub({
                   const name = c.customer?.businessName || c.lead?.shopName || c.lead?.name || "Customer";
                   const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || "";
                   return (
-                    <div key={c.id} style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div
+                      key={c.id}
+                      style={{
+                        backgroundColor: "#fef2f2",
+                        border: "1px solid #fecaca",
+                        borderRadius: "12px",
+                        padding: "12px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "10px",
+                        flexWrap: "wrap"
+                      }}
+                    >
                       <div>
-                        <div style={{ fontSize: "0.9rem", fontWeight: 800, color: "#991b1b" }}>{name}</div>
-                        <div style={{ fontSize: "0.75rem", color: "#7f1d1d" }}>
+                        <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#991b1b" }}>{name}</div>
+                        <div style={{ fontSize: "0.75rem", color: "#7f1d1d", marginTop: "2px" }}>
                           Due: {new Date(c.followUpDate).toLocaleDateString()} • Outcome: {c.outcome}
                         </div>
                       </div>
@@ -565,16 +510,16 @@ export default function TeleCrmMobileHub({
                           <button
                             type="button"
                             onClick={() => openWhatsApp(phone)}
-                            style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#25d366", color: "#ffffff", border: "none", cursor: "pointer" }}
+                            style={{ padding: "6px 10px", borderRadius: "8px", backgroundColor: "#25d366", color: "#ffffff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", fontWeight: 600 }}
                             title="WhatsApp"
                           >
-                            <MessageSquare size={16} />
+                            <MessageSquare size={14} /> WhatsApp
                           </button>
                         )}
                         <button
                           type="button"
                           onClick={() => openDialerWithContact(phone, name, c.customerId, c.leadId)}
-                          style={{ padding: "6px 12px", borderRadius: "8px", backgroundColor: "#dc2626", color: "#ffffff", border: "none", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                          style={{ padding: "6px 12px", borderRadius: "8px", backgroundColor: "#dc2626", color: "#ffffff", border: "none", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
                         >
                           <PhoneCall size={14} /> Call Now
                         </button>
@@ -590,7 +535,7 @@ export default function TeleCrmMobileHub({
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
               <Calendar size={18} color="#4f46e5" />
-              <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#0f172a" }}>
+              <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>
                 Today's Scheduled Calls ({queueData.todayDue?.length || 0})
               </h3>
             </div>
@@ -599,10 +544,24 @@ export default function TeleCrmMobileHub({
                 const name = c.customer?.businessName || c.lead?.shopName || c.lead?.name || "Customer";
                 const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || "";
                 return (
-                  <div key={c.id} style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div
+                    key={c.id}
+                    style={{
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "12px",
+                      padding: "12px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px",
+                      flexWrap: "wrap",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+                    }}
+                  >
                     <div>
-                      <div style={{ fontSize: "0.9rem", fontWeight: 800, color: "#0f172a" }}>{name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                      <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>{name}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
                         Time: {new Date(c.followUpDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Prev: {c.outcome}
                       </div>
                     </div>
@@ -611,15 +570,15 @@ export default function TeleCrmMobileHub({
                         <button
                           type="button"
                           onClick={() => openWhatsApp(phone)}
-                          style={{ padding: "6px", borderRadius: "8px", backgroundColor: "#25d366", color: "#ffffff", border: "none", cursor: "pointer" }}
+                          style={{ padding: "6px 10px", borderRadius: "8px", backgroundColor: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", fontSize: "0.75rem", fontWeight: 600 }}
                         >
-                          <MessageSquare size={16} />
+                          <MessageSquare size={14} /> WhatsApp
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => openDialerWithContact(phone, name, c.customerId, c.leadId)}
-                        style={{ padding: "6px 12px", borderRadius: "8px", backgroundColor: "#4f46e5", color: "#ffffff", border: "none", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                        style={{ padding: "6px 12px", borderRadius: "8px", backgroundColor: "#4f46e5", color: "#ffffff", border: "none", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
                       >
                         <PhoneCall size={14} /> Call Now
                       </button>
@@ -628,7 +587,7 @@ export default function TeleCrmMobileHub({
                 );
               })}
               {(!queueData.todayDue || queueData.todayDue.length === 0) && (
-                <div style={{ textAlign: "center", padding: "24px", backgroundColor: "#ffffff", borderRadius: "12px", color: "#64748b", fontSize: "0.85rem" }}>
+                <div style={{ textAlign: "center", padding: "24px", backgroundColor: "#ffffff", borderRadius: "12px", color: "#64748b", fontSize: "0.85rem", border: "1px solid #e2e8f0" }}>
                   No scheduled callbacks due for today.
                 </div>
               )}
@@ -640,21 +599,35 @@ export default function TeleCrmMobileHub({
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
                 <Sparkles size={18} color="#059669" />
-                <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 800, color: "#0f172a" }}>
+                <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>
                   Fresh Uncontacted Leads ({queueData.freshLeads.length})
                 </h3>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {queueData.freshLeads.map((l: any) => (
-                  <div key={l.id} style={{ backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div
+                    key={l.id}
+                    style={{
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "12px",
+                      padding: "12px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px",
+                      flexWrap: "wrap",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+                    }}
+                  >
                     <div>
-                      <div style={{ fontSize: "0.9rem", fontWeight: 800, color: "#0f172a" }}>{l.shopName || l.name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>Contact: {l.name} • {l.whatsappNumber}</div>
+                      <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#0f172a" }}>{l.shopName || l.name}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>Contact: {l.name} • {l.whatsappNumber}</div>
                     </div>
                     <button
                       type="button"
                       onClick={() => openDialerWithContact(l.whatsappNumber, l.name, undefined, l.id)}
-                      style={{ padding: "6px 12px", borderRadius: "8px", backgroundColor: "#059669", color: "#ffffff", border: "none", fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                      style={{ padding: "6px 12px", borderRadius: "8px", backgroundColor: "#059669", color: "#ffffff", border: "none", fontSize: "0.78rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
                     >
                       <Phone size={14} /> Start Call
                     </button>
@@ -686,7 +659,7 @@ export default function TeleCrmMobileHub({
             <select
               value={selectedOutcomeFilter}
               onChange={(e) => setSelectedOutcomeFilter(e.target.value)}
-              style={{ padding: "9px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.82rem", backgroundColor: "#ffffff", fontWeight: 600 }}
+              style={{ padding: "9px 12px", borderRadius: "10px", border: "1px solid #cbd5e1", fontSize: "0.82rem", backgroundColor: "#ffffff", fontWeight: 500, color: "#334155" }}
             >
               <option value="ALL">All Outcomes</option>
               {availableOutcomes.map(oc => (
@@ -711,13 +684,13 @@ export default function TeleCrmMobileHub({
                     borderRadius: "14px",
                     padding: "14px 16px",
                     border: "1px solid #e2e8f0",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.03)"
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
                     <div>
-                      <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#0f172a" }}>{customerName}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
+                      <div style={{ fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>{customerName}</div>
+                      <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: "2px" }}>
                         {new Date(call.createdAt).toLocaleDateString("en-GB")} at {new Date(call.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Rep: {repName}
                       </div>
                     </div>
@@ -726,7 +699,7 @@ export default function TeleCrmMobileHub({
                     <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
                       <span style={{
                         fontSize: "0.72rem",
-                        fontWeight: 700,
+                        fontWeight: 600,
                         padding: "3px 8px",
                         borderRadius: "6px",
                         backgroundColor: (call.durationSec || 0) > 0 ? "#ecfdf5" : "#f1f5f9",
@@ -739,7 +712,7 @@ export default function TeleCrmMobileHub({
                       </span>
                       <span style={{
                         fontSize: "0.7rem",
-                        fontWeight: 700,
+                        fontWeight: 600,
                         padding: "3px 6px",
                         borderRadius: "6px",
                         backgroundColor: call.callType === "INBOUND" ? "#e0e7ff" : "#f1f5f9",
@@ -751,26 +724,27 @@ export default function TeleCrmMobileHub({
                   </div>
 
                   {/* Outcome Tag & Discussion */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "8px 0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "8px 0", flexWrap: "wrap" }}>
                     <span style={{
-                      fontSize: "0.75rem",
-                      fontWeight: 700,
+                      fontSize: "0.74rem",
+                      fontWeight: 600,
                       padding: "2px 8px",
                       borderRadius: "6px",
-                      backgroundColor: "#e0e7ff",
-                      color: "#3730a3"
+                      backgroundColor: "#eef2ff",
+                      color: "#4338ca",
+                      border: "1px solid #e0e7ff"
                     }}>
                       {call.outcome}
                     </span>
                     {call.followUpDate && (
-                      <span style={{ fontSize: "0.72rem", color: isOverdue ? "#dc2626" : "#16a34a", fontWeight: 700, display: "flex", alignItems: "center", gap: "3px" }}>
+                      <span style={{ fontSize: "0.72rem", color: isOverdue ? "#dc2626" : "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: "3px" }}>
                         <Calendar size={12} /> Follow-up: {new Date(call.followUpDate).toLocaleDateString()}
                       </span>
                     )}
                   </div>
 
                   {call.notes && (
-                    <p style={{ margin: "6px 0 10px 0", fontSize: "0.8rem", color: "#475569", lineHeight: 1.4, backgroundColor: "#f8fafc", padding: "8px 10px", borderRadius: "8px" }}>
+                    <p style={{ margin: "6px 0 10px 0", fontSize: "0.8rem", color: "#475569", lineHeight: 1.4, backgroundColor: "#f8fafc", padding: "8px 10px", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
                       {call.notes}
                     </p>
                   )}
@@ -782,7 +756,7 @@ export default function TeleCrmMobileHub({
                         <button
                           type="button"
                           onClick={() => openDialerWithContact(phone, customerName, call.customerId, call.leadId)}
-                          style={{ padding: "5px 10px", borderRadius: "6px", backgroundColor: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                          style={{ padding: "5px 10px", borderRadius: "6px", backgroundColor: "#eef2ff", color: "#4f46e5", border: "1px solid #c7d2fe", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
                         >
                           <PhoneCall size={12} /> Re-dial
                         </button>
@@ -791,7 +765,7 @@ export default function TeleCrmMobileHub({
                         <button
                           type="button"
                           onClick={() => openWhatsApp(phone)}
-                          style={{ padding: "5px 10px", borderRadius: "6px", backgroundColor: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                          style={{ padding: "5px 10px", borderRadius: "6px", backgroundColor: "#ecfdf5", color: "#059669", border: "1px solid #a7f3d0", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
                         >
                           <MessageSquare size={12} /> WhatsApp
                         </button>
@@ -824,7 +798,7 @@ export default function TeleCrmMobileHub({
             })}
 
             {filteredCalls.length === 0 && (
-              <div style={{ textAlign: "center", padding: "36px", backgroundColor: "#ffffff", borderRadius: "14px", color: "#64748b" }}>
+              <div style={{ textAlign: "center", padding: "36px", backgroundColor: "#ffffff", borderRadius: "14px", color: "#64748b", border: "1px solid #e2e8f0" }}>
                 No call records matched your search.
               </div>
             )}
@@ -835,47 +809,47 @@ export default function TeleCrmMobileHub({
       {/* ─── TAB 4: PLAYBOOK & SCRIPTS ─── */}
       {activeTab === "PLAYBOOK" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div style={{ padding: "14px", backgroundColor: "#eef2ff", borderRadius: "14px", border: "1px solid #c7d2fe" }}>
-            <div style={{ fontSize: "0.9rem", fontWeight: 800, color: "#3730a3", marginBottom: "4px" }}>
-              🎯 Tele-calling Golden Rules
+          <div style={{ padding: "16px", backgroundColor: "#eef2ff", borderRadius: "14px", border: "1px solid #c7d2fe" }}>
+            <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#3730a3", marginBottom: "6px", display: "flex", alignItems: "center", gap: "6px" }}>
+              🎯 Telecalling Best Practices
             </div>
-            <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "0.8rem", color: "#4338ca", lineHeight: 1.5 }}>
-              <li>Introduce yourself clearly with company name in the first 5 seconds.</li>
-              <li>Ask open-ended questions about their current inventory & stock demand.</li>
-              <li>Always schedule a specific follow-up date and time before disconnecting.</li>
+            <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "0.8rem", color: "#4338ca", lineHeight: 1.6 }}>
+              <li>Introduce yourself clearly with company name within the first 5 seconds.</li>
+              <li>Ask open-ended questions about their current inventory & retail demand.</li>
+              <li>Always lock in a specific follow-up date and time before disconnecting.</li>
               <li>Send WhatsApp catalog or quotation immediately after ending the call.</li>
             </ul>
           </div>
 
-          <div style={{ backgroundColor: "#ffffff", borderRadius: "14px", padding: "16px", border: "1px solid #e2e8f0" }}>
-            <h4 style={{ margin: "0 0 10px 0", fontSize: "0.95rem", fontWeight: 800, color: "#0f172a" }}>
+          <div style={{ backgroundColor: "#ffffff", borderRadius: "14px", padding: "18px", border: "1px solid #e2e8f0", boxShadow: "0 1px 3px rgba(0,0,0,0.02)" }}>
+            <h4 style={{ margin: "0 0 12px 0", fontSize: "0.95rem", fontWeight: 700, color: "#0f172a" }}>
               Handling Common Objections
             </h4>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-                <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#dc2626", marginBottom: "4px" }}>
+              <div style={{ padding: "12px 14px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.82rem", color: "#dc2626", marginBottom: "4px" }}>
                   "Price is too high / Other vendors are cheaper"
                 </div>
-                <div style={{ fontSize: "0.78rem", color: "#334155" }}>
+                <div style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.4 }}>
                   → "I completely understand price is vital. However, our items come with zero-defect warranty, GST input credit, and 24-hr dispatch. A small test order will show you the higher retail profit margins."
                 </div>
               </div>
 
-              <div style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-                <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#dc2626", marginBottom: "4px" }}>
+              <div style={{ padding: "12px 14px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.82rem", color: "#dc2626", marginBottom: "4px" }}>
                   "I already have a regular supplier"
                 </div>
-                <div style={{ fontSize: "0.78rem", color: "#334155" }}>
+                <div style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.4 }}>
                   → "That's great! We don't ask you to leave them. Keep us as a backup supplier for festive high-demand items where stock runs out."
                 </div>
               </div>
 
-              <div style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
-                <div style={{ fontWeight: 700, fontSize: "0.82rem", color: "#dc2626", marginBottom: "4px" }}>
+              <div style={{ padding: "12px 14px", backgroundColor: "#f8fafc", borderRadius: "10px", border: "1px solid #e2e8f0" }}>
+                <div style={{ fontWeight: 600, fontSize: "0.82rem", color: "#dc2626", marginBottom: "4px" }}>
                   "Send details on WhatsApp, I will check later"
                 </div>
-                <div style={{ fontSize: "0.78rem", color: "#334155" }}>
+                <div style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.4 }}>
                   → "Absolutely, I am sending the catalog on WhatsApp right now. Which category should I highlight for you: Wholesale or Premium Retail?"
                 </div>
               </div>
@@ -888,11 +862,11 @@ export default function TeleCrmMobileHub({
       {editingCall && (
         <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.65)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 99999, padding: "16px" }}>
           <div style={{ backgroundColor: "#ffffff", borderRadius: "16px", maxWidth: "480px", width: "100%", padding: "20px", boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}>
-            <h3 style={{ margin: "0 0 14px 0", fontSize: "1.1rem", fontWeight: 800, color: "#0f172a" }}>Edit Call Record</h3>
+            <h3 style={{ margin: "0 0 14px 0", fontSize: "1.05rem", fontWeight: 700, color: "#0f172a" }}>Edit Call Record</h3>
             
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "16px" }}>
               <div>
-                <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>Outcome</label>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>Outcome</label>
                 <select
                   value={editOutcome}
                   onChange={(e) => setEditOutcome(e.target.value)}
@@ -905,7 +879,7 @@ export default function TeleCrmMobileHub({
               </div>
 
               <div>
-                <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>Duration (Seconds)</label>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>Duration (Seconds)</label>
                 <input
                   type="number"
                   value={editDurationSec}
@@ -915,7 +889,7 @@ export default function TeleCrmMobileHub({
               </div>
 
               <div>
-                <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>Discussion Notes</label>
+                <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#475569", display: "block", marginBottom: "4px" }}>Discussion Notes</label>
                 <textarea
                   value={editNotes}
                   onChange={(e) => setEditNotes(e.target.value)}
@@ -937,7 +911,7 @@ export default function TeleCrmMobileHub({
                 type="button"
                 onClick={handleSaveEdit}
                 disabled={savingEdit}
-                style={{ padding: "8px 18px", borderRadius: "8px", border: "none", backgroundColor: "#4f46e5", color: "#ffffff", fontSize: "0.85rem", fontWeight: 700, cursor: "pointer" }}
+                style={{ padding: "8px 18px", borderRadius: "8px", border: "none", backgroundColor: "#4f46e5", color: "#ffffff", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer" }}
               >
                 {savingEdit ? "Saving..." : "Save Changes"}
               </button>
