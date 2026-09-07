@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { triggerHaptic } from "@/lib/capacitor";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, X, Sparkles, MessageSquare, PhoneCall, FileCheck, Package, ExternalLink, ShieldCheck } from "lucide-react";
+import { triggerHaptic, isNativePlatform } from "@/lib/capacitor";
 
 const VAPID_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
@@ -30,8 +32,7 @@ export function playNotificationChime() {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
-    
-    // Play two-tone bell chime (880Hz -> 1174Hz)
+
     const now = ctx.currentTime;
     const osc1 = ctx.createOscillator();
     const gain1 = ctx.createGain();
@@ -40,7 +41,7 @@ export function playNotificationChime() {
     osc1.frequency.setValueAtTime(880, now); // A5
     osc1.frequency.exponentialRampToValueAtTime(1174.66, now + 0.12); // D6
 
-    gain1.gain.setValueAtTime(0.2, now);
+    gain1.gain.setValueAtTime(0.25, now);
     gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
     osc1.connect(gain1);
@@ -53,14 +54,39 @@ export function playNotificationChime() {
   }
 }
 
+interface InAppToast {
+  id: string;
+  title: string;
+  body: string;
+  url?: string;
+  type?: string;
+}
+
 /**
  * Global client component that registers the service worker,
- * manages push subscriptions, and handles real-time alerts.
+ * manages push subscriptions, handles permission prompts, and displays
+ * real-time in-app floating toast alerts.
  */
 export default function PushNotificationManager() {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [swRegistered, setSwRegistered] = useState(false);
+  const [showPermissionPrompt, setShowPermissionPrompt] = useState(false);
+  const [activeToast, setActiveToast] = useState<InAppToast | null>(null);
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const router = useRouter();
+
+  // Show Toast
+  const displayInAppToast = useCallback((toast: InAppToast) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setActiveToast(toast);
+    playNotificationChime();
+    triggerHaptic("success").catch(() => {});
+
+    toastTimerRef.current = setTimeout(() => {
+      setActiveToast(null);
+    }, 6500);
+  }, []);
 
   // Sync Push Subscription with Server
   const registerSubscriptionOnServer = useCallback(async (subscription: PushSubscription) => {
@@ -88,6 +114,49 @@ export default function PushNotificationManager() {
     }
   }, []);
 
+  const enablePushNotifications = useCallback(async () => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+      throw new Error("Push notifications are not supported on this browser or platform.");
+    }
+
+    setShowPermissionPrompt(false);
+
+    try {
+      const perm = await Notification.requestPermission();
+      setPermission(perm);
+
+      if (perm === "granted") {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
+        }
+
+        await registerSubscriptionOnServer(sub);
+        playNotificationChime();
+        triggerHaptic("success").catch(() => {});
+
+        displayInAppToast({
+          id: `welcome-${Date.now()}`,
+          title: "🎉 Push Notifications Activated!",
+          body: "You will now receive instant alerts on this device for new leads & messages.",
+          url: "/settings/notifications",
+          type: "System"
+        });
+
+        return { success: true };
+      } else {
+        throw new Error("Notification permission was denied. Please allow notifications in device settings.");
+      }
+    } catch (err: any) {
+      console.warn("[PushManager] Enable error:", err);
+      throw err;
+    }
+  }, [registerSubscriptionOnServer, displayInAppToast]);
+
   // Initialize Service Worker & Push Manager on mount
   useEffect(() => {
     if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
@@ -95,7 +164,19 @@ export default function PushNotificationManager() {
     }
 
     if ("Notification" in window) {
-      setPermission(Notification.permission);
+      const currentPerm = Notification.permission;
+      setPermission(currentPerm);
+
+      // If permission is default and user hasn't dismissed prompt recently
+      if (currentPerm === "default") {
+        const dismissed = sessionStorage.getItem("crm_notif_prompt_dismissed");
+        if (!dismissed) {
+          const timer = setTimeout(() => {
+            setShowPermissionPrompt(true);
+          }, 2000);
+          return () => clearTimeout(timer);
+        }
+      }
     }
 
     // 1. Register Service Worker
@@ -108,10 +189,8 @@ export default function PushNotificationManager() {
         const existingSub = await reg.pushManager.getSubscription().catch(() => null);
         if (existingSub) {
           setIsSubscribed(true);
-          // Refresh / keep updated on server
           registerSubscriptionOnServer(existingSub);
         } else if (Notification.permission === "granted") {
-          // Auto-subscribe if user already granted permission earlier
           try {
             const newSub = await reg.pushManager.subscribe({
               userVisibleOnly: true,
@@ -127,11 +206,16 @@ export default function PushNotificationManager() {
         console.warn("[PushManager] Service Worker registration failed:", err);
       });
 
-    // 3. Listen to foreground messages posted from Service Worker
+    // 3. Listen to messages from Service Worker (Push received while app in foreground)
     const handleServiceWorkerMessage = (event: MessageEvent) => {
-      if (event.data?.type === "CRM_PUSH_RECEIVED") {
-        playNotificationChime();
-        triggerHaptic("success").catch(() => {});
+      if (event.data?.type === "CRM_PUSH_RECEIVED" || event.data?.title) {
+        displayInAppToast({
+          id: `toast-${Date.now()}`,
+          title: event.data.title || "🔔 CRM Notification",
+          body: event.data.body || "New update received",
+          url: event.data.url || event.data.data?.url || "/leads",
+          type: event.data.type || "System"
+        });
       }
     };
 
@@ -139,9 +223,9 @@ export default function PushNotificationManager() {
     return () => {
       navigator.serviceWorker.removeEventListener("message", handleServiceWorkerMessage);
     };
-  }, [registerSubscriptionOnServer]);
+  }, [registerSubscriptionOnServer, displayInAppToast]);
 
-  // Expose global helper window.__CRM_PUSH__ for Settings page & quick actions
+  // Expose global helper window.__CRM_PUSH__
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -149,32 +233,7 @@ export default function PushNotificationManager() {
       permission,
       isSubscribed,
       swRegistered,
-      enablePush: async () => {
-        if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
-          throw new Error("Push notifications are not supported on this browser or platform.");
-        }
-
-        const perm = await Notification.requestPermission();
-        setPermission(perm);
-
-        if (perm !== "granted") {
-          throw new Error(`Notification permission ${perm}. Please allow notifications in device settings.`);
-        }
-
-        const reg = await navigator.serviceWorker.ready;
-        let sub = await reg.pushManager.getSubscription();
-        if (!sub) {
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-          });
-        }
-
-        await registerSubscriptionOnServer(sub);
-        playNotificationChime();
-        triggerHaptic("success").catch(() => {});
-        return { success: true, endpoint: sub.endpoint };
-      },
+      enablePush: enablePushNotifications,
       disablePush: async () => {
         if (!("serviceWorker" in navigator)) return;
         const reg = await navigator.serviceWorker.ready;
@@ -190,7 +249,207 @@ export default function PushNotificationManager() {
         }
       }
     };
-  }, [permission, isSubscribed, swRegistered, registerSubscriptionOnServer]);
+  }, [permission, isSubscribed, swRegistered, enablePushNotifications]);
 
-  return null; // Silent background manager
+  const handleDismissPrompt = () => {
+    setShowPermissionPrompt(false);
+    sessionStorage.setItem("crm_notif_prompt_dismissed", "true");
+  };
+
+  const handleToastClick = () => {
+    if (activeToast?.url) {
+      router.push(activeToast.url);
+    }
+    setActiveToast(null);
+  };
+
+  return (
+    <>
+      {/* ─── 1. IN-APP FLOATING TOAST NOTIFICATION (TOP SCREEN) ─── */}
+      {activeToast && (
+        <div
+          onClick={handleToastClick}
+          style={{
+            position: "fixed",
+            top: "16px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 24px)",
+            maxWidth: "460px",
+            backgroundColor: "#0f172a",
+            color: "#ffffff",
+            borderRadius: "14px",
+            padding: "12px 16px",
+            boxShadow: "0 20px 35px -5px rgba(15, 23, 42, 0.45), 0 0 0 1px rgba(255,255,255,0.15)",
+            zIndex: 999999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "12px",
+            cursor: "pointer",
+            animation: "slideDownToast 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "10px",
+                background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                flexShrink: 0
+              }}
+            >
+              <Bell size={18} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  color: "#ffffff",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}
+              >
+                {activeToast.title}
+              </div>
+              <div
+                style={{
+                  fontSize: "0.75rem",
+                  color: "#cbd5e1",
+                  marginTop: "1px",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis"
+                }}
+              >
+                {activeToast.body}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span
+              style={{
+                fontSize: "0.72rem",
+                fontWeight: 700,
+                color: "#34d399",
+                backgroundColor: "rgba(16, 185, 129, 0.2)",
+                padding: "3px 8px",
+                borderRadius: "6px"
+              }}
+            >
+              Open
+            </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveToast(null);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "#94a3b8",
+                cursor: "pointer",
+                padding: "2px"
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── 2. ONE-TAP PERMISSION REQUEST FLOATING BANNER (FOR NEW USERS/MOBILE APP) ─── */}
+      {showPermissionPrompt && permission === "default" && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: "80px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "calc(100% - 24px)",
+            maxWidth: "440px",
+            backgroundColor: "#ffffff",
+            borderRadius: "16px",
+            padding: "16px 18px",
+            boxShadow: "0 20px 40px -5px rgba(0, 0, 0, 0.35), 0 0 0 1px #e2e8f0",
+            zIndex: 999990,
+            animation: "slideUpPrompt 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
+                color: "#ffffff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0
+              }}
+            >
+              <Bell size={20} />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "0.92rem", fontWeight: 700, color: "#0f172a" }}>
+                Enable Mobile Lead Alerts?
+              </div>
+              <p style={{ margin: "3px 0 12px 0", fontSize: "0.76rem", color: "#64748b", lineHeight: 1.35 }}>
+                Get instant notifications on your phone when new leads, WhatsApp chats, and urgent orders arrive.
+              </p>
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  type="button"
+                  onClick={enablePushNotifications}
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#4f46e5",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "8px 14px",
+                    borderRadius: "8px",
+                    fontSize: "0.82rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 6px rgba(79, 70, 229, 0.3)"
+                  }}
+                >
+                  🔔 Allow Notifications
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDismissPrompt}
+                  style={{
+                    padding: "8px 12px",
+                    backgroundColor: "#f1f5f9",
+                    color: "#64748b",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "8px",
+                    fontSize: "0.78rem",
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  Later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
