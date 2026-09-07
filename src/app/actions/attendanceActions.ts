@@ -13,6 +13,7 @@ export async function toggleAttendance(passedEmployeeId?: string) {
 
     const organizationId = (session.user as any).organizationId || (await getTenantOrgId());
     let userId = (session.user as any).id || (session.user as any).sub;
+    const userRole = ((session.user as any).role || "").toUpperCase();
     const userEmail = session.user.email ? session.user.email.trim().toLowerCase() : null;
 
     if (!userId && userEmail) {
@@ -24,13 +25,20 @@ export async function toggleAttendance(passedEmployeeId?: string) {
 
     let employee = null;
 
-    if (passedEmployeeId) {
-      employee = await prisma.employee.findUnique({
-        where: { id: passedEmployeeId },
+    // Security check: ONLY admins/HR can pass a different employeeId
+    const isAdminOrHR = userRole === "ADMIN" || userRole === "SUPER_ADMIN" || userRole === "HR" || userRole === "MANAGER" || userRole === "OWNER";
+
+    if (passedEmployeeId && isAdminOrHR) {
+      employee = await prisma.employee.findFirst({
+        where: { 
+          id: passedEmployeeId,
+          ...(organizationId ? { organizationId } : {})
+        },
         include: { user: true }
       });
     }
 
+    // For regular employees or fallback, strictly resolve the employee profile belonging to THIS logged-in user
     if (!employee && userId) {
       employee = await prisma.employee.findFirst({
         where: {
@@ -44,14 +52,15 @@ export async function toggleAttendance(passedEmployeeId?: string) {
     if (!employee && userEmail) {
       employee = await prisma.employee.findFirst({
         where: {
-          user: { email: { equals: userEmail, mode: 'insensitive' } }
+          user: { email: { equals: userEmail, mode: 'insensitive' } },
+          ...(organizationId ? { organizationId } : {})
         },
         include: { user: true }
       });
     }
 
     if (!employee && userId) {
-      // Auto-create an employee record for the logged in user
+      // Auto-create an employee record strictly for the logged in user
       const user = await prisma.user.findUnique({ where: { id: userId } });
       if (!user) return { error: "User profile not found. Please log in again." };
 
@@ -83,34 +92,51 @@ export async function toggleAttendance(passedEmployeeId?: string) {
     const todayStart = new Date(Date.UTC(istYear, istMonth, istDate, 0, 0, 0) - istOffset);
     const todayEnd = new Date(Date.UTC(istYear, istMonth, istDate, 23, 59, 59, 999) - istOffset);
 
-    const existingAttendance = await prisma.attendance.findFirst({
+    // Fetch all attendance records strictly for THIS specific employee for today
+    const existingAttendances = await prisma.attendance.findMany({
       where: {
         employeeId: employee.id,
         date: {
           gte: todayStart,
           lte: todayEnd
         }
-      }
+      },
+      orderBy: [
+        { checkIn: 'desc' },
+        { createdAt: 'desc' }
+      ]
     });
 
-    if (existingAttendance) {
-      if (!existingAttendance.checkOut) {
-        // Check out
-        const checkInTime = existingAttendance.checkIn || existingAttendance.date;
-        const diffHours = (now.getTime() - new Date(checkInTime).getTime()) / (1000 * 60 * 60);
+    // Find if there is an active shift (!checkOut)
+    const activeAttendance = existingAttendances.find(a => !a.checkOut);
 
-        await prisma.attendance.update({
-          where: { id: existingAttendance.id },
-          data: { 
-            checkOut: now,
-            workingHours: Math.round(diffHours * 100) / 100
-          }
-        });
-      } else {
-        return { error: "Shift already completed for today." };
-      }
+    if (activeAttendance) {
+      // Check out strictly the active shift for this individual employee
+      const checkInTime = activeAttendance.checkIn || activeAttendance.date;
+      const diffHours = (now.getTime() - new Date(checkInTime).getTime()) / (1000 * 60 * 60);
+
+      await prisma.attendance.update({
+        where: { id: activeAttendance.id },
+        data: { 
+          checkOut: now,
+          workingHours: Math.max(0, Math.round(diffHours * 100) / 100)
+        }
+      });
+    } else if (existingAttendances.length > 0 && existingAttendances.some(a => a.checkOut)) {
+      // Shift already completed for today
+      return { error: "Shift already completed for today." };
+    } else if (existingAttendances.length > 0) {
+      // Record exists without checkIn timestamp (e.g. created by admin or placeholder)
+      const target = existingAttendances[0];
+      await prisma.attendance.update({
+        where: { id: target.id },
+        data: {
+          checkIn: now,
+          status: target.status === 'Absent' ? 'Present' : (target.status || 'Present')
+        }
+      });
     } else {
-      // Check in
+      // Check in: create fresh attendance record for this employee
       await prisma.attendance.create({
         data: {
           employeeId: employee.id,
@@ -124,6 +150,7 @@ export async function toggleAttendance(passedEmployeeId?: string) {
     revalidatePath("/");
     revalidatePath("/payroll");
     revalidatePath("/attendance");
+    revalidatePath("/leaves");
     return { success: true };
   } catch (error) {
     console.error("Failed to toggle attendance:", error);

@@ -143,19 +143,26 @@ export default async function Home() {
           followUpDate: { gte: todayStartOfDay, lte: todayEndOfDay }
         }
       }).catch(() => 0),
-      (employee?.id) ? prisma.attendance.findFirst({
+      (employee?.id) ? prisma.attendance.findMany({
         where: {
           employeeId: employee.id,
           date: { gte: todayStartOfDay, lte: todayEndOfDay }
-        }
-      }).catch(() => null) : Promise.resolve(null),
+        },
+        orderBy: [
+          { checkIn: 'desc' },
+          { createdAt: 'desc' }
+        ]
+      }).then((atts: any[]) => atts.find((a: any) => !a.checkOut) || atts[0] || null).catch(() => null) : Promise.resolve(null),
       prisma.attendance.findMany({
         where: {
           date: { gte: todayStartOfDay, lte: todayEndOfDay },
           ...(orgId ? { employee: { organizationId: orgId } } : {})
         },
         include: { employee: { include: { user: true } } },
-        orderBy: { checkIn: 'desc' }
+        orderBy: [
+          { checkIn: 'desc' },
+          { createdAt: 'desc' }
+        ]
       }).catch(() => []),
       prisma.orderItem.findMany({
         where: orgId ? { order: { organizationId: orgId } } : {},
@@ -200,23 +207,39 @@ export default async function Home() {
     const totalRevenue = ordersRevenue + standaloneQuotRevenue;
     const combinedTotalOrders = allOrdersInOrg.length + standaloneConfirmedQuotes.length;
 
-    const adminCheckedIn = !!adminAtt;
+    const adminCheckedIn = !!adminAtt?.checkIn || (!!adminAtt && adminAtt.status === 'Present');
     const adminCheckedOut = !!adminAtt?.checkOut;
 
-    // Deduplicate attendance records per employee so each candidate shows only once
+    // Deduplicate attendance records per employee with robust priority scoring
+    const getAttendanceScore = (rec: any): number => {
+      const hasIn = !!rec.checkIn;
+      const hasOut = !!rec.checkOut;
+      const st = (rec.status || '').toLowerCase();
+      if (hasIn && !hasOut) return 100; // Actively working shift
+      if (hasIn && hasOut) return 80;   // Completed shift
+      if (st === 'leave') return 70;    // On Leave
+      if (st === 'half day') return 60; // Half Day
+      if (hasIn) return 50;             // Punched in
+      if (st === 'present') return 30;  // Present
+      return 10;                        // Placeholder / Pending
+    };
+
     const attendanceByEmployee = new Map<string, any>();
     activeAttendances.forEach((a: any) => {
-      const empKey = a.employeeId || a.employee?.id || a.employee?.user?.name || a.id;
+      const empKey = a.employeeId || a.employee?.id || a.id;
       if (!attendanceByEmployee.has(empKey)) {
         attendanceByEmployee.set(empKey, a);
       } else {
         const existing = attendanceByEmployee.get(empKey);
-        // Prioritize currently active shift (!checkOut) over checked out
-        if (!a.checkOut && existing.checkOut) {
+        const scoreA = getAttendanceScore(a);
+        const scoreExisting = getAttendanceScore(existing);
+
+        if (scoreA > scoreExisting) {
           attendanceByEmployee.set(empKey, a);
-        } else if ((!a.checkOut === !existing.checkOut) && a.checkIn && existing.checkIn) {
-          // If both have same active status, take the more recent checkIn
-          if (new Date(a.checkIn).getTime() > new Date(existing.checkIn).getTime()) {
+        } else if (scoreA === scoreExisting) {
+          const timeA = new Date(a.checkIn || a.createdAt || a.date).getTime();
+          const timeExisting = new Date(existing.checkIn || existing.createdAt || existing.date).getTime();
+          if (timeA > timeExisting) {
             attendanceByEmployee.set(empKey, a);
           }
         }
@@ -230,8 +253,15 @@ export default async function Home() {
       })
       .map((a: any) => {
         const hasActualCheckIn = !!a.checkIn;
-        const isPresent = (a.status || 'Present').toLowerCase() === 'present';
-        const isShiftActive = isPresent && hasActualCheckIn && !a.checkOut;
+        const hasActualCheckOut = !!a.checkOut;
+        const rawStatus = (a.status || '').toLowerCase();
+        const isLeave = rawStatus === 'leave';
+        const isHalfDay = rawStatus === 'half day';
+        const isAbsent = rawStatus === 'absent';
+        const isPresent = rawStatus === 'present' || (!isLeave && !isAbsent && !isHalfDay);
+
+        // Shift is actively ongoing ONLY if employee has checked in and has NOT checked out
+        const isShiftActive = isPresent && hasActualCheckIn && !hasActualCheckOut;
 
         let checkInStr = 'Not Checked In';
         if (a.checkIn) {
@@ -245,8 +275,39 @@ export default async function Home() {
           } catch {
             checkInStr = new Date(a.checkIn).toLocaleTimeString().toUpperCase();
           }
+        } else if (isLeave) {
+          checkInStr = 'LEAVE';
         } else if (a.status && a.status.toLowerCase() !== 'present') {
           checkInStr = a.status.toUpperCase();
+        }
+
+        let checkOutStr = null;
+        if (a.checkOut) {
+          try {
+            checkOutStr = new Date(a.checkOut).toLocaleTimeString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            }).toUpperCase();
+          } catch {
+            checkOutStr = new Date(a.checkOut).toLocaleTimeString().toUpperCase();
+          }
+        }
+
+        let resolvedStatus = 'Present';
+        if (isLeave) {
+          resolvedStatus = 'Leave';
+        } else if (isAbsent) {
+          resolvedStatus = 'Absent';
+        } else if (isHalfDay) {
+          resolvedStatus = 'Half Day';
+        } else if (hasActualCheckOut) {
+          resolvedStatus = 'Shift Ended';
+        } else if (hasActualCheckIn) {
+          resolvedStatus = 'Present';
+        } else {
+          resolvedStatus = a.status || 'Pending';
         }
 
         return {
@@ -254,9 +315,12 @@ export default async function Home() {
           employeeId: a.employeeId || a.employee?.id,
           name: a.employee?.user?.name || 'Team Member',
           checkIn: a.checkIn ? new Date(a.checkIn).toISOString() : null,
+          checkOut: a.checkOut ? new Date(a.checkOut).toISOString() : null,
           checkInStr,
-          status: a.status || (hasActualCheckIn ? 'Present' : 'Pending'),
-          isShiftActive
+          checkOutStr,
+          status: resolvedStatus,
+          isShiftActive,
+          isCheckedOut: hasActualCheckOut
         };
       });
 
@@ -443,15 +507,19 @@ export default async function Home() {
       todayCallsCount,
       recommendations
     ] = await Promise.all([
-      employee?.id ? prisma.attendance.findFirst({
+      employee?.id ? prisma.attendance.findMany({
         where: {
           employeeId: employee.id,
           date: {
             gte: todayStart,
             lte: todayEnd
           }
-        }
-      }).catch(() => null) : Promise.resolve(null),
+        },
+        orderBy: [
+          { checkIn: 'desc' },
+          { createdAt: 'desc' }
+        ]
+      }).then((atts: any[]) => atts.find((a: any) => !a.checkOut) || atts[0] || null).catch(() => null) : Promise.resolve(null),
       employee?.id ? prisma.task.findMany({
         where: {
           assigneeId: employee.id,
@@ -485,7 +553,7 @@ export default async function Home() {
       getFollowUpRecommendations().catch(() => ({ success: false, overdue: [], reorderDue: [] }))
     ]);
 
-    const isCheckedIn = !!attendanceRecord;
+    const isCheckedIn = !!attendanceRecord?.checkIn || (!!attendanceRecord && attendanceRecord.status === 'Present');
     const isCheckedOut = !!attendanceRecord?.checkOut;
 
     return (
@@ -530,15 +598,19 @@ export default async function Home() {
       allOrgQuotesMTD,
       allOrgEmployees
     ] = await Promise.all([
-      employee?.id ? prisma.attendance.findFirst({
+      employee?.id ? prisma.attendance.findMany({
         where: {
           employeeId: employee.id,
           date: {
             gte: todayStart,
             lte: todayEnd
           }
-        }
-      }).catch(() => null) : Promise.resolve(null),
+        },
+        orderBy: [
+          { checkIn: 'desc' },
+          { createdAt: 'desc' }
+        ]
+      }).then((atts: any[]) => atts.find((a: any) => !a.checkOut) || atts[0] || null).catch(() => null) : Promise.resolve(null),
       employee?.id ? prisma.order.findMany({
         where: {
           OR: [

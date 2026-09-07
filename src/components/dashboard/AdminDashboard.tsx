@@ -66,7 +66,7 @@ export default function AdminDashboard({
   const [showDeadStockModal, setShowDeadStockModal] = useState(false);
 
   // Live Team Presence Filter
-  const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<'ALL' | 'ACTIVE' | 'CHECKED_OUT'>('ALL');
+  const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<'ALL' | 'ACTIVE' | 'CHECKED_OUT' | 'LEAVE'>('ALL');
   // Live Leaderboard Timeframe Switcher
   const [leaderboardMode, setLeaderboardMode] = useState<'DAILY' | 'MONTHLY'>('DAILY');
 
@@ -74,12 +74,15 @@ export default function AdminDashboard({
   const uniqueLiveAttendance = useMemo(() => {
     const seen = new Map<string, any>();
     (liveAttendance || []).forEach((att: any) => {
-      const key = att.employeeId || att.name || att.id;
+      const key = att.employeeId || att.id || att.name;
       if (!seen.has(key)) {
         seen.set(key, att);
       } else {
         const existing = seen.get(key);
+        // Always prioritize currently active shift (!isCheckedOut && isShiftActive)
         if (att.isShiftActive && !existing.isShiftActive) {
+          seen.set(key, att);
+        } else if (!att.isCheckedOut && existing.isCheckedOut) {
           seen.set(key, att);
         }
       }
@@ -92,13 +95,18 @@ export default function AdminDashboard({
   }, [uniqueLiveAttendance]);
 
   const checkedOutTeamCount = useMemo(() => {
-    return uniqueLiveAttendance.filter((att: any) => !att.isShiftActive).length;
+    return uniqueLiveAttendance.filter((att: any) => (att.isCheckedOut || att.status === 'Shift Ended') && !att.isShiftActive).length;
+  }, [uniqueLiveAttendance]);
+
+  const leaveTeamCount = useMemo(() => {
+    return uniqueLiveAttendance.filter((att: any) => att.status === 'Leave' || att.status === 'On Leave').length;
   }, [uniqueLiveAttendance]);
 
   const filteredAttendance = useMemo(() => {
     return uniqueLiveAttendance.filter((att: any) => {
       if (teamAttendanceFilter === 'ACTIVE') return att.isShiftActive;
-      if (teamAttendanceFilter === 'CHECKED_OUT') return !att.isShiftActive;
+      if (teamAttendanceFilter === 'CHECKED_OUT') return (att.isCheckedOut || att.status === 'Shift Ended') && !att.isShiftActive;
+      if (teamAttendanceFilter === 'LEAVE') return att.status === 'Leave' || att.status === 'On Leave';
       return true;
     });
   }, [uniqueLiveAttendance, teamAttendanceFilter]);
@@ -442,6 +450,12 @@ export default function AdminDashboard({
                     </span>
                     <span>·</span>
                     <span style={{ color: '#64748b' }}>{checkedOutTeamCount} Shift Ended</span>
+                    {leaveTeamCount > 0 && (
+                      <>
+                        <span>·</span>
+                        <span style={{ color: '#d97706', fontWeight: 600 }}>{leaveTeamCount} On Leave</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -452,7 +466,8 @@ export default function AdminDashboard({
                 backgroundColor: '#f1f5f9',
                 padding: '2px',
                 borderRadius: '7px',
-                border: '1px solid #e2e8f0'
+                border: '1px solid #e2e8f0',
+                gap: '2px'
               }}>
                 <button
                   type="button"
@@ -508,6 +523,26 @@ export default function AdminDashboard({
                 >
                   Shift Ended ({checkedOutTeamCount})
                 </button>
+                {leaveTeamCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTeamAttendanceFilter('LEAVE')}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '5px',
+                      border: 'none',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      backgroundColor: teamAttendanceFilter === 'LEAVE' ? '#ffffff' : 'transparent',
+                      color: teamAttendanceFilter === 'LEAVE' ? '#d97706' : '#64748b',
+                      boxShadow: teamAttendanceFilter === 'LEAVE' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    On Leave ({leaveTeamCount})
+                  </button>
+                )}
               </div>
             </div>
 
@@ -601,23 +636,86 @@ export default function AdminDashboard({
                             att.checkInStr || 'Not Checked In'
                           )}
                         </span>
+                        {att.checkOutStr && (
+                          <span style={{ marginLeft: '4px', color: '#94a3b8' }}>
+                            • Out: <strong style={{ color: '#64748b' }}>{att.checkOutStr}</strong>
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  <span style={{ 
-                    backgroundColor: att.isShiftActive ? '#ecfdf5' : att.status === 'Leave' ? '#fef3c7' : '#f1f5f9', 
-                    color: att.isShiftActive ? '#059669' : att.status === 'Leave' ? '#d97706' : '#64748b', 
-                    border: `1px solid ${att.isShiftActive ? '#a7f3d0' : att.status === 'Leave' ? '#fde68a' : '#e2e8f0'}`,
-                    fontSize: '0.66rem', 
-                    fontWeight: 600,
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}>
-                    {att.isShiftActive ? 'Active' : (att.status === 'Leave' ? 'On Leave' : 'Shift Ended')}
-                  </span>
+                  {att.isShiftActive ? (
+                    <span style={{ 
+                      backgroundColor: '#ecfdf5', 
+                      color: '#059669', 
+                      border: '1px solid #a7f3d0',
+                      fontSize: '0.66rem', 
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}>
+                      Active
+                    </span>
+                  ) : (att.status === 'Leave' || att.status === 'On Leave') ? (
+                    <span style={{ 
+                      backgroundColor: '#fef3c7', 
+                      color: '#d97706', 
+                      border: '1px solid #fde68a',
+                      fontSize: '0.66rem', 
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}>
+                      On Leave
+                    </span>
+                  ) : att.status === 'Half Day' ? (
+                    <span style={{ 
+                      backgroundColor: '#fff7ed', 
+                      color: '#ea580c', 
+                      border: '1px solid #fed7aa',
+                      fontSize: '0.66rem', 
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}>
+                      Half Day
+                    </span>
+                  ) : (att.isCheckedOut || att.status === 'Shift Ended') ? (
+                    <span style={{ 
+                      backgroundColor: '#f1f5f9', 
+                      color: '#64748b', 
+                      border: '1px solid #e2e8f0',
+                      fontSize: '0.66rem', 
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}>
+                      Shift Ended
+                    </span>
+                  ) : (
+                    <span style={{ 
+                      backgroundColor: '#f8fafc', 
+                      color: '#94a3b8', 
+                      border: '1px solid #e2e8f0',
+                      fontSize: '0.66rem', 
+                      fontWeight: 600,
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0
+                    }}>
+                      Not Marked
+                    </span>
+                  )}
                 </div>
               )) : (
                 <div style={{ 
