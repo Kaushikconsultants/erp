@@ -845,7 +845,7 @@ export default function CreateQuotationForm({
       <div className="quotation-canvas-card" style={{ maxWidth: '1200px', margin: '0 auto', backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03)', padding: '32px 36px' }}>
         
         {/* TOP SECTION: CUSTOMER & QUOTATION SPECIFICATIONS */}
-        <div className="quotation-top-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.18fr) minmax(0, 1fr)', gap: '32px', paddingBottom: '28px', borderBottom: '1px solid #e2e8f0' }}>
+        <div className="quotation-top-grid">
           
           {/* LEFT: CUSTOMER & BILLING PROFILE */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -971,10 +971,10 @@ export default function CreateQuotationForm({
             </div>
 
             {/* CUSTOMER PROFILE CARD (EDITABLE METADATA) */}
-            <div style={{ 
+            <div className="quot-customer-card" style={{ 
               padding: '16px 18px', 
               backgroundColor: '#f8fafc', 
-              borderRadius: '10px', 
+              borderRadius: '12px', 
               border: '1px solid #e2e8f0', 
               display: 'flex', 
               flexDirection: 'column', 
@@ -1040,7 +1040,7 @@ export default function CreateQuotationForm({
               </div>
 
               {/* Row 1: Phone & Email */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="quot-grid-2col">
                 <div>
                   <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
                     Phone Number
@@ -1070,7 +1070,7 @@ export default function CreateQuotationForm({
               </div>
 
               {/* Row 2: GSTIN & Place of Supply (Dropdown) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="quot-grid-2col">
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>
@@ -1165,9 +1165,9 @@ export default function CreateQuotationForm({
 
             {/* ADDRESS BOXES */}
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: showShippingAddress ? '1fr 1fr' : '1fr', gap: '14px' }}>
+              <div className={`quot-address-grid ${showShippingAddress ? 'two-cols' : ''}`}>
                 {/* Billing Address */}
-                <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <MapPin size={15} color="#2563eb" />
@@ -1196,7 +1196,7 @@ export default function CreateQuotationForm({
 
                 {/* Shipping Address */}
                 {showShippingAddress && (
-                  <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <MapPin size={15} color="#7c3aed" />
@@ -1237,7 +1237,7 @@ export default function CreateQuotationForm({
           </div>
 
           {/* RIGHT: QUOTATION SPECIFICATIONS & LOGISTICS */}
-          <div style={{ 
+          <div className="quot-specs-card" style={{ 
             backgroundColor: '#f8fafc', 
             padding: '20px 22px', 
             borderRadius: '12px', 
@@ -1260,7 +1260,7 @@ export default function CreateQuotationForm({
             </div>
 
             {/* Row 1: Quotation # & Reference # */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="quot-grid-2col">
               <div>
                 <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
                   Quotation # <span style={{ color: '#ef4444' }}>*</span>
@@ -1288,7 +1288,7 @@ export default function CreateQuotationForm({
             </div>
 
             {/* Row 2: Quote Date & Expiry Date */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="quot-grid-2col">
               <div>
                 <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
                   Quote Date <span style={{ color: '#ef4444' }}>*</span>
@@ -1312,7 +1312,7 @@ export default function CreateQuotationForm({
             </div>
 
             {/* Row 3: Payment Terms & Salesperson */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="quot-grid-2col">
               <div>
                 <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
                   Payment Terms

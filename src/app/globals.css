@@ -669,6 +669,31 @@ button {
   display: none;
 }
 
+/* ─── Quotation Form Base Desktop Classes ─── */
+.quotation-top-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
+  gap: 32px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.quot-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.quot-address-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+.quot-address-grid.two-cols {
+  grid-template-columns: 1fr 1fr;
+}
+
 @media (max-width: 768px) {
   html, body {
     width: 100%;
@@ -837,26 +862,42 @@ button {
   }
 
   /* Quotation Sheet Container */
-  .quotation-page-container {
+  .quotation-page-container,
+  .quotation-form-wrapper {
     padding: 8px 4px !important;
   }
 
   .quotation-canvas-card {
     padding: 14px 12px !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
   }
 
   .quotation-header-bar {
     flex-direction: column !important;
     align-items: stretch !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Hide redundant top action buttons on mobile since sticky bottom bar exists */
+  .quotation-header-actions {
+    display: none !important;
+  }
+
+  .quot-grid-2col {
+    grid-template-columns: 1fr !important;
     gap: 10px !important;
   }
 
-  .quotation-header-actions {
-    width: 100% !important;
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
+  .quot-address-grid.two-cols {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .quot-customer-card,
+  .quot-specs-card {
+    padding: 14px 12px !important;
+    border-radius: 12px !important;
   }
 
   /* ── Quotation Desktop Table ↔ Mobile Card Toggle ── */

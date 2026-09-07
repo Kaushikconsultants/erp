@@ -32,6 +32,7 @@ import { sendInvoiceViaWhatsApp, sendPaymentReminder } from "@/app/actions/docum
 import { exportTallySalesInvoices } from "@/app/actions/tallyExportActions";
 import EditFullInvoiceModal from "./EditFullInvoiceModal";
 import "@/components/ui/modal.css";
+import "./invoices.css";
 
 const PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Cheque", "Card", "Other"];
 
@@ -84,6 +85,9 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
   const totalCollected = invoices.reduce((s, i) => s + (Number(i.amountPaid) || 0), 0);
   const overdueCount = invoices.filter(i => i.status === "Overdue").length;
   const paidCount = invoices.filter(i => i.status === "Paid").length;
+  const unpaidCount = invoices.filter(i => i.status === "Unpaid").length;
+  const partiallyPaidCount = invoices.filter(i => i.status === "Partially Paid").length;
+  const cancelledCount = invoices.filter(i => i.status === "Cancelled").length;
 
   const showToast = (msg: string) => {
     setSuccessMessage(msg);
@@ -207,205 +211,160 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', 
-        gap: '16px' 
-      }}>
+      {/* KPI Metrics Summary */}
+      <div className="invoice-kpi-grid">
         {/* Card 1: Total Outstanding */}
-        <div style={{ 
-          padding: '18px 20px', 
-          borderRadius: '12px',
-          border: '1px solid #e2e8f0',
-          backgroundColor: '#ffffff',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-        }}>
-          <div>
-            <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 600 }}>
-              Total Outstanding
-            </div>
-            <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#0f172a', marginTop: '3px' }}>
-              ₹{totalOutstanding.toLocaleString('en-IN')}
-            </div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
-              Across pending & overdue invoices
-            </div>
+        <div className="invoice-kpi-card">
+          <div className="invoice-kpi-info">
+            <span className="invoice-kpi-label">Total Outstanding</span>
+            <span className="invoice-kpi-val" style={{ color: totalOutstanding > 0 ? '#b91c1c' : '#0f172a' }}>
+              ₹{totalOutstanding.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
+            </span>
+            <span className="invoice-kpi-sub">Across pending & overdue</span>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <AlertCircle size={20} color="#dc2626" />
+          <div className="invoice-kpi-icon-wrap" style={{ backgroundColor: '#fef2f2' }}>
+            <AlertCircle size={22} color="#dc2626" />
           </div>
         </div>
 
         {/* Card 2: Total Collected */}
-        <div style={{ 
-          padding: '18px 20px', 
-          borderRadius: '12px',
-          border: '1px solid #e2e8f0',
-          backgroundColor: '#ffffff',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-        }}>
-          <div>
-            <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 600 }}>
-              Total Collected
-            </div>
-            <div style={{ fontSize: '1.45rem', fontWeight: 600, color: '#0f172a', marginTop: '3px' }}>
-              ₹{totalCollected.toLocaleString('en-IN')}
-            </div>
-            <div style={{ fontSize: '0.74rem', color: '#16a34a', fontWeight: 500, marginTop: '2px' }}>
-              ✓ {paidCount} fully paid invoices
-            </div>
+        <div className="invoice-kpi-card">
+          <div className="invoice-kpi-info">
+            <span className="invoice-kpi-label">Total Collected</span>
+            <span className="invoice-kpi-val" style={{ color: '#16a34a' }}>
+              ₹{totalCollected.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
+            </span>
+            <span className="invoice-kpi-sub" style={{ color: '#16a34a', fontWeight: 500 }}>
+              ✓ {paidCount} fully paid
+            </span>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Wallet size={20} color="#16a34a" />
+          <div className="invoice-kpi-icon-wrap" style={{ backgroundColor: '#f0fdf4' }}>
+            <Wallet size={22} color="#16a34a" />
           </div>
         </div>
 
         {/* Card 3: Overdue Invoices */}
-        <div style={{ 
-          padding: '18px 20px', 
-          borderRadius: '12px',
-          border: '1px solid #e2e8f0',
-          backgroundColor: '#ffffff',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-        }}>
-          <div>
-            <div style={{ color: '#64748b', fontSize: '0.78rem', fontWeight: 600 }}>
-              Overdue Invoices
-            </div>
-            <div style={{ fontSize: '1.45rem', fontWeight: 600, color: overdueCount > 0 ? '#b91c1c' : '#0f172a', marginTop: '3px' }}>
+        <div className="invoice-kpi-card">
+          <div className="invoice-kpi-info">
+            <span className="invoice-kpi-label">Overdue Invoices</span>
+            <span className="invoice-kpi-val" style={{ color: overdueCount > 0 ? '#b91c1c' : '#0f172a' }}>
               {overdueCount}
-            </div>
-            <div style={{ fontSize: '0.74rem', color: overdueCount > 0 ? '#b91c1c' : '#64748b', marginTop: '2px' }}>
+            </span>
+            <span className="invoice-kpi-sub" style={{ color: overdueCount > 0 ? '#b91c1c' : '#64748b' }}>
               {overdueCount > 0 ? "Requires follow-up" : "All payments on schedule"}
-            </div>
+            </span>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: overdueCount > 0 ? '#fef2f2' : '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Receipt size={20} color={overdueCount > 0 ? '#dc2626' : '#4f46e5'} />
+          <div className="invoice-kpi-icon-wrap" style={{ backgroundColor: overdueCount > 0 ? '#fef2f2' : '#eff6ff' }}>
+            <Receipt size={22} color={overdueCount > 0 ? '#dc2626' : '#4f46e5'} />
           </div>
         </div>
       </div>
 
-      {/* SEARCH & FILTERS CONTROLS */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        flexWrap: 'wrap', 
-        gap: '12px',
-        backgroundColor: '#ffffff',
-        padding: '12px 16px',
-        borderRadius: '10px',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-      }}>
-        {/* Left: Search input + Status Filter */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flex: 1, minWidth: '300px' }}>
+      {/* SEARCH & FILTERS TOOLBAR */}
+      <div className="invoice-toolbar">
+        <div className="invoice-toolbar-top">
           {/* Search Box */}
-          <div style={{
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            minWidth: '260px',
-            maxWidth: '360px',
-            flex: 1
-          }}>
-            <Search 
-              size={15} 
-              style={{ position: 'absolute', left: '12px', color: '#94a3b8', pointerEvents: 'none' }} 
-            />
+          <div className="invoice-search-wrap">
+            <Search size={16} className="invoice-search-icon" />
             <input
               type="text"
               placeholder="Search invoice #, customer, phone..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 32px 8px 34px',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#f8fafc',
-                fontSize: '0.82rem',
-                color: '#0f172a',
-                outline: 'none',
-                transition: 'all 0.15s ease',
-              }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#4f46e5'; e.currentTarget.style.backgroundColor = '#ffffff'; }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.backgroundColor = '#f8fafc'; }}
+              className="invoice-search-input"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: '2px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className="invoice-search-clear"
+                title="Clear search"
               >
-                <X size={14} />
+                <X size={15} />
               </button>
             )}
           </div>
 
-          {/* Status Filter Dropdown */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Filter size={14} color="#64748b" />
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                fontSize: '0.82rem',
-                fontWeight: 500,
-                color: '#334155',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
+          {/* Action Buttons */}
+          <div className="invoice-toolbar-actions">
+            <Link href="/credit-notes" className="btn-credit-notes">
+              <FileMinus size={15} color="#64748b" /> Credit Notes & Returns
+            </Link>
+            <button
+              type="button"
+              onClick={handleExportTally}
+              className="btn-tally-export"
+              title="Export all sales invoices to CSV for Tally Prime / Busy ERP"
             >
-              <option value="All">All Invoices ({invoices.length})</option>
-              <option value="Unpaid">Unpaid</option>
-              <option value="Partially Paid">Partially Paid</option>
-              <option value="Paid">Paid</option>
-              <option value="Overdue">Overdue</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
+              <FileSpreadsheet size={15} color="#2563eb" /> Tally / Excel
+            </button>
           </div>
+        </div>
+
+        {/* Horizontal Status Filter Chips */}
+        <div className="invoice-status-chips-bar">
+          <button
+            type="button"
+            className={`invoice-status-chip ${filterStatus === 'All' ? 'active' : ''}`}
+            onClick={() => setFilterStatus('All')}
+          >
+            All <span className="chip-count">{invoices.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`invoice-status-chip ${filterStatus === 'Unpaid' ? 'active' : ''}`}
+            onClick={() => setFilterStatus('Unpaid')}
+          >
+            Unpaid <span className="chip-count">{unpaidCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`invoice-status-chip ${filterStatus === 'Partially Paid' ? 'active' : ''}`}
+            onClick={() => setFilterStatus('Partially Paid')}
+          >
+            Partially Paid <span className="chip-count">{partiallyPaidCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`invoice-status-chip ${filterStatus === 'Paid' ? 'active' : ''}`}
+            onClick={() => setFilterStatus('Paid')}
+          >
+            Paid <span className="chip-count">{paidCount}</span>
+          </button>
+          <button
+            type="button"
+            className={`invoice-status-chip ${filterStatus === 'Overdue' ? 'active' : ''}`}
+            onClick={() => setFilterStatus('Overdue')}
+          >
+            Overdue <span className="chip-count">{overdueCount}</span>
+          </button>
+          {cancelledCount > 0 && (
+            <button
+              type="button"
+              className={`invoice-status-chip ${filterStatus === 'Cancelled' ? 'active' : ''}`}
+              onClick={() => setFilterStatus('Cancelled')}
+            >
+              Cancelled <span className="chip-count">{cancelledCount}</span>
+            </button>
+          )}
 
           {(search || filterStatus !== 'All') && (
             <button
+              type="button"
               onClick={() => { setSearch(''); setFilterStatus('All'); }}
               style={{
-                padding: '7px 10px',
-                borderRadius: '6px',
+                padding: '6px 12px',
+                borderRadius: '20px',
                 border: '1px solid #e2e8f0',
                 backgroundColor: '#f1f5f9',
                 color: '#475569',
                 fontSize: '0.78rem',
-                fontWeight: 500,
+                fontWeight: 600,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px'
+                gap: '4px',
+                whiteSpace: 'nowrap'
               }}
               title="Reset Filters"
             >
@@ -413,42 +372,10 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
             </button>
           )}
         </div>
-
-        {/* Right: Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Link
-            href="/credit-notes"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '6px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#ffffff',
-              color: '#334155',
-              fontSize: '0.82rem',
-              fontWeight: 500,
-              textDecoration: 'none',
-              transition: 'all 0.15s ease',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-            }}
-            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-          >
-            <FileMinus size={14} color="#64748b" /> Credit Notes & Returns
-          </Link>
-        </div>
       </div>
 
-      {/* Invoice Table Panel */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
-        overflow: 'hidden'
-      }}>
+      {/* ─── DESKTOP DATA TABLE (SCREEN > 768px) ─── */}
+      <div className="invoice-desktop-table">
         <div className="table-responsive">
           <table className="data-table" style={{ width: '100%', fontSize: '0.82rem', borderCollapse: 'collapse' }}>
             <thead>
@@ -967,6 +894,269 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ─── MOBILE INVOICE CARDS FEED (SCREEN <= 768px) ─── */}
+      <div className="invoice-mobile-feed">
+        {filtered.map(inv => {
+          const badge = STATUS_BADGES[inv.status] || STATUS_BADGES.Unpaid;
+          const due = Number(inv.amountDue) || 0;
+          const total = Number(inv.totalAmount) || 0;
+          const paid = Number(inv.amountPaid) || 0;
+          const formattedDate = new Date(inv.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+          return (
+            <div key={inv.id} className="invoice-mobile-card">
+              {/* Header: Invoice # & Status */}
+              <div className="inv-card-header">
+                <div className="inv-card-num-group">
+                  {inv.orderId ? (
+                    <a
+                      href={`/orders/${inv.orderId}/invoice`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inv-card-num"
+                      title="View / Print Tax Invoice"
+                    >
+                      {inv.invoiceNumber}
+                      <ExternalLink size={12} color="#6366f1" />
+                    </a>
+                  ) : (
+                    <span className="inv-card-num" style={{ color: '#0f172a' }}>
+                      {inv.invoiceNumber}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span 
+                    className="inv-status-pill"
+                    style={{
+                      backgroundColor: badge.bg,
+                      color: badge.color,
+                      border: `1px solid ${badge.border}`
+                    }}
+                  >
+                    <span className="inv-status-dot" style={{ backgroundColor: badge.color }} />
+                    {inv.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Customer & Date Info */}
+              <div className="inv-card-body">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                  <div className="inv-customer-name">
+                    {inv.customer?.businessName || 'Unnamed Customer'}
+                  </div>
+                  <span className="inv-card-date">
+                    {formattedDate}
+                  </span>
+                </div>
+
+                {inv.customer?.mobile && (
+                  <a 
+                    href={`tel:${inv.customer.mobile}`}
+                    className="inv-customer-phone"
+                    style={{ textDecoration: 'none', color: '#4f46e5' }}
+                  >
+                    📞 {inv.customer.mobile}
+                  </a>
+                )}
+              </div>
+
+              {/* Financial Stats Breakdown */}
+              <div className="inv-fin-grid">
+                <div className="inv-fin-cell">
+                  <span className="inv-fin-label">Total Amount</span>
+                  <span className="inv-fin-val">₹{total.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
+                </div>
+                <div className="inv-fin-cell text-center">
+                  <span className="inv-fin-label">Paid</span>
+                  <span className="inv-fin-val paid">₹{paid.toLocaleString('en-IN', { maximumFractionDigits: 1 })}</span>
+                </div>
+                <div className="inv-fin-cell text-right">
+                  <span className="inv-fin-label">Balance Due</span>
+                  <span className={`inv-fin-val ${due > 0 ? 'due' : 'paid'}`}>
+                    ₹{due.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* 1-Tap Quick Action Buttons */}
+              <div className="inv-card-actions">
+                <div className="inv-primary-actions">
+                  {/* WhatsApp Direct Share */}
+                  <button
+                    type="button"
+                    onClick={() => handleSendWhatsApp(inv)}
+                    className="inv-btn-action inv-btn-whatsapp"
+                    title="Send on WhatsApp"
+                  >
+                    <MessageSquare size={13} /> WhatsApp
+                  </button>
+
+                  {/* Record Payment (if due > 0) */}
+                  {inv.status !== 'Paid' && inv.status !== 'Cancelled' && (
+                    <button
+                      type="button"
+                      onClick={() => { setError(""); setPaymentModal(inv); }}
+                      className="inv-btn-action inv-btn-pay"
+                      title="Record Payment"
+                    >
+                      <CreditCard size={13} /> Pay
+                    </button>
+                  )}
+
+                  {/* Send Overdue Reminder */}
+                  {due > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => handleReminder(inv)}
+                      className="inv-btn-action inv-btn-remind"
+                      title="Send WhatsApp Payment Reminder"
+                    >
+                      <BellRing size={13} /> Remind
+                    </button>
+                  )}
+
+                  {/* Print / View Tax Invoice */}
+                  {inv.orderId && (
+                    <a
+                      href={`/orders/${inv.orderId}/invoice`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inv-btn-action inv-btn-print"
+                      title="Print Tax Invoice"
+                    >
+                      <Printer size={13} /> Print
+                    </a>
+                  )}
+                </div>
+
+                {/* More Actions Menu */}
+                <div className="invoice-action-menu-container" style={{ position: 'relative' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActionMenuOpenId(actionMenuOpenId === inv.id ? null : inv.id);
+                    }}
+                    className="inv-icon-btn"
+                    title="More actions"
+                  >
+                    <MoreHorizontal size={15} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {actionMenuOpenId === inv.id && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        right: 0,
+                        bottom: 'calc(100% + 4px)',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '10px',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15)',
+                        zIndex: 100,
+                        minWidth: '190px',
+                        padding: '6px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        textAlign: 'left'
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      {/* Edit */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionMenuOpenId(null);
+                          setError("");
+                          setEditModal(inv);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          color: '#4f46e5',
+                          fontSize: '0.8rem',
+                          fontWeight: 500,
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          cursor: 'pointer',
+                          width: '100%',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <Edit3 size={14} color="#4f46e5" />
+                        <span>Edit Details</span>
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionMenuOpenId(null);
+                          setError("");
+                          setDeleteModal(inv);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          color: '#dc2626',
+                          fontSize: '0.8rem',
+                          fontWeight: 500,
+                          border: 'none',
+                          backgroundColor: 'transparent',
+                          cursor: 'pointer',
+                          width: '100%',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <Trash2 size={14} color="#dc2626" />
+                        <span>Delete Invoice</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {filtered.length === 0 && (
+          <div className="inv-empty-state">
+            <Receipt size={36} style={{ color: '#94a3b8', marginBottom: '8px' }} />
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#334155' }}>No Invoices Found</div>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '4px 0 12px 0' }}>
+              No invoices match your active filters or search terms.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setSearch(''); setFilterStatus('All'); }}
+              style={{
+                padding: '6px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#f8fafc',
+                color: '#334155',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Reset Filters
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ─── MODAL 1: RECORD PAYMENT MODAL ─── */}

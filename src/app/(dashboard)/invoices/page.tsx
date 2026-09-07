@@ -15,8 +15,8 @@ export default async function InvoicesPage() {
   const invoices = res.success ? res.invoices : [];
 
   return (
-    <div className="page-container" style={{ padding: '24px' }}>
-      <div className="dashboard-header mb-6">
+    <div className="page-container">
+      <div className="dashboard-header mb-4">
         <div>
           <h1 className="page-title">Invoices</h1>
           <p className="page-subtitle">Track all invoices, payments, and outstanding receivables.</p>

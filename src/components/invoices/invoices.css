@@ -1,0 +1,573 @@
+/* =========================================================
+   INVOICES CLIENT & MOBILE INVOICE CARDS STYLES
+   Modern, Theme-Matched B2B Invoice & Receivables Management
+   ========================================================= */
+
+.invoices-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+/* ─── Compact Responsive KPI Metric Grid ─── */
+.invoice-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.invoice-kpi-card {
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.invoice-kpi-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.invoice-kpi-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.invoice-kpi-label {
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.invoice-kpi-val {
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 2px;
+}
+
+.invoice-kpi-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.invoice-kpi-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ─── Search & Toolbar ─── */
+.invoice-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: #ffffff;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.invoice-toolbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.invoice-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 240px;
+}
+
+.invoice-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.invoice-search-input {
+  width: 100%;
+  height: 42px;
+  padding: 8px 34px 8px 36px !important;
+  border-radius: 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  background-color: #f8fafc !important;
+  font-size: 0.85rem !important;
+  color: #0f172a !important;
+  outline: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.invoice-search-input:focus {
+  border-color: #4f46e5 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+}
+
+.invoice-search-clear {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invoice-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-credit-notes {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #334155;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  white-space: nowrap;
+}
+
+.btn-credit-notes:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-tally-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid #dbeafe;
+  background-color: #eff6ff;
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-tally-export:hover {
+  background-color: #dbeafe;
+}
+
+/* ─── Horizontal Status Filter Chips Bar ─── */
+.invoice-status-chips-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.invoice-status-chips-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.invoice-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.invoice-status-chip:hover {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+.invoice-status-chip.active {
+  background-color: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.invoice-status-chip.active .chip-count {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ─── Desktop Table View ─── */
+.invoice-desktop-table {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+/* ─── Mobile Invoice Cards Feed ─── */
+.invoice-mobile-feed {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.invoice-mobile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.invoice-mobile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+/* Mobile Card Header */
+.inv-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.inv-card-num-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inv-card-num {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #4f46e5;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inv-card-num:hover {
+  text-decoration: underline;
+}
+
+.inv-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 14px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.inv-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.inv-card-date {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Mobile Card Customer & Details */
+.inv-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inv-customer-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.inv-customer-phone {
+  font-size: 0.78rem;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Mobile Card Financial Breakdown Box */
+.inv-fin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  background-color: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #f1f5f9;
+}
+
+.inv-fin-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.inv-fin-cell.text-center {
+  text-align: center;
+}
+
+.inv-fin-cell.text-right {
+  text-align: right;
+}
+
+.inv-fin-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.2px;
+}
+
+.inv-fin-val {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.inv-fin-val.paid {
+  color: #16a34a;
+}
+
+.inv-fin-val.due {
+  color: #b91c1c;
+}
+
+/* Mobile Card Action Buttons Bar */
+.inv-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.inv-primary-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.inv-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.inv-btn-whatsapp {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.inv-btn-whatsapp:hover {
+  background-color: #dcfce7;
+}
+
+.inv-btn-pay {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.inv-btn-pay:hover {
+  background-color: #dbeafe;
+}
+
+.inv-btn-remind {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.inv-btn-remind:hover {
+  background-color: #fef3c7;
+}
+
+.inv-btn-print {
+  background-color: #f8fafc;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.inv-btn-print:hover {
+  background-color: #f1f5f9;
+}
+
+.inv-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inv-icon-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.inv-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ─── RESPONSIVE BREAKPOINTS (MOBILE APP VIEWPORT) ─── */
+@media (max-width: 768px) {
+  .invoice-desktop-table {
+    display: none !important;
+  }
+
+  .invoice-mobile-feed {
+    display: flex !important;
+  }
+
+  /* Compact 3-Column / 2+1 KPI Grid on Mobile */
+  .invoice-kpi-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .invoice-kpi-card {
+    padding: 12px 14px;
+    border-radius: 12px;
+  }
+
+  .invoice-kpi-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .invoice-kpi-label {
+    font-size: 0.72rem;
+  }
+
+  .invoice-kpi-val {
+    font-size: 1.15rem;
+  }
+
+  .invoice-kpi-sub {
+    font-size: 0.68rem;
+  }
+
+  .invoice-kpi-icon-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .invoice-toolbar {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .invoice-toolbar-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .invoice-search-wrap {
+    min-width: 100%;
+  }
+
+  .invoice-toolbar-actions {
+    width: 100%;
+    display: flex;
+    justify-content: stretch;
+  }
+
+  .btn-credit-notes,
+  .btn-tally-export {
+    flex: 1;
+    justify-content: center;
+  }
+}
