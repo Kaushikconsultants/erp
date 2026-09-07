@@ -23,7 +23,7 @@ import {
 import {
   analyzeCallVoiceDebrief,
   saveCallWithAIDebrief,
-  CallVoiceDebriefAnalysis
+  type CallVoiceDebriefAnalysis
 } from "@/app/actions/callAiActions";
 
 interface CallVoiceDebriefWidgetProps {
