@@ -31,6 +31,7 @@ import { updateInvoice, deleteInvoice } from "@/app/actions/invoiceActions";
 import { sendInvoiceViaWhatsApp, sendPaymentReminder } from "@/app/actions/documentShareActions";
 import { exportTallySalesInvoices } from "@/app/actions/tallyExportActions";
 import EditFullInvoiceModal from "./EditFullInvoiceModal";
+import { openPhoneDialer } from "@/lib/dialer";
 import "@/components/ui/modal.css";
 import "./invoices.css";
 
@@ -955,13 +956,19 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                 </div>
 
                 {inv.customer?.mobile && (
-                  <a 
-                    href={`tel:${inv.customer.mobile}`}
+                  <button 
+                    type="button"
+                    onClick={() => openPhoneDialer({
+                      phone: inv.customer.mobile,
+                      name: inv.customer.businessName || inv.customer.name,
+                      customerId: inv.customerId || inv.customer.id
+                    })}
                     className="inv-customer-phone"
-                    style={{ textDecoration: 'none', color: '#4f46e5' }}
+                    style={{ textDecoration: 'none', color: '#4f46e5', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+                    title={`Call ${inv.customer?.businessName || 'Customer'}`}
                   >
                     📞 {inv.customer.mobile}
-                  </a>
+                  </button>
                 )}
               </div>
 

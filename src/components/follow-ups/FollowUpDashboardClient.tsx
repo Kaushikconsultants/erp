@@ -6,6 +6,7 @@ import { Phone, MessageSquare, CheckCircle2, User, MapPin, Clock, Calendar, Chec
 import { removeFollowUp } from "@/app/actions/callActions";
 import LogCallModal from "@/components/ui/LogCallModal";
 import { useRouter } from "next/navigation";
+import { openPhoneDialer } from "@/lib/dialer";
 
 interface FollowUpDashboardClientProps {
   initialCalls: any[];
@@ -144,14 +145,20 @@ export default function FollowUpDashboardClient({
 
           {rawPhone && (
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", flexWrap: "wrap", marginTop: "2px" }}>
-              <a 
-                href={`tel:${cleanPhone}`} 
-                style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "0.8rem", color: "#2563eb", fontWeight: 600, textDecoration: "none" }}
-                title="Click to Call"
+              <button 
+                type="button"
+                onClick={() => openPhoneDialer({
+                  phone: cleanPhone,
+                  name: leadName || contactPerson || "Customer",
+                  customerId: followUp.customerId || undefined,
+                  leadId: followUp.leadId || undefined
+                })}
+                style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "0.8rem", color: "#2563eb", fontWeight: 600, textDecoration: "none", background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
+                title={`Call ${leadName || contactPerson || 'Customer'}`}
               >
                 <Phone size={13} color="#2563eb" />
                 <span>{rawPhone}</span>
-              </a>
+              </button>
 
               {waPhone && (
                 <a

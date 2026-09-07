@@ -58,6 +58,7 @@ import {
   Globe
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
+import { openPhoneDialer } from '@/lib/dialer';
 import AddCustomerModal from '@/components/ui/AddCustomerModal';
 import './KanbanBoard.css';
 
@@ -1381,13 +1382,20 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
 
           {/* Quick Call */}
           {cleanPhone && (
-            <a
-              href={`tel:${cleanPhone}`}
+            <button
+              type="button"
+              onClick={() => openPhoneDialer({
+                phone: cleanPhone,
+                name: lead.businessName || lead.name || lead.contactPerson || 'Lead',
+                leadId: lead.isLeadRecord ? lead.id : undefined,
+                customerId: !lead.isLeadRecord ? lead.id : undefined
+              })}
               className="action-icon-pill call"
               title={`Call ${lead.businessName || 'Lead'}`}
+              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
             >
               <PhoneCall size={11} />
-            </a>
+            </button>
           )}
 
           {/* Quick WhatsApp */}

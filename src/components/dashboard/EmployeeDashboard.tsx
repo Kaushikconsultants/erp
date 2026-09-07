@@ -6,6 +6,7 @@ import React, { useState, useMemo } from 'react';
 import CheckInButton from '@/components/ui/CheckInButton';
 import { IncentiveResult, calculateIncentives, OrderData } from '@/lib/incentiveEngine';
 import { SprintData, logDailySalesActivity } from '@/app/actions/sprintActions';
+import { openPhoneDialer } from '@/lib/dialer';
 import { 
   Users, 
   PhoneCall, 
@@ -164,8 +165,12 @@ function FollowUpCard({ call }: { call: any }) {
         <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center', marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #f1f5f9' }}>
           {cleanPhone && (
             <>
-              <a 
-                href={`tel:${cleanPhone}`} 
+              <button 
+                type="button"
+                onClick={() => openPhoneDialer({
+                  phone: cleanPhone,
+                  name: item.title || item.client || 'Customer'
+                })}
                 style={{ 
                   textDecoration: 'none', 
                   padding: '2px 7px', 
@@ -177,11 +182,13 @@ function FollowUpCard({ call }: { call: any }) {
                   borderRadius: '4px',
                   backgroundColor: '#f0fdf4',
                   color: '#15803d',
-                  border: '1px solid #bbf7d0'
+                  border: '1px solid #bbf7d0',
+                  cursor: 'pointer'
                 }}
+                title={`Call ${item.title || item.client || 'Customer'}`}
               >
                 <PhoneCall size={11} /> Call
-              </a>
+              </button>
               <a 
                 href={`https://wa.me/91${cleanPhone}`} 
                 target="_blank" 

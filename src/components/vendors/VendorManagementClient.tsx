@@ -30,6 +30,7 @@ import AddVendorButton from "@/components/vendors/AddVendorButton";
 import EditVendorModal, { VendorData } from "@/components/vendors/EditVendorModal";
 import { deleteVendor } from "@/app/actions/vendorActions";
 import { useRouter } from "next/navigation";
+import { openPhoneDialer } from "@/lib/dialer";
 
 export interface VendorItem {
   id: string;
@@ -627,8 +628,12 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
                     {vendor.mobile && (
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "0.85rem" }}>
-                        <a
-                          href={`tel:${vendor.mobile}`}
+                        <button
+                          type="button"
+                          onClick={() => openPhoneDialer({
+                            phone: vendor.mobile || "",
+                            name: vendor.companyName || vendor.contactPerson || "Vendor"
+                          })}
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -636,11 +641,17 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
                             color: "var(--text-primary)",
                             textDecoration: "none",
                             fontWeight: 500,
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            font: "inherit"
                           }}
+                          title={`Call ${vendor.companyName || 'Vendor'}`}
                         >
                           <Phone size={14} style={{ color: "#3b82f6" }} />
                           <span>{vendor.mobile}</span>
-                        </a>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleWhatsApp(vendor.mobile)}
@@ -903,12 +914,17 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
                         <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
                           {vendor.mobile && (
                             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                              <a
-                                href={`tel:${vendor.mobile}`}
-                                style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 500, fontSize: "0.82rem" }}
+                              <button
+                                type="button"
+                                onClick={() => openPhoneDialer({
+                                  phone: vendor.mobile || "",
+                                  name: vendor.companyName || vendor.contactPerson || "Vendor"
+                                })}
+                                style={{ color: "var(--text-primary)", textDecoration: "none", fontWeight: 500, fontSize: "0.82rem", background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
+                                title={`Call ${vendor.companyName || 'Vendor'}`}
                               >
                                 {vendor.mobile}
-                              </a>
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => handleWhatsApp(vendor.mobile)}

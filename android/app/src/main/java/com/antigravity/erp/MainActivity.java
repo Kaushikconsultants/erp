@@ -42,6 +42,7 @@ public class MainActivity extends BridgeActivity {
     private long callStartTime = 0;
     private boolean isCallInProgress = false;
     private int lastCallDurationSec = 0;
+    public String pendingCallNumber = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +82,26 @@ public class MainActivity extends BridgeActivity {
         NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
         registerTelephonyListener();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @androidx.annotation.NonNull String[] permissions, @androidx.annotation.NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            boolean callPhoneGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED;
+            if (callPhoneGranted && pendingCallNumber != null && !pendingCallNumber.isEmpty()) {
+                String toCall = pendingCallNumber;
+                pendingCallNumber = null;
+                try {
+                    Intent callIntent = new Intent(Intent.ACTION_CALL);
+                    callIntent.setData(Uri.parse("tel:" + toCall));
+                    callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(callIntent);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     /**
@@ -464,7 +485,8 @@ public class MainActivity extends BridgeActivity {
                         callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         activity.startActivity(callIntent);
                     } else {
-                        // Prompt runtime permission
+                        // Store pending number & request permission
+                        activity.pendingCallNumber = clean;
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             ActivityCompat.requestPermissions(
                                     activity,
@@ -472,17 +494,12 @@ public class MainActivity extends BridgeActivity {
                                     PERMISSION_REQUEST_CODE
                             );
                         }
-                        // Fallback to DIAL
-                        Intent dialIntent = new Intent(Intent.ACTION_DIAL);
-                        dialIntent.setData(Uri.parse("tel:" + clean));
-                        dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        activity.startActivity(dialIntent);
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
                     try {
                         String clean = phoneNumber.replaceAll("[^0-9+]", "");
-                        Intent fallback = new Intent(Intent.ACTION_DIAL);
+                        Intent fallback = new Intent(Intent.ACTION_CALL);
                         fallback.setData(Uri.parse("tel:" + clean));
                         fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         activity.startActivity(fallback);

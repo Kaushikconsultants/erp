@@ -7,7 +7,7 @@ import Link from 'next/link';
 import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
 import InstallPwaPrompt from '../ui/InstallPwaPrompt';
-import PhoneDialerModal from '@/components/ui/PhoneDialerModal';
+import { openPhoneDialer } from '@/lib/dialer';
 import './Topbar.css';
 
 interface TopbarProps {
@@ -17,7 +17,6 @@ interface TopbarProps {
 const Topbar = ({ onMenuClick }: TopbarProps) => {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isDialerOpen, setIsDialerOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || 'Loading...';
@@ -51,7 +50,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
         {/* Phone Dialer Quick Action */}
         <button
           type="button"
-          onClick={() => setIsDialerOpen(true)}
+          onClick={() => openPhoneDialer()}
           title="Open Phone Dialer & Lead Tracker"
           style={{
             background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
@@ -121,8 +120,6 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
           )}
         </div>
       </div>
-
-      <PhoneDialerModal isOpen={isDialerOpen} onClose={() => setIsDialerOpen(false)} />
     </header>
   );
 };
