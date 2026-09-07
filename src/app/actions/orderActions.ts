@@ -448,10 +448,54 @@ export async function deleteOrder(orderId: string) {
           }
         });
       }
+
+      // 8. Revert any linked quotation status back to Confirmed
+      const orderNotes = order.notes || "";
+      const quoteMatch = orderNotes.match(/Quotation\s*#?([A-Za-z0-9\-_]+)/i);
+
+      let linkedQuote = null;
+      if (quoteMatch && quoteMatch[1]) {
+        linkedQuote = await tx.quotation.findFirst({
+          where: {
+            quotationNumber: quoteMatch[1],
+            ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+          }
+        });
+      }
+
+      if (!linkedQuote && order.customerId) {
+        linkedQuote = await tx.quotation.findFirst({
+          where: {
+            customerId: order.customerId,
+            status: "Converted",
+            ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+          },
+          orderBy: { updatedAt: 'desc' }
+        });
+      }
+
+      if (linkedQuote) {
+        const targetStatus = "Confirmed";
+        await tx.quotation.update({
+          where: { id: linkedQuote.id },
+          data: {
+            status: targetStatus,
+            activities: {
+              create: {
+                userId: (session?.user as any)?.id || null,
+                userName: (session?.user as any)?.name || "System",
+                action: "Status Reverted",
+                details: `Quotation status reverted to ${targetStatus} because Sales Order #${order.orderNumber} was deleted.`
+              }
+            }
+          }
+        });
+      }
     });
 
     revalidatePath("/orders");
     revalidatePath("/invoices");
+    revalidatePath("/quotations");
     revalidatePath("/dispatches");
     revalidatePath("/customers");
     revalidatePath("/", "layout");

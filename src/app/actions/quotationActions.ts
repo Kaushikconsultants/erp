@@ -1099,6 +1099,29 @@ export async function getQuotations() {
       orderBy: { createdAt: "desc" }
     });
 
+    // Auto-heal quotations marked as Converted that have no active invoice in the database
+    const convertedQuotes = quotations.filter(q => q.status === "Converted");
+    if (convertedQuotes.length > 0) {
+      for (const q of convertedQuotes) {
+        const invoiceExists = await prisma.invoice.findFirst({
+          where: {
+            OR: [
+              { notes: { contains: q.quotationNumber } },
+              { order: { notes: { contains: q.quotationNumber } } }
+            ]
+          }
+        });
+
+        if (!invoiceExists) {
+          await prisma.quotation.update({
+            where: { id: q.id },
+            data: { status: "Confirmed" }
+          }).catch(() => {});
+          q.status = "Confirmed";
+        }
+      }
+    }
+
     return { success: true, quotations };
   } catch (error) {
     console.error("Error getting quotations:", error);
@@ -1119,6 +1142,27 @@ export async function getQuotationById(id: string) {
     });
 
     if (!quotation) return { error: "Quotation not found" };
+
+    // Auto-heal quotation marked as Converted that has no active invoice
+    if (quotation.status === "Converted") {
+      const invoiceExists = await prisma.invoice.findFirst({
+        where: {
+          OR: [
+            { notes: { contains: quotation.quotationNumber } },
+            { order: { notes: { contains: quotation.quotationNumber } } }
+          ]
+        }
+      });
+
+      if (!invoiceExists) {
+        await prisma.quotation.update({
+          where: { id: quotation.id },
+          data: { status: "Confirmed" }
+        }).catch(() => {});
+        quotation.status = "Confirmed";
+      }
+    }
+
     return { success: true, quotation };
   } catch (error) {
     return { error: "Failed to fetch quotation" };

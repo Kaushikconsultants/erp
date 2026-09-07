@@ -283,27 +283,34 @@ export async function deleteInvoice(id: string) {
   if (!allowed) return { error: "Unauthorized" };
 
   try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id || null;
+    const userName = (session?.user as any)?.name || "System";
     const organizationId = await getTenantOrgId();
-    const existing = await prisma.invoice.findUnique({ where: { id } });
+
+    const existing = await prisma.invoice.findUnique({
+      where: { id },
+      include: { order: true }
+    });
     if (!existing) return { error: "Invoice not found" };
     if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
       return { error: "Unauthorized access to invoice" };
     }
 
     await prisma.$transaction(async (tx) => {
-      // Unlink any credit notes
+      // 1. Unlink any credit notes
       await tx.creditNote.updateMany({
         where: { invoiceId: id },
         data: { invoiceId: null }
       });
 
-      // Unlink associated payments
+      // 2. Unlink associated payments
       await tx.payment.updateMany({
         where: { invoiceId: id },
         data: { invoiceId: null }
       });
 
-      // Delete associated JournalEntry & line items
+      // 3. Delete associated JournalEntry & line items
       const jvs = await tx.journalEntry.findMany({
         where: {
           OR: [
@@ -317,16 +324,53 @@ export async function deleteInvoice(id: string) {
         await tx.journalEntry.delete({ where: { id: jv.id } });
       }
 
-      // Delete invoice
+      // 4. Delete invoice (Keep Sales Order intact in orders!)
       await tx.invoice.delete({
         where: { id }
       });
 
-      if (existing.orderId) {
-        await tx.orderItem.deleteMany({ where: { orderId: existing.orderId } });
-        await tx.eWayBill.deleteMany({ where: { orderId: existing.orderId } });
-        await tx.payment.updateMany({ where: { orderId: existing.orderId }, data: { orderId: null } });
-        await tx.order.delete({ where: { id: existing.orderId } });
+      // 5. Revert any linked quotation status back to Confirmed
+      const quoteNotes = existing.notes || "";
+      const orderNotes = existing.order?.notes || "";
+      const quoteMatch = quoteNotes.match(/Quotation\s*#?([A-Za-z0-9\-_]+)/i) || orderNotes.match(/Quotation\s*#?([A-Za-z0-9\-_]+)/i);
+
+      let linkedQuote = null;
+      if (quoteMatch && quoteMatch[1]) {
+        linkedQuote = await tx.quotation.findFirst({
+          where: {
+            quotationNumber: quoteMatch[1],
+            ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+          }
+        });
+      }
+
+      if (!linkedQuote && existing.customerId) {
+        linkedQuote = await tx.quotation.findFirst({
+          where: {
+            customerId: existing.customerId,
+            status: "Converted",
+            ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+          },
+          orderBy: { updatedAt: 'desc' }
+        });
+      }
+
+      if (linkedQuote) {
+        const targetStatus = "Confirmed";
+        await tx.quotation.update({
+          where: { id: linkedQuote.id },
+          data: {
+            status: targetStatus,
+            activities: {
+              create: {
+                userId,
+                userName,
+                action: "Status Reverted",
+                details: `Quotation status reverted to ${targetStatus} because Tax Invoice #${existing.invoiceNumber} was deleted.`
+              }
+            }
+          }
+        });
       }
     });
 
@@ -335,9 +379,11 @@ export async function deleteInvoice(id: string) {
 
     revalidatePath("/invoices");
     revalidatePath("/orders");
+    revalidatePath("/quotations");
     revalidatePath("/accounting");
     revalidatePath("/accounting/vouchers");
     revalidatePath("/accounting/financial-statements");
+    revalidatePath("/", "layout");
     return { success: true };
   } catch (error: any) {
     return { error: "Failed to delete invoice: " + error.message };
