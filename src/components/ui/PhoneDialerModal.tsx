@@ -2463,7 +2463,13 @@ class DialerErrorBoundary extends React.Component<
 }
 
 export default function PhoneDialerModal(props: PhoneDialerModalProps) {
-  if (!props.isOpen) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!props.isOpen || !mounted) return null;
 
   return (
     <DialerErrorBoundary onClose={props.onClose}>

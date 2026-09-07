@@ -232,7 +232,12 @@ export default function CallVoiceDebriefWidget({
         if (blob.size > 0) {
           mimeType = blob.type || "audio/webm";
           const buffer = await blob.arrayBuffer();
-          audioBase64 = Buffer.from(buffer).toString("base64");
+          const bytes = new Uint8Array(buffer);
+          let binary = "";
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          audioBase64 = typeof window !== "undefined" ? window.btoa(binary) : undefined;
         }
       } catch (err) {
         console.warn("Error processing audio blob:", err);
