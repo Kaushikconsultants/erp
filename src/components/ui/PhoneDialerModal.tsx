@@ -470,7 +470,11 @@ function PhoneDialerModalContent({
     // Grant App Lock exemption so returning from phone call does not trigger biometric lock screen
     if (typeof window !== "undefined") {
       (window as any).grantAppLockExemption?.(300);
-      window.location.href = `tel:${cleanNum}`;
+      if ((window as any).AndroidNative?.directPhoneCall) {
+        (window as any).AndroidNative.directPhoneCall(cleanNum);
+      } else {
+        window.location.href = `tel:${cleanNum}`;
+      }
     }
 
     // Switch to post-call maintenance view

@@ -128,6 +128,12 @@ public class MainActivity extends BridgeActivity {
                 permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
             }
 
+            // Direct Phone Call Permission (for In-App Direct SIM Dialing)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.CALL_PHONE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.CALL_PHONE);
+            }
+
             if (!permissionsNeeded.isEmpty()) {
                 ActivityCompat.requestPermissions(
                         this,
@@ -332,6 +338,48 @@ public class MainActivity extends BridgeActivity {
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void directPhoneCall(String phoneNumber) {
+            activity.runOnUiThread(() -> {
+                try {
+                    if (phoneNumber == null || phoneNumber.trim().isEmpty()) return;
+                    String clean = phoneNumber.replaceAll("[^0-9+]", "");
+                    if (clean.isEmpty()) return;
+
+                    // If CALL_PHONE permission is granted, make direct phone call without opening keypad
+                    if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                        Intent callIntent = new Intent(Intent.ACTION_CALL);
+                        callIntent.setData(Uri.parse("tel:" + clean));
+                        callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        activity.startActivity(callIntent);
+                    } else {
+                        // Prompt runtime permission
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                            ActivityCompat.requestPermissions(
+                                    activity,
+                                    new String[]{Manifest.permission.CALL_PHONE},
+                                    PERMISSION_REQUEST_CODE
+                            );
+                        }
+                        // Fallback to DIAL
+                        Intent dialIntent = new Intent(Intent.ACTION_DIAL);
+                        dialIntent.setData(Uri.parse("tel:" + clean));
+                        dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        activity.startActivity(dialIntent);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    try {
+                        String clean = phoneNumber.replaceAll("[^0-9+]", "");
+                        Intent fallback = new Intent(Intent.ACTION_DIAL);
+                        fallback.setData(Uri.parse("tel:" + clean));
+                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        activity.startActivity(fallback);
+                    } catch (Exception ex) {}
                 }
             });
         }
