@@ -7,16 +7,18 @@ android {
   }
 }
 
-apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
+def cordovaVariables = file("../capacitor-cordova-android-plugins/cordova.variables.gradle")
+if (cordovaVariables.exists()) {
+    apply from: cordovaVariables
+}
 dependencies {
-    implementation project(':capacitor-app')
-    implementation project(':capacitor-device')
-    implementation project(':capacitor-haptics')
-    implementation project(':capacitor-network')
-    implementation project(':capacitor-splash-screen')
-    implementation project(':capacitor-status-bar')
-    implementation project(':capgo-capacitor-native-biometric')
-
+    if (findProject(':capacitor-app') != null) implementation project(':capacitor-app')
+    if (findProject(':capacitor-device') != null) implementation project(':capacitor-device')
+    if (findProject(':capacitor-haptics') != null) implementation project(':capacitor-haptics')
+    if (findProject(':capacitor-network') != null) implementation project(':capacitor-network')
+    if (findProject(':capacitor-splash-screen') != null) implementation project(':capacitor-splash-screen')
+    if (findProject(':capacitor-status-bar') != null) implementation project(':capacitor-status-bar')
+    if (findProject(':capgo-capacitor-native-biometric') != null) implementation project(':capgo-capacitor-native-biometric')
 }
 
 

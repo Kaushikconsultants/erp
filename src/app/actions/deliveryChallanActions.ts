@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { getNextInvoiceNumber, getNextOrderNumber } from "./quotationActions";
 
 export async function getDeliveryChallans(filters?: {
   challanType?: string;
@@ -148,8 +149,7 @@ export async function convertChallanToInvoice(challanId: string) {
     if (!challan.customerId) return { success: false, error: "Cannot convert to sales invoice: Challan is not assigned to a Customer" };
     if (challan.status === "CONVERTED_TO_INVOICE") return { success: false, error: "Challan has already been converted to an invoice" };
 
-    const invCount = await prisma.invoice.count({ where: { organizationId } });
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invCount + 1).padStart(5, "0")}`;
+    const invoiceNumber = await getNextInvoiceNumber(organizationId);
 
     const subtotal = challan.totalValue;
     const taxRate = 12; // Standard 12% for apparel
@@ -157,14 +157,16 @@ export async function convertChallanToInvoice(challanId: string) {
     const totalAmount = subtotal + taxAmount;
 
     // Create underlying Order with line items
-    const defaultEmp = await prisma.employee.findFirst({
+    let defaultEmp = await prisma.employee.findFirst({
       where: organizationId ? { organizationId } : undefined
-    });
+    }) || await prisma.employee.findFirst();
+
+    const orderNumber = await getNextOrderNumber(organizationId);
 
     const order = await prisma.order.create({
       data: {
         organizationId,
-        orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
+        orderNumber,
         customerId: challan.customerId,
         salespersonId: defaultEmp?.id || "",
         orderDate: new Date(),

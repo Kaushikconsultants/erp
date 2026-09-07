@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { calculateItemGst } from "@/lib/gstUtils";
 import { getCompanySettings, invalidateCompanySettingsCache } from "./companyActions";
 import { getTenantOrgId } from "@/lib/tenant";
+import { getOrCreateEmployee } from "@/lib/employeeHelper";
 
 export async function getNextQuotationNumber(orgId?: string | null): Promise<string> {
   try {
@@ -79,6 +80,194 @@ export async function getNextQuotationNumber(orgId?: string | null): Promise<str
   } catch (err) {
     console.error("Failed to generate next quotation number:", err);
     return `QT-${Date.now().toString().slice(-4)}`;
+  }
+}
+
+export async function getNextInvoiceNumber(orgId?: string | null): Promise<string> {
+  try {
+    const organizationId = orgId || (await getTenantOrgId());
+    const companyRes = await getCompanySettings();
+    const configuredFormat = (companyRes.settings?.nextInvoiceNumber || `INV-${new Date().getFullYear()}-00001`).trim();
+
+    const configMatch = configuredFormat.match(/^(.*?)(\d+)$/);
+    const prefix = configMatch ? configMatch[1] : `INV-${new Date().getFullYear()}-`;
+    const padLength = configMatch ? configMatch[2].length : 5;
+    const configuredStartNum = configMatch ? parseInt(configMatch[2], 10) : 1;
+
+    const existingInvoices = await prisma.invoice.findMany({
+      where: organizationId ? {
+        OR: [
+          { organizationId },
+          { organizationId: null }
+        ]
+      } : undefined,
+      select: { invoiceNumber: true }
+    });
+
+    let highestNum = configuredStartNum - 1;
+    const usedNumbers = new Set<string>();
+
+    for (const inv of existingInvoices) {
+      if (!inv.invoiceNumber) continue;
+      const numStr = inv.invoiceNumber.trim();
+      usedNumbers.add(numStr.toUpperCase());
+
+      const match = numStr.match(/^(.*?)(\d+)$/);
+      if (match) {
+        const invPrefix = match[1];
+        const invNum = parseInt(match[2], 10);
+        if (invPrefix.toUpperCase() === prefix.toUpperCase() && !isNaN(invNum)) {
+          if (invNum > highestNum) {
+            highestNum = invNum;
+          }
+        }
+      }
+    }
+
+    let nextNum = highestNum + 1;
+    let candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+
+    while (usedNumbers.has(candidate.toUpperCase())) {
+      nextNum++;
+      candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+    }
+
+    // Direct DB lookup verification to guarantee absolute global uniqueness
+    let dbExists = await prisma.invoice.findUnique({
+      where: { invoiceNumber: candidate }
+    });
+
+    while (dbExists) {
+      nextNum++;
+      candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+      dbExists = await prisma.invoice.findUnique({
+        where: { invoiceNumber: candidate }
+      });
+    }
+
+    return candidate;
+  } catch (err) {
+    console.error("Failed to generate next invoice number:", err);
+    return `INV-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+  }
+}
+
+export async function getNextOrderNumber(orgId?: string | null): Promise<string> {
+  try {
+    const organizationId = orgId || (await getTenantOrgId());
+    const prefix = "ORD-";
+    const padLength = 4;
+    const configuredStartNum = 1001;
+
+    const existingOrders = await prisma.order.findMany({
+      where: organizationId ? {
+        OR: [
+          { organizationId },
+          { organizationId: null }
+        ]
+      } : undefined,
+      select: { orderNumber: true }
+    });
+
+    let highestNum = configuredStartNum - 1;
+    const usedNumbers = new Set<string>();
+
+    for (const ord of existingOrders) {
+      if (!ord.orderNumber) continue;
+      const numStr = ord.orderNumber.trim();
+      usedNumbers.add(numStr.toUpperCase());
+
+      const match = numStr.match(/^(.*?)(\d+)$/);
+      if (match) {
+        const ordPrefix = match[1];
+        const ordNum = parseInt(match[2], 10);
+        if (ordPrefix.toUpperCase() === prefix.toUpperCase() && !isNaN(ordNum)) {
+          if (ordNum > highestNum) {
+            highestNum = ordNum;
+          }
+        }
+      }
+    }
+
+    let nextNum = highestNum + 1;
+    let candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+
+    while (usedNumbers.has(candidate.toUpperCase())) {
+      nextNum++;
+      candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+    }
+
+    let dbExists = await prisma.order.findUnique({
+      where: { orderNumber: candidate }
+    });
+
+    while (dbExists) {
+      nextNum++;
+      candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+      dbExists = await prisma.order.findUnique({
+        where: { orderNumber: candidate }
+      });
+    }
+
+    return candidate;
+  } catch (err) {
+    console.error("Failed to generate next order number:", err);
+    return `ORD-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
+  }
+}
+
+export async function getNextPaymentNumber(): Promise<string> {
+  try {
+    const prefix = "PAY-";
+    const padLength = 4;
+    const startNum = 1001;
+
+    const existingPayments = await prisma.payment.findMany({
+      select: { paymentNumber: true },
+      take: 200,
+      orderBy: { paymentDate: 'desc' }
+    });
+
+    let highestNum = startNum - 1;
+    const usedNumbers = new Set<string>();
+
+    for (const pay of existingPayments) {
+      if (!pay.paymentNumber) continue;
+      const numStr = pay.paymentNumber.trim();
+      usedNumbers.add(numStr.toUpperCase());
+
+      const match = numStr.match(/^(.*?)(\d+)$/);
+      if (match) {
+        const pNum = parseInt(match[2], 10);
+        if (!isNaN(pNum) && pNum > highestNum) {
+          highestNum = pNum;
+        }
+      }
+    }
+
+    let nextNum = highestNum + 1;
+    let candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+
+    while (usedNumbers.has(candidate.toUpperCase())) {
+      nextNum++;
+      candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+    }
+
+    let dbExists = await prisma.payment.findUnique({
+      where: { paymentNumber: candidate }
+    });
+
+    while (dbExists) {
+      nextNum++;
+      candidate = `${prefix}${String(nextNum).padStart(padLength, '0')}`;
+      dbExists = await prisma.payment.findUnique({
+        where: { paymentNumber: candidate }
+      });
+    }
+
+    return candidate;
+  } catch (err) {
+    return `PAY-${Date.now().toString().slice(-6)}-${Math.floor(100 + Math.random() * 900)}`;
   }
 }
 
@@ -1001,14 +1190,42 @@ export async function convertQuotationToOrder(
 
     const orgId = quotation.organizationId || (session?.user as any)?.organizationId || (await getTenantOrgId());
 
+    // ── Idempotency Check: If already converted, return the existing order & invoice gracefully ──
+    if (quotation.status === 'Converted') {
+      const existingOrder = await prisma.order.findFirst({
+        where: {
+          OR: [
+            { notes: { contains: quotation.quotationNumber } },
+            { customerId: quotation.customerId, totalValue: quotation.totalValue }
+          ],
+          ...(orgId ? { OR: [{ organizationId: orgId }, { organizationId: null }] } : {})
+        },
+        include: { invoices: true },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (existingOrder) {
+        const existingInvoice = existingOrder.invoices?.[0] || await prisma.invoice.findFirst({
+          where: { orderId: existingOrder.id }
+        });
+        return {
+          success: true,
+          orderId: existingOrder.id,
+          orderNumber: existingOrder.orderNumber,
+          invoiceId: existingInvoice?.id || existingOrder.id,
+          invoiceNumber: existingInvoice?.invoiceNumber || existingOrder.orderNumber
+        };
+      }
+    }
+
     // If quotation was already Confirmed, reuse the stored receivedAmount from the Confirm step
     const paymentOption = confirmationData?.paymentOption || 'FULL';
     let effectiveReceived = 0;
     let overridePaymentStatus = "Unpaid";
 
-    if (quotation.status === 'Confirmed' && quotation.receivedAmount > 0) {
+    if (quotation.status === 'Confirmed' && Number(quotation.receivedAmount || 0) > 0) {
       // Use the amount already confirmed and stored
-      effectiveReceived = quotation.receivedAmount;
+      effectiveReceived = Number(quotation.receivedAmount);
       overridePaymentStatus = effectiveReceived >= quotation.totalValue ? "Paid" : "Partially Paid";
     } else if (paymentOption === 'FULL') {
       effectiveReceived = quotation.totalValue;
@@ -1026,18 +1243,115 @@ export async function convertQuotationToOrder(
     }
 
     // Store actual monetary discount in the order record
-    const overrideDiscount = quotation.itemDiscount + quotation.additionalDiscount;
+    const overrideDiscount = (quotation.itemDiscount || 0) + (quotation.additionalDiscount || 0);
 
-    const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
-
-    // Resolve a valid salespersonId
+    // ── Resolve a valid, non-null Employee ID for salesperson relation ──
     let salespersonId = quotation.salespersonId;
-    if (!salespersonId) {
-      const defaultEmp = await prisma.employee.findFirst({
-        where: orgId ? { organizationId: orgId } : undefined
-      }) || await prisma.employee.findFirst();
-      salespersonId = defaultEmp?.id || "";
+    let validSalesperson = null;
+
+    if (salespersonId) {
+      validSalesperson = await prisma.employee.findUnique({ where: { id: salespersonId } });
     }
+
+    if (!validSalesperson && userId) {
+      validSalesperson = await getOrCreateEmployee(userId, session?.user);
+    }
+
+    if (!validSalesperson && orgId) {
+      validSalesperson = await prisma.employee.findFirst({ where: { organizationId: orgId } });
+    }
+
+    if (!validSalesperson) {
+      validSalesperson = await prisma.employee.findFirst();
+    }
+
+    if (!validSalesperson && userId) {
+      try {
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        validSalesperson = await prisma.employee.create({
+          data: {
+            userId,
+            employeeId: `EMP-${randomSuffix}`,
+            department: "Sales",
+            designation: "Sales Executive",
+            employmentStatus: "Active",
+            joiningDate: new Date(),
+            organizationId: orgId || null
+          }
+        });
+      } catch (e) {
+        validSalesperson = await prisma.employee.findFirst();
+      }
+    }
+
+    salespersonId = validSalesperson?.id || "";
+    if (!salespersonId) {
+      return { error: "Unable to assign a valid salesperson/employee record for this order." };
+    }
+
+    // ── Validate Line Items & Products to prevent Foreign Key constraint failure ──
+    const productIds = (quotation.items || []).map(i => i.productId).filter(Boolean);
+    const existingProducts = productIds.length > 0 
+      ? await prisma.product.findMany({ where: { id: { in: productIds } } })
+      : [];
+    const existingProductMap = new Map(existingProducts.map(p => [p.id, p]));
+
+    let fallbackProduct = existingProducts[0] || null;
+    if (existingProducts.length < (quotation.items || []).length || (quotation.items || []).length === 0) {
+      fallbackProduct = await prisma.product.findFirst({
+        where: orgId ? { organizationId: orgId } : undefined
+      }) || await prisma.product.findFirst();
+
+      if (!fallbackProduct) {
+        try {
+          fallbackProduct = await prisma.product.create({
+            data: {
+              name: "Standard Catalog Item",
+              organizationId: orgId,
+              category: "General",
+              purchasePrice: 0,
+              sellingPrice: quotation.totalValue > 0 ? quotation.totalValue : 100,
+              mrp: quotation.totalValue > 0 ? quotation.totalValue : 100,
+              stockQuantity: 1000,
+              status: "Active"
+            }
+          });
+        } catch (pe) {
+          fallbackProduct = await prisma.product.findFirst();
+        }
+      }
+    }
+
+    const orderItemsData = (quotation.items && quotation.items.length > 0)
+      ? quotation.items.map(item => {
+          const pId = existingProductMap.has(item.productId) ? item.productId : (fallbackProduct?.id || item.productId);
+          const qty = Math.max(1, Math.round(Number(item.quantity) || 1));
+          return {
+            productId: pId,
+            quantity: qty,
+            rate: Number(item.rate || 0),
+            hsnCode: item.hsnCode || "6109",
+            gstRate: Number(item.gstRate || 0),
+            cgst: Number(item.cgst || 0),
+            sgst: Number(item.sgst || 0),
+            igst: Number(item.igst || 0),
+            total: Number(item.total || 0)
+          };
+        })
+      : fallbackProduct ? [{
+          productId: fallbackProduct.id,
+          quantity: 1,
+          rate: quotation.totalValue || 0,
+          hsnCode: "6109",
+          gstRate: 0,
+          cgst: 0,
+          sgst: 0,
+          igst: 0,
+          total: quotation.totalValue || 0
+        }] : [];
+
+    // ── Guaranteed Unique Order Number ──
+    const orderNumber = await getNextOrderNumber(orgId);
 
     const order = await prisma.order.create({
       data: {
@@ -1053,49 +1367,50 @@ export async function convertQuotationToOrder(
         sgst: quotation.sgst,
         igst: quotation.igst,
         isInterstate: quotation.isInterstate,
-        placeOfSupply: quotation.placeOfSupply,
+        placeOfSupply: quotation.placeOfSupply || quotation.customer?.state || "Delhi",
         paymentReceived: effectiveReceived,
         outstandingAmount: Math.max(0, quotation.totalValue - effectiveReceived),
         orderStatus: "Processing",
         paymentStatus: overridePaymentStatus,
         notes: `Converted from Quotation #${quotation.quotationNumber} [Method: ${paymentOption}, Received: ₹${effectiveReceived}]`,
-        items: {
-          create: quotation.items.map(item => ({
-            productId: item.productId,
-            quantity: Math.round(item.quantity),
-            rate: item.rate,
-            hsnCode: item.hsnCode,
-            gstRate: item.gstRate,
-            cgst: item.cgst,
-            sgst: item.sgst,
-            igst: item.igst,
-            total: item.total
-          }))
-        }
+        ...(orderItemsData.length > 0 ? {
+          items: {
+            create: orderItemsData
+          }
+        } : {})
       }
     });
 
-    await prisma.quotation.update({
-      where: { id: quotationId },
-      data: { 
-        status: "Converted",
-        organizationId: quotation.organizationId || orgId,
-        receivedAmount: effectiveReceived,
-        activities: {
-          create: {
-            userId,
-            userName,
-            action: "Converted to Order",
-            details: `Converted to Sales Order ${orderNumber} with Payment Received ₹${effectiveReceived}`
+    // ── Update Quotation Status to Converted ──
+    try {
+      await prisma.quotation.update({
+        where: { id: quotationId },
+        data: { 
+          status: "Converted",
+          organizationId: quotation.organizationId || orgId,
+          receivedAmount: effectiveReceived,
+          activities: {
+            create: {
+              userId,
+              userName,
+              action: "Converted to Order",
+              details: `Converted to Sales Order ${orderNumber} with Payment Received ₹${effectiveReceived}`
+            }
           }
         }
-      }
-    });
+      });
+    } catch (qErr) {
+      console.warn("Quotation activity update failed, falling back to simple status update:", qErr);
+      await prisma.quotation.update({
+        where: { id: quotationId },
+        data: { status: "Converted", receivedAmount: effectiveReceived }
+      }).catch(() => {});
+    }
 
-    // Deduct stock for all line items and record transactions
-    for (const item of quotation.items) {
-      const q = Math.round(item.quantity);
-      if (q > 0) {
+    // ── Deduct stock for line items and record transactions ──
+    for (const item of quotation.items || []) {
+      const q = Math.max(1, Math.round(Number(item.quantity) || 1));
+      if (q > 0 && item.productId && existingProductMap.has(item.productId)) {
         try {
           await prisma.product.update({
             where: { id: item.productId },
@@ -1116,9 +1431,8 @@ export async function convertQuotationToOrder(
       }
     }
 
-    // Automatically generate invoice for this order
-    const invoiceCount = await prisma.invoice.count({ where: { organizationId: orgId } });
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(5, '0')}`;
+    // ── Automatically generate guaranteed unique Tax Invoice for this order ──
+    const invoiceNumber = await getNextInvoiceNumber(orgId);
     const invoiceStatus = effectiveReceived >= quotation.totalValue ? 'Paid' : effectiveReceived > 0 ? 'Partially Paid' : 'Unpaid';
 
     const invoice = await prisma.invoice.create({
@@ -1131,20 +1445,20 @@ export async function convertQuotationToOrder(
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         subtotal: quotation.subtotal,
         taxAmount: quotation.taxTotal,
-        discountAmount: quotation.itemDiscount + quotation.additionalDiscount,
+        discountAmount: overrideDiscount,
         totalAmount: quotation.totalValue,
         amountPaid: effectiveReceived,
         amountDue: Math.max(0, quotation.totalValue - effectiveReceived),
         status: invoiceStatus,
-        paymentTerms: 'Net 30',
+        paymentTerms: quotation.paymentTerms || 'Net 30',
         notes: `Auto-generated on converting Quotation #${quotation.quotationNumber}`
       }
     });
 
-    // If advance payment was received, record Payment transaction
+    // ── If advance payment was received, record Payment transaction ──
     if (effectiveReceived > 0) {
       try {
-        const paymentNumber = `PAY-${Date.now().toString().slice(-6)}`;
+        const paymentNumber = await getNextPaymentNumber();
         await prisma.payment.create({
           data: {
             paymentNumber,
@@ -1153,7 +1467,7 @@ export async function convertQuotationToOrder(
             orderId: order.id,
             amount: effectiveReceived,
             paymentDate: new Date(),
-            paymentMode: paymentOption || 'Bank Transfer',
+            paymentMode: confirmationData?.paymentMode || (paymentOption === 'TOKEN' ? 'Token Advance' : 'Bank Transfer'),
             referenceNumber: orderNumber,
             status: 'Completed',
             notes: `Advance payment upon converting Quotation #${quotation.quotationNumber}`
@@ -1164,7 +1478,7 @@ export async function convertQuotationToOrder(
       }
     }
 
-    // ── Mark customer as WON in the Sales Pipeline on conversion ─────────
+    // ── Mark customer as WON in the Sales Pipeline on conversion ──
     try {
       await prisma.customer.update({
         where: { id: quotation.customerId },
@@ -1178,17 +1492,22 @@ export async function convertQuotationToOrder(
       console.warn("Could not update customer lead stage on convert:", cErr);
     }
 
-    revalidatePath("/quotations");
-    revalidatePath(`/quotations/${quotationId}`);
-    revalidatePath("/orders");
-    revalidatePath(`/orders/${order.id}`);
-    revalidatePath(`/orders/${order.id}/invoice`);
-    revalidatePath("/invoices");
-    revalidatePath("/payments");
-    revalidatePath("/products");
-    revalidatePath("/leads");
-    revalidatePath("/customers");
-    revalidatePath("/", "layout");
+    try {
+      revalidatePath("/quotations");
+      revalidatePath(`/quotations/${quotationId}`);
+      revalidatePath("/orders");
+      revalidatePath(`/orders/${order.id}`);
+      revalidatePath(`/orders/${order.id}/invoice`);
+      revalidatePath("/invoices");
+      revalidatePath(`/invoices/${invoice.id}`);
+      revalidatePath("/payments");
+      revalidatePath("/products");
+      revalidatePath("/leads");
+      revalidatePath("/customers");
+      revalidatePath("/", "layout");
+    } catch (revalErr) {
+      console.warn("Revalidation warning:", revalErr);
+    }
 
     return { 
       success: true, 
@@ -1197,9 +1516,9 @@ export async function convertQuotationToOrder(
       invoiceId: invoice.id,
       invoiceNumber: invoice.invoiceNumber
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error converting quotation to order:", error);
-    return { error: "Failed to convert quotation to order" };
+    return { error: error?.message || "Failed to convert quotation to order" };
   }
 }
 

@@ -7,6 +7,8 @@ import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
 import { getCompanySettings } from "./companyActions";
 import { syncSystemLedgers } from "./accountingActions";
+import { getNextInvoiceNumber, getNextOrderNumber } from "./quotationActions";
+import { getOrCreateEmployee } from "@/lib/employeeHelper";
 
 async function canManageInvoices() {
   const session = await getServerSession(authOptions);
@@ -111,9 +113,8 @@ export async function createInvoiceFromOrder(orderId: string, dueDate?: string, 
       await prisma.order.update({ where: { id: order.id }, data: { organizationId } }).catch(() => {});
     }
 
-    // Generate invoice number
-    const count = await prisma.invoice.count({ where: { organizationId } });
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+    // Generate guaranteed unique invoice number
+    const invoiceNumber = await getNextInvoiceNumber(organizationId);
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -157,8 +158,7 @@ export async function createManualInvoice(data: {
 
   try {
     const organizationId = await getTenantOrgId();
-    const count = await prisma.invoice.count({ where: { organizationId } });
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
+    const invoiceNumber = await getNextInvoiceNumber(organizationId);
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -615,13 +615,15 @@ export async function saveFullInvoiceDetails(payload: {
 
     if (!orderId) {
       // Create an underlying order for manual invoice if needed
-      const defaultEmp = await prisma.employee.findFirst({
+      let defaultEmp = await prisma.employee.findFirst({
         where: organizationId ? { organizationId } : undefined
-      });
+      }) || await prisma.employee.findFirst();
+
+      const orderNumber = await getNextOrderNumber(organizationId);
       const newOrder = await prisma.order.create({
         data: {
           organizationId,
-          orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
+          orderNumber,
           customerId: payload.customerId,
           salespersonId: defaultEmp?.id || "",
           orderDate: new Date(payload.invoiceDate),

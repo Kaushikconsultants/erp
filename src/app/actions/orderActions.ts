@@ -10,6 +10,7 @@ import { getCompanySettings } from "./companyActions";
 import { checkCustomerCreditStatus } from "./customerActions";
 import { shipmozoService, RateCalculationParams } from "@/lib/shipmozoService";
 import { getTenantOrgId } from "@/lib/tenant";
+import { getNextOrderNumber, getNextInvoiceNumber } from "./quotationActions";
 
 export async function createOrder(formData: FormData) {
   const customerId = formData.get("customerId") as string;
@@ -110,10 +111,12 @@ export async function createOrder(formData: FormData) {
     const totalTax = breakdown.taxTotal;
     const totalValue = breakdown.totalAmount;
 
+    const orderNumber = await getNextOrderNumber(organizationId);
+
     const order = await prisma.order.create({
       data: {
         organizationId,
-        orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
+        orderNumber,
         customerId,
         salespersonId: finalSalespersonId,
         placeOfSupply: customerState,
@@ -161,9 +164,8 @@ export async function createOrder(formData: FormData) {
       }
     });
 
-    // Automatically generate invoice for this order
-    const invoiceCount = await prisma.invoice.count({ where: { organizationId } });
-    const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount + 1).padStart(5, '0')}`;
+    // Automatically generate guaranteed unique invoice for this order
+    const invoiceNumber = await getNextInvoiceNumber(organizationId);
 
     await prisma.invoice.create({
       data: {
