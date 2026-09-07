@@ -33,6 +33,7 @@ import { createBill, updateBillStatus, deleteBill } from '@/app/actions/billActi
 import { recordVendorPayment } from '@/app/actions/vendorPaymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
 import PurchaseBillScannerModal from '@/components/bills/PurchaseBillScannerModal';
+import './bills.css';
 
 interface VendorOption {
   id: string;
@@ -597,7 +598,7 @@ export default function BillsClient({
   };
 
   return (
-    <div className="page-container" style={{ padding: '24px', maxWidth: '1440px', margin: '0 auto' }}>
+    <div className="bills-container" style={{ maxWidth: '1440px', margin: '0 auto' }}>
       
       {/* Top Header */}
       <div className="dashboard-header mb-6" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
@@ -675,68 +676,68 @@ export default function BillsClient({
         </div>
       </div>
 
-      {/* KPI Summary Matrix */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+      {/* KPI Summary Matrix (4 cols desktop, 2x2 mobile) */}
+      <div className="bills-kpi-grid">
         
         {/* Card 1: Total Incurred */}
-        <div className="glass-panel" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: 44, height: 44, borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
-            <Receipt size={22} />
+        <div className="bills-kpi-card">
+          <div className="bills-kpi-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+            <Receipt size={20} />
           </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Incurred Bills</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+          <div className="bills-kpi-info">
+            <div className="bills-kpi-label">Total Incurred Bills</div>
+            <div className="bills-kpi-value">
               ₹{summary.totalAmount?.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+            <div className="bills-kpi-sub">
               {summary.totalBills} Recorded Bills
             </div>
           </div>
         </div>
 
         {/* Card 2: Outstanding Payables (Unpaid) */}
-        <div className="glass-panel" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: 44, height: 44, borderRadius: '10px', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e11d48' }}>
-            <Clock size={22} />
+        <div className="bills-kpi-card">
+          <div className="bills-kpi-icon" style={{ background: '#fff1f2', color: '#e11d48' }}>
+            <Clock size={20} />
           </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Unpaid Payables</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#e11d48', marginTop: '2px' }}>
+          <div className="bills-kpi-info">
+            <div className="bills-kpi-label">Unpaid Payables</div>
+            <div className="bills-kpi-value" style={{ color: '#e11d48' }}>
               ₹{summary.totalDue?.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#e11d48', marginTop: '1px' }}>
+            <div className="bills-kpi-sub" style={{ color: '#e11d48' }}>
               {summary.unpaidCount} Pending Bills
             </div>
           </div>
         </div>
 
         {/* Card 3: Total Settled / Paid */}
-        <div className="glass-panel" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: 44, height: 44, borderRadius: '10px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
-            <CheckCircle2 size={22} />
+        <div className="bills-kpi-card">
+          <div className="bills-kpi-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
+            <CheckCircle2 size={20} />
           </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Settled to Vendors</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#059669', marginTop: '2px' }}>
+          <div className="bills-kpi-info">
+            <div className="bills-kpi-label">Settled to Vendors</div>
+            <div className="bills-kpi-value" style={{ color: '#059669' }}>
               ₹{summary.totalPaid?.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#059669', marginTop: '1px' }}>
+            <div className="bills-kpi-sub" style={{ color: '#059669' }}>
               {summary.paidCount} Fully Paid
             </div>
           </div>
         </div>
 
         {/* Card 4: Overdue Bills */}
-        <div className="glass-panel" style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <div style={{ width: 44, height: 44, borderRadius: '10px', background: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
-            <AlertCircle size={22} />
+        <div className="bills-kpi-card">
+          <div className="bills-kpi-icon" style={{ background: '#fffbeb', color: '#d97706' }}>
+            <AlertCircle size={20} />
           </div>
-          <div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Overdue Bills</div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 700, color: '#d97706', marginTop: '2px' }}>
+          <div className="bills-kpi-info">
+            <div className="bills-kpi-label">Overdue Bills</div>
+            <div className="bills-kpi-value" style={{ color: '#d97706' }}>
               {summary.overdueCount} Overdue
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '1px' }}>
+            <div className="bills-kpi-sub">
               Past Payment Term
             </div>
           </div>
@@ -745,10 +746,10 @@ export default function BillsClient({
       </div>
 
       {/* Filter Toolbar */}
-      <div className="glass-panel" style={{ padding: '14px 18px', marginBottom: '20px', borderRadius: '12px' }}>
+      <div className="bills-toolbar">
         
         {/* Row 1: Search & Dropdowns */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1.5fr) minmax(200px, 1.2fr) minmax(160px, 1fr)', gap: '10px', alignItems: 'center', marginBottom: '12px' }}>
+        <div className="bills-toolbar-row1">
           
           {/* Search */}
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%', minWidth: 0, height: '36px' }}>
@@ -810,7 +811,7 @@ export default function BillsClient({
         </div>
 
         {/* Row 2: Date Filters & Summary */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+        <div className="bills-toolbar-row2">
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
@@ -844,14 +845,12 @@ export default function BillsClient({
 
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px', backgroundColor: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border)' }}>
               <DatePicker
-                
                 style={{ border: 'none', background: 'transparent', fontSize: '0.78rem', color: 'var(--text-primary)', outline: 'none' }}
                 value={startDate}
                 onChange={e => { setStartDate(e.target.value); setDatePreset('custom'); }}
               />
               <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>→</span>
               <DatePicker
-                
                 style={{ border: 'none', background: 'transparent', fontSize: '0.78rem', color: 'var(--text-primary)', outline: 'none' }}
                 value={endDate}
                 onChange={e => { setEndDate(e.target.value); setDatePreset('custom'); }}
@@ -886,8 +885,8 @@ export default function BillsClient({
 
       </div>
 
-      {/* Bills Table */}
-      <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
+      {/* ─── Desktop Table (Visible > 768px) ─── */}
+      <div className="bills-desktop-table">
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Vendor Bills Ledger</h3>
@@ -1036,6 +1035,149 @@ export default function BillsClient({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ─── Mobile Feed (Visible <= 768px) ─── */}
+      <div className="bills-mobile-feed">
+        {filteredBills.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '36px 16px', background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+            <Receipt size={32} style={{ margin: '0 auto 8px', color: '#cbd5e1' }} />
+            <p style={{ margin: 0, fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>No Vendor Bills Found</p>
+            <p style={{ margin: '4px 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>Create a vendor purchase bill or adjust filters.</p>
+          </div>
+        ) : (
+          filteredBills.map(bill => {
+            const statusBg = bill.status === 'Paid' ? '#ecfdf5' : bill.status === 'Partially Paid' ? '#eff6ff' : bill.status === 'Open' ? '#fff1f2' : '#f1f5f9';
+            const statusColor = bill.status === 'Paid' ? '#059669' : bill.status === 'Partially Paid' ? '#2563eb' : bill.status === 'Open' ? '#e11d48' : '#64748b';
+            const statusBorder = bill.status === 'Paid' ? '#a7f3d0' : bill.status === 'Partially Paid' ? '#bfdbfe' : bill.status === 'Open' ? '#fecdd3' : '#cbd5e1';
+
+            const isOverdue = bill.dueDate && new Date(bill.dueDate) < new Date() && bill.amountDue > 0;
+
+            return (
+              <div key={bill.id} className="bill-mobile-card">
+                {/* Header */}
+                <div className="bill-card-header">
+                  <div className="bill-card-id-group">
+                    <span className="bill-card-number">{bill.billNumber}</span>
+                    <span className="bill-status-pill" style={{ backgroundColor: statusBg, color: statusColor, border: `1px solid ${statusBorder}` }}>
+                      {bill.status}
+                    </span>
+                  </div>
+                  <span className="bill-card-date">
+                    {new Date(bill.billDate).toLocaleDateString('en-GB')}
+                  </span>
+                </div>
+
+                {/* Vendor Details */}
+                <div className="bill-card-vendor">
+                  <div className="bill-vendor-name">{bill.vendor?.companyName}</div>
+                  <div className="bill-vendor-meta">
+                    {bill.vendor?.contactPerson && <span>{bill.vendor.contactPerson}</span>}
+                    {bill.vendor?.mobile && <span>• 📞 {bill.vendor.mobile}</span>}
+                    {bill.vendor?.gstNumber && <span>• GST: {bill.vendor.gstNumber}</span>}
+                  </div>
+                </div>
+
+                {/* Tags */}
+                <div className="bill-tags-row">
+                  {bill.vendorBillNumber && (
+                    <span className="bill-tag-po">
+                      Inv Ref: {bill.vendorBillNumber}
+                    </span>
+                  )}
+                  {bill.purchaseOrder && (
+                    <span className="bill-tag-po">
+                      PO: {bill.purchaseOrder.poNumber}
+                    </span>
+                  )}
+                  {bill.paymentTerms && (
+                    <span className="bill-tag-terms">
+                      Terms: {bill.paymentTerms}
+                    </span>
+                  )}
+                  {bill.dueDate && (
+                    <span
+                      className="bill-tag-due"
+                      style={{
+                        backgroundColor: isOverdue ? '#fee2e2' : '#f8fafc',
+                        color: isOverdue ? '#dc2626' : '#64748b',
+                        border: isOverdue ? '1px solid #fecaca' : '1px solid #e2e8f0'
+                      }}
+                    >
+                      {isOverdue ? `⚠️ Overdue (${new Date(bill.dueDate).toLocaleDateString('en-GB')})` : `Due: ${new Date(bill.dueDate).toLocaleDateString('en-GB')}`}
+                    </span>
+                  )}
+                </div>
+
+                {/* Financial Summary Box */}
+                <div className="bill-fin-box">
+                  <div className="bill-fin-item">
+                    <span className="bill-fin-label">Total Bill</span>
+                    <span className="bill-fin-val">
+                      ₹{bill.totalAmount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div className="bill-fin-item">
+                    <span className="bill-fin-label">Paid</span>
+                    <span className="bill-fin-val" style={{ color: '#059669' }}>
+                      ₹{bill.amountPaid.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                  <div className="bill-fin-item">
+                    <span className="bill-fin-label">Balance Due</span>
+                    <span className="bill-fin-val" style={{ color: bill.amountDue > 0 ? '#e11d48' : '#64748b' }}>
+                      ₹{bill.amountDue.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="bill-card-actions">
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {bill.amountDue > 0 && bill.status !== 'Void' && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPayModalBill(bill);
+                          setPayAmount(String(bill.amountDue));
+                        }}
+                        className="bill-action-btn btn-pay-bill"
+                      >
+                        <Wallet size={13} /> Record Payment
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setViewBill(bill)}
+                      className="bill-action-btn"
+                      style={{ backgroundColor: '#ffffff', color: '#334155', border: '1px solid #cbd5e1' }}
+                    >
+                      <Eye size={13} /> Details
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrintBill(bill)}
+                      className="bill-action-btn"
+                      style={{ backgroundColor: '#ffffff', color: '#2563eb', border: '1px solid #bfdbfe' }}
+                    >
+                      <Printer size={13} /> Print
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={deletingBillId === bill.id}
+                    onClick={() => handleDeleteBill(bill)}
+                    className="bill-action-btn"
+                    style={{ backgroundColor: '#fff1f2', color: '#dc2626', border: '1px solid #fecdd3' }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* CREATE VENDOR BILL POPUP MODAL */}

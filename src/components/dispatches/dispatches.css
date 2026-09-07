@@ -1,0 +1,270 @@
+/* =========================================================
+   DISPATCH PIPELINE - RESPONSIVE & MOBILE STYLES
+   Modern, Theme-Matched Order Fulfillment & Logistics
+   ========================================================= */
+
+.dispatch-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── Stage Tabs Selector for Mobile (<= 768px) ─── */
+.dispatch-mobile-tabs {
+  display: none;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 8px 2px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.dispatch-mobile-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.dispatch-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border, #e2e8f0);
+  background-color: #ffffff;
+  color: #64748b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.dispatch-tab-pill:hover {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.dispatch-tab-pill.active {
+  background-color: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.dispatch-tab-pill.active .dispatch-count-badge {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.dispatch-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+/* ─── Desktop Multi-Column Kanban Board (> 768px) ─── */
+.dispatch-desktop-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: 20px;
+}
+
+.dispatch-board-column {
+  background: #f8fafc;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  padding: 14px;
+  min-width: 270px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dispatch-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #334155;
+  padding-bottom: 4px;
+}
+
+/* ─── Mobile Cards Feed (<= 768px) ─── */
+.dispatch-mobile-feed {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dispatch-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-left-width: 4px;
+  transition: all 0.2s ease;
+}
+
+.dispatch-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+.dispatch-card.stage-new {
+  border-left-color: #6366f1;
+}
+
+.dispatch-card.stage-packing {
+  border-left-color: #f59e0b;
+}
+
+.dispatch-card.stage-packed {
+  border-left-color: #3b82f6;
+}
+
+.dispatch-card.stage-dispatched {
+  border-left-color: #10b981;
+}
+
+/* Card Header */
+.dispatch-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dispatch-order-number {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.dispatch-inv-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #4f46e5;
+  background-color: #eef2ff;
+  border: 1px solid #c7d2fe;
+  padding: 2px 7px;
+  border-radius: 6px;
+}
+
+/* Card Body */
+.dispatch-card-customer {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.dispatch-card-location {
+  font-size: 0.76rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Card Actions */
+.dispatch-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+  width: 100%;
+}
+
+.dispatch-btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background-color: #4f46e5;
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.2);
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.dispatch-btn-primary:hover {
+  background-color: #4338ca;
+}
+
+.dispatch-btn-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #4f46e5;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1.5px solid #4f46e5;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.dispatch-btn-outline:hover {
+  background-color: #f8fafc;
+}
+
+.dispatch-btn-sub {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+/* ─── MOBILE VIEWPORT RESPONSIVENESS (<= 768px) ─── */
+@media (max-width: 768px) {
+  .dispatch-desktop-board {
+    display: none !important;
+  }
+
+  .dispatch-mobile-tabs {
+    display: flex !important;
+  }
+
+  .dispatch-mobile-feed {
+    display: flex !important;
+  }
+}
