@@ -8,7 +8,8 @@ import {
   isNativePlatform,
   requestAllNativePermissions,
   getDeviceInfo,
-  postNativeAndroidNotification
+  postNativeAndroidNotification,
+  syncNativeUserSession
 } from "@/lib/capacitor";
 
 const VAPID_PUBLIC_KEY =
@@ -208,9 +209,21 @@ export default function PushNotificationManager() {
     }
   }, [registerSubscriptionOnServer, displayInAppToast]);
 
-  // Initialize Service Worker & Push Manager on mount
+  // Initialize Service Worker, Push Manager & Native Background Poller on mount
   useEffect(() => {
-    if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+    if (typeof window === "undefined") return;
+
+    // Sync active user ID with native Android background notification service
+    fetch("/api/profile")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.user?.id) {
+          syncNativeUserSession(data.user.id, window.location.origin);
+        }
+      })
+      .catch(() => {});
+
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       return;
     }
 

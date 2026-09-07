@@ -42,12 +42,16 @@ public class MainActivity extends BridgeActivity {
 
         // 3. Grant WebRTC Camera & Microphone permissions and inject JavaScript Native Bridge
         configureWebView();
+
+        // 4. Start background notification polling sync
+        NotificationSyncReceiver.schedule(this);
     }
 
     @Override
     public void onStart() {
         super.onStart();
         configureWebView();
+        NotificationSyncReceiver.schedule(this);
     }
 
     @Override
@@ -55,6 +59,7 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         createNotificationChannels();
         configureWebView();
+        NotificationSyncReceiver.schedule(this);
     }
 
     /**
@@ -169,11 +174,14 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
-        public boolean areNotificationsEnabled() {
-            try {
-                return NotificationManagerCompat.from(activity).areNotificationsEnabled();
-            } catch (Exception e) {
-                return true;
+        public void setUserSession(String userId, String serverUrl) {
+            if (userId != null && !userId.isEmpty()) {
+                activity.getSharedPreferences(NotificationSyncReceiver.PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .putString(NotificationSyncReceiver.PREF_USER_ID, userId)
+                        .putString(NotificationSyncReceiver.PREF_SERVER_URL, serverUrl != null && !serverUrl.isEmpty() ? serverUrl : NotificationSyncReceiver.DEFAULT_SERVER_URL)
+                        .apply();
+                NotificationSyncReceiver.schedule(activity);
             }
         }
 

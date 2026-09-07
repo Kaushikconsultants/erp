@@ -152,6 +152,18 @@ export const postNativeAndroidNotification = (title: string, body: string, url: 
 };
 
 /**
+ * Register user session with native Android background notification sync
+ */
+export const syncNativeUserSession = (userId: string, serverUrl?: string) => {
+  if (isAndroidNativeApp() && userId) {
+    try {
+      const origin = serverUrl || (typeof window !== 'undefined' ? window.location.origin : 'https://erp.esponsports.com');
+      (window as any).AndroidNative.setUserSession(userId, origin);
+    } catch (e) {}
+  }
+};
+
+/**
  * Request Camera Permission
  */
 export const requestCameraPermission = async (): Promise<{ success: boolean; error?: string }> => {

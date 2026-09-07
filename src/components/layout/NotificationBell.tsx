@@ -38,6 +38,11 @@ export default function NotificationBell() {
 
         if (fetched.length > 0) {
           lastSeenNotifIdRef.current = fetched[0].id;
+          if (fetched[0].userId) {
+            import("@/lib/capacitor").then(({ syncNativeUserSession }) => {
+              syncNativeUserSession(fetched[0].userId);
+            }).catch(() => {});
+          }
         }
 
         setNotifications(fetched);
