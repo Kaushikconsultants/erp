@@ -6,12 +6,14 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { createPurchaseOrder, updatePOStatus, receiveGRN, deletePurchaseOrder } from "@/app/actions/purchaseActions";
 import ModernSearchableSelect, { SelectOption } from "@/components/ui/ModernSearchableSelect";
+import QuickAddProductModal from "@/components/products/QuickAddProductModal";
 import {
   ShoppingBag,
   Plus,
   Search,
   X,
   PackageCheck,
+  Package,
   Printer,
   Calendar,
   Building2,
@@ -71,11 +73,26 @@ export default function PurchasesClient({
 }) {
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState(initialOrders);
+  const [productList, setProductList] = useState<ProductOption[]>(products);
+  const [vendorList, setVendorList] = useState<VendorOption[]>(vendors);
   const [createOpen, setCreateOpen] = useState(false);
   const [grnOpen, setGrnOpen] = useState<string | null>(null);
   const [voucherPO, setVoucherPO] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Quick Add Product State
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddTargetIdx, setQuickAddTargetIdx] = useState<number | null>(null);
+  const [quickAddInitialName, setQuickAddInitialName] = useState<string>("");
+
+  useEffect(() => {
+    setProductList(products);
+  }, [products]);
+
+  useEffect(() => {
+    setVendorList(vendors);
+  }, [vendors]);
 
   // Create Form State
   const [vendorId, setVendorId] = useState<string>("");
@@ -100,7 +117,7 @@ export default function PurchasesClient({
 
   // Vendor options for ModernSearchableSelect
   const vendorSelectOptions: SelectOption[] = useMemo(() => {
-    return vendors.map((v) => ({
+    return vendorList.map((v) => ({
       value: v.id,
       label: v.companyName,
       subLabel: v.contactPerson
@@ -110,16 +127,16 @@ export default function PurchasesClient({
         : undefined,
       badge: v.gstNumber ? "GST Registered" : undefined
     }));
-  }, [vendors]);
+  }, [vendorList]);
 
   // Product options for ModernSearchableSelect
   const productSelectOptions: SelectOption[] = useMemo(() => {
-    return products.map((p) => ({
+    return productList.map((p) => ({
       value: p.id,
       label: p.name,
       subLabel: `SKU: ${p.sku || "N/A"} | Purchase Price: ₹${(p.purchasePrice || p.sellingPrice || 0).toLocaleString("en-IN")}`
     }));
-  }, [products]);
+  }, [productList]);
 
   // KPI Calculations
   const totals = useMemo(() => {
@@ -187,15 +204,54 @@ export default function PurchasesClient({
   }
 
   function handleProductChange(idx: number, prodId: string) {
-    const selectedProd = products.find((p) => p.id === prodId);
+    const selectedProd = productList.find((p) => p.id === prodId);
     const newItems = [...items];
     newItems[idx] = {
       ...newItems[idx],
       productId: prodId,
       rate: selectedProd?.purchasePrice || selectedProd?.sellingPrice || 0,
-      gstRate: 18
+      gstRate: newItems[idx]?.gstRate || 18
     };
     setItems(newItems);
+  }
+
+  function handleOpenQuickAdd(targetIdx?: number, initialName?: string) {
+    setQuickAddTargetIdx(targetIdx !== undefined ? targetIdx : null);
+    setQuickAddInitialName(initialName || "");
+    setQuickAddOpen(true);
+  }
+
+  function handleQuickProductCreated(newProd: {
+    id: string;
+    name: string;
+    sku?: string | null;
+    sellingPrice: number;
+    purchasePrice?: number | null;
+    category?: string | null;
+    gstRate?: number;
+  }) {
+    setProductList((prev) => [newProd, ...prev.filter((p) => p.id !== newProd.id)]);
+
+    if (quickAddTargetIdx !== null && quickAddTargetIdx >= 0 && quickAddTargetIdx < items.length) {
+      const newItems = [...items];
+      newItems[quickAddTargetIdx] = {
+        ...newItems[quickAddTargetIdx],
+        productId: newProd.id,
+        rate: newProd.purchasePrice || newProd.sellingPrice || 0,
+        gstRate: newProd.gstRate || 18
+      };
+      setItems(newItems);
+    } else {
+      setItems((prev) => [
+        ...prev,
+        {
+          productId: newProd.id,
+          quantity: 1,
+          rate: newProd.purchasePrice || newProd.sellingPrice || 0,
+          gstRate: newProd.gstRate || 18
+        }
+      ]);
+    }
   }
 
   function handleItemQuantityChange(idx: number, qty: number) {
@@ -1221,37 +1277,70 @@ export default function PurchasesClient({
                     </span>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      padding: "6px 14px",
-                      borderRadius: "8px",
-                      backgroundColor: "#eef2ff",
-                      color: "var(--accent-primary, #4f46e5)",
-                      border: "1px solid #c7d2fe",
-                      fontSize: "0.8rem",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                      boxShadow: "0 1px 2px rgba(79, 70, 229, 0.08)"
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "var(--accent-primary, #4f46e5)";
-                      e.currentTarget.style.color = "#ffffff";
-                      e.currentTarget.style.borderColor = "transparent";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "#eef2ff";
-                      e.currentTarget.style.color = "var(--accent-primary, #4f46e5)";
-                      e.currentTarget.style.borderColor = "#c7d2fe";
-                    }}
-                  >
-                    <Plus size={14} /> Add Line Item
-                  </button>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenQuickAdd()}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        backgroundColor: "#f0fdf4",
+                        color: "#15803d",
+                        border: "1px solid #bbf7d0",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 1px 2px rgba(22, 101, 52, 0.05)"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "#dcfce7";
+                        e.currentTarget.style.borderColor = "#86efac";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#f0fdf4";
+                        e.currentTarget.style.borderColor = "#bbf7d0";
+                      }}
+                      title="Quick create a new item / raw material"
+                    >
+                      <Plus size={14} /> New Product / Item
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
+                        padding: "6px 14px",
+                        borderRadius: "8px",
+                        backgroundColor: "#eef2ff",
+                        color: "var(--accent-primary, #4f46e5)",
+                        border: "1px solid #c7d2fe",
+                        fontSize: "0.8rem",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                        boxShadow: "0 1px 2px rgba(79, 70, 229, 0.08)"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = "var(--accent-primary, #4f46e5)";
+                        e.currentTarget.style.color = "#ffffff";
+                        e.currentTarget.style.borderColor = "transparent";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = "#eef2ff";
+                        e.currentTarget.style.color = "var(--accent-primary, #4f46e5)";
+                        e.currentTarget.style.borderColor = "#c7d2fe";
+                      }}
+                    >
+                      <Plus size={14} /> Add Line Item
+                    </button>
+                  </div>
                 </div>
 
                 {/* Line Items List */}
@@ -1285,8 +1374,10 @@ export default function PurchasesClient({
                             options={productSelectOptions}
                             value={item.productId}
                             onChange={(val) => handleProductChange(idx, val)}
-                            placeholder="-- Choose Product --"
+                            placeholder="-- Choose Product / Item --"
                             searchPlaceholder="Search product by name or SKU..."
+                            onAddNew={(search) => handleOpenQuickAdd(idx, search)}
+                            addNewLabel="+ Add New Product / Item"
                             required
                           />
                         </div>
@@ -2121,6 +2212,20 @@ export default function PurchasesClient({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Quick Add Product / Raw Material Modal */}
+      {quickAddOpen && (
+        <QuickAddProductModal
+          isOpen={quickAddOpen}
+          initialName={quickAddInitialName}
+          onClose={() => {
+            setQuickAddOpen(false);
+            setQuickAddTargetIdx(null);
+            setQuickAddInitialName("");
+          }}
+          onSuccess={handleQuickProductCreated}
+        />
       )}
     </div>
   );

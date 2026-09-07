@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Check, X } from 'lucide-react';
+import { ChevronDown, Search, Check, X, Plus } from 'lucide-react';
 
 export interface SelectOption {
   value: string;
@@ -24,6 +24,8 @@ interface ModernSearchableSelectProps {
   className?: string;
   style?: React.CSSProperties;
   menuMaxHeight?: number;
+  onAddNew?: (searchQuery?: string) => void;
+  addNewLabel?: string;
 }
 
 export default function ModernSearchableSelect({
@@ -36,7 +38,9 @@ export default function ModernSearchableSelect({
   allowClear = false,
   disabled = false,
   style,
-  menuMaxHeight = 220
+  menuMaxHeight = 220,
+  onAddNew,
+  addNewLabel = "+ Add New Item"
 }: ModernSearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -155,8 +159,8 @@ export default function ModernSearchableSelect({
             overflow: "hidden"
           }}
         >
-          {/* Search Field (if more than 5 options) */}
-          {options.length > 5 && (
+          {/* Search Field (if more than 4 options or onAddNew is available) */}
+          {(options.length > 4 || onAddNew) && (
             <div style={{ padding: "8px 10px", borderBottom: "1px solid #f1f5f9", position: "relative", backgroundColor: "#f8fafc" }}>
               <Search size={14} style={{ position: "absolute", left: "20px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
               <input
@@ -250,11 +254,78 @@ export default function ModernSearchableSelect({
             })}
 
             {filteredOptions.length === 0 && (
-              <div style={{ padding: "12px", textAlign: "center", fontSize: "0.78rem", color: "#94a3b8" }}>
-                No matching options found
+              <div style={{ padding: "14px 12px", textAlign: "center", fontSize: "0.8rem", color: "#64748b" }}>
+                <div>No matching options found</div>
+                {onAddNew && search.trim() && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsOpen(false);
+                      onAddNew(search.trim());
+                    }}
+                    style={{
+                      marginTop: "8px",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      padding: "6px 12px",
+                      borderRadius: "6px",
+                      backgroundColor: "#eef2ff",
+                      color: "#4f46e5",
+                      border: "1px solid #c7d2fe",
+                      fontSize: "0.78rem",
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    <Plus size={13} />
+                    <span>Create &quot;{search.trim()}&quot;</span>
+                  </button>
+                )}
               </div>
             )}
           </div>
+
+          {/* Quick Add New Item Action Footer */}
+          {onAddNew && (
+            <div
+              style={{
+                borderTop: "1px solid #f1f5f9",
+                padding: "4px",
+                backgroundColor: "#f8fafc"
+              }}
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen(false);
+                  onAddNew(search.trim() || undefined);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  border: "none",
+                  backgroundColor: "transparent",
+                  color: "var(--accent-primary, #4f46e5)",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  transition: "background-color 0.15s ease"
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#eef2ff")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+              >
+                <Plus size={14} />
+                <span>{addNewLabel}</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
