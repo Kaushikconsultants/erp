@@ -121,3 +121,46 @@ export const getNetworkStatus = async () => {
     return { connected: navigator.onLine, connectionType: 'unknown' };
   }
 };
+
+/**
+ * Request all essential runtime permissions (Camera, Microphone, Notifications)
+ * Works seamlessly in native Android / iOS Capacitor WebViews and desktop browsers
+ */
+export const requestAllNativePermissions = async () => {
+  const results: { camera?: boolean; mic?: boolean; notifications?: string } = {};
+
+  // 1. Request Camera & Mic via WebRTC / getUserMedia
+  if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      results.camera = true;
+      results.mic = true;
+      stream.getTracks().forEach((track) => track.stop());
+    } catch (err) {
+      console.debug('Combined media permissions fallback:', err);
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        results.mic = true;
+        audioStream.getTracks().forEach((track) => track.stop());
+      } catch (e) {}
+
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        results.camera = true;
+        videoStream.getTracks().forEach((track) => track.stop());
+      } catch (e) {}
+    }
+  }
+
+  // 2. Request Notification Permission
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    try {
+      const perm = await Notification.requestPermission();
+      results.notifications = perm;
+    } catch (e) {}
+  }
+
+  triggerHaptic('success').catch(() => {});
+  return results;
+};
+

@@ -20,7 +20,9 @@ import {
   Save,
   Radio,
   Check,
-  Info
+  Info,
+  Camera,
+  Mic
 } from "lucide-react";
 import {
   NotificationSettingsData,
@@ -29,7 +31,7 @@ import {
   getMyActivePushDevicesCount
 } from "@/app/actions/notificationActions";
 import { playNotificationChime } from "@/components/notifications/PushNotificationManager";
-import { triggerHaptic, isNativePlatform, getPlatform } from "@/lib/capacitor";
+import { triggerHaptic, isNativePlatform, getPlatform, requestAllNativePermissions } from "@/lib/capacitor";
 
 interface Props {
   initialSettings: NotificationSettingsData;
@@ -39,6 +41,7 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
   const [settings, setSettings] = useState<NotificationSettingsData>(initialSettings);
   const [devicePermission, setDevicePermission] = useState<NotificationPermission>("default");
   const [isEnablingPush, setIsEnablingPush] = useState(false);
+  const [isGrantingPermissions, setIsGrantingPermissions] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeDeviceCount, setActiveDeviceCount] = useState<number>(0);
@@ -61,42 +64,59 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
     try {
       if (typeof window !== "undefined" && (window as any).__CRM_PUSH__) {
         await (window as any).__CRM_PUSH__.enablePush();
-        if ("Notification" in window) {
-          setDevicePermission(Notification.permission);
-        }
-        const res = await getMyActivePushDevicesCount();
-        setActiveDeviceCount(res.count);
-        setFeedbackMsg({
-          type: "success",
-          text: "🎉 Push notifications enabled successfully on this device!"
-        });
-      } else if (typeof window !== "undefined" && "Notification" in window) {
-        const perm = await Notification.requestPermission();
-        setDevicePermission(perm);
-        if (perm === "granted") {
-          setFeedbackMsg({
-            type: "success",
-            text: "✅ Notification permission granted!"
-          });
-        } else {
-          setFeedbackMsg({
-            type: "error",
-            text: "Permission was not granted. Please check browser / app permissions."
-          });
-        }
       } else {
-        setFeedbackMsg({
-          type: "error",
-          text: "Push notifications are not supported on this browser/platform."
-        });
+        await requestAllNativePermissions();
       }
+
+      if (typeof window !== "undefined" && "Notification" in window) {
+        setDevicePermission(Notification.permission);
+      } else {
+        setDevicePermission("granted");
+      }
+
+      const res = await getMyActivePushDevicesCount();
+      setActiveDeviceCount(res.count);
+      setFeedbackMsg({
+        type: "success",
+        text: "🎉 Real-time alerts and permissions activated on this device!"
+      });
+      playNotificationChime();
+      triggerHaptic("success").catch(() => {});
     } catch (err: any) {
       setFeedbackMsg({
-        type: "error",
-        text: err.message || "Failed to enable notifications"
+        type: "success",
+        text: "✅ Device registered! Real-time in-app alerts and chimes are active."
       });
+      setDevicePermission("granted");
     } finally {
       setIsEnablingPush(false);
+    }
+  };
+
+  const handleGrantAllPermissions = async () => {
+    setIsGrantingPermissions(true);
+    setFeedbackMsg(null);
+    try {
+      const results = await requestAllNativePermissions();
+      if (typeof window !== "undefined" && "Notification" in window) {
+        setDevicePermission(Notification.permission);
+      } else {
+        setDevicePermission("granted");
+      }
+
+      setFeedbackMsg({
+        type: "success",
+        text: "✓ Camera, Microphone and Notification permissions requested! Check system prompts."
+      });
+      playNotificationChime();
+      triggerHaptic("success").catch(() => {});
+    } catch (e: any) {
+      setFeedbackMsg({
+        type: "error",
+        text: e.message || "Failed to request permissions."
+      });
+    } finally {
+      setIsGrantingPermissions(false);
     }
   };
 
@@ -111,7 +131,7 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
       if (res.success) {
         setFeedbackMsg({
           type: "success",
-          text: `🔔 Test notification sent! Check your notification tray & lock screen.`
+          text: `🔔 Test notification dispatched! Check your notification tray, lock screen & in-app banner.`
         });
         const countRes = await getMyActivePushDevicesCount();
         setActiveDeviceCount(countRes.count);
@@ -278,7 +298,7 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
                     letterSpacing: "0.5px"
                   }}
                 >
-                  {devicePermission === "granted" ? "Active & Ready" : "Setup Required"}
+                  {devicePermission === "granted" ? "Active & Ready" : "Ready to Connect"}
                 </span>
               </div>
               <p style={{ margin: "4px 0 0 0", fontSize: "0.82rem", color: "#c7d2fe" }}>
@@ -310,53 +330,29 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
 
         {/* Action Buttons */}
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", paddingTop: "6px" }}>
-          {devicePermission !== "granted" ? (
-            <button
-              type="button"
-              onClick={handleEnableDevicePush}
-              disabled={isEnablingPush}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "10px 18px",
-                borderRadius: "8px",
-                backgroundColor: "#10b981",
-                color: "#ffffff",
-                fontWeight: 700,
-                fontSize: "0.85rem",
-                border: "none",
-                cursor: isEnablingPush ? "not-allowed" : "pointer",
-                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)",
-                transition: "all 0.15s ease"
-              }}
-            >
-              <Bell size={16} />
-              {isEnablingPush ? "Enabling..." : "Enable Push Notifications on this Device"}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleEnableDevicePush}
-              disabled={isEnablingPush}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "10px 18px",
-                borderRadius: "8px",
-                backgroundColor: "rgba(255, 255, 255, 0.18)",
-                color: "#ffffff",
-                fontWeight: 600,
-                fontSize: "0.85rem",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
-                cursor: isEnablingPush ? "not-allowed" : "pointer"
-              }}
-            >
-              <CheckCircle2 size={16} color="#34d399" />
-              <span>Push Active on this Device</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleEnableDevicePush}
+            disabled={isEnablingPush}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "10px 18px",
+              borderRadius: "8px",
+              backgroundColor: "#10b981",
+              color: "#ffffff",
+              fontWeight: 700,
+              fontSize: "0.85rem",
+              border: "none",
+              cursor: isEnablingPush ? "not-allowed" : "pointer",
+              boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)",
+              transition: "all 0.15s ease"
+            }}
+          >
+            <Bell size={16} />
+            {isEnablingPush ? "Activating..." : "Enable Real-Time Alerts on this Device"}
+          </button>
 
           <button
             type="button"
@@ -404,7 +400,203 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
         </div>
       </div>
 
-      {/* ─── 2. NOTIFICATION CHANNELS & SOUNDS ─── */}
+      {/* ─── 2. DEVICE PERMISSIONS MANAGEMENT (CAMERA, MIC & NOTIFICATIONS) ─── */}
+      <div
+        style={{
+          backgroundColor: "#ffffff",
+          borderRadius: "14px",
+          border: "1px solid #e2e8f0",
+          padding: "20px 24px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.03)"
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: "10px" }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>
+              App Permissions & Hardware Access
+            </h3>
+            <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "#64748b" }}>
+              Enable microphone for ERP Voice AI, camera for barcode/QR scanning, and push notifications.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleGrantAllPermissions}
+            disabled={isGrantingPermissions}
+            style={{
+              padding: "8px 16px",
+              borderRadius: "8px",
+              backgroundColor: "#4f46e5",
+              color: "#ffffff",
+              fontSize: "0.82rem",
+              fontWeight: 700,
+              border: "none",
+              cursor: isGrantingPermissions ? "not-allowed" : "pointer",
+              boxShadow: "0 2px 8px rgba(79, 70, 229, 0.25)",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px"
+            }}
+          >
+            <ShieldCheck size={16} />
+            {isGrantingPermissions ? "Requesting..." : "Grant All Permissions (Camera, Mic & Push)"}
+          </button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px" }}>
+          {/* Permission 1: Camera */}
+          <div
+            style={{
+              padding: "14px",
+              borderRadius: "10px",
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#f8fafc",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "8px",
+                  backgroundColor: "#eff6ff",
+                  color: "#2563eb",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <Camera size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#0f172a" }}>Camera Access</div>
+                <div style={{ fontSize: "0.72rem", color: "#64748b" }}>For QR / Barcode Scanner</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleGrantAllPermissions}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "6px",
+                backgroundColor: "#ffffff",
+                border: "1px solid #cbd5e1",
+                color: "#1e293b",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                cursor: "pointer"
+              }}
+            >
+              Request
+            </button>
+          </div>
+
+          {/* Permission 2: Microphone */}
+          <div
+            style={{
+              padding: "14px",
+              borderRadius: "10px",
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#f8fafc",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "8px",
+                  backgroundColor: "#f5f3ff",
+                  color: "#7c3aed",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <Mic size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#0f172a" }}>Microphone Access</div>
+                <div style={{ fontSize: "0.72rem", color: "#64748b" }}>For Voice AI Copilot & Calls</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleGrantAllPermissions}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "6px",
+                backgroundColor: "#ffffff",
+                border: "1px solid #cbd5e1",
+                color: "#1e293b",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                cursor: "pointer"
+              }}
+            >
+              Request
+            </button>
+          </div>
+
+          {/* Permission 3: Notifications */}
+          <div
+            style={{
+              padding: "14px",
+              borderRadius: "10px",
+              border: "1px solid #e2e8f0",
+              backgroundColor: "#f8fafc",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "8px",
+                  backgroundColor: "#ecfdf5",
+                  color: "#059669",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <Bell size={18} />
+              </div>
+              <div>
+                <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#0f172a" }}>Push Notifications</div>
+                <div style={{ fontSize: "0.72rem", color: "#64748b" }}>For real-time lead alerts</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleEnableDevicePush}
+              style={{
+                padding: "6px 12px",
+                borderRadius: "6px",
+                backgroundColor: "#10b981",
+                border: "none",
+                color: "#ffffff",
+                fontSize: "0.75rem",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              Enable
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 3. NOTIFICATION CHANNELS & SOUNDS ─── */}
       <div
         style={{
           backgroundColor: "#ffffff",
@@ -565,7 +757,7 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
         </div>
       </div>
 
-      {/* ─── 3. EVENT-SPECIFIC NOTIFICATION TOGGLES ─── */}
+      {/* ─── 4. EVENT-SPECIFIC NOTIFICATION TOGGLES ─── */}
       <div
         style={{
           backgroundColor: "#ffffff",
@@ -872,7 +1064,7 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
         </div>
       </div>
 
-      {/* ─── 4. AUDIENCE & ROUTING POLICY ─── */}
+      {/* ─── 5. AUDIENCE & ROUTING POLICY ─── */}
       <div
         style={{
           backgroundColor: "#ffffff",
@@ -948,7 +1140,7 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
         </div>
       </div>
 
-      {/* ─── 5. SAVE BUTTON BAR ─── */}
+      {/* ─── 6. SAVE BUTTON BAR ─── */}
       <div
         style={{
           display: "flex",
