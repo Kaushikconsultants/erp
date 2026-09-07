@@ -242,15 +242,28 @@ export default function PurchasesClient({
       };
       setItems(newItems);
     } else {
-      setItems((prev) => [
-        ...prev,
-        {
+      // If the first line item in the PO is unselected, fill it in; otherwise append a new line item
+      const emptyIdx = items.findIndex((it) => !it.productId);
+      if (emptyIdx !== -1) {
+        const newItems = [...items];
+        newItems[emptyIdx] = {
+          ...newItems[emptyIdx],
           productId: newProd.id,
-          quantity: 1,
           rate: newProd.purchasePrice || newProd.sellingPrice || 0,
           gstRate: newProd.gstRate || 18
-        }
-      ]);
+        };
+        setItems(newItems);
+      } else {
+        setItems((prev) => [
+          ...prev,
+          {
+            productId: newProd.id,
+            quantity: 1,
+            rate: newProd.purchasePrice || newProd.sellingPrice || 0,
+            gstRate: newProd.gstRate || 18
+          }
+        ]);
+      }
     }
   }
 

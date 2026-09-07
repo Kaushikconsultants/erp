@@ -4,25 +4,40 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { canUserAccessSection } from "@/lib/authPermissions";
 import { getTenantOrgId } from "@/lib/tenant";
 
 export async function createProduct(formData: FormData) {
   const session = await getServerSession(authOptions);
-  const roleName = (session?.user as any)?.role;
-  let canManage = roleName === 'ADMIN' || roleName === 'SUPER_ADMIN';
+  if (!session?.user) return { error: "Unauthorized. Please log in." };
+
+  const roleName = ((session?.user as any)?.role || "").toUpperCase();
+  let canManage = roleName === 'ADMIN' || roleName === 'SUPER_ADMIN' || roleName === 'OWNER';
+
+  if (!canManage) {
+    const hasAccess = await canUserAccessSection(session.user, 'products') ||
+                      await canUserAccessSection(session.user, 'inventory') ||
+                      await canUserAccessSection(session.user, 'purchases');
+    if (hasAccess) canManage = true;
+  }
 
   if (!canManage && roleName) {
     const roleDef = await prisma.role.findUnique({ where: { name: roleName } });
     if (roleDef) {
       try {
         const perms = JSON.parse(roleDef.permissions) as string[];
-        if (perms.includes("Manage Inventory")) canManage = true;
+        if (perms.some(p => {
+          const l = p.toLowerCase();
+          return l.includes("inventory") || l.includes("product") || l.includes("purchase");
+        })) {
+          canManage = true;
+        }
       } catch(e) {}
     }
   }
 
   if (!canManage) {
-    return { error: "Unauthorized. You do not have permission to manage inventory." };
+    return { error: "Unauthorized. You do not have permission to manage inventory or products." };
   }
 
   const name = formData.get("name") as string;

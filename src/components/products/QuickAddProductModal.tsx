@@ -146,15 +146,33 @@ export default function QuickAddProductModal({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop" style={{ zIndex: 999999 }}>
+    <div
+      className="modal-backdrop"
+      style={{
+        zIndex: 99999999,
+        position: "fixed",
+        inset: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.75)",
+        backdropFilter: "blur(6px)",
+        WebkitBackdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px"
+      }}
+      onClick={onClose}
+    >
       <div
         className="modal-content animate-in"
         style={{
           maxWidth: "540px",
           width: "95%",
           borderRadius: "14px",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.3)"
+          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+          position: "relative",
+          zIndex: 100000000
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div className="modal-header" style={{ padding: "16px 20px" }}>
