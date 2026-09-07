@@ -81,12 +81,13 @@ const DEFAULT_OUTCOMES = [
 ];
 
 const CALL_STATUSES = [
-  { label: "Connected", value: "Connected", color: "#10b981", bg: "#f0fdf4", border: "#bbf7d0" },
+  { label: "Call Completed", value: "Completed", color: "#10b981", bg: "#f0fdf4", border: "#bbf7d0" },
+  { label: "Connected (Live Call)", value: "Connected", color: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe" },
   { label: "Busy / Engaged", value: "Busy", color: "#ef4444", bg: "#fef2f2", border: "#fecaca" },
   { label: "No Answer", value: "No Answer", color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
   { label: "Voicemail / Off", value: "Voicemail", color: "#8b5cf6", bg: "#f5f3ff", border: "#ddd6fe" },
   { label: "Wrong Number", value: "Wrong Number", color: "#64748b", bg: "#f8fafc", border: "#e2e8f0" },
-  { label: "Callback", value: "Callback", color: "#3b82f6", bg: "#eff6ff", border: "#bfdbfe" }
+  { label: "Callback", value: "Callback", color: "#6366f1", bg: "#eef2ff", border: "#c7d2fe" }
 ];
 
 const DISCUSSION_TAGS = [
@@ -328,7 +329,7 @@ function PhoneDialerModalContent({
         setCallDurationSec(finalDur);
 
         if (finalDur > 0) {
-          setCallStatus("Connected");
+          setCallStatus("Completed");
           if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
             setOutcome("Interested / Follow-up Needed");
           }
@@ -412,7 +413,7 @@ function PhoneDialerModalContent({
           setCallDurationSec(duration);
 
           if (duration > 0) {
-            setCallStatus("Connected");
+            setCallStatus("Completed");
             setFeedbackMsg(`⏹ Returned from call (${formatDuration(duration)}). AI Voice Debrief starting... 🎙️`);
             setAutoDebriefTrigger(Date.now());
           } else {
@@ -1064,6 +1065,9 @@ function PhoneDialerModalContent({
                         onClick={() => {
                           setIsTimerRunning(false);
                           callStartTimeRef.current = null;
+                          if (callDurationSec > 0) {
+                            setCallStatus("Completed");
+                          }
                           setAutoDebriefTrigger(Date.now());
                         }}
                         style={{
@@ -1120,8 +1124,12 @@ function PhoneDialerModalContent({
                         setCallDurationSec(d.sec);
                         setIsTimerRunning(false);
                         callStartTimeRef.current = null;
-                        if (d.sec === 0) setCallStatus("Busy");
-                        else setCallStatus("Connected");
+                        if (d.sec === 0) {
+                          setCallStatus("Busy");
+                          setOutcome("No Answer / Busy");
+                        } else {
+                          setCallStatus("Completed");
+                        }
                       }}
                       style={{
                         padding: "3px 8px",

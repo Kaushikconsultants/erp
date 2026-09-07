@@ -246,10 +246,41 @@ public class MainActivity extends BridgeActivity {
                 isCallInProgress = false;
                 callStartTime = 0;
                 sendNativeCallEvent("ENDED", durationSec);
+                bringAppToForeground();
             }
         } else if (state == TelephonyManager.CALL_STATE_RINGING) {
             sendNativeCallEvent("RINGING", 0);
         }
+    }
+
+    /**
+     * Automatically brings the CRM app back to the foreground upon call disconnection
+     */
+    private void bringAppToForeground() {
+        runOnUiThread(() -> {
+            try {
+                // 1. Direct Activity Intent with Reorder to Front flags
+                Intent intent = new Intent(this, MainActivity.class);
+                intent.setAction(Intent.ACTION_MAIN);
+                intent.addCategory(Intent.CATEGORY_LAUNCHER);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                startActivity(intent);
+
+                // 2. PendingIntent Execution (bypasses OEM background activity restrictions on Android 10-14)
+                int piFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    piFlags |= PendingIntent.FLAG_IMMUTABLE;
+                }
+                PendingIntent pendingIntent = PendingIntent.getActivity(this, 999, intent, piFlags);
+                try {
+                    pendingIntent.send();
+                } catch (Exception piEx) {
+                    // Handled gracefully
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     /**
