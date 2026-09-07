@@ -599,7 +599,7 @@ export default function OrderListClient({
                 <Trash2 size={13} />
               </button>
               <a 
-                href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}/invoice`} 
+                href={doc.type === 'Order' ? `/orders/${doc.id}/invoice` : `/quotations/${doc.id}`} 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 style={{ 
@@ -613,7 +613,7 @@ export default function OrderListClient({
                   color: '#ffffff'
                 }}
               >
-                Invoice
+                {doc.type === 'Order' ? 'Invoice' : 'Quote'}
               </a>
             </div>
           </div>
@@ -937,9 +937,9 @@ export default function OrderListClient({
                       <Trash2 size={14} />
                     </button>
 
-                    {/* Tax Invoice Action Button */}
+                    {/* Tax Invoice / Quotation Sheet Action Button */}
                     <a 
-                      href={`/${doc.type === 'Order' ? 'orders' : 'quotations'}/${doc.id}/invoice`} 
+                      href={doc.type === 'Order' ? `/orders/${doc.id}/invoice` : `/quotations/${doc.id}`} 
                       target="_blank" 
                       rel="noopener noreferrer" 
                       style={{ 
@@ -959,12 +959,12 @@ export default function OrderListClient({
                         boxShadow: '0 2px 4px rgba(16, 185, 129, 0.2)',
                         transition: 'all 0.15s ease'
                       }} 
-                      title="View & Print Tax Invoice"
+                      title={doc.type === 'Order' ? "View & Print Tax Invoice" : "View & Print Quotation / Invoice Sheet"}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#059669'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#10b981'}
                     >
                       <FileText size={13} />
-                      <span>Invoice</span>
+                      <span>{doc.type === 'Order' ? 'Invoice' : 'Quote / Inv'}</span>
                     </a>
 
                   </div>
