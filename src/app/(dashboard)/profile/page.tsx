@@ -28,13 +28,13 @@ import { triggerHaptic } from '@/lib/capacitor';
 import './profile.css';
 
 const AUTO_LOCK_OPTIONS = [
-  { value: '0', label: 'Immediately (Instant)', desc: 'Locks immediately upon app backgrounding or switching' },
-  { value: '30', label: '30 Seconds', desc: 'Locks after 30 seconds of inactivity or background' },
-  { value: '60', label: '1 Minute', desc: 'Locks after 1 minute of inactivity or background' },
-  { value: '120', label: '2 Minutes', desc: 'Locks after 2 minutes of inactivity or background' },
-  { value: '300', label: '5 Minutes', desc: 'Locks after 5 minutes of inactivity or background' },
-  { value: '900', label: '15 Minutes', desc: 'Locks after 15 minutes of inactivity or background' },
-  { value: '1800', label: '30 Minutes', desc: 'Locks after 30 minutes of inactivity or background' }
+  { value: '0', label: 'Immediately (when leaving app)', desc: 'Locks immediately when switching away (preserves in-app calls & voice)' },
+  { value: '30', label: '30 Seconds', desc: 'Locks after 30 seconds in background' },
+  { value: '60', label: '1 Minute', desc: 'Locks after 1 minute in background' },
+  { value: '120', label: '2 Minutes (Recommended)', desc: 'Locks after 2 minutes in background' },
+  { value: '300', label: '5 Minutes', desc: 'Locks after 5 minutes in background' },
+  { value: '900', label: '15 Minutes', desc: 'Locks after 15 minutes in background' },
+  { value: '1800', label: '30 Minutes', desc: 'Locks after 30 minutes in background' }
 ];
 
 export default function ProfilePage() {
@@ -51,7 +51,7 @@ export default function ProfilePage() {
   const [mpinConfirmInput, setMpinConfirmInput] = useState<string>('');
   const [showMpin, setShowMpin] = useState<boolean>(false);
   const [showConfirmMpin, setShowConfirmMpin] = useState<boolean>(false);
-  const [autoLockTimer, setAutoLockTimer] = useState<string>('0');
+  const [autoLockTimer, setAutoLockTimer] = useState<string>('120');
   const [mpinMsg, setMpinMsg] = useState<string>('');
   const [mpinMsgType, setMpinMsgType] = useState<'success' | 'error' | ''>('');
 
@@ -97,7 +97,7 @@ export default function ProfilePage() {
     if (typeof window !== 'undefined') {
       const enabled = localStorage.getItem('app_mpin_enabled') === 'true';
       const savedPin = localStorage.getItem('app_mpin_code') || '';
-      const savedTimer = localStorage.getItem('app_mpin_autolock_timer') || '0';
+      const savedTimer = localStorage.getItem('app_mpin_autolock_timer') || '120';
       setMpinEnabled(enabled);
       setMpinInput(savedPin);
       setMpinConfirmInput(savedPin);

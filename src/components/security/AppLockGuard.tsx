@@ -35,8 +35,20 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
   // Guard refs to prevent re-entrant biometric calls and infinite popup loops
   const isAuthenticatingRef = useRef<boolean>(false);
   const hasUserCanceledBiometricRef = useRef<boolean>(false);
+  const exemptUntilRef = useRef<number>(0);
   const lastBackgroundTime = useRef<number>(0);
   const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Grant temporary lock exemption for user-initiated actions (calls, voice search, camera, whatsapp)
+  const grantExemption = useCallback((durationSeconds = 180) => {
+    const until = Date.now() + durationSeconds * 1000;
+    exemptUntilRef.current = until;
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("app_lock_exempt_until", until.toString());
+      } catch {}
+    }
+  }, []);
 
   // Native OS Hardware Biometric (Fingerprint / Face ID) Scan Trigger
   const handleBiometricUnlock = useCallback(async (isAutoTrigger = false) => {
@@ -186,6 +198,15 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     const savedPin = localStorage.getItem("app_mpin_code");
     if (!enabled || !savedPin) return;
 
+    // Check if within active exemption period (e.g. return from dialer, voice command, camera, whatsapp)
+    const storedExempt = parseInt(sessionStorage.getItem("app_lock_exempt_until") || "0", 10);
+    const isExempt = Date.now() < Math.max(exemptUntilRef.current, storedExempt);
+    if (isExempt) {
+      lastBackgroundTime.current = 0;
+      sessionStorage.removeItem("app_mpin_bg_time");
+      return;
+    }
+
     const timerSec = parseInt(localStorage.getItem("app_mpin_autolock_timer") || "0", 10);
     const bgTime = lastBackgroundTime.current || parseInt(sessionStorage.getItem("app_mpin_bg_time") || "0", 10);
     
@@ -218,6 +239,12 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     const enabled = localStorage.getItem("app_mpin_enabled") === "true";
     if (!enabled) return;
 
+    // If an in-app action exemption is active, do not mark background time
+    const storedExempt = parseInt(sessionStorage.getItem("app_lock_exempt_until") || "0", 10);
+    if (Date.now() < Math.max(exemptUntilRef.current, storedExempt)) {
+      return;
+    }
+
     const now = Date.now();
     lastBackgroundTime.current = now;
     sessionStorage.setItem("app_mpin_bg_time", now.toString());
@@ -225,6 +252,47 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Expose global exemption helper for voice commands, dialer, camera, etc.
+    (window as any).grantAppLockExemption = grantExemption;
+
+    // Automatically intercept SpeechRecognition everywhere in the app
+    try {
+      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRec && SpeechRec.prototype && !(SpeechRec.prototype as any).__lockGuarded) {
+        const origStart = SpeechRec.prototype.start;
+        SpeechRec.prototype.start = function (...args: any[]) {
+          grantExemption(180); // 3 minutes exemption for voice search & speech recognition
+          return origStart.apply(this, args);
+        };
+        (SpeechRec.prototype as any).__lockGuarded = true;
+      }
+    } catch (e) {
+      console.warn("Could not patch SpeechRecognition for lock exemption:", e);
+    }
+
+    // Global click listener to grant exemption for in-app dialer, whatsapp, file picker clicks
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement)?.closest('a, button, input');
+      if (!target) return;
+
+      if (target instanceof HTMLInputElement && target.type === 'file') {
+        grantExemption(180); // 3 min grace for camera / file upload
+        return;
+      }
+
+      const href = (target.getAttribute('href') || '').toLowerCase();
+      if (
+        href.startsWith('tel:') ||
+        href.startsWith('sms:') ||
+        href.startsWith('mailto:') ||
+        href.includes('wa.me') ||
+        href.includes('whatsapp')
+      ) {
+        grantExemption(300); // 5 min grace for phone calls & WhatsApp messaging
+      }
+    };
+    document.addEventListener('click', handleGlobalClick, true);
 
     const checkLockStatus = () => {
       const enabled = localStorage.getItem("app_mpin_enabled") === "true";
@@ -282,7 +350,14 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     };
     window.addEventListener("app-lock-config-updated", handleConfigUpdated);
 
-    // 4. Native Capacitor App Lifecycle listener (Pause / Resume)
+    // 4. Custom lock exemption event
+    const handleCustomExemptEvent = (e: any) => {
+      const secs = e.detail?.seconds || 180;
+      grantExemption(secs);
+    };
+    window.addEventListener("app-lock-exempt", handleCustomExemptEvent);
+
+    // 5. Native Capacitor App Lifecycle listener (Pause / Resume)
     let appStateListener: any = null;
     let backButtonListener: any = null;
 
@@ -311,13 +386,15 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     }
 
     return () => {
+      document.removeEventListener("click", handleGlobalClick, true);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("test-app-lock", handleTestLockEvent);
       window.removeEventListener("app-lock-config-updated", handleConfigUpdated);
+      window.removeEventListener("app-lock-exempt", handleCustomExemptEvent);
       if (appStateListener?.remove) appStateListener.remove();
       if (backButtonListener?.remove) backButtonListener.remove();
     };
-  }, [handleBiometricUnlock, markBackgrounded, triggerLockCheckOnResume]);
+  }, [grantExemption, handleBiometricUnlock, markBackgrounded, triggerLockCheckOnResume]);
 
   const handleDigitTap = (digit: string) => {
     setErrorMsg("");

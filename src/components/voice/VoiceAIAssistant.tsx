@@ -92,6 +92,9 @@ export default function VoiceAIAssistant() {
     }
 
     try {
+      if (typeof window !== "undefined") {
+        (window as any).grantAppLockExemption?.(180);
+      }
       if (recognitionRef.current) {
         recognitionRef.current.abort();
       }

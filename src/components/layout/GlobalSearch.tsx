@@ -124,6 +124,9 @@ export default function GlobalSearch() {
     }
 
     try {
+      if (typeof window !== 'undefined') {
+        (window as any).grantAppLockExemption?.(180);
+      }
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
       recognition.interimResults = true;

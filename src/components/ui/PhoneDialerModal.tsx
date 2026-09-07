@@ -464,8 +464,9 @@ function PhoneDialerModalContent({
     setCallStatus("Connected");
     setCallType("OUTBOUND");
 
-    // Open native dialer
+    // Grant App Lock exemption so returning from phone call does not trigger biometric lock screen
     if (typeof window !== "undefined") {
+      (window as any).grantAppLockExemption?.(300);
       window.location.href = `tel:${cleanNum}`;
     }
 
@@ -538,6 +539,7 @@ function PhoneDialerModalContent({
     }
 
     try {
+      (window as any).grantAppLockExemption?.(180);
       const recognition = new SpeechRec();
       recognition.continuous = true;
       recognition.interimResults = true;

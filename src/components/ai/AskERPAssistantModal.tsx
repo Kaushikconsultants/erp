@@ -123,6 +123,7 @@ export default function AskERPAssistantModal({ onClose }: AskERPAssistantModalPr
     }
 
     try {
+      (window as any).grantAppLockExemption?.(180);
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
