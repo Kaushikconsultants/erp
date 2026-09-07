@@ -212,18 +212,6 @@ export default function GarmentMatrixModal({
     } catch (e) {}
   };
 
-  // Matrix quantities: { [color]: { [size]: number } }
-  const [matrix, setMatrix] = useState<Record<string, Record<string, number>>>(parsedData.matrix);
-
-  const [groupAsSingleLine, setGroupAsSingleLine] = useState(true);
-
-  const selectedProduct = products.find(p => p.id === selectedProductId) || products[0] || {};
-  const [rate, setRate] = useState<number>(
-    (initialRate !== undefined && initialRate > 0)
-      ? initialRate
-      : (selectedProduct?.sellingPrice || 250)
-  );
-
   // Update matrix quantity
   const handleQtyChange = (color: string, size: string, value: string) => {
     const qty = parseInt(value) || 0;
