@@ -7,6 +7,7 @@ import { useSession } from "next-auth/react";
 import { logCall, getCustomersForCallModal } from "@/app/actions/callActions";
 import { getCompanySettings, updateCallOutcomes, updateCallTypes } from "@/app/actions/companyActions";
 import AddCustomerModal from "./AddCustomerModal";
+import CallVoiceDebriefWidget from "@/components/telecalling/CallVoiceDebriefWidget";
 import { Search, ChevronDown, Settings2, Plus, Trash2, Edit2, Check, X, Phone } from "lucide-react";
 import "@/components/ui/modal.css";
 
@@ -370,6 +371,32 @@ export default function LogCallModal({
             style={{ maxHeight: "75vh", overflowY: "auto" }}
           >
             {error && <div className="error-message">{error}</div>}
+
+            {/* 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET */}
+            <CallVoiceDebriefWidget
+              contactName={customerName || selectedCustomerLabel || leadName || "Contact"}
+              contactPhone={customers.find(c => c.id === (customerId || selectedCustomerId))?.phone || ""}
+              customerId={customerId || (selectedCustomerId && !selectedCustomerId.startsWith("lead_") ? selectedCustomerId : undefined)}
+              leadId={leadId || (selectedCustomerId && selectedCustomerId.startsWith("lead_") ? selectedCustomerId.replace("lead_", "") : undefined)}
+              callDurationSec={durationSec}
+              callType={selectedCallType?.toLowerCase().includes("inbound") ? "INBOUND" : "OUTBOUND"}
+              onApplyToForm={(data) => {
+                if (data.outcome) setSelectedOutcome(data.outcome);
+                if (data.notes) setNotes(data.notes);
+                if (data.followUpDate) setFollowUpDate(data.followUpDate);
+                if (data.followUpHour) setFollowUpHour(data.followUpHour);
+                if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
+                if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
+              }}
+              onCallSaved={() => {
+                try {
+                  sessionStorage.removeItem("antigravity_log_call_draft");
+                } catch (e) {}
+                onCallLogged?.();
+                onClose();
+              }}
+              initialExpanded={false}
+            />
 
             {/* Hidden field carries the real customer ID */}
             <input type="hidden" name="customerId" value={selectedCustomerId} />

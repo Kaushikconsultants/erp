@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
+import CallVoiceDebriefWidget from "@/components/telecalling/CallVoiceDebriefWidget";
 import "./phone-dialer.css";
 
 interface PhoneDialerModalProps {
@@ -1731,6 +1732,32 @@ function PhoneDialerModalContent({
                 </button>
               </div>
             </div>
+
+            {/* 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET */}
+            <CallVoiceDebriefWidget
+              contactName={selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}
+              contactPhone={phoneDigits || selectedContact?.phone || ""}
+              customerId={selectedContact?.type === "Customer" ? selectedContact?.id : initialCustomerId}
+              leadId={selectedContact?.type === "Lead" ? selectedContact?.id : initialLeadId}
+              callDurationSec={callDurationSec}
+              callType={callType}
+              onApplyToForm={(data) => {
+                setOutcome(data.outcome);
+                setNotes(data.notes);
+                if (data.followUpDate) setFollowUpDate(data.followUpDate);
+                if (data.followUpHour) setFollowUpHour(data.followUpHour);
+                if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
+                if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
+                setFeedbackMsg("✨ AI Voice Debrief applied to call log form!");
+              }}
+              onCallSaved={() => {
+                setFeedbackMsg("✅ Call logged with AI Debrief & Follow-up scheduled!");
+                loadRecentCalls();
+                setTimeout(() => {
+                  onClose();
+                }, 1200);
+              }}
+            />
 
             {/* CALL CONNECTION STATUS */}
             <div style={{ marginBottom: "14px" }}>

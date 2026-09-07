@@ -76,6 +76,7 @@ export default function TeleCrmMobileHub({
   const [dialerName, setDialerName] = useState<string>("");
   const [dialerCustomerId, setDialerCustomerId] = useState<string | undefined>(undefined);
   const [dialerLeadId, setDialerLeadId] = useState<string | undefined>(undefined);
+  const [dialerTab, setDialerTab] = useState<"DIALPAD" | "CALL_LOGS" | "CONTACTS" | "POST_CALL" | "WHATSAPP" | "SCRIPTS">("DIALPAD");
 
   // Manual Log Call Modal State
   const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
@@ -120,11 +121,18 @@ export default function TeleCrmMobileHub({
     loadQueue();
   }, []);
 
-  const openDialerWithContact = (phone: string, name: string, customerId?: string, leadId?: string) => {
+  const openDialerWithContact = (
+    phone: string,
+    name: string,
+    customerId?: string,
+    leadId?: string,
+    tab: "DIALPAD" | "CALL_LOGS" | "CONTACTS" | "POST_CALL" | "WHATSAPP" | "SCRIPTS" = "DIALPAD"
+  ) => {
     setDialerPhone(phone || "");
     setDialerName(name || "");
     setDialerCustomerId(customerId);
     setDialerLeadId(leadId);
+    setDialerTab(tab);
     setIsDialerOpen(true);
   };
 
@@ -743,7 +751,29 @@ export default function TeleCrmMobileHub({
                     )}
                   </div>
 
-                  {call.notes && (
+                  {/* AI Summary Highlight */}
+                  {call.summary && (
+                    <div
+                      style={{
+                        margin: "6px 0 8px 0",
+                        fontSize: "0.8rem",
+                        color: "#1e293b",
+                        lineHeight: 1.45,
+                        backgroundColor: call.summary.includes("🔥") ? "#fff5f5" : call.summary.includes("❄️") ? "#f0f9ff" : "#f8fafc",
+                        padding: "8px 12px",
+                        borderRadius: "10px",
+                        border: `1px solid ${call.summary.includes("🔥") ? "#fecaca" : call.summary.includes("❄️") ? "#bae6fd" : "#e2e8f0"}`,
+                        fontWeight: 500
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.72rem", fontWeight: 700, color: "#6366f1", marginBottom: "2px" }}>
+                        <Sparkles size={12} /> AI Deal Summary
+                      </div>
+                      {call.summary}
+                    </div>
+                  )}
+
+                  {call.notes && !call.summary && (
                     <p style={{ margin: "6px 0 10px 0", fontSize: "0.8rem", color: "#475569", lineHeight: 1.4, backgroundColor: "#f8fafc", padding: "8px 10px", borderRadius: "8px", border: "1px solid #f1f5f9" }}>
                       {call.notes}
                     </p>
@@ -751,7 +781,7 @@ export default function TeleCrmMobileHub({
 
                   {/* Card Actions */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "8px", borderTop: "1px solid #f1f5f9" }}>
-                    <div style={{ display: "flex", gap: "8px" }}>
+                    <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                       {phone && (
                         <button
                           type="button"
@@ -761,6 +791,14 @@ export default function TeleCrmMobileHub({
                           <PhoneCall size={12} /> Re-dial
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => openDialerWithContact(phone, customerName, call.customerId, call.leadId, "POST_CALL")}
+                        style={{ padding: "5px 10px", borderRadius: "6px", backgroundColor: "#f5f3ff", color: "#7c3aed", border: "1px solid #ddd6fe", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
+                        title="Record AI Voice Debrief for this call"
+                      >
+                        <Sparkles size={12} /> AI Debrief
+                      </button>
                       {phone && (
                         <button
                           type="button"
@@ -926,11 +964,13 @@ export default function TeleCrmMobileHub({
         onClose={() => {
           setIsDialerOpen(false);
           loadAnalytics(timeframe);
+          loadQueue();
         }}
         initialPhone={dialerPhone}
         initialName={dialerName}
         initialCustomerId={dialerCustomerId}
         initialLeadId={dialerLeadId}
+        initialTab={dialerTab}
       />
 
       {/* Manual Log Call Modal */}
