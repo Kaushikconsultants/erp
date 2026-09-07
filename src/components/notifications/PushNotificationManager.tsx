@@ -123,14 +123,27 @@ export default function PushNotificationManager() {
 
       let perm: NotificationPermission = "granted";
       if (typeof window !== "undefined" && "Notification" in window) {
-        perm = await Notification.requestPermission().catch(() => "granted" as NotificationPermission);
-        setPermission(perm);
+        try {
+          perm = await Notification.requestPermission();
+          setPermission(perm);
+        } catch (e) {
+          perm = "granted";
+          setPermission(perm);
+        }
       }
+
+      let webPushRegistered = false;
 
       // 2. If WebPush Service Worker is supported (Browser / PWA)
       if (typeof navigator !== "undefined" && "serviceWorker" in navigator && "PushManager" in window) {
         try {
-          const reg = await navigator.serviceWorker.ready;
+          // Race serviceWorker.ready with a 1200ms timeout so we don't hang indefinitely in WebViews
+          const swReadyPromise = navigator.serviceWorker.ready;
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("SW_TIMEOUT")), 1200)
+          );
+          const reg = (await Promise.race([swReadyPromise, timeoutPromise])) as ServiceWorkerRegistration;
+
           let sub = await reg.pushManager.getSubscription();
           if (!sub) {
             sub = await reg.pushManager.subscribe({
@@ -139,11 +152,14 @@ export default function PushNotificationManager() {
             });
           }
           await registerSubscriptionOnServer(sub);
+          webPushRegistered = true;
         } catch (swErr) {
-          console.debug("[PushManager] WebPush subscribe fallback:", swErr);
+          console.debug("[PushManager] WebPush subscribe timed out or fallback:", swErr);
         }
-      } else {
-        // 3. Native App fallback registration (Capacitor / Android WebView)
+      }
+
+      // 3. If WebPush not registered (Capacitor / Android WebView), register Native Device Token
+      if (!webPushRegistered) {
         const devInfo = await getDeviceInfo();
         const deviceId = (devInfo as any).uuid || (devInfo as any).model || `device-${Date.now()}`;
 
@@ -156,16 +172,16 @@ export default function PushNotificationManager() {
             auth: `native-auth-${Date.now()}`
           })
         }).catch(() => {});
-        setIsSubscribed(true);
       }
 
+      setIsSubscribed(true);
       playNotificationChime();
       triggerHaptic("success").catch(() => {});
 
       displayInAppToast({
         id: `welcome-${Date.now()}`,
-        title: "🎉 App Alerts & Permissions Activated!",
-        body: "Real-time alerts, lead notifications, microphone & camera are now active on this device.",
+        title: "🎉 Real-Time Alerts Activated!",
+        body: "Real-time alerts, lead notifications, and audio chimes are now active on this device.",
         url: "/settings/notifications",
         type: "System"
       });
@@ -173,7 +189,6 @@ export default function PushNotificationManager() {
       return { success: true };
     } catch (err: any) {
       console.warn("[PushManager] Enable error:", err);
-      // Fallback for native mobile
       setIsSubscribed(true);
       displayInAppToast({
         id: `welcome-${Date.now()}`,

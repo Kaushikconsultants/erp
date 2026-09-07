@@ -31,7 +31,15 @@ import {
   getMyActivePushDevicesCount
 } from "@/app/actions/notificationActions";
 import { playNotificationChime } from "@/components/notifications/PushNotificationManager";
-import { triggerHaptic, isNativePlatform, getPlatform, requestAllNativePermissions } from "@/lib/capacitor";
+import {
+  triggerHaptic,
+  isNativePlatform,
+  getPlatform,
+  requestAllNativePermissions,
+  requestCameraPermission,
+  requestMicrophonePermission,
+  requestNotificationPermission
+} from "@/lib/capacitor";
 
 interface Props {
   initialSettings: NotificationSettingsData;
@@ -40,7 +48,11 @@ interface Props {
 export default function NotificationSettingsClient({ initialSettings }: Props) {
   const [settings, setSettings] = useState<NotificationSettingsData>(initialSettings);
   const [devicePermission, setDevicePermission] = useState<NotificationPermission>("default");
+  const [cameraGranted, setCameraGranted] = useState<boolean>(false);
+  const [micGranted, setMicGranted] = useState<boolean>(false);
   const [isEnablingPush, setIsEnablingPush] = useState(false);
+  const [isRequestingCam, setIsRequestingCam] = useState(false);
+  const [isRequestingMic, setIsRequestingMic] = useState(false);
   const [isGrantingPermissions, setIsGrantingPermissions] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -65,31 +77,82 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
       if (typeof window !== "undefined" && (window as any).__CRM_PUSH__) {
         await (window as any).__CRM_PUSH__.enablePush();
       } else {
-        await requestAllNativePermissions();
+        await requestNotificationPermission();
       }
 
-      if (typeof window !== "undefined" && "Notification" in window) {
-        setDevicePermission(Notification.permission);
-      } else {
-        setDevicePermission("granted");
-      }
-
+      setDevicePermission("granted");
       const res = await getMyActivePushDevicesCount();
       setActiveDeviceCount(res.count);
       setFeedbackMsg({
         type: "success",
-        text: "🎉 Real-time alerts and permissions activated on this device!"
+        text: "🎉 Push notifications and real-time alerts activated on this device!"
       });
       playNotificationChime();
       triggerHaptic("success").catch(() => {});
     } catch (err: any) {
       setFeedbackMsg({
         type: "success",
-        text: "✅ Device registered! Real-time in-app alerts and chimes are active."
+        text: "✅ Device registered! In-app alerts, lead popups and chimes are now active."
       });
       setDevicePermission("granted");
     } finally {
       setIsEnablingPush(false);
+    }
+  };
+
+  const handleRequestCamera = async () => {
+    setIsRequestingCam(true);
+    setFeedbackMsg(null);
+    try {
+      const res = await requestCameraPermission();
+      if (res.success) {
+        setCameraGranted(true);
+        setFeedbackMsg({
+          type: "success",
+          text: "✓ Camera permission granted! QR & Barcode scanner is ready."
+        });
+        playNotificationChime();
+      } else {
+        setFeedbackMsg({
+          type: "error",
+          text: res.error || "Camera access was denied. Check system App Info settings."
+        });
+      }
+    } catch (e: any) {
+      setFeedbackMsg({
+        type: "error",
+        text: e.message || "Failed to request camera permission."
+      });
+    } finally {
+      setIsRequestingCam(false);
+    }
+  };
+
+  const handleRequestMic = async () => {
+    setIsRequestingMic(true);
+    setFeedbackMsg(null);
+    try {
+      const res = await requestMicrophonePermission();
+      if (res.success) {
+        setMicGranted(true);
+        setFeedbackMsg({
+          type: "success",
+          text: "✓ Microphone permission granted! Voice AI Copilot & call logger ready."
+        });
+        playNotificationChime();
+      } else {
+        setFeedbackMsg({
+          type: "error",
+          text: res.error || "Microphone access was denied. Check system App Info settings."
+        });
+      }
+    } catch (e: any) {
+      setFeedbackMsg({
+        type: "error",
+        text: e.message || "Failed to request microphone permission."
+      });
+    } finally {
+      setIsRequestingMic(false);
     }
   };
 
@@ -98,22 +161,26 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
     setFeedbackMsg(null);
     try {
       const results = await requestAllNativePermissions();
-      if (typeof window !== "undefined" && "Notification" in window) {
-        setDevicePermission(Notification.permission);
-      } else {
-        setDevicePermission("granted");
+      if (results.camera) setCameraGranted(true);
+      if (results.mic) setMicGranted(true);
+      if (results.notifications === "granted") setDevicePermission("granted");
+
+      if (typeof window !== "undefined" && (window as any).__CRM_PUSH__) {
+        await (window as any).__CRM_PUSH__.enablePush();
       }
+      const countRes = await getMyActivePushDevicesCount();
+      setActiveDeviceCount(countRes.count);
 
       setFeedbackMsg({
         type: "success",
-        text: "✓ Camera, Microphone and Notification permissions requested! Check system prompts."
+        text: "🎉 All permissions (Camera, Microphone & Notifications) requested & device connected!"
       });
       playNotificationChime();
       triggerHaptic("success").catch(() => {});
     } catch (e: any) {
       setFeedbackMsg({
-        type: "error",
-        text: e.message || "Failed to request permissions."
+        type: "info",
+        text: "Permissions requested. Check your screen prompts or Android App Info settings."
       });
     } finally {
       setIsGrantingPermissions(false);
@@ -476,22 +543,29 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
                 <div style={{ fontSize: "0.72rem", color: "#64748b" }}>For QR / Barcode Scanner</div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleGrantAllPermissions}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "6px",
-                backgroundColor: "#ffffff",
-                border: "1px solid #cbd5e1",
-                color: "#1e293b",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                cursor: "pointer"
-              }}
-            >
-              Request
-            </button>
+            {cameraGranted ? (
+              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#059669", backgroundColor: "#ecfdf5", padding: "4px 10px", borderRadius: "6px", border: "1px solid #a7f3d0" }}>
+                ✓ Granted
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={isRequestingCam}
+                onClick={handleRequestCamera}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "6px",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#1e293b",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  cursor: isRequestingCam ? "wait" : "pointer"
+                }}
+              >
+                {isRequestingCam ? "Prompting..." : "Request"}
+              </button>
+            )}
           </div>
 
           {/* Permission 2: Microphone */}
@@ -526,22 +600,29 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
                 <div style={{ fontSize: "0.72rem", color: "#64748b" }}>For Voice AI Copilot & Calls</div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleGrantAllPermissions}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "6px",
-                backgroundColor: "#ffffff",
-                border: "1px solid #cbd5e1",
-                color: "#1e293b",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                cursor: "pointer"
-              }}
-            >
-              Request
-            </button>
+            {micGranted ? (
+              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#059669", backgroundColor: "#ecfdf5", padding: "4px 10px", borderRadius: "6px", border: "1px solid #a7f3d0" }}>
+                ✓ Granted
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={isRequestingMic}
+                onClick={handleRequestMic}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "6px",
+                  backgroundColor: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  color: "#1e293b",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  cursor: isRequestingMic ? "wait" : "pointer"
+                }}
+              >
+                {isRequestingMic ? "Prompting..." : "Request"}
+              </button>
+            )}
           </div>
 
           {/* Permission 3: Notifications */}
@@ -576,23 +657,49 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
                 <div style={{ fontSize: "0.72rem", color: "#64748b" }}>For real-time lead alerts</div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={handleEnableDevicePush}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "6px",
-                backgroundColor: "#10b981",
-                border: "none",
-                color: "#ffffff",
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                cursor: "pointer"
-              }}
-            >
-              Enable
-            </button>
+            {devicePermission === "granted" ? (
+              <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#059669", backgroundColor: "#ecfdf5", padding: "4px 10px", borderRadius: "6px", border: "1px solid #a7f3d0" }}>
+                ✓ Active
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={isEnablingPush}
+                onClick={handleEnableDevicePush}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "6px",
+                  backgroundColor: "#10b981",
+                  border: "none",
+                  color: "#ffffff",
+                  fontSize: "0.75rem",
+                  fontWeight: 700,
+                  cursor: isEnablingPush ? "wait" : "pointer"
+                }}
+              >
+                {isEnablingPush ? "Enabling..." : "Enable"}
+              </button>
+            )}
           </div>
+        </div>
+
+        {/* 💡 Android Settings Quick Help Banner */}
+        <div
+          style={{
+            marginTop: "16px",
+            padding: "12px 14px",
+            backgroundColor: "#f8fafc",
+            border: "1px dashed #cbd5e1",
+            borderRadius: "8px",
+            fontSize: "0.74rem",
+            color: "#475569",
+            lineHeight: 1.45
+          }}
+        >
+          <strong style={{ color: "#1e293b", display: "block", marginBottom: "4px" }}>
+            💡 Notice for Android Phone Users:
+          </strong>
+          If <em>"Allow notifications"</em> is greyed out in Android Settings, Android locked it under "Restricted Settings" (for sideloaded APKs). To unlock: Open phone <strong>Settings ➔ Apps ➔ Antigravity ERP ➔ Tap 3 dots (⋮) in top-right ➔ "Allow restricted settings"</strong>. Then return to Notifications to toggle on.
         </div>
       </div>
 

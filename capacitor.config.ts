@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.espon.heartofbusiness',
-  appName: 'Heart of Business ERP',
+  appId: 'com.antigravity.erp',
+  appName: 'Antigravity ERP',
   webDir: 'public',
   server: {
     url: 'https://erp.esponsports.com',

@@ -123,44 +123,90 @@ export const getNetworkStatus = async () => {
 };
 
 /**
+ * Request Camera Permission
+ */
+export const requestCameraPermission = async (): Promise<{ success: boolean; error?: string }> => {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    return { success: false, error: 'Camera API not supported on this browser/device.' };
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    stream.getTracks().forEach((track) => track.stop());
+    triggerHaptic('success').catch(() => {});
+    return { success: true };
+  } catch (err: any) {
+    console.debug('Camera permission request error:', err);
+    return { success: false, error: err?.message || 'Camera permission was denied.' };
+  }
+};
+
+/**
+ * Request Microphone Permission
+ */
+export const requestMicrophonePermission = async (): Promise<{ success: boolean; error?: string }> => {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    return { success: false, error: 'Microphone API not supported on this browser/device.' };
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    triggerHaptic('success').catch(() => {});
+    return { success: true };
+  } catch (err: any) {
+    console.debug('Microphone permission request error:', err);
+    return { success: false, error: err?.message || 'Microphone permission was denied.' };
+  }
+};
+
+/**
+ * Request Notification Permission
+ */
+export const requestNotificationPermission = async (): Promise<{ success: boolean; permission: string }> => {
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    try {
+      const perm = await Notification.requestPermission();
+      triggerHaptic('success').catch(() => {});
+      return { success: perm === 'granted', permission: perm };
+    } catch (e) {
+      return { success: false, permission: 'denied' };
+    }
+  }
+  return { success: true, permission: 'granted' };
+};
+
+/**
  * Request all essential runtime permissions (Camera, Microphone, Notifications)
  * Works seamlessly in native Android / iOS Capacitor WebViews and desktop browsers
  */
 export const requestAllNativePermissions = async () => {
   const results: { camera?: boolean; mic?: boolean; notifications?: string } = {};
 
-  // 1. Request Camera & Mic via WebRTC / getUserMedia
-  if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      results.camera = true;
-      results.mic = true;
-      stream.getTracks().forEach((track) => track.stop());
-    } catch (err) {
-      console.debug('Combined media permissions fallback:', err);
-      try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        results.mic = true;
-        audioStream.getTracks().forEach((track) => track.stop());
-      } catch (e) {}
-
-      try {
-        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        results.camera = true;
-        videoStream.getTracks().forEach((track) => track.stop());
-      } catch (e) {}
-    }
+  // 1. Request Microphone
+  try {
+    const micRes = await requestMicrophonePermission();
+    results.mic = micRes.success;
+  } catch (e) {
+    results.mic = false;
   }
 
-  // 2. Request Notification Permission
-  if (typeof window !== 'undefined' && 'Notification' in window) {
-    try {
-      const perm = await Notification.requestPermission();
-      results.notifications = perm;
-    } catch (e) {}
+  // 2. Request Camera
+  try {
+    const camRes = await requestCameraPermission();
+    results.camera = camRes.success;
+  } catch (e) {
+    results.camera = false;
+  }
+
+  // 3. Request Notifications
+  try {
+    const notifRes = await requestNotificationPermission();
+    results.notifications = notifRes.permission;
+  } catch (e) {
+    results.notifications = 'default';
   }
 
   triggerHaptic('success').catch(() => {});
   return results;
 };
+
 
