@@ -142,6 +142,95 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     }
   }, []);
 
+  const lastBackgroundTime = useRef<number>(0);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+    if (typeof window === "undefined") return;
+    const enabled = localStorage.getItem("app_mpin_enabled") === "true";
+    const timerSec = parseInt(localStorage.getItem("app_mpin_autolock_timer") || "0", 10);
+
+    // If timerSec > 0 (e.g. 30s, 60s, 300s) and app is currently not locked
+    if (enabled && timerSec > 0 && !isLocked) {
+      idleTimerRef.current = setTimeout(() => {
+        setIsLocked(true);
+        setPin("");
+        setTimeout(() => {
+          handleBiometricUnlock(true);
+        }, 300);
+      }, timerSec * 1000);
+    }
+  }, [isLocked, handleBiometricUnlock]);
+
+  const triggerLockCheckOnResume = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const enabled = localStorage.getItem("app_mpin_enabled") === "true";
+    const savedPin = localStorage.getItem("app_mpin_code");
+    if (!enabled || !savedPin) return;
+
+    const timerSec = parseInt(localStorage.getItem("app_mpin_autolock_timer") || "0", 10);
+    const bgTime = lastBackgroundTime.current || parseInt(sessionStorage.getItem("app_mpin_bg_time") || "0", 10);
+    const elapsedSec = bgTime > 0 ? (Date.now() - bgTime) / 1000 : 0;
+
+    // If instant lock (timerSec === 0) or background duration exceeded the configured timer
+    if (timerSec === 0 || elapsedSec >= timerSec) {
+      setIsLocked(true);
+      setPin("");
+      setTimeout(() => {
+        handleBiometricUnlock(true);
+      }, 300);
+    }
+
+    lastBackgroundTime.current = 0;
+    sessionStorage.removeItem("app_mpin_bg_time");
+    resetIdleTimer();
+  }, [handleBiometricUnlock, resetIdleTimer]);
+
+  const markBackgrounded = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const enabled = localStorage.getItem("app_mpin_enabled") === "true";
+    if (!enabled) return;
+
+    const timerSec = parseInt(localStorage.getItem("app_mpin_autolock_timer") || "0", 10);
+    lastBackgroundTime.current = Date.now();
+    sessionStorage.setItem("app_mpin_bg_time", Date.now().toString());
+
+    if (timerSec === 0) {
+      setIsLocked(true);
+      setPin("");
+    }
+  }, []);
+
+  // Track In-App Inactivity / Idle Timer
+  useEffect(() => {
+    if (typeof window === "undefined" || isLocked) return;
+
+    const events = ["pointerdown", "touchstart", "keydown", "scroll"];
+    let lastActivityTime = 0;
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastActivityTime > 1000) {
+        lastActivityTime = now;
+        resetIdleTimer();
+      }
+    };
+
+    events.forEach(evt => window.addEventListener(evt, handleActivity, { passive: true }));
+    resetIdleTimer();
+
+    return () => {
+      events.forEach(evt => window.removeEventListener(evt, handleActivity));
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+    };
+  }, [isLocked, resetIdleTimer]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -170,9 +259,10 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
 
     // 1. Web visibilitychange listener
     const handleVisibilityChange = () => {
-      if (document.hidden && localStorage.getItem("app_mpin_enabled") === "true") {
-        setIsLocked(true);
-        setPin("");
+      if (document.hidden) {
+        markBackgrounded();
+      } else {
+        triggerLockCheckOnResume();
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -184,23 +274,35 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
       setIsLocked(true);
       setPin("");
       setErrorMsg("");
+      setTimeout(() => {
+        handleBiometricUnlock(true);
+      }, 300);
     };
     window.addEventListener("test-app-lock", handleTestLockEvent);
 
-    // 3. Native Capacitor App Lifecycle listener (Pause / Resume)
+    // 3. Custom config updated event from Profile settings
+    const handleConfigUpdated = () => {
+      const enabled = localStorage.getItem("app_mpin_enabled") === "true";
+      const savedPin = localStorage.getItem("app_mpin_code");
+      setIsPinEnabled(enabled);
+      setStoredPin(savedPin);
+      resetIdleTimer();
+    };
+    window.addEventListener("app-lock-config-updated", handleConfigUpdated);
+
+    // 4. Native Capacitor App Lifecycle listener (Pause / Resume)
     let appStateListener: any = null;
     let backButtonListener: any = null;
 
     if (Capacitor.isNativePlatform() || (window as any).Capacitor?.isNativePlatform?.()) {
       CapApp.addListener("appStateChange", ({ isActive }) => {
         const enabled = localStorage.getItem("app_mpin_enabled") === "true";
-        if (!isActive && enabled) {
-          setIsLocked(true);
-          setPin("");
-        } else if (isActive && enabled) {
-          setTimeout(() => {
-            handleBiometricUnlock(true);
-          }, 300);
+        if (!enabled) return;
+
+        if (!isActive) {
+          markBackgrounded();
+        } else {
+          triggerLockCheckOnResume();
         }
       }).then(l => {
         appStateListener = l;
@@ -220,10 +322,11 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("test-app-lock", handleTestLockEvent);
+      window.removeEventListener("app-lock-config-updated", handleConfigUpdated);
       if (appStateListener?.remove) appStateListener.remove();
       if (backButtonListener?.remove) backButtonListener.remove();
     };
-  }, [handleBiometricUnlock]);
+  }, [handleBiometricUnlock, markBackgrounded, resetIdleTimer, triggerLockCheckOnResume]);
 
   const handleDigitTap = (digit: string) => {
     setErrorMsg("");

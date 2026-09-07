@@ -20,10 +20,22 @@ import {
   Play,
   AlertCircle,
   Sparkles,
-  Zap
+  Zap,
+  Clock,
+  Timer
 } from 'lucide-react';
 import { triggerHaptic } from '@/lib/capacitor';
 import './profile.css';
+
+const AUTO_LOCK_OPTIONS = [
+  { value: '0', label: 'Immediately (Instant)', desc: 'Locks immediately upon app backgrounding or switching' },
+  { value: '30', label: '30 Seconds', desc: 'Locks after 30 seconds of inactivity or background' },
+  { value: '60', label: '1 Minute', desc: 'Locks after 1 minute of inactivity or background' },
+  { value: '120', label: '2 Minutes', desc: 'Locks after 2 minutes of inactivity or background' },
+  { value: '300', label: '5 Minutes', desc: 'Locks after 5 minutes of inactivity or background' },
+  { value: '900', label: '15 Minutes', desc: 'Locks after 15 minutes of inactivity or background' },
+  { value: '1800', label: '30 Minutes', desc: 'Locks after 30 minutes of inactivity or background' }
+];
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
@@ -39,6 +51,7 @@ export default function ProfilePage() {
   const [mpinConfirmInput, setMpinConfirmInput] = useState<string>('');
   const [showMpin, setShowMpin] = useState<boolean>(false);
   const [showConfirmMpin, setShowConfirmMpin] = useState<boolean>(false);
+  const [autoLockTimer, setAutoLockTimer] = useState<string>('0');
   const [mpinMsg, setMpinMsg] = useState<string>('');
   const [mpinMsgType, setMpinMsgType] = useState<'success' | 'error' | ''>('');
 
@@ -84,9 +97,11 @@ export default function ProfilePage() {
     if (typeof window !== 'undefined') {
       const enabled = localStorage.getItem('app_mpin_enabled') === 'true';
       const savedPin = localStorage.getItem('app_mpin_code') || '';
+      const savedTimer = localStorage.getItem('app_mpin_autolock_timer') || '0';
       setMpinEnabled(enabled);
       setMpinInput(savedPin);
       setMpinConfirmInput(savedPin);
+      setAutoLockTimer(savedTimer);
     }
   }, [session]);
 
@@ -98,6 +113,8 @@ export default function ProfilePage() {
     if (!checked) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('app_mpin_enabled', 'false');
+        localStorage.setItem('app_mpin_autolock_timer', autoLockTimer);
+        window.dispatchEvent(new CustomEvent('app-lock-config-updated'));
         setMpinMsgType('success');
         setMpinMsg('App Lock disabled.');
       }
@@ -129,15 +146,24 @@ export default function ProfilePage() {
       if (typeof window !== 'undefined') {
         localStorage.setItem('app_mpin_enabled', 'true');
         localStorage.setItem('app_mpin_code', mpinInput);
+        localStorage.setItem('app_mpin_autolock_timer', autoLockTimer);
+        window.dispatchEvent(new CustomEvent('app-lock-config-updated'));
         setMpinMsgType('success');
-        setMpinMsg('4-Digit MPIN & Biometric Lock enabled successfully!');
+        const timerLabel = AUTO_LOCK_OPTIONS.find(o => o.value === autoLockTimer)?.label || `${autoLockTimer}s`;
+        setMpinMsg(`4-Digit MPIN & Biometrics saved! Auto-Lock set to ${timerLabel}.`);
         triggerHaptic('success');
       }
     } else {
       if (typeof window !== 'undefined') {
         localStorage.setItem('app_mpin_enabled', 'false');
+        localStorage.setItem('app_mpin_autolock_timer', autoLockTimer);
+        window.dispatchEvent(new CustomEvent('app-lock-config-updated'));
         setMpinMsgType('success');
         setMpinMsg('App Lock disabled.');
+        triggerHaptic('medium');
+      }
+    }
+  };
         triggerHaptic('medium');
       }
     }
@@ -431,8 +457,8 @@ export default function ProfilePage() {
                 <span className="security-feature-tag">
                   <Smartphone size={14} /> Android & iOS Ready
                 </span>
-                <span className="security-feature-tag">
-                  <Zap size={14} /> Instant Resume Lock
+                <span className={`security-feature-tag ${autoLockTimer === '0' ? 'highlight' : ''}`}>
+                  <Clock size={14} /> Auto-Lock: {autoLockTimer === '0' ? 'Instant' : AUTO_LOCK_OPTIONS.find(o => o.value === autoLockTimer)?.label || `${autoLockTimer}s`}
                 </span>
               </div>
 
@@ -502,6 +528,57 @@ export default function ProfilePage() {
                           {showConfirmMpin ? <EyeOff size={18} /> : <Eye size={18} />}
                         </button>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Auto-Lock Timer Setting Section */}
+                  <div className="autolock-field-wrapper">
+                    <label htmlFor="autolock-select">
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={15} style={{ color: '#4f46e5' }} />
+                        <span>Auto-Lock Timer (Biometrics & MPIN)</span>
+                      </span>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                        {autoLockTimer === '0' ? '⚡ Instant Lock on Background' : `⏱️ Locks after ${AUTO_LOCK_OPTIONS.find(o => o.value === autoLockTimer)?.label}`}
+                      </span>
+                    </label>
+
+                    <div className="autolock-select-container">
+                      <select
+                        id="autolock-select"
+                        value={autoLockTimer}
+                        onChange={(e) => {
+                          setAutoLockTimer(e.target.value);
+                          triggerHaptic('light');
+                        }}
+                        className="autolock-styled-select"
+                      >
+                        {AUTO_LOCK_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.value === '0' ? '⚡' : '⏱️'} {opt.label} — {opt.desc}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Quick Selection Pills */}
+                    <div className="autolock-quick-pills">
+                      {AUTO_LOCK_OPTIONS.map((opt) => {
+                        const isSelected = autoLockTimer === opt.value;
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            className={`autolock-pill-btn ${isSelected ? 'active' : ''}`}
+                            onClick={() => {
+                              setAutoLockTimer(opt.value);
+                              triggerHaptic('light');
+                            }}
+                          >
+                            {opt.value === '0' ? '⚡ Instant' : opt.label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
