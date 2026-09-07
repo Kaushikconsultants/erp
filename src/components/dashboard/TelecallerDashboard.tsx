@@ -183,6 +183,7 @@ export default function TelecallerDashboard({
             isCheckedOut={isCheckedOut} 
             checkInTime={checkInTime}
             checkOutTime={checkOutTime}
+            employeeId={employee?.id}
           />
         </div>
       </div>

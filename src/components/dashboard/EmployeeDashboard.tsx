@@ -512,6 +512,7 @@ export default function EmployeeDashboard({
             isCheckedOut={isCheckedOut} 
             checkInTime={checkInTime}
             checkOutTime={checkOutTime}
+            employeeId={employee?.id}
           />
         </div>
       </div>
@@ -816,7 +817,7 @@ export default function EmployeeDashboard({
         <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           {/* TOP BANNER: SPRINT HEALTH & MOMENTUM GAUGE */}
-          <div style={{ 
+          <div className="sprint-health-banner" style={{ 
             background: sprintData.healthStatus === 'EXCELLENT' 
               ? 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)' 
               : sprintData.healthStatus === 'ON_TRACK'
@@ -824,14 +825,12 @@ export default function EmployeeDashboard({
               : 'linear-gradient(135deg, #450a0a 0%, #991b1b 50%, #dc2626 100%)',
             color: '#ffffff',
             borderRadius: '16px',
-            padding: '16px 22px',
-            boxShadow: '0 8px 24px -4px rgba(0,0,0,0.12), 0 2px 6px -1px rgba(0,0,0,0.06)',
-            border: '1px solid rgba(255,255,255,0.12)',
+            padding: '16px 18px',
+            boxShadow: '0 8px 24px -4px rgba(0,0,0,0.14), 0 2px 6px -1px rgba(0,0,0,0.06)',
+            border: '1px solid rgba(255,255,255,0.15)',
             display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '14px',
+            flexDirection: 'column',
+            gap: '12px',
             position: 'relative',
             overflow: 'hidden'
           }}>
@@ -847,54 +846,92 @@ export default function EmployeeDashboard({
               pointerEvents: 'none'
             }} />
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', zIndex: 1 }}>
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '12px',
-                backgroundColor: 'rgba(255,255,255,0.12)',
-                border: '1px solid rgba(255,255,255,0.2)',
-                backdropFilter: 'blur(8px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                {sprintData.healthStatus === 'EXCELLENT' ? <Rocket size={22} color="#ffffff" /> : sprintData.healthStatus === 'ON_TRACK' ? <Zap size={22} color="#ffffff" /> : <AlertCircle size={22} color="#ffffff" />}
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', backgroundColor: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.2)', padding: '2px 9px', borderRadius: '20px' }}>
-                    Sprint {sprintData.weekNumber} of 4 ({sprintData.weekStartStr} - {sprintData.weekEndStr})
+            {/* Top Row: Icon + Sprint Badges */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', zIndex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  backdropFilter: 'blur(8px)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {sprintData.healthStatus === 'EXCELLENT' ? <Rocket size={18} color="#ffffff" /> : sprintData.healthStatus === 'ON_TRACK' ? <Zap size={18} color="#ffffff" /> : <AlertCircle size={18} color="#ffffff" />}
+                </div>
+                <span style={{ 
+                  fontSize: '0.72rem', 
+                  fontWeight: 700, 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.4px', 
+                  backgroundColor: 'rgba(255,255,255,0.18)', 
+                  border: '1px solid rgba(255,255,255,0.22)', 
+                  padding: '3px 10px', 
+                  borderRadius: '20px' 
+                }}>
+                  Sprint {sprintData.weekNumber} of 4 ({sprintData.weekStartStr} - {sprintData.weekEndStr})
+                </span>
+                {sprintData.streakDays > 0 && (
+                  <span style={{ 
+                    fontSize: '0.72rem', 
+                    fontWeight: 700, 
+                    backgroundColor: 'rgba(254, 240, 138, 0.95)', 
+                    color: '#854d0e', 
+                    padding: '3px 10px', 
+                    borderRadius: '20px', 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '4px' 
+                  }}>
+                    <Flame size={12} color="#d97706" /> {sprintData.streakDays}-Day Streak
                   </span>
-                  {sprintData.streakDays > 0 && (
-                    <span style={{ fontSize: '0.72rem', fontWeight: 600, backgroundColor: 'rgba(254, 240, 138, 0.95)', color: '#854d0e', padding: '2px 9px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <Flame size={12} color="#d97706" /> {sprintData.streakDays}-Day Streak
-                    </span>
-                  )}
-                </div>
-                <div style={{ fontSize: '0.98rem', fontWeight: 600, marginTop: '4px', letterSpacing: '-0.1px', opacity: 0.95 }}>
-                  {sprintData.healthMessage}
-                </div>
+                )}
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '18px', zIndex: 1 }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 500, letterSpacing: '0.2px' }}>Sprint Velocity Score</div>
-                <div style={{ fontSize: '1.45rem', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-                  {sprintData.sprintHealthScore}<span style={{ fontSize: '0.85rem', opacity: 0.7, fontWeight: 500 }}>/100</span>
+            {/* Health Message (Aligned cleanly across full width) */}
+            <div style={{ 
+              fontSize: '0.98rem', 
+              fontWeight: 700, 
+              lineHeight: 1.4, 
+              letterSpacing: '-0.01em', 
+              color: '#ffffff',
+              zIndex: 1,
+              padding: '2px 0'
+            }}>
+              {sprintData.healthMessage}
+            </div>
+
+            {/* Bottom 2-Column Metrics Box (Responsive & Aligned) */}
+            <div className="sprint-metrics-box" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '10px', 
+              backgroundColor: 'rgba(0, 0, 0, 0.18)', 
+              border: '1px solid rgba(255, 255, 255, 0.12)', 
+              borderRadius: '12px', 
+              padding: '10px 14px',
+              zIndex: 1 
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div style={{ fontSize: '0.68rem', opacity: 0.82, fontWeight: 600, letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                  Sprint Velocity Score
+                </div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                  {sprintData.sprintHealthScore}<span style={{ fontSize: '0.8rem', opacity: 0.7, fontWeight: 500 }}>/100</span>
                 </div>
               </div>
-              <div style={{
-                height: '36px',
-                width: '1px',
-                backgroundColor: 'rgba(255,255,255,0.2)'
-              }} />
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 500, letterSpacing: '0.2px' }}>Days Left in Sprint</div>
-                <div style={{ fontSize: '1.45rem', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-                  {sprintData.daysRemainingInSprint}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', borderLeft: '1px solid rgba(255, 255, 255, 0.15)', paddingLeft: '12px' }}>
+                <div style={{ fontSize: '0.68rem', opacity: 0.82, fontWeight: 600, letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                  Days Left in Sprint
+                </div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+                  {sprintData.daysRemainingInSprint} {sprintData.daysRemainingInSprint === 1 ? 'Day' : 'Days'}
                 </div>
               </div>
             </div>

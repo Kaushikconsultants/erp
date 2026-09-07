@@ -669,6 +669,16 @@
   display: flex !important;
 }
 
+/* Sprint Health Cockpit Banner */
+.sprint-health-banner {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sprint-health-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -4px rgba(0, 0, 0, 0.18);
+}
+
 @media (max-width: 768px) {
   .mobile-only-block {
     display: block !important;
@@ -695,8 +705,21 @@
   .hero-title {
     font-size: 1.15rem;
   }
+
+  /* Employee Dashboard Header & Check In on Mobile */
+  .dashboard-header {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+  }
+
+  .sprint-health-banner {
+    padding: 14px 16px !important;
+    border-radius: 14px !important;
+    gap: 10px !important;
+  }
+
+  .sprint-metrics-box {
+    padding: 8px 12px !important;
+  }
 }
-
-
-
-

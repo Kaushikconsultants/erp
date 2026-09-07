@@ -425,8 +425,16 @@ export default async function Home() {
       </>
     );
   } else if (userRole === 'TELECALLER') {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const istYear = istNow.getUTCFullYear();
+    const istMonth = istNow.getUTCMonth();
+    const istDate = istNow.getUTCDate();
+
+    const todayStart = new Date(Date.UTC(istYear, istMonth, istDate, 0, 0, 0) - istOffset);
+    const todayEnd = new Date(Date.UTC(istYear, istMonth, istDate, 23, 59, 59, 999) - istOffset);
+    const startOfMonth = new Date(istYear, istMonth, 1);
 
     const [
       attendanceRecord,
@@ -440,7 +448,7 @@ export default async function Home() {
           employeeId: employee.id,
           date: {
             gte: todayStart,
-            lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+            lte: todayEnd
           }
         }
       }).catch(() => null) : Promise.resolve(null),
@@ -448,7 +456,7 @@ export default async function Home() {
         where: {
           assigneeId: employee.id,
           status: { not: 'Completed' },
-          dueDate: { lte: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000) }
+          dueDate: { lte: todayEnd }
         }
       }).catch(() => []) : Promise.resolve([]),
       employee?.id ? prisma.call.findMany({
@@ -477,7 +485,7 @@ export default async function Home() {
       getFollowUpRecommendations().catch(() => ({ success: false, overdue: [], reorderDue: [] }))
     ]);
 
-    const isCheckedIn = !!attendanceRecord?.checkIn;
+    const isCheckedIn = !!attendanceRecord;
     const isCheckedOut = !!attendanceRecord?.checkOut;
 
     return (
@@ -503,8 +511,15 @@ export default async function Home() {
     // EMPLOYEE / SALES DASHBOARD DATA
     // ---------------------------------------------------------
     const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const istYear = istNow.getUTCFullYear();
+    const istMonth = istNow.getUTCMonth();
+    const istDate = istNow.getUTCDate();
+
+    const todayStart = new Date(Date.UTC(istYear, istMonth, istDate, 0, 0, 0) - istOffset);
+    const todayEnd = new Date(Date.UTC(istYear, istMonth, istDate, 23, 59, 59, 999) - istOffset);
+    const startOfMonth = new Date(istYear, istMonth, 1);
 
     const [
       attendanceRecord,
@@ -520,7 +535,7 @@ export default async function Home() {
           employeeId: employee.id,
           date: {
             gte: todayStart,
-            lt: new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+            lte: todayEnd
           }
         }
       }).catch(() => null) : Promise.resolve(null),

@@ -6,36 +6,71 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 
-export async function toggleAttendance() {
+export async function toggleAttendance(passedEmployeeId?: string) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized. Please log in." };
 
     const organizationId = (session.user as any).organizationId || (await getTenantOrgId());
-    const userId = (session.user as any).id;
-    let employee = await prisma.employee.findFirst({
-      where: {
-        userId,
-        ...(organizationId ? { organizationId } : {})
-      }
-    });
+    let userId = (session.user as any).id || (session.user as any).sub;
+    const userEmail = session.user.email ? session.user.email.trim().toLowerCase() : null;
 
-    if (!employee) {
+    if (!userId && userEmail) {
+      const dbUser = await prisma.user.findFirst({
+        where: { email: { equals: userEmail, mode: 'insensitive' } }
+      });
+      if (dbUser) userId = dbUser.id;
+    }
+
+    let employee = null;
+
+    if (passedEmployeeId) {
+      employee = await prisma.employee.findUnique({
+        where: { id: passedEmployeeId },
+        include: { user: true }
+      });
+    }
+
+    if (!employee && userId) {
+      employee = await prisma.employee.findFirst({
+        where: {
+          userId,
+          ...(organizationId ? { organizationId } : {})
+        },
+        include: { user: true }
+      });
+    }
+
+    if (!employee && userEmail) {
+      employee = await prisma.employee.findFirst({
+        where: {
+          user: { email: { equals: userEmail, mode: 'insensitive' } }
+        },
+        include: { user: true }
+      });
+    }
+
+    if (!employee && userId) {
       // Auto-create an employee record for the logged in user
       const user = await prisma.user.findUnique({ where: { id: userId } });
-      if (!user) return { error: "User not found" };
+      if (!user) return { error: "User profile not found. Please log in again." };
 
       employee = await prisma.employee.create({
         data: {
-          organizationId: organizationId || null,
+          organizationId: organizationId || user.organizationId || null,
           userId: user.id,
           employeeId: `EMP-${Date.now().toString().slice(-4)}`,
           joiningDate: new Date(),
           employmentStatus: "Active",
           department: user.role || "SALES",
           designation: user.role || "SALES"
-        }
+        },
+        include: { user: true }
       });
+    }
+
+    if (!employee) {
+      return { error: "Employee record not found. Please contact your admin." };
     }
 
     const now = new Date();
@@ -72,7 +107,7 @@ export async function toggleAttendance() {
           }
         });
       } else {
-        return { error: "Already checked out for today." };
+        return { error: "Shift already completed for today." };
       }
     } else {
       // Check in

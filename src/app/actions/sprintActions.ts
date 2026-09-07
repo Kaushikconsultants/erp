@@ -274,7 +274,8 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
       healthMessage = "Superb Momentum! Sprint target well in reach 🚀";
     } else if (sprintHealthScore < 50 || (sprintProgressPercent < 40 && daysRemainingInSprint <= 2)) {
       healthStatus = "AT_RISK";
-      healthMessage = `Behind Pace — Need ₹${dailyRunRateNeeded.toLocaleString('en-IN')}/day over next ${daysRemainingInSprint} days to hit Sprint ${currentWeek}`;
+      const dayWord = daysRemainingInSprint === 1 ? "day" : "days";
+      healthMessage = `Behind Pace — Need ₹${dailyRunRateNeeded.toLocaleString('en-IN')}/day over next ${daysRemainingInSprint} ${dayWord} to hit Sprint ${currentWeek}`;
     }
 
     // Calculate Streak from last 7 days of daily logs or activity
