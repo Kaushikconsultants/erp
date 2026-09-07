@@ -2403,65 +2403,6 @@ function PhoneDialerModalContent({
   );
 }
 
-class DialerErrorBoundary extends React.Component<
-  { children: React.ReactNode; onClose: () => void },
-  { hasError: boolean }
-> {
-  constructor(props: { children: React.ReactNode; onClose: () => void }) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: any, errorInfo: any) {
-    console.error("Dialer error caught by boundary:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="dialer-backdrop" onClick={this.props.onClose}>
-          <div
-            className="dialer-sheet"
-            onClick={(e) => e.stopPropagation()}
-            style={{ padding: "24px", textAlign: "center" }}
-          >
-            <h4 style={{ color: "#ef4444", margin: "0 0 8px 0", fontSize: "1rem", fontWeight: 800 }}>
-              Dialer Recovery Notice
-            </h4>
-            <p style={{ fontSize: "0.82rem", color: "#64748b", margin: "0 0 16px 0" }}>
-              An unexpected display issue occurred in the dialer. Tap below to reload.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                this.setState({ hasError: false });
-                this.props.onClose();
-              }}
-              style={{
-                padding: "8px 18px",
-                borderRadius: "10px",
-                backgroundColor: "#4f46e5",
-                color: "#ffffff",
-                border: "none",
-                fontWeight: 700,
-                fontSize: "0.85rem",
-                cursor: "pointer"
-              }}
-            >
-              Close Dialer
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 export default function PhoneDialerModal(props: PhoneDialerModalProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -2471,10 +2412,6 @@ export default function PhoneDialerModal(props: PhoneDialerModalProps) {
 
   if (!props.isOpen || !mounted) return null;
 
-  return (
-    <DialerErrorBoundary onClose={props.onClose}>
-      <PhoneDialerModalContent {...props} />
-    </DialerErrorBoundary>
-  );
+  return <PhoneDialerModalContent {...props} />;
 }
 
