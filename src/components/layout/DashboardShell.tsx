@@ -8,6 +8,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { initNativeMobileShell } from '@/lib/capacitor';
 import AppLockGuard from '@/components/security/AppLockGuard';
 import CallReminderNotifier from '@/components/notifications/CallReminderNotifier';
+import PushNotificationManager from '@/components/notifications/PushNotificationManager';
 import AppSplashScreen from '../ui/AppSplashScreen';
 
 interface DashboardShellProps {
@@ -84,6 +85,7 @@ export default function DashboardShell({
 
         {/* Real-time Call Reminders & Notifications Engine */}
         <CallReminderNotifier />
+        <PushNotificationManager />
       </div>
     </AppLockGuard>
   );

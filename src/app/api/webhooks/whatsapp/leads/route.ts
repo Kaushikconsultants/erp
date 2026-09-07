@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { notifyNewLead } from "@/lib/pushNotifications";
 
 export async function POST(req: Request) {
   let rawBody = "";
@@ -93,6 +94,17 @@ export async function POST(req: Request) {
         assignedSalespersonId
       }
     });
+
+    // Send real-time push notification to assigned agent & organization admins
+    notifyNewLead({
+      leadId: lead.id,
+      name: lead.name,
+      whatsappNumber: lead.whatsappNumber,
+      shopName: lead.shopName,
+      assignedSalespersonId: lead.assignedSalespersonId,
+      organizationId: orgIdToUse,
+      source: "Webhook / WhatsApp Intake"
+    }).catch((err) => console.error("Failed to dispatch push notification for webhook lead:", err));
 
     return sendResponse(201, { success: true, lead });
 

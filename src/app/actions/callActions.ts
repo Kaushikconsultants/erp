@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
+import { notifyNewLead } from "@/lib/pushNotifications";
 
 export async function logCall(formData: FormData) {
   const rawCustomerId = (formData.get("customerId") as string || "").trim();
@@ -89,6 +90,16 @@ export async function logCall(formData: FormData) {
                 }
               });
               leadId = createdLead.id;
+
+              notifyNewLead({
+                leadId: createdLead.id,
+                name: createdLead.name,
+                whatsappNumber: createdLead.whatsappNumber,
+                shopName: createdLead.shopName,
+                assignedSalespersonId: createdLead.assignedSalespersonId,
+                organizationId: organizationId || null,
+                source: "Phone Dialer Call"
+              }).catch(() => {});
             } catch (leadErr) {
               console.warn("Could not auto-create lead:", leadErr);
             }

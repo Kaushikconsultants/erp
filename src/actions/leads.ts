@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
+import { notifyNewLead } from "@/lib/pushNotifications";
 
 export async function getLeads() {
   try {
@@ -122,6 +123,17 @@ export async function createLead(data: {
         organizationId: orgId,
       }
     });
+
+    // Send real-time push notification to assigned agent & admins
+    notifyNewLead({
+      leadId: lead.id,
+      name: lead.name,
+      whatsappNumber: lead.whatsappNumber,
+      shopName: lead.shopName,
+      assignedSalespersonId: lead.assignedSalespersonId,
+      organizationId: orgId,
+      source: "Manual Lead Form"
+    }).catch((err) => console.error("Failed to dispatch push notification for created lead:", err));
 
     revalidatePath("/leads");
     return { success: true, data: lead };

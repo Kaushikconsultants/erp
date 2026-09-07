@@ -25,7 +25,8 @@ import {
   ChevronRight,
   Sliders,
   Layers,
-  FileText
+  FileText,
+  Bell
 } from "lucide-react";
 
 interface SettingsMenuProps {
@@ -129,6 +130,15 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
 
   // Group 3: Automation & Cloud Billing
   const automationSettings: SettingItem[] = [
+    {
+      label: "Notifications & Mobile Push",
+      desc: "Configure instant push notifications on mobile, new lead alerts & sounds",
+      icon: <Bell size={18} />,
+      iconBg: "#eff6ff",
+      iconColor: "#4f46e5",
+      href: "/settings/notifications",
+      badge: "Mobile Push"
+    },
     {
       label: "Integrations & APIs Hub",
       desc: "Connect Shiprocket, Shipmozo, Shopify, WooCommerce & webhooks",
