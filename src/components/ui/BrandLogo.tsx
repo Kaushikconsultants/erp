@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import { Sparkles, Heart } from "lucide-react";
 
 interface BrandLogoProps {
   size?: "sm" | "md" | "lg" | "xl";
@@ -17,15 +18,26 @@ export default function BrandLogo({
   className = "",
   style = {}
 }: BrandLogoProps) {
+  const [imgSrc, setImgSrc] = useState<string>("/brand-logo.jpg");
+  const [imgFailed, setImgFailed] = useState<boolean>(false);
+
   // Dimension scale based on size (Aspect ratio: 708 x 312 ≈ 2.27)
   const sizeConfig = {
-    sm: { height: 38, maxW: 130 },
-    md: { height: 54, maxW: 185 },
-    lg: { height: 72, maxW: 240 },
-    xl: { height: 92, maxW: 310 }
+    sm: { height: 38, maxW: 130, iconSize: 20, fontSize: "0.95rem", subSize: "0.65rem" },
+    md: { height: 52, maxW: 185, iconSize: 26, fontSize: "1.18rem", subSize: "0.72rem" },
+    lg: { height: 68, maxW: 240, iconSize: 32, fontSize: "1.45rem", subSize: "0.78rem" },
+    xl: { height: 86, maxW: 310, iconSize: 40, fontSize: "1.8rem", subSize: "0.85rem" }
   };
 
   const config = sizeConfig[size] || sizeConfig.md;
+
+  const handleImageError = () => {
+    if (imgSrc === "/brand-logo.jpg") {
+      setImgSrc("/logo.jpg");
+    } else {
+      setImgFailed(true);
+    }
+  };
 
   if (collapsed) {
     return (
@@ -37,24 +49,44 @@ export default function BrandLogo({
           justifyContent: "center",
           width: "44px",
           height: "44px",
-          borderRadius: "10px",
+          borderRadius: "12px",
           overflow: "hidden",
           backgroundColor: "#ffffff",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
+          border: "1px solid #f1f5f9",
+          flexShrink: 0,
           ...style
         }}
         title="Heart of Business"
       >
-        <img
-          src="/brand-logo.jpg"
-          alt="Heart of Business"
-          style={{
-            height: "40px",
-            width: "auto",
-            objectFit: "contain",
-            transform: "scale(1.4) translateX(-5%)"
-          }}
-        />
+        {!imgFailed ? (
+          <img
+            src={imgSrc}
+            alt="Heart of Business"
+            onError={handleImageError}
+            style={{
+              height: "36px",
+              width: "auto",
+              objectFit: "contain",
+              transform: "scale(1.2)"
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "8px",
+              background: "linear-gradient(135deg, #e11d48 0%, #be123c 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#ffffff"
+            }}
+          >
+            <Heart size={18} fill="#ffffff" />
+          </div>
+        )}
       </div>
     );
   }
@@ -89,7 +121,7 @@ export default function BrandLogo({
         `}
       </style>
 
-      {/* Main Brand Logo Graphic */}
+      {/* Main Brand Logo Display */}
       <div
         style={{
           display: "flex",
@@ -99,22 +131,80 @@ export default function BrandLogo({
           width: "100%"
         }}
       >
-        <img
-          src="/brand-logo.jpg"
-          alt="Heart of Business"
-          className="brand-logo-img"
-          style={{
-            height: `${config.height}px`,
-            width: "auto",
-            maxWidth: `${config.maxW}px`,
-            objectFit: "contain",
-            display: "block",
-            borderRadius: "4px"
-          }}
-        />
+        {!imgFailed ? (
+          <img
+            src={imgSrc}
+            alt="Heart of Business"
+            className="brand-logo-img"
+            onError={handleImageError}
+            style={{
+              height: `${config.height}px`,
+              width: "auto",
+              maxWidth: `${config.maxW}px`,
+              objectFit: "contain",
+              display: "block",
+              borderRadius: "4px"
+            }}
+          />
+        ) : (
+          /* High-Fidelity Vector Fallback if static image fails to load */
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "4px 8px"
+            }}
+          >
+            <div
+              style={{
+                width: `${config.iconSize + 14}px`,
+                height: `${config.iconSize + 14}px`,
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #e11d48 0%, #be123c 100%)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#ffffff",
+                boxShadow: "0 4px 12px rgba(225, 29, 72, 0.3)",
+                flexShrink: 0
+              }}
+            >
+              <Heart size={config.iconSize} fill="#ffffff" />
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <div
+                style={{
+                  fontSize: config.fontSize,
+                  fontWeight: 900,
+                  color: "#0f172a",
+                  letterSpacing: "-0.03em",
+                  lineHeight: 1.1
+                }}
+              >
+                Heart of <span style={{ color: "#e11d48" }}>Business</span>
+              </div>
+              {showSubtitle && (
+                <div
+                  style={{
+                    fontSize: config.subSize,
+                    fontWeight: 700,
+                    color: "#64748b",
+                    letterSpacing: "0.5px",
+                    textTransform: "uppercase",
+                    marginTop: "2px"
+                  }}
+                >
+                  Enterprise CRM & ERP
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
 
 
