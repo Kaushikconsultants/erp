@@ -7,7 +7,10 @@ import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
+function getAIClient() {
+  const apiKey = process.env.GEMINI_API_KEY || "";
+  return new GoogleGenAI({ apiKey });
+}
 
 export interface CallVoiceDebriefAnalysis {
   transcript: string;
@@ -137,6 +140,7 @@ Output strict JSON only conforming to the schema.
       contents = `${systemPrompt}\n\nSpoken Debrief Voice Text:\n"${rawText}"`;
     }
 
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents,
