@@ -73,10 +73,13 @@ export default function ConvertQuotationBtn({ quotationId }: { quotationId: stri
         style={{
           display: 'inline-flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: '5px',
-          padding: '6px 12px',
+          height: '32px',
+          padding: '0 14px',
+          minWidth: '155px',
           borderRadius: '6px',
-          fontSize: '0.8rem',
+          fontSize: '0.78rem',
           fontWeight: 700,
           background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
           color: '#ffffff',
@@ -84,14 +87,16 @@ export default function ConvertQuotationBtn({ quotationId }: { quotationId: stri
           cursor: loading ? 'not-allowed' : 'pointer',
           boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)',
           whiteSpace: 'nowrap',
-          transition: 'all 0.15s ease'
+          transition: 'all 0.15s ease',
+          boxSizing: 'border-box'
         }}
+        title="Confirm Quotation"
       >
         {loading ? (
           "Processing..."
         ) : (
           <>
-            <CheckCircle2 size={14} /> Confirm Quotation
+            <CheckCircle2 size={13} /> Confirm Quotation
           </>
         )}
       </button>

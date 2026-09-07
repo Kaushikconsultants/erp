@@ -31,8 +31,11 @@ export default function ConvertToInvoiceBtn({ quotationId }: { quotationId: stri
       style={{
         display: 'inline-flex',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: '5px',
-        padding: '5px 11px',
+        height: '32px',
+        padding: '0 14px',
+        minWidth: '155px',
         borderRadius: '6px',
         fontSize: '0.78rem',
         fontWeight: 700,
@@ -43,7 +46,8 @@ export default function ConvertToInvoiceBtn({ quotationId }: { quotationId: stri
         boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
         whiteSpace: 'nowrap',
         transition: 'all 0.15s ease',
-        opacity: loading ? 0.7 : 1
+        opacity: loading ? 0.7 : 1,
+        boxSizing: 'border-box'
       }}
       title="Convert confirmed quotation to Sales Order & Invoice"
     >

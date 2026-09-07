@@ -15,14 +15,15 @@ import {
   X, 
   Filter,
   Layers,
-  ArrowRight
+  ArrowRight,
+  FileCheck,
+  Coins
 } from 'lucide-react';
 import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
 import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
 import EditQuotationModal from '@/components/quotations/EditQuotationModal';
 import EditTokenAmountModal from '@/components/quotations/EditTokenAmountModal';
 import { deleteQuotation } from '@/app/actions/quotationActions';
-import { Coins } from 'lucide-react';
 
 export default function QuotationTableClient({ initialQuotations = [] }: { initialQuotations: any[] }) {
   const searchParams = useSearchParams();
@@ -365,11 +366,16 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                     textDecoration: 'none', 
                     fontSize: '0.78rem', 
                     fontWeight: 600,
-                    padding: '7px 8px',
+                    height: '32px',
+                    padding: '0 10px',
                     borderRadius: '6px',
                     border: '1px solid #cbd5e1',
                     backgroundColor: '#ffffff',
-                    color: '#334155'
+                    color: '#334155',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxSizing: 'border-box'
                   }}
                 >
                   View
@@ -377,7 +383,8 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                 <Link 
                   href={`/quotations/${q.id}/edit`}
                   style={{
-                    padding: '7px 10px',
+                    height: '32px',
+                    padding: '0 10px',
                     borderRadius: '6px',
                     border: '1px solid #93c5fd',
                     backgroundColor: '#eff6ff',
@@ -385,40 +392,22 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                     fontSize: '0.78rem',
                     fontWeight: 600,
                     textDecoration: 'none',
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    justifyContent: 'center',
+                    gap: '4px',
+                    boxSizing: 'border-box'
                   }}
                 >
                   <Pencil size={13} /> Edit
                 </Link>
-                {q.status === 'Confirmed' && (
-                  <button
-                    type="button"
-                    onClick={() => setTokenModalQuote(q)}
-                    style={{
-                      padding: '7px 10px',
-                      border: '1px solid #86efac',
-                      backgroundColor: '#f0fdf4',
-                      borderRadius: '6px',
-                      color: '#15803d',
-                      fontSize: '0.78rem',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Coins size={13} /> Token
-                  </button>
-                )}
                 <button 
                   type="button"
                   onClick={() => handleDelete(q.id, q.quotationNumber)} 
                   disabled={deletingId === q.id}
                   style={{
-                    padding: '7px 10px',
+                    height: '32px',
+                    padding: '0 10px',
                     borderRadius: '6px',
                     border: '1px solid #fecaca',
                     backgroundColor: '#fef2f2',
@@ -426,7 +415,12 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                     fontSize: '0.78rem',
                     fontWeight: 600,
                     cursor: deletingId === q.id ? 'not-allowed' : 'pointer',
-                    opacity: deletingId === q.id ? 0.6 : 1
+                    opacity: deletingId === q.id ? 0.6 : 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    boxSizing: 'border-box'
                   }}
                 >
                   <Trash2 size={13} />
@@ -436,6 +430,30 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                 )}
                 {q.status !== 'Converted' && q.status !== 'Confirmed' && (
                   <ConvertQuotationBtn quotationId={q.id} />
+                )}
+                {q.status === 'Confirmed' && (
+                  <button
+                    type="button"
+                    onClick={() => setTokenModalQuote(q)}
+                    style={{
+                      height: '32px',
+                      padding: '0 10px',
+                      border: '1px solid #86efac',
+                      backgroundColor: '#f0fdf4',
+                      borderRadius: '6px',
+                      color: '#15803d',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    <Coins size={13} /> Token
+                  </button>
                 )}
               </div>
             </div>
@@ -527,59 +545,134 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                         {q.status === 'Confirmed' && <Pencil size={10} style={{ marginLeft: '2px', opacity: 0.8 }} />}
                       </span>
                     </td>
-                    <td style={{ padding: '14px 20px' }}>
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        <Link href={`/quotations/${q.id}`} style={{ padding: '5px 10px', border: '1px solid #cbd5e1', borderRadius: 'var(--radius-sm, 6px)', color: '#334155', textDecoration: 'none', fontSize: '0.78rem', fontWeight: 600, backgroundColor: '#ffffff' }}>
+                    <td style={{ padding: '14px 20px', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                        {/* Slot 1: View */}
+                        <Link 
+                          href={`/quotations/${q.id}`} 
+                          style={{ 
+                            height: '32px',
+                            padding: '0 11px', 
+                            border: '1px solid #cbd5e1', 
+                            borderRadius: '6px', 
+                            color: '#334155', 
+                            textDecoration: 'none', 
+                            fontSize: '0.78rem', 
+                            fontWeight: 600, 
+                            backgroundColor: '#ffffff',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxSizing: 'border-box'
+                          }}
+                        >
                           View
                         </Link>
 
+                        {/* Slot 2: Edit */}
                         <Link 
                           href={`/quotations/${q.id}/edit`}
-                          style={{ padding: '5px 10px', border: '1px solid #93c5fd', backgroundColor: '#eff6ff', borderRadius: 'var(--radius-sm, 6px)', color: '#1d4ed8', textDecoration: 'none', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}
+                          style={{ 
+                            height: '32px',
+                            padding: '0 11px', 
+                            border: '1px solid #93c5fd', 
+                            backgroundColor: '#eff6ff', 
+                            borderRadius: '6px', 
+                            color: '#1d4ed8', 
+                            textDecoration: 'none', 
+                            fontSize: '0.78rem', 
+                            fontWeight: 600, 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            gap: '4px',
+                            boxSizing: 'border-box'
+                          }}
                           title="Full Edit Quotation"
                         >
                           <Pencil size={13} /> Edit
                         </Link>
 
-                        {q.status === 'Confirmed' && (
-                          <button
-                            type="button"
-                            onClick={() => setTokenModalQuote(q)}
-                            style={{
-                              padding: '5px 10px',
-                              border: '1px solid #86efac',
-                              backgroundColor: '#f0fdf4',
-                              borderRadius: 'var(--radius-sm, 6px)',
-                              color: '#15803d',
-                              fontSize: '0.78rem',
-                              fontWeight: 700,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              cursor: 'pointer',
-                              transition: 'all 0.15s ease'
-                            }}
-                            title="Edit Token / Advance Payment Amount"
-                          >
-                            <Coins size={13} /> Token
-                          </button>
-                        )}
-
+                        {/* Slot 3: Delete */}
                         <button 
                           onClick={() => handleDelete(q.id, q.quotationNumber)} 
                           disabled={deletingId === q.id}
-                          style={{ padding: '5px 10px', border: '1px solid #fca5a5', backgroundColor: '#fef2f2', borderRadius: 'var(--radius-sm, 6px)', color: '#dc2626', fontSize: '0.78rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', opacity: deletingId === q.id ? 0.6 : 1 }}
+                          style={{ 
+                            height: '32px',
+                            padding: '0 11px', 
+                            border: '1px solid #fca5a5', 
+                            backgroundColor: '#fef2f2', 
+                            borderRadius: '6px', 
+                            color: '#dc2626', 
+                            fontSize: '0.78rem', 
+                            fontWeight: 600, 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            gap: '4px', 
+                            cursor: deletingId === q.id ? 'not-allowed' : 'pointer', 
+                            opacity: deletingId === q.id ? 0.6 : 1,
+                            boxSizing: 'border-box'
+                          }}
                           title="Delete Quotation"
                         >
                           <Trash2 size={13} /> {deletingId === q.id ? '...' : 'Delete'}
                         </button>
 
-                        {q.status === 'Confirmed' && (
+                        {/* Slot 4: Primary Action CTA (Confirm Quotation / Convert to Invoice / Invoiced Badge) */}
+                        {q.status === 'Confirmed' ? (
                           <ConvertToInvoiceBtn quotationId={q.id} />
+                        ) : q.status !== 'Converted' ? (
+                          <ConvertQuotationBtn quotationId={q.id} />
+                        ) : (
+                          <span 
+                            style={{ 
+                              height: '32px',
+                              padding: '0 12px',
+                              minWidth: '155px',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              backgroundColor: '#f1f5f9',
+                              color: '#64748b',
+                              border: '1px solid #e2e8f0',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              boxSizing: 'border-box'
+                            }}
+                          >
+                            <FileCheck size={13} /> Invoiced
+                          </span>
                         )}
 
-                        {q.status !== 'Converted' && q.status !== 'Confirmed' && (
-                          <ConvertQuotationBtn quotationId={q.id} />
+                        {/* Slot 5: Auxiliary Action (Token button for confirmed quotes) */}
+                        {q.status === 'Confirmed' && (
+                          <button
+                            type="button"
+                            onClick={() => setTokenModalQuote(q)}
+                            style={{
+                              height: '32px',
+                              padding: '0 10px',
+                              border: '1px solid #86efac',
+                              backgroundColor: '#f0fdf4',
+                              borderRadius: '6px',
+                              color: '#15803d',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
+                            }}
+                            title="Edit Token / Advance Payment Amount"
+                          >
+                            <Coins size={13} /> Token
+                          </button>
                         )}
                       </div>
                     </td>
