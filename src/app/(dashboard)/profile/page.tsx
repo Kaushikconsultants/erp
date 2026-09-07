@@ -164,10 +164,6 @@ export default function ProfilePage() {
       }
     }
   };
-        triggerHaptic('medium');
-      }
-    }
-  };
 
   const handleTestLock = () => {
     if (!mpinEnabled || !mpinInput || mpinInput.length !== 4) {
