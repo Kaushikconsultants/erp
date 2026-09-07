@@ -239,7 +239,7 @@ public class MainActivity extends BridgeActivity {
             sendNativeCallEvent("CONNECTED", 0);
         } else if (state == TelephonyManager.CALL_STATE_IDLE) {
             // Call ended / hung up
-            if (isCallInProgress) {
+            if (isCallInProgress || callStartTime > 0) {
                 long elapsedMs = callStartTime > 0 ? (System.currentTimeMillis() - callStartTime) : 0;
                 int durationSec = (int) Math.max(0, elapsedMs / 1000);
                 lastCallDurationSec = durationSec;
@@ -477,6 +477,11 @@ public class MainActivity extends BridgeActivity {
                     if (phoneNumber == null || phoneNumber.trim().isEmpty()) return;
                     String clean = phoneNumber.replaceAll("[^0-9+]", "");
                     if (clean.isEmpty()) return;
+
+                    // Initialize call timer state in Java
+                    activity.callStartTime = System.currentTimeMillis();
+                    activity.isCallInProgress = true;
+                    activity.lastCallDurationSec = 0;
 
                     // If CALL_PHONE permission is granted, make direct phone call without opening keypad
                     if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {

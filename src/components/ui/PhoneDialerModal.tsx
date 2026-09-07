@@ -32,7 +32,10 @@ import {
   Grid,
   MapPin,
   RefreshCw,
-  Plus
+  Plus,
+  ArrowRight,
+  ShieldCheck,
+  Check
 } from "lucide-react";
 import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
@@ -78,7 +81,7 @@ const DEFAULT_OUTCOMES = [
 ];
 
 const CALL_STATUSES = [
-  { label: "Connected", value: "Connected", color: "#10b981", bg: "#ecfdf5", border: "#a7f3d0" },
+  { label: "Connected", value: "Connected", color: "#10b981", bg: "#f0fdf4", border: "#bbf7d0" },
   { label: "Busy / Engaged", value: "Busy", color: "#ef4444", bg: "#fef2f2", border: "#fecaca" },
   { label: "No Answer", value: "No Answer", color: "#f59e0b", bg: "#fffbeb", border: "#fde68a" },
   { label: "Voicemail / Off", value: "Voicemail", color: "#8b5cf6", bg: "#f5f3ff", border: "#ddd6fe" },
@@ -88,15 +91,14 @@ const CALL_STATUSES = [
 
 const DISCUSSION_TAGS = [
   "Price Quoted",
-  "Sample Catalog Sent",
+  "Catalog Sent",
   "Decision Maker Away",
-  "Discount Negotiated",
+  "Discount Requested",
   "High Interest",
   "Ready to Order",
   "Payment Promised",
-  "Follow-up Friday",
-  "Competitor Comparison",
-  "Reorder Requested"
+  "Follow-up Needed",
+  "Reorder Inquiry"
 ];
 
 const QUICK_DURATIONS = [
@@ -105,18 +107,17 @@ const QUICK_DURATIONS = [
   { label: "1m", sec: 60 },
   { label: "2m", sec: 120 },
   { label: "3m", sec: 180 },
-  { label: "5m", sec: 300 },
-  { label: "10m", sec: 600 }
+  { label: "5m", sec: 300 }
 ];
 
 const TELE_SCRIPTS = [
   {
     title: "Opening Pitch (Standard)",
-    text: "Namaste! This is [Your Name] from our sales team. I am reaching out regarding your business inquiry for our latest product range & wholesale pricing."
+    text: "Namaste! This is from our sales team. I am reaching out regarding your business inquiry for our latest product range & wholesale pricing."
   },
   {
     title: "Price Objection Handler",
-    text: "I completely understand price is key. Our items offer 2x higher durability, GST invoices, and fast courier dispatch, giving your shop higher margin turnover."
+    text: "I completely understand price is key. Our items offer high durability, GST invoices, and fast courier dispatch, giving your shop higher margin turnover."
   },
   {
     title: "Existing Supplier Objection",
@@ -167,36 +168,14 @@ class DialerErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            backgroundColor: "rgba(15, 23, 42, 0.75)",
-            zIndex: 99999,
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-          }}
-          onClick={this.props.onClose}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "480px",
-              backgroundColor: "#ffffff",
-              borderTopLeftRadius: "24px",
-              borderTopRightRadius: "24px",
-              padding: "24px 20px",
-              textAlign: "center"
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="dialer-backdrop" onClick={this.props.onClose}>
+          <div className="dialer-sheet" style={{ padding: "24px 20px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "#fee2e2", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px auto" }}>
               <PhoneOff size={24} />
             </div>
             <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", color: "#0f172a" }}>Phone Dialer Active</h3>
             <p style={{ margin: "0 0 16px 0", fontSize: "0.82rem", color: "#64748b" }}>
-              A temporary display glitch was safely isolated. Click below to reset the dialer keypad.
+              A temporary display glitch was safely isolated. Click below to reset the dialer.
             </p>
             <div style={{ display: "flex", gap: "10px" }}>
               <button
@@ -335,24 +314,25 @@ function PhoneDialerModalContent({
       const dur = detail.durationSec || 0;
 
       if (state === "CONNECTED") {
-        // Automatically start live talk stopwatch
-        callStartTimeRef.current = Date.now();
+        if (!callStartTimeRef.current) {
+          callStartTimeRef.current = Date.now();
+        }
         setIsTimerRunning(true);
         setCallStatus("Connected");
-        setFeedbackMsg("🟢 Call connected! Live talk timer started automatically.");
+        setFeedbackMsg("🟢 Call connected! Live talk timer started.");
       } else if (state === "ENDED") {
-        // Automatically stop stopwatch and lock duration
         setIsTimerRunning(false);
+        const finalDur = dur > 0 ? dur : (callStartTimeRef.current ? Math.max(0, Math.round((Date.now() - callStartTimeRef.current) / 1000)) : 0);
         callStartTimeRef.current = null;
-        setCallDurationSec(dur);
+        isCallInitiatedRef.current = false;
+        setCallDurationSec(finalDur);
 
-        if (dur > 0) {
+        if (finalDur > 0) {
           setCallStatus("Connected");
           if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
             setOutcome("Interested / Follow-up Needed");
           }
-          setFeedbackMsg(`⏹ Call completed (${formatDuration(dur)}). Starting AI Voice Debrief automatically... 🎙️`);
-          // Automatically trigger AI Voice Debrief recording!
+          setFeedbackMsg(`⏹ Call completed (${formatDuration(finalDur)}). AI Voice Debrief starting... 🎙️`);
           setAutoDebriefTrigger(Date.now());
         } else {
           setCallStatus("Busy");
@@ -380,7 +360,7 @@ function PhoneDialerModalContent({
       setNotes("");
       setFeedbackMsg("");
       setShowNewLeadForm(false);
-      setActiveTab(initialTab || (initialPhone ? "DIALPAD" : "DIALPAD"));
+      setActiveTab(initialTab || "DIALPAD");
 
       loadContacts();
       loadRecentCalls();
@@ -413,39 +393,41 @@ function PhoneDialerModalContent({
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        // If returning from a dialed call
         if (isCallInitiatedRef.current) {
           isCallInitiatedRef.current = false;
-          // Check if native Android bridge provides duration
+          setIsTimerRunning(false);
+
+          let duration = 0;
           if (typeof window !== "undefined" && (window as any).AndroidNative?.getLastCallDuration) {
             const nativeDur = (window as any).AndroidNative.getLastCallDuration();
-            if (nativeDur > 0) {
-              setCallDurationSec(nativeDur);
-              setIsTimerRunning(false);
-              callStartTimeRef.current = null;
-              setCallStatus("Connected");
-              setFeedbackMsg(`⏹ Returned from call (${formatDuration(nativeDur)}). AI Voice Debrief starting... 🎙️`);
-              setAutoDebriefTrigger(Date.now());
-              return;
-            }
+            if (nativeDur > 0) duration = nativeDur;
           }
-        }
 
-        if (callStartTimeRef.current && isTimerRunning) {
-          const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
-          if (elapsed >= 0) {
-            setCallDurationSec(elapsed);
+          if (duration === 0 && callStartTimeRef.current) {
+            const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
+            if (elapsed > 0) duration = elapsed;
+          }
+
+          callStartTimeRef.current = null;
+          setCallDurationSec(duration);
+
+          if (duration > 0) {
+            setCallStatus("Connected");
+            setFeedbackMsg(`⏹ Returned from call (${formatDuration(duration)}). AI Voice Debrief starting... 🎙️`);
+            setAutoDebriefTrigger(Date.now());
+          } else {
+            setCallStatus("Busy");
+            setOutcome("No Answer / Busy");
+            setQuickFollowUp(1, 11, 0, "AM");
+            setFeedbackMsg("❌ Call ended (0s). Scheduled follow-up for tomorrow 11 AM.");
           }
         }
       }
     };
 
     const handleWindowFocus = () => {
-      if (callStartTimeRef.current && isTimerRunning) {
-        const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
-        if (elapsed >= 0) {
-          setCallDurationSec(elapsed);
-        }
+      if (isCallInitiatedRef.current) {
+        handleVisibilityChange();
       }
     };
 
@@ -455,7 +437,7 @@ function PhoneDialerModalContent({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, [isTimerRunning]);
+  }, []);
 
   // Auto match contact as user types
   useEffect(() => {
@@ -511,7 +493,7 @@ function PhoneDialerModalContent({
     }
   };
 
-  // Trigger Phone Call & Switch to Post-Call Session (Timer starts ONLY when connected)
+  // Trigger Phone Call & Switch to Post-Call Session
   const handleInitiateCall = (targetPhone?: string, targetContact?: any) => {
     const numberToCall = targetPhone || phoneDigits;
     const cleanNum = (numberToCall || '').replace(/\D/g, '');
@@ -524,16 +506,16 @@ function PhoneDialerModalContent({
     if (targetContact) setSelectedContact(targetContact);
 
     handleVibrate(30);
-    // Reset timer state cleanly - duration will NOT count blindly until user connects
-    callStartTimeRef.current = null;
+
+    const now = Date.now();
+    callStartTimeRef.current = now;
     setCallDurationSec(0);
-    setIsTimerRunning(false);
-    setAutoDebriefTrigger(0);
+    setIsTimerRunning(true);
     isCallInitiatedRef.current = true;
     setCallStatus("Connected");
     setCallType("OUTBOUND");
 
-    // Grant App Lock exemption so returning from phone call does not trigger biometric lock screen
+    // Grant App Lock exemption
     if (typeof window !== "undefined") {
       (window as any).grantAppLockExemption?.(300);
       if ((window as any).AndroidNative?.directPhoneCall) {
@@ -545,7 +527,7 @@ function PhoneDialerModalContent({
 
     // Switch to post-call maintenance view
     setActiveTab("POST_CALL");
-    setFeedbackMsg("📞 Outbound call dialed. Live stopwatch and AI Debrief will start automatically.");
+    setFeedbackMsg("📞 Outbound call dialed. Live stopwatch active.");
   };
 
   // WhatsApp Message
@@ -642,6 +624,10 @@ function PhoneDialerModalContent({
 
   // Quick follow-up helpers
   const setQuickFollowUp = (days: number, hour12: number, min: number, period: "AM" | "PM") => {
+    if (days < 0) {
+      setFollowUpDate("");
+      return;
+    }
     const d = new Date();
     d.setDate(d.getDate() + days);
     const yyyy = d.getFullYear();
@@ -668,6 +654,7 @@ function PhoneDialerModalContent({
   const handleSaveCallRecord = async () => {
     setIsSaving(true);
     setFeedbackMsg("");
+    handleVibrate(25);
 
     try {
       let activeLeadId = selectedContact?.type === "Lead" ? selectedContact.id : (initialLeadId || null);
@@ -707,14 +694,13 @@ function PhoneDialerModalContent({
 
       if (res && res.success) {
         setIsTimerRunning(false);
-        setFeedbackMsg("✅ Call & Duration Logged to CRM!");
-        
+        setFeedbackMsg("✅ Call & Tasks successfully logged to CRM!");
         loadRecentCalls();
 
         setTimeout(() => {
           setActiveTab("CALL_LOGS");
           setFeedbackMsg("");
-        }, 900);
+        }, 800);
       } else {
         alert(res?.error || "Failed to log call record.");
       }
@@ -725,7 +711,7 @@ function PhoneDialerModalContent({
     }
   };
 
-  // Safe Filter contacts dropdown in keypad
+  // Filter contacts dropdown in keypad
   const filteredKeypadContacts = useMemo(() => {
     if (!phoneDigits || !Array.isArray(contacts)) return [];
     const q = phoneDigits.toLowerCase();
@@ -738,7 +724,7 @@ function PhoneDialerModalContent({
     }).slice(0, 3);
   }, [contacts, phoneDigits]);
 
-  // Safe Filtered Call Logs list
+  // Filtered Call Logs list
   const filteredCallLogs = useMemo(() => {
     if (!Array.isArray(recentCalls)) return [];
     return recentCalls.filter(c => {
@@ -748,46 +734,32 @@ function PhoneDialerModalContent({
         const cleanQ = q.replace(/\D/g, '');
         const matchName = (c.contactName || "").toLowerCase().includes(q);
         const matchPerson = (c.contactPerson || "").toLowerCase().includes(q);
-        const matchPhone = cleanQ ? (c.phone || "").replace(/\D/g, "").includes(cleanQ) : false;
-        const matchOutcome = (c.outcome || "").toLowerCase().includes(q);
-        const matchNotes = (c.notes || "").toLowerCase().includes(q);
-        if (!matchName && !matchPerson && !matchPhone && !matchOutcome && !matchNotes) return false;
+        const matchPhone = (c.phoneNumber || "").replace(/\D/g, '').includes(cleanQ);
+        if (!matchName && !matchPerson && !matchPhone) return false;
       }
-
-      if (callLogFilter === "CONNECTED") {
-        return (c.durationSec || 0) > 0 || c.status === "Connected";
-      }
-      if (callLogFilter === "MISSED") {
-        const oc = (c.outcome || "").toLowerCase();
-        return oc.includes("no answer") || oc.includes("busy") || oc.includes("missed") || oc.includes("switched off") || (c.durationSec === 0 && c.status !== "Connected");
-      }
-      if (callLogFilter === "OUTBOUND") {
-        return (c.callType || "").toUpperCase() === "OUTBOUND";
-      }
-      if (callLogFilter === "INBOUND") {
-        return (c.callType || "").toUpperCase() === "INBOUND";
-      }
+      if (callLogFilter === "CONNECTED") return c.status === "Connected" || (c.durationSec || 0) > 0;
+      if (callLogFilter === "MISSED") return c.status !== "Connected" && (c.durationSec || 0) === 0;
+      if (callLogFilter === "OUTBOUND") return c.type === "OUTBOUND";
+      if (callLogFilter === "INBOUND") return c.type === "INBOUND";
       return true;
     });
   }, [recentCalls, callLogSearch, callLogFilter]);
 
-  // Safe Filtered Contacts list
-  const filteredContactsList = useMemo(() => {
+  // Filtered Contacts list
+  const filteredContacts = useMemo(() => {
     if (!Array.isArray(contacts)) return [];
     return contacts.filter(c => {
       if (!c) return false;
-      if (contactFilter === "CUSTOMER" && c.type !== "Customer") return false;
-      if (contactFilter === "LEAD" && c.type !== "Lead") return false;
-
       if (contactSearch) {
         const q = contactSearch.toLowerCase();
         const cleanQ = q.replace(/\D/g, '');
+        const matchName = (c.contactPerson || "").toLowerCase().includes(q);
         const matchComp = (c.companyName || "").toLowerCase().includes(q);
-        const matchPerson = (c.contactPerson || "").toLowerCase().includes(q);
-        const matchPhone = cleanQ ? (c.phone || "").replace(/\D/g, "").includes(cleanQ) : false;
-        const matchCity = (c.city || "").toLowerCase().includes(q);
-        return matchComp || matchPerson || matchPhone || matchCity;
+        const matchPhone = (c.phone || "").replace(/\D/g, '').includes(cleanQ);
+        if (!matchName && !matchComp && !matchPhone) return false;
       }
+      if (contactFilter === "CUSTOMER") return c.type === "Customer";
+      if (contactFilter === "LEAD") return c.type === "Lead";
       return true;
     });
   }, [contacts, contactSearch, contactFilter]);
@@ -795,1636 +767,312 @@ function PhoneDialerModalContent({
   return (
     <div className="dialer-backdrop" onClick={onClose}>
       <div className="dialer-sheet" onClick={(e) => e.stopPropagation()}>
-        {/* Top Drag Handle */}
         <div className="dialer-drag-handle" />
 
-        {/* Modal Header */}
+        {/* HEADER */}
         <div className="dialer-header">
           <div className="dialer-title-box">
             <div className="dialer-icon-badge">
-              <PhoneCall size={20} />
+              <PhoneCall size={18} />
             </div>
             <div className="dialer-title-text">
-              <h3>TeleCRM Phone Dialer</h3>
-              <span>Call Tracker & CRM Directory</span>
+              <h3>TeleCRM Smart Dialer</h3>
+              <span>Enterprise Voice & AI Debrief</span>
             </div>
           </div>
-          <button onClick={onClose} className="dialer-close-btn" title="Close Dialer">
-            <X size={18} />
+          <button type="button" onClick={onClose} className="dialer-close-btn" title="Close">
+            <X size={16} />
           </button>
         </div>
 
-        {/* Navigation Tabs Bar */}
+        {/* NAVIGATION TABS BAR */}
         <div className="dialer-tabs-bar">
-          {/* 1. Keypad */}
           <button
             type="button"
-            onClick={() => setActiveTab("DIALPAD")}
             className={`dialer-tab-pill ${activeTab === "DIALPAD" ? "active" : ""}`}
+            onClick={() => setActiveTab("DIALPAD")}
           >
-            <Grid size={14} />
-            <span>Keypad</span>
+            <Grid size={14} /> Keypad
           </button>
-
-          {/* 2. Call Logs / History */}
           <button
             type="button"
+            className={`dialer-tab-pill ${activeTab === "CALL_LOGS" ? "active" : ""}`}
             onClick={() => {
               setActiveTab("CALL_LOGS");
               loadRecentCalls();
             }}
-            className={`dialer-tab-pill ${activeTab === "CALL_LOGS" ? "active" : ""}`}
           >
-            <History size={14} />
-            <span>Call Logs</span>
-            {Array.isArray(recentCalls) && recentCalls.length > 0 && (
-              <span className="dialer-count-badge">
-                {recentCalls.length}
-              </span>
-            )}
+            <History size={14} /> Logs
+            {recentCalls.length > 0 && <span className="dialer-count-badge">{recentCalls.length}</span>}
           </button>
-
-          {/* 3. Phone Contacts Directory */}
           <button
             type="button"
-            onClick={() => {
-              setActiveTab("CONTACTS");
-              if (!Array.isArray(contacts) || contacts.length === 0) loadContacts();
-            }}
             className={`dialer-tab-pill ${activeTab === "CONTACTS" ? "active" : ""}`}
+            onClick={() => setActiveTab("CONTACTS")}
           >
-            <Users size={14} />
-            <span>Contacts</span>
+            <Users size={14} /> Contacts
           </button>
-
-          {/* 4. Notes & Duration */}
           <button
             type="button"
-            onClick={() => setActiveTab("POST_CALL")}
             className={`dialer-tab-pill ${activeTab === "POST_CALL" ? "active" : ""}`}
+            onClick={() => setActiveTab("POST_CALL")}
           >
-            {isTimerRunning ? (
-              <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#10b981", animation: "pulse 1.2s infinite" }} />
-            ) : (
-              <Clock size={14} />
-            )}
-            <span>Log Call</span>
+            <Clock size={14} /> Log Call
           </button>
-
-          {/* 5. WhatsApp */}
           <button
             type="button"
-            onClick={() => setActiveTab("WHATSAPP")}
             className={`dialer-tab-pill ${activeTab === "WHATSAPP" ? "active" : ""}`}
+            onClick={() => setActiveTab("WHATSAPP")}
           >
-            <MessageSquare size={14} />
-            <span>WhatsApp</span>
+            <MessageSquare size={14} /> WhatsApp
           </button>
-
-          {/* 6. Scripts */}
           <button
             type="button"
-            onClick={() => setActiveTab("SCRIPTS")}
             className={`dialer-tab-pill ${activeTab === "SCRIPTS" ? "active" : ""}`}
+            onClick={() => setActiveTab("SCRIPTS")}
           >
-            <BookOpen size={14} />
-            <span>Scripts</span>
+            <BookOpen size={14} /> Scripts
           </button>
         </div>
 
-        {/* Feedback Alert Toast */}
+        {/* FEEDBACK MSG TOAST */}
         {feedbackMsg && (
           <div className="dialer-feedback-toast">
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
-              <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0 }} />
-              <span style={{ lineHeight: 1.3 }}>{feedbackMsg}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setFeedbackMsg("")}
-              className="dialer-toast-close"
-              title="Dismiss"
-            >
+            <span>{feedbackMsg}</span>
+            <button type="button" onClick={() => setFeedbackMsg("")} className="dialer-toast-close">
               <X size={14} />
             </button>
           </div>
         )}
 
-        {/* Scrollable Body Content */}
+        {/* BODY SCROLL CONTENT */}
         <div className="dialer-body-scroll">
-
-          {/* Selected Contact Pill (Shown across tabs if selected) */}
-          {selectedContact && (
-            <div style={{ padding: "8px 16px", backgroundColor: "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              backgroundColor: "#ffffff",
-              padding: "7px 12px",
-              borderRadius: "12px",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0 }}>
-                <div style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "10px",
-                  backgroundColor: selectedContact.type === "Customer" ? "#dbeafe" : "#fef3c7",
-                  color: selectedContact.type === "Customer" ? "#1d4ed8" : "#d97706",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  fontSize: "0.82rem",
-                  flexShrink: 0
-                }}>
-                  {selectedContact.companyName?.charAt(0) || "C"}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {selectedContact.companyName}
-                  </div>
-                  <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
-                    {selectedContact.contactPerson || selectedContact.phone} • <span style={{ fontWeight: 700, color: selectedContact.type === "Customer" ? "#2563eb" : "#d97706" }}>{selectedContact.type}</span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedContact(null)}
-                style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: "4px" }}
-              >
-                <X size={15} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 1: REDESIGNED CIRCULAR TOUCH KEYPAD
-           ══════════════════════════════════════════════════════════════════════ */}
-        {activeTab === "DIALPAD" && (
-          <div style={{ padding: "10px 20px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            
-            {/* Phone Number Display Input */}
-            <div className="dialer-display-box">
-              <input
-                type="text"
-                value={phoneDigits}
-                onChange={(e) => setPhoneDigits(e.target.value)}
-                placeholder="Enter phone number..."
-                className="dialer-digits-input"
-              />
-
-              {phoneDigits && (
-                <button
-                  type="button"
-                  onClick={handleBackspace}
-                  className="dialer-backspace-btn"
-                  title="Backspace"
-                >
-                  <Delete size={17} />
-                </button>
-              )}
-            </div>
-
-            {/* Auto-matching Directory Suggestions Dropdown */}
-            {filteredKeypadContacts.length > 0 && !selectedContact && (
-              <div style={{ width: "100%", maxWidth: "320px", marginBottom: "10px" }}>
-                <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: "3px" }}>
-                  Matching CRM Contacts
-                </div>
-                <div style={{ backgroundColor: "#ffffff", borderRadius: "10px", border: "1px solid #cbd5e1", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-                  {filteredKeypadContacts.map((c: any) => (
-                    <div
-                      key={c.id + c.type}
-                      onClick={() => handleSelectMatchedContact(c)}
-                      style={{
-                        padding: "7px 10px",
-                        borderBottom: "1px solid #f1f5f9",
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        backgroundColor: "#f8fafc"
-                      }}
-                    >
-                      <div>
-                        <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a" }}>{c.companyName}</div>
-                        <div style={{ fontSize: "0.7rem", color: "#64748b" }}>{c.contactPerson} ({c.phone})</div>
-                      </div>
-                      <span style={{
-                        fontSize: "0.65rem",
-                        fontWeight: 700,
-                        padding: "2px 6px",
-                        borderRadius: "5px",
-                        backgroundColor: c.type === "Customer" ? "#e0e7ff" : "#fef3c7",
-                        color: c.type === "Customer" ? "#3730a3" : "#92400e"
-                      }}>
-                        {c.type}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ─── PERFECT CIRCULAR KEYPAD BUTTONS ─── */}
-            <div className="dialer-keypad-grid">
-              {DIALPAD_KEYS.map((item) => (
-                <button
-                  key={item.digit}
-                  type="button"
-                  onClick={() => handleDigitClick(item.digit)}
-                  className="dialer-key-btn"
-                >
-                  <span className="dialer-key-digit">{item.digit}</span>
-                  {item.sub ? (
-                    <span className="dialer-key-sub">{item.sub}</span>
-                  ) : (
-                    <span style={{ height: "10px" }} />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* CALL CONTROLS FLOATING DOCK */}
-            <div className="dialer-actions-dock">
-              {/* WhatsApp Button */}
-              <button
-                type="button"
-                onClick={() => handleInitiateWhatsApp()}
-                title="Send WhatsApp Message"
-                className="dialer-wa-btn"
-              >
-                <MessageSquare size={22} />
-              </button>
-
-              {/* MAIN NATIVE GREEN CALL BUTTON */}
-              <button
-                type="button"
-                onClick={() => handleInitiateCall()}
-                title="Call via Phone"
-                className="dialer-call-btn"
-              >
-                <Phone size={30} />
-              </button>
-
-              {/* Notes / Log Shortcut Button */}
-              <button
-                type="button"
-                onClick={() => setActiveTab("POST_CALL")}
-                title="Open Notes & Call Tracker"
-                className="dialer-notes-btn"
-              >
-                <Sparkles size={22} />
-              </button>
-            </div>
-
-            {/* Quick Helper Links */}
-            <div style={{ display: "flex", gap: "16px", marginTop: "12px", fontSize: "0.74rem", color: "#64748b" }}>
-              <span
-                onClick={() => {
-                  setActiveTab("CALL_LOGS");
-                  loadRecentCalls();
-                }}
-                style={{ color: "#4f46e5", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
-              >
-                <History size={13} /> View Call Logs
-              </span>
-              <span>•</span>
-              <span
-                onClick={() => {
-                  setActiveTab("CONTACTS");
-                  loadContacts();
-                }}
-                style={{ color: "#4f46e5", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
-              >
-                <Users size={13} /> Open Contacts
-              </span>
-            </div>
-
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 2: DEDICATED CALL LOGS & HISTORY (Requirement 2 & 3)
-           ══════════════════════════════════════════════════════════════════════ */}
-        {activeTab === "CALL_LOGS" && (
-          <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: "12px" }}>
-            
-            {/* Search and Refresh Bar */}
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <div style={{
-                flex: 1,
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                backgroundColor: "#f8fafc",
-                padding: "8px 12px",
-                borderRadius: "10px",
-                border: "1px solid #e2e8f0"
-              }}>
-                <Search size={16} color="#94a3b8" />
+          {/* =========================================================
+              TAB 1: NUMERIC KEYPAD & DIALER
+              ========================================================= */}
+          {activeTab === "DIALPAD" && (
+            <div>
+              {/* Phone Input Box */}
+              <div className="dialer-display-box">
                 <input
-                  type="text"
-                  placeholder="Search call logs by name, phone, outcome..."
-                  value={callLogSearch}
-                  onChange={(e) => setCallLogSearch(e.target.value)}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    outline: "none",
-                    fontSize: "0.82rem",
-                    width: "100%",
-                    color: "#0f172a"
-                  }}
+                  type="tel"
+                  className="dialer-digits-input"
+                  placeholder="Enter phone number"
+                  value={phoneDigits}
+                  onChange={(e) => setPhoneDigits(e.target.value)}
+                  autoFocus
                 />
-                {callLogSearch && (
-                  <button onClick={() => setCallLogSearch("")} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: 0 }}>
-                    <X size={15} />
+                {phoneDigits && (
+                  <button type="button" onClick={handleBackspace} className="dialer-backspace-btn" title="Delete">
+                    <Delete size={18} />
                   </button>
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={loadRecentCalls}
-                disabled={isLoadingCalls}
-                title="Refresh Logs"
-                style={{
-                  padding: "9px",
-                  borderRadius: "10px",
-                  border: "1px solid #e2e8f0",
-                  backgroundColor: "#f8fafc",
-                  color: "#475569",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
-              >
-                <RefreshCw size={16} className={isLoadingCalls ? "animate-spin text-indigo-600" : ""} />
-              </button>
-            </div>
-
-            {/* Filter Pills */}
-            <div style={{ display: "flex", gap: "6px", overflowX: "auto", scrollbarWidth: "none", paddingBottom: "2px" }}>
-              {(["ALL", "CONNECTED", "MISSED", "OUTBOUND", "INBOUND"] as const).map((flt) => (
-                <button
-                  key={flt}
-                  type="button"
-                  onClick={() => setCallLogFilter(flt)}
+              {/* Matched Contact Snippet */}
+              {selectedContact ? (
+                <div
                   style={{
-                    padding: "4px 10px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "6px 12px",
+                    backgroundColor: "#eef2ff",
                     borderRadius: "8px",
-                    border: callLogFilter === flt ? "1px solid #4f46e5" : "1px solid #e2e8f0",
-                    backgroundColor: callLogFilter === flt ? "#eef2ff" : "#ffffff",
-                    color: callLogFilter === flt ? "#4f46e5" : "#64748b",
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap"
+                    border: "1px solid #c7d2fe",
+                    marginBottom: "10px",
+                    fontSize: "0.78rem"
                   }}
                 >
-                  {flt === "ALL" && "All Calls"}
-                  {flt === "CONNECTED" && "Connected ⏱"}
-                  {flt === "MISSED" && "Missed / Busy"}
-                  {flt === "OUTBOUND" && "Outbound ↗"}
-                  {flt === "INBOUND" && "Inbound ↙"}
-                </button>
-              ))}
-            </div>
-
-            {/* Call Logs List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "55vh", overflowY: "auto" }}>
-              {isLoadingCalls && (!Array.isArray(recentCalls) || recentCalls.length === 0) ? (
-                <div style={{ padding: "30px", textAlign: "center", color: "#64748b" }}>
-                  <Loader2 size={24} className="animate-spin text-indigo-600" style={{ margin: "0 auto 8px auto" }} />
-                  <p style={{ fontSize: "0.82rem", margin: 0 }}>Loading call history...</p>
-                </div>
-              ) : filteredCallLogs.length === 0 ? (
-                <div style={{ padding: "30px 20px", textAlign: "center", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
-                  <History size={32} color="#94a3b8" style={{ margin: "0 auto 8px auto" }} />
-                  <h4 style={{ margin: "0 0 4px 0", fontSize: "0.9rem", color: "#0f172a" }}>No Call Logs Found</h4>
-                  <p style={{ margin: "0 0 12px 0", fontSize: "0.75rem", color: "#64748b" }}>
-                    {callLogSearch ? "Try searching for another phone number or name." : "Make your first call using the Keypad tab!"}
-                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+                    <User size={13} style={{ color: "#4f46e5", flexShrink: 0 }} />
+                    <strong style={{ color: "#1e1b4b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {selectedContact.companyName || selectedContact.contactPerson}
+                    </strong>
+                    <span style={{ fontSize: "0.68rem", backgroundColor: "#dbeafe", color: "#1e40af", padding: "1px 5px", borderRadius: "4px" }}>
+                      {selectedContact.type || "Customer"}
+                    </span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("DIALPAD")}
-                    style={{
-                      padding: "6px 14px",
-                      borderRadius: "8px",
-                      backgroundColor: "#4f46e5",
-                      color: "#ffffff",
-                      border: "none",
-                      fontSize: "0.78rem",
-                      fontWeight: 700,
-                      cursor: "pointer"
-                    }}
+                    onClick={() => setSelectedContact(null)}
+                    style={{ background: "none", border: "none", color: "#6366f1", cursor: "pointer", padding: "2px" }}
                   >
-                    Open Keypad
+                    <X size={14} />
                   </button>
                 </div>
-              ) : (
-                filteredCallLogs.map((log: any) => {
-                  const isOutbound = (log?.callType || "").toUpperCase() === "OUTBOUND";
-                  const dur = log?.durationSec || 0;
-                  const isConnected = dur > 0 || log?.status === "Connected";
-
-                  return (
+              ) : filteredKeypadContacts.length > 0 ? (
+                <div style={{ marginBottom: "10px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  {filteredKeypadContacts.map((c: any) => (
                     <div
-                      key={log.id}
+                      key={c.id}
+                      onClick={() => handleSelectMatchedContact(c)}
                       style={{
-                        padding: "10px 12px",
-                        backgroundColor: "#ffffff",
-                        borderRadius: "12px",
+                        padding: "6px 10px",
+                        borderRadius: "6px",
+                        backgroundColor: "#f8fafc",
                         border: "1px solid #e2e8f0",
+                        fontSize: "0.75rem",
+                        cursor: "pointer",
                         display: "flex",
-                        alignItems: "center",
                         justifyContent: "space-between",
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-                        gap: "10px"
+                        alignItems: "center"
                       }}
                     >
-                      {/* Left Call Direction Icon */}
-                      <div style={{
-                        width: "36px",
-                        height: "36px",
-                        borderRadius: "10px",
-                        backgroundColor: !isConnected ? "#fee2e2" : isOutbound ? "#ecfdf5" : "#e0e7ff",
-                        color: !isConnected ? "#dc2626" : isOutbound ? "#059669" : "#4f46e5",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0
-                      }}>
-                        {!isConnected ? (
-                          <PhoneMissed size={18} />
-                        ) : isOutbound ? (
-                          <PhoneOutgoing size={18} />
-                        ) : (
-                          <PhoneIncoming size={18} />
-                        )}
-                      </div>
-
-                      {/* Middle Details */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
-                          <span style={{ fontSize: "0.86rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {log?.contactName || "Contact"}
-                          </span>
-                          {log?.contactType && (
-                            <span style={{
-                              fontSize: "0.62rem",
-                              fontWeight: 700,
-                              padding: "1px 5px",
-                              borderRadius: "4px",
-                              backgroundColor: log.contactType === "Customer" ? "#dbeafe" : "#fef3c7",
-                              color: log.contactType === "Customer" ? "#1d4ed8" : "#b45309"
-                            }}>
-                              {log.contactType}
-                            </span>
-                          )}
-                        </div>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.72rem", color: "#64748b", flexWrap: "wrap" }}>
-                          <span>{log?.phone || "No Number"}</span>
-                          <span>•</span>
-                          <span>{formatRelativeTime(log?.createdAt)}</span>
-                          <span>•</span>
-                          {dur > 0 ? (
-                            <span style={{ fontWeight: 700, color: "#059669", backgroundColor: "#ecfdf5", padding: "1px 4px", borderRadius: "4px" }}>
-                              ⏱ {formatDuration(dur)}
-                            </span>
-                          ) : (
-                            <span style={{ fontWeight: 600, color: "#94a3b8" }}>0s</span>
-                          )}
-                        </div>
-
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "3px" }}>
-                          <span style={{
-                            fontSize: "0.68rem",
-                            fontWeight: 600,
-                            padding: "1px 6px",
-                            borderRadius: "5px",
-                            backgroundColor: isConnected ? "#f0fdf4" : "#fff1f2",
-                            color: isConnected ? "#15803d" : "#be123c",
-                            border: isConnected ? "1px solid #bbf7d0" : "1px solid #fecdd3"
-                          }}>
-                            {log?.outcome || log?.status || "Completed"}
-                          </span>
-                          {log?.notes && (
-                            <span style={{ fontSize: "0.68rem", color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "160px" }}>
-                              "{log.notes}"
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Right 1-Tap Action Controls */}
-                      <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                        {/* 1-Tap WhatsApp */}
-                        {log?.phone && (
-                          <button
-                            type="button"
-                            onClick={() => handleInitiateWhatsApp(undefined, log.phone)}
-                            style={{
-                              width: "32px",
-                              height: "32px",
-                              borderRadius: "8px",
-                              backgroundColor: "#25d366",
-                              color: "#ffffff",
-                              border: "none",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer"
-                            }}
-                            title="WhatsApp Contact"
-                          >
-                            <MessageSquare size={15} />
-                          </button>
-                        )}
-
-                        {/* 1-Tap Redial */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (log?.phone) {
-                              setPhoneDigits(log.phone);
-                              handleInitiateCall(log.phone, {
-                                id: log.customerId || log.leadId,
-                                companyName: log.contactName,
-                                contactPerson: log.contactPerson,
-                                phone: log.phone,
-                                type: log.contactType
-                              });
-                            }
-                          }}
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "8px",
-                            backgroundColor: "#10b981",
-                            color: "#ffffff",
-                            border: "none",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                            boxShadow: "0 2px 6px rgba(16, 185, 129, 0.3)"
-                          }}
-                          title="Redial Contact"
-                        >
-                          <Phone size={15} />
-                        </button>
-                      </div>
+                      <span style={{ fontWeight: 700, color: "#0f172a" }}>
+                        {c.companyName || c.contactPerson}
+                      </span>
+                      <span style={{ color: "#64748b", fontFamily: "monospace" }}>{c.phone}</span>
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  ))}
+                </div>
+              ) : null}
 
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 3: PHONE CONTACTS & CRM DIRECTORY (Requirement 2)
-           ══════════════════════════════════════════════════════════════════════ */}
-        {activeTab === "CONTACTS" && (
-          <div style={{ padding: "14px 18px", display: "flex", flexDirection: "column", gap: "12px" }}>
-            
-            {/* Search Bar */}
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              backgroundColor: "#f8fafc",
-              padding: "8px 12px",
-              borderRadius: "10px",
-              border: "1px solid #e2e8f0"
-            }}>
-              <Search size={16} color="#94a3b8" />
-              <input
-                type="text"
-                placeholder="Search by customer name, shop, city, phone..."
-                value={contactSearch}
-                onChange={(e) => setContactSearch(e.target.value)}
-                style={{
-                  border: "none",
-                  background: "transparent",
-                  outline: "none",
-                  fontSize: "0.82rem",
-                  width: "100%",
-                  color: "#0f172a"
-                }}
-              />
-              {contactSearch && (
-                <button onClick={() => setContactSearch("")} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer", padding: 0 }}>
-                  <X size={15} />
-                </button>
-              )}
-            </div>
-
-            {/* Filter Chips */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", gap: "6px" }}>
-                {(["ALL", "CUSTOMER", "LEAD"] as const).map((cf) => (
+              {/* Keypad Grid */}
+              <div className="dialer-keypad-grid">
+                {DIALPAD_KEYS.map((k) => (
                   <button
-                    key={cf}
+                    key={k.digit}
                     type="button"
-                    onClick={() => setContactFilter(cf)}
-                    style={{
-                      padding: "4px 10px",
-                      borderRadius: "8px",
-                      border: contactFilter === cf ? "1px solid #4f46e5" : "1px solid #e2e8f0",
-                      backgroundColor: contactFilter === cf ? "#eef2ff" : "#ffffff",
-                      color: contactFilter === cf ? "#4f46e5" : "#64748b",
-                      fontSize: "0.72rem",
-                      fontWeight: 700,
-                      cursor: "pointer"
-                    }}
+                    className="dialer-key-btn"
+                    onClick={() => handleDigitClick(k.digit)}
                   >
-                    {cf === "ALL" && `All (${Array.isArray(contacts) ? contacts.length : 0})`}
-                    {cf === "CUSTOMER" && `Customers (${Array.isArray(contacts) ? contacts.filter(c => c.type === 'Customer').length : 0})`}
-                    {cf === "LEAD" && `Leads (${Array.isArray(contacts) ? contacts.filter(c => c.type === 'Lead').length : 0})`}
+                    <span className="dialer-key-digit">{k.digit}</span>
+                    {k.sub && <span className="dialer-key-sub">{k.sub}</span>}
                   </button>
                 ))}
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setShowNewLeadForm(true);
-                  setActiveTab("POST_CALL");
-                }}
-                style={{
-                  padding: "4px 8px",
-                  borderRadius: "6px",
-                  border: "1px solid #c7d2fe",
-                  backgroundColor: "#eef2ff",
-                  color: "#4f46e5",
-                  fontSize: "0.72rem",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "3px"
-                }}
-              >
-                <Plus size={12} /> New Lead
-              </button>
+              {/* Action Buttons Dock */}
+              <div className="dialer-actions-dock">
+                <button
+                  type="button"
+                  className="dialer-wa-btn"
+                  onClick={() => handleInitiateWhatsApp()}
+                  title="WhatsApp"
+                >
+                  <MessageSquare size={20} />
+                </button>
+
+                <button
+                  type="button"
+                  className="dialer-call-btn"
+                  onClick={() => handleInitiateCall()}
+                  title="Place Direct Call"
+                >
+                  <PhoneCall size={26} />
+                </button>
+
+                <button
+                  type="button"
+                  className="dialer-notes-btn"
+                  onClick={() => {
+                    setActiveTab("POST_CALL");
+                  }}
+                  title="Open Log Call Form"
+                >
+                  <Clock size={20} />
+                </button>
+              </div>
             </div>
+          )}
 
-            {/* Contacts Directory List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "55vh", overflowY: "auto" }}>
-              {isLoadingContacts && (!Array.isArray(contacts) || contacts.length === 0) ? (
-                <div style={{ padding: "30px", textAlign: "center", color: "#64748b" }}>
-                  <Loader2 size={24} className="animate-spin text-indigo-600" style={{ margin: "0 auto 8px auto" }} />
-                  <p style={{ fontSize: "0.82rem", margin: 0 }}>Loading CRM contacts...</p>
+          {/* =========================================================
+              TAB 2: UNIFIED POST-CALL / LOG CALL WORKSPACE
+              ========================================================= */}
+          {activeTab === "POST_CALL" && (
+            <div>
+              {/* CONTACT HEADER CARD */}
+              <div className="dialer-contact-pill">
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div className="dialer-contact-avatar">
+                    {((selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "C")[0] || "C").toUpperCase()}
+                  </div>
+                  <div className="dialer-contact-info">
+                    <h4>{selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}</h4>
+                    <span>{phoneDigits || selectedContact?.phone || "No phone entered"}</span>
+                  </div>
                 </div>
-              ) : filteredContactsList.length === 0 ? (
-                <div style={{ padding: "30px 20px", textAlign: "center", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
-                  <Users size={32} color="#94a3b8" style={{ margin: "0 auto 8px auto" }} />
-                  <h4 style={{ margin: "0 0 4px 0", fontSize: "0.9rem", color: "#0f172a" }}>No Contacts Found</h4>
-                  <p style={{ margin: "0 0 12px 0", fontSize: "0.75rem", color: "#64748b" }}>
-                    {contactSearch ? "No matches for your search keyword." : "Add customers or leads in CRM to populate contacts."}
-                  </p>
-                </div>
-              ) : (
-                filteredContactsList.map((c: any) => (
-                  <div
-                    key={c.id + c.type}
-                    style={{
-                      padding: "10px 12px",
-                      backgroundColor: "#ffffff",
-                      borderRadius: "12px",
-                      border: "1px solid #e2e8f0",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-                      gap: "10px"
-                    }}
-                  >
-                    {/* Avatar */}
-                    <div style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "10px",
-                      backgroundColor: c?.type === "Customer" ? "#dbeafe" : "#fef3c7",
-                      color: c?.type === "Customer" ? "#1d4ed8" : "#b45309",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 800,
-                      fontSize: "0.85rem",
-                      flexShrink: 0
-                    }}>
-                      {c?.companyName?.charAt(0) || "C"}
-                    </div>
 
-                    {/* Middle Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
-                        <span style={{ fontSize: "0.86rem", fontWeight: 700, color: "#0f172a", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {c?.companyName}
-                        </span>
-                        <span style={{
-                          fontSize: "0.62rem",
-                          fontWeight: 700,
-                          padding: "1px 5px",
-                          borderRadius: "4px",
-                          backgroundColor: c?.type === "Customer" ? "#e0e7ff" : "#fef3c7",
-                          color: c?.type === "Customer" ? "#3730a3" : "#92400e"
-                        }}>
-                          {c?.type}
-                        </span>
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.72rem", color: "#64748b" }}>
-                        {c?.contactPerson && <span>{c.contactPerson}</span>}
-                        {c?.city && (
-                          <>
-                            <span>•</span>
-                            <span style={{ display: "flex", alignItems: "center", gap: "2px" }}>
-                              <MapPin size={10} /> {c.city}
-                            </span>
-                          </>
-                        )}
-                        <span>•</span>
-                        <span style={{ fontWeight: 600, color: "#334155" }}>{c?.phone || "No phone"}</span>
-                      </div>
-                    </div>
-
-                    {/* Right 1-Tap Calling Actions */}
-                    <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
-                      {/* WhatsApp Button */}
-                      {c?.phone && (
-                        <button
-                          type="button"
-                          onClick={() => handleInitiateWhatsApp(undefined, c.phone)}
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "8px",
-                            backgroundColor: "#25d366",
-                            color: "#ffffff",
-                            border: "none",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer"
-                          }}
-                          title="WhatsApp Contact"
-                        >
-                          <MessageSquare size={15} />
-                        </button>
-                      )}
-
-                      {/* 1-Tap Direct Call */}
-                      {c?.phone && (
-                        <button
-                          type="button"
-                          onClick={() => handleInitiateCall(c.phone, c)}
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "8px",
-                            backgroundColor: "#10b981",
-                            color: "#ffffff",
-                            border: "none",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            cursor: "pointer",
-                            boxShadow: "0 2px 6px rgba(16, 185, 129, 0.3)"
-                          }}
-                          title="Direct Call"
-                        >
-                          <Phone size={15} />
-                        </button>
-                      )}
-
-                      {/* Select for Keypad */}
+                <div style={{ display: "flex", gap: "6px" }}>
+                  {phoneDigits && (
+                    <>
                       <button
                         type="button"
-                        onClick={() => {
-                          handleSelectMatchedContact(c);
-                          setActiveTab("DIALPAD");
-                        }}
+                        onClick={() => handleInitiateWhatsApp()}
                         style={{
                           width: "32px",
                           height: "32px",
                           borderRadius: "8px",
-                          backgroundColor: "#f1f5f9",
-                          color: "#475569",
+                          backgroundColor: "#25d366",
+                          color: "#fff",
                           border: "none",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: "pointer"
                         }}
-                        title="Load into Keypad"
+                        title="WhatsApp"
                       >
-                        <Grid size={15} />
+                        <MessageSquare size={14} />
                       </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 4: ACTIVE CALL CONTROLLER, TIMER & AI POST-CALL LOGGING
-           ══════════════════════════════════════════════════════════════════════ */}
-        {activeTab === "POST_CALL" && (
-          <div style={{ padding: "14px 18px 20px 18px", backgroundColor: "#ffffff" }}>
-
-            {/* ACTIVE IN-APP CALL CONTROLLER & DURATION STOPWATCH HERO CARD */}
-            <div style={{
-              background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-              borderRadius: "18px",
-              padding: "16px",
-              color: "#ffffff",
-              marginBottom: "16px",
-              boxShadow: "0 6px 24px rgba(15, 23, 42, 0.2)"
-            }}>
-              {/* Card Header: Caller Info & Live Status Badge */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <Clock size={16} color="#38bdf8" />
-                  <span style={{ fontSize: "0.76rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    Call Duration Tracker
-                  </span>
-                </div>
-
-                {isTimerRunning ? (
-                  <span style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    padding: "3px 8px",
-                    borderRadius: "12px",
-                    backgroundColor: "rgba(16, 185, 129, 0.15)",
-                    border: "1px solid rgba(52, 211, 153, 0.3)",
-                    fontSize: "0.72rem",
-                    color: "#34d399",
-                    fontWeight: 800
-                  }}>
-                    <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#34d399", animation: "pulse 1s infinite" }} />
-                    LIVE TALK
-                  </span>
-                ) : callDurationSec === 0 ? (
-                  <span style={{
-                    padding: "3px 8px",
-                    borderRadius: "12px",
-                    backgroundColor: "rgba(148, 163, 184, 0.12)",
-                    border: "1px solid rgba(148, 163, 184, 0.25)",
-                    fontSize: "0.7rem",
-                    color: "#cbd5e1",
-                    fontWeight: 700
-                  }}>
-                    DIALING / READY
-                  </span>
-                ) : (
-                  <span style={{
-                    padding: "3px 8px",
-                    borderRadius: "12px",
-                    backgroundColor: "rgba(2, 132, 199, 0.15)",
-                    border: "1px solid rgba(56, 189, 248, 0.3)",
-                    fontSize: "0.7rem",
-                    color: "#38bdf8",
-                    fontWeight: 700
-                  }}>
-                    FROZEN: {formatDuration(callDurationSec)}
-                  </span>
-                )}
-              </div>
-
-              {/* Digital Timer Display */}
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "12px" }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <span style={{
-                    fontSize: "2.4rem",
-                    fontWeight: 900,
-                    fontFamily: "monospace",
-                    letterSpacing: "1px",
-                    color: isTimerRunning ? "#34d399" : "#ffffff",
-                    textShadow: isTimerRunning ? "0 0 16px rgba(52, 211, 153, 0.3)" : "none"
-                  }}>
-                    {formatDuration(callDurationSec)}
-                  </span>
-                  <span style={{ fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600 }}>
-                    ({callDurationSec}s)
-                  </span>
-                </div>
-
-                {/* Secondary Pause/Resume/Reset Controls */}
-                <div style={{ display: "flex", gap: "6px" }}>
-                  {isTimerRunning ? (
-                    <button
-                      type="button"
-                      onClick={() => setIsTimerRunning(false)}
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: "8px",
-                        border: "1px solid rgba(239, 68, 68, 0.3)",
-                        backgroundColor: "rgba(239, 68, 68, 0.2)",
-                        color: "#fca5a5",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}
-                    >
-                      <Pause size={12} /> Pause
-                    </button>
-                  ) : callDurationSec > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        callStartTimeRef.current = Date.now() - (callDurationSec * 1000);
-                        setIsTimerRunning(true);
-                      }}
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: "8px",
-                        border: "1px solid rgba(16, 185, 129, 0.3)",
-                        backgroundColor: "rgba(16, 185, 129, 0.2)",
-                        color: "#6ee7b7",
-                        fontSize: "0.75rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}
-                    >
-                      <Play size={12} /> Resume
-                    </button>
-                  ) : null}
-
-                  {callDurationSec > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsTimerRunning(false);
-                        setCallDurationSec(0);
-                        callStartTimeRef.current = null;
-                      }}
-                      style={{
-                        padding: "6px 8px",
-                        borderRadius: "8px",
-                        border: "1px solid #475569",
-                        backgroundColor: "#334155",
-                        color: "#cbd5e1",
-                        fontSize: "0.75rem",
-                        cursor: "pointer"
-                      }}
-                      title="Reset duration to 0s"
-                    >
-                      <RotateCcw size={13} />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => handleInitiateCall()}
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "8px",
+                          backgroundColor: "#10b981",
+                          color: "#fff",
+                          border: "none",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer"
+                        }}
+                        title="Re-dial"
+                      >
+                        <PhoneCall size={14} />
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
 
-              {/* 🎯 PRIMARY CALL SESSION ACTION BUTTONS */}
-              <div style={{ display: "grid", gridTemplateColumns: isTimerRunning ? "1fr" : "1.2fr 1fr", gap: "8px", marginBottom: "12px" }}>
-                {!isTimerRunning ? (
-                  <>
-                    {/* 🟢 Call Connected • Start Timer Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        callStartTimeRef.current = Date.now() - (callDurationSec * 1000);
-                        setIsTimerRunning(true);
-                        setCallStatus("Connected");
-                        if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
-                          setOutcome("Interested / Follow-up Needed");
-                        }
-                      }}
-                      style={{
-                        padding: "10px 8px",
-                        borderRadius: "10px",
-                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                        color: "#ffffff",
-                        border: "none",
-                        fontSize: "0.82rem",
-                        fontWeight: 800,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px",
-                        boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)"
-                      }}
-                    >
-                      <PhoneCall size={15} />
-                      <span>Call Connected</span>
-                    </button>
-
-                    {/* ❌ Didn't Connect / Busy (0s) Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsTimerRunning(false);
-                        setCallDurationSec(0);
-                        callStartTimeRef.current = null;
-                        setCallStatus("Busy");
-                        setOutcome("No Answer / Busy");
-                        setQuickFollowUp(1, 11, 0, "AM");
-                        setFeedbackMsg("Marked as No Answer / Busy (0s). Follow-up scheduled for tomorrow 11 AM.");
-                      }}
-                      style={{
-                        padding: "10px 8px",
-                        borderRadius: "10px",
-                        backgroundColor: "rgba(239, 68, 68, 0.15)",
-                        border: "1px solid rgba(239, 68, 68, 0.3)",
-                        color: "#fca5a5",
-                        fontSize: "0.8rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "5px"
-                      }}
-                    >
-                      <PhoneOff size={14} />
-                      <span>No Answer (0s)</span>
-                    </button>
-                  </>
-                ) : (
-                  /* ⏹ End Call & Lock Duration Button */
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsTimerRunning(false);
-                      setFeedbackMsg(`⏹ Call ended. Talk time: ${formatDuration(callDurationSec)}. Starting AI Voice Debrief... 🎙️`);
-                      setAutoDebriefTrigger(Date.now());
-                    }}
-                    style={{
-                      padding: "11px",
-                      borderRadius: "10px",
-                      background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-                      color: "#ffffff",
-                      border: "none",
-                      fontSize: "0.85rem",
-                      fontWeight: 800,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      boxShadow: "0 4px 14px rgba(239, 68, 68, 0.4)"
-                    }}
-                  >
-                    <PhoneOff size={16} />
-                    <span>End Call & Start AI Debrief ({formatDuration(callDurationSec)})</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Quick Duration Chips & Micro Adjusters */}
-              <div style={{ paddingTop: "10px", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", gap: "5px", flexWrap: "wrap", alignItems: "center" }}>
-                <span style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 700, marginRight: "2px" }}>Quick Set:</span>
-                {QUICK_DURATIONS.map(d => (
-                  <button
-                    key={d.label}
-                    type="button"
-                    onClick={() => {
-                      setCallDurationSec(d.sec);
-                      setIsTimerRunning(false);
-                      callStartTimeRef.current = null;
-                      if (d.sec === 0) setCallStatus("Busy");
-                      else setCallStatus("Connected");
-                    }}
-                    style={{
-                      padding: "3px 7px",
-                      borderRadius: "6px",
-                      border: callDurationSec === d.sec ? "1px solid #38bdf8" : "1px solid rgba(255,255,255,0.15)",
-                      backgroundColor: callDurationSec === d.sec ? "#0284c7" : "rgba(255,255,255,0.06)",
-                      color: "#ffffff",
-                      fontSize: "0.68rem",
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    {d.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setCallDurationSec(prev => Math.max(0, prev - 15))}
-                  style={{
-                    padding: "3px 6px",
-                    borderRadius: "6px",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    backgroundColor: "rgba(255,255,255,0.06)",
-                    color: "#cbd5e1",
-                    fontSize: "0.68rem",
-                    cursor: "pointer"
-                  }}
-                  title="Minus 15 seconds"
-                >
-                  -15s
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCallDurationSec(prev => prev + 15)}
-                  style={{
-                    padding: "3px 6px",
-                    borderRadius: "6px",
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    backgroundColor: "rgba(255,255,255,0.06)",
-                    color: "#cbd5e1",
-                    fontSize: "0.68rem",
-                    cursor: "pointer"
-                  }}
-                  title="Plus 15 seconds"
-                >
-                  +15s
-                </button>
-              </div>
-            </div>
-
-            {/* 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET */}
-            <CallVoiceDebriefWidget
-              contactName={selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}
-              contactPhone={phoneDigits || selectedContact?.phone || ""}
-              customerId={selectedContact?.type === "Customer" ? selectedContact?.id : initialCustomerId}
-              leadId={selectedContact?.type === "Lead" ? selectedContact?.id : initialLeadId}
-              callDurationSec={callDurationSec}
-              callType={callType}
-              autoStartTrigger={autoDebriefTrigger}
-              onApplyToForm={(data) => {
-                setOutcome(data.outcome);
-                setNotes(data.notes);
-                if (data.followUpDate) setFollowUpDate(data.followUpDate);
-                if (data.followUpHour) setFollowUpHour(data.followUpHour);
-                if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
-                if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
-                setFeedbackMsg("✨ AI Voice Debrief applied to call log form!");
-              }}
-              onCallSaved={() => {
-                setFeedbackMsg("✅ Call logged with AI Debrief & Follow-up scheduled!");
-                loadRecentCalls();
-                setTimeout(() => {
-                  onClose();
-                }, 1200);
-              }}
-            />
-
-            {/* CALL CONNECTION STATUS (3-Column Uniform Grid) */}
-            <div style={{ marginBottom: "14px" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "6px" }}>
-                Call Connection Status
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "6px" }}>
-                {CALL_STATUSES.map(st => {
-                  const isSel = callStatus === st.value;
-                  return (
-                    <button
-                      key={st.value}
-                      type="button"
-                      onClick={() => {
-                        setCallStatus(st.value);
-                        if (["Busy", "No Answer", "Voicemail", "Wrong Number"].includes(st.value) && callDurationSec === 0) {
-                          if (st.value === "Busy") setOutcome("No Answer / Busy");
-                          if (st.value === "No Answer") setOutcome("No Answer / Busy");
-                          if (st.value === "Voicemail") setOutcome("Voicemail / Switched Off");
-                          if (st.value === "Wrong Number") setOutcome("Wrong / Invalid Number");
-                        }
-                      }}
-                      style={{
-                        minHeight: "42px",
-                        padding: "6px 4px",
-                        borderRadius: "8px",
-                        border: isSel ? `2px solid ${st.color}` : "1px solid #e2e8f0",
-                        backgroundColor: isSel ? st.bg : "#ffffff",
-                        color: isSel ? st.color : "#475569",
-                        fontWeight: 700,
-                        fontSize: "0.72rem",
-                        lineHeight: 1.2,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        textAlign: "center",
-                        boxSizing: "border-box"
-                      }}
-                    >
-                      {st.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* CALL DIRECTION (OUTBOUND / INBOUND) */}
-            <div style={{ marginBottom: "14px" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>
-                Call Type
-              </label>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button
-                  type="button"
-                  onClick={() => setCallType("OUTBOUND")}
-                  style={{
-                    flex: 1,
-                    height: "38px",
-                    borderRadius: "8px",
-                    border: callType === "OUTBOUND" ? "2px solid #4f46e5" : "1px solid #cbd5e1",
-                    backgroundColor: callType === "OUTBOUND" ? "#eef2ff" : "#ffffff",
-                    color: callType === "OUTBOUND" ? "#4f46e5" : "#64748b",
-                    fontWeight: 700,
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  Outbound Call (Made by us)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCallType("INBOUND")}
-                  style={{
-                    flex: 1,
-                    height: "38px",
-                    borderRadius: "8px",
-                    border: callType === "INBOUND" ? "2px solid #059669" : "1px solid #cbd5e1",
-                    backgroundColor: callType === "INBOUND" ? "#ecfdf5" : "#ffffff",
-                    color: callType === "INBOUND" ? "#059669" : "#64748b",
-                    fontWeight: 700,
-                    fontSize: "0.8rem",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center"
-                  }}
-                >
-                  Inbound Call (Received)
-                </button>
-              </div>
-            </div>
-
-            {/* CALL OUTCOME / DISPOSITION */}
-            <div style={{ marginBottom: "14px" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>
-                Call Outcome / Disposition
-              </label>
-              <select
-                value={outcome}
-                onChange={(e) => setOutcome(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: "40px",
-                  padding: "0 12px",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.85rem",
-                  backgroundColor: "#ffffff",
-                  color: "#0f172a",
-                  fontWeight: 600,
-                  boxSizing: "border-box"
-                }}
-              >
-                {DEFAULT_OUTCOMES.map((oc, i) => (
-                  <option key={i} value={oc}>{oc}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 1-TAP DISCUSSION POINTS */}
-            <div style={{ marginBottom: "12px" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>
-                1-Tap Discussion Points
-              </label>
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                {DISCUSSION_TAGS.map(tag => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => handleAddTag(tag)}
-                    style={{
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      border: "1px solid #e0e7ff",
-                      backgroundColor: "#f5f3ff",
-                      color: "#6d28d9",
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      cursor: "pointer"
-                    }}
-                  >
-                    + {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* DISCUSSION NOTES WITH SPEECH RECOGNITION */}
-            <div style={{ marginBottom: "14px" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569" }}>
-                  Discussion Notes
-                </label>
-                <button
-                  type="button"
-                  onClick={toggleSpeechRecognition}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    padding: "3px 8px",
-                    borderRadius: "6px",
-                    border: isListeningSpeech ? "1px solid #ef4444" : "1px solid #c7d2fe",
-                    backgroundColor: isListeningSpeech ? "#fee2e2" : "#eef2ff",
-                    color: isListeningSpeech ? "#dc2626" : "#4f46e5",
-                    cursor: "pointer"
-                  }}
-                >
-                  {isListeningSpeech ? <MicOff size={12} /> : <Mic size={12} />}
-                  <span>{isListeningSpeech ? "Stop Dictation" : "Voice Dictate"}</span>
-                </button>
-              </div>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Key conversation notes, pricing agreed, next steps..."
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: "8px",
-                  border: "1px solid #cbd5e1",
-                  fontSize: "0.82rem",
-                  color: "#0f172a",
-                  lineHeight: 1.45,
-                  boxSizing: "border-box",
-                  outline: "none"
-                }}
-              />
-            </div>
-
-            {/* 12-HOUR FOLLOW-UP DATE & TIME PICKER (Uniform 38px Inputs) */}
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "flex", alignItems: "center", gap: "4px", marginBottom: "6px" }}>
-                <Calendar size={13} color="#4f46e5" /> Schedule Next Follow-up (12-Hour Clock)
-              </label>
-
-              <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px", flexWrap: "wrap" }}>
-                {/* Date Input */}
-                <input
-                  type="date"
-                  value={followUpDate}
-                  onChange={(e) => setFollowUpDate(e.target.value)}
-                  style={{
-                    flex: "1 1 130px",
-                    minWidth: "120px",
-                    height: "38px",
-                    padding: "0 10px",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    fontSize: "0.82rem",
-                    backgroundColor: "#ffffff",
-                    color: "#0f172a",
-                    fontWeight: 600,
-                    boxSizing: "border-box"
-                  }}
-                />
-
-                {/* Time Pickers Cluster */}
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                  <select
-                    value={followUpHour}
-                    onChange={(e) => setFollowUpHour(e.target.value)}
-                    style={{
-                      height: "38px",
-                      padding: "0 6px",
-                      borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "0.82rem",
-                      fontWeight: 700,
-                      backgroundColor: "#ffffff",
-                      color: "#0f172a",
-                      boxSizing: "border-box"
-                    }}
-                  >
-                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                      <option key={h} value={h}>{h}</option>
-                    ))}
-                  </select>
-
-                  <span style={{ fontWeight: 800, color: "#64748b" }}>:</span>
-
-                  <select
-                    value={followUpMinute}
-                    onChange={(e) => setFollowUpMinute(e.target.value)}
-                    style={{
-                      height: "38px",
-                      padding: "0 6px",
-                      borderRadius: "8px",
-                      border: "1px solid #cbd5e1",
-                      fontSize: "0.82rem",
-                      fontWeight: 700,
-                      backgroundColor: "#ffffff",
-                      color: "#0f172a",
-                      boxSizing: "border-box"
-                    }}
-                  >
-                    {["00", "15", "30", "45"].map(m => (
-                      <option key={m} value={m}>{m}</option>
-                    ))}
-                  </select>
-
-                  <div style={{
-                    display: "flex",
-                    height: "38px",
-                    borderRadius: "8px",
-                    border: "1px solid #cbd5e1",
-                    overflow: "hidden",
-                    boxSizing: "border-box"
-                  }}>
-                    <button
-                      type="button"
-                      onClick={() => setFollowUpPeriod("AM")}
-                      style={{
-                        padding: "0 10px",
-                        fontSize: "0.75rem",
-                        fontWeight: 800,
-                        border: "none",
-                        backgroundColor: followUpPeriod === "AM" ? "#4f46e5" : "#f1f5f9",
-                        color: followUpPeriod === "AM" ? "#ffffff" : "#475569",
-                        cursor: "pointer"
-                      }}
-                    >
-                      AM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFollowUpPeriod("PM")}
-                      style={{
-                        padding: "0 10px",
-                        fontSize: "0.75rem",
-                        fontWeight: 800,
-                        border: "none",
-                        backgroundColor: followUpPeriod === "PM" ? "#4f46e5" : "#f1f5f9",
-                        color: followUpPeriod === "PM" ? "#ffffff" : "#475569",
-                        cursor: "pointer"
-                      }}
-                    >
-                      PM
-                    </button>
+              {/* CALL STATS & DURATION CARD */}
+              <div className="dialer-stats-card">
+                <div className="dialer-timer-row">
+                  <div>
+                    <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+                      Call Duration
+                    </span>
+                    <div className="dialer-timer-digits">
+                      {isTimerRunning && <span className="dialer-pulse-dot" />}
+                      <span>{formatDuration(callDurationSec)}</span>
+                      {isTimerRunning && (
+                        <span style={{ fontSize: "0.7rem", color: "#10b981", fontWeight: 700 }}>LIVE</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Quick Follow-up Presets */}
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                <span style={{ fontSize: "0.7rem", color: "#94a3b8", alignSelf: "center", fontWeight: 700 }}>Quick:</span>
-                <button
-                  type="button"
-                  onClick={() => setQuickFollowUp(0, 5, 0, "PM")}
-                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer", fontWeight: 600 }}
-                >
-                  Today 5 PM
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
-                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer", fontWeight: 600 }}
-                >
-                  Tomorrow 11 AM
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickFollowUp(2, 4, 0, "PM")}
-                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer", fontWeight: 600 }}
-                >
-                  In 2 Days
-                </button>
-              </div>
-            </div>
-
-            {/* SAVE AS NEW LEAD FOR UNSAVED CONTACT (Single Column Stacked to Prevent Overflow) */}
-            {(!selectedContact || showNewLeadForm) && (
-              <div style={{
-                padding: "12px 14px",
-                backgroundColor: "#fef3c7",
-                borderRadius: "12px",
-                border: "1px solid #fde68a",
-                marginBottom: "16px"
-              }}>
-                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#92400e", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
-                  <UserPlus size={15} /> Save Contact as New CRM Lead
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <input
-                    type="text"
-                    placeholder="Contact Name *"
-                    value={newLeadName}
-                    onChange={(e) => setNewLeadName(e.target.value)}
-                    style={{
-                      width: "100%",
-                      height: "38px",
-                      padding: "0 12px",
-                      borderRadius: "8px",
-                      border: "1px solid #fcd34d",
-                      fontSize: "0.82rem",
-                      backgroundColor: "#ffffff",
-                      boxSizing: "border-box"
-                    }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Shop / Business Name (Optional)"
-                    value={newLeadShop}
-                    onChange={(e) => setNewLeadShop(e.target.value)}
-                    style={{
-                      width: "100%",
-                      height: "38px",
-                      padding: "0 12px",
-                      borderRadius: "8px",
-                      border: "1px solid #fcd34d",
-                      fontSize: "0.82rem",
-                      backgroundColor: "#ffffff",
-                      boxSizing: "border-box"
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* BIG SAVE CALL RECORD & UPDATE CRM BUTTON */}
-            <button
-              onClick={handleSaveCallRecord}
-              disabled={isSaving}
-              style={{
-                width: "100%",
-                height: "48px",
-                borderRadius: "14px",
-                background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
-                color: "#ffffff",
-                border: "none",
-                fontSize: "0.92rem",
-                fontWeight: 800,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "8px",
-                boxShadow: "0 6px 16px rgba(79, 70, 229, 0.35)",
-                transition: "transform 0.15s ease"
-              }}
-            >
-              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
-              <span>{isSaving ? "Saving Call & Duration..." : `Save Call (${formatDuration(callDurationSec)}) & Lead`}</span>
-            </button>
-
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 5: WHATSAPP TEMPLATES
-           ══════════════════════════════════════════════════════════════════════ */}
-        {activeTab === "WHATSAPP" && (
-          <div style={{ padding: "16px 20px" }}>
-            <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <MessageSquare size={16} color="#25d366" /> 1-Tap Post-Call WhatsApp Messages
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {WHATSAPP_TEMPLATES.map((tpl, i) => {
-                const messageText = tpl.text(selectedContact?.contactPerson || newLeadName || "");
-                return (
-                  <div key={i} style={{ padding: "12px", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px solid #e2e8f0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                      <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a" }}>{tpl.title}</span>
+                  {/* Stop/Start timer toggle */}
+                  <div>
+                    {isTimerRunning ? (
                       <button
                         type="button"
-                        onClick={() => handleInitiateWhatsApp(messageText)}
+                        onClick={() => {
+                          setIsTimerRunning(false);
+                          callStartTimeRef.current = null;
+                          setAutoDebriefTrigger(Date.now());
+                        }}
                         style={{
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                          backgroundColor: "#25d366",
-                          color: "#ffffff",
-                          border: "none",
-                          fontSize: "0.72rem",
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          backgroundColor: "#fee2e2",
+                          color: "#dc2626",
+                          border: "1px solid #fca5a5",
+                          fontSize: "0.75rem",
                           fontWeight: 700,
                           cursor: "pointer",
                           display: "flex",
@@ -2432,43 +1080,625 @@ function PhoneDialerModalContent({
                           gap: "4px"
                         }}
                       >
-                        <Send size={11} /> Send
+                        <PhoneOff size={13} /> End Talk
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          callStartTimeRef.current = Date.now() - (callDurationSec * 1000);
+                          setIsTimerRunning(true);
+                          setCallStatus("Connected");
+                        }}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: "8px",
+                          backgroundColor: "#f0fdf4",
+                          color: "#16a34a",
+                          border: "1px solid #bbf7d0",
+                          fontSize: "0.75rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <Play size={13} /> Resume Timer
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Quick Duration Preset Chips */}
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "10px" }}>
+                  {QUICK_DURATIONS.map((d) => (
+                    <button
+                      key={d.label}
+                      type="button"
+                      onClick={() => {
+                        setCallDurationSec(d.sec);
+                        setIsTimerRunning(false);
+                        callStartTimeRef.current = null;
+                        if (d.sec === 0) setCallStatus("Busy");
+                        else setCallStatus("Connected");
+                      }}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "6px",
+                        border: callDurationSec === d.sec ? "1px solid var(--accent-primary, #4f46e5)" : "1px solid #e2e8f0",
+                        backgroundColor: callDurationSec === d.sec ? "#eef2ff" : "#f8fafc",
+                        color: callDurationSec === d.sec ? "var(--accent-primary, #4f46e5)" : "#64748b",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setCallDurationSec(prev => Math.max(0, prev - 15))}
+                    style={{ padding: "3px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#64748b", fontSize: "0.7rem", cursor: "pointer" }}
+                  >
+                    -15s
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCallDurationSec(prev => prev + 15)}
+                    style={{ padding: "3px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#64748b", fontSize: "0.7rem", cursor: "pointer" }}
+                  >
+                    +15s
+                  </button>
+                </div>
+
+                {/* Call Type Toggle & Status Chips */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
+                  <div>
+                    <label className="dialer-field-label">Direction</label>
+                    <div className="dialer-segment-group">
+                      <button
+                        type="button"
+                        className={`dialer-segment-btn ${callType === "OUTBOUND" ? "active" : ""}`}
+                        onClick={() => setCallType("OUTBOUND")}
+                      >
+                        <PhoneOutgoing size={12} /> Outbound
+                      </button>
+                      <button
+                        type="button"
+                        className={`dialer-segment-btn ${callType === "INBOUND" ? "active" : ""}`}
+                        onClick={() => setCallType("INBOUND")}
+                      >
+                        <PhoneIncoming size={12} /> Inbound
                       </button>
                     </div>
-                    <p style={{ margin: 0, fontSize: "0.78rem", color: "#475569", lineHeight: 1.4 }}>
-                      {messageText}
+                  </div>
+
+                  <div>
+                    <label className="dialer-field-label">Connection Status</label>
+                    <select
+                      className="dialer-select-input"
+                      value={callStatus}
+                      onChange={(e) => {
+                        setCallStatus(e.target.value);
+                        if (e.target.value === "Busy" || e.target.value === "No Answer") {
+                          setOutcome("No Answer / Busy");
+                          setCallDurationSec(0);
+                        }
+                      }}
+                    >
+                      {CALL_STATUSES.map(st => (
+                        <option key={st.value} value={st.value}>{st.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET */}
+              <CallVoiceDebriefWidget
+                contactName={selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}
+                contactPhone={phoneDigits || selectedContact?.phone || ""}
+                customerId={selectedContact?.type === "Customer" ? selectedContact?.id : initialCustomerId}
+                leadId={selectedContact?.type === "Lead" ? selectedContact?.id : initialLeadId}
+                callDurationSec={callDurationSec}
+                callType={callType}
+                autoStartTrigger={autoDebriefTrigger}
+                onApplyToForm={(data) => {
+                  if (data.outcome) setOutcome(data.outcome);
+                  if (data.notes) setNotes(data.notes);
+                  if (data.followUpDate) setFollowUpDate(data.followUpDate);
+                  if (data.followUpHour) setFollowUpHour(data.followUpHour);
+                  if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
+                  if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
+                  setFeedbackMsg("✨ AI Intelligence populated into call log!");
+                }}
+                onCallSaved={() => {
+                  setFeedbackMsg("✅ Call logged with AI Debrief & Follow-up scheduled!");
+                  loadRecentCalls();
+                  setTimeout(() => {
+                    onClose();
+                  }, 800);
+                }}
+              />
+
+              {/* CALL OUTCOME DISPOSITION */}
+              <div style={{ marginBottom: "12px" }}>
+                <label className="dialer-field-label">Call Outcome / Disposition</label>
+                <select
+                  className="dialer-select-input"
+                  value={outcome}
+                  onChange={(e) => setOutcome(e.target.value)}
+                >
+                  {DEFAULT_OUTCOMES.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* DISCUSSION NOTES & TAGS */}
+              <div style={{ marginBottom: "12px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+                  <label className="dialer-field-label" style={{ margin: 0 }}>
+                    Discussion Notes
+                  </label>
+                  <button
+                    type="button"
+                    onClick={toggleSpeechRecognition}
+                    style={{
+                      background: isListeningSpeech ? "#fee2e2" : "#f1f5f9",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "2px 8px",
+                      color: isListeningSpeech ? "#dc2626" : "#4f46e5",
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    <Mic size={12} /> {isListeningSpeech ? "Listening..." : "Dictate"}
+                  </button>
+                </div>
+                <textarea
+                  className="dialer-textarea-input"
+                  rows={3}
+                  placeholder="Key discussion points, customer requirements, pricing quotes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+
+                {/* Tag chips */}
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "6px" }}>
+                  {DISCUSSION_TAGS.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => handleAddTag(tag)}
+                      className="dialer-tag-chip"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* FOLLOW-UP TASK SCHEDULER */}
+              <div style={{ marginBottom: "12px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "10px 12px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: "5px" }}>
+                    <Calendar size={14} style={{ color: "#4f46e5" }} /> Next Follow-up Task
+                  </span>
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    <button
+                      type="button"
+                      onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
+                      style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontWeight: 700, cursor: "pointer" }}
+                    >
+                      Tomorrow 11 AM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickFollowUp(2, 11, 0, "AM")}
+                      style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontWeight: 700, cursor: "pointer" }}
+                    >
+                      In 2 Days
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickFollowUp(-1, 0, 0, "AM")}
+                      style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#94a3b8", cursor: "pointer" }}
+                    >
+                      None
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "8px" }}>
+                  <input
+                    type="date"
+                    className="dialer-text-input"
+                    value={followUpDate}
+                    onChange={(e) => setFollowUpDate(e.target.value)}
+                  />
+                  <div style={{ display: "flex", gap: "4px" }}>
+                    <select
+                      className="dialer-select-input"
+                      style={{ flex: 1, padding: "6px 4px" }}
+                      value={followUpHour}
+                      onChange={(e) => setFollowUpHour(e.target.value)}
+                    >
+                      {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
+                    </select>
+                    <select
+                      className="dialer-select-input"
+                      style={{ flex: 1, padding: "6px 4px" }}
+                      value={followUpMinute}
+                      onChange={(e) => setFollowUpMinute(e.target.value)}
+                    >
+                      <option value="00">00</option>
+                      <option value="15">15</option>
+                      <option value="30">30</option>
+                      <option value="45">45</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setFollowUpPeriod(prev => prev === "AM" ? "PM" : "AM")}
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: "8px",
+                        border: "1px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        fontWeight: 800,
+                        fontSize: "0.74rem",
+                        color: "#4f46e5",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {followUpPeriod}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* SINGLE UNIFIED PRIMARY ACTION CTA */}
+              <button
+                type="button"
+                className="dialer-save-cta"
+                onClick={handleSaveCallRecord}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
+                    <span>Saving Call to CRM...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} />
+                    <span>Save Call Log & Schedule Task</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* =========================================================
+              TAB 3: RECENT CALL LOGS
+              ========================================================= */}
+          {activeTab === "CALL_LOGS" && (
+            <div>
+              {/* Search & Filter Bar */}
+              <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
+                <div style={{ position: "relative", flex: 1 }}>
+                  <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+                  <input
+                    type="text"
+                    className="dialer-text-input"
+                    style={{ paddingLeft: "30px", height: "36px" }}
+                    placeholder="Search past calls..."
+                    value={callLogSearch}
+                    onChange={(e) => setCallLogSearch(e.target.value)}
+                  />
+                </div>
+                <select
+                  className="dialer-select-input"
+                  style={{ width: "110px", height: "36px" }}
+                  value={callLogFilter}
+                  onChange={(e: any) => setCallLogFilter(e.target.value)}
+                >
+                  <option value="ALL">All Calls</option>
+                  <option value="CONNECTED">Connected</option>
+                  <option value="MISSED">Missed</option>
+                  <option value="OUTBOUND">Outbound</option>
+                  <option value="INBOUND">Inbound</option>
+                </select>
+              </div>
+
+              {isLoadingCalls ? (
+                <div style={{ textAlign: "center", padding: "30px 0", color: "#64748b" }}>
+                  <Loader2 size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 8px auto" }} />
+                  <span style={{ fontSize: "0.82rem" }}>Loading Call Logs...</span>
+                </div>
+              ) : filteredCallLogs.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px 10px", color: "#94a3b8" }}>
+                  <History size={32} style={{ margin: "0 auto 8px auto", opacity: 0.5 }} />
+                  <p style={{ margin: 0, fontSize: "0.82rem" }}>No recent calls found</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {filteredCallLogs.map((c) => {
+                    const isOutbound = c.type === "OUTBOUND";
+                    const isConnected = c.status === "Connected" || (c.durationSec || 0) > 0;
+                    return (
+                      <div
+                        key={c.id}
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: "10px",
+                          backgroundColor: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
+                          <div
+                            style={{
+                              width: "32px",
+                              height: "32px",
+                              borderRadius: "8px",
+                              backgroundColor: isConnected ? "#f0fdf4" : "#fef2f2",
+                              color: isConnected ? "#16a34a" : "#dc2626",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              flexShrink: 0
+                            }}
+                          >
+                            {isConnected ? (
+                              isOutbound ? <PhoneOutgoing size={15} /> : <PhoneIncoming size={15} />
+                            ) : (
+                              <PhoneMissed size={15} />
+                            )}
+                          </div>
+                          <div style={{ overflow: "hidden" }}>
+                            <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {c.contactName || c.contactPerson || "Direct Contact"}
+                            </div>
+                            <div style={{ fontSize: "0.72rem", color: "#64748b", display: "flex", gap: "6px" }}>
+                              <span>{c.phoneNumber}</span>
+                              <span>•</span>
+                              <span>{formatDuration(c.durationSec || 0)}</span>
+                              <span>•</span>
+                              <span>{formatRelativeTime(c.createdAt)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => handleInitiateWhatsApp("", c.phoneNumber)}
+                            style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#25d366", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            title="WhatsApp"
+                          >
+                            <MessageSquare size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInitiateCall(c.phoneNumber, { companyName: c.contactName, phone: c.phoneNumber })}
+                            style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#10b981", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            title="Call"
+                          >
+                            <PhoneCall size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* =========================================================
+              TAB 4: CONTACTS DIRECTORY
+              ========================================================= */}
+          {activeTab === "CONTACTS" && (
+            <div>
+              <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
+                <div style={{ position: "relative", flex: 1 }}>
+                  <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+                  <input
+                    type="text"
+                    className="dialer-text-input"
+                    style={{ paddingLeft: "30px", height: "36px" }}
+                    placeholder="Search customers or leads..."
+                    value={contactSearch}
+                    onChange={(e) => setContactSearch(e.target.value)}
+                  />
+                </div>
+                <select
+                  className="dialer-select-input"
+                  style={{ width: "110px", height: "36px" }}
+                  value={contactFilter}
+                  onChange={(e: any) => setContactFilter(e.target.value)}
+                >
+                  <option value="ALL">All Types</option>
+                  <option value="CUSTOMER">Customers</option>
+                  <option value="LEAD">Leads</option>
+                </select>
+              </div>
+
+              {isLoadingContacts ? (
+                <div style={{ textAlign: "center", padding: "30px 0", color: "#64748b" }}>
+                  <Loader2 size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 8px auto" }} />
+                  <span style={{ fontSize: "0.82rem" }}>Loading Contacts...</span>
+                </div>
+              ) : filteredContacts.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "30px 10px", color: "#94a3b8" }}>
+                  <Users size={32} style={{ margin: "0 auto 8px auto", opacity: 0.5 }} />
+                  <p style={{ margin: 0, fontSize: "0.82rem" }}>No contacts found</p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {filteredContacts.map((c) => (
+                    <div
+                      key={c.id}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        backgroundColor: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between"
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
+                        <div
+                          style={{
+                            width: "34px",
+                            height: "34px",
+                            borderRadius: "8px",
+                            backgroundColor: c.type === "Customer" ? "#eef2ff" : "#fffbeb",
+                            color: c.type === "Customer" ? "#4f46e5" : "#d97706",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 800,
+                            fontSize: "0.85rem",
+                            flexShrink: 0
+                          }}
+                        >
+                          {(c.companyName || c.contactPerson || "C")[0].toUpperCase()}
+                        </div>
+                        <div style={{ overflow: "hidden" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {c.companyName || c.contactPerson}
+                            </span>
+                            <span style={{ fontSize: "0.62rem", padding: "1px 5px", borderRadius: "4px", backgroundColor: "#e2e8f0", color: "#475569", fontWeight: 700 }}>
+                              {c.type}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: "0.72rem", color: "#64748b", fontFamily: "monospace" }}>
+                            {c.phone}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => handleInitiateWhatsApp("", c.phone)}
+                          style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#25d366", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                          title="WhatsApp"
+                        >
+                          <MessageSquare size={13} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInitiateCall(c.phone, c)}
+                          style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#10b981", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                          title="Call"
+                        >
+                          <PhoneCall size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* =========================================================
+              TAB 5: WHATSAPP TEMPLATES
+              ========================================================= */}
+          {activeTab === "WHATSAPP" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
+                1-Tap send customized WhatsApp messages to {selectedContact?.companyName || phoneDigits || "recipient"}:
+              </div>
+              {WHATSAPP_TEMPLATES.map((tpl, i) => {
+                const preview = tpl.text(selectedContact?.companyName || selectedContact?.contactPerson || "");
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      padding: "12px",
+                      borderRadius: "10px",
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #e2e8f0"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                      <strong style={{ fontSize: "0.82rem", color: "#0f172a" }}>{tpl.title}</strong>
+                      <button
+                        type="button"
+                        onClick={() => handleInitiateWhatsApp(preview)}
+                        style={{
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          backgroundColor: "#25d366",
+                          color: "#ffffff",
+                          border: "none",
+                          fontSize: "0.74rem",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <Send size={12} /> Send
+                      </button>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "#475569", lineHeight: 1.4 }}>
+                      "{preview}"
                     </p>
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ══════════════════════════════════════════════════════════════════════
-            TAB 6: CALL SCRIPTS & OBJECTION PLAYBOOK
-           ══════════════════════════════════════════════════════════════════════ */}
-        {activeTab === "SCRIPTS" && (
-          <div style={{ padding: "16px 20px" }}>
-            <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
-              <BookOpen size={16} color="#f59e0b" /> Telecalling Battlecards & Sales Scripts
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {TELE_SCRIPTS.map((sc, i) => (
-                <div key={i} style={{ padding: "12px", backgroundColor: "#fffbeb", borderRadius: "12px", border: "1px solid #fde68a" }}>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#92400e", marginBottom: "4px" }}>
-                    {sc.title}
-                  </div>
-                  <p style={{ margin: 0, fontSize: "0.78rem", color: "#78350f", lineHeight: 1.4 }}>
-                    "{sc.text}"
+          {/* =========================================================
+              TAB 6: CALLING SCRIPTS
+              ========================================================= */}
+          {activeTab === "SCRIPTS" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ fontSize: "0.78rem", color: "#64748b", fontWeight: 600 }}>
+                High-converting sales call scripts & objection responses:
+              </div>
+              {TELE_SCRIPTS.map((s, i) => (
+                <div
+                  key={i}
+                  style={{
+                    padding: "12px",
+                    borderRadius: "10px",
+                    backgroundColor: "#f8fafc",
+                    border: "1px solid #e2e8f0"
+                  }}
+                >
+                  <strong style={{ fontSize: "0.82rem", color: "#4f46e5", display: "block", marginBottom: "4px" }}>
+                    {s.title}
+                  </strong>
+                  <p style={{ margin: 0, fontSize: "0.76rem", color: "#334155", lineHeight: 1.4 }}>
+                    "{s.text}"
                   </p>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
+          )}
         </div>
       </div>
     </div>
@@ -2476,14 +1706,9 @@ function PhoneDialerModalContent({
 }
 
 export default function PhoneDialerModal(props: PhoneDialerModalProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!props.isOpen || !mounted) return null;
-
-  return <PhoneDialerModalContent {...props} />;
+  return (
+    <DialerErrorBoundary onClose={props.onClose}>
+      <PhoneDialerModalContent {...props} />
+    </DialerErrorBoundary>
+  );
 }
-
