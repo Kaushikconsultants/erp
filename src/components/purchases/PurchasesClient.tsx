@@ -4,7 +4,7 @@ import DatePicker from '@/components/ui/DatePicker';
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { createPurchaseOrder, updatePOStatus, receiveGRN, deletePurchaseOrder } from "@/app/actions/purchaseActions";
+import { createPurchaseOrder, updatePurchaseOrder, updatePOStatus, receiveGRN, deletePurchaseOrder } from "@/app/actions/purchaseActions";
 import ModernSearchableSelect, { SelectOption } from "@/components/ui/ModernSearchableSelect";
 import QuickAddProductModal from "@/components/products/QuickAddProductModal";
 import {
@@ -30,7 +30,8 @@ import {
   CreditCard,
   Percent,
   Receipt,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Pencil
 } from "lucide-react";
 
 export interface VendorOption {
@@ -95,6 +96,7 @@ export default function PurchasesClient({
   }, [vendors]);
 
   // Create Form State
+  const [editingPO, setEditingPO] = useState<any | null>(null);
   const [vendorId, setVendorId] = useState<string>("");
   const [expectedDate, setExpectedDate] = useState<string>("");
   const [paymentTerms, setPaymentTerms] = useState<string>("Net 30 Days");
@@ -195,12 +197,53 @@ export default function PurchasesClient({
   }, [orders, activeTab, searchTerm]);
 
   function resetCreateForm() {
+    setEditingPO(null);
     setVendorId("");
     setExpectedDate("");
     setPaymentTerms("Net 30 Days");
     setNotes("");
     setItems([{ productId: "", quantity: 1, rate: 0, gstRate: 18 }]);
     setError("");
+  }
+
+  function handleOpenEditPO(po: any) {
+    setEditingPO(po);
+    setVendorId(po.vendorId || "");
+    setExpectedDate(po.expectedDate ? new Date(po.expectedDate).toISOString().split('T')[0] : "");
+
+    // Extract payment terms if notes has "[Terms: ...]"
+    let noteText = po.notes || "";
+    let extractedTerms = "Net 30 Days";
+    const termsMatch = noteText.match(/\[Terms:\s*([^\]]+)\]/);
+    if (termsMatch) {
+      extractedTerms = termsMatch[1];
+      noteText = noteText.replace(/\[Terms:\s*[^\]]+\]\s*/, "").trim();
+    } else if (noteText.startsWith("Terms: ")) {
+      extractedTerms = noteText.replace("Terms: ", "").trim();
+      noteText = "";
+    }
+    setPaymentTerms(extractedTerms);
+    setNotes(noteText);
+
+    if (po.items && po.items.length > 0) {
+      setItems(
+        po.items.map((it: any) => {
+          const lineVal = (it.quantity || 1) * (it.rate || 0);
+          const computedGst = it.taxAmount && lineVal > 0 ? Math.round((it.taxAmount / lineVal) * 100) : 18;
+          return {
+            productId: it.productId || "",
+            quantity: it.quantity || 1,
+            rate: it.rate || 0,
+            gstRate: computedGst
+          };
+        })
+      );
+    } else {
+      setItems([{ productId: "", quantity: 1, rate: 0, gstRate: 18 }]);
+    }
+
+    setError("");
+    setCreateOpen(true);
   }
 
   function handleProductChange(idx: number, prodId: string) {
@@ -308,31 +351,55 @@ export default function PurchasesClient({
     setLoading(true);
     setError("");
 
-    const res = await createPurchaseOrder({
-      vendorId,
-      expectedDate: expectedDate || undefined,
-      notes: notes
-        ? `${paymentTerms ? `[Terms: ${paymentTerms}] ` : ""}${notes}`
-        : paymentTerms
-        ? `Terms: ${paymentTerms}`
-        : undefined,
-      items: validItems.map((it) => ({
-        productId: it.productId,
-        quantity: it.quantity,
-        rate: it.rate,
-        taxAmount: (it.quantity * it.rate * (it.gstRate || 0)) / 100
-      }))
-    });
+    const formattedNotes = notes
+      ? `${paymentTerms ? `[Terms: ${paymentTerms}] ` : ""}${notes}`
+      : paymentTerms
+      ? `Terms: ${paymentTerms}`
+      : undefined;
 
-    setLoading(false);
-    if (res.error) {
-      setError(res.error);
-      return;
+    const payloadItems = validItems.map((it) => ({
+      productId: it.productId,
+      quantity: it.quantity,
+      rate: it.rate,
+      taxAmount: (it.quantity * it.rate * (it.gstRate || 0)) / 100
+    }));
+
+    if (editingPO) {
+      const res = await updatePurchaseOrder(editingPO.id, {
+        vendorId,
+        expectedDate: expectedDate || undefined,
+        notes: formattedNotes,
+        status: editingPO.status,
+        items: payloadItems
+      });
+
+      setLoading(false);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+
+      setOrders((prev) => prev.map((o) => (o.id === editingPO.id ? res.po : o)));
+      setCreateOpen(false);
+      resetCreateForm();
+    } else {
+      const res = await createPurchaseOrder({
+        vendorId,
+        expectedDate: expectedDate || undefined,
+        notes: formattedNotes,
+        items: payloadItems
+      });
+
+      setLoading(false);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+
+      setCreateOpen(false);
+      resetCreateForm();
+      window.location.reload();
     }
-
-    setCreateOpen(false);
-    resetCreateForm();
-    window.location.reload();
   }
 
   async function handleGRN(e: React.FormEvent<HTMLFormElement>) {
@@ -934,6 +1001,17 @@ export default function PurchasesClient({
                     {/* Actions */}
                     <td style={{ padding: "14px", textAlign: "right" }}>
                       <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                        {/* Edit Button */}
+                        <button
+                          type="button"
+                          className="action-btn"
+                          onClick={() => handleOpenEditPO(po)}
+                          title="Edit Purchase Order"
+                          style={{ padding: "4px 8px", fontSize: "0.78rem", display: "inline-flex", alignItems: "center", gap: "4px", color: "#4f46e5", border: "1px solid #c7d2fe", backgroundColor: "#eef2ff", fontWeight: 600, borderRadius: "6px" }}
+                        >
+                          <Pencil size={12} /> Edit
+                        </button>
+
                         {/* Issue Button */}
                         {po.status === "Draft" && (
                           <button
@@ -1094,17 +1172,20 @@ export default function PurchasesClient({
                 </div>
                 <div>
                   <h2 style={{ fontSize: "1.15rem", fontWeight: 600, margin: 0, color: "#0f172a" }}>
-                    Create Purchase Order
+                    {editingPO ? `Edit Purchase Order — ${editingPO.poNumber}` : "Create Purchase Order"}
                   </h2>
                   <p style={{ fontSize: "0.8rem", fontWeight: 400, margin: "2px 0 0 0", color: "#64748b" }}>
-                    Issue an official procurement order to your registered supplier with line items and delivery terms.
+                    {editingPO ? "Update vendor procurement items, schedule, or pricing details." : "Issue an official procurement order to your registered supplier with line items and delivery terms."}
                   </p>
                 </div>
               </div>
 
               <button
                 type="button"
-                onClick={() => setCreateOpen(false)}
+                onClick={() => {
+                  setCreateOpen(false);
+                  resetCreateForm();
+                }}
                 style={{
                   width: 34,
                   height: 34,
@@ -1775,7 +1856,7 @@ export default function PurchasesClient({
                   }}
                 >
                   <CheckCircle2 size={16} />
-                  <span>{loading ? "Generating PO..." : "Confirm & Create PO"}</span>
+                  <span>{loading ? (editingPO ? "Updating PO..." : "Generating PO...") : (editingPO ? "Update Purchase Order" : "Confirm & Create PO")}</span>
                 </button>
               </div>
             </form>
@@ -2208,6 +2289,29 @@ export default function PurchasesClient({
 
             {/* Footer */}
             <div style={{ padding: "16px 26px", borderTop: "1px solid #e2e8f0", backgroundColor: "#f8fafc", display: "flex", justifyContent: "flex-end", gap: "12px", borderRadius: "0 0 18px 18px" }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const poToEdit = voucherPO;
+                  setVoucherPO(null);
+                  handleOpenEditPO(poToEdit);
+                }}
+                style={{
+                  padding: "9px 18px",
+                  borderRadius: "9px",
+                  border: "1px solid #c7d2fe",
+                  backgroundColor: "#eef2ff",
+                  color: "#4f46e5",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontSize: "0.86rem",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <Pencil size={15} /> Edit PO
+              </button>
               <button
                 type="button"
                 onClick={() => setVoucherPO(null)}

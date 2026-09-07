@@ -27,9 +27,10 @@ import {
   Check,
   Ban,
   Wallet,
-  Sparkles
+  Sparkles,
+  Pencil
 } from 'lucide-react';
-import { createBill, updateBillStatus, deleteBill } from '@/app/actions/billActions';
+import { createBill, updateBill, updateBillStatus, deleteBill } from '@/app/actions/billActions';
 import { recordVendorPayment } from '@/app/actions/vendorPaymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
 import PurchaseBillScannerModal from '@/components/bills/PurchaseBillScannerModal';
@@ -131,8 +132,9 @@ export default function BillsClient({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // Create Bill Modal State
+  // Create / Edit Bill Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editingBill, setEditingBill] = useState<BillRecord | null>(null);
   const [showAiScanner, setShowAiScanner] = useState(false);
   const [billVendorId, setBillVendorId] = useState('');
   const [billPoId, setBillPoId] = useState('');
@@ -150,6 +152,59 @@ export default function BillsClient({
     { productId: '', description: '', hsnCode: '6109', quantity: 1, unit: 'pcs', rate: 0, gstRate: 12, taxAmount: 0, total: 0 }
   ]);
   const [submittingBill, setSubmittingBill] = useState(false);
+
+  // Form Reset and Edit Handlers
+  const resetBillForm = () => {
+    setEditingBill(null);
+    setBillVendorId('');
+    setBillPoId('');
+    setVendorBillNumber('');
+    setBillDate(new Date().toISOString().split('T')[0]);
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    setDueDate(d.toISOString().split('T')[0]);
+    setPaymentTerms('Net 30');
+    setBillNotes('');
+    setAutoRestock(true);
+    setBillItems([
+      { productId: '', description: '', hsnCode: '6109', quantity: 1, unit: 'pcs', rate: 0, gstRate: 12, taxAmount: 0, total: 0 }
+    ]);
+  };
+
+  const handleOpenEditBill = (bill: BillRecord) => {
+    setEditingBill(bill);
+    setBillVendorId(bill.vendorId || '');
+    setBillPoId(bill.purchaseOrderId || '');
+    setVendorBillNumber(bill.vendorBillNumber || '');
+    setBillDate(bill.billDate ? new Date(bill.billDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+    setDueDate(bill.dueDate ? new Date(bill.dueDate).toISOString().split('T')[0] : '');
+    setPaymentTerms(bill.paymentTerms || 'Net 30');
+    setBillNotes(bill.notes || '');
+    setAutoRestock(false);
+    
+    if (bill.items && bill.items.length > 0) {
+      setBillItems(
+        bill.items.map((it: any) => ({
+          productId: it.productId || '',
+          description: it.description || '',
+          hsnCode: it.hsnCode || '6109',
+          quantity: it.quantity || 1,
+          unit: it.unit || 'pcs',
+          rate: it.rate || 0,
+          gstRate: it.gstRate || 0,
+          taxAmount: it.taxAmount || 0,
+          total: it.total || (it.quantity * it.rate)
+        }))
+      );
+    } else {
+      setBillItems([
+        { productId: '', description: '', hsnCode: '6109', quantity: 1, unit: 'pcs', rate: 0, gstRate: 12, taxAmount: 0, total: 0 }
+      ]);
+    }
+
+    setViewBill(null);
+    setCreateModalOpen(true);
+  };
 
   // Quick Record Payment Modal State
   const [payModalBill, setPayModalBill] = useState<BillRecord | null>(null);
@@ -512,7 +567,7 @@ export default function BillsClient({
     }
   };
 
-  // Submit Create Bill
+  // Submit Create or Update Bill
   const handleSubmitBill = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!billVendorId) {
@@ -525,24 +580,49 @@ export default function BillsClient({
     }
 
     setSubmittingBill(true);
-    const res = await createBill({
-      vendorId: billVendorId,
-      vendorBillNumber,
-      purchaseOrderId: billPoId || undefined,
-      billDate,
-      dueDate,
-      paymentTerms,
-      notes: billNotes,
-      items: billItems,
-      autoRestock
-    });
-    setSubmittingBill(false);
 
-    if (res.error) {
-      alert("Error: " + res.error);
+    if (editingBill) {
+      const res = await updateBill(editingBill.id, {
+        vendorId: billVendorId,
+        vendorBillNumber,
+        purchaseOrderId: billPoId || undefined,
+        billDate,
+        dueDate,
+        paymentTerms,
+        notes: billNotes,
+        items: billItems,
+        autoRestock
+      });
+      setSubmittingBill(false);
+
+      if (res.error) {
+        alert("Error: " + res.error);
+      } else {
+        setBills(prev => prev.map(b => b.id === editingBill.id ? res.bill : b));
+        setCreateModalOpen(false);
+        resetBillForm();
+      }
     } else {
-      setCreateModalOpen(false);
-      window.location.reload();
+      const res = await createBill({
+        vendorId: billVendorId,
+        vendorBillNumber,
+        purchaseOrderId: billPoId || undefined,
+        billDate,
+        dueDate,
+        paymentTerms,
+        notes: billNotes,
+        items: billItems,
+        autoRestock
+      });
+      setSubmittingBill(false);
+
+      if (res.error) {
+        alert("Error: " + res.error);
+      } else {
+        setCreateModalOpen(false);
+        resetBillForm();
+        window.location.reload();
+      }
     }
   };
 
@@ -961,6 +1041,16 @@ export default function BillsClient({
                   <td style={{ textAlign: 'right' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                       
+                      {/* Edit Bill */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditBill(bill)}
+                        title="Edit Purchase Bill"
+                        style={{ height: '28px', width: '28px', padding: 0, border: '1px solid #bfdbfe', borderRadius: '6px', background: '#eff6ff', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box' }}
+                      >
+                        <Pencil size={13} />
+                      </button>
+
                       {/* View Voucher */}
                       <button
                         type="button"
@@ -1148,6 +1238,14 @@ export default function BillsClient({
                     )}
                     <button
                       type="button"
+                      onClick={() => handleOpenEditBill(bill)}
+                      className="bill-action-btn"
+                      style={{ backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }}
+                    >
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setViewBill(bill)}
                       className="bill-action-btn"
                       style={{ backgroundColor: '#ffffff', color: '#334155', border: '1px solid #cbd5e1' }}
@@ -1229,38 +1327,43 @@ export default function BillsClient({
                 </div>
                 <div>
                   <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#0f172a', letterSpacing: '-0.01em' }}>
-                    Record New Vendor Bill
+                    {editingBill ? `Edit Vendor Bill — ${editingBill.billNumber}` : 'Record New Vendor Bill'}
                   </h2>
                   <p style={{ fontSize: '0.8rem', margin: '2px 0 0 0', color: '#64748b' }}>
-                    Enter purchase invoice details from supplier
+                    {editingBill ? 'Modify supplier invoice items, pricing, tax rates, or payment terms.' : 'Enter purchase invoice details from supplier'}
                   </p>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowAiScanner(true)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    backgroundColor: '#eff6ff',
-                    color: '#2563eb',
-                    border: '1px solid #bfdbfe',
-                    fontWeight: 600,
-                    fontSize: '0.78rem',
-                    padding: '6px 12px',
-                    borderRadius: '7px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Sparkles size={14} /> Scan with AI
-                </button>
+                {!editingBill && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAiScanner(true)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      border: '1px solid #bfdbfe',
+                      fontWeight: 600,
+                      fontSize: '0.78rem',
+                      padding: '6px 12px',
+                      borderRadius: '7px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Sparkles size={14} /> Scan with AI
+                  </button>
+                )}
 
                 <button
                   type="button"
-                  onClick={() => setCreateModalOpen(false)}
+                  onClick={() => {
+                    setCreateModalOpen(false);
+                    resetBillForm();
+                  }}
                   style={{ 
                     width: 32, 
                     height: 32, 
@@ -1681,7 +1784,7 @@ export default function BillsClient({
                     gap: '6px'
                   }}
                 >
-                  <Check size={16} /> {submittingBill ? 'Saving Bill...' : 'Confirm & Save Bill'}
+                  <Check size={16} /> {submittingBill ? (editingBill ? 'Updating Bill...' : 'Saving Bill...') : (editingBill ? 'Update Vendor Bill' : 'Confirm & Save Bill')}
                 </button>
               </div>
 
@@ -1914,6 +2017,17 @@ export default function BillsClient({
                 <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>Purchase Bill Voucher #{viewBill.billNumber}</span>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const billToEdit = viewBill;
+                    setViewBill(null);
+                    handleOpenEditBill(billToEdit);
+                  }}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '6px', border: '1px solid #bfdbfe', backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  <Pencil size={14} /> Edit Bill
+                </button>
                 <button
                   type="button"
                   onClick={() => handlePrintBill(viewBill)}

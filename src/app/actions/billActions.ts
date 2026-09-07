@@ -256,6 +256,170 @@ export async function createBill(data: {
   }
 }
 
+export async function updateBill(id: string, data: {
+  vendorId: string;
+  vendorBillNumber?: string;
+  purchaseOrderId?: string;
+  billDate?: string;
+  dueDate?: string;
+  paymentTerms?: string;
+  notes?: string;
+  discountAmount?: number;
+  allowDuplicate?: boolean;
+  items: {
+    productId?: string;
+    description: string;
+    hsnCode?: string;
+    quantity: number;
+    unit?: string;
+    rate: number;
+    gstRate: number;
+    taxAmount?: number;
+    total?: number;
+  }[];
+  autoRestock?: boolean;
+}) {
+  if (!await canManagePurchases()) return { error: "Unauthorized" };
+  if (!data.vendorId || !data.items?.length) {
+    return { error: "Vendor and at least one line item are required" };
+  }
+
+  try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+    const employee = await prisma.employee.findUnique({ where: { userId } });
+
+    const organizationId = await getTenantOrgId();
+
+    const existingBill = await prisma.bill.findFirst({
+      where: { id, organizationId },
+      include: {
+        items: true,
+        payments: true,
+        vendorCredits: true
+      }
+    });
+
+    if (!existingBill) return { error: "Bill not found" };
+
+    // Check duplicate bill number from the same vendor if changed
+    if (data.vendorBillNumber && data.vendorBillNumber.trim() !== existingBill.vendorBillNumber && !data.allowDuplicate) {
+      const dup = await prisma.bill.findFirst({
+        where: {
+          organizationId,
+          vendorId: data.vendorId,
+          vendorBillNumber: { equals: data.vendorBillNumber.trim() },
+          id: { not: id }
+        },
+        include: { vendor: { select: { companyName: true } } }
+      });
+
+      if (dup) {
+        return {
+          error: `Duplicate Bill: Bill #${dup.billNumber} already exists for ${dup.vendor?.companyName || 'this vendor'} with Vendor Invoice #${data.vendorBillNumber}.`
+        };
+      }
+    }
+
+    // Calculate item totals
+    let subtotal = 0;
+    let taxAmount = 0;
+
+    const processedItems = data.items.map(it => {
+      const lineSubtotal = it.quantity * it.rate;
+      const lineTax = it.taxAmount !== undefined ? it.taxAmount : (lineSubtotal * (it.gstRate || 0)) / 100;
+      const lineTotal = it.total !== undefined ? it.total : lineSubtotal + lineTax;
+      subtotal += lineSubtotal;
+      taxAmount += lineTax;
+      return {
+        productId: it.productId || null,
+        description: it.description,
+        hsnCode: it.hsnCode || "6109",
+        quantity: it.quantity,
+        unit: it.unit || "pcs",
+        rate: it.rate,
+        gstRate: it.gstRate || 0,
+        taxAmount: lineTax,
+        total: lineTotal
+      };
+    });
+
+    const discountAmount = data.discountAmount || 0;
+    const totalAmount = Math.max(0, subtotal + taxAmount - discountAmount);
+    const amountPaid = existingBill.amountPaid || 0;
+    const amountDue = Math.max(0, totalAmount - amountPaid);
+    
+    // Status calculation
+    let status = existingBill.status;
+    if (status !== 'Void') {
+      if (amountDue === 0 && amountPaid > 0) {
+        status = 'Paid';
+      } else if (amountPaid > 0 && amountDue > 0) {
+        status = 'Partially Paid';
+      } else {
+        status = 'Open';
+      }
+    }
+
+    const updatedBill = await prisma.$transaction(async (tx) => {
+      // 1. Delete old line items
+      await tx.billItem.deleteMany({ where: { billId: id } });
+
+      // 2. Update Bill record and recreate line items
+      const bill = await tx.bill.update({
+        where: { id },
+        data: {
+          vendorId: data.vendorId,
+          vendorBillNumber: data.vendorBillNumber?.trim() || null,
+          purchaseOrderId: data.purchaseOrderId || null,
+          billDate: data.billDate ? new Date(data.billDate) : existingBill.billDate,
+          dueDate: data.dueDate ? new Date(data.dueDate) : null,
+          paymentTerms: data.paymentTerms || existingBill.paymentTerms || "Net 30",
+          subtotal,
+          taxAmount,
+          discountAmount,
+          totalAmount,
+          amountDue,
+          status,
+          notes: data.notes || null,
+          items: {
+            create: processedItems
+          }
+        },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: { id: true, name: true, sku: true }
+              }
+            }
+          },
+          vendor: true,
+          purchaseOrder: true,
+          payments: true
+        }
+      });
+
+      return bill;
+    });
+
+    // Reconcile and synchronize ledger balances
+    await syncSystemLedgers();
+
+    revalidatePath("/bills");
+    revalidatePath("/vendors");
+    revalidatePath("/purchases");
+    revalidatePath("/products");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
+    return { success: true, bill: JSON.parse(JSON.stringify(updatedBill)) };
+  } catch (error: any) {
+    console.error("Failed to update bill:", error);
+    return { error: "Failed to update bill: " + error.message };
+  }
+}
+
 export async function deleteBill(id: string) {
   if (!await canManagePurchases()) return { error: "Unauthorized" };
 

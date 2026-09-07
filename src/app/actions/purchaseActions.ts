@@ -95,6 +95,82 @@ export async function createPurchaseOrder(data: {
   }
 }
 
+export async function updatePurchaseOrder(id: string, data: {
+  vendorId: string;
+  expectedDate?: string;
+  notes?: string;
+  status?: string;
+  items: { productId: string; quantity: number; rate: number; taxAmount?: number }[];
+}) {
+  if (!await canManagePurchases()) return { error: "Unauthorized" };
+  if (!data.vendorId || !data.items?.length) return { error: "Vendor and at least one item are required" };
+
+  try {
+    const existing = await prisma.purchaseOrder.findUnique({
+      where: { id },
+      include: { items: true, bills: true }
+    });
+
+    if (!existing) return { error: "Purchase Order not found" };
+
+    const totalValue = data.items.reduce((sum, item) => sum + item.quantity * item.rate, 0);
+    const taxAmount = data.items.reduce((sum, item) => sum + (item.taxAmount || 0), 0);
+
+    // Map existing receivedQty if any item was partially received
+    const oldItemsMap = new Map<string, number>();
+    existing.items.forEach(it => {
+      if (it.receivedQty > 0) {
+        oldItemsMap.set(it.productId, it.receivedQty);
+      }
+    });
+
+    const updated = await prisma.$transaction(async (tx) => {
+      // 1. Delete old items
+      await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: id } });
+
+      // 2. Create new items and update PO
+      const po = await tx.purchaseOrder.update({
+        where: { id },
+        data: {
+          vendorId: data.vendorId,
+          expectedDate: data.expectedDate ? new Date(data.expectedDate) : null,
+          totalValue,
+          taxAmount,
+          notes: data.notes || null,
+          status: data.status || existing.status,
+          items: {
+            create: data.items.map(item => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              rate: item.rate,
+              taxAmount: item.taxAmount || 0,
+              total: item.quantity * item.rate,
+              receivedQty: oldItemsMap.get(item.productId) || 0
+            }))
+          }
+        },
+        include: {
+          vendor: { select: { companyName: true, contactPerson: true } },
+          items: {
+            include: {
+              product: { select: { name: true, sku: true } }
+            }
+          }
+        }
+      });
+      return po;
+    });
+
+    revalidatePath("/purchases");
+    revalidatePath("/vendors");
+    revalidatePath("/products");
+    return { success: true, po: JSON.parse(JSON.stringify(updated)) };
+  } catch (error: any) {
+    console.error("Failed to update purchase order:", error);
+    return { error: "Failed to update purchase order: " + error.message };
+  }
+}
+
 export async function updatePOStatus(id: string, status: string) {
   if (!await canManagePurchases()) return { error: "Unauthorized" };
   try {
