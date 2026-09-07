@@ -810,14 +810,14 @@ export default function CallVoiceDebriefWidget({
                   style={{
                     backgroundColor: "#f8fafc",
                     border: "1px solid #e2e8f0",
-                    borderRadius: "10px",
-                    padding: "8px 10px",
+                    borderRadius: "12px",
+                    padding: "10px 12px",
                     marginBottom: "12px"
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
-                    <Calendar size={13} color="#4f46e5" />
-                    <span style={{ fontSize: "0.74rem", fontWeight: 700, color: "#334155" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+                    <Calendar size={14} color="#4f46e5" />
+                    <span style={{ fontSize: "0.76rem", fontWeight: 700, color: "#334155" }}>
                       Auto-Scheduled Follow-up Task:
                     </span>
                   </div>
@@ -828,62 +828,90 @@ export default function CallVoiceDebriefWidget({
                       value={editableFollowUpDate}
                       onChange={(e) => setEditableFollowUpDate(e.target.value)}
                       style={{
-                        padding: "5px 8px",
-                        borderRadius: "6px",
+                        flex: "1 1 140px",
+                        minWidth: "130px",
+                        height: "36px",
+                        padding: "0 10px",
+                        borderRadius: "8px",
                         border: "1px solid #cbd5e1",
-                        fontSize: "0.78rem"
+                        fontSize: "0.8rem",
+                        backgroundColor: "#ffffff",
+                        color: "#0f172a",
+                        boxSizing: "border-box"
                       }}
                     />
-                    <select
-                      value={editableHour}
-                      onChange={(e) => setEditableHour(e.target.value)}
-                      style={{ padding: "5px 4px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.78rem", fontWeight: 700 }}
-                    >
-                      {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
-                    </select>
-                    <span>:</span>
-                    <select
-                      value={editableMin}
-                      onChange={(e) => setEditableMin(e.target.value)}
-                      style={{ padding: "5px 4px", borderRadius: "6px", border: "1px solid #cbd5e1", fontSize: "0.78rem", fontWeight: 700 }}
-                    >
-                      {["00", "15", "30", "45"].map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                    <div style={{ display: "flex", borderRadius: "6px", border: "1px solid #cbd5e1", overflow: "hidden" }}>
-                      <button
-                        type="button"
-                        onClick={() => setEditablePeriod("AM")}
+                    <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                      <select
+                        value={editableHour}
+                        onChange={(e) => setEditableHour(e.target.value)}
                         style={{
-                          padding: "4px 6px",
-                          fontSize: "0.72rem",
+                          height: "36px",
+                          padding: "0 6px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.8rem",
                           fontWeight: 700,
-                          border: "none",
-                          backgroundColor: editablePeriod === "AM" ? "#4f46e5" : "#f1f5f9",
-                          color: editablePeriod === "AM" ? "#ffffff" : "#475569",
-                          cursor: "pointer"
+                          backgroundColor: "#ffffff",
+                          color: "#0f172a",
+                          boxSizing: "border-box"
                         }}
                       >
-                        AM
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditablePeriod("PM")}
+                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span style={{ fontWeight: 800, color: "#64748b" }}>:</span>
+                      <select
+                        value={editableMin}
+                        onChange={(e) => setEditableMin(e.target.value)}
                         style={{
-                          padding: "4px 6px",
-                          fontSize: "0.72rem",
+                          height: "36px",
+                          padding: "0 6px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          fontSize: "0.8rem",
                           fontWeight: 700,
-                          border: "none",
-                          backgroundColor: editablePeriod === "PM" ? "#4f46e5" : "#f1f5f9",
-                          color: editablePeriod === "PM" ? "#ffffff" : "#475569",
-                          cursor: "pointer"
+                          backgroundColor: "#ffffff",
+                          color: "#0f172a",
+                          boxSizing: "border-box"
                         }}
                       >
-                        PM
-                      </button>
+                        {["00", "15", "30", "45"].map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <div style={{ display: "flex", height: "36px", borderRadius: "8px", border: "1px solid #cbd5e1", overflow: "hidden", boxSizing: "border-box" }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditablePeriod("AM")}
+                          style={{
+                            padding: "0 9px",
+                            fontSize: "0.75rem",
+                            fontWeight: 800,
+                            border: "none",
+                            backgroundColor: editablePeriod === "AM" ? "#4f46e5" : "#f1f5f9",
+                            color: editablePeriod === "AM" ? "#ffffff" : "#475569",
+                            cursor: "pointer"
+                          }}
+                        >
+                          AM
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditablePeriod("PM")}
+                          style={{
+                            padding: "0 9px",
+                            fontSize: "0.75rem",
+                            fontWeight: 800,
+                            border: "none",
+                            backgroundColor: editablePeriod === "PM" ? "#4f46e5" : "#f1f5f9",
+                            color: editablePeriod === "PM" ? "#ffffff" : "#475569",
+                            cursor: "pointer"
+                          }}
+                        >
+                          PM
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -896,7 +924,7 @@ export default function CallVoiceDebriefWidget({
                   onClick={handleDirectSave}
                   disabled={isSaving}
                   style={{
-                    padding: "9px 12px",
+                    padding: "10px 12px",
                     borderRadius: "10px",
                     background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                     color: "#ffffff",
@@ -919,7 +947,7 @@ export default function CallVoiceDebriefWidget({
                   type="button"
                   onClick={handleApplyToParentForm}
                   style={{
-                    padding: "9px 12px",
+                    padding: "10px 12px",
                     borderRadius: "10px",
                     backgroundColor: "#f1f5f9",
                     color: "#334155",

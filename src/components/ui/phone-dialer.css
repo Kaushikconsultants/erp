@@ -31,8 +31,8 @@
   display: flex;
   flex-direction: column;
   max-height: 92vh;
-  overflow-y: auto;
-  padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
+  overflow: hidden; /* Header and tabs stay fixed, body scrolls */
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
   animation: dialerSlideUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   box-sizing: border-box;
 }
@@ -59,6 +59,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
+  background-color: #ffffff;
 }
 
 .dialer-title-box {
@@ -106,6 +108,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .dialer-close-btn:hover {
@@ -117,12 +120,13 @@
 .dialer-tabs-bar {
   display: flex;
   background-color: #f8fafc;
-  padding: 6px 14px;
+  padding: 8px 14px;
   border-bottom: 1px solid #e2e8f0;
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  flex-shrink: 0;
 }
 
 .dialer-tabs-bar::-webkit-scrollbar {
@@ -169,6 +173,41 @@
 .dialer-tab-pill.active .dialer-count-badge {
   background-color: #e0e7ff;
   color: #3730a3;
+}
+
+/* Feedback Toast */
+.dialer-feedback-toast {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background-color: #ecfdf5;
+  border-bottom: 1px solid #a7f3d0;
+  color: #047857;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.dialer-toast-close {
+  background: none;
+  border: none;
+  color: #059669;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Scrollable Body Content */
+.dialer-body-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Phone Number Display */

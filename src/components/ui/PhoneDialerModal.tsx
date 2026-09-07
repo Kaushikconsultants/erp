@@ -343,11 +343,19 @@ function PhoneDialerModalContent({
     }
   }, [isOpen, initialPhone, initialName, initialCustomerId, initialLeadId, initialTab]);
 
-  // Live Timer Interval
+  // Single Clean Live Stopwatch Timer
   useEffect(() => {
     if (isTimerRunning) {
+      if (!callStartTimeRef.current) {
+        callStartTimeRef.current = Date.now() - (callDurationSec * 1000);
+      }
       timerIntervalRef.current = setInterval(() => {
-        setCallDurationSec(prev => prev + 1);
+        if (callStartTimeRef.current) {
+          const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
+          setCallDurationSec(Math.max(0, elapsed));
+        } else {
+          setCallDurationSec(prev => prev + 1);
+        }
       }, 1000);
     } else {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
@@ -357,28 +365,22 @@ function PhoneDialerModalContent({
     };
   }, [isTimerRunning]);
 
-  // ─── CRITICAL: AUTO-STOP & FREEZE DURATION ON APP RETURN ───
+  // Synchronize duration on window visibility change (only when timer is actively running)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && callStartTimeRef.current) {
+      if (document.visibilityState === "visible" && callStartTimeRef.current && isTimerRunning) {
         const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
-        if (elapsed > 0) {
+        if (elapsed >= 0) {
           setCallDurationSec(elapsed);
-          setIsTimerRunning(false); // Auto-freeze timer at exact duration
-          callStartTimeRef.current = null;
-          setFeedbackMsg(`✅ Call ended. Recorded duration: ${Math.floor(elapsed / 60)}m ${elapsed % 60}s. Save your notes below.`);
         }
       }
     };
 
     const handleWindowFocus = () => {
-      if (callStartTimeRef.current) {
+      if (callStartTimeRef.current && isTimerRunning) {
         const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
-        if (elapsed > 0) {
+        if (elapsed >= 0) {
           setCallDurationSec(elapsed);
-          setIsTimerRunning(false); // Auto-freeze timer at exact duration
-          callStartTimeRef.current = null;
-          setFeedbackMsg(`✅ Call ended. Recorded duration: ${Math.floor(elapsed / 60)}m ${elapsed % 60}s. Save your notes below.`);
         }
       }
     };
@@ -389,7 +391,7 @@ function PhoneDialerModalContent({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("focus", handleWindowFocus);
     };
-  }, []);
+  }, [isTimerRunning]);
 
   // Auto match contact as user types
   useEffect(() => {
@@ -445,7 +447,7 @@ function PhoneDialerModalContent({
     }
   };
 
-  // Trigger Native Phone Dialer and start smart call duration timer
+  // Trigger Phone Call & Switch to Post-Call Session (Timer starts ONLY when connected)
   const handleInitiateCall = (targetPhone?: string, targetContact?: any) => {
     const numberToCall = targetPhone || phoneDigits;
     const cleanNum = (numberToCall || '').replace(/\D/g, '');
@@ -458,10 +460,10 @@ function PhoneDialerModalContent({
     if (targetContact) setSelectedContact(targetContact);
 
     handleVibrate(30);
-    // Record start time
-    callStartTimeRef.current = Date.now();
+    // Reset timer state cleanly - duration will NOT count blindly until user connects
+    callStartTimeRef.current = null;
     setCallDurationSec(0);
-    setIsTimerRunning(true);
+    setIsTimerRunning(false);
     setCallStatus("Connected");
     setCallType("OUTBOUND");
 
@@ -473,7 +475,7 @@ function PhoneDialerModalContent({
 
     // Switch to post-call maintenance view
     setActiveTab("POST_CALL");
-    setFeedbackMsg("📞 Call in progress. Timer will automatically freeze duration upon return.");
+    setFeedbackMsg("📞 Outbound call dialed. Tap 'Call Connected' below when customer answers to track live duration.");
   };
 
   // WhatsApp Message
@@ -822,25 +824,28 @@ function PhoneDialerModalContent({
 
         {/* Feedback Alert Toast */}
         {feedbackMsg && (
-          <div style={{
-            padding: "9px 16px",
-            backgroundColor: "#ecfdf5",
-            color: "#047857",
-            fontSize: "0.82rem",
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            borderBottom: "1px solid #a7f3d0"
-          }}>
-            <CheckCircle2 size={16} color="#059669" />
-            <span>{feedbackMsg}</span>
+          <div className="dialer-feedback-toast">
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
+              <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0 }} />
+              <span style={{ lineHeight: 1.3 }}>{feedbackMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setFeedbackMsg("")}
+              className="dialer-toast-close"
+              title="Dismiss"
+            >
+              <X size={14} />
+            </button>
           </div>
         )}
 
-        {/* Selected Contact Pill (Shown across tabs if selected) */}
-        {selectedContact && (
-          <div style={{ padding: "8px 16px", backgroundColor: "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
+        {/* Scrollable Body Content */}
+        <div className="dialer-body-scroll">
+
+          {/* Selected Contact Pill (Shown across tabs if selected) */}
+          {selectedContact && (
+            <div style={{ padding: "8px 16px", backgroundColor: "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
             <div style={{
               display: "flex",
               alignItems: "center",
@@ -1567,50 +1572,91 @@ function PhoneDialerModalContent({
         )}
 
         {/* ══════════════════════════════════════════════════════════════════════
-            TAB 4: NOTES & DURATION (SMART AUTO-STOP & OUTCOME LOGGING)
+            TAB 4: ACTIVE CALL CONTROLLER, TIMER & AI POST-CALL LOGGING
            ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === "POST_CALL" && (
-          <div style={{ padding: "16px 20px", backgroundColor: "#ffffff" }}>
-            
-            {/* CALL DURATION STOPWATCH HERO CARD */}
+          <div style={{ padding: "14px 18px 20px 18px", backgroundColor: "#ffffff" }}>
+
+            {/* ACTIVE IN-APP CALL CONTROLLER & DURATION STOPWATCH HERO CARD */}
             <div style={{
               background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-              borderRadius: "16px",
-              padding: "14px 16px",
+              borderRadius: "18px",
+              padding: "16px",
               color: "#ffffff",
               marginBottom: "16px",
-              boxShadow: "0 4px 20px rgba(15, 23, 42, 0.15)"
+              boxShadow: "0 6px 24px rgba(15, 23, 42, 0.2)"
             }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+              {/* Card Header: Caller Info & Live Status Badge */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                   <Clock size={16} color="#38bdf8" />
                   <span style={{ fontSize: "0.76rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    Tracked Call Duration
+                    Call Duration Tracker
                   </span>
                 </div>
+
                 {isTimerRunning ? (
-                  <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "0.72rem", color: "#34d399", fontWeight: 700 }}>
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                    backgroundColor: "rgba(16, 185, 129, 0.15)",
+                    border: "1px solid rgba(52, 211, 153, 0.3)",
+                    fontSize: "0.72rem",
+                    color: "#34d399",
+                    fontWeight: 800
+                  }}>
                     <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#34d399", animation: "pulse 1s infinite" }} />
-                    LIVE
+                    LIVE TALK
+                  </span>
+                ) : callDurationSec === 0 ? (
+                  <span style={{
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                    backgroundColor: "rgba(148, 163, 184, 0.12)",
+                    border: "1px solid rgba(148, 163, 184, 0.25)",
+                    fontSize: "0.7rem",
+                    color: "#cbd5e1",
+                    fontWeight: 700
+                  }}>
+                    DIALING / READY
                   </span>
                 ) : (
-                  <span style={{ fontSize: "0.72rem", color: "#94a3b8", fontWeight: 600 }}>
-                    AUTO-FROZEN
+                  <span style={{
+                    padding: "3px 8px",
+                    borderRadius: "12px",
+                    backgroundColor: "rgba(2, 132, 199, 0.15)",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                    fontSize: "0.7rem",
+                    color: "#38bdf8",
+                    fontWeight: 700
+                  }}>
+                    FROZEN: {formatDuration(callDurationSec)}
                   </span>
                 )}
               </div>
 
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+              {/* Digital Timer Display */}
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "12px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <span style={{ fontSize: "2.2rem", fontWeight: 900, fontFamily: "monospace", letterSpacing: "1px", color: "#ffffff" }}>
+                  <span style={{
+                    fontSize: "2.4rem",
+                    fontWeight: 900,
+                    fontFamily: "monospace",
+                    letterSpacing: "1px",
+                    color: isTimerRunning ? "#34d399" : "#ffffff",
+                    textShadow: isTimerRunning ? "0 0 16px rgba(52, 211, 153, 0.3)" : "none"
+                  }}>
                     {formatDuration(callDurationSec)}
                   </span>
-                  <span style={{ fontSize: "0.82rem", color: "#94a3b8", fontWeight: 600 }}>
-                    ({callDurationSec} sec)
+                  <span style={{ fontSize: "0.8rem", color: "#94a3b8", fontWeight: 600 }}>
+                    ({callDurationSec}s)
                   </span>
                 </div>
 
-                {/* Timer Manual Controls */}
+                {/* Secondary Pause/Resume/Reset Controls */}
                 <div style={{ display: "flex", gap: "6px" }}>
                   {isTimerRunning ? (
                     <button
@@ -1619,9 +1665,9 @@ function PhoneDialerModalContent({
                       style={{
                         padding: "6px 10px",
                         borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "#ef4444",
-                        color: "#ffffff",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        backgroundColor: "rgba(239, 68, 68, 0.2)",
+                        color: "#fca5a5",
                         fontSize: "0.75rem",
                         fontWeight: 700,
                         cursor: "pointer",
@@ -1630,18 +1676,21 @@ function PhoneDialerModalContent({
                         gap: "4px"
                       }}
                     >
-                      <Pause size={13} /> Pause
+                      <Pause size={12} /> Pause
                     </button>
-                  ) : (
+                  ) : callDurationSec > 0 ? (
                     <button
                       type="button"
-                      onClick={() => setIsTimerRunning(true)}
+                      onClick={() => {
+                        callStartTimeRef.current = Date.now() - (callDurationSec * 1000);
+                        setIsTimerRunning(true);
+                      }}
                       style={{
                         padding: "6px 10px",
                         borderRadius: "8px",
-                        border: "none",
-                        backgroundColor: "#10b981",
-                        color: "#ffffff",
+                        border: "1px solid rgba(16, 185, 129, 0.3)",
+                        backgroundColor: "rgba(16, 185, 129, 0.2)",
+                        color: "#6ee7b7",
                         fontSize: "0.75rem",
                         fontWeight: 700,
                         cursor: "pointer",
@@ -1650,34 +1699,134 @@ function PhoneDialerModalContent({
                         gap: "4px"
                       }}
                     >
-                      <Play size={13} /> Resume
+                      <Play size={12} /> Resume
+                    </button>
+                  ) : null}
+
+                  {callDurationSec > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTimerRunning(false);
+                        setCallDurationSec(0);
+                        callStartTimeRef.current = null;
+                      }}
+                      style={{
+                        padding: "6px 8px",
+                        borderRadius: "8px",
+                        border: "1px solid #475569",
+                        backgroundColor: "#334155",
+                        color: "#cbd5e1",
+                        fontSize: "0.75rem",
+                        cursor: "pointer"
+                      }}
+                      title="Reset duration to 0s"
+                    >
+                      <RotateCcw size={13} />
                     </button>
                   )}
+                </div>
+              </div>
+
+              {/* 🎯 PRIMARY CALL SESSION ACTION BUTTONS */}
+              <div style={{ display: "grid", gridTemplateColumns: isTimerRunning ? "1fr" : "1.2fr 1fr", gap: "8px", marginBottom: "12px" }}>
+                {!isTimerRunning ? (
+                  <>
+                    {/* 🟢 Call Connected • Start Timer Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        callStartTimeRef.current = Date.now() - (callDurationSec * 1000);
+                        setIsTimerRunning(true);
+                        setCallStatus("Connected");
+                        if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
+                          setOutcome("Interested / Follow-up Needed");
+                        }
+                      }}
+                      style={{
+                        padding: "10px 8px",
+                        borderRadius: "10px",
+                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                        color: "#ffffff",
+                        border: "none",
+                        fontSize: "0.82rem",
+                        fontWeight: 800,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px",
+                        boxShadow: "0 4px 12px rgba(16, 185, 129, 0.35)"
+                      }}
+                    >
+                      <PhoneCall size={15} />
+                      <span>Call Connected</span>
+                    </button>
+
+                    {/* ❌ Didn't Connect / Busy (0s) Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTimerRunning(false);
+                        setCallDurationSec(0);
+                        callStartTimeRef.current = null;
+                        setCallStatus("Busy");
+                        setOutcome("No Answer / Busy");
+                        setQuickFollowUp(1, 11, 0, "AM");
+                        setFeedbackMsg("Marked as No Answer / Busy (0s). Follow-up scheduled for tomorrow 11 AM.");
+                      }}
+                      style={{
+                        padding: "10px 8px",
+                        borderRadius: "10px",
+                        backgroundColor: "rgba(239, 68, 68, 0.15)",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        color: "#fca5a5",
+                        fontSize: "0.8rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "5px"
+                      }}
+                    >
+                      <PhoneOff size={14} />
+                      <span>No Answer (0s)</span>
+                    </button>
+                  </>
+                ) : (
+                  /* ⏹ End Call & Lock Duration Button */
                   <button
                     type="button"
                     onClick={() => {
                       setIsTimerRunning(false);
-                      setCallDurationSec(0);
-                      callStartTimeRef.current = null;
+                      setFeedbackMsg(`⏹ Call ended. Talk time recorded: ${formatDuration(callDurationSec)}.`);
                     }}
                     style={{
-                      padding: "6px 8px",
-                      borderRadius: "8px",
-                      border: "1px solid #475569",
-                      backgroundColor: "#334155",
-                      color: "#cbd5e1",
-                      fontSize: "0.75rem",
-                      cursor: "pointer"
+                      padding: "11px",
+                      borderRadius: "10px",
+                      background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                      color: "#ffffff",
+                      border: "none",
+                      fontSize: "0.85rem",
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      boxShadow: "0 4px 14px rgba(239, 68, 68, 0.4)"
                     }}
-                    title="Reset to 0s"
                   >
-                    <RotateCcw size={13} />
+                    <PhoneOff size={16} />
+                    <span>End Call & Lock Duration ({formatDuration(callDurationSec)})</span>
                   </button>
-                </div>
+                )}
               </div>
 
               {/* Quick Duration Chips & Micro Adjusters */}
-              <div style={{ marginTop: "10px", paddingTop: "8px", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              <div style={{ paddingTop: "10px", borderTop: "1px solid rgba(255,255,255,0.1)", display: "flex", gap: "5px", flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ fontSize: "0.68rem", color: "#94a3b8", fontWeight: 700, marginRight: "2px" }}>Quick Set:</span>
                 {QUICK_DURATIONS.map(d => (
                   <button
                     key={d.label}
@@ -1685,14 +1834,17 @@ function PhoneDialerModalContent({
                     onClick={() => {
                       setCallDurationSec(d.sec);
                       setIsTimerRunning(false);
+                      callStartTimeRef.current = null;
+                      if (d.sec === 0) setCallStatus("Busy");
+                      else setCallStatus("Connected");
                     }}
                     style={{
-                      padding: "3px 8px",
+                      padding: "3px 7px",
                       borderRadius: "6px",
                       border: callDurationSec === d.sec ? "1px solid #38bdf8" : "1px solid rgba(255,255,255,0.15)",
                       backgroundColor: callDurationSec === d.sec ? "#0284c7" : "rgba(255,255,255,0.06)",
                       color: "#ffffff",
-                      fontSize: "0.7rem",
+                      fontSize: "0.68rem",
                       fontWeight: 600,
                       cursor: "pointer"
                     }}
@@ -1709,9 +1861,10 @@ function PhoneDialerModalContent({
                     border: "1px solid rgba(255,255,255,0.15)",
                     backgroundColor: "rgba(255,255,255,0.06)",
                     color: "#cbd5e1",
-                    fontSize: "0.7rem",
+                    fontSize: "0.68rem",
                     cursor: "pointer"
                   }}
+                  title="Minus 15 seconds"
                 >
                   -15s
                 </button>
@@ -1724,9 +1877,10 @@ function PhoneDialerModalContent({
                     border: "1px solid rgba(255,255,255,0.15)",
                     backgroundColor: "rgba(255,255,255,0.06)",
                     color: "#cbd5e1",
-                    fontSize: "0.7rem",
+                    fontSize: "0.68rem",
                     cursor: "pointer"
                   }}
+                  title="Plus 15 seconds"
                 >
                   +15s
                 </button>
@@ -1759,7 +1913,7 @@ function PhoneDialerModalContent({
               }}
             />
 
-            {/* CALL CONNECTION STATUS */}
+            {/* CALL CONNECTION STATUS (3-Column Uniform Grid) */}
             <div style={{ marginBottom: "14px" }}>
               <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "6px" }}>
                 Call Connection Status
@@ -1781,15 +1935,21 @@ function PhoneDialerModalContent({
                         }
                       }}
                       style={{
-                        padding: "7px 4px",
+                        minHeight: "42px",
+                        padding: "6px 4px",
                         borderRadius: "8px",
                         border: isSel ? `2px solid ${st.color}` : "1px solid #e2e8f0",
                         backgroundColor: isSel ? st.bg : "#ffffff",
                         color: isSel ? st.color : "#475569",
                         fontWeight: 700,
-                        fontSize: "0.74rem",
+                        fontSize: "0.72rem",
+                        lineHeight: 1.2,
                         cursor: "pointer",
-                        textAlign: "center"
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textAlign: "center",
+                        boxSizing: "border-box"
                       }}
                     >
                       {st.label}
@@ -1801,21 +1961,26 @@ function PhoneDialerModalContent({
 
             {/* CALL DIRECTION (OUTBOUND / INBOUND) */}
             <div style={{ marginBottom: "14px" }}>
-              <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>Call Type</label>
+              <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "block", marginBottom: "4px" }}>
+                Call Type
+              </label>
               <div style={{ display: "flex", gap: "8px" }}>
                 <button
                   type="button"
                   onClick={() => setCallType("OUTBOUND")}
                   style={{
                     flex: 1,
-                    padding: "7px",
+                    height: "38px",
                     borderRadius: "8px",
                     border: callType === "OUTBOUND" ? "2px solid #4f46e5" : "1px solid #cbd5e1",
                     backgroundColor: callType === "OUTBOUND" ? "#eef2ff" : "#ffffff",
                     color: callType === "OUTBOUND" ? "#4f46e5" : "#64748b",
                     fontWeight: 700,
                     fontSize: "0.8rem",
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
                   }}
                 >
                   Outbound Call (Made by us)
@@ -1825,14 +1990,17 @@ function PhoneDialerModalContent({
                   onClick={() => setCallType("INBOUND")}
                   style={{
                     flex: 1,
-                    padding: "7px",
+                    height: "38px",
                     borderRadius: "8px",
                     border: callType === "INBOUND" ? "2px solid #059669" : "1px solid #cbd5e1",
                     backgroundColor: callType === "INBOUND" ? "#ecfdf5" : "#ffffff",
                     color: callType === "INBOUND" ? "#059669" : "#64748b",
                     fontWeight: 700,
                     fontSize: "0.8rem",
-                    cursor: "pointer"
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
                   }}
                 >
                   Inbound Call (Received)
@@ -1850,13 +2018,15 @@ function PhoneDialerModalContent({
                 onChange={(e) => setOutcome(e.target.value)}
                 style={{
                   width: "100%",
-                  padding: "9px 12px",
+                  height: "40px",
+                  padding: "0 12px",
                   borderRadius: "8px",
                   border: "1px solid #cbd5e1",
                   fontSize: "0.85rem",
                   backgroundColor: "#ffffff",
                   color: "#0f172a",
-                  fontWeight: 600
+                  fontWeight: 600,
+                  boxSizing: "border-box"
                 }}
               >
                 {DEFAULT_OUTCOMES.map((oc, i) => (
@@ -1927,128 +2097,202 @@ function PhoneDialerModalContent({
                 placeholder="Key conversation notes, pricing agreed, next steps..."
                 style={{
                   width: "100%",
-                  padding: "8px 12px",
+                  padding: "10px 12px",
                   borderRadius: "8px",
                   border: "1px solid #cbd5e1",
                   fontSize: "0.82rem",
+                  color: "#0f172a",
+                  lineHeight: 1.45,
+                  boxSizing: "border-box",
                   outline: "none"
                 }}
               />
             </div>
 
-            {/* 12-HOUR FOLLOW-UP DATE & TIME PICKER */}
+            {/* 12-HOUR FOLLOW-UP DATE & TIME PICKER (Uniform 38px Inputs) */}
             <div style={{ marginBottom: "16px" }}>
               <label style={{ fontSize: "0.76rem", fontWeight: 700, color: "#475569", display: "flex", alignItems: "center", gap: "4px", marginBottom: "6px" }}>
                 <Calendar size={13} color="#4f46e5" /> Schedule Next Follow-up (12-Hour Clock)
               </label>
 
-              <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px" }}>
+              <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px", flexWrap: "wrap" }}>
+                {/* Date Input */}
                 <input
                   type="date"
                   value={followUpDate}
                   onChange={(e) => setFollowUpDate(e.target.value)}
-                  style={{ flex: 1, padding: "8px 10px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.82rem", backgroundColor: "#ffffff" }}
+                  style={{
+                    flex: "1 1 130px",
+                    minWidth: "120px",
+                    height: "38px",
+                    padding: "0 10px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    fontSize: "0.82rem",
+                    backgroundColor: "#ffffff",
+                    color: "#0f172a",
+                    fontWeight: 600,
+                    boxSizing: "border-box"
+                  }}
                 />
-                <select
-                  value={followUpHour}
-                  onChange={(e) => setFollowUpHour(e.target.value)}
-                  style={{ padding: "8px 4px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.82rem", fontWeight: 700 }}
-                >
-                  {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                    <option key={h} value={h}>{h}</option>
-                  ))}
-                </select>
-                <span style={{ fontWeight: 700, color: "#94a3b8" }}>:</span>
-                <select
-                  value={followUpMinute}
-                  onChange={(e) => setFollowUpMinute(e.target.value)}
-                  style={{ padding: "8px 4px", borderRadius: "8px", border: "1px solid #cbd5e1", fontSize: "0.82rem", fontWeight: 700 }}
-                >
-                  {["00", "15", "30", "45"].map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-                <div style={{ display: "flex", borderRadius: "8px", border: "1px solid #cbd5e1", overflow: "hidden" }}>
-                  <button
-                    type="button"
-                    onClick={() => setFollowUpPeriod("AM")}
+
+                {/* Time Pickers Cluster */}
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                  <select
+                    value={followUpHour}
+                    onChange={(e) => setFollowUpHour(e.target.value)}
                     style={{
-                      padding: "6px 8px",
-                      fontSize: "0.75rem",
+                      height: "38px",
+                      padding: "0 6px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.82rem",
                       fontWeight: 700,
-                      border: "none",
-                      backgroundColor: followUpPeriod === "AM" ? "#4f46e5" : "#f1f5f9",
-                      color: followUpPeriod === "AM" ? "#ffffff" : "#475569",
-                      cursor: "pointer"
+                      backgroundColor: "#ffffff",
+                      color: "#0f172a",
+                      boxSizing: "border-box"
                     }}
                   >
-                    AM
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFollowUpPeriod("PM")}
+                    {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                      <option key={h} value={h}>{h}</option>
+                    ))}
+                  </select>
+
+                  <span style={{ fontWeight: 800, color: "#64748b" }}>:</span>
+
+                  <select
+                    value={followUpMinute}
+                    onChange={(e) => setFollowUpMinute(e.target.value)}
                     style={{
-                      padding: "6px 8px",
-                      fontSize: "0.75rem",
+                      height: "38px",
+                      padding: "0 6px",
+                      borderRadius: "8px",
+                      border: "1px solid #cbd5e1",
+                      fontSize: "0.82rem",
                       fontWeight: 700,
-                      border: "none",
-                      backgroundColor: followUpPeriod === "PM" ? "#4f46e5" : "#f1f5f9",
-                      color: followUpPeriod === "PM" ? "#ffffff" : "#475569",
-                      cursor: "pointer"
+                      backgroundColor: "#ffffff",
+                      color: "#0f172a",
+                      boxSizing: "border-box"
                     }}
                   >
-                    PM
-                  </button>
+                    {["00", "15", "30", "45"].map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+
+                  <div style={{
+                    display: "flex",
+                    height: "38px",
+                    borderRadius: "8px",
+                    border: "1px solid #cbd5e1",
+                    overflow: "hidden",
+                    boxSizing: "border-box"
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setFollowUpPeriod("AM")}
+                      style={{
+                        padding: "0 10px",
+                        fontSize: "0.75rem",
+                        fontWeight: 800,
+                        border: "none",
+                        backgroundColor: followUpPeriod === "AM" ? "#4f46e5" : "#f1f5f9",
+                        color: followUpPeriod === "AM" ? "#ffffff" : "#475569",
+                        cursor: "pointer"
+                      }}
+                    >
+                      AM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFollowUpPeriod("PM")}
+                      style={{
+                        padding: "0 10px",
+                        fontSize: "0.75rem",
+                        fontWeight: 800,
+                        border: "none",
+                        backgroundColor: followUpPeriod === "PM" ? "#4f46e5" : "#f1f5f9",
+                        color: followUpPeriod === "PM" ? "#ffffff" : "#475569",
+                        cursor: "pointer"
+                      }}
+                    >
+                      PM
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Quick Follow-up Presets */}
-              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.7rem", color: "#94a3b8", alignSelf: "center" }}>Quick:</span>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ fontSize: "0.7rem", color: "#94a3b8", alignSelf: "center", fontWeight: 700 }}>Quick:</span>
                 <button
                   type="button"
                   onClick={() => setQuickFollowUp(0, 5, 0, "PM")}
-                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer" }}
+                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer", fontWeight: 600 }}
                 >
                   Today 5 PM
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
-                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer" }}
+                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer", fontWeight: 600 }}
                 >
                   Tomorrow 11 AM
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickFollowUp(2, 4, 0, "PM")}
-                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer" }}
+                  style={{ fontSize: "0.72rem", padding: "3px 8px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#475569", cursor: "pointer", fontWeight: 600 }}
                 >
                   In 2 Days
                 </button>
               </div>
             </div>
 
-            {/* SAVE AS NEW LEAD FOR UNSAVED CONTACT */}
+            {/* SAVE AS NEW LEAD FOR UNSAVED CONTACT (Single Column Stacked to Prevent Overflow) */}
             {(!selectedContact || showNewLeadForm) && (
-              <div style={{ padding: "12px", backgroundColor: "#fef3c7", borderRadius: "10px", border: "1px solid #fde68a", marginBottom: "16px" }}>
+              <div style={{
+                padding: "12px 14px",
+                backgroundColor: "#fef3c7",
+                borderRadius: "12px",
+                border: "1px solid #fde68a",
+                marginBottom: "16px"
+              }}>
                 <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#92400e", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
                   <UserPlus size={15} /> Save Contact as New CRM Lead
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                   <input
                     type="text"
                     placeholder="Contact Name *"
                     value={newLeadName}
                     onChange={(e) => setNewLeadName(e.target.value)}
-                    style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #fcd34d", fontSize: "0.78rem" }}
+                    style={{
+                      width: "100%",
+                      height: "38px",
+                      padding: "0 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #fcd34d",
+                      fontSize: "0.82rem",
+                      backgroundColor: "#ffffff",
+                      boxSizing: "border-box"
+                    }}
                   />
                   <input
                     type="text"
-                    placeholder="Shop / Business Name"
+                    placeholder="Shop / Business Name (Optional)"
                     value={newLeadShop}
                     onChange={(e) => setNewLeadShop(e.target.value)}
-                    style={{ padding: "6px 10px", borderRadius: "6px", border: "1px solid #fcd34d", fontSize: "0.78rem" }}
+                    style={{
+                      width: "100%",
+                      height: "38px",
+                      padding: "0 12px",
+                      borderRadius: "8px",
+                      border: "1px solid #fcd34d",
+                      fontSize: "0.82rem",
+                      backgroundColor: "#ffffff",
+                      boxSizing: "border-box"
+                    }}
                   />
                 </div>
               </div>
@@ -2060,7 +2304,7 @@ function PhoneDialerModalContent({
               disabled={isSaving}
               style={{
                 width: "100%",
-                padding: "13px",
+                height: "48px",
                 borderRadius: "14px",
                 background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
                 color: "#ffffff",
