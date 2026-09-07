@@ -117,31 +117,46 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const hasDiscount = order.items.some(item => getItemDiscountPct(item) > 0);
 
   return (
-    <div style={{ backgroundColor: '#e5e7eb', minHeight: '100vh', padding: '40px 20px' }}>
+    <div style={{ backgroundColor: '#f1f5f9', minHeight: '100vh', padding: '20px 12px 100px 12px' }}>
 
       {/* Top Floating Action Bar */}
-      <div style={{ maxWidth: '900px', margin: '0 auto 20px auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} className="no-print">
-        <a href={`/orders/${order.id}`} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}>
-          ← Back to Order
-        </a>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+      <div style={{ maxWidth: '900px', margin: '0 auto 14px auto' }} className="no-print">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+          <a href={`/orders/${order.id}`} style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 600, fontSize: '13.5px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            ← Back to Order
+          </a>
+        </div>
+
+        {/* Action Buttons Toolbar */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', overflowX: 'auto', paddingBottom: '6px', WebkitOverflowScrolling: 'touch' }} className="invoice-action-bar">
           <DownloadPdfButton elementId="printable-invoice" filename={`INV-${order.orderNumber}.pdf`} />
           <PrintInvoiceButton />
         </div>
       </div>
 
-      {/* Invoice Sheet — same layout as quotation */}
-      <div style={{
-        maxWidth: '900px',
-        margin: '0 auto',
-        backgroundColor: '#ffffff',
-        padding: '36px',
-        border: '1px solid #9ca3af',
-        fontFamily: "var(--font-inter), 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        color: '#0f172a',
-        fontSize: '12px',
-        lineHeight: '1.4'
-      }} id="printable-invoice">
+      {/* Mobile Swipe Hint */}
+      <div className="mobile-scroll-hint no-print" style={{ maxWidth: '900px', margin: '0 auto 8px auto' }}>
+        <div style={{ backgroundColor: '#e0f2fe', border: '1px solid #bae6fd', color: '#0369a1', fontSize: '11px', fontWeight: 600, padding: '5px 10px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>👉 Swipe invoice sideways to view all GST & rate columns</span>
+          <span>↔</span>
+        </div>
+      </div>
+
+      {/* Touch-Scrollable Document Wrapper */}
+      <div style={{ maxWidth: '900px', margin: '0 auto', overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: '8px', boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)' }} className="invoice-doc-scroll-wrap">
+        <div style={{
+          width: '820px',
+          minWidth: '820px',
+          margin: '0 auto',
+          backgroundColor: '#ffffff',
+          padding: '36px',
+          border: '1px solid #9ca3af',
+          boxSizing: 'border-box',
+          fontFamily: "var(--font-inter), 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          color: '#0f172a',
+          fontSize: '12px',
+          lineHeight: '1.4'
+        }} id="printable-invoice">
 
         {/* Company Header Row */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
@@ -425,12 +440,34 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </div>
 
       </div>
+      </div>
 
       <style dangerouslySetInnerHTML={{__html: `
+        .mobile-scroll-hint {
+          display: none;
+        }
+        @media (max-width: 860px) {
+          .mobile-scroll-hint {
+            display: block !important;
+          }
+          .invoice-doc-scroll-wrap {
+            border: 1px solid #cbd5e1;
+            background-color: #ffffff;
+            margin-bottom: 24px;
+          }
+          .invoice-action-bar::-webkit-scrollbar {
+            height: 4px;
+          }
+          .invoice-action-bar::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+          }
+        }
         @media print {
           .no-print { display: none !important; }
           body { background-color: white !important; margin: 0 !important; padding: 0 !important; }
-          #printable-invoice { border: none !important; padding: 0 !important; max-width: 100% !important; }
+          .invoice-doc-scroll-wrap { box-shadow: none !important; border: none !important; width: 100% !important; max-width: 100% !important; }
+          #printable-invoice { border: none !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; min-width: 100% !important; }
         }
       `}} />
     </div>
