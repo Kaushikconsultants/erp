@@ -7,10 +7,10 @@ import { Coins, X, CheckCircle2, CreditCard, Percent, ShieldAlert } from 'lucide
 import '@/components/ui/modal.css';
 
 const SLAB_OPTIONS = [
-  { id: '0', title: '0% Discount (Bonus)', icon: <Percent size={14} color="#059669" /> },
-  { id: '1-15', title: '1 - 15% Discount (Standard)', icon: <CheckCircle2 size={14} color="#059669" /> },
-  { id: '>15', title: 'Above 15% Discount', icon: <ShieldAlert size={14} color="#d97706" /> },
-  { id: 'credit', title: 'Credit Customer', icon: <CreditCard size={14} color="#4f46e5" /> }
+  { id: '0', title: '0% Discount', subtitle: 'Bonus Incentive', icon: <Percent size={14} color="#059669" /> },
+  { id: '1-15', title: '1 - 15% Discount', subtitle: 'Standard Pricing', icon: <CheckCircle2 size={14} color="#059669" /> },
+  { id: '>15', title: 'Above 15% Discount', subtitle: 'Special Approval', icon: <ShieldAlert size={14} color="#d97706" /> },
+  { id: 'credit', title: 'Credit Customer', subtitle: 'Post-Dated / Ledger', icon: <CreditCard size={14} color="#4f46e5" /> }
 ];
 
 interface EditTokenAmountModalProps {
@@ -114,7 +114,7 @@ export default function EditTokenAmountModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px'
+        padding: '12px'
       }}
       onClick={onClose}
     >
@@ -122,7 +122,10 @@ export default function EditTokenAmountModal({
         style={{
           backgroundColor: '#ffffff',
           width: '100%',
-          maxWidth: '500px',
+          maxWidth: '520px',
+          maxHeight: '92vh',
+          display: 'flex',
+          flexDirection: 'column',
           borderRadius: '16px',
           overflow: 'hidden',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
@@ -134,12 +137,13 @@ export default function EditTokenAmountModal({
         <div style={{
           background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
           color: '#ffffff',
-          padding: '18px 22px',
+          padding: '16px 20px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexShrink: 0
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
             <div style={{
               width: '36px',
               height: '36px',
@@ -147,13 +151,16 @@ export default function EditTokenAmountModal({
               backgroundColor: 'rgba(255, 255, 255, 0.2)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }}>
               <Coins size={20} color="#ffffff" />
             </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Edit Token / Advance & Pricing</h3>
-              <p style={{ margin: '2px 0 0 0', fontSize: '0.78rem', color: '#e6fffa', fontWeight: 500 }}>
+            <div style={{ minWidth: 0 }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Edit Token / Advance & Pricing
+              </h3>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.76rem', color: '#e6fffa', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 Quote #{quotationNumber} • {customerName || 'Customer'}
               </p>
             </div>
@@ -170,7 +177,9 @@ export default function EditTokenAmountModal({
               padding: '6px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0,
+              marginLeft: '8px'
             }}
           >
             <X size={18} />
@@ -178,7 +187,7 @@ export default function EditTokenAmountModal({
         </div>
 
         {/* MODAL BODY */}
-        <form onSubmit={handleSave} style={{ padding: '22px' }}>
+        <form onSubmit={handleSave} style={{ padding: '18px', overflowY: 'auto', flex: 1 }}>
           {error && (
             <div style={{
               backgroundColor: '#fef2f2',
@@ -199,24 +208,24 @@ export default function EditTokenAmountModal({
             backgroundColor: '#f8fafc',
             border: '1px solid #e2e8f0',
             borderRadius: '10px',
-            padding: '12px 16px',
+            padding: '10px 14px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '18px'
+            marginBottom: '16px'
           }}>
-            <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>Total Quotation Value:</span>
-            <span style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
+            <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Total Quotation Value:</span>
+            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
               ₹{totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </span>
           </div>
 
           {/* PAYMENT OPTION PILLS */}
-          <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
+          <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
             Payment Advance Type
           </label>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '18px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '16px' }}>
             {/* FULL */}
             <button
               type="button"
@@ -225,19 +234,24 @@ export default function EditTokenAmountModal({
                 setTokenAmountStr(String(totalValue));
               }}
               style={{
-                padding: '10px 8px',
+                padding: '10px 4px',
                 borderRadius: '8px',
                 border: paymentOption === 'FULL' ? '2px solid #059669' : '1px solid #cbd5e1',
                 backgroundColor: paymentOption === 'FULL' ? '#ecfdf5' : '#ffffff',
                 color: paymentOption === 'FULL' ? '#065f46' : '#475569',
-                fontWeight: 700,
-                fontSize: '0.78rem',
                 cursor: 'pointer',
                 textAlign: 'center',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                minWidth: 0
               }}
             >
-              100% Full (₹{totalValue > 0 ? (totalValue / 1000).toFixed(1) + 'k' : '0'})
+              <span style={{ fontWeight: 800, fontSize: '0.76rem', lineHeight: 1.1 }}>100% Full</span>
+              <span style={{ fontSize: '0.68rem', opacity: 0.85, fontWeight: 600 }}>₹{totalValue > 0 ? (totalValue / 1000).toFixed(1) + 'k' : '0'}</span>
             </button>
 
             {/* TOKEN */}
@@ -245,19 +259,24 @@ export default function EditTokenAmountModal({
               type="button"
               onClick={() => setPaymentOption('TOKEN')}
               style={{
-                padding: '10px 8px',
+                padding: '10px 4px',
                 borderRadius: '8px',
                 border: paymentOption === 'TOKEN' ? '2px solid #059669' : '1px solid #cbd5e1',
                 backgroundColor: paymentOption === 'TOKEN' ? '#ecfdf5' : '#ffffff',
                 color: paymentOption === 'TOKEN' ? '#065f46' : '#475569',
-                fontWeight: 700,
-                fontSize: '0.78rem',
                 cursor: 'pointer',
                 textAlign: 'center',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                minWidth: 0
               }}
             >
-              🪙 Custom Token
+              <span style={{ fontWeight: 800, fontSize: '0.76rem', lineHeight: 1.1 }}>🪙 Custom</span>
+              <span style={{ fontSize: '0.68rem', opacity: 0.85, fontWeight: 600 }}>Token</span>
             </button>
 
             {/* CREDIT / ZERO */}
@@ -268,26 +287,31 @@ export default function EditTokenAmountModal({
                 setTokenAmountStr('0');
               }}
               style={{
-                padding: '10px 8px',
+                padding: '10px 4px',
                 borderRadius: '8px',
                 border: paymentOption === 'CREDIT' ? '2px solid #059669' : '1px solid #cbd5e1',
                 backgroundColor: paymentOption === 'CREDIT' ? '#ecfdf5' : '#ffffff',
                 color: paymentOption === 'CREDIT' ? '#065f46' : '#475569',
-                fontWeight: 700,
-                fontSize: '0.78rem',
                 cursor: 'pointer',
                 textAlign: 'center',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '2px',
+                minWidth: 0
               }}
             >
-              0 Advance (Credit)
+              <span style={{ fontWeight: 800, fontSize: '0.76rem', lineHeight: 1.1 }}>0 Advance</span>
+              <span style={{ fontSize: '0.68rem', opacity: 0.85, fontWeight: 600 }}>(Credit)</span>
             </button>
           </div>
 
           {/* TOKEN AMOUNT INPUT IF TOKEN IS SELECTED */}
           {paymentOption === 'TOKEN' && (
-            <div style={{ marginBottom: '18px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
                 Enter Token / Advance Amount Received (₹) <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <div style={{
@@ -300,11 +324,11 @@ export default function EditTokenAmountModal({
                 boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.12)'
               }}>
                 <span style={{
-                  padding: '10px 14px',
+                  padding: '9px 12px',
                   backgroundColor: '#f0fdf4',
                   color: '#059669',
                   fontWeight: 800,
-                  fontSize: '1rem',
+                  fontSize: '0.95rem',
                   borderRight: '1px solid #86efac'
                 }}>
                   ₹
@@ -320,10 +344,10 @@ export default function EditTokenAmountModal({
                   autoFocus
                   style={{
                     width: '100%',
-                    padding: '10px 14px',
+                    padding: '9px 12px',
                     border: 'none',
                     outline: 'none',
-                    fontSize: '1.1rem',
+                    fontSize: '1.05rem',
                     fontWeight: 800,
                     color: '#0f172a'
                   }}
@@ -333,11 +357,11 @@ export default function EditTokenAmountModal({
           )}
 
           {/* DISCOUNT & PRICING STRUCTURE (SLABS) */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>
               Discount & Pricing Structure
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }} className="token-slab-grid">
               {SLAB_OPTIONS.map((option) => {
                 const isSelected = selectedSlab === option.id;
                 return (
@@ -348,12 +372,13 @@ export default function EditTokenAmountModal({
                       display: 'flex',
                       alignItems: 'center',
                       gap: '8px',
-                      padding: '9px 10px',
+                      padding: '8px 10px',
                       borderRadius: '8px',
                       border: isSelected ? '2px solid #059669' : '1px solid #cbd5e1',
                       backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
                       cursor: 'pointer',
-                      transition: 'all 0.15s ease'
+                      transition: 'all 0.15s ease',
+                      minWidth: 0
                     }}
                   >
                     <input 
@@ -362,13 +387,22 @@ export default function EditTokenAmountModal({
                       value={option.id}
                       checked={isSelected}
                       onChange={() => setSelectedSlab(option.id)}
-                      style={{ accentColor: '#059669', width: '15px', height: '15px', cursor: 'pointer', margin: 0 }}
+                      style={{ accentColor: '#059669', width: '15px', height: '15px', cursor: 'pointer', margin: 0, flexShrink: 0 }}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                      {option.icon}
-                      <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#065f46' : '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {option.title}
-                      </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        {option.icon}
+                        <span style={{ 
+                          fontSize: '0.76rem', 
+                          fontWeight: isSelected ? 800 : 600, 
+                          color: isSelected ? '#065f46' : '#1e293b', 
+                          lineHeight: 1.25,
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word'
+                        }}>
+                          {option.title}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -381,17 +415,17 @@ export default function EditTokenAmountModal({
             backgroundColor: '#f0fdf4',
             border: '1px solid #86efac',
             borderRadius: '10px',
-            padding: '12px 16px',
-            marginBottom: '20px',
+            padding: '10px 14px',
+            marginBottom: '18px',
             display: 'flex',
             flexDirection: 'column',
-            gap: '6px'
+            gap: '5px'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
               <span style={{ color: '#065f46', fontWeight: 600 }}>Amount Received / Paid:</span>
               <span style={{ color: '#059669', fontWeight: 800 }}>₹{resolvedAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', paddingTop: '4px', borderTop: '1px dashed #a7f3d0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', paddingTop: '4px', borderTop: '1px dashed #a7f3d0' }}>
               <span style={{ color: '#065f46', fontWeight: 600 }}>Remaining Balance Due:</span>
               <span style={{ color: remainingBalance > 0 ? '#b45309' : '#059669', fontWeight: 800 }}>
                 ₹{remainingBalance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -406,14 +440,17 @@ export default function EditTokenAmountModal({
               onClick={onClose}
               disabled={loading}
               style={{
-                padding: '9px 16px',
+                flex: 1,
+                maxWidth: '120px',
+                padding: '10px 14px',
                 borderRadius: '8px',
                 border: '1px solid #cbd5e1',
                 backgroundColor: '#ffffff',
                 color: '#475569',
                 fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer'
+                fontSize: '0.84rem',
+                cursor: 'pointer',
+                textAlign: 'center'
               }}
             >
               Cancel
@@ -422,7 +459,8 @@ export default function EditTokenAmountModal({
               type="submit"
               disabled={loading}
               style={{
-                padding: '9px 20px',
+                flex: 2,
+                padding: '10px 18px',
                 borderRadius: '8px',
                 border: 'none',
                 backgroundColor: '#059669',
@@ -432,6 +470,7 @@ export default function EditTokenAmountModal({
                 cursor: loading ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'center',
                 gap: '6px',
                 boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
               }}
@@ -442,6 +481,14 @@ export default function EditTokenAmountModal({
           </div>
         </form>
       </div>
+
+      <style jsx global>{`
+        @media (max-width: 440px) {
+          .token-slab-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
