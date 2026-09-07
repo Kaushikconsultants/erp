@@ -3,7 +3,13 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, X, Sparkles, MessageSquare, PhoneCall, FileCheck, Package, ExternalLink, ShieldCheck } from "lucide-react";
-import { triggerHaptic, isNativePlatform, requestAllNativePermissions, getDeviceInfo } from "@/lib/capacitor";
+import {
+  triggerHaptic,
+  isNativePlatform,
+  requestAllNativePermissions,
+  getDeviceInfo,
+  postNativeAndroidNotification
+} from "@/lib/capacitor";
 
 const VAPID_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
@@ -82,6 +88,7 @@ export default function PushNotificationManager() {
     setActiveToast(toast);
     playNotificationChime();
     triggerHaptic("success").catch(() => {});
+    postNativeAndroidNotification(toast.title, toast.body, toast.url || "");
 
     toastTimerRef.current = setTimeout(() => {
       setActiveToast(null);

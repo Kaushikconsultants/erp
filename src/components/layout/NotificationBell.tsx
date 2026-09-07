@@ -28,6 +28,11 @@ export default function NotificationBell() {
           if (!topNotif.isRead && lastSeenNotifIdRef.current && topNotif.id !== lastSeenNotifIdRef.current) {
             playNotificationChime();
             triggerHaptic("success").catch(() => {});
+            
+            // Post to Android native notification shade
+            import("@/lib/capacitor").then(({ postNativeAndroidNotification }) => {
+              postNativeAndroidNotification(topNotif.title, topNotif.message, topNotif.link || "");
+            }).catch(() => {});
           }
         }
 

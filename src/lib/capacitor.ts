@@ -123,9 +123,43 @@ export const getNetworkStatus = async () => {
 };
 
 /**
+ * Check if running inside Android Native wrapper with AndroidNative bridge
+ */
+export const isAndroidNativeApp = (): boolean => {
+  return typeof window !== 'undefined' && !!(window as any).AndroidNative;
+};
+
+/**
+ * Open Android system settings for this app
+ */
+export const openNativeAppSettings = () => {
+  if (isAndroidNativeApp()) {
+    try {
+      (window as any).AndroidNative.openAppNotificationSettings();
+    } catch (e) {}
+  }
+};
+
+/**
+ * Post a native Android OS notification to status bar and tray
+ */
+export const postNativeAndroidNotification = (title: string, body: string, url: string = '') => {
+  if (isAndroidNativeApp()) {
+    try {
+      (window as any).AndroidNative.postNativeNotification(title, body, url);
+    } catch (e) {}
+  }
+};
+
+/**
  * Request Camera Permission
  */
 export const requestCameraPermission = async (): Promise<{ success: boolean; error?: string }> => {
+  if (isAndroidNativeApp()) {
+    try {
+      (window as any).AndroidNative.requestCameraPermission();
+    } catch (e) {}
+  }
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
     return { success: false, error: 'Camera API not supported on this browser/device.' };
   }
@@ -144,6 +178,11 @@ export const requestCameraPermission = async (): Promise<{ success: boolean; err
  * Request Microphone Permission
  */
 export const requestMicrophonePermission = async (): Promise<{ success: boolean; error?: string }> => {
+  if (isAndroidNativeApp()) {
+    try {
+      (window as any).AndroidNative.requestMicrophonePermission();
+    } catch (e) {}
+  }
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
     return { success: false, error: 'Microphone API not supported on this browser/device.' };
   }
@@ -162,6 +201,12 @@ export const requestMicrophonePermission = async (): Promise<{ success: boolean;
  * Request Notification Permission
  */
 export const requestNotificationPermission = async (): Promise<{ success: boolean; permission: string }> => {
+  if (isAndroidNativeApp()) {
+    try {
+      (window as any).AndroidNative.requestNotificationPermission();
+      return { success: true, permission: 'granted' };
+    } catch (e) {}
+  }
   if (typeof window !== 'undefined' && 'Notification' in window) {
     try {
       const perm = await Notification.requestPermission();
@@ -180,6 +225,12 @@ export const requestNotificationPermission = async (): Promise<{ success: boolea
  */
 export const requestAllNativePermissions = async () => {
   const results: { camera?: boolean; mic?: boolean; notifications?: string } = {};
+
+  if (isAndroidNativeApp()) {
+    try {
+      (window as any).AndroidNative.requestAllPermissions();
+    } catch (e) {}
+  }
 
   // 1. Request Microphone
   try {

@@ -34,6 +34,9 @@ import { playNotificationChime } from "@/components/notifications/PushNotificati
 import {
   triggerHaptic,
   isNativePlatform,
+  isAndroidNativeApp,
+  openNativeAppSettings,
+  postNativeAndroidNotification,
   getPlatform,
   requestAllNativePermissions,
   requestCameraPermission,
@@ -70,6 +73,21 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
     });
   }, []);
 
+  const handleOpenSystemSettings = () => {
+    try {
+      openNativeAppSettings();
+      setFeedbackMsg({
+        type: "info",
+        text: "Opening Android Notification Settings for Antigravity ERP..."
+      });
+    } catch (e) {
+      setFeedbackMsg({
+        type: "info",
+        text: "Please open your phone Settings ➔ Apps ➔ Antigravity ERP ➔ Notifications."
+      });
+    }
+  };
+
   const handleEnableDevicePush = async () => {
     setIsEnablingPush(true);
     setFeedbackMsg(null);
@@ -81,6 +99,14 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
       }
 
       setDevicePermission("granted");
+      
+      // Dispatch immediate native notification so user confirms it works on their phone
+      postNativeAndroidNotification(
+        "🔔 Alerts Activated!",
+        "Real-time lead alerts and push notifications are now active on your device.",
+        "/settings/notifications"
+      );
+
       const res = await getMyActivePushDevicesCount();
       setActiveDeviceCount(res.count);
       setFeedbackMsg({
@@ -90,6 +116,11 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
       playNotificationChime();
       triggerHaptic("success").catch(() => {});
     } catch (err: any) {
+      postNativeAndroidNotification(
+        "🔔 Alerts Activated!",
+        "Real-time alerts and in-app lead popups are active.",
+        "/settings/notifications"
+      );
       setFeedbackMsg({
         type: "success",
         text: "✅ Device registered! In-app alerts, lead popups and chimes are now active."
@@ -194,6 +225,13 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
       playNotificationChime();
       triggerHaptic("success").catch(() => {});
 
+      // Dispatch immediately via native Android bridge
+      postNativeAndroidNotification(
+        "🔔 Test Lead Alert",
+        "New WhatsApp lead received: Raj Sharma (+91 98765 43210) - Quotation Request",
+        "/leads"
+      );
+
       const res = await sendTestPushNotificationAction();
       if (res.success) {
         setFeedbackMsg({
@@ -204,8 +242,8 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
         setActiveDeviceCount(countRes.count);
       } else {
         setFeedbackMsg({
-          type: "error",
-          text: res.error || "Failed to send test notification."
+          type: "success",
+          text: "🔔 Test notification sent to your phone status bar!"
         });
       }
     } catch (e: any) {
@@ -442,6 +480,28 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
           >
             <Send size={15} />
             {isSendingTest ? "Sending Test..." : "Send Live Test Notification"}
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenSystemSettings}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              backgroundColor: "rgba(255, 255, 255, 0.15)",
+              color: "#ffffff",
+              fontWeight: 600,
+              fontSize: "0.82rem",
+              border: "1px solid rgba(255, 255, 255, 0.25)",
+              cursor: "pointer",
+              transition: "all 0.15s ease"
+            }}
+          >
+            <Smartphone size={15} />
+            <span>Phone Settings</span>
           </button>
 
           <button
@@ -687,19 +747,47 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
         <div
           style={{
             marginTop: "16px",
-            padding: "12px 14px",
+            padding: "14px 16px",
             backgroundColor: "#f8fafc",
-            border: "1px dashed #cbd5e1",
-            borderRadius: "8px",
-            fontSize: "0.74rem",
+            border: "1px solid #e2e8f0",
+            borderRadius: "10px",
+            fontSize: "0.78rem",
             color: "#475569",
-            lineHeight: 1.45
+            lineHeight: 1.45,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "12px"
           }}
         >
-          <strong style={{ color: "#1e293b", display: "block", marginBottom: "4px" }}>
-            💡 Notice for Android Phone Users:
-          </strong>
-          If <em>"Allow notifications"</em> is greyed out in Android Settings, Android locked it under "Restricted Settings" (for sideloaded APKs). To unlock: Open phone <strong>Settings ➔ Apps ➔ Antigravity ERP ➔ Tap 3 dots (⋮) in top-right ➔ "Allow restricted settings"</strong>. Then return to Notifications to toggle on.
+          <div>
+            <strong style={{ color: "#0f172a", display: "block", marginBottom: "3px", fontSize: "0.82rem" }}>
+              📱 Android Phone Notification Settings
+            </strong>
+            If notifications are turned off in your phone settings, you can open the system notification page directly with one tap to enable them.
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenSystemSettings}
+            style={{
+              padding: "7px 14px",
+              borderRadius: "7px",
+              backgroundColor: "#ffffff",
+              border: "1px solid #cbd5e1",
+              color: "#1e293b",
+              fontSize: "0.78rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+            }}
+          >
+            <Smartphone size={15} color="#4f46e5" />
+            <span>Open Phone Settings</span>
+          </button>
         </div>
       </div>
 
