@@ -55,9 +55,9 @@ export const triggerHaptic = async (
 export const initNativeMobileShell = (onNavigateBack?: () => void) => {
   if (!isNativePlatform()) return;
 
-  // 1. Configure Native Status Bar
+  // 1. Configure Native Status Bar (Style.Light for dark/black icons on white status bar)
   try {
-    StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+    StatusBar.setStyle({ style: Style.Light }).catch(() => {});
     if (Capacitor.getPlatform() === 'android') {
       StatusBar.setBackgroundColor({ color: '#ffffff' }).catch(() => {});
       StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});

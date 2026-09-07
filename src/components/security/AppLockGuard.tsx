@@ -17,6 +17,7 @@ import { signOut } from "next-auth/react";
 import { NativeBiometric } from "@capgo/capacitor-native-biometric";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
+import { StatusBar, Style } from "@capacitor/status-bar";
 import { triggerHaptic } from "@/lib/capacitor";
 
 interface AppLockGuardProps {
@@ -31,6 +32,30 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [isShaking, setIsShaking] = useState<boolean>(false);
   const [isBiometricSupported, setIsBiometricSupported] = useState<boolean>(false);
+
+  // Synchronize native status bar icon contrast with lock screen vs dashboard
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!Capacitor.isNativePlatform() && !(window as any).Capacitor?.isNativePlatform?.()) return;
+
+    try {
+      if (isLocked) {
+        // Dark lock screen -> White icons
+        StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+        if (Capacitor.getPlatform() === "android") {
+          StatusBar.setBackgroundColor({ color: "#090d16" }).catch(() => {});
+          StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+        }
+      } else {
+        // Light dashboard -> Dark/Black icons (100% visible on white)
+        StatusBar.setStyle({ style: Style.Light }).catch(() => {});
+        if (Capacitor.getPlatform() === "android") {
+          StatusBar.setBackgroundColor({ color: "#ffffff" }).catch(() => {});
+          StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
+        }
+      }
+    } catch (e) {}
+  }, [isLocked]);
 
   // Guard refs to prevent re-entrant biometric calls and infinite popup loops
   const isAuthenticatingRef = useRef<boolean>(false);
