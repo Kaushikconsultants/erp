@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { recordCustomerPayment, getCustomerUnpaidInvoices, cancelPayment, updatePayment, deletePayment } from '@/app/actions/paymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
+import "./payments.css";
 
 interface CustomerOption {
   id: string;
@@ -552,34 +553,25 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
   };
 
   return (
-    <div className="page-container" style={{ padding: '24px', maxWidth: '1440px', margin: '0 auto' }}>
+    <div className="payments-container">
       
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: 40,
-            height: 40,
-            borderRadius: '10px',
-            background: 'var(--accent-primary)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff'
-          }}>
-            <Wallet size={20} />
+      <div className="payments-header">
+        <div className="payments-header-left">
+          <div className="payments-header-icon">
+            <Wallet size={22} />
           </div>
           <div>
-            <h1 className="page-title" style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+            <h1 className="payments-header-title">
               Payment Collection & Ledger
             </h1>
-            <p className="page-subtitle" style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '2px 0 0 0' }}>
+            <p className="payments-header-desc">
               Track receipts, settle customer invoices, record advance deposits, and generate ledgers.
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <div className="payments-header-actions">
           <button
             onClick={exportToExcel}
             className="action-btn"
@@ -637,103 +629,70 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
 
       {/* KPI Cards */}
       {summary && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-          <div className="glass-panel" style={{ padding: '18px', display: 'flex', gap: '14px', alignItems: 'center', borderTop: '3px solid #10b981' }}>
-            <div style={{ width: 42, height: 42, borderRadius: '10px', background: '#d1fae5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <IndianRupee size={20} />
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Collected</div>
-              <div style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--success)', marginTop: '2px' }}>
-                ₹{summary.totalCollected.toLocaleString('en-IN')}
+        <div className="payments-kpi-grid">
+          <div className="payments-kpi-card collected">
+            <div className="payments-kpi-header">
+              <span className="payments-kpi-label">Total Collected</span>
+              <div className="payments-kpi-icon-wrap" style={{ background: '#d1fae5', color: '#059669' }}>
+                <IndianRupee size={18} />
               </div>
+            </div>
+            <div className="payments-kpi-value" style={{ color: 'var(--success, #059669)' }}>
+              ₹{summary.totalCollected.toLocaleString('en-IN')}
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '18px', display: 'flex', gap: '14px', alignItems: 'center', borderTop: '3px solid #6366f1' }}>
-            <div style={{ width: 42, height: 42, borderRadius: '10px', background: '#e0e7ff', color: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TrendingUp size={20} />
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>This Month</div>
-              <div style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--accent-primary)', marginTop: '2px' }}>
-                ₹{summary.thisMonthCollected.toLocaleString('en-IN')}
+          <div className="payments-kpi-card month">
+            <div className="payments-kpi-header">
+              <span className="payments-kpi-label">This Month</span>
+              <div className="payments-kpi-icon-wrap" style={{ background: '#e0e7ff', color: '#4f46e5' }}>
+                <TrendingUp size={18} />
               </div>
+            </div>
+            <div className="payments-kpi-value" style={{ color: 'var(--accent-primary, #4f46e5)' }}>
+              ₹{summary.thisMonthCollected.toLocaleString('en-IN')}
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '18px', display: 'flex', gap: '14px', alignItems: 'center', borderTop: '3px solid #ef4444' }}>
-            <div style={{ width: 42, height: 42, borderRadius: '10px', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CreditCard size={20} />
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Total Outstanding</div>
-              <div style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--danger)', marginTop: '2px' }}>
-                ₹{summary.totalOutstanding.toLocaleString('en-IN')}
+          <div className="payments-kpi-card outstanding">
+            <div className="payments-kpi-header">
+              <span className="payments-kpi-label">Total Outstanding</span>
+              <div className="payments-kpi-icon-wrap" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                <CreditCard size={18} />
               </div>
+            </div>
+            <div className="payments-kpi-value" style={{ color: 'var(--danger, #dc2626)' }}>
+              ₹{summary.totalOutstanding.toLocaleString('en-IN')}
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '18px', display: 'flex', gap: '14px', alignItems: 'center', borderTop: '3px solid #0d9488' }}>
-            <div style={{ width: 42, height: 42, borderRadius: '10px', background: '#ccfbf1', color: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Building2 size={20} />
-            </div>
-            <div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase' }}>Advance Deposits</div>
-              <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#0f766e', marginTop: '2px' }}>
-                {summary.advanceCount} Recorded
+          <div className="payments-kpi-card advances">
+            <div className="payments-kpi-header">
+              <span className="payments-kpi-label">Advance Deposits</span>
+              <div className="payments-kpi-icon-wrap" style={{ background: '#ccfbf1', color: '#0f766e' }}>
+                <Building2 size={18} />
               </div>
+            </div>
+            <div className="payments-kpi-value" style={{ color: '#0f766e' }}>
+              {summary.advanceCount} Recorded
             </div>
           </div>
         </div>
       )}
 
       {/* Modern Filter Toolbar with Custom Searchable Dropdowns */}
-      <div className="glass-panel" style={{ padding: '14px 18px', marginBottom: '20px', borderRadius: '12px' }}>
+      <div className="payments-toolbar">
         
-        {/* Row 1: Search & Custom Searchable Dropdowns (All aligned to 36px) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 1.4fr) repeat(3, minmax(170px, 1fr))', gap: '10px', alignItems: 'center', marginBottom: '12px' }}>
+        {/* Row 1: Search & Custom Searchable Dropdowns */}
+        <div className="payments-toolbar-grid">
           
           {/* Custom Modern Search Input */}
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%', minWidth: 0, height: '36px' }}>
-            <Search
-              size={15}
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: 'var(--text-muted)',
-                pointerEvents: 'none',
-                flexShrink: 0
-              }}
-            />
+          <div className="payments-search-wrap">
+            <Search size={15} className="payments-search-icon" />
             <input
               type="text"
               placeholder="Search payment #, customer, UTR, invoice, amount..."
-              style={{
-                width: '100%',
-                height: '36px',
-                boxSizing: 'border-box',
-                paddingLeft: '34px',
-                paddingRight: search ? '30px' : '12px',
-                backgroundColor: '#ffffff',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                fontSize: '0.82rem',
-                color: 'var(--text-primary)',
-                outline: 'none',
-                boxShadow: 'var(--shadow-sm)',
-                transition: 'all 0.15s ease'
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(79, 70, 229, 0.12)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border)';
-                e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
-              }}
+              className="payments-search-input"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -794,9 +753,9 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         </div>
 
         {/* Row 2: Date Presets & Inputs */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+        <div className="payments-toolbar-row2">
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+          <div className="payments-date-presets">
             <span style={{ fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
               <CalendarIcon size={14} /> Period:
             </span>
@@ -811,16 +770,11 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
                 key={p.id}
                 type="button"
                 onClick={() => handleDatePreset(p.id)}
+                className="payments-preset-btn"
                 style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  fontSize: '0.75rem',
                   fontWeight: datePreset === p.id ? 600 : 400,
-                  backgroundColor: datePreset === p.id ? 'var(--accent-primary)' : 'var(--bg-primary)',
-                  color: datePreset === p.id ? '#ffffff' : 'var(--text-secondary)',
-                  border: '1px solid var(--border)',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s'
+                  backgroundColor: datePreset === p.id ? 'var(--accent-primary, #4f46e5)' : 'var(--bg-primary, #ffffff)',
+                  color: datePreset === p.id ? '#ffffff' : 'var(--text-secondary, #475569)',
                 }}
               >
                 {p.label}
@@ -828,9 +782,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             ))}
 
             {/* Date Input Controls */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '6px', backgroundColor: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+            <div className="payments-date-range-box">
               <DatePicker
-                
                 style={{
                   padding: '2px',
                   border: 'none',
@@ -845,7 +798,6 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               />
               <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>→</span>
               <DatePicker
-                
                 style={{
                   padding: '2px',
                   border: 'none',
@@ -895,8 +847,8 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
         </div>
       </div>
 
-      {/* Payment History Table */}
-      <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
+      {/* DESKTOP TABLE VIEW (> 768px) */}
+      <div className="payments-desktop-table">
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Payment Transactions Ledger</h3>
@@ -1064,6 +1016,168 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* MOBILE PAYMENT CARDS FEED (<= 768px) */}
+      <div className="payments-mobile-feed">
+        {filteredPayments.length === 0 ? (
+          <div className="pay-empty-state">
+            <Wallet size={36} style={{ color: 'var(--border)', marginBottom: '10px' }} />
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>No payment records found</div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              Click "Record Customer Payment" to log collections, advances, or bank transfers.
+            </p>
+          </div>
+        ) : (
+          filteredPayments.map(pay => {
+            const isCompleted = pay.status === 'Completed';
+            const isCancelled = pay.status === 'Cancelled';
+            const isAdvance = pay.paymentType === 'Advance Payment';
+
+            return (
+              <div key={pay.id} className="payment-mobile-card">
+                {/* Header: Payment #, Date & Mode */}
+                <div className="pay-card-header">
+                  <div className="pay-card-num-group">
+                    <span className="pay-card-num">{pay.paymentNumber}</span>
+                    <span className="pay-card-date">
+                      {new Date(pay.paymentDate).toLocaleDateString('en-GB')}
+                    </span>
+                  </div>
+
+                  <div>
+                    {getModeBadge(pay.paymentMode)}
+                  </div>
+                </div>
+
+                {/* Customer Details & Allocation */}
+                <div className="pay-card-body">
+                  <div className="pay-customer-name">
+                    {pay.customer?.businessName || pay.payerName || '-'}
+                  </div>
+
+                  {(pay.customer?.contactPerson || pay.customer?.mobile) && (
+                    <div className="pay-customer-sub">
+                      {pay.customer.contactPerson ? `${pay.customer.contactPerson} • ` : ''}{pay.customer.mobile || ''}
+                    </div>
+                  )}
+
+                  <div className="pay-tags-row">
+                    <span
+                      className="pay-type-tag"
+                      style={{
+                        backgroundColor: isAdvance ? '#f0fdfa' : '#f8fafc',
+                        color: isAdvance ? '#0f766e' : '#475569',
+                        border: `1px solid ${isAdvance ? '#99f6e4' : '#e2e8f0'}`
+                      }}
+                    >
+                      {pay.paymentType}
+                    </span>
+
+                    {pay.invoice ? (
+                      <a
+                        href={`/orders/${pay.invoice.orderId}/invoice`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="pay-invoice-link"
+                      >
+                        Inv: {pay.invoice.invoiceNumber} <ArrowUpRight size={12} />
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: '0.72rem', color: '#0f766e' }}>
+                        Advance / Direct
+                      </span>
+                    )}
+
+                    <span
+                      className="pay-status-pill"
+                      style={{
+                        backgroundColor: isCompleted ? '#dcfce7' : isCancelled ? '#fee2e2' : '#fef3c7',
+                        color: isCompleted ? '#15803d' : isCancelled ? '#b91c1c' : '#b45309',
+                        border: `1px solid ${isCompleted ? '#bbf7d0' : isCancelled ? '#fecaca' : '#fde68a'}`
+                      }}
+                    >
+                      {pay.status}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Financial Breakdown Box */}
+                <div className="pay-fin-box">
+                  <div>
+                    <div className="pay-fin-amount">
+                      ₹{pay.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    </div>
+                    {pay.receivingAccount && (
+                      <div className="pay-fin-account">
+                        {pay.receivingAccount.split(' - ')[0]}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pay-fin-ref">
+                    {pay.referenceNumber ? (
+                      <div>Ref: <strong>{pay.referenceNumber}</strong></div>
+                    ) : (
+                      <div style={{ color: '#94a3b8' }}>No Ref/UTR</div>
+                    )}
+                    {pay.payerName && pay.payerName !== pay.customer?.businessName && (
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Payer: {pay.payerName}</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile Actions Bar */}
+                <div className="pay-card-actions">
+                  <div className="pay-action-group">
+                    <button
+                      type="button"
+                      onClick={() => setViewReceipt(pay)}
+                      className="pay-btn-action pay-btn-receipt"
+                      title="Print Receipt Voucher"
+                    >
+                      <Receipt size={13} /> Receipt
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(pay)}
+                      className="pay-btn-action pay-btn-edit"
+                      title="Edit Payment Details"
+                    >
+                      <Pencil size={12} style={{ color: 'var(--accent-primary)' }} /> Edit
+                    </button>
+
+                    {!isCancelled && (
+                      <button
+                        type="button"
+                        onClick={() => setCancelModalPay(pay)}
+                        className="pay-btn-action"
+                        style={{
+                          backgroundColor: '#fffbeb',
+                          color: '#b45309',
+                          border: '1px solid #fde68a'
+                        }}
+                        title="Cancel Payment"
+                      >
+                        <Ban size={12} /> Cancel
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleOpenDelete(pay)}
+                    className="pay-btn-delete"
+                    title="Delete Payment Record"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* 1. COMPACT, PERFECTLY ALIGNED & ZERO-SCROLL RECORD PAYMENT POPUP MODAL */}

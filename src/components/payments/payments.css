@@ -1,0 +1,532 @@
+/* =========================================================
+   PAYMENT COLLECTION & LEDGER - RESPONSIVE & MOBILE STYLES
+   Modern, Theme-Matched B2B Payments & Receipts
+   ========================================================= */
+
+.payments-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* ─── Header ─── */
+.payments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.payments-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.payments-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent-primary, #4f46e5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+}
+
+.payments-header-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.payments-header-desc {
+  color: var(--text-secondary, #64748b);
+  font-size: 0.82rem;
+  margin: 2px 0 0 0;
+}
+
+.payments-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ─── Compact KPI Metric Grid ─── */
+.payments-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.payments-kpi-card {
+  background-color: #ffffff;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  border-top-width: 3px;
+}
+
+.payments-kpi-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.payments-kpi-card.collected {
+  border-top-color: #10b981;
+}
+
+.payments-kpi-card.month {
+  border-top-color: #6366f1;
+}
+
+.payments-kpi-card.outstanding {
+  border-top-color: #ef4444;
+}
+
+.payments-kpi-card.advances {
+  border-top-color: #0d9488;
+}
+
+.payments-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.payments-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.payments-kpi-icon-wrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.payments-kpi-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* ─── Filter Toolbar ─── */
+.payments-toolbar {
+  background-color: #ffffff;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payments-toolbar-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.4fr) repeat(3, minmax(170px, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.payments-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+}
+
+.payments-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted, #94a3b8);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.payments-search-input {
+  width: 100%;
+  height: 38px;
+  box-sizing: border-box;
+  padding-left: 36px !important;
+  padding-right: 32px !important;
+  background-color: #ffffff !important;
+  border: 1px solid var(--border, #cbd5e1) !important;
+  border-radius: 10px !important;
+  font-size: 0.84rem !important;
+  color: var(--text-primary, #0f172a) !important;
+  outline: none !important;
+  transition: all 0.15s ease !important;
+}
+
+.payments-search-input:focus {
+  border-color: var(--accent-primary, #4f46e5) !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+}
+
+.payments-toolbar-row2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-top: 1px solid var(--border, #e2e8f0);
+  padding-top: 10px;
+}
+
+.payments-date-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.payments-preset-btn {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 500;
+  border: 1px solid var(--border, #cbd5e1);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.payments-date-range-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #ffffff;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border, #cbd5e1);
+}
+
+/* ─── Desktop Table View ─── */
+.payments-desktop-table {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+/* ─── Mobile Payment Cards Feed (<= 768px) ─── */
+.payments-mobile-feed {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payment-mobile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.payment-mobile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+/* Mobile Card Header */
+.pay-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pay-card-num-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pay-card-num {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.pay-card-date {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Customer & Type Body */
+.pay-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pay-customer-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.pay-customer-sub {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.pay-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.pay-type-tag {
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.pay-invoice-link {
+  font-size: 0.74rem;
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pay-invoice-link:hover {
+  text-decoration: underline;
+}
+
+/* Financial Box */
+.pay-fin-box {
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pay-fin-amount {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #059669;
+}
+
+.pay-fin-account {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.pay-fin-ref {
+  text-align: right;
+  font-size: 0.74rem;
+  color: #475569;
+}
+
+.pay-status-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+/* Actions */
+.pay-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.pay-action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pay-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.pay-btn-receipt {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.pay-btn-receipt:hover {
+  background-color: #dbeafe;
+}
+
+.pay-btn-edit {
+  background-color: #f8fafc;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+}
+
+.pay-btn-edit:hover {
+  background-color: #f1f5f9;
+}
+
+.pay-btn-delete {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fecdd3;
+  background-color: #fff1f2;
+  color: #e11d48;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pay-btn-delete:hover {
+  background-color: #ffe4e6;
+}
+
+.pay-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ─── MOBILE VIEWPORT RESPONSIVENESS (<= 768px) ─── */
+@media (max-width: 768px) {
+  .payments-container {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .payments-desktop-table {
+    display: none !important;
+  }
+
+  .payments-mobile-feed {
+    display: flex !important;
+  }
+
+  /* Compact 2x2 Grid on Mobile */
+  .payments-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .payments-kpi-card {
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .payments-kpi-label {
+    font-size: 0.68rem !important;
+  }
+
+  .payments-kpi-value {
+    font-size: 1.15rem !important;
+  }
+
+  .payments-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .payments-header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .payments-header-actions button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .payments-toolbar {
+    padding: 12px;
+  }
+
+  .payments-toolbar-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
+
+  .payments-toolbar-row2 {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .payments-date-presets {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .payments-date-range-box {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+    margin-left: 0 !important;
+  }
+}

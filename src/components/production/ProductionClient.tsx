@@ -14,6 +14,8 @@ import WorkOrderDetailModal from "./WorkOrderDetailModal";
 import BomManagerModal from "./BomManagerModal";
 import PieceRateLedgerModal from "./PieceRateLedgerModal";
 
+import "./production.css";
+
 // ─── Sector config ─────────────────────────────────────────────
 const SECTORS = [
   { key: "All", label: "All Sectors", icon: Factory, color: "#4f46e5" },
@@ -178,64 +180,63 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
   ];
 
   return (
-    <div style={{ padding: "24px", maxWidth: "100%", fontFamily: "var(--font-family, inherit)" }}>
+    <div className="production-container">
 
       {/* PAGE HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <div style={{ width: "48px", height: "48px", borderRadius: "var(--radius-lg, 12px)", background: "var(--accent-gradient, linear-gradient(135deg, var(--accent-primary, #4f46e5) 0%, #7c3aed 100%))", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px var(--accent-light, rgba(79,70,229,0.3))" }}>
+      <div className="production-header">
+        <div className="production-header-left">
+          <div className="production-header-icon">
             <Factory size={26} color="#fff" />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.35rem", fontWeight: 600, color: "var(--text-primary, #0f172a)", letterSpacing: "-0.2px" }}>
+            <h1 className="production-header-title">
               Production & Workshop
             </h1>
-            <p style={{ margin: "2px 0 0", fontSize: "0.8rem", color: "var(--text-muted, #64748b)" }}>
+            <p className="production-header-desc">
               Universal Manufacturing Suite — Apparel, Electronics, FMCG, Fabrication & More
             </p>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <button onClick={() => setShowBomManager(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "var(--radius-md, 8px)", border: "1px solid var(--border, #e2e8f0)", backgroundColor: "#ffffff", color: "var(--text-secondary, #475569)", fontSize: "0.82rem", fontWeight: 500, cursor: "pointer" }}>
+        <div className="production-header-actions">
+          <button onClick={() => setShowBomManager(true)} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "8px 14px", borderRadius: "10px", border: "1px solid #e2e8f0", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
             <BookOpen size={15} /> Bill of Materials
           </button>
-          <button onClick={() => setShowCreateWO(true)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "9px 18px", borderRadius: "var(--radius-md, 8px)", border: "none", background: "var(--accent-primary, #4f46e5)", color: "#ffffff", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+          <button onClick={() => setShowCreateWO(true)} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "9px 18px", borderRadius: "10px", border: "none", background: "var(--accent-primary, #4f46e5)", color: "#ffffff", fontSize: "0.85rem", fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(79,70,229,0.3)" }}>
             <Plus size={17} /> New Work Order
           </button>
         </div>
       </div>
 
       {/* KPI CARDS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "14px", marginBottom: "24px" }}>
+      <div className="production-kpi-grid">
         {kpis.map((kpi) => (
-          <div key={kpi.label} style={{ backgroundColor: "#ffffff", border: "1px solid var(--border, #e2e8f0)", borderRadius: "12px", padding: "16px", display: "flex", flexDirection: "column", gap: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{kpi.label}</span>
-              <div style={{ width: "30px", height: "30px", borderRadius: "8px", backgroundColor: kpi.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div key={kpi.label} className="production-kpi-card">
+            <div className="production-kpi-header">
+              <span className="production-kpi-label">{kpi.label}</span>
+              <div className="production-kpi-icon-wrap" style={{ backgroundColor: kpi.bg }}>
                 <kpi.icon size={16} color={kpi.color} />
               </div>
             </div>
-            <span style={{ fontSize: "1.375rem", fontWeight: 700, color: kpi.color, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</span>
+            <span className="production-kpi-value" style={{ color: kpi.color }}>{kpi.value}</span>
           </div>
         ))}
       </div>
 
       {/* SECTOR FILTER TABS */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "18px", overflowX: "auto", paddingBottom: "4px" }}>
+      <div className="production-sector-bar">
         {SECTORS.map(s => {
           const active = sectorFilter === s.key;
           return (
             <button
               key={s.key}
               onClick={() => setSectorFilter(s.key)}
+              className="production-sector-btn"
               style={{
-                display: "flex", alignItems: "center", gap: "6px",
-                padding: "7px 14px", borderRadius: "8px", border: `1.5px solid ${active ? s.color : "#e2e8f0"}`,
+                borderColor: active ? s.color : "#e2e8f0",
                 backgroundColor: active ? s.color : "#ffffff",
                 color: active ? "#ffffff" : "#475569",
-                fontSize: "0.8rem", fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap",
-                boxShadow: active ? `0 4px 12px ${s.color}30` : "none", transition: "all 0.15s ease"
+                boxShadow: active ? `0 4px 12px ${s.color}35` : "none"
               }}
             >
               <s.icon size={14} /> {s.label}
@@ -245,35 +246,35 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
       </div>
 
       {/* SEARCH & STATUS FILTER */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "18px", flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: "220px" }}>
-          <Search size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+      <div className="production-toolbar">
+        <div className="production-search-wrap">
+          <Search size={16} className="production-search-icon" />
           <input
             type="text"
+            className="production-search-input"
             placeholder="Search Work Orders, products, stages..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            style={{ width: "100%", height: "40px", paddingLeft: "36px", paddingRight: "12px", borderRadius: "8px", border: "1.5px solid #cbd5e1", fontSize: "0.84rem", color: "#0f172a", outline: "none", backgroundColor: "#ffffff", boxSizing: "border-box" }}
           />
         </div>
         <select
           value={statusFilter}
           onChange={e => setStatusFilter(e.target.value)}
-          style={{ height: "40px", padding: "0 12px", borderRadius: "8px", border: "1px solid #e2e8f0", fontSize: "0.84rem", fontWeight: 400, color: "var(--text-primary, #0f172a)", backgroundColor: "#ffffff", outline: "none" }}
+          className="production-status-select"
         >
           <option value="All">All Statuses</option>
           {Object.keys(STATUS_CONFIG).map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
 
-      {/* WORK ORDERS TABLE */}
-      <div style={{ backgroundColor: "#ffffff", border: "1.5px solid #e2e8f0", borderRadius: "12px", overflow: "hidden", boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+      {/* DESKTOP TABLE VIEW (> 768px) */}
+      <div className="production-desktop-table">
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
             <thead>
               <tr style={{ background: "linear-gradient(180deg,#f8fafc 0%,#f1f5f9 100%)", borderBottom: "1.5px solid #e2e8f0" }}>
                 {["Work Order", "Title / Product", "Sector", "Progress", "Stage", "Dates", "Est. Cost", "Status", "Actions"].map(h => (
-                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 500, color: "var(--text-secondary, #64748b)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
+                  <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary, #64748b)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -282,7 +283,7 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
                 <tr>
                   <td colSpan={9} style={{ textAlign: "center", padding: "60px", color: "#94a3b8" }}>
                     <Factory size={40} style={{ margin: "0 auto 12px", opacity: 0.3, display: "block" }} />
-                    <p style={{ margin: 0, fontWeight: 500, color: "var(--text-secondary, #64748b)" }}>No Work Orders found</p>
+                    <p style={{ margin: 0, fontWeight: 600, color: "var(--text-secondary, #64748b)" }}>No Work Orders found</p>
                     <p style={{ margin: "4px 0 0", fontSize: "0.78rem", color: "var(--text-muted, #94a3b8)" }}>Click "New Work Order" to create your first manufacturing job</p>
                   </td>
                 </tr>
@@ -294,40 +295,40 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
 
                 return (
                   <tr key={wo.id} style={{ borderBottom: "1px solid #f1f5f9", transition: "background 0.12s" }} onMouseEnter={e => e.currentTarget.style.background = "#fafafa"} onMouseLeave={e => e.currentTarget.style.background = ""}>
-                    <td style={{ padding: "12px", fontWeight: 600, color: "var(--accent-primary, #4f46e5)", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px", fontWeight: 700, color: "var(--accent-primary, #4f46e5)", whiteSpace: "nowrap" }}>
                       {wo.woNumber}
-                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", fontWeight: 400, marginTop: "1px" }}>P: {wo.priority}</div>
+                      <div style={{ fontSize: "0.7rem", color: "var(--text-muted, #94a3b8)", fontWeight: 500, marginTop: "1px" }}>P: {wo.priority}</div>
                     </td>
                     <td style={{ padding: "12px", maxWidth: "200px" }}>
-                      <div style={{ fontWeight: 500, color: "var(--text-primary, #0f172a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wo.finishedGoodsName}</div>
+                      <div style={{ fontWeight: 600, color: "var(--text-primary, #0f172a)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wo.finishedGoodsName}</div>
                       <div style={{ fontSize: "0.72rem", color: "var(--text-secondary, #64748b)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{wo.title}</div>
                     </td>
                     <td style={{ padding: "12px" }}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "5px", backgroundColor: sectorCfg.color + "15", color: sectorCfg.color, fontSize: "0.72rem", fontWeight: 500 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "3px 8px", borderRadius: "5px", backgroundColor: sectorCfg.color + "15", color: sectorCfg.color, fontSize: "0.72rem", fontWeight: 600 }}>
                         <sectorCfg.icon size={11} /> {wo.sector}
                       </span>
                     </td>
                     <td style={{ padding: "12px", minWidth: "120px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#64748b", marginBottom: "4px" }}>
                         <span>{wo.completedQty}/{wo.targetQty}</span>
-                        <span style={{ fontWeight: 500, color: progress >= 100 ? "#059669" : "#d97706" }}>{progress.toFixed(0)}%</span>
+                        <span style={{ fontWeight: 600, color: progress >= 100 ? "#059669" : "#d97706" }}>{progress.toFixed(0)}%</span>
                       </div>
                       <div style={{ height: "6px", backgroundColor: "#f1f5f9", borderRadius: "99px", overflow: "hidden" }}>
                         <div style={{ height: "100%", width: `${progress}%`, borderRadius: "99px", background: progress >= 100 ? "linear-gradient(90deg,#059669,#10b981)" : "linear-gradient(90deg,#4f46e5,#7c3aed)", transition: "width 0.3s" }} />
                       </div>
                     </td>
-                    <td style={{ padding: "12px", color: "var(--text-secondary, #475569)", fontWeight: 400, whiteSpace: "nowrap", fontSize: "0.82rem" }}>
+                    <td style={{ padding: "12px", color: "var(--text-secondary, #475569)", fontWeight: 500, whiteSpace: "nowrap", fontSize: "0.82rem" }}>
                       {wo.currentStage}
                     </td>
                     <td style={{ padding: "12px", fontSize: "0.72rem", color: "#64748b", whiteSpace: "nowrap" }}>
                       {wo.plannedStartDate ? new Date(wo.plannedStartDate).toLocaleDateString("en-GB") : "–"}
                       <div>{wo.plannedEndDate ? new Date(wo.plannedEndDate).toLocaleDateString("en-GB") : "–"}</div>
                     </td>
-                    <td style={{ padding: "12px", fontWeight: 500, color: "var(--text-primary, #0f172a)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                    <td style={{ padding: "12px", fontWeight: 600, color: "var(--text-primary, #0f172a)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
                       ₹{Number(wo.estimatedCost).toLocaleString("en-IN")}
                     </td>
                     <td style={{ padding: "12px" }}>
-                      <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: "5px", backgroundColor: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.border}`, fontSize: "0.72rem", fontWeight: 500, whiteSpace: "nowrap" }}>
+                      <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: "5px", backgroundColor: statusCfg.bg, color: statusCfg.color, border: `1px solid ${statusCfg.border}`, fontSize: "0.72rem", fontWeight: 600, whiteSpace: "nowrap" }}>
                         {wo.status}
                       </span>
                     </td>
@@ -343,7 +344,7 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
                           <Users size={14} />
                         </button>
                         {wo.status !== "Completed" && wo.status !== "Cancelled" && (
-                          <button title="Complete Work Order" onClick={() => handleComplete(wo)} style={{ padding: "5px 8px", borderRadius: "6px", border: "none", background: "#059669", color: "#fff", fontSize: "0.72rem", fontWeight: 500, cursor: "pointer", display: "flex", alignItems: "center", gap: "3px" }}>
+                          <button title="Complete Work Order" onClick={() => handleComplete(wo)} style={{ padding: "5px 8px", borderRadius: "6px", border: "none", background: "#059669", color: "#fff", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "3px" }}>
                             <CheckCircle2 size={13} /> Done
                           </button>
                         )}
@@ -358,6 +359,167 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* MOBILE WORK ORDER CARDS FEED (<= 768px) */}
+      <div className="production-mobile-feed">
+        {filteredOrders.length === 0 ? (
+          <div className="wo-empty-state">
+            <Factory size={40} style={{ color: "#cbd5e1", marginBottom: "10px" }} />
+            <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.95rem" }}>No Work Orders found</div>
+            <p style={{ margin: "4px 0 0", fontSize: "0.78rem", color: "#64748b" }}>
+              Click "New Work Order" to create your first manufacturing job.
+            </p>
+          </div>
+        ) : (
+          filteredOrders.map(wo => {
+            const statusCfg = STATUS_CONFIG[wo.status] || STATUS_CONFIG["Draft"];
+            const progress = wo.targetQty > 0 ? Math.min(100, (wo.completedQty / wo.targetQty) * 100) : 0;
+            const sectorCfg = SECTORS.find(s => s.key === wo.sector) || SECTORS[SECTORS.length - 1];
+            const isDeleting = deletingId === wo.id;
+            const isUrgent = wo.priority?.toLowerCase() === "urgent";
+            const isHigh = wo.priority?.toLowerCase() === "high";
+
+            return (
+              <div key={wo.id} className="production-mobile-card">
+                {/* Header: WO Number, Priority & Status */}
+                <div className="wo-card-header">
+                  <div className="wo-card-num-group">
+                    <span className="wo-card-num">{wo.woNumber}</span>
+                    <span className={`wo-priority-pill ${isUrgent ? 'urgent' : isHigh ? 'high' : ''}`}>
+                      {wo.priority}
+                    </span>
+                  </div>
+
+                  <span
+                    className="wo-status-pill"
+                    style={{
+                      backgroundColor: statusCfg.bg,
+                      color: statusCfg.color,
+                      border: `1px solid ${statusCfg.border}`
+                    }}
+                  >
+                    <statusCfg.icon size={12} /> {wo.status}
+                  </span>
+                </div>
+
+                {/* Product & Order Title */}
+                <div className="wo-card-body">
+                  <div className="wo-product-name">{wo.finishedGoodsName}</div>
+                  {wo.title && <div className="wo-job-title">{wo.title}</div>}
+
+                  <div className="wo-tags-row">
+                    <span
+                      className="wo-sector-tag"
+                      style={{
+                        backgroundColor: sectorCfg.color + "15",
+                        color: sectorCfg.color,
+                        border: `1px solid ${sectorCfg.color}30`
+                      }}
+                    >
+                      <sectorCfg.icon size={11} /> {wo.sector}
+                    </span>
+
+                    {wo.currentStage && (
+                      <span className="wo-stage-tag">
+                        <Clock size={11} color="#64748b" /> Stage: {wo.currentStage}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Progress Bar Box */}
+                <div className="wo-progress-box">
+                  <div className="wo-progress-info">
+                    <span>Units: <strong>{wo.completedQty}</strong> of <strong>{wo.targetQty}</strong> completed</span>
+                    <span style={{ fontWeight: 700, color: progress >= 100 ? "#059669" : "#4f46e5" }}>
+                      {progress.toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="wo-progress-track">
+                    <div
+                      className="wo-progress-bar"
+                      style={{
+                        width: `${progress}%`,
+                        background: progress >= 100
+                          ? "linear-gradient(90deg, #059669, #10b981)"
+                          : "linear-gradient(90deg, #4f46e5, #7c3aed)"
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Financial & Date Details Mini-Grid */}
+                <div className="wo-info-grid">
+                  <div className="wo-info-item">
+                    <span className="wo-info-label">Estimated Cost</span>
+                    <span className="wo-info-val">₹{Number(wo.estimatedCost).toLocaleString("en-IN")}</span>
+                  </div>
+
+                  <div className="wo-info-item" style={{ textAlign: "right" }}>
+                    <span className="wo-info-label">Planned Dates</span>
+                    <span className="wo-info-val" style={{ fontSize: "0.72rem" }}>
+                      {wo.plannedStartDate ? new Date(wo.plannedStartDate).toLocaleDateString("en-GB") : "–"} → {wo.plannedEndDate ? new Date(wo.plannedEndDate).toLocaleDateString("en-GB") : "–"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Mobile Quick Action Buttons */}
+                <div className="wo-card-actions">
+                  <div className="wo-action-group">
+                    <button
+                      type="button"
+                      onClick={() => setViewWorkOrder(wo)}
+                      className="wo-btn-action wo-btn-view"
+                      title="View Details"
+                    >
+                      <Eye size={13} /> View
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handlePrint(wo)}
+                      className="wo-btn-action wo-btn-print"
+                      title="Print Job Card"
+                    >
+                      <Printer size={13} /> Job Card
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowPieceRateModal(wo)}
+                      className="wo-btn-action wo-btn-piece"
+                      title="Worker Piece-Rate Log"
+                    >
+                      <Users size={13} /> Piece-Rate
+                    </button>
+
+                    {wo.status !== "Completed" && wo.status !== "Cancelled" && (
+                      <button
+                        type="button"
+                        onClick={() => handleComplete(wo)}
+                        className="wo-btn-action wo-btn-done"
+                        title="Complete Work Order"
+                      >
+                        <CheckCircle2 size={13} /> Done
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={() => handleDeleteWO(wo)}
+                    className="wo-btn-delete"
+                    title="Delete Work Order"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* MODALS */}

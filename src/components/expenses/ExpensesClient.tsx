@@ -32,6 +32,7 @@ import {
   FileCheck
 } from "lucide-react";
 import "@/components/ui/modal.css";
+import "./expenses.css";
 
 // Standard Zoho Books Indian States list
 const INDIAN_STATES = [
@@ -521,39 +522,18 @@ export default function ExpensesClient({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+    <div className="expenses-container">
       {/* ─── 1. PAGE HEADER ─── */}
-      <div style={{ 
-        display: "flex", 
-        justifyContent: "space-between", 
-        alignItems: "center", 
-        flexWrap: "wrap", 
-        gap: "16px",
-        backgroundColor: "#ffffff",
-        padding: "18px 24px",
-        borderRadius: "12px",
-        border: "1px solid #e2e8f0",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          <div style={{
-            width: "42px",
-            height: "42px",
-            borderRadius: "10px",
-            background: "#eff6ff",
-            color: "#2563eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: "1px solid #dbeafe"
-          }}>
+      <div className="expenses-header">
+        <div className="expenses-header-left">
+          <div className="expenses-header-icon">
             <Receipt size={22} />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 700, color: "#0f172a" }}>
+            <h1 className="expenses-header-title">
               Expenses & Claims
             </h1>
-            <p style={{ margin: "2px 0 0 0", color: "#64748b", fontSize: "0.8rem" }}>
+            <p className="expenses-header-desc">
               Zoho Books integrated expense accounts, GST input tax credits, mileage tracking, and receipt archives.
             </p>
           </div>
@@ -572,140 +552,115 @@ export default function ExpensesClient({
       </div>
 
       {/* ─── 2. KPI METRIC STATS ─── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
+      <div className="expenses-kpi-grid">
         {/* Total Expenses */}
-        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0", borderLeft: "4px solid #4f46e5" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Total Recorded</span>
-            <div style={{ padding: "5px", borderRadius: "6px", backgroundColor: "#eef2ff", color: "#4f46e5" }}>
+        <div className="expenses-kpi-card recorded">
+          <div className="expenses-kpi-header">
+            <span className="expenses-kpi-label">Total Recorded</span>
+            <div className="expenses-kpi-icon-wrap" style={{ backgroundColor: "#eef2ff", color: "#4f46e5" }}>
               <DollarSign size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.45rem", fontWeight: 700, color: "#0f172a" }}>{formatCurrency(totalExpenseValue)}</div>
-          <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>{expenses.length} claims registered</div>
+          <div className="expenses-kpi-value">{formatCurrency(totalExpenseValue)}</div>
+          <div className="expenses-kpi-sub">{expenses.length} claims registered</div>
         </div>
 
         {/* Pending Approval */}
-        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0", borderLeft: "4px solid #f59e0b" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Pending Approval</span>
-            <div style={{ padding: "5px", borderRadius: "6px", backgroundColor: "#fef3c7", color: "#d97706" }}>
+        <div className="expenses-kpi-card pending">
+          <div className="expenses-kpi-header">
+            <span className="expenses-kpi-label">Pending Approval</span>
+            <div className="expenses-kpi-icon-wrap" style={{ backgroundColor: "#fef3c7", color: "#d97706" }}>
               <Clock size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.45rem", fontWeight: 700, color: "#d97706" }}>{formatCurrency(totalPending)}</div>
-          <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
+          <div className="expenses-kpi-value" style={{ color: "#d97706" }}>{formatCurrency(totalPending)}</div>
+          <div className="expenses-kpi-sub">
             {expenses.filter(e => e.status === "Pending").length} pending claims
           </div>
         </div>
 
         {/* Approved (Unpaid) */}
-        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0", borderLeft: "4px solid #3b82f6" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Approved (Unsettled)</span>
-            <div style={{ padding: "5px", borderRadius: "6px", backgroundColor: "#eff6ff", color: "#2563eb" }}>
+        <div className="expenses-kpi-card approved">
+          <div className="expenses-kpi-header">
+            <span className="expenses-kpi-label">Approved (Unsettled)</span>
+            <div className="expenses-kpi-icon-wrap" style={{ backgroundColor: "#eff6ff", color: "#2563eb" }}>
               <CheckCircle2 size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.45rem", fontWeight: 700, color: "#2563eb" }}>{formatCurrency(totalApproved)}</div>
-          <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
+          <div className="expenses-kpi-value" style={{ color: "#2563eb" }}>{formatCurrency(totalApproved)}</div>
+          <div className="expenses-kpi-sub">
             {expenses.filter(e => e.status === "Approved").length} ready for payout
           </div>
         </div>
 
         {/* Settled / Paid */}
-        <div style={{ backgroundColor: "#ffffff", padding: "18px 20px", borderRadius: "12px", border: "1px solid #e2e8f0", borderLeft: "4px solid #10b981" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-            <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>Settled / Paid</span>
-            <div style={{ padding: "5px", borderRadius: "6px", backgroundColor: "#dcfce7", color: "#16a34a" }}>
+        <div className="expenses-kpi-card settled">
+          <div className="expenses-kpi-header">
+            <span className="expenses-kpi-label">Settled / Paid</span>
+            <div className="expenses-kpi-icon-wrap" style={{ backgroundColor: "#dcfce7", color: "#16a34a" }}>
               <Wallet size={16} />
             </div>
           </div>
-          <div style={{ fontSize: "1.45rem", fontWeight: 700, color: "#16a34a" }}>{formatCurrency(totalPaid)}</div>
-          <div style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "4px" }}>
+          <div className="expenses-kpi-value" style={{ color: "#16a34a" }}>{formatCurrency(totalPaid)}</div>
+          <div className="expenses-kpi-sub">
             {expenses.filter(e => e.status === "Paid").length} reimbursed
           </div>
         </div>
       </div>
 
       {/* ─── 3. FILTER BAR ─── */}
-      <div style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        flexWrap: "wrap",
-        gap: "12px",
-        backgroundColor: "#ffffff",
-        padding: "14px 18px",
-        borderRadius: "12px",
-        border: "1px solid #e2e8f0"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flex: 1, minWidth: "260px" }}>
-          <div style={{ position: "relative", width: "100%", maxWidth: "340px" }}>
-            <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+      <div className="expenses-toolbar">
+        <div className="expenses-toolbar-row1">
+          <div className="expenses-search-wrap">
+            <Search size={15} className="expenses-search-icon" />
             <input
               type="text"
               placeholder="Search by account, vendor, ref #, claim #..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "8px 12px 8px 34px",
-                borderRadius: "8px",
-                border: "1px solid #cbd5e1",
-                fontSize: "0.82rem",
-                outline: "none",
-                backgroundColor: "#f8fafc"
-              }}
+              className="expenses-search-input"
             />
           </div>
 
           <select
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.82rem",
-              backgroundColor: "#f8fafc",
-              color: "#334155",
-              cursor: "pointer"
-            }}
-          >
-            <option value="All">All Statuses</option>
-            <option value="Pending">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Paid">Paid</option>
-            <option value="Rejected">Rejected</option>
-          </select>
-
-          <select
             value={filterCategory}
             onChange={e => setFilterCategory(e.target.value)}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "8px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.82rem",
-              backgroundColor: "#f8fafc",
-              color: "#334155",
-              cursor: "pointer"
-            }}
+            className="expenses-select"
           >
             <option value="All">All Account Categories</option>
             <option value="Cost Of Goods Sold">Cost Of Goods Sold</option>
             <option value="Expense">Operating Expenses</option>
           </select>
+
+          <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 500 }}>
+            Showing <strong>{filteredExpenses.length}</strong> of {expenses.length} records
+          </div>
         </div>
 
-        <div style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 500 }}>
-          Showing <strong>{filteredExpenses.length}</strong> of {expenses.length} records
+        {/* Horizontal Status Chips Bar */}
+        <div className="expenses-status-chips-bar">
+          {[
+            { key: "All", label: "All Claims", count: expenses.length },
+            { key: "Pending", label: "Pending Approval", count: expenses.filter(e => e.status === "Pending").length },
+            { key: "Approved", label: "Approved", count: expenses.filter(e => e.status === "Approved").length },
+            { key: "Paid", label: "Settled / Paid", count: expenses.filter(e => e.status === "Paid").length },
+            { key: "Rejected", label: "Rejected", count: expenses.filter(e => e.status === "Rejected").length },
+          ].map(s => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setFilterStatus(s.key)}
+              className={`expenses-status-chip ${filterStatus === s.key ? "active" : ""}`}
+            >
+              <span>{s.label}</span>
+              <span className="expenses-chip-count">{s.count}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ─── 4. EXPENSES TABLE ─── */}
-      <div style={{ backgroundColor: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", overflow: "hidden" }}>
+      {/* ─── 4. DESKTOP TABLE VIEW (> 768px) ─── */}
+      <div className="expenses-desktop-table">
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.84rem" }}>
             <thead>
@@ -941,6 +896,180 @@ export default function ExpensesClient({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ─── 5. MOBILE EXPENSE CARDS FEED (<= 768px) ─── */}
+      <div className="expenses-mobile-feed">
+        {filteredExpenses.length === 0 ? (
+          <div className="exp-empty-state">
+            <Receipt size={36} style={{ color: "#cbd5e1", marginBottom: "10px" }} />
+            <div style={{ fontWeight: 700, color: "#1e293b", fontSize: "0.95rem" }}>No expense records found</div>
+            <p style={{ margin: "4px 0 0", fontSize: "0.78rem", color: "#64748b" }}>
+              Click <strong>"Record Expense"</strong> to log your first business expense.
+            </p>
+          </div>
+        ) : (
+          filteredExpenses.map(exp => {
+            const bStyle = STATUS_BADGES[exp.status] || STATUS_BADGES.Pending;
+            const isCOGS = exp.details?.accountCategory === "Cost Of Goods Sold";
+            const mileage = exp.details?.mileageData;
+
+            return (
+              <div key={exp.id} className="expense-mobile-card">
+                {/* Header: Expense # & Status */}
+                <div className="exp-card-header">
+                  <div className="exp-card-num-group">
+                    <span className="exp-card-num">{exp.expenseNumber}</span>
+                    {exp.receiptUrl && (
+                      <span
+                        title="Receipt attached"
+                        onClick={() => setViewingExpense(exp)}
+                        style={{ cursor: "pointer", color: "#2563eb", display: "inline-flex" }}
+                      >
+                        <Receipt size={14} />
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span
+                      className="exp-status-pill"
+                      style={{
+                        backgroundColor: bStyle.bg,
+                        color: bStyle.color,
+                        border: `1px solid ${bStyle.border}`
+                      }}
+                    >
+                      {exp.status}
+                    </span>
+                    <span className="exp-card-date">
+                      {new Date(exp.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Body: Account Name & Tags */}
+                <div className="exp-card-body">
+                  <div className="exp-account-title">
+                    {exp.details?.account || exp.category}
+                  </div>
+
+                  <div className="exp-tags-row">
+                    <span
+                      className="exp-category-tag"
+                      style={{
+                        backgroundColor: isCOGS ? "#e0e7ff" : "#f1f5f9",
+                        color: isCOGS ? "#4338ca" : "#475569"
+                      }}
+                    >
+                      {exp.details?.accountCategory || "Expense"}
+                    </span>
+
+                    {exp.details?.vendorName && (
+                      <span className="exp-vendor-name">
+                        • {exp.details.vendorName}
+                      </span>
+                    )}
+
+                    {exp.details?.isBillable && (
+                      <span className="exp-billable-tag">Billable</span>
+                    )}
+
+                    {exp.details?.referenceNumber && (
+                      <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
+                        (Ref: {exp.details.referenceNumber})
+                      </span>
+                    )}
+                  </div>
+
+                  {mileage && (
+                    <div className="exp-mileage-badge">
+                      <Car size={12} color="#4f46e5" />
+                      <span>{mileage.vehicleType || "Car"} • {mileage.distance} km @ ₹{mileage.ratePerKm}/km</span>
+                      {mileage.fromLocation && mileage.toLocation && (
+                        <span style={{ color: "#64748b" }}>({mileage.fromLocation} → {mileage.toLocation})</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Financial Breakdown Box */}
+                <div className="exp-fin-box">
+                  <div>
+                    <div className="exp-fin-amount">{formatCurrency(exp.amount)}</div>
+                    <div className="exp-fin-sub">{exp.details?.paidThrough || "Petty Cash"}</div>
+                  </div>
+
+                  <div className="exp-fin-tax">
+                    {exp.details?.taxRate ? (
+                      <>
+                        <div className="exp-tax-rate">{exp.details.taxRate}% GST</div>
+                        <div>{exp.details.taxInclusive ? "Tax Incl." : "Tax Excl."}</div>
+                      </>
+                    ) : (
+                      <div style={{ color: "#94a3b8" }}>Exempt Tax</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="exp-card-actions">
+                  <div className="exp-action-group">
+                    <button
+                      type="button"
+                      onClick={() => setViewingExpense(exp)}
+                      className="exp-btn-action exp-btn-view"
+                      title="View Details & Receipt"
+                    >
+                      <Eye size={13} /> Details
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEdit(exp)}
+                      className="exp-btn-action exp-btn-edit"
+                      title="Edit Claim"
+                    >
+                      <Edit3 size={12} /> Edit
+                    </button>
+
+                    {isAdmin && exp.status === "Pending" && (
+                      <button
+                        type="button"
+                        onClick={() => handleStatusAction(approveExpense, exp.id)}
+                        disabled={actionLoadingId === exp.id}
+                        className="exp-btn-action exp-btn-approve"
+                      >
+                        Approve
+                      </button>
+                    )}
+
+                    {isAdmin && exp.status === "Approved" && (
+                      <button
+                        type="button"
+                        onClick={() => handleStatusAction(markExpensePaid, exp.id)}
+                        disabled={actionLoadingId === exp.id}
+                        className="exp-btn-action exp-btn-paid"
+                      >
+                        Mark Paid
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(exp)}
+                    disabled={actionLoadingId === exp.id}
+                    className="exp-btn-delete"
+                    title="Delete Claim"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* ─── 5. FULLY REDESIGNED RECORD EXPENSE MODAL (APP THEME MATCHED) ─── */}

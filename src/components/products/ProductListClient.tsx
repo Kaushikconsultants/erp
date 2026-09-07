@@ -39,6 +39,7 @@ import ProductCatalogModal from '@/components/products/ProductCatalogModal';
 import ProductMatrixModal from '@/components/inventory/ProductMatrixModal';
 import DeadStockInsightsModal from '@/components/products/DeadStockInsightsModal';
 import { deleteProduct, quickAdjustStock } from '@/app/actions/productActions';
+import './products.css';
 
 export interface Product {
   id: string;
@@ -328,131 +329,91 @@ export default function ProductListClient({ products, categories, categoriesData
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+    <div className="products-container">
 
-      {/* ─── 1. TOP INVENTORY VALUATION & KPI SUMMARY METRICS ─── */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '12px'
-      }}>
+      {/* ─── 1. TOP INVENTORY VALUATION & KPI SUMMARY METRICS (Responsive 4-col desktop, 2x2 mobile) ─── */}
+      <div className="products-kpi-grid">
         {/* KPI 1: Cost Valuation */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}>
-          <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="products-kpi-card">
+          <div className="products-kpi-info">
+            <div className="products-kpi-label">
               Stock Value (Cost)
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 2px 0' }}>
-              ₹{inventoryAnalytics.totalCostValuation.toLocaleString('en-IN')}
+            <div className="products-kpi-value">
+              ₹{inventoryAnalytics.totalCostValuation.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+            <div className="products-kpi-sub">
               Across <strong>{inventoryAnalytics.totalUnits.toLocaleString('en-IN')}</strong> stock units
             </div>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="products-kpi-icon" style={{ backgroundColor: '#ecfdf5', color: '#059669' }}>
             <Package size={20} />
           </div>
         </div>
 
         {/* KPI 2: Retail Valuation */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}>
-          <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Stock Value (Retail / Selling)
+        <div className="products-kpi-card">
+          <div className="products-kpi-info">
+            <div className="products-kpi-label">
+              Stock Value (Retail)
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#2563eb', margin: '4px 0 2px 0' }}>
-              ₹{inventoryAnalytics.totalRetailValuation.toLocaleString('en-IN')}
+            <div className="products-kpi-value" style={{ color: '#2563eb' }}>
+              ₹{inventoryAnalytics.totalRetailValuation.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-              Potential gross sales realization
+            <div className="products-kpi-sub">
+              Potential gross sales
             </div>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="products-kpi-icon" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>
             <DollarSign size={20} />
           </div>
         </div>
 
         {/* KPI 3: Potential Gross Profit */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}>
-          <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="products-kpi-card">
+          <div className="products-kpi-info">
+            <div className="products-kpi-label">
               Potential Gross Profit
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#059669', margin: '4px 0 2px 0' }}>
-              +₹{inventoryAnalytics.potentialGrossProfit.toLocaleString('en-IN')}
+            <div className="products-kpi-value" style={{ color: '#059669' }}>
+              +₹{inventoryAnalytics.potentialGrossProfit.toLocaleString('en-IN', { maximumFractionDigits: 1 })}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>
+            <div className="products-kpi-sub" style={{ color: '#059669', fontWeight: 600 }}>
               {inventoryAnalytics.overallMargin}% Aggregate Margin
             </div>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="products-kpi-icon" style={{ backgroundColor: '#f0fdf4', color: '#16a34a' }}>
             <TrendingUp size={20} />
           </div>
         </div>
 
         {/* KPI 4: Stock Health & Reorder Alerts */}
-        <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '10px',
-          border: '1px solid #e2e8f0',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-        }}>
-          <div>
-            <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        <div className="products-kpi-card">
+          <div className="products-kpi-info">
+            <div className="products-kpi-label">
               Catalog & Buffer Health
             </div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 2px 0' }}>
-              {inventoryAnalytics.totalProducts} <span style={{ fontSize: '0.8rem', fontWeight: 500, color: '#64748b' }}>Total SKUs</span>
+            <div className="products-kpi-value">
+              {inventoryAnalytics.totalProducts} <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#64748b' }}>Total SKUs</span>
             </div>
-            <div style={{ fontSize: '0.72rem', display: 'flex', gap: '8px', marginTop: '2px' }}>
-              <span style={{ color: '#059669', fontWeight: 600 }}>✓ {inventoryAnalytics.inStockCount} Optimal</span>
+            <div className="products-kpi-sub" style={{ display: 'flex', gap: '6px' }}>
+              <span style={{ color: '#059669', fontWeight: 600 }}>✓ {inventoryAnalytics.inStockCount} Ok</span>
               <span style={{ color: '#d97706', fontWeight: 600 }}>⚠️ {inventoryAnalytics.lowStockCount} Low</span>
               <span style={{ color: '#dc2626', fontWeight: 600 }}>✗ {inventoryAnalytics.outOfStockCount} Out</span>
             </div>
           </div>
-          <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="products-kpi-icon" style={{ backgroundColor: '#fffbeb', color: '#d97706' }}>
             <AlertTriangle size={20} />
           </div>
         </div>
       </div>
 
       {/* ─── 2. FILTERS & HEADER ACTIONS TOOLBAR ─── */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-        <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#ffffff' }}>
+      <div className="products-toolbar-panel">
+        <div className="products-toolbar-header">
           
           {/* Row 1: Title, Export & Action Buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div className="products-toolbar-title-row">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
                 width: '32px',
@@ -477,7 +438,7 @@ export default function ProductListClient({ products, categories, categoriesData
             </div>
 
             {/* Action Buttons Group */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <div className="products-actions-bar">
               {/* CSV Export Button */}
               <button
                 onClick={exportInventoryCSV}
@@ -664,16 +625,7 @@ export default function ProductListClient({ products, categories, categoriesData
           </div>
 
           {/* Row 2: Search & Filter Controls */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            flexWrap: 'wrap',
-            backgroundColor: '#f8fafc',
-            padding: '8px 10px',
-            borderRadius: '8px',
-            border: '1px solid #e2e8f0'
-          }}>
+          <div className="products-filter-bar">
             {/* Search Input */}
             <div style={{ position: 'relative', flex: '1', minWidth: '220px' }}>
               <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
@@ -708,9 +660,7 @@ export default function ProductListClient({ products, categories, categoriesData
                     border: 'none',
                     cursor: 'pointer',
                     color: '#94a3b8',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center'
+                    padding: 0
                   }}
                 >
                   <X size={13} />
@@ -719,7 +669,7 @@ export default function ProductListClient({ products, categories, categoriesData
             </div>
 
             {/* Category Dropdown */}
-            <div style={{ position: 'relative', width: '160px' }}>
+            <div style={{ position: 'relative', width: '180px' }}>
               <select 
                 value={selectedCategory} 
                 onChange={e => setSelectedCategory(e.target.value)}
@@ -739,12 +689,14 @@ export default function ProductListClient({ products, categories, categoriesData
                 }}
               >
                 <option value="All Categories">All Categories</option>
-                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                {categories.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
               </select>
               <ChevronDown size={13} color="#64748b" style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
             </div>
 
-            {/* Status & Margin Dropdown */}
+            {/* Stock & Margin Status Filter Dropdown */}
             <div style={{ position: 'relative', width: '180px' }}>
               <select 
                 value={selectedStatus} 
@@ -826,8 +778,8 @@ export default function ProductListClient({ products, categories, categoriesData
           />
         )}
 
-        {/* ─── 3. ENHANCED INVENTORY & PROFIT DATA TABLE ─── */}
-        <div style={{ overflowX: 'auto' }}>
+        {/* ─── 3. DESKTOP DATA TABLE (Visible > 768px) ─── */}
+        <div className="products-desktop-table">
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1080px' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
@@ -1199,6 +1151,229 @@ export default function ProductListClient({ products, categories, categoriesData
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* ─── 4. MOBILE PRODUCTS FEED (Visible <= 768px) ─── */}
+        <div className="products-mobile-feed">
+          {filteredProducts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 16px', color: '#64748b', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <Package size={36} color="#cbd5e1" style={{ marginBottom: '8px' }} />
+              <div style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>No Products Found</div>
+              <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '2px' }}>
+                Try adjusting your search query or filters.
+              </div>
+            </div>
+          ) : (
+            filteredProducts.map((product) => {
+              const primaryImg = product.images && product.images.length > 0 ? product.images[0] : null;
+              const imageCount = product.images?.length || 0;
+              const articleIdentifier = product.articleNumber || product.sku || product.id;
+
+              const cost = product.purchasePrice !== undefined && product.purchasePrice !== null ? product.purchasePrice : (product.sellingPrice * 0.7);
+              const sell = product.sellingPrice || 0;
+              const unitProfit = sell - cost;
+              const marginPercent = sell > 0 ? ((unitProfit / sell) * 100).toFixed(1) : "0.0";
+              const minStock = product.minimumStock !== undefined && product.minimumStock !== null ? product.minimumStock : 10;
+              const totalStockCostValuation = (product.stockQuantity || 0) * cost;
+
+              const isLowStock = product.stockQuantity > 0 && product.stockQuantity <= minStock;
+              const isOutOfStock = product.stockQuantity <= 0;
+
+              return (
+                <div key={product.id} className="product-mobile-card">
+                  {/* Top: Photo Thumbnail + Title & Attributes */}
+                  <div className="product-card-top">
+                    <div
+                      className="product-thumb-box"
+                      onClick={() => {
+                        if (primaryImg) {
+                          setPreviewImage(primaryImg);
+                        } else if (canManage) {
+                          setEditingProduct(product);
+                        }
+                      }}
+                    >
+                      {primaryImg ? (
+                        <>
+                          <img
+                            src={primaryImg}
+                            alt={product.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                          {imageCount > 1 && (
+                            <div className="product-thumb-badge">+{imageCount - 1}</div>
+                          )}
+                        </>
+                      ) : (
+                        <ImageIcon size={18} color="#94a3b8" />
+                      )}
+                    </div>
+
+                    <div className="product-card-title-group">
+                      <div className="product-card-name">{product.name}</div>
+                      <div className="product-variants-row">
+                        {product.category && (
+                          <span className="product-variant-chip" style={{ backgroundColor: '#f1f5f9', color: '#334155' }}>
+                            {product.category}
+                          </span>
+                        )}
+                        {product.fabric && (
+                          <span className="product-variant-chip" style={{ backgroundColor: '#f1f5f9', color: '#475569' }}>
+                            {product.fabric}
+                          </span>
+                        )}
+                        {product.color && (
+                          <span className="product-variant-chip" style={{ backgroundColor: '#ede9fe', color: '#6d28d9' }}>
+                            {product.color}
+                          </span>
+                        )}
+                        {product.size && (
+                          <span className="product-variant-chip" style={{ backgroundColor: '#eff6ff', color: '#2563eb' }}>
+                            {product.size}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SKU & Article Meta Row */}
+                  <div className="product-sku-row">
+                    <div>
+                      <span style={{ color: '#64748b', fontSize: '0.68rem', marginRight: '4px' }}>SKU:</span>
+                      <span className="product-sku-val">{product.sku || '-'}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="product-article-btn"
+                      onClick={() => setSelectedHistoryArticle(articleIdentifier)}
+                      title="View Article History"
+                    >
+                      Art: {product.articleNumber || '-'} <History size={11} />
+                    </button>
+                  </div>
+
+                  {/* Price & Profit Strip */}
+                  <div className="product-price-strip">
+                    <div className="price-item">
+                      <span className="price-item-label">Cost</span>
+                      <span className="price-item-val" style={{ color: '#475569' }}>
+                        ₹{cost.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <div className="price-item">
+                      <span className="price-item-label">Selling</span>
+                      <span className="price-item-val" style={{ color: '#0f172a' }}>
+                        ₹{sell.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      </span>
+                    </div>
+                    <div className="price-item">
+                      <span className="price-item-label">Margin</span>
+                      <span className="price-item-profit" style={{ color: unitProfit >= 0 ? '#059669' : '#dc2626' }}>
+                        {unitProfit >= 0 ? `+₹${unitProfit.toFixed(0)}` : `-₹${Math.abs(unitProfit).toFixed(0)}`}
+                        <span style={{ fontSize: '0.66rem', fontWeight: 600, display: 'block', color: Number(marginPercent) >= 30 ? '#2563eb' : (Number(marginPercent) >= 15 ? '#059669' : '#d97706') }}>
+                          {marginPercent}%
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stock on Hand & Status */}
+                  <div className="product-stock-bar" style={{
+                    backgroundColor: !isLowStock && !isOutOfStock ? '#f0fdf4' : (isLowStock ? '#fffbeb' : '#fef2f2'),
+                    borderColor: !isLowStock && !isOutOfStock ? '#dcfce7' : (isLowStock ? '#fef3c7' : '#fee2e2')
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                        Stock on Hand
+                      </div>
+                      <div className="product-stock-onhand" style={{ color: isOutOfStock ? '#dc2626' : (isLowStock ? '#d97706' : '#0f172a') }}>
+                        {product.stockQuantity} <span style={{ fontSize: '0.72rem', fontWeight: 500, color: '#64748b' }}>pcs</span>
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        backgroundColor: !isLowStock && !isOutOfStock ? '#dcfce7' : (isLowStock ? '#fef3c7' : '#fee2e2'),
+                        color: !isLowStock && !isOutOfStock ? '#166534' : (isLowStock ? '#92400e' : '#991b1b')
+                      }}>
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: !isLowStock && !isOutOfStock ? '#10b981' : (isLowStock ? '#f59e0b' : '#ef4444') }}></span>
+                        {!isLowStock && !isOutOfStock ? 'In Stock' : (isLowStock ? `Low (${minStock})` : 'Out of Stock')}
+                      </span>
+                      <div style={{ fontSize: '0.66rem', color: '#64748b', marginTop: '2px' }}>
+                        Asset: ₹{totalStockCostValuation.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mobile Quick Action Buttons */}
+                  <div className="product-card-actions">
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {canManage && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickAdjustProduct(product);
+                            setAdjustType("IN");
+                            setAdjustQty(10);
+                            setAdjustReason("Purchase Inward");
+                          }}
+                          className="product-action-btn btn-quick-adjust"
+                        >
+                          <Zap size={13} /> Stock Adj
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedHistoryArticle(articleIdentifier)}
+                        className="product-action-btn"
+                        style={{ backgroundColor: '#f8fafc', color: '#4f46e5', border: '1px solid #e2e8f0' }}
+                      >
+                        <History size={13} /> History
+                      </button>
+
+                      {canManage && (
+                        <button
+                          type="button"
+                          onClick={() => setPrintLabelProduct(product)}
+                          className="product-action-btn btn-barcode-print"
+                        >
+                          <Tag size={13} /> Barcode
+                        </button>
+                      )}
+                    </div>
+
+                    {canManage && (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProduct(product)}
+                          className="product-action-btn btn-edit-prod"
+                        >
+                          <Edit size={13} /> Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProduct(product)}
+                          disabled={deletingId === product.id}
+                          className="product-action-btn btn-delete-prod"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

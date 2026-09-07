@@ -22,6 +22,7 @@ import {
   Smartphone,
   Radio
 } from "lucide-react";
+import "@/components/products/products.css";
 
 interface ScanHistoryItem {
   id: string;
@@ -183,30 +184,14 @@ export default function InventoryScanner() {
   };
 
   return (
-    <div style={{
-      backgroundColor: "#ffffff",
-      borderRadius: "12px",
-      border: "1px solid #e2e8f0",
-      padding: "16px 20px",
-      marginBottom: "16px",
-      boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <div style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "8px",
-            backgroundColor: "#eff6ff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#2563eb"
-          }}>
-            <ScanBarcode size={17} />
+    <div className="inventory-scanner-card">
+      <div className="scanner-header-row">
+        <div className="scanner-title-group">
+          <div className="scanner-icon-box">
+            <ScanBarcode size={18} />
           </div>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
               <h3 style={{ margin: 0, fontSize: "0.92rem", fontWeight: 700, color: "#0f172a", letterSpacing: "-0.01em" }}>
                 Fast Barcode & QR Scanner
               </h3>
@@ -251,7 +236,7 @@ export default function InventoryScanner() {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+        <div className="scanner-actions-group">
           <button
             type="button"
             onClick={() => setShowMobileModal(true)}
@@ -262,8 +247,8 @@ export default function InventoryScanner() {
               background: "#4f46e5",
               color: "#ffffff",
               border: "none",
-              padding: "6px 12px",
-              borderRadius: "7px",
+              padding: "7px 12px",
+              borderRadius: "8px",
               fontSize: "0.78rem",
               fontWeight: 600,
               cursor: "pointer",
@@ -285,8 +270,8 @@ export default function InventoryScanner() {
               background: showCamera ? "#0f172a" : "#ffffff",
               color: showCamera ? "#ffffff" : "#334155",
               border: showCamera ? "1px solid #0f172a" : "1px solid #cbd5e1",
-              padding: "6px 12px",
-              borderRadius: "7px",
+              padding: "7px 12px",
+              borderRadius: "8px",
               fontSize: "0.78rem",
               fontWeight: 600,
               cursor: "pointer",
@@ -331,8 +316,8 @@ export default function InventoryScanner() {
       )}
 
       {/* Input controls */}
-      <div style={{ display: "flex", gap: "10px", alignItems: "flex-end", flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 280px" }}>
+      <div className="scanner-controls-row">
+        <div style={{ flex: "1 1 240px", width: "100%" }}>
           <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "5px" }}>
             Scan Barcode / Enter SKU or Article Number
           </label>
@@ -349,15 +334,16 @@ export default function InventoryScanner() {
             disabled={loading}
             style={{
               width: "100%",
-              height: "36px",
+              height: "38px",
               padding: "7px 12px",
               border: "1px solid #cbd5e1",
-              borderRadius: "7px",
-              fontSize: "0.82rem",
+              borderRadius: "8px",
+              fontSize: "0.84rem",
               fontWeight: 500,
               outline: "none",
               color: "#0f172a",
               backgroundColor: "#ffffff",
+              boxSizing: "border-box",
               transition: "border-color 0.15s ease"
             }}
             onFocus={e => e.target.style.borderColor = "#2563eb"}
@@ -365,87 +351,94 @@ export default function InventoryScanner() {
           />
         </div>
 
-        <div style={{ width: "75px" }}>
-          <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "5px" }}>
-            Qty
-          </label>
-          <input
-            type="number"
-            min="1"
-            value={quantity}
-            onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-            disabled={loading}
-            style={{
-              width: "100%",
-              height: "36px",
-              padding: "7px 8px",
-              border: "1px solid #cbd5e1",
-              borderRadius: "7px",
-              fontSize: "0.82rem",
-              fontWeight: 600,
-              textAlign: "center",
-              outline: "none",
-              color: "#0f172a",
-              backgroundColor: "#ffffff"
-            }}
-            onFocus={e => e.target.style.borderColor = "#2563eb"}
-            onBlur={e => e.target.style.borderColor = "#cbd5e1"}
-          />
-        </div>
+        <div className="scanner-qty-buttons-row">
+          <div style={{ width: "70px", flexShrink: 0 }}>
+            <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "5px" }}>
+              Qty
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={quantity}
+              onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+              disabled={loading}
+              style={{
+                width: "100%",
+                height: "38px",
+                padding: "7px 6px",
+                border: "1px solid #cbd5e1",
+                borderRadius: "8px",
+                fontSize: "0.84rem",
+                fontWeight: 600,
+                textAlign: "center",
+                outline: "none",
+                color: "#0f172a",
+                backgroundColor: "#ffffff",
+                boxSizing: "border-box"
+              }}
+              onFocus={e => e.target.style.borderColor = "#2563eb"}
+              onBlur={e => e.target.style.borderColor = "#cbd5e1"}
+            />
+          </div>
 
-        <div style={{ display: "flex", gap: "8px" }}>
-          <button
-            type="button"
-            onClick={() => handleScan("IN")}
-            disabled={loading || !sku.trim()}
-            style={{
-              height: "36px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              padding: "0 16px",
-              backgroundColor: "#10b981",
-              color: "#ffffff",
-              border: "none",
-              borderRadius: "7px",
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              cursor: loading || !sku.trim() ? "not-allowed" : "pointer",
-              opacity: loading || !sku.trim() ? 0.6 : 1,
-              boxShadow: "0 1px 2px rgba(16, 185, 129, 0.2)",
-              transition: "all 0.15s ease"
-            }}
-            onMouseEnter={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#059669"; }}
-            onMouseLeave={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#10b981"; }}
-          >
-            <Plus size={15} /> Stock In
-          </button>
+          <div style={{ display: "flex", gap: "8px", flex: 1, alignItems: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => handleScan("IN")}
+              disabled={loading || !sku.trim()}
+              style={{
+                height: "38px",
+                flex: 1,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+                padding: "0 14px",
+                backgroundColor: "#10b981",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: "8px",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: loading || !sku.trim() ? "not-allowed" : "pointer",
+                opacity: loading || !sku.trim() ? 0.6 : 1,
+                boxShadow: "0 1px 2px rgba(16, 185, 129, 0.2)",
+                transition: "all 0.15s ease"
+              }}
+              onMouseEnter={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#059669"; }}
+              onMouseLeave={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#10b981"; }}
+            >
+              <Plus size={15} /> Stock In
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handleScan("OUT")}
-            disabled={loading || !sku.trim()}
-            style={{
-              height: "36px",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "5px",
-              padding: "0 16px",
-              border: "1px solid #fca5a5",
-              color: "#dc2626",
-              backgroundColor: "#ffffff",
-              borderRadius: "7px",
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              cursor: loading || !sku.trim() ? "not-allowed" : "pointer",
-              opacity: loading || !sku.trim() ? 0.6 : 1,
-              transition: "all 0.15s ease"
-            }}
-            onMouseEnter={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#fef2f2"; }}
-            onMouseLeave={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#ffffff"; }}
-          >
-            <Minus size={15} /> Stock Out
-          </button>
+            <button
+              type="button"
+              onClick={() => handleScan("OUT")}
+              disabled={loading || !sku.trim()}
+              style={{
+                height: "38px",
+                flex: 1,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "5px",
+                padding: "0 14px",
+                border: "1px solid #fca5a5",
+                color: "#dc2626",
+                backgroundColor: "#ffffff",
+                borderRadius: "8px",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: loading || !sku.trim() ? "not-allowed" : "pointer",
+                opacity: loading || !sku.trim() ? 0.6 : 1,
+                transition: "all 0.15s ease"
+              }}
+              onMouseEnter={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#fef2f2"; }}
+              onMouseLeave={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#ffffff"; }}
+            >
+              <Minus size={15} /> Stock Out
+            </button>
+          </div>
         </div>
       </div>
 

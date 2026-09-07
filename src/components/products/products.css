@@ -1,0 +1,532 @@
+/* =========================================================
+   PRODUCT MASTER & INVENTORY - RESPONSIVE & MOBILE STYLES
+   Modern, Theme-Matched Catalog & Valuation Suite
+   ========================================================= */
+
+.products-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── Inventory Scanner Mobile & Desktop Styling ─── */
+.inventory-scanner-card {
+  background: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  padding: 16px 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  margin-bottom: 4px;
+}
+
+.scanner-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.scanner-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scanner-icon-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background-color: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.scanner-actions-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.scanner-controls-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+/* ─── Top Inventory Valuation & KPI Summary ─── */
+.products-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.products-kpi-card {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.products-kpi-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.products-kpi-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.products-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.products-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.products-kpi-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.products-kpi-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* ─── Toolbar & Filters ─── */
+.products-toolbar-panel {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.products-toolbar-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.products-toolbar-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.products-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.products-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background-color: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ─── Desktop Table Container ─── */
+.products-desktop-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* ─── Mobile Products Feed (<= 768px) ─── */
+.products-mobile-feed {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+
+.product-mobile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.product-mobile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+/* Top: Photo Thumbnail + Title & Attributes */
+.product-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.product-thumb-box {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.product-thumb-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: rgba(79, 70, 229, 0.95);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 4px 0 0 0;
+}
+
+.product-card-title-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.product-card-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.product-variants-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.product-variant-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* SKU & Article Meta Row */
+.product-sku-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+  font-size: 0.74rem;
+}
+
+.product-sku-val {
+  font-family: monospace;
+  font-weight: 700;
+  color: #334155;
+}
+
+.product-article-btn {
+  color: #4f46e5;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.74rem;
+}
+
+/* Price & Profit Strip */
+.product-price-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background-color: #fcfcfd;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 8px 10px;
+  text-align: center;
+}
+
+.price-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.price-item-label {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.price-item-val {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.price-item-profit {
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+/* Stock & Asset Valuation Bar */
+.product-stock-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.product-stock-onhand {
+  font-size: 0.94rem;
+  font-weight: 800;
+}
+
+/* Mobile Quick Actions Bar */
+.product-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.product-action-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.btn-quick-adjust {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.btn-quick-adjust:hover {
+  background-color: #dcfce7;
+}
+
+.btn-barcode-print {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.btn-barcode-print:hover {
+  background-color: #ffedd5;
+}
+
+.btn-edit-prod {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.btn-edit-prod:hover {
+  background-color: #dbeafe;
+}
+
+.btn-delete-prod {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.btn-delete-prod:hover {
+  background-color: #fee2e2;
+}
+
+/* ─── MOBILE VIEWPORT RESPONSIVENESS (<= 768px) ─── */
+@media (max-width: 768px) {
+  /* Scanner mobile layout */
+  .inventory-scanner-card {
+    padding: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .scanner-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .scanner-actions-group {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .scanner-actions-group button {
+    width: 100%;
+    justify-content: center;
+    font-size: 0.74rem !important;
+    padding: 7px 8px !important;
+  }
+
+  .scanner-controls-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .scanner-qty-buttons-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+  }
+
+  /* 2x2 Grid for Top KPI Metrics on Mobile */
+  .products-kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  .products-kpi-card {
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .products-kpi-icon {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 8px !important;
+  }
+
+  .products-kpi-icon svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .products-kpi-label {
+    font-size: 0.65rem !important;
+  }
+
+  .products-kpi-value {
+    font-size: 1.12rem !important;
+  }
+
+  .products-kpi-sub {
+    font-size: 0.65rem !important;
+  }
+
+  /* Toolbar adjustments */
+  .products-toolbar-header {
+    padding: 12px !important;
+  }
+
+  .products-actions-bar {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .products-actions-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .products-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .products-filter-bar > div {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Switch Table to Mobile Feed */
+  .products-desktop-table {
+    display: none !important;
+  }
+
+  .products-mobile-feed {
+    display: flex !important;
+  }
+}

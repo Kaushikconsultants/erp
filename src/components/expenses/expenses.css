@@ -1,0 +1,589 @@
+/* =========================================================
+   EXPENSES & CLAIMS - RESPONSIVE & MOBILE STYLES
+   Modern, Theme-Matched Expense & Mileage Suite
+   ========================================================= */
+
+.expenses-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── Header ─── */
+.expenses-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  background-color: #ffffff;
+  padding: 18px 24px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.expenses-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.expenses-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dbeafe;
+  flex-shrink: 0;
+}
+
+.expenses-header-title {
+  margin: 0;
+  font-size: 1.3rem;
+  fontWeight: 700;
+  color: #0f172a;
+}
+
+.expenses-header-desc {
+  margin: 2px 0 0 0;
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+/* ─── Compact KPI Metric Grid ─── */
+.expenses-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.expenses-kpi-card {
+  background-color: #ffffff;
+  padding: 16px 18px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  border-left-width: 4px;
+}
+
+.expenses-kpi-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.expenses-kpi-card.recorded {
+  border-left-color: #4f46e5;
+}
+
+.expenses-kpi-card.pending {
+  border-left-color: #f59e0b;
+}
+
+.expenses-kpi-card.approved {
+  border-left-color: #3b82f6;
+}
+
+.expenses-kpi-card.settled {
+  border-left-color: #10b981;
+}
+
+.expenses-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.expenses-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.expenses-kpi-icon-wrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.expenses-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.expenses-kpi-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+/* ─── Filter & Toolbar ─── */
+.expenses-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: #ffffff;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+.expenses-toolbar-row1 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.expenses-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.expenses-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.expenses-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 8px 12px 8px 36px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #cbd5e1 !important;
+  font-size: 0.84rem !important;
+  outline: none !important;
+  background-color: #f8fafc !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+}
+
+.expenses-search-input:focus {
+  border-color: #4f46e5 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+}
+
+.expenses-select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background-color: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+}
+
+/* Horizontal Status Chips Bar */
+.expenses-status-chips-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.expenses-status-chips-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.expenses-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.expenses-status-chip:hover {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+.expenses-status-chip.active {
+  background-color: #4f46e5;
+  color: #ffffff;
+  border-color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.25);
+}
+
+.expenses-status-chip.active .expenses-chip-count {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.expenses-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ─── Desktop Table View ─── */
+.expenses-desktop-table {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+/* ─── Mobile Expense Cards Feed (<= 768px) ─── */
+.expenses-mobile-feed {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.expense-mobile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.expense-mobile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+/* Mobile Card Header */
+.exp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.exp-card-num-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exp-card-num {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.exp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.exp-card-date {
+  font-size: 0.74rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Mobile Card Body */
+.exp-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.exp-account-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.exp-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.exp-category-tag {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.exp-vendor-name {
+  font-size: 0.78rem;
+  color: #475569;
+  font-weight: 500;
+}
+
+.exp-billable-tag {
+  font-size: 0.68rem;
+  color: #059669;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* Mileage badge */
+.exp-mileage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  color: #334155;
+  margin-top: 2px;
+}
+
+/* Financial Box */
+.exp-fin-box {
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.exp-fin-amount {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.exp-fin-sub {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.exp-fin-tax {
+  text-align: right;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.exp-tax-rate {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 0.8rem;
+}
+
+/* Mobile Actions */
+.exp-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.exp-action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.exp-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.exp-btn-view {
+  background-color: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.exp-btn-view:hover {
+  background-color: #f8fafc;
+}
+
+.exp-btn-edit {
+  background-color: #eef2ff;
+  color: #4f46e5;
+  border: 1px solid #c7d2fe;
+}
+
+.exp-btn-edit:hover {
+  background-color: #e0e7ff;
+}
+
+.exp-btn-approve {
+  background-color: #4f46e5;
+  color: #ffffff;
+  border: none;
+}
+
+.exp-btn-approve:hover {
+  background-color: #4338ca;
+}
+
+.exp-btn-paid {
+  background-color: #16a34a;
+  color: #ffffff;
+  border: none;
+}
+
+.exp-btn-paid:hover {
+  background-color: #15803d;
+}
+
+.exp-btn-delete {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fecaca;
+  background-color: #fef2f2;
+  color: #dc2626;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.exp-btn-delete:hover {
+  background-color: #fee2e2;
+}
+
+.exp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ─── MOBILE VIEWPORT RESPONSIVENESS (<= 768px) ─── */
+@media (max-width: 768px) {
+  .expenses-desktop-table {
+    display: none !important;
+  }
+
+  .expenses-mobile-feed {
+    display: flex !important;
+  }
+
+  .expenses-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .expenses-kpi-card {
+    padding: 12px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .expenses-kpi-label {
+    font-size: 0.68rem !important;
+  }
+
+  .expenses-kpi-value {
+    font-size: 1.15rem !important;
+  }
+
+  .expenses-kpi-sub {
+    font-size: 0.68rem !important;
+  }
+
+  .expenses-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .expenses-header button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .expenses-toolbar {
+    padding: 12px;
+  }
+
+  .expenses-toolbar-row1 {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .expenses-search-wrap {
+    width: 100%;
+    min-width: 100%;
+  }
+
+  .expenses-select {
+    width: 100%;
+  }
+}

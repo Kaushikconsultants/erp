@@ -1,0 +1,575 @@
+/* =========================================================
+   PRODUCTION & WORKSHOP CLIENT - RESPONSIVE & MOBILE STYLES
+   Modern, Theme-Matched Manufacturing Suite
+   ========================================================= */
+
+.production-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+/* ─── Header ─── */
+.production-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.production-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.production-header-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--accent-gradient, linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+  flex-shrink: 0;
+}
+
+.production-header-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  letter-spacing: -0.2px;
+}
+
+.production-header-desc {
+  margin: 2px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+}
+
+.production-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ─── KPI Metric Grid ─── */
+.production-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+}
+
+.production-kpi-card {
+  background-color: #ffffff;
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all 0.2s ease;
+}
+
+.production-kpi-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.production-kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.production-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.production-kpi-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.production-kpi-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+/* ─── Sector Filter Tabs ─── */
+.production-sector-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 6px 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.production-sector-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.production-sector-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.production-sector-btn:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+/* ─── Toolbar (Search & Filter) ─── */
+.production-toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.production-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.production-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.production-search-input {
+  width: 100%;
+  height: 40px;
+  padding-left: 36px !important;
+  padding-right: 32px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #cbd5e1 !important;
+  font-size: 0.84rem !important;
+  color: #0f172a !important;
+  outline: none !important;
+  background-color: #ffffff !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+}
+
+.production-search-input:focus {
+  border-color: var(--accent-primary, #4f46e5) !important;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12) !important;
+}
+
+.production-status-select {
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #0f172a;
+  background-color: #ffffff;
+  outline: none;
+  cursor: pointer;
+}
+
+/* ─── Desktop Table View ─── */
+.production-desktop-table {
+  background-color: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* ─── Mobile Work Order Cards Feed ─── */
+.production-mobile-feed {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.production-mobile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.production-mobile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+/* Mobile Card Header */
+.wo-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wo-card-num-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wo-card-num {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #4f46e5;
+}
+
+.wo-priority-pill {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.wo-priority-pill.urgent {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.wo-priority-pill.high {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.wo-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Mobile Card Body */
+.wo-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wo-product-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.wo-job-title {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+.wo-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.wo-sector-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.wo-stage-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+/* Progress Box */
+.wo-progress-box {
+  background-color: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wo-progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  color: #475569;
+}
+
+.wo-progress-track {
+  height: 6px;
+  background-color: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.wo-progress-bar {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.3s ease;
+}
+
+/* Financial / Date Info Grid */
+.wo-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.wo-info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.wo-info-label {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.wo-info-val {
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 1px;
+}
+
+/* Mobile Actions Bar */
+.wo-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.wo-action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.wo-btn-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-sizing: border-box;
+}
+
+.wo-btn-view {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.wo-btn-view:hover {
+  background-color: #dbeafe;
+}
+
+.wo-btn-print {
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.wo-btn-print:hover {
+  background-color: #f1f5f9;
+}
+
+.wo-btn-piece {
+  background-color: #faf5ff;
+  color: #7c3aed;
+  border: 1px solid #e9d5ff;
+}
+
+.wo-btn-piece:hover {
+  background-color: #f3e8ff;
+}
+
+.wo-btn-done {
+  background-color: #059669;
+  color: #ffffff;
+  border: none;
+}
+
+.wo-btn-done:hover {
+  background-color: #047857;
+}
+
+.wo-btn-delete {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #fecdd3;
+  background-color: #fff1f2;
+  color: #e11d48;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.wo-btn-delete:hover {
+  background-color: #ffe4e6;
+}
+
+.wo-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ─── MOBILE APP VIEWPORT (max-width: 768px) ─── */
+@media (max-width: 768px) {
+  .production-container {
+    padding: 16px;
+    gap: 14px;
+  }
+
+  .production-desktop-table {
+    display: none !important;
+  }
+
+  .production-mobile-feed {
+    display: flex !important;
+  }
+
+  /* Compact 2-column or 3-column Grid on Mobile */
+  .production-kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .production-kpi-card {
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+    gap: 4px !important;
+  }
+
+  .production-kpi-label {
+    font-size: 0.66rem !important;
+  }
+
+  .production-kpi-value {
+    font-size: 1.15rem !important;
+  }
+
+  .production-kpi-icon-wrap {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 6px !important;
+  }
+
+  .production-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .production-header-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .production-header-actions button {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .production-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .production-search-wrap {
+    width: 100%;
+  }
+
+  .production-status-select {
+    width: 100%;
+  }
+}

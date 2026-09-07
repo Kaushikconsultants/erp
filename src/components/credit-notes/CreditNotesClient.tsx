@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { createCreditNote, cancelCreditNote } from '@/app/actions/creditNoteActions';
 import * as XLSX from 'xlsx';
+import './credit-notes.css';
 
 interface CreditNotesClientProps {
   initialCreditNotes: any[];
@@ -216,95 +217,74 @@ export default function CreditNotesClient({
   const modalTax = lineItems.reduce((acc, item) => acc + ((Number(item.quantity || 0) * Number(item.rate || 0) * Number(item.gstRate || 0)) / 100), 0);
   const modalGrandTotal = Math.round(modalSubtotal + modalTax);
 
+  // Status counts for chips
+  const statusCounts = useMemo(() => {
+    return {
+      All: creditNotes.length,
+      OPEN: creditNotes.filter(cn => cn.status === 'OPEN').length,
+      ADJUSTED: creditNotes.filter(cn => cn.status === 'ADJUSTED').length,
+      REFUNDED: creditNotes.filter(cn => cn.status === 'REFUNDED').length,
+      CANCELLED: creditNotes.filter(cn => cn.status === 'CANCELLED').length,
+    };
+  }, [creditNotes]);
+
   return (
-    <div>
-      {/* ─── KPI METRICS ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <div className="glass-panel" style={{ padding: '20px', borderLeft: '4px solid #e11d48' }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>
-            Total Credit Issued
+    <div className="credit-notes-container">
+      {/* ─── 1. RESPONSIVE KPI METRICS ─── */}
+      <div className="credit-notes-kpi-grid">
+        <div className="credit-notes-kpi-card issued">
+          <div className="credit-notes-kpi-label">Total Credit Issued</div>
+          <div className="credit-notes-kpi-value" style={{ color: '#e11d48' }}>
+            ₹{totalIssued.toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#e11d48', marginTop: '6px' }}>
-            ₹{totalIssued.toLocaleString()}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+          <div className="credit-notes-kpi-sub">
             Across {creditNotes.length} credit notes
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '20px', borderLeft: '4px solid #f59e0b' }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>
-            Open / Unadjusted Balance
+        <div className="credit-notes-kpi-card balance">
+          <div className="credit-notes-kpi-label">Open / Unadjusted Balance</div>
+          <div className="credit-notes-kpi-value" style={{ color: '#d97706' }}>
+            ₹{openBalance.toLocaleString('en-IN')}
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#d97706', marginTop: '6px' }}>
-            ₹{openBalance.toLocaleString()}
-          </div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
-            Available for future invoice deduction
+          <div className="credit-notes-kpi-sub">
+            Available for future deductions
           </div>
         </div>
 
-        <div className="glass-panel" style={{ padding: '20px', borderLeft: '4px solid #3b82f6' }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>
-            Sales Returns
+        <div className="credit-notes-kpi-card returns">
+          <div className="credit-notes-kpi-label">Sales Returns</div>
+          <div className="credit-notes-kpi-value" style={{ color: '#2563eb' }}>
+            {salesReturnsCount} <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b' }}>returns</span>
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#2563eb', marginTop: '6px' }}>
-            {salesReturnsCount} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>returns</span>
-          </div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+          <div className="credit-notes-kpi-sub">
             {restockedCount} restocked into warehouse
           </div>
         </div>
       </div>
 
-      {/* ─── TOOLBAR & CONTROLS ─── */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '12px',
-        border: '1px solid #e2e8f0',
-        padding: '16px 20px',
-        marginBottom: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
-          {/* Search */}
-          <div style={{ position: 'relative', minWidth: '260px', flex: '1', maxWidth: '360px' }}>
-            <Search size={15} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+      {/* ─── 2. TOOLBAR & CONTROLS ─── */}
+      <div className="credit-notes-toolbar">
+        <div className="credit-notes-toolbar-top">
+          {/* Search Input */}
+          <div className="credit-notes-search-wrap">
+            <Search size={15} className="credit-notes-search-icon" />
             <input
               type="text"
               placeholder="Search CN #, customer, invoice..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px 8px 36px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '0.85rem',
-                outline: 'none'
-              }}
+              className="credit-notes-search-input"
             />
           </div>
 
           {/* Reason Filter */}
-          <div style={{ position: 'relative', width: '180px' }}>
+          <div style={{ position: 'relative', minWidth: '170px' }}>
             <select
               value={filterReason}
               onChange={(e) => setFilterReason(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 30px 8px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '0.85rem',
-                appearance: 'none',
-                backgroundColor: '#ffffff',
-                outline: 'none'
-              }}
+              className="credit-notes-select"
+              style={{ width: '100%' }}
             >
               <option value="All">All Reasons</option>
               <option value="Sales Return">Sales Return</option>
@@ -316,41 +296,17 @@ export default function CreditNotesClient({
             <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
-          {/* Status Filter */}
-          <div style={{ position: 'relative', width: '150px' }}>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 30px 8px 12px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '0.85rem',
-                appearance: 'none',
-                backgroundColor: '#ffffff',
-                outline: 'none'
-              }}
-            >
-              <option value="All">All Statuses</option>
-              <option value="OPEN">Open</option>
-              <option value="ADJUSTED">Adjusted</option>
-              <option value="REFUNDED">Refunded</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-            <ChevronDown size={14} color="#64748b" style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          </div>
-
           {(search || filterReason !== 'All' || filterStatus !== 'All') && (
             <button
               onClick={() => { setSearch(''); setFilterReason('All'); setFilterStatus('All'); }}
               style={{
-                padding: '8px 12px',
-                borderRadius: '8px',
+                height: '40px',
+                padding: '0 12px',
+                borderRadius: '10px',
                 border: '1px solid #fecaca',
                 backgroundColor: '#fef2f2',
                 color: '#dc2626',
-                fontSize: '0.85rem',
+                fontSize: '0.82rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 display: 'inline-flex',
@@ -361,53 +317,70 @@ export default function CreditNotesClient({
               <RotateCcw size={13} /> Reset
             </button>
           )}
+
+          {/* Action Buttons */}
+          <div className="credit-notes-toolbar-actions">
+            <button
+              onClick={handleExportExcel}
+              style={{
+                height: '40px',
+                padding: '0 14px',
+                borderRadius: '10px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#166534',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <FileSpreadsheet size={15} /> Export Excel
+            </button>
+
+            <button
+              onClick={() => setShowModal(true)}
+              style={{
+                height: '40px',
+                padding: '0 16px',
+                borderRadius: '10px',
+                border: 'none',
+                backgroundColor: '#e11d48',
+                color: '#ffffff',
+                fontSize: '0.84rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(225, 29, 72, 0.25)'
+              }}
+            >
+              <Plus size={16} /> Create Credit Note
+            </button>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            onClick={handleExportExcel}
-            style={{
-              padding: '8px 14px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              backgroundColor: '#ffffff',
-              color: '#166534',
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <FileSpreadsheet size={15} /> Export Excel
-          </button>
-
-          <button
-            onClick={() => setShowModal(true)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              backgroundColor: '#e11d48',
-              color: '#ffffff',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              boxShadow: '0 2px 4px rgba(225, 29, 72, 0.25)'
-            }}
-          >
-            <Plus size={16} /> Create Credit Note
-          </button>
+        {/* Status Filter Chips */}
+        <div className="credit-notes-status-chips-bar">
+          {(['All', 'OPEN', 'ADJUSTED', 'REFUNDED', 'CANCELLED'] as const).map((st) => (
+            <button
+              key={st}
+              type="button"
+              onClick={() => setFilterStatus(st)}
+              className={`credit-notes-status-chip ${filterStatus === st ? 'active' : ''}`}
+            >
+              <span>{st === 'All' ? 'All Statuses' : st.charAt(0) + st.slice(1).toLowerCase()}</span>
+              <span className="cn-chip-count">{statusCounts[st] || 0}</span>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* ─── DATA TABLE ─── */}
-      <div className="glass-panel" style={{ overflow: 'hidden', padding: 0 }}>
+      {/* ─── 3. DESKTOP DATA TABLE (Visible > 768px) ─── */}
+      <div className="credit-notes-desktop-table">
         <div className="table-responsive">
           <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
             <thead>
@@ -468,10 +441,10 @@ export default function CreditNotesClient({
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px', fontWeight: 800, color: '#0f172a', textAlign: 'right' }}>
-                      ₹{cn.totalAmount?.toLocaleString()}
+                      ₹{cn.totalAmount?.toLocaleString('en-IN')}
                     </td>
                     <td style={{ padding: '12px 16px', fontWeight: 800, color: cn.balanceAmount > 0 ? '#d97706' : '#16a34a', textAlign: 'right' }}>
-                      ₹{cn.balanceAmount?.toLocaleString()}
+                      ₹{cn.balanceAmount?.toLocaleString('en-IN')}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       {cn.restockReturnedGoods ? (
@@ -550,6 +523,111 @@ export default function CreditNotesClient({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* ─── 4. MOBILE CREDIT NOTE CARDS FEED (Visible <= 768px) ─── */}
+      <div className="credit-notes-mobile-feed">
+        {filtered.length === 0 ? (
+          <div className="cn-empty-state">
+            <FileMinus size={36} color="#cbd5e1" style={{ marginBottom: '8px' }} />
+            <div style={{ fontWeight: 700, color: '#475569', fontSize: '0.9rem' }}>No Credit Notes Found</div>
+            <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '2px' }}>
+              Create a credit note for sales returns or billing adjustments.
+            </div>
+          </div>
+        ) : (
+          filtered.map(cn => {
+            const statusBg = cn.status === 'OPEN' ? '#fef3c7' : (cn.status === 'ADJUSTED' ? '#dcfce7' : '#fee2e2');
+            const statusColor = cn.status === 'OPEN' ? '#92400e' : (cn.status === 'ADJUSTED' ? '#166534' : '#991b1b');
+            const reasonBg = cn.reason === 'Sales Return' ? '#fee2e2' : '#f1f5f9';
+            const reasonColor = cn.reason === 'Sales Return' ? '#991b1b' : '#334155';
+
+            return (
+              <div key={cn.id} className="credit-note-mobile-card">
+                {/* Header: CN Number, Status & Date */}
+                <div className="cn-card-header">
+                  <div className="cn-card-num-group">
+                    <Link href={`/credit-notes/${cn.id}`} className="cn-card-num">
+                      {cn.creditNoteNumber} <ExternalLink size={12} />
+                    </Link>
+                    <span className="cn-status-pill" style={{ backgroundColor: statusBg, color: statusColor }}>
+                      {cn.status}
+                    </span>
+                  </div>
+                  <span className="cn-card-date">
+                    {new Date(cn.creditNoteDate).toLocaleDateString()}
+                  </span>
+                </div>
+
+                {/* Customer & Tags */}
+                <div className="cn-card-body">
+                  <div className="cn-customer-name">
+                    {cn.customer?.businessName || cn.customer?.contactPerson}
+                  </div>
+                  {cn.customer?.gstin && (
+                    <div className="cn-customer-gst">GSTIN: {cn.customer.gstin}</div>
+                  )}
+
+                  <div className="cn-tags-row">
+                    <span className="cn-reason-tag" style={{ backgroundColor: reasonBg, color: reasonColor }}>
+                      {cn.reason}
+                    </span>
+                    {cn.invoice?.invoiceNumber && (
+                      <span className="cn-invoice-tag">
+                        Inv #{cn.invoice.invoiceNumber}
+                      </span>
+                    )}
+                    {cn.restockReturnedGoods ? (
+                      <span className="cn-restock-tag" style={{ color: '#16a34a' }}>
+                        <CheckCircle2 size={12} /> Restocked
+                      </span>
+                    ) : (
+                      <span className="cn-restock-tag" style={{ color: '#94a3b8' }}>
+                        No Restock
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Financial Summary */}
+                <div className="cn-fin-box">
+                  <div>
+                    <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                      Total Amount
+                    </div>
+                    <div className="cn-fin-amount">
+                      ₹{cn.totalAmount?.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                  <div className="cn-fin-balance">
+                    <div style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                      Open Balance
+                    </div>
+                    <div className="cn-fin-balance-val" style={{ color: cn.balanceAmount > 0 ? '#d97706' : '#16a34a' }}>
+                      ₹{cn.balanceAmount?.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="cn-card-actions">
+                  <Link href={`/credit-notes/${cn.id}`} className="cn-btn-action cn-btn-print">
+                    <Printer size={13} /> Print / View
+                  </Link>
+                  {cn.status !== 'CANCELLED' && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancel(cn.id, cn.creditNoteNumber)}
+                      className="cn-btn-action cn-btn-cancel"
+                    >
+                      <Trash2 size={13} /> Cancel
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {/* ─── CREATE CREDIT NOTE MODAL ─── */}
