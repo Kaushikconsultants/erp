@@ -73,7 +73,7 @@ export default async function LeadsPage() {
         <AddLeadButton employees={allEmployees} organizationId={organizationId || undefined} isAdmin={isAdmin} />
       </div>
 
-      <div className="glass-panel" style={{ padding: '24px' }}>
+      <div className="lead-page-panel">
         <LeadTable initialLeads={leads} allEmployees={allEmployees} />
       </div>
     </div>
