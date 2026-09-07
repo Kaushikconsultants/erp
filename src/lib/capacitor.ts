@@ -164,6 +164,17 @@ export const syncNativeUserSession = (userId: string, serverUrl?: string) => {
 };
 
 /**
+ * Prompt Android OS to ignore battery optimizations for reliable 24/7 background alerts
+ */
+export const requestIgnoreBatteryOptimizations = () => {
+  if (isAndroidNativeApp()) {
+    try {
+      (window as any).AndroidNative.requestIgnoreBatteryOptimizations();
+    } catch (e) {}
+  }
+};
+
+/**
  * Request Camera Permission
  */
 export const requestCameraPermission = async (): Promise<{ success: boolean; error?: string }> => {

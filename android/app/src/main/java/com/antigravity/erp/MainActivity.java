@@ -23,6 +23,8 @@ import com.getcapacitor.BridgeActivity;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.os.PowerManager;
+
 public class MainActivity extends BridgeActivity {
 
     public static final String NOTIFICATION_CHANNEL_ID = "crm_notifications";
@@ -43,7 +45,8 @@ public class MainActivity extends BridgeActivity {
         // 3. Grant WebRTC Camera & Microphone permissions and inject JavaScript Native Bridge
         configureWebView();
 
-        // 4. Start background notification polling sync
+        // 4. Start 24/7 background notification polling sync service & alarm fallback
+        NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
     }
 
@@ -51,6 +54,7 @@ public class MainActivity extends BridgeActivity {
     public void onStart() {
         super.onStart();
         configureWebView();
+        NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
     }
 
@@ -59,6 +63,7 @@ public class MainActivity extends BridgeActivity {
         super.onResume();
         createNotificationChannels();
         configureWebView();
+        NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
     }
 
@@ -181,8 +186,32 @@ public class MainActivity extends BridgeActivity {
                         .putString(NotificationSyncReceiver.PREF_USER_ID, userId)
                         .putString(NotificationSyncReceiver.PREF_SERVER_URL, serverUrl != null && !serverUrl.isEmpty() ? serverUrl : NotificationSyncReceiver.DEFAULT_SERVER_URL)
                         .apply();
+                NotificationSyncService.start(activity);
                 NotificationSyncReceiver.schedule(activity);
             }
+        }
+
+        @JavascriptInterface
+        public void requestIgnoreBatteryOptimizations() {
+            activity.runOnUiThread(() -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        Intent intent = new Intent();
+                        String packageName = activity.getPackageName();
+                        PowerManager pm = (PowerManager) activity.getSystemService(Context.POWER_SERVICE);
+                        if (pm != null && !pm.isIgnoringBatteryOptimizations(packageName)) {
+                            intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                            intent.setData(Uri.parse("package:" + packageName));
+                            activity.startActivity(intent);
+                        }
+                    }
+                } catch (Exception e) {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                        activity.startActivity(intent);
+                    } catch (Exception ex) {}
+                }
+            });
         }
 
         @JavascriptInterface

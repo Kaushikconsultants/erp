@@ -22,7 +22,8 @@ import {
   Check,
   Info,
   Camera,
-  Mic
+  Mic,
+  Zap
 } from "lucide-react";
 import {
   NotificationSettingsData,
@@ -37,6 +38,7 @@ import {
   isAndroidNativeApp,
   openNativeAppSettings,
   postNativeAndroidNotification,
+  requestIgnoreBatteryOptimizations,
   getPlatform,
   requestAllNativePermissions,
   requestCameraPermission,
@@ -84,6 +86,21 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
       setFeedbackMsg({
         type: "info",
         text: "Please open your phone Settings ➔ Apps ➔ Antigravity ERP ➔ Notifications."
+      });
+    }
+  };
+
+  const handleAllowBackgroundAlerts = () => {
+    try {
+      requestIgnoreBatteryOptimizations();
+      setFeedbackMsg({
+        type: "info",
+        text: "Prompting Android to allow unrestricted background sync. Tap 'Allow' if prompted."
+      });
+    } catch (e) {
+      setFeedbackMsg({
+        type: "info",
+        text: "Please check phone Settings ➔ Apps ➔ Antigravity ERP ➔ Battery ➔ Unrestricted."
       });
     }
   };
@@ -763,31 +780,54 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
         >
           <div>
             <strong style={{ color: "#0f172a", display: "block", marginBottom: "3px", fontSize: "0.82rem" }}>
-              📱 Android Phone Notification Settings
+              📱 Android 24/7 Background Alerts & Settings
             </strong>
-            If notifications are turned off in your phone settings, you can open the system notification page directly with one tap to enable them.
+            Ensure notifications are allowed in system settings and tap "Allow 24/7 Background Sync" so alerts arrive instantly when the app is closed.
           </div>
-          <button
-            type="button"
-            onClick={handleOpenSystemSettings}
-            style={{
-              padding: "7px 14px",
-              borderRadius: "7px",
-              backgroundColor: "#ffffff",
-              border: "1px solid #cbd5e1",
-              color: "#1e293b",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
-            }}
-          >
-            <Smartphone size={15} color="#4f46e5" />
-            <span>Open Phone Settings</span>
-          </button>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={handleAllowBackgroundAlerts}
+              style={{
+                padding: "7px 14px",
+                borderRadius: "7px",
+                backgroundColor: "#fef3c7",
+                border: "1px solid #fde68a",
+                color: "#92400e",
+                fontSize: "0.78rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+              }}
+            >
+              <Zap size={14} color="#d97706" />
+              <span>Allow 24/7 Background Sync</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenSystemSettings}
+              style={{
+                padding: "7px 14px",
+                borderRadius: "7px",
+                backgroundColor: "#ffffff",
+                border: "1px solid #cbd5e1",
+                color: "#1e293b",
+                fontSize: "0.78rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
+              }}
+            >
+              <Smartphone size={15} color="#4f46e5" />
+              <span>Open Phone Settings</span>
+            </button>
+          </div>
         </div>
       </div>
 
