@@ -33,6 +33,8 @@ interface CallVoiceDebriefWidgetProps {
   leadId?: string | null;
   callDurationSec?: number;
   callType?: "OUTBOUND" | "INBOUND";
+  /** Trigger timestamp from parent when a call ends to automatically start voice debrief listening */
+  autoStartTrigger?: number;
   /** Callback when AI debrief analysis completes and user chooses to apply it to parent form */
   onApplyToForm?: (data: {
     outcome: string;
@@ -58,6 +60,7 @@ export default function CallVoiceDebriefWidget({
   leadId,
   callDurationSec = 0,
   callType = "OUTBOUND",
+  autoStartTrigger,
   onApplyToForm,
   onCallSaved,
   initialExpanded = true
@@ -98,6 +101,19 @@ export default function CallVoiceDebriefWidget({
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  // Auto start debrief recording when parent triggers on call completion
+  useEffect(() => {
+    if (autoStartTrigger && autoStartTrigger > 0) {
+      setIsExpanded(true);
+      const timer = setTimeout(() => {
+        if (!isRecording && !isAnalyzing) {
+          startRecording();
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [autoStartTrigger]);
 
   // Update editable fields when analysis changes
   useEffect(() => {
@@ -278,6 +294,19 @@ export default function CallVoiceDebriefWidget({
 
       if (res.success && res.analysis) {
         setAnalysis(res.analysis);
+        if (onApplyToForm) {
+          onApplyToForm({
+            outcome: res.analysis.detectedOutcome || "Interested / Follow-up Needed",
+            summary: res.analysis.summary || "",
+            notes: `[AI Voice Debrief]: ${res.analysis.transcript}\n\nKey Points:\n${(res.analysis.keyPoints || []).map(p => `• ${p}`).join("\n")}`,
+            followUpDate: res.analysis.suggestedFollowUp?.date || "",
+            followUpHour: res.analysis.suggestedFollowUp?.hour12 || "11",
+            followUpMinute: res.analysis.suggestedFollowUp?.minute || "00",
+            followUpPeriod: res.analysis.suggestedFollowUp?.period || "AM",
+            dealSentiment: res.analysis.dealSentiment,
+            keyPoints: res.analysis.keyPoints
+          });
+        }
       } else {
         setErrorMessage(res.error || "Failed to analyze voice debrief.");
       }

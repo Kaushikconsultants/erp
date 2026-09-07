@@ -24,6 +24,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.os.PowerManager;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyCallback;
+import android.telephony.TelephonyManager;
 
 public class MainActivity extends BridgeActivity {
 
@@ -32,6 +35,14 @@ public class MainActivity extends BridgeActivity {
     private static final int PERMISSION_REQUEST_CODE = 2001;
     private static int notificationIdCounter = 100;
 
+    // Telephony Call State Tracking for Automatic Stopwatch & Auto AI Debriefing
+    private TelephonyManager telephonyManager;
+    private PhoneStateListener phoneStateListener;
+    private Object telephonyCallback;
+    private long callStartTime = 0;
+    private boolean isCallInProgress = false;
+    private int lastCallDurationSec = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -39,7 +50,7 @@ public class MainActivity extends BridgeActivity {
         // 1. Create Default & Leads Notification Channels (Unlocks notification toggles on Android 8+)
         createNotificationChannels();
 
-        // 2. Request Essential Runtime Permissions on Launch (Notifications, Camera, Microphone)
+        // 2. Request Essential Runtime Permissions on Launch (Notifications, Camera, Microphone, Calls, Phone State)
         requestAppPermissions();
 
         // 3. Grant WebRTC Camera & Microphone permissions and inject JavaScript Native Bridge
@@ -48,6 +59,9 @@ public class MainActivity extends BridgeActivity {
         // 4. Start 24/7 background notification polling sync service & alarm fallback
         NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
+
+        // 5. Register Telephony Call State Listener
+        registerTelephonyListener();
     }
 
     @Override
@@ -56,6 +70,7 @@ public class MainActivity extends BridgeActivity {
         configureWebView();
         NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
+        registerTelephonyListener();
     }
 
     @Override
@@ -65,6 +80,7 @@ public class MainActivity extends BridgeActivity {
         configureWebView();
         NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
+        registerTelephonyListener();
     }
 
     /**
@@ -134,6 +150,12 @@ public class MainActivity extends BridgeActivity {
                 permissionsNeeded.add(Manifest.permission.CALL_PHONE);
             }
 
+            // Phone State Permission (for Automatic Call Duration Stopwatch & Auto AI Debriefing)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_PHONE_STATE);
+            }
+
             if (!permissionsNeeded.isEmpty()) {
                 ActivityCompat.requestPermissions(
                         this,
@@ -142,6 +164,91 @@ public class MainActivity extends BridgeActivity {
                 );
             }
         }
+    }
+
+    /**
+     * Registers TelephonyManager listener for real-time call connection and termination events
+     */
+    private void registerTelephonyListener() {
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
+            if (telephonyManager == null) {
+                telephonyManager = (TelephonyManager) getSystemService(Context.TELEPHONY_SERVICE);
+            }
+            if (telephonyManager == null) return;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (telephonyCallback == null) {
+                    telephonyCallback = new CustomTelephonyCallback();
+                    telephonyManager.registerTelephonyCallback(getMainExecutor(), (TelephonyCallback) telephonyCallback);
+                }
+            } else {
+                if (phoneStateListener == null) {
+                    phoneStateListener = new PhoneStateListener() {
+                        @Override
+                        public void onCallStateChanged(int state, String phoneNumber) {
+                            handleCallStateChange(state);
+                        }
+                    };
+                    telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @androidx.annotation.RequiresApi(api = Build.VERSION_CODES.S)
+    private class CustomTelephonyCallback extends TelephonyCallback implements TelephonyCallback.CallStateListener {
+        @Override
+        public void onCallStateChanged(int state) {
+            handleCallStateChange(state);
+        }
+    }
+
+    private void handleCallStateChange(int state) {
+        if (state == TelephonyManager.CALL_STATE_OFFHOOK) {
+            // Call answered or active
+            if (callStartTime == 0) {
+                callStartTime = System.currentTimeMillis();
+            }
+            isCallInProgress = true;
+            sendNativeCallEvent("CONNECTED", 0);
+        } else if (state == TelephonyManager.CALL_STATE_IDLE) {
+            // Call ended / hung up
+            if (isCallInProgress) {
+                long elapsedMs = callStartTime > 0 ? (System.currentTimeMillis() - callStartTime) : 0;
+                int durationSec = (int) Math.max(0, elapsedMs / 1000);
+                lastCallDurationSec = durationSec;
+                isCallInProgress = false;
+                callStartTime = 0;
+                sendNativeCallEvent("ENDED", durationSec);
+            }
+        } else if (state == TelephonyManager.CALL_STATE_RINGING) {
+            sendNativeCallEvent("RINGING", 0);
+        }
+    }
+
+    /**
+     * Broadcasts native call events directly into WebView JavaScript window event bus
+     */
+    public void sendNativeCallEvent(final String state, final int durationSec) {
+        runOnUiThread(() -> {
+            try {
+                WebView webView = getBridge().getWebView();
+                if (webView != null) {
+                    String script = String.format(
+                            "window.dispatchEvent(new CustomEvent('native-call-state', { detail: { state: '%s', durationSec: %d, timestamp: %d } }));",
+                            state, durationSec, System.currentTimeMillis()
+                    );
+                    webView.evaluateJavascript(script, null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
     }
 
     /**
@@ -382,6 +489,16 @@ public class MainActivity extends BridgeActivity {
                     } catch (Exception ex) {}
                 }
             });
+        }
+
+        @JavascriptInterface
+        public int getLastCallDuration() {
+            return activity.lastCallDurationSec;
+        }
+
+        @JavascriptInterface
+        public boolean isCallActive() {
+            return activity.isCallInProgress;
         }
     }
 }

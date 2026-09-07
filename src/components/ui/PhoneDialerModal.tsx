@@ -245,11 +245,13 @@ function PhoneDialerModalContent({
   const [contactSearch, setContactSearch] = useState<string>("");
   const [contactFilter, setContactFilter] = useState<"ALL" | "CUSTOMER" | "LEAD">("ALL");
 
-  // Call Duration Engine State
+  // Call Duration & Auto Debrief Engine State
   const [callDurationSec, setCallDurationSec] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+  const [autoDebriefTrigger, setAutoDebriefTrigger] = useState<number>(0);
   const callStartTimeRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isCallInitiatedRef = useRef<boolean>(false);
 
   // Post-Call Maintenance State
   const [callType, setCallType] = useState<"OUTBOUND" | "INBOUND">("OUTBOUND");
@@ -325,6 +327,46 @@ function PhoneDialerModalContent({
     return () => window.removeEventListener("open-phone-dialer", handleGlobalOpen);
   }, []);
 
+  // Listen for Native Android Telephony Call State (CONNECTED = Auto Timer Start, ENDED = Auto AI Debrief)
+  useEffect(() => {
+    const handleNativeCallState = (e: any) => {
+      const detail = e.detail || {};
+      const state = detail.state; // "CONNECTED" | "ENDED" | "RINGING"
+      const dur = detail.durationSec || 0;
+
+      if (state === "CONNECTED") {
+        // Automatically start live talk stopwatch
+        callStartTimeRef.current = Date.now();
+        setIsTimerRunning(true);
+        setCallStatus("Connected");
+        setFeedbackMsg("🟢 Call connected! Live talk timer started automatically.");
+      } else if (state === "ENDED") {
+        // Automatically stop stopwatch and lock duration
+        setIsTimerRunning(false);
+        callStartTimeRef.current = null;
+        setCallDurationSec(dur);
+
+        if (dur > 0) {
+          setCallStatus("Connected");
+          if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
+            setOutcome("Interested / Follow-up Needed");
+          }
+          setFeedbackMsg(`⏹ Call completed (${formatDuration(dur)}). Starting AI Voice Debrief automatically... 🎙️`);
+          // Automatically trigger AI Voice Debrief recording!
+          setAutoDebriefTrigger(Date.now());
+        } else {
+          setCallStatus("Busy");
+          setOutcome("No Answer / Busy");
+          setQuickFollowUp(1, 11, 0, "AM");
+          setFeedbackMsg("❌ Call ended without answer (0s). Scheduled follow-up for tomorrow 11 AM.");
+        }
+      }
+    };
+
+    window.addEventListener("native-call-state", handleNativeCallState);
+    return () => window.removeEventListener("native-call-state", handleNativeCallState);
+  }, [outcome]);
+
   // Initialize on open
   useEffect(() => {
     if (isOpen) {
@@ -332,7 +374,9 @@ function PhoneDialerModalContent({
       if (initialName) setNewLeadName(initialName);
       setCallDurationSec(0);
       setIsTimerRunning(false);
+      setAutoDebriefTrigger(0);
       callStartTimeRef.current = null;
+      isCallInitiatedRef.current = false;
       setNotes("");
       setFeedbackMsg("");
       setShowNewLeadForm(false);
@@ -365,13 +409,33 @@ function PhoneDialerModalContent({
     };
   }, [isTimerRunning]);
 
-  // Synchronize duration on window visibility change (only when timer is actively running)
+  // Synchronize duration on window visibility change (Auto-calculate duration & engage AI Debrief on return)
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && callStartTimeRef.current && isTimerRunning) {
-        const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
-        if (elapsed >= 0) {
-          setCallDurationSec(elapsed);
+      if (document.visibilityState === "visible") {
+        // If returning from a dialed call
+        if (isCallInitiatedRef.current) {
+          isCallInitiatedRef.current = false;
+          // Check if native Android bridge provides duration
+          if (typeof window !== "undefined" && (window as any).AndroidNative?.getLastCallDuration) {
+            const nativeDur = (window as any).AndroidNative.getLastCallDuration();
+            if (nativeDur > 0) {
+              setCallDurationSec(nativeDur);
+              setIsTimerRunning(false);
+              callStartTimeRef.current = null;
+              setCallStatus("Connected");
+              setFeedbackMsg(`⏹ Returned from call (${formatDuration(nativeDur)}). AI Voice Debrief starting... 🎙️`);
+              setAutoDebriefTrigger(Date.now());
+              return;
+            }
+          }
+        }
+
+        if (callStartTimeRef.current && isTimerRunning) {
+          const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
+          if (elapsed >= 0) {
+            setCallDurationSec(elapsed);
+          }
         }
       }
     };
@@ -464,6 +528,8 @@ function PhoneDialerModalContent({
     callStartTimeRef.current = null;
     setCallDurationSec(0);
     setIsTimerRunning(false);
+    setAutoDebriefTrigger(0);
+    isCallInitiatedRef.current = true;
     setCallStatus("Connected");
     setCallType("OUTBOUND");
 
@@ -479,7 +545,7 @@ function PhoneDialerModalContent({
 
     // Switch to post-call maintenance view
     setActiveTab("POST_CALL");
-    setFeedbackMsg("📞 Outbound call dialed. Tap 'Call Connected' below when customer answers to track live duration.");
+    setFeedbackMsg("📞 Outbound call dialed. Live stopwatch and AI Debrief will start automatically.");
   };
 
   // WhatsApp Message
@@ -1804,7 +1870,8 @@ function PhoneDialerModalContent({
                     type="button"
                     onClick={() => {
                       setIsTimerRunning(false);
-                      setFeedbackMsg(`⏹ Call ended. Talk time recorded: ${formatDuration(callDurationSec)}.`);
+                      setFeedbackMsg(`⏹ Call ended. Talk time: ${formatDuration(callDurationSec)}. Starting AI Voice Debrief... 🎙️`);
+                      setAutoDebriefTrigger(Date.now());
                     }}
                     style={{
                       padding: "11px",
@@ -1823,7 +1890,7 @@ function PhoneDialerModalContent({
                     }}
                   >
                     <PhoneOff size={16} />
-                    <span>End Call & Lock Duration ({formatDuration(callDurationSec)})</span>
+                    <span>End Call & Start AI Debrief ({formatDuration(callDurationSec)})</span>
                   </button>
                 )}
               </div>
@@ -1899,6 +1966,7 @@ function PhoneDialerModalContent({
               leadId={selectedContact?.type === "Lead" ? selectedContact?.id : initialLeadId}
               callDurationSec={callDurationSec}
               callType={callType}
+              autoStartTrigger={autoDebriefTrigger}
               onApplyToForm={(data) => {
                 setOutcome(data.outcome);
                 setNotes(data.notes);
