@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
+import "./phone-dialer.css";
 
 interface PhoneDialerModalProps {
   isOpen: boolean;
@@ -717,114 +718,34 @@ function PhoneDialerModalContent({
   }, [contacts, contactSearch, contactFilter]);
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(15, 23, 42, 0.75)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        zIndex: 99999,
-        display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "center",
-        padding: "0"
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: "480px",
-          backgroundColor: "#ffffff",
-          borderTopLeftRadius: "28px",
-          borderTopRightRadius: "28px",
-          boxShadow: "0 -16px 48px rgba(0,0,0,0.35)",
-          display: "flex",
-          flexDirection: "column",
-          maxHeight: "92vh",
-          overflowY: "auto",
-          animation: "slideUpDialer 0.25s cubic-bezier(0.16, 1, 0.3, 1)"
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="dialer-backdrop" onClick={onClose}>
+      <div className="dialer-sheet" onClick={(e) => e.stopPropagation()}>
         {/* Top Drag Handle */}
-        <div style={{ padding: "10px 0 2px 0", display: "flex", justifyContent: "center" }}>
-          <div style={{ width: "42px", height: "4px", backgroundColor: "#cbd5e1", borderRadius: "3px" }} />
-        </div>
+        <div className="dialer-drag-handle" />
 
         {/* Modal Header */}
-        <div style={{ padding: "8px 20px 10px 20px", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{
-              width: "38px",
-              height: "38px",
-              borderRadius: "12px",
-              background: "linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)",
-              color: "#ffffff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 4px 10px rgba(79, 70, 229, 0.3)"
-            }}>
+        <div className="dialer-header">
+          <div className="dialer-title-box">
+            <div className="dialer-icon-badge">
               <PhoneCall size={20} />
             </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 800, color: "#0f172a", letterSpacing: "-0.02em" }}>
-                TeleCRM Phone Dialer
-              </h3>
-              <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>Call Tracker & CRM Directory</span>
+            <div className="dialer-title-text">
+              <h3>TeleCRM Phone Dialer</h3>
+              <span>Call Tracker & CRM Directory</span>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "#f1f5f9",
-              border: "none",
-              color: "#64748b",
-              borderRadius: "50%",
-              width: "32px",
-              height: "32px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer"
-            }}
-          >
+          <button onClick={onClose} className="dialer-close-btn" title="Close Dialer">
             <X size={18} />
           </button>
         </div>
 
-        {/* Navigation Tabs Bar (Scrollable & Clean) */}
-        <div style={{
-          display: "flex",
-          backgroundColor: "#f8fafc",
-          padding: "6px 12px",
-          borderBottom: "1px solid #e2e8f0",
-          gap: "4px",
-          overflowX: "auto",
-          scrollbarWidth: "none"
-        }}>
+        {/* Navigation Tabs Bar */}
+        <div className="dialer-tabs-bar">
           {/* 1. Keypad */}
           <button
             type="button"
             onClick={() => setActiveTab("DIALPAD")}
-            style={{
-              flexShrink: 0,
-              padding: "7px 12px",
-              borderRadius: "10px",
-              border: "none",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              backgroundColor: activeTab === "DIALPAD" ? "#ffffff" : "transparent",
-              color: activeTab === "DIALPAD" ? "#4f46e5" : "#64748b",
-              boxShadow: activeTab === "DIALPAD" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "5px",
-              transition: "all 0.15s ease"
-            }}
+            className={`dialer-tab-pill ${activeTab === "DIALPAD" ? "active" : ""}`}
           >
             <Grid size={14} />
             <span>Keypad</span>
@@ -837,33 +758,12 @@ function PhoneDialerModalContent({
               setActiveTab("CALL_LOGS");
               loadRecentCalls();
             }}
-            style={{
-              flexShrink: 0,
-              padding: "7px 12px",
-              borderRadius: "10px",
-              border: "none",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              backgroundColor: activeTab === "CALL_LOGS" ? "#ffffff" : "transparent",
-              color: activeTab === "CALL_LOGS" ? "#4f46e5" : "#64748b",
-              boxShadow: activeTab === "CALL_LOGS" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "5px"
-            }}
+            className={`dialer-tab-pill ${activeTab === "CALL_LOGS" ? "active" : ""}`}
           >
             <History size={14} />
             <span>Call Logs</span>
             {Array.isArray(recentCalls) && recentCalls.length > 0 && (
-              <span style={{
-                fontSize: "0.65rem",
-                padding: "1px 5px",
-                borderRadius: "10px",
-                backgroundColor: activeTab === "CALL_LOGS" ? "#e0e7ff" : "#e2e8f0",
-                color: activeTab === "CALL_LOGS" ? "#3730a3" : "#64748b",
-                fontWeight: 800
-              }}>
+              <span className="dialer-count-badge">
                 {recentCalls.length}
               </span>
             )}
@@ -876,21 +776,7 @@ function PhoneDialerModalContent({
               setActiveTab("CONTACTS");
               if (!Array.isArray(contacts) || contacts.length === 0) loadContacts();
             }}
-            style={{
-              flexShrink: 0,
-              padding: "7px 12px",
-              borderRadius: "10px",
-              border: "none",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              backgroundColor: activeTab === "CONTACTS" ? "#ffffff" : "transparent",
-              color: activeTab === "CONTACTS" ? "#4f46e5" : "#64748b",
-              boxShadow: activeTab === "CONTACTS" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "5px"
-            }}
+            className={`dialer-tab-pill ${activeTab === "CONTACTS" ? "active" : ""}`}
           >
             <Users size={14} />
             <span>Contacts</span>
@@ -900,49 +786,21 @@ function PhoneDialerModalContent({
           <button
             type="button"
             onClick={() => setActiveTab("POST_CALL")}
-            style={{
-              flexShrink: 0,
-              padding: "7px 12px",
-              borderRadius: "10px",
-              border: "none",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              backgroundColor: activeTab === "POST_CALL" ? "#ffffff" : "transparent",
-              color: activeTab === "POST_CALL" ? "#4f46e5" : "#64748b",
-              boxShadow: activeTab === "POST_CALL" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "5px"
-            }}
+            className={`dialer-tab-pill ${activeTab === "POST_CALL" ? "active" : ""}`}
           >
             {isTimerRunning ? (
               <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#10b981", animation: "pulse 1.2s infinite" }} />
             ) : (
               <Clock size={14} />
             )}
-            <span>Notes & Duration</span>
+            <span>Log Call</span>
           </button>
 
           {/* 5. WhatsApp */}
           <button
             type="button"
             onClick={() => setActiveTab("WHATSAPP")}
-            style={{
-              flexShrink: 0,
-              padding: "7px 12px",
-              borderRadius: "10px",
-              border: "none",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              backgroundColor: activeTab === "WHATSAPP" ? "#ffffff" : "transparent",
-              color: activeTab === "WHATSAPP" ? "#10b981" : "#64748b",
-              boxShadow: activeTab === "WHATSAPP" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "5px"
-            }}
+            className={`dialer-tab-pill ${activeTab === "WHATSAPP" ? "active" : ""}`}
           >
             <MessageSquare size={14} />
             <span>WhatsApp</span>
@@ -952,21 +810,7 @@ function PhoneDialerModalContent({
           <button
             type="button"
             onClick={() => setActiveTab("SCRIPTS")}
-            style={{
-              flexShrink: 0,
-              padding: "7px 12px",
-              borderRadius: "10px",
-              border: "none",
-              fontSize: "0.78rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              backgroundColor: activeTab === "SCRIPTS" ? "#ffffff" : "transparent",
-              color: activeTab === "SCRIPTS" ? "#f59e0b" : "#64748b",
-              boxShadow: activeTab === "SCRIPTS" ? "0 2px 6px rgba(0,0,0,0.06)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "5px"
-            }}
+            className={`dialer-tab-pill ${activeTab === "SCRIPTS" ? "active" : ""}`}
           >
             <BookOpen size={14} />
             <span>Scripts</span>
@@ -1004,7 +848,7 @@ function PhoneDialerModalContent({
               border: "1px solid #e2e8f0",
               boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "9px", minWidth: 0 }}>
                 <div style={{
                   width: "32px",
                   height: "32px",
@@ -1015,12 +859,15 @@ function PhoneDialerModalContent({
                   alignItems: "center",
                   justifyContent: "center",
                   fontWeight: 800,
-                  fontSize: "0.82rem"
+                  fontSize: "0.82rem",
+                  flexShrink: 0
                 }}>
                   {selectedContact.companyName?.charAt(0) || "C"}
                 </div>
-                <div>
-                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a" }}>{selectedContact.companyName}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {selectedContact.companyName}
+                  </div>
                   <div style={{ fontSize: "0.7rem", color: "#64748b" }}>
                     {selectedContact.contactPerson || selectedContact.phone} • <span style={{ fontWeight: 700, color: selectedContact.type === "Customer" ? "#2563eb" : "#d97706" }}>{selectedContact.type}</span>
                   </div>
@@ -1040,68 +887,33 @@ function PhoneDialerModalContent({
             TAB 1: REDESIGNED CIRCULAR TOUCH KEYPAD
            ══════════════════════════════════════════════════════════════════════ */}
         {activeTab === "DIALPAD" && (
-          <div style={{ padding: "8px 20px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ padding: "10px 20px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
             
             {/* Phone Number Display Input */}
-            <div style={{ width: "100%", maxWidth: "340px", padding: "8px 0 10px 0", position: "relative" }}>
+            <div className="dialer-display-box">
               <input
                 type="text"
                 value={phoneDigits}
                 onChange={(e) => setPhoneDigits(e.target.value)}
-                placeholder="Enter Number..."
-                style={{
-                  width: "100%",
-                  textAlign: "center",
-                  fontSize: "1.75rem",
-                  fontWeight: 800,
-                  color: "#0f172a",
-                  border: "none",
-                  outline: "none",
-                  background: "transparent",
-                  letterSpacing: "1.5px",
-                  fontFamily: "monospace, sans-serif"
-                }}
+                placeholder="Enter phone number..."
+                className="dialer-digits-input"
               />
 
               {phoneDigits && (
-                <div style={{ position: "absolute", right: "0", top: "50%", transform: "translateY(-50%)", display: "flex", gap: "5px" }}>
-                  <button
-                    type="button"
-                    onClick={handleBackspace}
-                    style={{
-                      background: "#f1f5f9",
-                      border: "none",
-                      borderRadius: "8px",
-                      padding: "6px 8px",
-                      cursor: "pointer",
-                      color: "#475569"
-                    }}
-                    title="Backspace"
-                  >
-                    <Delete size={17} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleClear}
-                    style={{
-                      background: "#fee2e2",
-                      border: "none",
-                      borderRadius: "8px",
-                      padding: "6px 8px",
-                      cursor: "pointer",
-                      color: "#dc2626"
-                    }}
-                    title="Clear All"
-                  >
-                    <X size={17} />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleBackspace}
+                  className="dialer-backspace-btn"
+                  title="Backspace"
+                >
+                  <Delete size={17} />
+                </button>
               )}
             </div>
 
             {/* Auto-matching Directory Suggestions Dropdown */}
             {filteredKeypadContacts.length > 0 && !selectedContact && (
-              <div style={{ width: "100%", maxWidth: "340px", marginBottom: "10px" }}>
+              <div style={{ width: "100%", maxWidth: "320px", marginBottom: "10px" }}>
                 <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b", textTransform: "uppercase", marginBottom: "3px" }}>
                   Matching CRM Contacts
                 </div>
@@ -1140,64 +952,18 @@ function PhoneDialerModalContent({
               </div>
             )}
 
-            {/* ─── PERFECT CIRCULAR KEYPAD BUTTONS (Fixed Stretched Oval Bug) ─── */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              justifyItems: "center",
-              rowGap: "12px",
-              columnGap: "24px",
-              width: "100%",
-              maxWidth: "290px",
-              margin: "6px auto 16px auto"
-            }}>
+            {/* ─── PERFECT CIRCULAR KEYPAD BUTTONS ─── */}
+            <div className="dialer-keypad-grid">
               {DIALPAD_KEYS.map((item) => (
                 <button
                   key={item.digit}
                   type="button"
                   onClick={() => handleDigitClick(item.digit)}
-                  style={{
-                    width: "62px",
-                    height: "62px",
-                    minWidth: "62px",
-                    minHeight: "62px",
-                    borderRadius: "50%",
-                    border: "1.5px solid #e2e8f0",
-                    backgroundColor: "#f8fafc",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 5px rgba(15, 23, 42, 0.04)",
-                    transition: "transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease",
-                    padding: 0,
-                    userSelect: "none"
-                  }}
-                  onMouseDown={(e) => {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "#e0e7ff";
-                    (e.currentTarget as HTMLElement).style.borderColor = "#6366f1";
-                    (e.currentTarget as HTMLElement).style.transform = "scale(0.92)";
-                  }}
-                  onMouseUp={(e) => {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "#f8fafc";
-                    (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0";
-                    (e.currentTarget as HTMLElement).style.transform = "scale(1)";
-                  }}
-                  onTouchStart={(e) => {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "#e0e7ff";
-                    (e.currentTarget as HTMLElement).style.borderColor = "#6366f1";
-                    (e.currentTarget as HTMLElement).style.transform = "scale(0.92)";
-                  }}
-                  onTouchEnd={(e) => {
-                    (e.currentTarget as HTMLElement).style.backgroundColor = "#f8fafc";
-                    (e.currentTarget as HTMLElement).style.borderColor = "#e2e8f0";
-                    (e.currentTarget as HTMLElement).style.transform = "scale(1)";
-                  }}
+                  className="dialer-key-btn"
                 >
-                  <span style={{ fontSize: "1.45rem", fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>{item.digit}</span>
+                  <span className="dialer-key-digit">{item.digit}</span>
                   {item.sub ? (
-                    <span style={{ fontSize: "0.58rem", fontWeight: 700, color: "#94a3b8", letterSpacing: "1.2px", marginTop: "1px" }}>{item.sub}</span>
+                    <span className="dialer-key-sub">{item.sub}</span>
                   ) : (
                     <span style={{ height: "10px" }} />
                   )}
@@ -1206,28 +972,13 @@ function PhoneDialerModalContent({
             </div>
 
             {/* CALL CONTROLS FLOATING DOCK */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "22px", width: "100%", marginTop: "4px" }}>
+            <div className="dialer-actions-dock">
               {/* WhatsApp Button */}
               <button
                 type="button"
                 onClick={() => handleInitiateWhatsApp()}
                 title="Send WhatsApp Message"
-                style={{
-                  width: "50px",
-                  height: "50px",
-                  borderRadius: "50%",
-                  backgroundColor: "#25d366",
-                  color: "#ffffff",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 14px rgba(37, 211, 102, 0.4)",
-                  transition: "transform 0.15s ease"
-                }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
-                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                className="dialer-wa-btn"
               >
                 <MessageSquare size={22} />
               </button>
@@ -1237,22 +988,7 @@ function PhoneDialerModalContent({
                 type="button"
                 onClick={() => handleInitiateCall()}
                 title="Call via Phone"
-                style={{
-                  width: "66px",
-                  height: "66px",
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                  color: "#ffffff",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  boxShadow: "0 8px 24px rgba(16, 185, 129, 0.45)",
-                  transition: "transform 0.15s ease"
-                }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
-                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                className="dialer-call-btn"
               >
                 <Phone size={30} />
               </button>
@@ -1262,35 +998,20 @@ function PhoneDialerModalContent({
                 type="button"
                 onClick={() => setActiveTab("POST_CALL")}
                 title="Open Notes & Call Tracker"
-                style={{
-                  width: "50px",
-                  height: "50px",
-                  borderRadius: "50%",
-                  backgroundColor: "#e0e7ff",
-                  color: "#4f46e5",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  boxShadow: "0 4px 14px rgba(79, 70, 229, 0.2)",
-                  transition: "transform 0.15s ease"
-                }}
-                onMouseDown={(e) => (e.currentTarget.style.transform = "scale(0.92)")}
-                onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                className="dialer-notes-btn"
               >
                 <Sparkles size={22} />
               </button>
             </div>
 
             {/* Quick Helper Links */}
-            <div style={{ display: "flex", gap: "16px", marginTop: "14px", fontSize: "0.74rem", color: "#64748b" }}>
+            <div style={{ display: "flex", gap: "16px", marginTop: "12px", fontSize: "0.74rem", color: "#64748b" }}>
               <span
                 onClick={() => {
                   setActiveTab("CALL_LOGS");
                   loadRecentCalls();
                 }}
-                style={{ color: "#4f46e5", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "3px" }}
+                style={{ color: "#4f46e5", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
               >
                 <History size={13} /> View Call Logs
               </span>
@@ -1300,7 +1021,7 @@ function PhoneDialerModalContent({
                   setActiveTab("CONTACTS");
                   loadContacts();
                 }}
-                style={{ color: "#4f46e5", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "3px" }}
+                style={{ color: "#4f46e5", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}
               >
                 <Users size={13} /> Open Contacts
               </span>
