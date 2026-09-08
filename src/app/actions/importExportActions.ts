@@ -14,16 +14,98 @@ export interface ImportValidationResult {
 }
 
 export interface BulkImportPayload {
-  entityType: 'CUSTOMERS' | 'VENDORS' | 'PRODUCTS' | 'LEDGERS';
+  entityType: 'CUSTOMERS' | 'LEADS' | 'VENDORS' | 'PRODUCTS' | 'LEDGERS';
   rows: Record<string, any>[];
   skipDuplicates?: boolean;
+}
+
+/**
+ * Extract data from public Google Sheet URL via CSV export endpoint
+ */
+export async function fetchGoogleSheetData(sheetUrl: string): Promise<{
+  success: boolean;
+  headers?: string[];
+  rows?: Record<string, any>[];
+  error?: string;
+}> {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, error: "Unauthorized" };
+
+    if (!sheetUrl || !sheetUrl.includes("docs.google.com/spreadsheets")) {
+      return { success: false, error: "Please provide a valid Google Sheets URL (e.g., https://docs.google.com/spreadsheets/d/...)" };
+    }
+
+    // Extract spreadsheet ID
+    const matchId = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (!matchId || !matchId[1]) {
+      return { success: false, error: "Could not locate Google Spreadsheet ID in the link." };
+    }
+    const spreadsheetId = matchId[1];
+
+    // Extract gid (sheet tab) if specified, default to 0
+    let gid = "0";
+    const matchGid = sheetUrl.match(/[#&?]gid=([0-9]+)/);
+    if (matchGid && matchGid[1]) {
+      gid = matchGid[1];
+    }
+
+    const csvExportUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
+    
+    const res = await fetch(csvExportUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" },
+      next: { revalidate: 0 }
+    });
+
+    if (!res.ok) {
+      if (res.status === 404) {
+        return { success: false, error: "Google Sheet not found. Ensure the Sheet ID is correct." };
+      }
+      return { 
+        success: false, 
+        error: "Cannot access Google Sheet. Please ensure General Access is set to 'Anyone with the link can view'." 
+      };
+    }
+
+    const csvText = await res.text();
+    if (!csvText || csvText.trim().length === 0) {
+      return { success: false, error: "Google Sheet appears to be empty." };
+    }
+
+    // Parse CSV
+    const Papa = (await import('papaparse')).default;
+    const parsed = Papa.parse(csvText, {
+      header: true,
+      skipEmptyLines: true,
+    });
+
+    if (parsed.errors && parsed.errors.length > 0 && parsed.data.length === 0) {
+      return { success: false, error: "Failed to parse Google Sheet: " + parsed.errors[0].message };
+    }
+
+    const rows = (parsed.data as Record<string, any>[]).filter(r => Object.values(r).some(v => v !== null && v !== ''));
+    if (rows.length === 0) {
+      return { success: false, error: "Google Sheet contains no data rows." };
+    }
+
+    const headers = Object.keys(rows[0]);
+
+    return {
+      success: true,
+      headers,
+      rows
+    };
+  } catch (err: any) {
+    console.error("Error fetching Google Sheet:", err);
+    return { success: false, error: "Failed to sync Google Sheet: " + (err.message || "Network error") };
+  }
 }
 
 /**
  * Validate imported data rows prior to database insertion
  */
 export async function validateImportData(
-  entityType: 'CUSTOMERS' | 'VENDORS' | 'PRODUCTS' | 'LEDGERS',
+  entityType: 'CUSTOMERS' | 'LEADS' | 'VENDORS' | 'PRODUCTS' | 'LEDGERS',
   rawRows: Record<string, any>[]
 ): Promise<{ success: boolean; data?: ImportValidationResult; error?: string }> {
   try {
@@ -42,6 +124,7 @@ export async function validateImportData(
     // Fetch existing identifiers for duplicate detection
     let existingSkus = new Set<string>();
     let existingMobiles = new Set<string>();
+    let existingLeadMobiles = new Set<string>();
 
     if (entityType === 'PRODUCTS') {
       const prods = await prisma.product.findMany({
@@ -49,12 +132,19 @@ export async function validateImportData(
         select: { sku: true }
       });
       existingSkus = new Set(prods.map(p => p.sku?.toLowerCase().trim() || '').filter(Boolean));
-    } else if (entityType === 'CUSTOMERS') {
-      const custs = await prisma.customer.findMany({
-        where: { organizationId: orgId },
-        select: { mobile: true }
-      });
-      existingMobiles = new Set(custs.map(c => c.mobile.trim()).filter(Boolean));
+    } else if (entityType === 'CUSTOMERS' || entityType === 'LEADS') {
+      const [custs, leads] = await Promise.all([
+        prisma.customer.findMany({
+          where: { organizationId: orgId },
+          select: { mobile: true }
+        }),
+        prisma.lead.findMany({
+          where: { organizationId: orgId },
+          select: { whatsappNumber: true }
+        })
+      ]);
+      existingMobiles = new Set(custs.map(c => c.mobile.replace(/[^0-9]/g, '').slice(-10)).filter(Boolean));
+      existingLeadMobiles = new Set(leads.map(l => l.whatsappNumber.replace(/[^0-9]/g, '').slice(-10)).filter(Boolean));
     }
 
     for (let i = 0; i < rawRows.length; i++) {
@@ -63,14 +153,26 @@ export async function validateImportData(
 
       if (entityType === 'CUSTOMERS') {
         const name = String(row.businessName || row.name || row.customerName || '').trim();
-        const mobile = String(row.mobile || row.phone || row.whatsapp || '').replace(/[^0-9]/g, '');
+        const rawMobile = String(row.mobile || row.phone || row.whatsapp || '').replace(/[^0-9]/g, '');
+        const mobileLast10 = rawMobile.slice(-10);
 
         if (!name) errors.push("Customer or Business name is required");
-        if (!mobile || mobile.length < 10) errors.push("Valid 10-digit mobile number is required");
-        else if (existingMobiles.has(mobile)) errors.push(`Mobile ${mobile} already exists`);
+        if (!rawMobile || rawMobile.length < 10) errors.push("Valid 10-digit mobile number is required");
+        else if (existingMobiles.has(mobileLast10)) errors.push(`Mobile ${mobileLast10} already exists in Customers`);
+        else if (existingLeadMobiles.has(mobileLast10)) errors.push(`Mobile ${mobileLast10} already exists as a Lead (will be converted)`);
 
         const gstin = String(row.gstNumber || row.gstin || '').trim();
         if (gstin && gstin.length !== 15) errors.push("GSTIN must be 15 alphanumeric characters");
+
+      } else if (entityType === 'LEADS') {
+        const name = String(row.name || row.leadName || row.contactPerson || '').trim();
+        const rawMobile = String(row.whatsappNumber || row.mobile || row.phone || '').replace(/[^0-9]/g, '');
+        const mobileLast10 = rawMobile.slice(-10);
+
+        if (!name) errors.push("Lead contact name is required");
+        if (!rawMobile || rawMobile.length < 10) errors.push("Valid 10-digit phone / WhatsApp number is required");
+        else if (existingMobiles.has(mobileLast10)) errors.push(`Phone ${mobileLast10} already exists as an active Customer`);
+        else if (existingLeadMobiles.has(mobileLast10)) errors.push(`Lead with phone ${mobileLast10} already exists`);
 
       } else if (entityType === 'VENDORS') {
         const companyName = String(row.companyName || row.name || row.vendorName || '').trim();
@@ -193,6 +295,53 @@ export async function executeBulkImport(payload: BulkImportPayload) {
         }
       }
       revalidatePath("/customers");
+    } else if (entityType === 'LEADS') {
+      let defaultSalespersonId: string | null = null;
+      const user = session?.user as any;
+      if (user?.id) {
+        const emp = await prisma.employee.findUnique({ where: { userId: user.id } });
+        if (emp) defaultSalespersonId = emp.id;
+      }
+
+      for (const row of rows) {
+        try {
+          const name = String(row.name || row.leadName || row.contactPerson || '').trim();
+          const rawMobile = String(row.whatsappNumber || row.mobile || row.phone || '').replace(/[^0-9]/g, '');
+          const whatsappNumber = rawMobile ? (rawMobile.startsWith('91') && rawMobile.length === 12 ? '+' + rawMobile : rawMobile.length === 10 ? '+91' + rawMobile : '+' + rawMobile) : '';
+
+          if (!name || !whatsappNumber) {
+            skippedCount++;
+            continue;
+          }
+
+          if (skipDuplicates) {
+            const existing = await prisma.lead.findFirst({
+              where: { organizationId: orgId, whatsappNumber }
+            });
+            if (existing) {
+              skippedCount++;
+              continue;
+            }
+          }
+
+          await prisma.lead.create({
+            data: {
+              organizationId: orgId,
+              name,
+              whatsappNumber,
+              shopName: row.shopName ? String(row.shopName).trim() : null,
+              status: row.status || "New",
+              assignedSalespersonId: row.assignedSalespersonId || defaultSalespersonId
+            }
+          });
+          insertedCount++;
+        } catch (e: any) {
+          errorsList.push(`Lead ${row.name || 'row'}: ${e.message}`);
+          skippedCount++;
+        }
+      }
+      revalidatePath("/leads");
+      revalidatePath("/pipeline");
     } else if (entityType === 'VENDORS') {
       for (const row of rows) {
         try {

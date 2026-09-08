@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getCustomerTimeline } from "@/app/actions/customerActions";
-import { Phone, CheckSquare, ShoppingCart, CheckCircle2, FileText, Receipt, IndianRupee, Clock } from "lucide-react";
+import { Phone, CheckSquare, ShoppingCart, CheckCircle2, FileText, Receipt, IndianRupee, Clock, Mail } from "lucide-react";
 
 export default function CustomerTimeline({ customerId }: { customerId: string }) {
   const [timeline, setTimeline] = useState<any[]>([]);
@@ -96,6 +96,13 @@ export default function CustomerTimeline({ customerId }: { customerId: string })
             borderColor = "#a7f3d0";
             title = `Payment Received`;
             desc = `₹${item.data.amount?.toLocaleString()} via ${item.data.paymentMode}`;
+          } else if (item.type === "EMAIL") {
+            Icon = Mail;
+            color = "#0284c7";
+            bgColor = "#e0f2fe";
+            borderColor = "#7dd3fc";
+            title = `Email: ${item.data.summary || 'Email Communication'}`;
+            desc = item.data.notes || "Email delivered to customer.";
           }
 
           return (

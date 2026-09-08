@@ -11,6 +11,7 @@ import CallReminderNotifier from '@/components/notifications/CallReminderNotifie
 import PushNotificationManager from '@/components/notifications/PushNotificationManager';
 import AppSplashScreen from '../ui/AppSplashScreen';
 import GlobalDialerProvider from '@/components/providers/GlobalDialerProvider';
+import OnboardingBanner from '@/components/onboarding/OnboardingBanner';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -74,6 +75,7 @@ export default function DashboardShell({
           <div className="main-wrapper">
             <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
             <main className="main-content">
+              <OnboardingBanner />
               {children}
             </main>
           </div>

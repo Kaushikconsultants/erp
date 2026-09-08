@@ -530,7 +530,11 @@ export async function getCustomerTimeline(customerId: string) {
     const payments = customer.invoices.flatMap(inv => inv.payments);
 
     const timeline = [
-      ...customer.calls.map(c => ({ type: "CALL", date: c.createdAt, data: c })),
+      ...customer.calls.map(c => ({ 
+        type: c.callType === "EMAIL" ? "EMAIL" : "CALL", 
+        date: c.createdAt, 
+        data: c 
+      })),
       ...customer.followUps.map(f => ({ type: "FOLLOW_UP", date: f.date || f.createdAt, data: f })),
       ...customer.orders.map(o => ({ type: "ORDER", date: o.orderDate || o.createdAt, data: o })),
       ...customer.tasks.map(t => ({ type: "TASK", date: t.createdAt, data: t })),

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import CallScriptingPanel from '@/components/telecalling/CallScriptingPanel';
 import CustomerTimeline from '@/components/customers/CustomerTimeline';
 import CustomerIntelligencePanel from '@/components/customers/CustomerIntelligencePanel';
+import CustomerSendEmailButton from '@/components/email/CustomerSendEmailButton';
 
 import { getTenantOrgId } from '@/lib/tenant';
 
@@ -121,6 +122,13 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
           >
             📜 Account Ledger / Khata
           </Link>
+          <CustomerSendEmailButton
+            customerId={customer.id}
+            recipientEmail={customer.email}
+            contactPerson={customer.contactPerson}
+            companyName={customer.businessName}
+            outstandingBalance={customer.openingBalance || 0}
+          />
           <Link href={`/portal?customerId=${customer.id}`} target="_blank" className="action-btn text-blue" style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: '600' }}>
             🌐 Open Client Portal
           </Link>

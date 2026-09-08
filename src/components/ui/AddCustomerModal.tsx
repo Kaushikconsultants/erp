@@ -1,8 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createCustomer, lookupGstin } from "@/app/actions/customerActions";
 import { convertLeadToCustomer } from "@/actions/leads";
+import { checkDuplicateEntity } from "@/app/actions/duplicateActions";
+import DuplicateWarningBanner, { DuplicateEntityInfo } from "@/components/ui/DuplicateWarningBanner";
 import { UserPlus, Sparkles, CheckCircle2, Loader2, Landmark } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import "@/components/ui/modal.css"; 
@@ -43,6 +45,49 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
   const [openingBalanceType, setOpeningBalanceType] = useState("DEBIT");
   const [regularDiscount, setRegularDiscount] = useState("");
   const [salespersonId, setSalespersonId] = useState(leadToConvert?.assignedSalespersonId || "");
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    isDuplicate: boolean;
+    matchType?: 'PHONE' | 'EMAIL' | 'NAME';
+    confidence: number;
+    entity: DuplicateEntityInfo;
+  } | null>(null);
+  const duplicateTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (duplicateTimerRef.current) clearTimeout(duplicateTimerRef.current);
+
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const hasPhone = cleanPhone.length >= 10;
+    const hasEmail = email && email.includes('@');
+    const hasName = companyName && companyName.trim().length >= 3;
+
+    if (hasPhone || hasEmail || hasName) {
+      duplicateTimerRef.current = setTimeout(async () => {
+        const res = await checkDuplicateEntity({
+          type: 'customer',
+          phone: cleanPhone,
+          email: email.trim(),
+          name: companyName.trim()
+        });
+        if (res.success && res.result.isDuplicate && res.result.entity) {
+          setDuplicateInfo({
+            isDuplicate: true,
+            matchType: res.result.matchType,
+            confidence: res.result.confidence,
+            entity: res.result.entity
+          });
+        } else {
+          setDuplicateInfo(null);
+        }
+      }, 400);
+    } else {
+      setDuplicateInfo(null);
+    }
+
+    return () => {
+      if (duplicateTimerRef.current) clearTimeout(duplicateTimerRef.current);
+    };
+  }, [phone, email, companyName]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -277,6 +322,20 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
             <div style={{ backgroundColor: '#ecfdf5', color: '#065f46', padding: '10px 14px', borderRadius: '8px', fontSize: '0.82rem', marginBottom: '16px', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
               <CheckCircle2 size={16} color="#059669" />
               <span>{gstSuccessMsg}</span>
+            </div>
+          )}
+
+          {duplicateInfo && duplicateInfo.entity && (
+            <div style={{ marginBottom: '18px' }}>
+              <DuplicateWarningBanner
+                matchType={duplicateInfo.matchType}
+                confidence={duplicateInfo.confidence}
+                entity={duplicateInfo.entity}
+                onDismiss={() => setDuplicateInfo(null)}
+                onSelectExisting={(ent) => {
+                  onClose(ent);
+                }}
+              />
             </div>
           )}
           

@@ -11,24 +11,35 @@ import {
   ArrowLeft, 
   Download, 
   RefreshCw, 
-  FileText,
-  Users,
-  Building2,
-  Package,
-  BookOpen
+  Users, 
+  Building2, 
+  Package, 
+  BookOpen, 
+  UserPlus, 
+  Link as LinkIcon, 
+  Globe, 
+  Loader2,
+  Layers,
+  Copy,
+  Check
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
-import { validateImportData, executeBulkImport, ImportValidationResult } from '@/app/actions/importExportActions';
+import { 
+  validateImportData, 
+  executeBulkImport, 
+  fetchGoogleSheetData, 
+  ImportValidationResult 
+} from '@/app/actions/importExportActions';
 
 interface DataImportWizardModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultEntityType?: 'CUSTOMERS' | 'VENDORS' | 'PRODUCTS' | 'LEDGERS';
+  defaultEntityType?: 'CUSTOMERS' | 'LEADS' | 'VENDORS' | 'PRODUCTS' | 'LEDGERS';
   onSuccess?: () => void;
 }
 
-type EntityType = 'CUSTOMERS' | 'VENDORS' | 'PRODUCTS' | 'LEDGERS';
+export type EntityType = 'CUSTOMERS' | 'LEADS' | 'VENDORS' | 'PRODUCTS' | 'LEDGERS';
 
 interface FieldDefinition {
   key: string;
@@ -56,6 +67,18 @@ const ENTITY_SCHEMAS: Record<EntityType, { title: string; icon: any; fields: Fie
       { key: 'openingBalance', label: 'Opening Balance (₹)', required: false, sampleValue: '25000', aliases: ['balance', 'opening bal', 'op bal'] },
       { key: 'creditLimit', label: 'Credit Limit (₹)', required: false, sampleValue: '100000', aliases: ['credit limit', 'credit max'] },
       { key: 'creditDays', label: 'Credit Days', required: false, sampleValue: '30', aliases: ['credit period', 'payment days', 'terms'] }
+    ]
+  },
+  LEADS: {
+    title: 'Leads CRM Master',
+    icon: UserPlus,
+    fields: [
+      { key: 'name', label: 'Lead Contact Name', required: true, sampleValue: 'Amit Kumar', aliases: ['name', 'lead name', 'contact', 'person', 'buyer'] },
+      { key: 'whatsappNumber', label: 'WhatsApp / Phone Number', required: true, sampleValue: '9876543210', aliases: ['phone', 'mobile', 'whatsapp', 'contact no', 'mobile no'] },
+      { key: 'shopName', label: 'Shop / Business Name', required: false, sampleValue: 'Kumar Garments', aliases: ['shop', 'store', 'firm', 'company', 'business'] },
+      { key: 'status', label: 'Lead Stage', required: false, sampleValue: 'New', aliases: ['stage', 'status', 'lead stage'] },
+      { key: 'city', label: 'City', required: false, sampleValue: 'Delhi', aliases: ['district', 'town'] },
+      { key: 'state', label: 'State', required: false, sampleValue: 'Delhi', aliases: ['province'] }
     ]
   },
   VENDORS: {
@@ -112,16 +135,31 @@ export default function DataImportWizardModal({
   onSuccess
 }: DataImportWizardModalProps) {
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [importSource, setImportSource] = useState<'FILE' | 'SHEETS'>('FILE');
   const [entityType, setEntityType] = useState<EntityType>(defaultEntityType);
+  
+  // File state
   const [file, setFile] = useState<File | null>(null);
   const [parsedHeaders, setParsedHeaders] = useState<string[]>([]);
   const [rawRows, setRawRows] = useState<Record<string, any>[]>([]);
   const [columnMappings, setColumnMappings] = useState<Record<string, string>>({});
   
+  // Multi-sheet Excel support
+  const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string>('');
+
+  // Google Sheets state
+  const [googleSheetUrl, setGoogleSheetUrl] = useState('');
+  const [fetchingSheets, setFetchingSheets] = useState(false);
+
+  // Validation & import state
   const [validating, setValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<ImportValidationResult | null>(null);
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [importing, setImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<{ success: boolean; insertedCount: number; skippedCount: number; errors: string[] } | null>(null);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,6 +171,7 @@ export default function DataImportWizardModal({
     const uploadedFile = e.target.files?.[0];
     if (!uploadedFile) return;
 
+    setFeedbackError(null);
     setFile(uploadedFile);
     const fileName = uploadedFile.name.toLowerCase();
 
@@ -147,46 +186,88 @@ export default function DataImportWizardModal({
             setRawRows(results.data as Record<string, any>[]);
             autoMapColumns(headers, currentSchema.fields);
             setStep(2);
+          } else {
+            setFeedbackError("The uploaded CSV file is empty or could not be parsed.");
           }
         },
         error: (err) => {
-          alert(`Error reading CSV: ${err.message}`);
+          setFeedbackError(`Error parsing CSV file: ${err.message}`);
         }
       });
     } else {
+      // Excel handling
       const reader = new FileReader();
       reader.onload = (evt) => {
         try {
           const bstr = evt.target?.result;
           const wb = XLSX.read(bstr, { type: 'binary' });
-          const wsname = wb.SheetNames[0];
-          const ws = wb.Sheets[wsname];
-          const data: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
-
-          if (data && data.length > 1) {
-            const headers: string[] = (data[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
-            const rows: Record<string, any>[] = [];
-
-            for (let i = 1; i < data.length; i++) {
-              const rowArr = data[i];
-              if (!rowArr || rowArr.length === 0) continue;
-              const rowObj: Record<string, any> = {};
-              headers.forEach((h, idx) => {
-                rowObj[h] = rowArr[idx] !== undefined ? rowArr[idx] : '';
-              });
-              rows.push(rowObj);
-            }
-
-            setParsedHeaders(headers);
-            setRawRows(rows);
-            autoMapColumns(headers, currentSchema.fields);
-            setStep(2);
-          }
+          setWorkbook(wb);
+          setSheetNames(wb.SheetNames);
+          
+          const firstSheet = wb.SheetNames[0];
+          setSelectedSheet(firstSheet);
+          processExcelSheet(wb, firstSheet);
         } catch (err: any) {
-          alert(`Error reading Excel file: ${err.message}`);
+          setFeedbackError(`Error reading Excel file: ${err.message}`);
         }
       };
       reader.readAsBinaryString(uploadedFile);
+    }
+  };
+
+  const processExcelSheet = (wb: XLSX.WorkBook, sheetName: string) => {
+    const ws = wb.Sheets[sheetName];
+    if (!ws) return;
+    const data: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+    if (data && data.length > 1) {
+      const headers: string[] = (data[0] as any[]).map(h => String(h || '').trim()).filter(Boolean);
+      const rows: Record<string, any>[] = [];
+
+      for (let i = 1; i < data.length; i++) {
+        const rowArr = data[i];
+        if (!rowArr || rowArr.length === 0) continue;
+        const rowObj: Record<string, any> = {};
+        headers.forEach((h, idx) => {
+          rowObj[h] = rowArr[idx] !== undefined ? rowArr[idx] : '';
+        });
+        rows.push(rowObj);
+      }
+
+      setParsedHeaders(headers);
+      setRawRows(rows);
+      autoMapColumns(headers, currentSchema.fields);
+      setStep(2);
+    } else {
+      setFeedbackError(`Sheet "${sheetName}" appears to be empty.`);
+    }
+  };
+
+  const handleSheetChange = (newSheet: string) => {
+    setSelectedSheet(newSheet);
+    if (workbook) {
+      processExcelSheet(workbook, newSheet);
+    }
+  };
+
+  const handleSyncGoogleSheet = async () => {
+    if (!googleSheetUrl.trim()) {
+      setFeedbackError("Please enter a Google Sheets share link.");
+      return;
+    }
+    setFeedbackError(null);
+    setFetchingSheets(true);
+
+    const res = await fetchGoogleSheetData(googleSheetUrl);
+    setFetchingSheets(false);
+
+    if (res.success && res.headers && res.rows) {
+      setParsedHeaders(res.headers);
+      setRawRows(res.rows);
+      autoMapColumns(res.headers, currentSchema.fields);
+      setStep(2);
+    } else {
+      setFeedbackError(res.error || "Failed to load Google Sheet. Ensure 'Anyone with the link can view' is enabled.");
     }
   };
 
@@ -212,7 +293,7 @@ export default function DataImportWizardModal({
   };
 
   const handleProceedToValidation = async () => {
-    // Transform raw rows based on column mappings
+    setFeedbackError(null);
     const mappedRows = rawRows.map(raw => {
       const transformed: Record<string, any> = {};
       Object.entries(columnMappings).forEach(([schemaKey, fileHeader]) => {
@@ -231,14 +312,14 @@ export default function DataImportWizardModal({
       setValidationResult(res.data);
       setStep(3);
     } else {
-      alert(res.error || "Validation failed");
+      setFeedbackError(res.error || "Validation check failed.");
     }
   };
 
   const handleExecuteImport = async () => {
     if (!validationResult) return;
+    setFeedbackError(null);
 
-    // Filter only valid rows or all rows
     const validRowsToImport = validationResult.previewRows
       .filter(r => r._isValid)
       .map(r => {
@@ -247,7 +328,7 @@ export default function DataImportWizardModal({
       });
 
     if (validRowsToImport.length === 0) {
-      alert("No valid rows found to import.");
+      setFeedbackError("No valid rows to import. Please review validation errors.");
       return;
     }
 
@@ -255,7 +336,7 @@ export default function DataImportWizardModal({
     const res = await executeBulkImport({
       entityType,
       rows: validRowsToImport,
-      skipDuplicates: true
+      skipDuplicates
     });
     setImporting(false);
 
@@ -269,7 +350,7 @@ export default function DataImportWizardModal({
       setStep(4);
       if (onSuccess) onSuccess();
     } else {
-      alert(res.error || "Bulk import failed");
+      setFeedbackError(res.error || "Bulk import failed");
     }
   };
 
@@ -307,14 +388,14 @@ export default function DataImportWizardModal({
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 9999,
-      padding: '20px'
+      padding: '16px'
     }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
         width: '100%',
-        maxWidth: '900px',
-        maxHeight: '90vh',
+        maxWidth: '920px',
+        maxHeight: '92vh',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -323,7 +404,7 @@ export default function DataImportWizardModal({
       }}>
         {/* MODAL HEADER */}
         <div style={{
-          padding: '20px 24px',
+          padding: '18px 24px',
           borderBottom: '1px solid #f1f5f9',
           display: 'flex',
           alignItems: 'center',
@@ -345,10 +426,10 @@ export default function DataImportWizardModal({
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: '#0f172a' }}>
-                Universal Data Import Wizard
+                Universal Data Import & Sync Engine
               </h3>
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>
-                Easily migrate from Excel, Tally, Busy, or Vyapar into your workspace
+                Excel (.xlsx), Google Sheets, CSV, Tally & Vyapar migration
               </p>
             </div>
           </div>
@@ -363,7 +444,8 @@ export default function DataImportWizardModal({
               justifyContent: 'center',
               color: '#64748b',
               backgroundColor: '#f1f5f9',
-              transition: 'all 0.15s ease'
+              border: 'none',
+              cursor: 'pointer'
             }}
           >
             <X size={18} />
@@ -378,20 +460,22 @@ export default function DataImportWizardModal({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          fontSize: '0.8rem'
+          fontSize: '0.8rem',
+          overflowX: 'auto'
         }}>
           {[
-            { num: 1, label: 'Upload File' },
+            { num: 1, label: 'Select & Source' },
             { num: 2, label: 'Map Columns' },
-            { num: 3, label: 'Validate Data' },
-            { num: 4, label: 'Import Results' }
+            { num: 3, label: 'Duplicate Check & Preview' },
+            { num: 4, label: 'Complete' }
           ].map(s => (
             <div key={s.num} style={{
               display: 'flex',
               alignItems: 'center',
               gap: '8px',
               color: step === s.num ? '#4f46e5' : step > s.num ? '#10b981' : '#94a3b8',
-              fontWeight: step === s.num ? 700 : 500
+              fontWeight: step === s.num ? 700 : 500,
+              whiteSpace: 'nowrap'
             }}>
               <div style={{
                 width: '24px',
@@ -412,17 +496,47 @@ export default function DataImportWizardModal({
           ))}
         </div>
 
+        {/* FEEDBACK ERROR BANNER */}
+        {feedbackError && (
+          <div style={{
+            margin: '16px 24px 0',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#dc2626',
+            fontSize: '0.82rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
+              <span>{feedbackError}</span>
+            </div>
+            <button
+              onClick={() => setFeedbackError(null)}
+              style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {/* MODAL BODY */}
         <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
-          {/* STEP 1: ENTITY SELECT & FILE UPLOAD */}
+          
+          {/* STEP 1: ENTITY SELECT & SOURCE */}
           {step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Module selection */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
-                  Select Module to Import
+                  Select CRM / ERP Module to Import
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                  {(['CUSTOMERS', 'PRODUCTS', 'VENDORS', 'LEDGERS'] as EntityType[]).map(et => {
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                  {(['CUSTOMERS', 'LEADS', 'PRODUCTS', 'VENDORS', 'LEDGERS'] as EntityType[]).map(et => {
                     const info = ENTITY_SCHEMAS[et];
                     const Icon = info.icon;
                     const isSelected = entityType === et;
@@ -435,16 +549,16 @@ export default function DataImportWizardModal({
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          gap: '8px',
-                          padding: '14px 10px',
-                          borderRadius: '12px',
+                          gap: '6px',
+                          padding: '12px 8px',
+                          borderRadius: '10px',
                           border: `2px solid ${isSelected ? '#4f46e5' : '#e2e8f0'}`,
                           backgroundColor: isSelected ? '#f5f3ff' : '#ffffff',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        <Icon size={24} style={{ color: isSelected ? '#4f46e5' : '#64748b' }} />
+                        <Icon size={22} style={{ color: isSelected ? '#4f46e5' : '#64748b' }} />
                         <span style={{ fontSize: '0.82rem', fontWeight: 600, color: isSelected ? '#4f46e5' : '#1e293b' }}>
                           {info.title.split(' ')[0]}
                         </span>
@@ -454,24 +568,80 @@ export default function DataImportWizardModal({
                 </div>
               </div>
 
+              {/* Source Switcher: File vs Google Sheets */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+                  Choose Import Source
+                </label>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setImportSource('FILE')}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: `2px solid ${importSource === 'FILE' ? '#4f46e5' : '#e2e8f0'}`,
+                      backgroundColor: importSource === 'FILE' ? '#eef2ff' : '#ffffff',
+                      color: importSource === 'FILE' ? '#4f46e5' : '#475569',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <FileSpreadsheet size={18} />
+                    <span>Upload Excel (.xlsx) / CSV</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setImportSource('SHEETS')}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      borderRadius: '10px',
+                      border: `2px solid ${importSource === 'SHEETS' ? '#059669' : '#e2e8f0'}`,
+                      backgroundColor: importSource === 'SHEETS' ? '#ecfdf5' : '#ffffff',
+                      color: importSource === 'SHEETS' ? '#059669' : '#475569',
+                      fontWeight: 600,
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Globe size={18} />
+                    <span>Google Sheets Live Sync</span>
+                  </button>
+                </div>
+              </div>
+
               {/* Sample Template Download Bar */}
               <div style={{
                 backgroundColor: '#f8fafc',
                 border: '1px dashed #cbd5e1',
                 borderRadius: '10px',
-                padding: '14px 18px',
+                padding: '12px 16px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between'
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <FileSpreadsheet size={20} style={{ color: '#059669' }} />
                   <div>
-                    <div style={{ fontSize: '0.84rem', fontWeight: 600, color: '#0f172a' }}>
-                      Don't have a file ready?
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>
+                      Ready-to-use template for {currentSchema.title}
                     </div>
                     <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
-                      Download our pre-formatted template with example rows.
+                      Includes pre-built sample columns and example rows
                     </div>
                   </div>
                 </div>
@@ -484,15 +654,16 @@ export default function DataImportWizardModal({
                       backgroundColor: '#ffffff',
                       border: '1px solid #cbd5e1',
                       borderRadius: '6px',
-                      fontSize: '0.78rem',
+                      fontSize: '0.76rem',
                       fontWeight: 600,
                       color: '#059669',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '5px'
+                      gap: '5px',
+                      cursor: 'pointer'
                     }}
                   >
-                    <Download size={14} /> Excel (.xlsx)
+                    <Download size={13} /> Excel (.xlsx)
                   </button>
                   <button
                     type="button"
@@ -502,78 +673,198 @@ export default function DataImportWizardModal({
                       backgroundColor: '#ffffff',
                       border: '1px solid #cbd5e1',
                       borderRadius: '6px',
-                      fontSize: '0.78rem',
+                      fontSize: '0.76rem',
                       fontWeight: 600,
                       color: '#475569',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '5px'
+                      gap: '5px',
+                      cursor: 'pointer'
                     }}
                   >
-                    <Download size={14} /> CSV (.csv)
+                    <Download size={13} /> CSV (.csv)
                   </button>
                 </div>
               </div>
 
-              {/* Drag and Drop Zone */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  border: '2px dashed #818cf8',
+              {/* FILE UPLOAD MODE */}
+              {importSource === 'FILE' && (
+                <div>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      border: '2px dashed #818cf8',
+                      borderRadius: '14px',
+                      backgroundColor: '#fbfbfe',
+                      padding: '36px 20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '50%',
+                      backgroundColor: '#e0e7ff',
+                      color: '#4f46e5',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '12px'
+                    }}>
+                      <Upload size={24} />
+                    </div>
+                    <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 600, color: '#1e293b' }}>
+                      Click or Drag & Drop Excel or CSV here
+                    </h4>
+                    <p style={{ margin: '6px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                      Supports .xlsx, .xls, and .csv files from Excel, Tally Prime, Busy or Vyapar
+                    </p>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".csv, .xlsx, .xls"
+                      onChange={handleFileUpload}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* GOOGLE SHEETS MODE */}
+              {importSource === 'SHEETS' && (
+                <div style={{
+                  padding: '24px',
+                  backgroundColor: '#f0fdf4',
                   borderRadius: '14px',
-                  backgroundColor: '#fbfbfe',
-                  padding: '40px 20px',
+                  border: '1px solid #bbf7d0',
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  textAlign: 'center',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <div style={{
-                  width: '56px',
-                  height: '56px',
-                  borderRadius: '50%',
-                  backgroundColor: '#e0e7ff',
-                  color: '#4f46e5',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '14px'
+                  gap: '16px'
                 }}>
-                  <Upload size={28} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      backgroundColor: '#d1fae5',
+                      color: '#059669',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <Globe size={20} />
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#065f46' }}>
+                        Sync from Google Sheets URL
+                      </h4>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.76rem', color: '#047857' }}>
+                        Paste any shared Google Sheet link to pull live leads or customer records
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#166534', marginBottom: '6px' }}>
+                      Google Sheets Share Link:
+                    </label>
+                    <input
+                      type="url"
+                      value={googleSheetUrl}
+                      onChange={e => setGoogleSheetUrl(e.target.value)}
+                      placeholder="https://docs.google.com/spreadsheets/d/1BxiMVs0X.../edit#gid=0"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #86efac',
+                        backgroundColor: '#ffffff',
+                        fontSize: '0.84rem',
+                        color: '#0f172a',
+                        outline: 'none'
+                      }}
+                    />
+                    <div style={{ marginTop: '6px', fontSize: '0.72rem', color: '#15803d' }}>
+                      💡 Tip: Open your Google Sheet → click <strong>Share</strong> → set General Access to <strong>"Anyone with the link can view"</strong>.
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSyncGoogleSheet}
+                    disabled={fetchingSheets || !googleSheetUrl.trim()}
+                    style={{
+                      alignSelf: 'flex-start',
+                      padding: '10px 20px',
+                      borderRadius: '8px',
+                      backgroundColor: '#059669',
+                      color: '#ffffff',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: fetchingSheets || !googleSheetUrl.trim() ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      opacity: fetchingSheets || !googleSheetUrl.trim() ? 0.7 : 1
+                    }}
+                  >
+                    {fetchingSheets ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" /> Fetching Live Sheet...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={16} /> Fetch & Map Sheet Columns
+                      </>
+                    )}
+                  </button>
                 </div>
-                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#1e293b' }}>
-                  Click or Drag & Drop your spreadsheet here
-                </h4>
-                <p style={{ margin: '6px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  Supports Microsoft Excel (.xlsx, .xls) and Comma-Separated Values (.csv)
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".csv, .xlsx, .xls"
-                  onChange={handleFileUpload}
-                  style={{ display: 'none' }}
-                />
-              </div>
+              )}
             </div>
           )}
 
-          {/* STEP 2: COLUMN MAPPING */}
+          {/* STEP 2: COLUMN MAPPING & SHEET SELECTOR */}
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
-                    Match Spreadsheet Columns to {currentSchema.title} Fields
+                    Match Columns to {currentSchema.title} Fields
                   </h4>
                   <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>
-                    Found {rawRows.length} rows in "{file?.name}". Verify column mapping below:
+                    Found {rawRows.length} rows. Verify that file columns map to the correct ERP fields.
                   </p>
                 </div>
+
+                {/* Multi-sheet selector if Excel workbook has multiple tabs */}
+                {sheetNames.length > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Layers size={14} style={{ color: '#4f46e5' }} />
+                    <span style={{ fontSize: '0.76rem', color: '#475569', fontWeight: 600 }}>Worksheet:</span>
+                    <select
+                      value={selectedSheet}
+                      onChange={e => handleSheetChange(e.target.value)}
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.78rem'
+                      }}
+                    >
+                      {sheetNames.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={() => autoMapColumns(parsedHeaders, currentSchema.fields)}
@@ -583,7 +874,10 @@ export default function DataImportWizardModal({
                     gap: '6px',
                     fontSize: '0.78rem',
                     color: '#4f46e5',
-                    fontWeight: 600
+                    fontWeight: 600,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer'
                   }}
                 >
                   <RefreshCw size={14} /> Auto-remap
@@ -591,7 +885,7 @@ export default function DataImportWizardModal({
               </div>
 
               <div style={{
-                maxHeight: '380px',
+                maxHeight: '360px',
                 overflowY: 'auto',
                 border: '1px solid #e2e8f0',
                 borderRadius: '10px'
@@ -600,8 +894,8 @@ export default function DataImportWizardModal({
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                       <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 600 }}>ERP Field Name</th>
-                      <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 600 }}>Your File Column Header</th>
-                      <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 600 }}>Sample Preview Value</th>
+                      <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 600 }}>Your Spreadsheet Column</th>
+                      <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 600 }}>First Row Preview</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -654,28 +948,54 @@ export default function DataImportWizardModal({
             </div>
           )}
 
-          {/* STEP 3: PRE-IMPORT VALIDATION PREVIEW */}
+          {/* STEP 3: PREVIEW & DUPLICATE HANDLING */}
           {step === 3 && validationResult && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 600 }}>TOTAL ROWS</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>TOTAL ROWS</div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
                     {validationResult.totalRows}
                   </div>
                 </div>
-                <div style={{ padding: '14px', backgroundColor: '#ecfdf5', borderRadius: '10px', border: '1px solid #a7f3d0' }}>
-                  <div style={{ fontSize: '0.76rem', color: '#047857', fontWeight: 600 }}>READY TO IMPORT</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#059669', marginTop: '4px' }}>
+                <div style={{ padding: '12px', backgroundColor: '#ecfdf5', borderRadius: '10px', border: '1px solid #a7f3d0' }}>
+                  <div style={{ fontSize: '0.74rem', color: '#047857', fontWeight: 600 }}>VALID & READY</div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#059669', marginTop: '2px' }}>
                     {validationResult.validCount}
                   </div>
                 </div>
-                <div style={{ padding: '14px', backgroundColor: validationResult.invalidCount > 0 ? '#fef2f2' : '#f8fafc', borderRadius: '10px', border: `1px solid ${validationResult.invalidCount > 0 ? '#fecaca' : '#e2e8f0'}` }}>
-                  <div style={{ fontSize: '0.76rem', color: validationResult.invalidCount > 0 ? '#b91c1c' : '#64748b', fontWeight: 600 }}>INVALID / SKIPPED</div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 800, color: validationResult.invalidCount > 0 ? '#dc2626' : '#64748b', marginTop: '4px' }}>
+                <div style={{ padding: '12px', backgroundColor: validationResult.invalidCount > 0 ? '#fef2f2' : '#f8fafc', borderRadius: '10px', border: `1px solid ${validationResult.invalidCount > 0 ? '#fecaca' : '#e2e8f0'}` }}>
+                  <div style={{ fontSize: '0.74rem', color: validationResult.invalidCount > 0 ? '#b91c1c' : '#64748b', fontWeight: 600 }}>DUPLICATES / ERRORS</div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 800, color: validationResult.invalidCount > 0 ? '#dc2626' : '#64748b', marginTop: '2px' }}>
                     {validationResult.invalidCount}
                   </div>
                 </div>
+              </div>
+
+              {/* Duplicate Handling Policy */}
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: '#f8fafc',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '8px'
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.84rem', color: '#1e293b', fontWeight: 600, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={skipDuplicates}
+                    onChange={e => setSkipDuplicates(e.target.checked)}
+                    style={{ width: '16px', height: '16px', accentColor: '#4f46e5' }}
+                  />
+                  <span>Automatically skip duplicate phone/mobile numbers during import</span>
+                </label>
+                <span style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                  Prevents overwriting existing client contacts
+                </span>
               </div>
 
               <div style={{ fontSize: '0.84rem', fontWeight: 600, color: '#1e293b' }}>
@@ -683,7 +1003,7 @@ export default function DataImportWizardModal({
               </div>
 
               <div style={{
-                maxHeight: '280px',
+                maxHeight: '260px',
                 overflowY: 'auto',
                 border: '1px solid #e2e8f0',
                 borderRadius: '10px'
@@ -693,7 +1013,7 @@ export default function DataImportWizardModal({
                     <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                       <th style={{ padding: '8px 12px', width: '90px' }}>Status</th>
                       <th style={{ padding: '8px 12px' }}>Identifier / Name</th>
-                      <th style={{ padding: '8px 12px' }}>Details</th>
+                      <th style={{ padding: '8px 12px' }}>Contact Info</th>
                       <th style={{ padding: '8px 12px' }}>Validation Notes</th>
                     </tr>
                   </thead>
@@ -715,7 +1035,7 @@ export default function DataImportWizardModal({
                           {row.businessName || row.companyName || row.name || '—'}
                         </td>
                         <td style={{ padding: '8px 12px', color: '#64748b' }}>
-                          {row.mobile || row.sku || row.groupName || '—'}
+                          {row.mobile || row.whatsappNumber || row.sku || row.groupName || '—'}
                         </td>
                         <td style={{ padding: '8px 12px', color: row._isValid ? '#059669' : '#dc2626', fontSize: '0.72rem' }}>
                           {row._isValid ? 'Passed validation' : row._errors.join(', ')}
@@ -756,7 +1076,7 @@ export default function DataImportWizardModal({
               </h3>
               <p style={{ margin: '8px 0 24px 0', fontSize: '0.88rem', color: '#64748b', maxWidth: '460px' }}>
                 Inserted <strong style={{ color: '#059669' }}>{importSummary.insertedCount}</strong> new {entityType.toLowerCase()} into your workspace database.
-                {importSummary.skippedCount > 0 && ` (${importSummary.skippedCount} duplicate/invalid rows skipped).`}
+                {importSummary.skippedCount > 0 && ` (${importSummary.skippedCount} duplicate/invalid rows safely skipped).`}
               </p>
 
               <button
@@ -768,7 +1088,9 @@ export default function DataImportWizardModal({
                   color: '#ffffff',
                   borderRadius: '8px',
                   fontWeight: 600,
-                  fontSize: '0.88rem'
+                  fontSize: '0.88rem',
+                  border: 'none',
+                  cursor: 'pointer'
                 }}
               >
                 Close & View Records
@@ -802,7 +1124,8 @@ export default function DataImportWizardModal({
                     backgroundColor: '#ffffff',
                     fontSize: '0.82rem',
                     fontWeight: 600,
-                    color: '#475569'
+                    color: '#475569',
+                    cursor: 'pointer'
                   }}
                 >
                   <ArrowLeft size={16} /> Back
@@ -819,7 +1142,10 @@ export default function DataImportWizardModal({
                   borderRadius: '8px',
                   fontSize: '0.82rem',
                   fontWeight: 600,
-                  color: '#64748b'
+                  color: '#64748b',
+                  backgroundColor: '#f1f5f9',
+                  border: 'none',
+                  cursor: 'pointer'
                 }}
               >
                 Cancel
@@ -840,11 +1166,20 @@ export default function DataImportWizardModal({
                     color: '#ffffff',
                     fontSize: '0.82rem',
                     fontWeight: 600,
+                    border: 'none',
                     cursor: validating ? 'not-allowed' : 'pointer',
                     opacity: validating ? 0.7 : 1
                   }}
                 >
-                  {validating ? 'Validating...' : 'Proceed to Validation'} <ArrowRight size={16} />
+                  {validating ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Checking Duplicates...
+                    </>
+                  ) : (
+                    <>
+                      Proceed to Preview <ArrowRight size={16} />
+                    </>
+                  )}
                 </button>
               )}
 
@@ -863,11 +1198,18 @@ export default function DataImportWizardModal({
                     color: '#ffffff',
                     fontSize: '0.82rem',
                     fontWeight: 700,
+                    border: 'none',
                     cursor: importing ? 'not-allowed' : 'pointer',
                     opacity: importing ? 0.7 : 1
                   }}
                 >
-                  {importing ? 'Importing Rows...' : `Import ${validationResult?.validCount || 0} Valid Records`}
+                  {importing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Importing Records...
+                    </>
+                  ) : (
+                    `Import ${validationResult?.validCount || 0} Valid Records`
+                  )}
                 </button>
               )}
             </div>

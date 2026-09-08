@@ -1,20 +1,23 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Code } from 'lucide-react';
+import { Code, FileSpreadsheet, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { createLead, getWebhookLogs } from '@/actions/leads';
+import DataImportWizardModal from '@/components/common/DataImportWizardModal';
+import DuplicateWarningBanner, { DuplicateEntityInfo } from '@/components/ui/DuplicateWarningBanner';
+import { checkDuplicateEntity } from '@/app/actions/duplicateActions';
 
 export default function AddLeadButton({ employees, organizationId, isAdmin }: { employees?: {id: string, name: string}[], organizationId?: string, isAdmin?: boolean }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isApiGuideOpen, setIsApiGuideOpen] = useState(false);
   const [apiActiveTab, setApiActiveTab] = useState<'guide' | 'logs'>('guide');
   const [logs, setLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const router = useRouter();
-  
-  const [copied, setCopied] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -23,12 +26,56 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
     assignedSalespersonId: ''
   });
 
+  // Duplicate detection state
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    isDuplicate: boolean;
+    matchType?: 'PHONE' | 'EMAIL' | 'NAME';
+    confidence: number;
+    entity: DuplicateEntityInfo;
+  } | null>(null);
+  const duplicateTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (duplicateTimerRef.current) clearTimeout(duplicateTimerRef.current);
+
+    const cleanPhone = formData.whatsappNumber.replace(/[^0-9]/g, '');
+    const hasPhone = cleanPhone.length >= 10;
+    const hasName = formData.name.trim().length >= 3;
+
+    if (hasPhone || hasName) {
+      duplicateTimerRef.current = setTimeout(async () => {
+        const res = await checkDuplicateEntity({
+          type: 'lead',
+          phone: cleanPhone,
+          name: formData.name.trim()
+        });
+        if (res.success && res.result.isDuplicate && res.result.entity) {
+          setDuplicateInfo({
+            isDuplicate: true,
+            matchType: res.result.matchType,
+            confidence: res.result.confidence,
+            entity: res.result.entity
+          });
+        } else {
+          setDuplicateInfo(null);
+        }
+      }, 400);
+    } else {
+      setDuplicateInfo(null);
+    }
+
+    return () => {
+      if (duplicateTimerRef.current) clearTimeout(duplicateTimerRef.current);
+    };
+  }, [formData.whatsappNumber, formData.name]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
     setIsSubmitting(true);
     
     if (isAdmin && !formData.assignedSalespersonId) {
-      alert("Please select an agent to save");
+      setSubmitError("Please select a sales representative to assign this lead.");
       setIsSubmitting(false);
       return;
     }
@@ -39,9 +86,10 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
     if (res.success) {
       setIsModalOpen(false);
       setFormData({ name: '', whatsappNumber: '', shopName: '', assignedSalespersonId: '' });
+      setDuplicateInfo(null);
       router.refresh();
     } else {
-      alert(res.error || "Failed to create lead");
+      setSubmitError(res.error || "Failed to create lead.");
     }
   };
 
@@ -56,61 +104,86 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
     <>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
         {isAdmin && (
-          <>
-            <button 
-              className="action-btn"
-              onClick={() => {
-                setIsApiGuideOpen(true);
-                setApiActiveTab('guide');
-              }}
-              style={{ background: '#fff', border: '1px solid #cbd5e1', color: '#475569', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
-              title="API / Webhook Setup"
-            >
-              <Code size={15} /> <span>Webhooks</span>
-            </button>
-            <button 
-              className="action-btn hover-lift" 
-              onClick={() => {}}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 12px', borderRadius: '10px', border: '1px solid #10b981', color: '#059669', background: '#ecfdf5', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
-              title="Bulk Import Leads from Excel / CSV"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="16" y2="13"></line><line x1="8" y1="17" x2="16" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>
-              <span>Import</span>
-            </button>
-          </>
+          <button 
+            className="action-btn"
+            onClick={() => {
+              setIsApiGuideOpen(true);
+              setApiActiveTab('guide');
+            }}
+            style={{ background: '#fff', border: '1px solid #cbd5e1', color: '#475569', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 12px', borderRadius: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
+            title="API / Webhook Setup"
+          >
+            <Code size={15} /> <span>Webhooks</span>
+          </button>
         )}
+        
+        {/* Bulk Import Leads */}
         <button 
-          onClick={() => setIsModalOpen(true)}
+          className="action-btn hover-lift" 
+          onClick={() => setIsImportOpen(true)}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 13px', borderRadius: '10px', border: '1px solid #10b981', color: '#059669', background: '#ecfdf5', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+          title="Bulk Import Leads from Excel, CSV, or Google Sheets"
+        >
+          <FileSpreadsheet size={15} />
+          <span>Import Excel / Sheets</span>
+        </button>
+
+        <button 
+          onClick={() => {
+            setSubmitError(null);
+            setDuplicateInfo(null);
+            setIsModalOpen(true);
+          }}
           className="primary-btn hover-lift"
           style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '9px 16px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }}
         >
-          + Add Lead
+          <Plus size={16} />
+          <span>Add Lead</span>
         </button>
       </div>
 
       {isModalOpen && (
         <div className="modal-backdrop">
-          <div className="modal-content glass-panel" style={{maxWidth: '500px'}}>
+          <div className="modal-content glass-panel" style={{maxWidth: '520px', width: '100%'}}>
             <div className="modal-header">
-              <h2>Add New Lead</h2>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
+                Add New Lead
+              </h2>
               <button className="modal-close" onClick={() => setIsModalOpen(false)}>×</button>
             </div>
             <form onSubmit={handleSubmit} className="modal-body" style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
               
+              {submitError && (
+                <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
+              {/* Real-Time Duplicate Detection Banner */}
+              {duplicateInfo && duplicateInfo.entity && (
+                <DuplicateWarningBanner
+                  matchType={duplicateInfo.matchType}
+                  confidence={duplicateInfo.confidence}
+                  entity={duplicateInfo.entity}
+                  onDismiss={() => setDuplicateInfo(null)}
+                />
+              )}
+
               <div className="form-group">
-                <label>Name *</label>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Name *</label>
                 <input 
                   type="text" 
                   required 
                   className="form-input" 
                   value={formData.name}
                   onChange={e => setFormData({...formData, name: e.target.value})}
-                  placeholder="Lead Name"
+                  placeholder="Lead Contact Name"
                 />
               </div>
 
               <div className="form-group">
-                <label>WhatsApp Number *</label>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>WhatsApp Number *</label>
                 <input 
                   type="text" 
                   required 
@@ -122,7 +195,7 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
               </div>
 
               <div className="form-group">
-                <label>Shop Name (Optional)</label>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Shop Name (Optional)</label>
                 <input 
                   type="text" 
                   className="form-input" 
@@ -134,7 +207,7 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
 
               {employees && employees.length > 0 && (
                 <div className="form-group">
-                  <label>Assign To</label>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Assign To</label>
                   <select 
                     className="form-input"
                     value={formData.assignedSalespersonId}
@@ -148,11 +221,19 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
                 </div>
               )}
 
-              <div style={{ marginTop: '24px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '10px 20px', borderRadius: '6px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer' }}>
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)} 
+                  style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#fff', color: '#64748b', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={isSubmitting} style={{ padding: '10px 20px', borderRadius: '6px', border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  style={{ padding: '9px 20px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.85rem', opacity: isSubmitting ? 0.7 : 1 }}
+                >
                   {isSubmitting ? 'Creating...' : 'Create Lead'}
                 </button>
               </div>
@@ -161,6 +242,21 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
           </div>
         </div>
       )}
+
+      {/* Leads Import Wizard */}
+      {isImportOpen && (
+        <DataImportWizardModal
+          isOpen={isImportOpen}
+          onClose={() => setIsImportOpen(false)}
+          defaultEntityType="LEADS"
+          onSuccess={() => {
+            setIsImportOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
+
+      {/* Webhooks Guide Modal */}
       {isApiGuideOpen && (
         <div className="modal-backdrop">
           <div className="modal-content" style={{maxWidth: '650px', width: '90%', maxHeight: '90vh', overflowY: 'auto'}}>
@@ -200,39 +296,32 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
                     </div>
                   </div>
 
-              <div>
-                <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Headers</label>
-                <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
+                  <div>
+                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Headers</label>
+                    <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
 {`Authorization: Bearer ${organizationId || 'YOUR_ORG_ID'}
 Content-Type: application/json`}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              <div>
-                <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>JSON Payload</label>
-                <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
+                  <div>
+                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>JSON Payload</label>
+                    <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
 {`{
   "name": "Customer Name",
   "whatsappNumber": "+91 9999999999",
   "shopName": "Optional Shop Name",
   "agentEmail": "agent@yourcompany.com"
 }`}
-                </div>
-              </div>
+                    </div>
+                  </div>
 
-              <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', padding: '12px', borderRadius: '8px'}}>
-                <h4 style={{fontSize: '0.85rem', fontWeight: 600, color: '#1e40af', margin: '0 0 6px 0'}}>Note on Duplicates</h4>
-                <p style={{fontSize: '0.8rem', color: '#1e3a8a', margin: 0}}>
-                  If the mobile number already exists in the system as a Customer or Lead, the API will return a <code>409 Conflict</code> error, and you can redirect the user to a live agent in your chatbot.
-                </p>
-              </div>
-
-              <div style={{background: '#fffbeb', border: '1px solid #fde68a', padding: '12px', borderRadius: '8px'}}>
-                <h4 style={{fontSize: '0.85rem', fontWeight: 600, color: '#b45309', margin: '0 0 6px 0'}}>⚠️ Auto-Agent Assignment</h4>
-                <p style={{fontSize: '0.8rem', color: '#92400e', margin: 0}}>
-                  To perfectly assign leads to the correct agent automatically, ensure that the <code>agentEmail</code> you send from WhatsApp exactly matches the agent's email registered here in the CRM/ERP.
-                </p>
-              </div>
+                  <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', padding: '12px', borderRadius: '8px'}}>
+                    <h4 style={{fontSize: '0.85rem', fontWeight: 600, color: '#1e40af', margin: '0 0 6px 0'}}>Note on Duplicates</h4>
+                    <p style={{fontSize: '0.8rem', color: '#1e3a8a', margin: 0}}>
+                      If the mobile number already exists in the system as a Customer or Lead, the API will return a <code>409 Conflict</code> error, and you can redirect the user to a live agent in your chatbot.
+                    </p>
+                  </div>
                 </>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>

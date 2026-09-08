@@ -26,7 +26,9 @@ import {
   Sliders,
   Layers,
   FileText,
-  Bell
+  Bell,
+  Store,
+  Mail
 } from "lucide-react";
 
 interface SettingsMenuProps {
@@ -56,6 +58,22 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
       iconBg: "#eff6ff",
       iconColor: "#2563eb",
       href: "/settings/organization"
+    },
+    {
+      label: "Multi-Branch & Locations",
+      desc: "Manage physical offices, distribution hubs, city centers & active branch switcher",
+      icon: <Store size={18} />,
+      iconBg: "#e0e7ff",
+      iconColor: "#4f46e5",
+      href: "/settings/branches"
+    },
+    {
+      label: "Email & Gmail Integration",
+      desc: "Google Workspace, SMTP server credentials & 360° CRM timeline email logging",
+      icon: <Mail size={18} />,
+      iconBg: "#e0f2fe",
+      iconColor: "#0284c7",
+      href: "/settings/email"
     },
     {
       label: "Tax Rates & GST Compliance",

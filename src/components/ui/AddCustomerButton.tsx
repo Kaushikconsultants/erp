@@ -28,7 +28,7 @@ export default function AddCustomerButton({ employees = [] }: { employees?: { id
           title="Bulk Import Customers from Excel or CSV"
         >
           <FileSpreadsheet size={15} />
-          <span>Import CSV</span>
+          <span>Import Excel / Sheets</span>
         </button>
         <button 
           className="primary-btn hover-lift" 

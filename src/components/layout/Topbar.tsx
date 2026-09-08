@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, LogOut, Settings, Menu, PhoneCall } from 'lucide-react';
+import { Bell, Search, User, LogOut, Settings, Menu, PhoneCall, Sparkles } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
+import BranchCompanySwitcher from './BranchCompanySwitcher';
 import InstallPwaPrompt from '../ui/InstallPwaPrompt';
+import OnboardingWizardModal from '../onboarding/OnboardingWizardModal';
 import { openPhoneDialer } from '@/lib/dialer';
 import './Topbar.css';
 
@@ -17,6 +19,7 @@ interface TopbarProps {
 const Topbar = ({ onMenuClick }: TopbarProps) => {
   const { data: session } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userName = session?.user?.name || 'Loading...';
@@ -39,10 +42,11 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
 
   return (
     <header className="topbar">
-      <div className="topbar-left">
+      <div className="topbar-left" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <button className="mobile-menu-btn" onClick={onMenuClick}>
           <Menu size={24} />
         </button>
+        <BranchCompanySwitcher />
         <GlobalSearch />
       </div>
 
@@ -107,6 +111,18 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
                 <span>My Profile</span>
               </Link>
               <button 
+                type="button"
+                className="dropdown-item" 
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  setIsOnboardingOpen(true);
+                }}
+                style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: '#1e293b' }}
+              >
+                <Sparkles size={16} style={{ color: '#4f46e5' }} />
+                <span>ERP Setup Tour</span>
+              </button>
+              <button 
                 className="dropdown-item text-danger" 
                 onClick={() => {
                   setIsDropdownOpen(false);
@@ -120,6 +136,13 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
           )}
         </div>
       </div>
+
+      {isOnboardingOpen && (
+        <OnboardingWizardModal
+          isOpen={isOnboardingOpen}
+          onClose={() => setIsOnboardingOpen(false)}
+        />
+      )}
     </header>
   );
 };
