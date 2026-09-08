@@ -109,14 +109,16 @@
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  width: 220px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  padding: 8px 0;
-  z-index: 100;
+  width: 320px;
+  max-width: calc(100vw - 20px);
+  background: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 14px;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.18), 0 10px 15px -5px rgba(0, 0, 0, 0.08);
+  padding: 6px 0;
+  z-index: 100010;
   animation: slideDown 0.2s ease;
+  overflow: hidden;
 }
 
 @keyframes slideDown {
@@ -228,31 +230,19 @@
     flex-shrink: 0;
   }
 
-  /* Branch & Company Switcher responsive compact button */
-  .branch-switcher-btn {
-    max-width: 120px !important;
-    padding: 5px 8px !important;
-    font-size: 0.74rem !important;
-    gap: 4px !important;
-  }
-
-  .branch-switcher-company-name {
-    display: none !important;
-  }
 }
 
 /* Mobile dropdown popups & dialogs (<= 640px) */
 @media (max-width: 640px) {
-  .branch-switcher-dropdown {
+  .profile-dropdown {
     position: fixed !important;
     top: 56px !important;
-    left: 10px !important;
     right: 10px !important;
-    width: auto !important;
-    max-width: 360px !important;
-    margin: 0 auto !important;
-    max-height: calc(85dvh - 64px) !important;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25) !important;
+    left: auto !important;
+    width: min(320px, calc(100vw - 20px)) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(88dvh - 64px) !important;
+    overflow-y: auto !important;
     z-index: 100010 !important;
   }
 
@@ -277,11 +267,6 @@
 
   .topbar-left {
     gap: 4px !important;
-  }
-
-  .branch-switcher-btn {
-    max-width: 96px !important;
-    padding: 4px 6px !important;
   }
 
   .topbar-actions {

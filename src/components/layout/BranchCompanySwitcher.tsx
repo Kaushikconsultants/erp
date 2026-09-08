@@ -1,17 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
-  ChevronDown, 
   Check, 
   Plus, 
-  MapPin, 
-  Settings, 
   Globe, 
-  Building, 
   Store,
-  X,
+  Settings,
   Loader2
 } from 'lucide-react';
 import { 
@@ -24,8 +20,11 @@ import {
 } from '@/app/actions/branchActions';
 import Link from 'next/link';
 
-export default function BranchCompanySwitcher() {
-  const [isOpen, setIsOpen] = useState(false);
+interface BranchCompanySwitcherProps {
+  onCloseDropdown?: () => void;
+}
+
+export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompanySwitcherProps = {}) {
   const [branches, setBranches] = useState<BranchData[]>([]);
   const [activeBranchId, setActiveBranchIdState] = useState<string>('ALL');
   const [companyName, setCompanyName] = useState<string>('Company');
@@ -39,8 +38,6 @@ export default function BranchCompanySwitcher() {
   const [newBranchCity, setNewBranchCity] = useState('');
   const [creatingBranch, setCreatingBranch] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
-
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -65,26 +62,15 @@ export default function BranchCompanySwitcher() {
     loadData();
   }, []);
 
-  // Close dropdown on click outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const handleSelectBranch = async (branchId: string) => {
     setActiveBranchIdState(branchId);
-    setIsOpen(false);
+    if (onCloseDropdown) onCloseDropdown();
     await setActiveBranch(branchId);
     window.location.reload();
   };
 
   const handleSwitchOrg = async (orgId: string) => {
-    setIsOpen(false);
+    if (onCloseDropdown) onCloseDropdown();
     await switchUserOrganization(orgId);
     window.location.reload();
   };
@@ -121,220 +107,216 @@ export default function BranchCompanySwitcher() {
     : branches.find(b => b.id === activeBranchId)?.name || 'Main Branch';
 
   return (
-    <div className="branch-company-switcher" ref={containerRef} style={{ position: 'relative' }}>
-      {/* TRIGGER PILL */}
-      <button
-        type="button"
-        className="branch-switcher-btn"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          display: 'inline-flex',
+    <div className="profile-branch-company-section">
+      {/* 1. ACTIVE ORGANIZATION / COMPANY */}
+      <div style={{
+        padding: '10px 16px',
+        backgroundColor: '#f8fafc',
+        borderTop: '1px solid #f1f5f9',
+        borderBottom: '1px solid #f1f5f9'
+      }}>
+        <div style={{
+          display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '6px 12px',
-          borderRadius: '20px',
-          backgroundColor: '#f1f5f9',
-          border: '1px solid #e2e8f0',
-          cursor: 'pointer',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          color: '#1e293b',
-          transition: 'all 0.15s ease',
-          maxWidth: '240px',
-          flexShrink: 0
-        }}
-      >
-        <Building2 size={15} style={{ color: '#4f46e5', flexShrink: 0 }} />
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          <span className="branch-switcher-company-name">{companyName} • </span>
-          <span style={{ color: '#4f46e5' }}>{activeBranchName}</span>
-        </span>
-        <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
-      </button>
+          justifyContent: 'space-between',
+          marginBottom: '6px'
+        }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Active Organization
+          </span>
+          {organizations.length > 1 && (
+            <span style={{ fontSize: '0.68rem', color: '#4f46e5', fontWeight: 600 }}>
+              {organizations.length} Companies
+            </span>
+          )}
+        </div>
 
-      {/* DROPDOWN MENU */}
-      {isOpen && (
-        <div 
-          className="branch-switcher-dropdown"
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            left: 0,
-            width: 'min(320px, calc(100vw - 20px))',
-            maxWidth: 'calc(100vw - 20px)',
-            backgroundColor: '#ffffff',
-            borderRadius: '14px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-            border: '1px solid #e2e8f0',
-            zIndex: 100010,
-            overflow: 'hidden',
-            animation: 'fadeIn 0.15s ease-out'
-          }}
-        >
-          {/* Company Section Header */}
-          <div style={{
-            padding: '12px 16px',
-            backgroundColor: '#f8fafc',
-            borderBottom: '1px solid #f1f5f9',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Building size={16} style={{ color: '#4f46e5' }} />
-              <div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-                  ACTIVE COMPANY
-                </div>
-                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>
-                  {companyName}
-                </div>
-              </div>
-            </div>
-
-            {organizations.length > 1 && (
-              <select
-                value={organizations.find(o => o.isCurrent)?.id}
-                onChange={e => handleSwitchOrg(e.target.value)}
-                style={{
-                  fontSize: '0.74rem',
-                  padding: '4px 6px',
-                  borderRadius: '6px',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
-                  color: '#4f46e5',
-                  fontWeight: 600
-                }}
-              >
-                {organizations.map(org => (
-                  <option key={org.id} value={org.id}>{org.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Branch List */}
-          <div style={{ padding: '8px 0', maxHeight: '260px', overflowY: 'auto' }}>
-            <div style={{ padding: '4px 16px 8px', fontSize: '0.72rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>
-              Select Branch / Location
-            </div>
-
-            {/* Option: All Branches */}
-            <button
-              type="button"
-              onClick={() => handleSelectBranch('ALL')}
+        {organizations.length > 1 ? (
+          <div style={{ position: 'relative' }}>
+            <select
+              value={organizations.find(o => o.isCurrent)?.id}
+              onChange={e => handleSwitchOrg(e.target.value)}
               style={{
                 width: '100%',
-                padding: '8px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                border: 'none',
-                backgroundColor: activeBranchId === 'ALL' ? '#f0fdf4' : 'transparent',
-                color: activeBranchId === 'ALL' ? '#166534' : '#1e293b',
+                padding: '7px 10px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#0f172a',
                 fontSize: '0.82rem',
-                fontWeight: activeBranchId === 'ALL' ? 700 : 500,
-                textAlign: 'left',
+                fontWeight: 600,
                 cursor: 'pointer',
-                transition: 'background-color 0.1s ease'
+                outline: 'none'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Globe size={15} style={{ color: activeBranchId === 'ALL' ? '#16a34a' : '#64748b' }} />
-                <span>All Branches (Consolidated)</span>
-              </div>
-              {activeBranchId === 'ALL' && <Check size={16} style={{ color: '#16a34a' }} />}
-            </button>
-
-            {/* Individual Branches */}
-            {branches.map(branch => {
-              const isSelected = activeBranchId === branch.id;
-              return (
-                <button
-                  key={branch.id}
-                  type="button"
-                  onClick={() => handleSelectBranch(branch.id)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    border: 'none',
-                    backgroundColor: isSelected ? '#eef2ff' : 'transparent',
-                    color: isSelected ? '#4f46e5' : '#1e293b',
-                    fontSize: '0.82rem',
-                    fontWeight: isSelected ? 700 : 500,
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.1s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <Store size={15} style={{ color: isSelected ? '#4f46e5' : '#64748b', flexShrink: 0 }} />
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span>{branch.name}</span>
-                      {branch.city && (
-                        <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '6px' }}>
-                          ({branch.city})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {isSelected && <Check size={16} style={{ color: '#4f46e5', flexShrink: 0 }} />}
-                </button>
-              );
-            })}
+              {organizations.map(org => (
+                <option key={org.id} value={org.id}>
+                  {org.name} {org.isCurrent ? '(Active)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
-
-          {/* Switcher Footer */}
+        ) : (
           <div style={{
-            padding: '8px 16px',
-            backgroundColor: '#f8fafc',
-            borderTop: '1px solid #f1f5f9',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between'
+            gap: '8px',
+            padding: '6px 10px',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0'
           }}>
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                setIsAddModalOpen(true);
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                background: 'none',
-                border: 'none',
-                color: '#4f46e5',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <Plus size={14} /> Add Branch
-            </button>
-
-            <Link
-              href="/settings/branches"
-              onClick={() => setIsOpen(false)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                color: '#64748b',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                textDecoration: 'none'
-              }}
-            >
-              <Settings size={13} /> Manage
-            </Link>
+            <Building2 size={16} style={{ color: '#4f46e5', flexShrink: 0 }} />
+            <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {companyName}
+            </span>
           </div>
+        )}
+      </div>
+
+      {/* 2. SELECT BRANCH / LOCATION SECTION */}
+      <div style={{ padding: '10px 16px 6px 16px' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '8px'
+        }}>
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Branch / Location
+          </span>
+          <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#4f46e5' }}>
+            {activeBranchName}
+          </span>
         </div>
-      )}
+
+        {/* Branch List Scroll Area */}
+        <div style={{
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          maxHeight: '160px',
+          overflowY: 'auto'
+        }}>
+          {/* Option: All Branches */}
+          <button
+            type="button"
+            onClick={() => handleSelectBranch('ALL')}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              border: 'none',
+              borderBottom: '1px solid #f1f5f9',
+              backgroundColor: activeBranchId === 'ALL' ? '#f0fdf4' : 'transparent',
+              color: activeBranchId === 'ALL' ? '#166534' : '#1e293b',
+              fontSize: '0.8rem',
+              fontWeight: activeBranchId === 'ALL' ? 700 : 500,
+              textAlign: 'left',
+              cursor: 'pointer',
+              transition: 'background-color 0.1s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Globe size={14} style={{ color: activeBranchId === 'ALL' ? '#16a34a' : '#64748b', flexShrink: 0 }} />
+              <span>All Branches (Consolidated)</span>
+            </div>
+            {activeBranchId === 'ALL' && <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />}
+          </button>
+
+          {/* Individual Branches */}
+          {branches.map(branch => {
+            const isSelected = activeBranchId === branch.id;
+            return (
+              <button
+                key={branch.id}
+                type="button"
+                onClick={() => handleSelectBranch(branch.id)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  border: 'none',
+                  borderBottom: '1px solid #f1f5f9',
+                  backgroundColor: isSelected ? '#eef2ff' : 'transparent',
+                  color: isSelected ? '#4f46e5' : '#1e293b',
+                  fontSize: '0.8rem',
+                  fontWeight: isSelected ? 700 : 500,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.1s ease'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <Store size={14} style={{ color: isSelected ? '#4f46e5' : '#64748b', flexShrink: 0 }} />
+                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span>{branch.name}</span>
+                    {branch.city && (
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '4px' }}>
+                        ({branch.city})
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {isSelected && <Check size={15} style={{ color: '#4f46e5', flexShrink: 0 }} />}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer Actions: Add Branch & Manage */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: '8px',
+          padding: '2px 4px'
+        }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (onCloseDropdown) onCloseDropdown();
+              setIsAddModalOpen(true);
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              background: 'none',
+              border: 'none',
+              color: '#4f46e5',
+              fontSize: '0.76rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <Plus size={13} /> Add Branch
+          </button>
+
+          <Link
+            href="/settings/branches"
+            onClick={() => {
+              if (onCloseDropdown) onCloseDropdown();
+            }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              color: '#64748b',
+              fontSize: '0.76rem',
+              fontWeight: 600,
+              textDecoration: 'none'
+            }}
+          >
+            <Settings size={12} /> Manage
+          </Link>
+        </div>
+      </div>
 
       {/* QUICK ADD BRANCH MODAL */}
       {isAddModalOpen && (
@@ -349,7 +331,7 @@ export default function BranchCompanySwitcher() {
 
             <form onSubmit={handleCreateBranch} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {modalError && (
-                 <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.8rem' }}>
+                <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.8rem' }}>
                   {modalError}
                 </div>
               )}

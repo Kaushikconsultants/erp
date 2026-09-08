@@ -46,7 +46,6 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
         <button className="mobile-menu-btn" onClick={onMenuClick}>
           <Menu size={24} />
         </button>
-        <BranchCompanySwitcher />
         <GlobalSearch />
       </div>
 
@@ -104,8 +103,26 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
               <div className="dropdown-header">
                 <span className="dropdown-name">{userName}</span>
                 <span className="dropdown-email">{session?.user?.email}</span>
+                <div style={{ marginTop: '4px' }}>
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    backgroundColor: '#e0e7ff',
+                    color: '#4338ca',
+                    display: 'inline-block'
+                  }}>
+                    {userRole}
+                  </span>
+                </div>
               </div>
+
+              {/* COMPANY & BRANCH MANAGEMENT SECTION */}
+              <BranchCompanySwitcher onCloseDropdown={() => setIsDropdownOpen(false)} />
+
               <div className="dropdown-divider"></div>
+
               <Link href="/profile" className="dropdown-item" onClick={() => setIsDropdownOpen(false)}>
                 <Settings size={16} />
                 <span>My Profile</span>
