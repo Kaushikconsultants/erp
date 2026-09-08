@@ -131,7 +131,8 @@ export default function BranchesSettingsPage() {
       loadData();
       setTimeout(() => setSuccessMsg(null), 3000);
     } else {
-      alert(res.error || "Failed to delete branch");
+      setErrorMsg(res.error || "Failed to delete branch");
+      setTimeout(() => setErrorMsg(null), 4000);
     }
   };
 
@@ -142,7 +143,7 @@ export default function BranchesSettingsPage() {
   };
 
   return (
-    <div className="page-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px' }}>
+    <div className="page-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '16px 14px' }}>
       
       {/* PAGE HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '28px', flexWrap: 'wrap', gap: '14px' }}>
@@ -191,7 +192,7 @@ export default function BranchesSettingsPage() {
         </button>
       </div>
 
-      {/* TOAST SUCCESS */}
+      {/* TOAST NOTIFICATIONS */}
       {successMsg && (
         <div style={{
           marginBottom: '20px',
@@ -207,6 +208,24 @@ export default function BranchesSettingsPage() {
         }}>
           <CheckCircle2 size={16} color="#059669" />
           <span>{successMsg}</span>
+        </div>
+      )}
+
+      {errorMsg && !modalMode && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          backgroundColor: '#fef2f2',
+          border: '1px solid #fecaca',
+          color: '#dc2626',
+          fontSize: '0.84rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <AlertCircle size={16} color="#dc2626" />
+          <span>{errorMsg}</span>
         </div>
       )}
 
@@ -249,8 +268,8 @@ export default function BranchesSettingsPage() {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: '20px'
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: '16px'
         }}>
           {branches.map(branch => {
             const isCurrentActive = activeBranchId === branch.id;
@@ -435,8 +454,8 @@ export default function BranchesSettingsPage() {
 
       {/* CREATE / EDIT BRANCH MODAL */}
       {modalMode && (
-        <div className="modal-backdrop" style={{ zIndex: 100050 }}>
-          <div className="modal-content" style={{ maxWidth: '520px', width: '100%', backgroundColor: '#ffffff', borderRadius: '14px' }}>
+        <div className="modal-backdrop" style={{ zIndex: 100050, padding: '12px 8px' }}>
+          <div className="modal-content" style={{ maxWidth: '520px', width: '100%', maxHeight: 'calc(94dvh - 16px)', overflowY: 'auto', backgroundColor: '#ffffff', borderRadius: '14px' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Store size={20} style={{ color: '#4f46e5' }} />
@@ -467,7 +486,7 @@ export default function BranchesSettingsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                     Branch Code
@@ -510,7 +529,7 @@ export default function BranchesSettingsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.2fr 0.8fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                     City

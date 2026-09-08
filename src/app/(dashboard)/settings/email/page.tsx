@@ -76,7 +76,7 @@ export default function EmailSettingsPage() {
   };
 
   return (
-    <div className="page-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '24px' }}>
+    <div className="page-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '16px 14px' }}>
       
       {/* HEADER */}
       <div style={{ marginBottom: '28px' }}>
@@ -117,10 +117,10 @@ export default function EmailSettingsPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', alignItems: 'start' }}>
         
         {/* LEFT COLUMN: SENDER & SMTP CONFIG */}
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+        <div style={{ backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '18px', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
             <Globe size={18} style={{ color: '#0284c7' }} />
             <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>

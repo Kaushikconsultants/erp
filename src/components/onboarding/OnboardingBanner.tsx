@@ -37,8 +37,8 @@ export default function OnboardingBanner() {
   return (
     <>
       <div style={{
-        margin: '0 0 20px 0',
-        padding: '12px 20px',
+        margin: '0 0 18px 0',
+        padding: '12px 16px',
         borderRadius: '12px',
         background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
         color: '#ffffff',
@@ -50,7 +50,7 @@ export default function OnboardingBanner() {
         gap: '12px',
         animation: 'fadeIn 0.3s ease-in-out'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
           <div style={{
             width: '32px',
             height: '32px',
@@ -67,18 +67,18 @@ export default function OnboardingBanner() {
             <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#fff' }}>
               Welcome! Setup your ERP in 3 minutes
             </div>
-            <div style={{ fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.85)' }}>
+            <div style={{ fontSize: '0.76rem', color: 'rgba(255, 255, 255, 0.85)', lineHeight: 1.3 }}>
               Configure company branches, import customer/lead spreadsheets, and invite team members.
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setIsWizardOpen(true)}
             style={{
-              padding: '7px 16px',
+              padding: '8px 16px',
               borderRadius: '8px',
               backgroundColor: '#ffffff',
               color: '#4f46e5',
@@ -89,7 +89,8 @@ export default function OnboardingBanner() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              minHeight: '36px'
             }}
           >
             <span>Start Setup Tour</span>

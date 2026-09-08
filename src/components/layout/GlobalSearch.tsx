@@ -300,20 +300,24 @@ export default function GlobalSearch() {
 
       {/* LIVE ALL-OPTIONS DROPDOWN MENU */}
       {showDropdown && !isListening && (
-        <div style={{
-          position: 'absolute',
-          top: '115%',
-          left: 0,
-          width: '420px',
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)',
-          border: '1px solid #cbd5e1',
-          zIndex: 1000,
-          maxHeight: '480px',
-          overflowY: 'auto',
-          padding: '8px 0'
-        }}>
+        <div 
+          className="global-search-dropdown"
+          style={{
+            position: 'absolute',
+            top: '115%',
+            left: 0,
+            width: 'min(420px, calc(100vw - 20px))',
+            maxWidth: 'calc(100vw - 20px)',
+            backgroundColor: '#ffffff',
+            borderRadius: '12px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)',
+            border: '1px solid #cbd5e1',
+            zIndex: 1000,
+            maxHeight: '480px',
+            overflowY: 'auto',
+            padding: '8px 0'
+          }}
+        >
           {/* Section 1: Live Multi-Entity Results */}
           {query.trim().length >= 1 ? (
             <div>

@@ -126,14 +126,14 @@ export default function SendEmailModal({
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 100050,
-      padding: '16px'
+      padding: '10px 8px'
     }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
         width: '100%',
         maxWidth: '620px',
-        maxHeight: '90vh',
+        maxHeight: 'calc(94dvh - 16px)',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -142,12 +142,13 @@ export default function SendEmailModal({
       }}>
         {/* MODAL HEADER */}
         <div style={{
-          padding: '18px 24px',
+          padding: '14px 18px',
           borderBottom: '1px solid #f1f5f9',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'linear-gradient(to right, #fafafa, #ffffff)'
+          background: 'linear-gradient(to right, #fafafa, #ffffff)',
+          gap: '10px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
@@ -192,21 +193,21 @@ export default function SendEmailModal({
 
         {/* FEEDBACK BANNERS */}
         {errorMsg && (
-          <div style={{ margin: '12px 24px 0', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ margin: '10px 18px 0', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <AlertCircle size={16} style={{ flexShrink: 0 }} />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div style={{ margin: '12px 24px 0', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ margin: '10px 18px 0', padding: '10px 14px', borderRadius: '8px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0 }} />
             <span>{successMsg}</span>
           </div>
         )}
 
         {/* MODAL FORM */}
-        <form onSubmit={handleSend} style={{ padding: '20px 24px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleSend} style={{ padding: '16px 18px', flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           
           {/* Template Selector Bar */}
           <div style={{

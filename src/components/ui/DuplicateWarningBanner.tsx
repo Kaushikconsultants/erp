@@ -53,8 +53,8 @@ export default function DuplicateWarningBanner({
       animation: 'fadeIn 0.2s ease-in-out'
     }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div style={{
             width: '24px',
             height: '24px',
@@ -63,7 +63,8 @@ export default function DuplicateWarningBanner({
             color: '#d97706',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            flexShrink: 0
           }}>
             <AlertTriangle size={14} />
           </div>

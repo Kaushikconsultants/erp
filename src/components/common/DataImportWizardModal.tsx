@@ -387,15 +387,15 @@ export default function DataImportWizardModal({
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 9999,
-      padding: '16px'
+      zIndex: 100050,
+      padding: '10px 8px'
     }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '16px',
         width: '100%',
         maxWidth: '920px',
-        maxHeight: '92vh',
+        maxHeight: 'calc(94dvh - 16px)',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
@@ -404,12 +404,13 @@ export default function DataImportWizardModal({
       }}>
         {/* MODAL HEADER */}
         <div style={{
-          padding: '18px 24px',
+          padding: '14px 18px',
           borderBottom: '1px solid #f1f5f9',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: 'linear-gradient(to right, #fafafa, #ffffff)'
+          background: 'linear-gradient(to right, #fafafa, #ffffff)',
+          gap: '10px'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
@@ -454,14 +455,16 @@ export default function DataImportWizardModal({
 
         {/* STEPPER PROGRESS */}
         <div style={{
-          padding: '12px 24px',
+          padding: '10px 16px',
           backgroundColor: '#f8fafc',
           borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: 'flex-start',
+          gap: '16px',
           fontSize: '0.8rem',
-          overflowX: 'auto'
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch'
         }}>
           {[
             { num: 1, label: 'Select & Source' },
@@ -525,17 +528,17 @@ export default function DataImportWizardModal({
         )}
 
         {/* MODAL BODY */}
-        <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '16px 18px', flex: 1, overflowY: 'auto' }}>
           
           {/* STEP 1: ENTITY SELECT & SOURCE */}
           {step === 1 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Module selection */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
                   Select CRM / ERP Module to Import
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: '8px' }}>
                   {(['CUSTOMERS', 'LEADS', 'PRODUCTS', 'VENDORS', 'LEDGERS'] as EntityType[]).map(et => {
                     const info = ENTITY_SCHEMAS[et];
                     const Icon = info.icon;
@@ -573,12 +576,12 @@ export default function DataImportWizardModal({
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
                   Choose Import Source
                 </label>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                   <button
                     type="button"
                     onClick={() => setImportSource('FILE')}
                     style={{
-                      flex: 1,
+                      flex: '1 1 200px',
                       padding: '12px',
                       borderRadius: '10px',
                       border: `2px solid ${importSource === 'FILE' ? '#4f46e5' : '#e2e8f0'}`,
@@ -885,12 +888,13 @@ export default function DataImportWizardModal({
               </div>
 
               <div style={{
-                maxHeight: '360px',
-                overflowY: 'auto',
+                maxHeight: '340px',
+                overflow: 'auto',
+                WebkitOverflowScrolling: 'touch',
                 border: '1px solid #e2e8f0',
                 borderRadius: '10px'
               }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <table style={{ width: '100%', minWidth: '480px', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                       <th style={{ padding: '10px 14px', color: '#475569', fontWeight: 600 }}>ERP Field Name</th>
@@ -951,7 +955,7 @@ export default function DataImportWizardModal({
           {/* STEP 3: PREVIEW & DUPLICATE HANDLING */}
           {step === 3 && validationResult && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))', gap: '10px' }}>
                 <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>TOTAL ROWS</div>
                   <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
@@ -1004,11 +1008,12 @@ export default function DataImportWizardModal({
 
               <div style={{
                 maxHeight: '260px',
-                overflowY: 'auto',
+                overflow: 'auto',
+                WebkitOverflowScrolling: 'touch',
                 border: '1px solid #e2e8f0',
                 borderRadius: '10px'
               }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
+                <table style={{ width: '100%', minWidth: '480px', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
                   <thead>
                     <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
                       <th style={{ padding: '8px 12px', width: '90px' }}>Status</th>
@@ -1102,12 +1107,14 @@ export default function DataImportWizardModal({
         {/* MODAL FOOTER */}
         {step < 4 && (
           <div style={{
-            padding: '16px 24px',
+            padding: '12px 18px',
             borderTop: '1px solid #f1f5f9',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            flexWrap: 'wrap',
+            gap: '10px'
           }}>
             <div>
               {step > 1 && (

@@ -86,14 +86,14 @@ export default function OnboardingWizardModal({
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 100060,
-      padding: '16px'
+      padding: '10px 8px'
     }}>
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '20px',
         width: '100%',
         maxWidth: '780px',
-        maxHeight: '92vh',
+        maxHeight: 'calc(94dvh - 16px)',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
@@ -102,7 +102,7 @@ export default function OnboardingWizardModal({
       }}>
         {/* HEADER WITH PROGRESS BAR */}
         <div style={{
-          padding: '20px 24px',
+          padding: '14px 18px',
           borderBottom: '1px solid #f1f5f9',
           background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
           color: '#ffffff',
@@ -171,11 +171,13 @@ export default function OnboardingWizardModal({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 24px',
+          justifyContent: 'flex-start',
+          padding: '10px 14px',
           backgroundColor: '#f8fafc',
           borderBottom: '1px solid #e2e8f0',
-          overflowX: 'auto'
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
+          gap: '8px'
         }}>
           {stepsMetadata.map((s) => {
             const Icon = s.icon;
@@ -223,7 +225,7 @@ export default function OnboardingWizardModal({
         </div>
 
         {/* MODAL BODY CONTENT */}
-        <div style={{ padding: '24px 28px', flex: 1, overflowY: 'auto' }}>
+        <div style={{ padding: '16px 18px', flex: 1, overflowY: 'auto' }}>
           
           {/* STEP 1: COMPANY PROFILE */}
           {currentStep === 1 && (
@@ -237,7 +239,7 @@ export default function OnboardingWizardModal({
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                     Company Legal Name *
@@ -264,7 +266,7 @@ export default function OnboardingWizardModal({
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                     GSTIN Number (15 Digits)
@@ -291,7 +293,7 @@ export default function OnboardingWizardModal({
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                     City
@@ -346,7 +348,7 @@ export default function OnboardingWizardModal({
                   <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0f172a' }}>Primary Head Office</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                       Branch Name
@@ -443,7 +445,7 @@ export default function OnboardingWizardModal({
                 </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
                 <div style={{
                   padding: '18px',
                   backgroundColor: '#f8fafc',
@@ -681,12 +683,14 @@ export default function OnboardingWizardModal({
         {/* MODAL FOOTER */}
         {currentStep < 6 && (
           <div style={{
-            padding: '16px 24px',
+            padding: '12px 18px',
             borderTop: '1px solid #f1f5f9',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: '#ffffff'
+            backgroundColor: '#ffffff',
+            flexWrap: 'wrap',
+            gap: '10px'
           }}>
             <div>
               {currentStep > 1 && (

@@ -125,11 +125,12 @@ export default function BranchCompanySwitcher() {
       {/* TRIGGER PILL */}
       <button
         type="button"
+        className="branch-switcher-btn"
         onClick={() => setIsOpen(!isOpen)}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: '6px',
           padding: '6px 12px',
           borderRadius: '20px',
           backgroundColor: '#f1f5f9',
@@ -139,31 +140,37 @@ export default function BranchCompanySwitcher() {
           fontWeight: 600,
           color: '#1e293b',
           transition: 'all 0.15s ease',
-          maxWidth: '240px'
+          maxWidth: '240px',
+          flexShrink: 0
         }}
       >
         <Building2 size={15} style={{ color: '#4f46e5', flexShrink: 0 }} />
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {companyName} • <span style={{ color: '#4f46e5' }}>{activeBranchName}</span>
+          <span className="branch-switcher-company-name">{companyName} • </span>
+          <span style={{ color: '#4f46e5' }}>{activeBranchName}</span>
         </span>
         <ChevronDown size={14} style={{ color: '#64748b', flexShrink: 0 }} />
       </button>
 
       {/* DROPDOWN MENU */}
       {isOpen && (
-        <div style={{
-          position: 'absolute',
-          top: 'calc(100% + 8px)',
-          left: 0,
-          width: '320px',
-          backgroundColor: '#ffffff',
-          borderRadius: '14px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-          border: '1px solid #e2e8f0',
-          zIndex: 10000,
-          overflow: 'hidden',
-          animation: 'fadeIn 0.15s ease-out'
-        }}>
+        <div 
+          className="branch-switcher-dropdown"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            left: 0,
+            width: 'min(320px, calc(100vw - 20px))',
+            maxWidth: 'calc(100vw - 20px)',
+            backgroundColor: '#ffffff',
+            borderRadius: '14px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            border: '1px solid #e2e8f0',
+            zIndex: 100010,
+            overflow: 'hidden',
+            animation: 'fadeIn 0.15s ease-out'
+          }}
+        >
           {/* Company Section Header */}
           <div style={{
             padding: '12px 16px',
@@ -331,8 +338,8 @@ export default function BranchCompanySwitcher() {
 
       {/* QUICK ADD BRANCH MODAL */}
       {isAddModalOpen && (
-        <div className="modal-backdrop" style={{ zIndex: 100050 }}>
-          <div className="modal-content" style={{ maxWidth: '440px', width: '100%', backgroundColor: '#ffffff', borderRadius: '14px' }}>
+        <div className="modal-backdrop" style={{ zIndex: 100050, padding: '12px 8px' }}>
+          <div className="modal-content" style={{ maxWidth: '440px', width: '100%', maxHeight: 'calc(94dvh - 16px)', overflowY: 'auto', backgroundColor: '#ffffff', borderRadius: '14px' }}>
             <div className="modal-header">
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Store size={18} style={{ color: '#4f46e5' }} /> Add New Branch
@@ -342,7 +349,7 @@ export default function BranchCompanySwitcher() {
 
             <form onSubmit={handleCreateBranch} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {modalError && (
-                <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.8rem' }}>
+                 <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.8rem' }}>
                   {modalError}
                 </div>
               )}
@@ -362,7 +369,7 @@ export default function BranchCompanySwitcher() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
                     Branch Code

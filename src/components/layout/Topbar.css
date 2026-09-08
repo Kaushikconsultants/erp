@@ -186,7 +186,11 @@
   .topbar-left {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible; /* Must remain visible so dropdowns aren't clipped */
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
 
   .search-container {
@@ -223,13 +227,61 @@
   .avatar {
     flex-shrink: 0;
   }
+
+  /* Branch & Company Switcher responsive compact button */
+  .branch-switcher-btn {
+    max-width: 120px !important;
+    padding: 5px 8px !important;
+    font-size: 0.74rem !important;
+    gap: 4px !important;
+  }
+
+  .branch-switcher-company-name {
+    display: none !important;
+  }
 }
 
-/* Ultra-small phones */
-@media (max-width: 360px) {
+/* Mobile dropdown popups & dialogs (<= 640px) */
+@media (max-width: 640px) {
+  .branch-switcher-dropdown {
+    position: fixed !important;
+    top: 56px !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-width: 360px !important;
+    margin: 0 auto !important;
+    max-height: calc(85dvh - 64px) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25) !important;
+    z-index: 100010 !important;
+  }
+
+  .global-search-dropdown {
+    position: fixed !important;
+    top: 56px !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    max-height: calc(82dvh - 64px) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25) !important;
+    z-index: 100005 !important;
+  }
+}
+
+/* Ultra-small phones (<= 380px) */
+@media (max-width: 380px) {
   .topbar {
-    padding: 6px 8px;
+    padding: 6px 6px;
     gap: 4px;
+  }
+
+  .topbar-left {
+    gap: 4px !important;
+  }
+
+  .branch-switcher-btn {
+    max-width: 96px !important;
+    padding: 4px 6px !important;
   }
 
   .topbar-actions {
