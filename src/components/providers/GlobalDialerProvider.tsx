@@ -90,15 +90,17 @@ export default function GlobalDialerProvider({ children }: { children: React.Rea
   return (
     <DialerContext.Provider value={{ openDialer, closeDialer, isOpen }}>
       {children}
-      <PhoneDialerModal
-        isOpen={isOpen}
-        onClose={closeDialer}
-        initialPhone={dialerPhone}
-        initialName={dialerName}
-        initialCustomerId={dialerCustomerId}
-        initialLeadId={dialerLeadId}
-        initialTab={dialerTab}
-      />
+      {isOpen && (
+        <PhoneDialerModal
+          isOpen={isOpen}
+          onClose={closeDialer}
+          initialPhone={dialerPhone}
+          initialName={dialerName}
+          initialCustomerId={dialerCustomerId}
+          initialLeadId={dialerLeadId}
+          initialTab={dialerTab}
+        />
+      )}
     </DialerContext.Provider>
   );
 }

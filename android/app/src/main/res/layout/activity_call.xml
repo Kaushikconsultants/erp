@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0f172a"
+    android:padding="24dp"
+    android:gravity="center_horizontal">
+
+    <!-- Top Bar: SIM & Carrier Badge -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#1e293b"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="6dp"
+        android:layout_marginTop="20dp"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/tvSimBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SIM 1 • Cellular Call"
+            android:textColor="#94a3b8"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Spacer -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <!-- Contact Avatar Placeholder -->
+    <TextView
+        android:id="@+id/tvAvatar"
+        android:layout_width="88dp"
+        android:layout_height="88dp"
+        android:background="#334155"
+        android:text="C"
+        android:textColor="#ffffff"
+        android:textSize="36sp"
+        android:textStyle="bold"
+        android:gravity="center" />
+
+    <!-- Contact Name -->
+    <TextView
+        android:id="@+id/tvContactName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Direct Contact"
+        android:textColor="#ffffff"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        android:layout_marginTop="16dp" />
+
+    <!-- Phone Number -->
+    <TextView
+        android:id="@+id/tvPhoneNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="+91 XXXXX XXXXX"
+        android:textColor="#94a3b8"
+        android:textSize="17sp"
+        android:layout_marginTop="6dp" />
+
+    <!-- Call Status & Live Duration Stopwatch -->
+    <TextView
+        android:id="@+id/tvCallStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Dialing..."
+        android:textColor="#38bdf8"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:layout_marginTop="12dp" />
+
+    <TextView
+        android:id="@+id/tvCallTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="00:00"
+        android:textColor="#f8fafc"
+        android:textSize="32sp"
+        android:textStyle="bold"
+        android:layout_marginTop="6dp" />
+
+    <!-- Transcription Status Badge -->
+    <LinearLayout
+        android:id="@+id/layoutTranscriptionBadge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#064e3b"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:layout_marginTop="16dp"
+        android:gravity="center">
+
+        <TextView
+            android:id="@+id/tvTranscriptionStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎙️ AI Transcription Ready"
+            android:textColor="#34d399"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Spacer -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1.5" />
+
+    <!-- In-Call Control Buttons Grid -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="24dp">
+
+        <!-- Mute Button -->
+        <Button
+            android:id="@+id/btnMute"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="Mute"
+            android:textColor="#f1f5f9"
+            android:background="#1e293b"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Keypad Button -->
+        <Button
+            android:id="@+id/btnKeypad"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="Keypad"
+            android:textColor="#f1f5f9"
+            android:background="#1e293b"
+            android:layout_marginHorizontal="4dp" />
+
+        <!-- Speaker Button -->
+        <Button
+            android:id="@+id/btnSpeaker"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="Speaker"
+            android:textColor="#f1f5f9"
+            android:background="#1e293b"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- Hold & Return to CRM Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginBottom="32dp">
+
+        <Button
+            android:id="@+id/btnHold"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="Hold"
+            android:textColor="#f1f5f9"
+            android:background="#1e293b"
+            android:layout_marginEnd="8dp" />
+
+        <Button
+            android:id="@+id/btnReturnCrm"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="CRM App"
+            android:textColor="#38bdf8"
+            android:background="#1e293b"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- End Call Button (Large Red) -->
+    <Button
+        android:id="@+id/btnEndCall"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:text="End"
+        android:textColor="#ffffff"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:background="#ef4444"
+        android:layout_marginBottom="24dp" />
+
+</LinearLayout>

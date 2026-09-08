@@ -282,5 +282,105 @@ export const requestAllNativePermissions = async () => {
   triggerHaptic('success').catch(() => {});
   return results;
 };
+export interface NativeSimInfo {
+  subscriptionId: number;
+  slotIndex: number;
+  slotLabel: string;
+  displayName: string;
+  carrierName: string;
+  number?: string;
+  isDefault?: boolean;
+}
 
+export interface RecordingCapabilityInfo {
+  level: "SUPPORTED_TWO_WAY" | "PARTIALLY_SUPPORTED_MIC_ONLY" | "RESTRICTED_BY_OS" | "PERMISSION_REQUIRED" | "DEFAULT_DIALER_REQUIRED";
+  title: string;
+  description: string;
+  canRecordBothSides: boolean;
+  sourceName: string;
+  oemVendor: string;
+  androidVersion: string;
+}
 
+/**
+ * Get active SIM subscriptions (Dual SIM / eSIM)
+ */
+export const getNativeSims = (): NativeSimInfo[] => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.getAvailableSims === 'function') {
+      const json = (window as any).AndroidNative.getAvailableSims();
+      if (!json || typeof json !== 'string') return [];
+      const parsed = JSON.parse(json);
+      return Array.isArray(parsed) ? parsed.filter(s => s && typeof s === 'object') : [];
+    }
+  } catch (e) {
+    console.warn("Failed to get native SIMs:", e);
+  }
+  return [];
+};
+
+/**
+ * Place a cellular call with a specific SIM subscription
+ */
+export const makeDirectCellularCall = (phoneNumber: string, subscriptionId: number = -1) => {
+  try {
+    const clean = String(phoneNumber || '').replace(/[^0-9+]/g, '');
+    if (!clean) return;
+
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCallWithSim === 'function') {
+      (window as any).AndroidNative.directPhoneCallWithSim(clean, subscriptionId);
+    } else if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCall === 'function') {
+      (window as any).AndroidNative.directPhoneCall(clean);
+    } else if (typeof window !== 'undefined') {
+      window.location.href = `tel:${clean}`;
+    }
+  } catch (e) {
+    console.warn("Failed to make cellular call:", e);
+  }
+};
+
+/**
+ * Check call audio capture & transcription capability
+ */
+export const getCallRecordingCapability = (): RecordingCapabilityInfo | null => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.getCallRecordingCapability === 'function') {
+      const json = (window as any).AndroidNative.getCallRecordingCapability();
+      if (!json || typeof json !== 'string') return null;
+      const parsed = JSON.parse(json);
+      if (parsed && typeof parsed === 'object' && parsed.level) {
+        return parsed;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to get recording capability:", e);
+  }
+  return null;
+};
+
+/**
+ * Check if app is default phone/dialer
+ */
+export const isDefaultDialer = (): boolean => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.isDefaultDialer === 'function') {
+      return Boolean((window as any).AndroidNative.isDefaultDialer());
+    }
+  } catch (e) {
+    return false;
+  }
+  return false;
+};
+
+/**
+ * Request default dialer role prompt
+ */
+export const requestDefaultDialer = () => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.requestDefaultDialer === 'function') {
+      (window as any).AndroidNative.requestDefaultDialer();
+    }
+  } catch (e) {
+    console.warn("Failed to request default dialer:", e);
+  }
+};

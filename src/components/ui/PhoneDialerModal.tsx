@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Phone,
   PhoneCall,
@@ -40,6 +40,16 @@ import {
 import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
 import CallVoiceDebriefWidget from "@/components/telecalling/CallVoiceDebriefWidget";
+import {
+  getNativeSims,
+  makeDirectCellularCall,
+  getCallRecordingCapability,
+  isDefaultDialer,
+  requestDefaultDialer,
+  isAndroidNativeApp,
+  NativeSimInfo,
+  RecordingCapabilityInfo
+} from "@/lib/capacitor";
 import "./phone-dialer.css";
 
 interface PhoneDialerModalProps {
@@ -150,12 +160,12 @@ const WHATSAPP_TEMPLATES = [
 ];
 
 class DialerErrorBoundary extends React.Component<
-  { children: React.ReactNode; onClose: () => void },
-  { hasError: boolean; error: any; resetKey: number }
+  { children: React.ReactNode; onClose: () => void; isOpen?: boolean },
+  { hasError: boolean; error: any }
 > {
   constructor(props: any) {
     super(props);
-    this.state = { hasError: false, error: null, resetKey: 0 };
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: any) {
@@ -163,50 +173,54 @@ class DialerErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: any, errorInfo: any) {
-    console.error("Dialer error caught by boundary:", error, errorInfo);
+    console.warn("Dialer error caught by boundary:", error, errorInfo);
   }
 
-  handleReset = () => {
-    // Increment resetKey to force full re-mount of children, clearing all state
-    this.setState((prev) => ({ hasError: false, error: null, resetKey: prev.resetKey + 1 }));
-  };
+  componentDidUpdate(prevProps: any) {
+    if (prevProps.isOpen !== this.props.isOpen && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
+  }
 
   render() {
-    if (this.state.hasError) {
-      return (
-        <div className="dialer-backdrop" onClick={this.props.onClose}>
-          <div className="dialer-sheet" style={{ padding: "32px 24px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#f0fdf4", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px auto", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)" }}>
-              <PhoneCall size={26} />
-            </div>
-            <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", color: "#0f172a", fontWeight: 800 }}>Dialer Ready</h3>
-            <p style={{ margin: "0 0 20px 0", fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5 }}>
-              The dialer encountered a momentary issue and was safely recovered. Tap Reset to continue.
-            </p>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                onClick={this.handleReset}
-                style={{ flex: 1, padding: "12px", borderRadius: "12px", backgroundColor: "#4f46e5", color: "#ffffff", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" }}
-              >
-                Reset Dialer
-              </button>
-              <button
-                onClick={this.props.onClose}
-                style={{ flex: 1, padding: "12px", borderRadius: "12px", backgroundColor: "#f1f5f9", color: "#475569", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      );
+    // If closed or if an error occurred, render nothing.
+    // NEVER show a disruptive "Dialer Ready" popup or error sheet to the user.
+    if (!this.props.isOpen || this.state.hasError) {
+      return null;
     }
-    // Use resetKey as key to force fresh mount on reset
-    return (
-      <React.Fragment key={this.state.resetKey}>
-        {this.props.children}
-      </React.Fragment>
-    );
+    return this.props.children;
+  }
+}
+
+// Pure module-level utility: Format seconds to mm:ss
+function formatDuration(totalSec: number | null | undefined): string {
+  if (!totalSec || isNaN(totalSec) || totalSec <= 0) return "00:00";
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// Pure module-level utility: Relative time formatter for call logs
+function formatRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return String(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) {
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    if (diffDays === 1) return "Yesterday";
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch {
+    return String(dateStr || "");
   }
 }
 
@@ -252,13 +266,47 @@ function PhoneDialerModalContent({
   const [followUpHour, setFollowUpHour] = useState<string>("11");
   const [followUpMinute, setFollowUpMinute] = useState<string>("00");
   const [followUpPeriod, setFollowUpPeriod] = useState<"AM" | "PM">("AM");
+  const [isPromptDismissed, setIsPromptDismissed] = useState<boolean>(false);
   const [newLeadName, setNewLeadName] = useState<string>(initialName);
   const [newLeadShop, setNewLeadShop] = useState<string>("");
   const [feedbackMsg, setFeedbackMsg] = useState<string>("");
   const [isListeningSpeech, setIsListeningSpeech] = useState<boolean>(false);
-
   // Speech Recognition ref
   const speechRecognitionRef = useRef<any>(null);
+
+  // Quick follow-up helpers defined early to guarantee availability in all effects & callbacks
+  const setQuickFollowUp = useCallback((days: number, hour12: number, min: number, period: "AM" | "PM") => {
+    if (days < 0) {
+      setFollowUpDate("");
+      return;
+    }
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    setFollowUpDate(`${yyyy}-${mm}-${dd}`);
+    setFollowUpHour(String(hour12).padStart(2, '0'));
+    setFollowUpMinute(String(min).padStart(2, '0'));
+    setFollowUpPeriod(period);
+  }, []);
+
+  const getCompiledFollowUpDate = useCallback(() => {
+    if (!followUpDate) return "";
+    let h = parseInt(followUpHour || "11", 10);
+    if (followUpPeriod === "PM" && h < 12) h += 12;
+    if (followUpPeriod === "AM" && h === 12) h = 0;
+    const [year, month, day] = followUpDate.split('-');
+    const m = parseInt(followUpMinute || "00", 10);
+    const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), h, m, 0);
+    return localDate.toISOString();
+  }, [followUpDate, followUpHour, followUpMinute, followUpPeriod]);
+
+  // Telecom Multi-SIM & Recording Capability State
+  const [availableSims, setAvailableSims] = useState<NativeSimInfo[]>([]);
+  const [selectedSim, setSelectedSim] = useState<NativeSimInfo | null>(null);
+  const [isDefaultApp, setIsDefaultApp] = useState<boolean>(true);
+  const [recordingCap, setRecordingCap] = useState<RecordingCapabilityInfo | null>(null);
 
   // Load Recent Calls safely
   const loadRecentCalls = async () => {
@@ -289,9 +337,9 @@ function PhoneDialerModalContent({
           const match = res.customers.find((c: any) => c.id === initialLeadId && c.type === "Lead");
           if (match) setSelectedContact(match);
         } else if (initialPhone) {
-          const cleanInit = initialPhone.replace(/\D/g, '');
+          const cleanInit = String(initialPhone).replace(/\D/g, '');
           const match = res.customers.find((c: any) =>
-            c.phone && c.phone.replace(/\D/g, '').includes(cleanInit)
+            c.phone && String(c.phone).replace(/\D/g, '').includes(cleanInit)
           );
           if (match) setSelectedContact(match);
         }
@@ -315,6 +363,55 @@ function PhoneDialerModalContent({
     };
     window.addEventListener("open-phone-dialer", handleGlobalOpen);
     return () => window.removeEventListener("open-phone-dialer", handleGlobalOpen);
+  }, []);
+
+  // Multi-SIM & Capability Discovery on Mount
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isAndroidNativeApp()) {
+      try {
+        const sims = getNativeSims();
+        if (Array.isArray(sims) && sims.length > 0) {
+          setAvailableSims(sims);
+          let savedSubId: string | null = null;
+          try {
+            savedSubId = typeof window !== "undefined" ? localStorage.getItem("crm_preferred_sim_id") : null;
+          } catch (storageErr) {
+            console.warn("Could not read preferred sim from storage:", storageErr);
+          }
+          const preferred = (savedSubId ? sims.find((s) => s && s.subscriptionId != null && String(s.subscriptionId) === savedSubId) : null)
+            || sims.find((s) => s && s.isDefault)
+            || sims[0];
+          setSelectedSim(preferred || null);
+        }
+        try {
+          setIsDefaultApp(isDefaultDialer());
+        } catch (e) {}
+        try {
+          setRecordingCap(getCallRecordingCapability());
+        } catch (e) {}
+      } catch (e) {
+        console.warn("Telephony discovery error:", e);
+      }
+    }
+  }, [isOpen]);
+
+  // Listen for Automatic Post-Call Cellular Audio Transcription
+  useEffect(() => {
+    const handleTranscription = (e: any) => {
+      const detail = e.detail || {};
+      if (detail.text) {
+        setNotes((prev) => (prev ? `${prev}\n\n[Auto-Transcript]: ${detail.text}` : `[Auto-Transcript]: ${detail.text}`));
+        if (detail.outcome) {
+          setOutcome(detail.outcome);
+        }
+        setFeedbackMsg(`🎙️ Automatic Cellular Transcript Attached!`);
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("native-call-transcription", handleTranscription);
+      return () => window.removeEventListener("native-call-transcription", handleTranscription);
+    }
   }, []);
 
   // Listen for Native Android Telephony Call State (CONNECTED = Auto Timer Start, ENDED = Auto AI Debrief)
@@ -526,14 +623,10 @@ function PhoneDialerModalContent({
     setCallStatus("Connected");
     setCallType("OUTBOUND");
 
-    // Grant App Lock exemption
+    // Grant App Lock exemption & trigger SIM cellular call
     if (typeof window !== "undefined") {
       (window as any).grantAppLockExemption?.(300);
-      if ((window as any).AndroidNative?.directPhoneCall) {
-        (window as any).AndroidNative.directPhoneCall(cleanNum);
-      } else {
-        window.location.href = `tel:${cleanNum}`;
-      }
+      makeDirectCellularCall(cleanNum, selectedSim?.subscriptionId ?? -1);
     }
 
     // Switch to post-call maintenance view
@@ -553,35 +646,6 @@ function PhoneDialerModalContent({
     const textParam = customText ? `?text=${encodeURIComponent(customText)}` : '';
     if (typeof window !== "undefined") {
       window.open(`https://wa.me/${formatted}${textParam}`, '_blank');
-    }
-  };
-
-  // Format seconds to mm:ss
-  const formatDuration = (totalSec: number) => {
-    const m = Math.floor(totalSec / 60);
-    const s = totalSec % 60;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-  };
-
-  // Relative time formatter for call logs
-  const formatRelativeTime = (dateStr: string) => {
-    try {
-      const d = new Date(dateStr);
-      const now = new Date();
-      const diffMs = now.getTime() - d.getTime();
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMins / 60);
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) {
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      }
-      if (diffDays === 1) return "Yesterday";
-      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
-    } catch {
-      return dateStr || "";
     }
   };
 
@@ -631,34 +695,6 @@ function PhoneDialerModalContent({
       console.warn("Speech rec error:", err);
       setIsListeningSpeech(false);
     }
-  };
-
-  // Quick follow-up helpers
-  const setQuickFollowUp = (days: number, hour12: number, min: number, period: "AM" | "PM") => {
-    if (days < 0) {
-      setFollowUpDate("");
-      return;
-    }
-    const d = new Date();
-    d.setDate(d.getDate() + days);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    setFollowUpDate(`${yyyy}-${mm}-${dd}`);
-    setFollowUpHour(String(hour12).padStart(2, '0'));
-    setFollowUpMinute(String(min).padStart(2, '0'));
-    setFollowUpPeriod(period);
-  };
-
-  const getCompiledFollowUpDate = () => {
-    if (!followUpDate) return "";
-    let h = parseInt(followUpHour || "11", 10);
-    if (followUpPeriod === "PM" && h < 12) h += 12;
-    if (followUpPeriod === "AM" && h === 12) h = 0;
-    const [year, month, day] = followUpDate.split('-');
-    const m = parseInt(followUpMinute || "00", 10);
-    const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), h, m, 0);
-    return localDate.toISOString();
   };
 
   // Save Call Record & Maintain CRM Lead
@@ -941,6 +977,97 @@ function PhoneDialerModalContent({
                   ))}
                 </div>
               ) : null}
+
+              {/* Multi-SIM Cellular Selector */}
+              {availableSims.length > 1 ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", margin: "4px 0 10px 0" }}>
+                  <span style={{ fontSize: "0.74rem", color: "#64748b", fontWeight: 700 }}>Call via:</span>
+                  {availableSims.map((sim, idx) => {
+                    const simId = sim?.subscriptionId ?? idx;
+                    const isSelected = selectedSim?.subscriptionId === sim?.subscriptionId;
+                    return (
+                      <button
+                        key={simId}
+                        type="button"
+                        onClick={() => {
+                          handleVibrate(15);
+                          setSelectedSim(sim);
+                          if (typeof window !== "undefined" && sim?.subscriptionId != null) {
+                            try {
+                              localStorage.setItem("crm_preferred_sim_id", String(sim.subscriptionId));
+                            } catch {}
+                          }
+                        }}
+                        style={{
+                          padding: "4px 12px",
+                          borderRadius: "16px",
+                          fontSize: "0.76rem",
+                          fontWeight: 700,
+                          border: isSelected ? "1.5px solid #4f46e5" : "1px solid #cbd5e1",
+                          backgroundColor: isSelected ? "#eef2ff" : "#f8fafc",
+                          color: isSelected ? "#4338ca" : "#475569",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "5px"
+                        }}
+                      >
+                        <span style={{ fontSize: "0.65rem", backgroundColor: isSelected ? "#4338ca" : "#94a3b8", color: "#ffffff", padding: "1px 5px", borderRadius: "6px" }}>
+                          {sim?.slotLabel || `SIM ${idx + 1}`}
+                        </span>
+                        <span>{sim?.carrierName || sim?.displayName || "Cellular"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : availableSims.length === 1 ? (
+                <div style={{ textAlign: "center", margin: "2px 0 6px 0" }}>
+                  <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>
+                    Cellular SIM: <strong style={{ color: "#334155" }}>{availableSims[0]?.carrierName || availableSims[0]?.displayName || "Cellular SIM"}</strong> ({availableSims[0]?.slotLabel || "SIM 1"})
+                  </span>
+                </div>
+              ) : null}
+
+              {/* Default Phone App Prompt Banner (Optional / Dismissable) */}
+              {!isDefaultApp && isAndroidNativeApp() && !isPromptDismissed && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "8px 12px", margin: "0 0 10px 0", fontSize: "0.76rem", color: "#166534" }}>
+                  <span>⚡ Optional: Set Antigravity as Default Phone App for system in-call screen.</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <button
+                      type="button"
+                      onClick={() => requestDefaultDialer()}
+                      style={{ padding: "4px 10px", borderRadius: "6px", backgroundColor: "#16a34a", color: "#ffffff", border: "none", fontWeight: 700, fontSize: "0.72rem", cursor: "pointer", whiteSpace: "nowrap" }}
+                    >
+                      Enable
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsPromptDismissed(true)}
+                      style={{ background: "none", border: "none", color: "#166534", cursor: "pointer", padding: "2px 6px", fontSize: "0.85rem", fontWeight: "bold" }}
+                      title="Dismiss"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Cellular Audio Recording Capability Status */}
+              {recordingCap && (
+                <div style={{ textAlign: "center", margin: "0 0 8px 0" }}>
+                  <span style={{
+                    fontSize: "0.70rem",
+                    padding: "2px 10px",
+                    borderRadius: "12px",
+                    backgroundColor: recordingCap.canRecordBothSides ? "#ecfdf5" : "#f1f5f9",
+                    color: recordingCap.canRecordBothSides ? "#047857" : "#64748b",
+                    border: `1px solid ${recordingCap.canRecordBothSides ? "#a7f3d0" : "#e2e8f0"}`,
+                    fontWeight: 600
+                  }}>
+                    {recordingCap.canRecordBothSides ? "🎙️ Two-Way Cellular Audio Capture Active" : "🎙️ Voice Debrief Capture Active"}
+                  </span>
+                </div>
+              )}
 
               {/* Keypad Grid */}
               <div className="dialer-keypad-grid">
@@ -1789,8 +1916,10 @@ class AIDebriefSafeWrapper extends React.Component<
 }
 
 export default function PhoneDialerModal(props: PhoneDialerModalProps) {
+  if (!props.isOpen) return null;
+
   return (
-    <DialerErrorBoundary onClose={props.onClose}>
+    <DialerErrorBoundary onClose={props.onClose} isOpen={props.isOpen}>
       <PhoneDialerModalContent {...props} />
     </DialerErrorBoundary>
   );

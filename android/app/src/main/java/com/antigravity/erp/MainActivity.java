@@ -63,6 +63,27 @@ public class MainActivity extends BridgeActivity {
 
         // 5. Register Telephony Call State Listener
         registerTelephonyListener();
+        registerTelecomReceiver();
+    }
+
+    private boolean isTelecomReceiverRegistered = false;
+
+    private void registerTelecomReceiver() {
+        try {
+            if (!isTelecomReceiverRegistered) {
+                android.content.IntentFilter filter = new android.content.IntentFilter();
+                filter.addAction(com.antigravity.erp.telecom.CrmInCallServiceKt.ACTION_CALL_STATE_CHANGED);
+                filter.addAction(com.antigravity.erp.transcription.TranscriptionWorkerKt.ACTION_TRANSCRIPTION_READY);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(telecomEventReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+                } else {
+                    registerReceiver(telecomEventReceiver, filter);
+                }
+                isTelecomReceiverRegistered = true;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -72,6 +93,7 @@ public class MainActivity extends BridgeActivity {
         NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
         registerTelephonyListener();
+        registerTelecomReceiver();
     }
 
     @Override
@@ -82,6 +104,23 @@ public class MainActivity extends BridgeActivity {
         NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
         registerTelephonyListener();
+        registerTelecomReceiver();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    public void onDestroy() {
+        try {
+            if (isTelecomReceiverRegistered) {
+                unregisterReceiver(telecomEventReceiver);
+                isTelecomReceiverRegistered = false;
+            }
+        } catch (Exception e) {}
+        super.onDestroy();
     }
 
     @Override
@@ -283,18 +322,76 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    private final android.content.BroadcastReceiver telecomEventReceiver = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null) return;
+            String action = intent.getAction();
+            if (com.antigravity.erp.telecom.CrmInCallServiceKt.ACTION_CALL_STATE_CHANGED.equals(action)) {
+                String state = intent.getStringExtra("state");
+                int durationSec = intent.getIntExtra("durationSec", 0);
+                String callId = intent.getStringExtra("callId");
+                String phoneNumber = intent.getStringExtra("phoneNumber");
+                sendNativeCallEvent(state != null ? state : "UNKNOWN", durationSec, callId, phoneNumber);
+                if ("ENDED".equalsIgnoreCase(state)) {
+                    bringAppToForeground();
+                }
+            } else if (com.antigravity.erp.transcription.TranscriptionWorkerKt.ACTION_TRANSCRIPTION_READY.equals(action)) {
+                String callId = intent.getStringExtra("callId");
+                String transcriptId = intent.getStringExtra("transcriptId");
+                String transcriptText = intent.getStringExtra("transcriptText");
+                String summary = intent.getStringExtra("summary");
+                String outcome = intent.getStringExtra("outcome");
+                sendNativeTranscriptionEvent(callId, transcriptId, transcriptText, summary, outcome);
+            }
+        }
+    };
+
     /**
      * Broadcasts native call events directly into WebView JavaScript window event bus
      */
     public void sendNativeCallEvent(final String state, final int durationSec) {
+        sendNativeCallEvent(state, durationSec, null, null);
+    }
+
+    public void sendNativeCallEvent(final String state, final int durationSec, final String callId, final String phoneNumber) {
         runOnUiThread(() -> {
             try {
                 WebView webView = getBridge().getWebView();
                 if (webView != null) {
-                    String script = String.format(
-                            "window.dispatchEvent(new CustomEvent('native-call-state', { detail: { state: '%s', durationSec: %d, timestamp: %d } }));",
-                            state, durationSec, System.currentTimeMillis()
-                    );
+                    org.json.JSONObject detail = new org.json.JSONObject();
+                    detail.put("state", state);
+                    detail.put("durationSec", durationSec);
+                    detail.put("timestamp", System.currentTimeMillis());
+                    if (callId != null) detail.put("callId", callId);
+                    if (phoneNumber != null) detail.put("phoneNumber", phoneNumber);
+
+                    String script = "window.dispatchEvent(new CustomEvent('native-call-state', { detail: " + detail.toString() + " }));";
+                    webView.evaluateJavascript(script, null);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    /**
+     * Broadcasts post-call transcription results directly into WebView
+     */
+    public void sendNativeTranscriptionEvent(final String callId, final String transcriptId, final String text, final String summary, final String outcome) {
+        runOnUiThread(() -> {
+            try {
+                WebView webView = getBridge().getWebView();
+                if (webView != null) {
+                    org.json.JSONObject detail = new org.json.JSONObject();
+                    detail.put("callId", callId != null ? callId : "");
+                    detail.put("transcriptId", transcriptId != null ? transcriptId : "");
+                    detail.put("text", text != null ? text : "");
+                    detail.put("summary", summary != null ? summary : "");
+                    detail.put("outcome", outcome != null ? outcome : "Completed");
+                    detail.put("timestamp", System.currentTimeMillis());
+
+                    String script = "window.dispatchEvent(new CustomEvent('native-call-transcription', { detail: " + detail.toString() + " }));";
                     webView.evaluateJavascript(script, null);
                 }
             } catch (Exception e) {
@@ -503,6 +600,11 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public void directPhoneCall(String phoneNumber) {
+            directPhoneCallWithSim(phoneNumber, -1);
+        }
+
+        @JavascriptInterface
+        public void directPhoneCallWithSim(String phoneNumber, int subscriptionId) {
             activity.runOnUiThread(() -> {
                 try {
                     if (phoneNumber == null || phoneNumber.trim().isEmpty()) return;
@@ -514,32 +616,66 @@ public class MainActivity extends BridgeActivity {
                     activity.isCallInProgress = true;
                     activity.lastCallDurationSec = 0;
 
-                    // If CALL_PHONE permission is granted, make direct phone call without opening keypad
+                    // If CALL_PHONE permission is granted, place call using SimManager
                     if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
-                        Intent callIntent = new Intent(Intent.ACTION_CALL);
-                        callIntent.setData(Uri.parse("tel:" + clean));
-                        callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        activity.startActivity(callIntent);
+                        com.antigravity.erp.telecom.SimManager simManager = new com.antigravity.erp.telecom.SimManager(activity);
+                        simManager.placeCallWithSim(clean, subscriptionId);
                     } else {
-                        // Store pending number & request permission
                         activity.pendingCallNumber = clean;
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             ActivityCompat.requestPermissions(
                                     activity,
-                                    new String[]{Manifest.permission.CALL_PHONE},
+                                    new String[]{Manifest.permission.CALL_PHONE, Manifest.permission.READ_PHONE_STATE},
                                     PERMISSION_REQUEST_CODE
                             );
                         }
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    try {
-                        String clean = phoneNumber.replaceAll("[^0-9+]", "");
-                        Intent fallback = new Intent(Intent.ACTION_CALL);
-                        fallback.setData(Uri.parse("tel:" + clean));
-                        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        activity.startActivity(fallback);
-                    } catch (Exception ex) {}
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String getAvailableSims() {
+            try {
+                com.antigravity.erp.telecom.SimManager simManager = new com.antigravity.erp.telecom.SimManager(activity);
+                return simManager.getActiveSimsJson();
+            } catch (Throwable t) {
+                t.printStackTrace();
+                return "[]";
+            }
+        }
+
+        @JavascriptInterface
+        public String getCallRecordingCapability() {
+            try {
+                com.antigravity.erp.audio.CallRecordingCapabilityChecker checker = new com.antigravity.erp.audio.CallRecordingCapabilityChecker(activity);
+                return checker.evaluateCapability().toJson().toString();
+            } catch (Throwable t) {
+                t.printStackTrace();
+                return "{}";
+            }
+        }
+
+        @JavascriptInterface
+        public boolean isDefaultDialer() {
+            try {
+                com.antigravity.erp.telecom.DefaultDialerManager ddm = new com.antigravity.erp.telecom.DefaultDialerManager(activity);
+                return ddm.isDefaultDialer();
+            } catch (Throwable t) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public void requestDefaultDialer() {
+            activity.runOnUiThread(() -> {
+                try {
+                    com.antigravity.erp.telecom.DefaultDialerManager ddm = new com.antigravity.erp.telecom.DefaultDialerManager(activity);
+                    ddm.requestDefaultDialerRole(activity);
+                } catch (Throwable t) {
+                    t.printStackTrace();
                 }
             });
         }
