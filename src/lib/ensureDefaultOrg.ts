@@ -2,6 +2,8 @@ import { prisma } from "./prisma";
 import bcrypt from "bcryptjs";
 
 export async function ensureDefaultOrganization() {
+  const bootstrapPassword = process.env.BOOTSTRAP_ADMIN_PASSWORD;
+
   try {
     let defaultOrg = await prisma.organization.findFirst({
       where: { slug: "espon-global" }
@@ -68,7 +70,12 @@ export async function ensureDefaultOrganization() {
       }).catch(() => {});
     }
 
-    // Ensure default admin users exist
+    // Create default admins only during an explicit bootstrap operation.
+    if (!bootstrapPassword) {
+      console.warn("BOOTSTRAP_ADMIN_PASSWORD is not configured; skipping default admin creation.");
+      return defaultOrg;
+    }
+
     const adminEmails = [
       { email: "admin@company.com", name: "Admin User" },
       { email: "clothingespon@gmail.com", name: "Ashish Goyal" }
@@ -77,7 +84,7 @@ export async function ensureDefaultOrganization() {
     for (const item of adminEmails) {
       const existingUser = await prisma.user.findUnique({ where: { email: item.email } });
       if (!existingUser) {
-        const hashedPassword = await bcrypt.hash("admin123", 10);
+        const hashedPassword = await bcrypt.hash(bootstrapPassword, 12);
         const newUser = await prisma.user.create({
           data: {
             email: item.email,

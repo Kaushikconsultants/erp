@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Heart Of Business
 
-## Getting Started
+A Next.js CRM and ERP application backed by PostgreSQL and Prisma.
 
-First, run the development server:
+## Local development
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Install dependencies, configure the environment, then run `npm run dev`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Authentication and security configuration
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Authentication uses NextAuth credentials sessions. Production requires the following environment variables:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `DATABASE_URL`
+- `DIRECT_URL`
+- `NEXTAUTH_URL`
+- `NEXTAUTH_SECRET` — generate a unique, high-entropy value for every environment.
 
-## Learn More
+The app refuses to start in production without `NEXTAUTH_SECRET`. Never commit secrets or substitute a known fallback.
 
-To learn more about Next.js, take a look at the following resources:
+### Controlled bootstrap
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`BOOTSTRAP_ADMIN_PASSWORD` is required only when intentionally creating the legacy root organization and its initial administrators. Set it to a unique, high-entropy value only for that one-time operation, then remove it. The sign-in endpoint never bootstraps accounts.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Operational requirements
 
-## Deploy on Vercel
+- Rotate `NEXTAUTH_SECRET` if it was ever deployed without an environment-specific value. This invalidates existing sessions.
+- Disable a user in the database to prevent new sign-ins; server-session validation also rejects inactive or deleted users.
+- Treat the mobile MPIN lock as a convenience layer, not authorization. APIs and server actions must always validate the NextAuth session and tenant context.
+- Configure a shared login rate limiter and an MFA provider before exposing this service to the public internet.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Verification
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Run `npm run build` with production environment variables configured. Exercise login, logout, account deactivation, disabled users, protected-route redirects, registration, and tenant isolation before deployment.

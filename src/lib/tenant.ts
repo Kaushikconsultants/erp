@@ -2,36 +2,19 @@ import { cache } from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ensureDefaultOrganization } from "./ensureDefaultOrg";
 import { getOrCreateEmployee } from "./employeeHelper";
 
 export const PLATFORM_ROOT_ORG_SLUG = "espon-global";
-export const PLATFORM_ROOT_ADMIN_EMAILS = [
-  "ashishgoyal4545@gmail.com",
-  "clothingespon@gmail.com",
-  "admin@company.com",
-  "superadmin@espon.in"
-];
-
 export function isPlatformRootOwner(
   userEmail?: string | null, 
   orgSlug?: string | null, 
   userRole?: string | null
 ): boolean {
-  if (!userEmail) return false;
-  const cleanEmail = userEmail.toLowerCase().trim();
-
-  // 1. Explicit Platform Root Owner Emails
-  if (PLATFORM_ROOT_ADMIN_EMAILS.some(e => e.toLowerCase() === cleanEmail)) {
-    return true;
-  }
-
-  // 2. Super Admin belonging specifically to the host root organization (espon-global)
-  if (orgSlug === PLATFORM_ROOT_ORG_SLUG && (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN')) {
-    return true;
-  }
-
-  return false;
+  return Boolean(
+    userEmail &&
+    orgSlug === PLATFORM_ROOT_ORG_SLUG &&
+    (userRole === "SUPER_ADMIN" || userRole === "ADMIN")
+  );
 }
 
 export interface TenantContext {
@@ -56,24 +39,7 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
   }
   
   if (!session?.user) {
-    const defaultOrg = await prisma.organization.findFirst({
-      where: { slug: "espon-global" }
-    }) || await prisma.organization.findFirst();
-
-    if (!defaultOrg) return null;
-
-    return {
-      organizationId: defaultOrg.id,
-      organizationName: defaultOrg.name,
-      organizationSlug: defaultOrg.slug,
-      subscriptionPlan: defaultOrg.subscriptionPlan || "GROWTH",
-      subscriptionStatus: defaultOrg.subscriptionStatus || "ACTIVE",
-      userId: "system-admin",
-      userRole: "SUPER_ADMIN",
-      canManageSettings: true,
-      allowedSections: null,
-      isPlatformOwner: true,
-    };
+    return null;
   }
 
   const userEmail = session.user.email ? session.user.email.trim().toLowerCase() : null;
@@ -94,47 +60,15 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     }
   }
 
-  let orgId = dbUser?.organizationId || (session.user as any)?.organizationId;
-  let org = dbUser?.organization;
-  if (!org && orgId) {
-    try {
-      org = await prisma.organization.findUnique({ where: { id: orgId } });
-    } catch (e) {
-      console.error("Org lookup error:", e);
-    }
-  }
+  const orgId = dbUser?.organizationId;
+  const org = dbUser?.organization;
 
-  // 2. Only if the database has zero organizations at all, create root org
-  if (!org) {
-    try {
-      const totalOrgs = await prisma.organization.count();
-      if (totalOrgs === 0) {
-        org = await ensureDefaultOrganization();
-        orgId = org?.id;
-      }
-    } catch (e) {
-      console.error("Org count error:", e);
-    }
-  }
-
-  if (!org) {
-    // If user is truly unlinked to any org, find root org
-    try {
-      org = await prisma.organization.findFirst({
-        where: { slug: "espon-global" }
-      }) || await prisma.organization.findFirst();
-      orgId = org?.id;
-    } catch (e) {
-      console.error("Root org fallback lookup error:", e);
-    }
-  }
-
-  if (!org) {
+  if (!dbUser?.isActive || !orgId || !org) {
     return null;
   }
 
-  const effectiveRole = dbUser?.role || (session.user as any)?.role || "SALES";
-  const canManageSettings = dbUser?.canManageSettings ?? (session.user as any)?.canManageSettings ?? false;
+  const effectiveRole = dbUser.role;
+  const canManageSettings = dbUser.canManageSettings;
   
   let allowedSectionsList: string[] | null = null;
   if (dbUser?.allowedSections) {
@@ -155,7 +89,7 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     organizationSlug: org.slug,
     subscriptionPlan: org.subscriptionPlan || "GROWTH",
     subscriptionStatus: org.subscriptionStatus || "ACTIVE",
-    userId: userId || dbUser?.id || "user-id",
+    userId: dbUser.id,
     userRole: effectiveRole,
     canManageSettings,
     allowedSections: allowedSectionsList,
@@ -165,13 +99,10 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
 
 export const getTenantOrgId = cache(async function getTenantOrgId(): Promise<string> {
   const ctx = await getTenantContext();
-  if (ctx?.organizationId) return ctx.organizationId;
-  
-  const defaultOrg = await prisma.organization.findFirst({
-    where: { slug: "espon-global" }
-  }) || await prisma.organization.findFirst();
-
-  return defaultOrg?.id || "default-org";
+  if (!ctx?.organizationId) {
+    throw new Error("Not authenticated");
+  }
+  return ctx.organizationId;
 });
 
 /**

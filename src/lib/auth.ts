@@ -1,10 +1,13 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
-import { ensureDefaultOrganization } from "@/lib/ensureDefaultOrg";
 import bcrypt from "bcryptjs";
 
-const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "4f8b9e2c1a7d6e5f3b2a1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f";
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET;
+
+if (process.env.NODE_ENV === "production" && !NEXTAUTH_SECRET) {
+  throw new Error("NEXTAUTH_SECRET must be configured in production.");
+}
 
 export const authOptions: NextAuthOptions = {
   secret: NEXTAUTH_SECRET,
@@ -27,17 +30,6 @@ export const authOptions: NextAuthOptions = {
           },
           include: { organization: true }
         });
-
-        // Auto-seed default root organization and Super Admin on fresh database
-        if (!user && (inputEmail.toLowerCase() === "admin@company.com" || inputEmail.toLowerCase() === "clothingespon@gmail.com") && credentials.password === "admin123") {
-          await ensureDefaultOrganization();
-          user = await prisma.user.findFirst({
-            where: { 
-              email: { equals: inputEmail, mode: 'insensitive' }
-            },
-            include: { organization: true }
-          });
-        }
 
         if (!user || !user.password) {
           return null;
@@ -98,6 +90,33 @@ export const authOptions: NextAuthOptions = {
         token.subscriptionPlan = (user as any).subscriptionPlan;
         token.subscriptionStatus = (user as any).subscriptionStatus;
       }
+      if (token.sub) {
+        try {
+          const currentUser = await prisma.user.findUnique({
+            where: { id: String(token.sub) },
+            include: { organization: true },
+          });
+
+          if (!currentUser?.isActive) {
+            token.isActive = false;
+            return token;
+          }
+
+          token.isActive = true;
+          token.role = currentUser.role;
+          token.canManageSettings = currentUser.canManageSettings;
+          token.organizationId = currentUser.organizationId || currentUser.organization?.id;
+          token.organizationName = currentUser.organization?.name;
+          token.organizationSlug = currentUser.organization?.slug;
+          token.subscriptionPlan = currentUser.organization?.subscriptionPlan || "GROWTH";
+          token.subscriptionStatus = currentUser.organization?.subscriptionStatus || "ACTIVE";
+        } catch {
+          // A failed identity lookup must never preserve a privileged session.
+          token.isActive = false;
+          return token;
+        }
+      }
+
       if (trigger === "update" && updateSession) {
         if (updateSession.name) token.name = updateSession.name;
         if (updateSession.email) token.email = updateSession.email;
@@ -110,6 +129,10 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      if (token.isActive === false) {
+        return { expires: session.expires };
+      }
+
       if (session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id || (token.sub as string);
