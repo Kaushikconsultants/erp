@@ -116,7 +116,6 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
           type="button"
           onClick={onMenuClick}
           className="bottom-nav-item"
-          style={{ background: 'none', border: 'none', cursor: 'pointer' }}
         >
           <div className="bottom-nav-icon">
             <Menu size={20} />

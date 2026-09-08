@@ -606,7 +606,7 @@ function PhoneDialerModalContent({
     const numberToCall = targetPhone || phoneDigits;
     const cleanNum = (numberToCall || '').replace(/\D/g, '');
     if (!cleanNum) {
-      alert("Please enter a valid phone number to call.");
+      setFeedbackMsg("⚠️ Please enter a valid phone number to call.");
       return;
     }
 
@@ -639,7 +639,7 @@ function PhoneDialerModalContent({
     const rawNum = targetPhone || phoneDigits;
     const cleanNum = (rawNum || '').replace(/\D/g, '');
     if (!cleanNum) {
-      alert("Please enter a valid phone number first.");
+      setFeedbackMsg("⚠️ Please enter a phone number before opening WhatsApp.");
       return;
     }
     const formatted = cleanNum.length === 10 ? `91${cleanNum}` : cleanNum;
@@ -658,7 +658,7 @@ function PhoneDialerModalContent({
   const toggleSpeechRecognition = () => {
     const SpeechRec = (typeof window !== "undefined" && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition));
     if (!SpeechRec) {
-      alert("Speech recognition is not supported on this browser.");
+      setFeedbackMsg("⚠️ Speech recognition is not supported on this device/browser.");
       return;
     }
 
@@ -749,12 +749,12 @@ function PhoneDialerModalContent({
           setFeedbackMsg("");
         }, 800);
       } else {
-        alert(res?.error || "Failed to log call record.");
+        setFeedbackMsg(`❌ ${res?.error || "Failed to log call record. Please try again."}`);
       }
     } catch (err: any) {
       console.warn("Dialer save error:", err);
       setIsSaving(false);
-      alert("Error saving call record.");
+      setFeedbackMsg("❌ Error saving call record. Check connection and retry.");
     }
   };
 

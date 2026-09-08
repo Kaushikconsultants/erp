@@ -30,6 +30,7 @@
   box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
+  /* On desktop: limit to 92vh. On mobile: handled below with media query */
   max-height: 92vh;
   overflow: hidden; /* Header and tabs stay fixed, body scrolls */
   padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
@@ -209,6 +210,21 @@
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   padding: 14px 16px;
+}
+
+/* On mobile: dialer sheet must not extend behind the 64px bottom nav bar.
+   Add extra bottom padding to the scrollable body so no content is hidden. */
+@media (max-width: 768px) {
+  .dialer-sheet {
+    /* Leave room for bottom nav bar (64px) + safe area */
+    max-height: calc(94dvh - 64px) !important;
+    margin-bottom: 0;
+  }
+
+  .dialer-body-scroll {
+    /* Extra bottom padding so last item clears safe-area + bottom nav */
+    padding-bottom: calc(24px + env(safe-area-inset-bottom, 12px)) !important;
+  }
 }
 
 /* Phone Number Display */

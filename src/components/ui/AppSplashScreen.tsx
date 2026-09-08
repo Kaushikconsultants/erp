@@ -31,7 +31,7 @@ export default function AppSplashScreen() {
         position: "fixed",
         inset: 0,
         backgroundColor: "#ffffff",
-        zIndex: 9999999,
+        zIndex: 2147483647, /* Maximum CSS z-index — splash must always be topmost on startup */
         display: "flex",
         flexDirection: "column",
         alignItems: "center",

@@ -515,6 +515,24 @@ button {
   animation: pulse 2s infinite;
 }
 
+/* Universal Spinner — used by Loader2 (lucide-react) across the entire app */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Shimmer / Skeleton shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Fade In utility */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 /* Zoho CRM Form Design System */
 .zoho-form-card {
   background: #ffffff;
@@ -796,8 +814,10 @@ button {
   }
 
   .main-content {
-    padding: 12px 10px calc(76px + env(safe-area-inset-bottom, 8px)) 10px !important;
+    /* Single source of truth for bottom padding — accounts for 64px bottom nav + safe-area */
+    padding: 12px 10px calc(72px + env(safe-area-inset-bottom, 10px)) 10px !important;
     overflow-x: hidden !important;
+    overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
 

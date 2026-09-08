@@ -179,13 +179,14 @@
 /* Mobile Responsive Voice Search & Topbar Tweaks */
 @media (max-width: 768px) {
   .topbar {
-    padding: 8px 12px;
-    gap: 8px;
+    padding: 8px 10px;
+    gap: 6px;
   }
 
   .topbar-left {
     flex: 1;
     min-width: 0;
+    overflow: hidden;
   }
 
   .search-container {
@@ -197,12 +198,42 @@
     display: none !important; /* Hide 'Install App' prompt on mobile viewports since user is in mobile app */
   }
 
+  /* Topbar actions must NEVER flex-shrink — buttons must always be visible */
   .topbar-actions {
-    gap: 10px;
+    flex-shrink: 0 !important;
+    gap: 6px;
+  }
+
+  /* Ensure each icon button in the topbar keeps its shape on narrow screens */
+  .topbar-actions > button,
+  .topbar-actions > a,
+  .topbar-actions > div {
+    flex-shrink: 0;
   }
 
   .user-info {
     display: none; /* Keep avatar clean on mobile header */
+  }
+
+  /* Avatar itself stays visible */
+  .user-profile {
+    flex-shrink: 0;
+  }
+
+  .avatar {
+    flex-shrink: 0;
+  }
+}
+
+/* Ultra-small phones */
+@media (max-width: 360px) {
+  .topbar {
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .topbar-actions {
+    gap: 4px !important;
   }
 }
 
