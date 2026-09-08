@@ -395,7 +395,7 @@ export async function createQuotation(data: {
         } else {
           if (!defaultProduct) {
             defaultProduct = await prisma.product.findFirst({
-              where: organizationId ? { organizationId } : undefined
+              where: customer.organizationId ? { organizationId: customer.organizationId } : undefined
             }) || await prisma.product.findFirst();
           }
           if (defaultProduct) {
@@ -1340,11 +1340,11 @@ export async function convertQuotationToOrder(
       : [];
     const existingProductMap = new Map(existingProducts.map(p => [p.id, p]));
 
-    let fallbackProduct = existingProducts[0] || null;
+    let fallbackProduct: any | null = existingProducts[0] || null;
     if (existingProducts.length < (quotation.items || []).length || (quotation.items || []).length === 0) {
-      fallbackProduct = await prisma.product.findFirst({
+      fallbackProduct = (await prisma.product.findFirst({
         where: orgId ? { organizationId: orgId } : undefined
-      }) || await prisma.product.findFirst();
+      })) ?? (await prisma.product.findFirst()) ?? null;
 
       if (!fallbackProduct) {
         try {
@@ -1361,7 +1361,7 @@ export async function convertQuotationToOrder(
             }
           });
         } catch (pe) {
-          fallbackProduct = await prisma.product.findFirst();
+          fallbackProduct = (await prisma.product.findFirst()) ?? null;
         }
       }
     }

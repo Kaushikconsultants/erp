@@ -149,12 +149,12 @@ export default function FollowUpDashboardClient({
                 type="button"
                 onClick={() => openPhoneDialer({
                   phone: cleanPhone,
-                  name: leadName || contactPerson || "Customer",
-                  customerId: followUp.customerId || undefined,
-                  leadId: followUp.leadId || undefined
+                  name: customerName || contactPerson || "Customer",
+                  customerId: c.customerId || undefined,
+                  leadId: c.leadId || undefined
                 })}
                 style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontSize: "0.8rem", color: "#2563eb", fontWeight: 600, textDecoration: "none", background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
-                title={`Call ${leadName || contactPerson || 'Customer'}`}
+                title={`Call ${customerName || contactPerson || 'Customer'}`}
               >
                 <Phone size={13} color="#2563eb" />
                 <span>{rawPhone}</span>

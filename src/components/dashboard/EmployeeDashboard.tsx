@@ -169,7 +169,7 @@ function FollowUpCard({ call }: { call: any }) {
                 type="button"
                 onClick={() => openPhoneDialer({
                   phone: cleanPhone,
-                  name: item.title || item.client || 'Customer'
+                  name: customerName || contactPerson || 'Customer'
                 })}
                 style={{ 
                   textDecoration: 'none', 
@@ -185,7 +185,7 @@ function FollowUpCard({ call }: { call: any }) {
                   border: '1px solid #bbf7d0',
                   cursor: 'pointer'
                 }}
-                title={`Call ${item.title || item.client || 'Customer'}`}
+                title={`Call ${customerName || contactPerson || 'Customer'}`}
               >
                 <PhoneCall size={11} /> Call
               </button>

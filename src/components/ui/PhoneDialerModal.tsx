@@ -151,11 +151,11 @@ const WHATSAPP_TEMPLATES = [
 
 class DialerErrorBoundary extends React.Component<
   { children: React.ReactNode; onClose: () => void },
-  { hasError: boolean; error: any }
+  { hasError: boolean; error: any; resetKey: number }
 > {
   constructor(props: any) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, resetKey: 0 };
   }
 
   static getDerivedStateFromError(error: any) {
@@ -166,28 +166,33 @@ class DialerErrorBoundary extends React.Component<
     console.error("Dialer error caught by boundary:", error, errorInfo);
   }
 
+  handleReset = () => {
+    // Increment resetKey to force full re-mount of children, clearing all state
+    this.setState((prev) => ({ hasError: false, error: null, resetKey: prev.resetKey + 1 }));
+  };
+
   render() {
     if (this.state.hasError) {
       return (
         <div className="dialer-backdrop" onClick={this.props.onClose}>
-          <div className="dialer-sheet" style={{ padding: "24px 20px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "#fee2e2", color: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px auto" }}>
-              <PhoneOff size={24} />
+          <div className="dialer-sheet" style={{ padding: "32px 24px", textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: "#f0fdf4", color: "#10b981", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px auto", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)" }}>
+              <PhoneCall size={26} />
             </div>
-            <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", color: "#0f172a" }}>Phone Dialer Active</h3>
-            <p style={{ margin: "0 0 16px 0", fontSize: "0.82rem", color: "#64748b" }}>
-              A temporary display glitch was safely isolated. Click below to reset the dialer.
+            <h3 style={{ margin: "0 0 6px 0", fontSize: "1.1rem", color: "#0f172a", fontWeight: 800 }}>Dialer Ready</h3>
+            <p style={{ margin: "0 0 20px 0", fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5 }}>
+              The dialer encountered a momentary issue and was safely recovered. Tap Reset to continue.
             </p>
             <div style={{ display: "flex", gap: "10px" }}>
               <button
-                onClick={() => this.setState({ hasError: false, error: null })}
-                style={{ flex: 1, padding: "10px", borderRadius: "10px", backgroundColor: "#4f46e5", color: "#ffffff", border: "none", fontWeight: 700, cursor: "pointer" }}
+                onClick={this.handleReset}
+                style={{ flex: 1, padding: "12px", borderRadius: "12px", backgroundColor: "#4f46e5", color: "#ffffff", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" }}
               >
                 Reset Dialer
               </button>
               <button
                 onClick={this.props.onClose}
-                style={{ flex: 1, padding: "10px", borderRadius: "10px", backgroundColor: "#f1f5f9", color: "#475569", border: "none", fontWeight: 700, cursor: "pointer" }}
+                style={{ flex: 1, padding: "12px", borderRadius: "12px", backgroundColor: "#f1f5f9", color: "#475569", border: "none", fontWeight: 700, cursor: "pointer", fontSize: "0.9rem" }}
               >
                 Close
               </button>
@@ -196,7 +201,12 @@ class DialerErrorBoundary extends React.Component<
         </div>
       );
     }
-    return this.props.children;
+    // Use resetKey as key to force fresh mount on reset
+    return (
+      <React.Fragment key={this.state.resetKey}>
+        {this.props.children}
+      </React.Fragment>
+    );
   }
 }
 
@@ -853,15 +863,18 @@ function PhoneDialerModalContent({
               ========================================================= */}
           {activeTab === "DIALPAD" && (
             <div>
-              {/* Phone Input Box */}
+              {/* Phone Input Box — readOnly prevents native keyboard; digits come only from keypad buttons */}
               <div className="dialer-display-box">
                 <input
-                  type="tel"
+                  type="text"
+                  inputMode="none"
                   className="dialer-digits-input"
                   placeholder="Enter phone number"
                   value={phoneDigits}
-                  onChange={(e) => setPhoneDigits(e.target.value)}
-                  autoFocus
+                  onChange={() => {/* controlled via keypad buttons only */}}
+                  readOnly
+                  tabIndex={-1}
+                  style={{ caretColor: "transparent", cursor: "default", userSelect: "none" }}
                 />
                 {phoneDigits && (
                   <button type="button" onClick={handleBackspace} className="dialer-backspace-btn" title="Delete">
@@ -1204,32 +1217,34 @@ function PhoneDialerModalContent({
                 </div>
               </div>
 
-              {/* 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET */}
-              <CallVoiceDebriefWidget
-                contactName={selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}
-                contactPhone={phoneDigits || selectedContact?.phone || ""}
-                customerId={selectedContact?.type === "Customer" ? selectedContact?.id : initialCustomerId}
-                leadId={selectedContact?.type === "Lead" ? selectedContact?.id : initialLeadId}
-                callDurationSec={callDurationSec}
-                callType={callType}
-                autoStartTrigger={autoDebriefTrigger}
-                onApplyToForm={(data) => {
-                  if (data.outcome) setOutcome(data.outcome);
-                  if (data.notes) setNotes(data.notes);
-                  if (data.followUpDate) setFollowUpDate(data.followUpDate);
-                  if (data.followUpHour) setFollowUpHour(data.followUpHour);
-                  if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
-                  if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
-                  setFeedbackMsg("✨ AI Intelligence populated into call log!");
-                }}
-                onCallSaved={() => {
-                  setFeedbackMsg("✅ Call logged with AI Debrief & Follow-up scheduled!");
-                  loadRecentCalls();
-                  setTimeout(() => {
-                    onClose();
-                  }, 800);
-                }}
-              />
+              {/* 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET — wrapped in local error boundary so a crash here doesn't kill the whole dialer */}
+              <AIDebriefSafeWrapper>
+                <CallVoiceDebriefWidget
+                  contactName={selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}
+                  contactPhone={phoneDigits || selectedContact?.phone || ""}
+                  customerId={selectedContact?.type === "Customer" ? selectedContact?.id : initialCustomerId}
+                  leadId={selectedContact?.type === "Lead" ? selectedContact?.id : initialLeadId}
+                  callDurationSec={callDurationSec}
+                  callType={callType}
+                  autoStartTrigger={autoDebriefTrigger}
+                  onApplyToForm={(data) => {
+                    if (data.outcome) setOutcome(data.outcome);
+                    if (data.notes) setNotes(data.notes);
+                    if (data.followUpDate) setFollowUpDate(data.followUpDate);
+                    if (data.followUpHour) setFollowUpHour(data.followUpHour);
+                    if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
+                    if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
+                    setFeedbackMsg("✨ AI Intelligence populated into call log!");
+                  }}
+                  onCallSaved={() => {
+                    setFeedbackMsg("✅ Call logged with AI Debrief & Follow-up scheduled!");
+                    loadRecentCalls();
+                    setTimeout(() => {
+                      onClose();
+                    }, 800);
+                  }}
+                />
+              </AIDebriefSafeWrapper>
 
               {/* CALL OUTCOME DISPOSITION */}
               <div style={{ marginBottom: "12px" }}>
@@ -1711,6 +1726,66 @@ function PhoneDialerModalContent({
       </div>
     </div>
   );
+}
+
+/** Lightweight error boundary scoped to the AI Debrief widget only */
+class AIDebriefSafeWrapper extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any) {
+    console.warn("AI Debrief widget error (isolated):", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          style={{
+            padding: "12px 14px",
+            backgroundColor: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: "12px",
+            marginBottom: "14px",
+            textAlign: "center",
+            fontSize: "0.78rem",
+            color: "#64748b"
+          }}
+        >
+          <Sparkles size={18} style={{ color: "#6366f1", marginBottom: "6px" }} />
+          <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: "4px" }}>AI Debrief unavailable</div>
+          <div>Use quick presets or type notes manually below.</div>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false })}
+            style={{
+              marginTop: "8px",
+              padding: "4px 12px",
+              borderRadius: "6px",
+              border: "1px solid #c7d2fe",
+              backgroundColor: "#eef2ff",
+              color: "#4f46e5",
+              fontSize: "0.74rem",
+              fontWeight: 700,
+              cursor: "pointer"
+            }}
+          >
+            Retry AI Debrief
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default function PhoneDialerModal(props: PhoneDialerModalProps) {
