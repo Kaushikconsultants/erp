@@ -133,6 +133,8 @@ export default function CallVoiceDebriefWidget({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  // Ref to stopRecording so the interval closure always calls the latest version
+  const stopRecordingRef = useRef<(() => void) | null>(null);
 
   // Clean up on unmount
   useEffect(() => {
@@ -147,16 +149,17 @@ export default function CallVoiceDebriefWidget({
     };
   }, []);
 
-  // Auto start debrief recording when parent triggers on call completion
+  // When call ends: expand widget and show prompt — do NOT auto-start recording
+  // (auto-start captures silence since mic just released from phone call)
+  const hasAutoTriggered = useRef(false);
   useEffect(() => {
     if (autoStartTrigger && autoStartTrigger > 0) {
+      hasAutoTriggered.current = true;
       setIsExpanded(true);
-      const timer = setTimeout(() => {
-        if (!isRecording && !isAnalyzing) {
-          startRecording();
-        }
-      }, 400);
-      return () => clearTimeout(timer);
+      // Reset any previous analysis so the fresh record button is shown
+      setAnalysis(null);
+      setLiveTranscript("");
+      setErrorMessage("");
     }
   }, [autoStartTrigger]);
 
@@ -229,14 +232,17 @@ export default function CallVoiceDebriefWidget({
     }
 
     setIsRecording(true);
+    // Use a local counter to avoid calling stopRecording() inside a setState updater
+    // (calling async state-setting functions inside setState is illegal in React)
+    let sec = 0;
     timerRef.current = setInterval(() => {
-      setRecordingSec((prev) => {
-        if (prev >= 60) {
-          stopRecording();
-          return prev;
-        }
-        return prev + 1;
-      });
+      sec += 1;
+      setRecordingSec(sec);
+      if (sec >= 60) {
+        clearInterval(timerRef.current!);
+        timerRef.current = null;
+        stopRecordingRef.current?.();
+      }
     }, 1000);
   };
 
@@ -366,7 +372,8 @@ export default function CallVoiceDebriefWidget({
     }
   };
 
-  // Apply Quick Preset
+  // Keep stopRecordingRef in sync with latest stopRecording closure
+  stopRecordingRef.current = stopRecording as any;
   const handleApplyPreset = (preset: typeof QUICK_PRESETS[0]) => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + preset.followUpDays);
@@ -517,31 +524,58 @@ export default function CallVoiceDebriefWidget({
           {!analysis ? (
             <div>
               {!isRecording && !isAnalyzing ? (
-                /* IDLE STATE: TAP TO RECORD MIC BUTTON */
+                /* IDLE STATE: Post-call prompt or normal record button */
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+
+                  {/* Post-call banner — shown after a call ends */}
+                  {hasAutoTriggered.current && (
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        padding: "8px 12px",
+                        backgroundColor: "#f0fdf4",
+                        border: "1.5px solid #86efac",
+                        borderRadius: "10px",
+                        fontSize: "0.78rem",
+                        color: "#15803d",
+                        fontWeight: 700
+                      }}
+                    >
+                      <span style={{ fontSize: "1rem" }}>📞</span>
+                      <span>Call ended! Tap the button below and <u>speak your call summary</u> now.</span>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={startRecording}
                     style={{
                       width: "100%",
-                      padding: "12px 16px",
+                      padding: "14px 16px",
                       borderRadius: "12px",
-                      background: "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
+                      background: hasAutoTriggered.current
+                        ? "linear-gradient(135deg, #16a34a 0%, #15803d 100%)"
+                        : "linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)",
                       color: "#ffffff",
                       border: "none",
-                      fontSize: "0.85rem",
-                      fontWeight: 700,
+                      fontSize: "0.9rem",
+                      fontWeight: 800,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       gap: "8px",
                       cursor: "pointer",
-                      boxShadow: "0 4px 12px rgba(79, 70, 229, 0.3)",
-                      transition: "transform 0.15s ease"
+                      boxShadow: hasAutoTriggered.current
+                        ? "0 4px 14px rgba(22, 163, 74, 0.4)"
+                        : "0 4px 12px rgba(79, 70, 229, 0.3)",
+                      transition: "transform 0.15s ease",
+                      animation: hasAutoTriggered.current ? "pulseGreen 1.8s infinite" : "none"
                     }}
                   >
-                    <Mic size={18} />
-                    <span>Tap to Record 10-20s Voice Debrief</span>
+                    <Mic size={20} />
+                    <span>{hasAutoTriggered.current ? "🎙️ Speak Now — Record Call Debrief" : "Tap to Record 10-20s Voice Debrief"}</span>
                   </button>
 
                   {/* QUICK 1-TAP PRESET CHIPS */}
