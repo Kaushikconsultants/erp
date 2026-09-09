@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import SalesChart from '@/components/dashboard/SalesChart';
 import TopProductsChart from '@/components/dashboard/TopProductsChart';
 import Link from 'next/link';
@@ -12,6 +12,7 @@ import AISprintCoachModal from './AISprintCoachModal';
 import AIReorderPredictorModal from '../ai/AIReorderPredictorModal';
 import DeadStockInsightsModal from '../products/DeadStockInsightsModal';
 import AskERPAssistantModal from '../ai/AskERPAssistantModal';
+import { getLiveTeamAttendance } from '@/app/actions/attendanceActions';
 
 interface AdminDashboardProps {
   totalRevenue: number;
@@ -65,15 +66,48 @@ export default function AdminDashboard({
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showDeadStockModal, setShowDeadStockModal] = useState(false);
 
-  // Live Team Presence Filter
-  const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<'ALL' | 'ACTIVE' | 'CHECKED_OUT' | 'LEAVE'>('ALL');
+  // Live Team Presence State & Filter
+  const [attendanceData, setAttendanceData] = useState<any[]>(liveAttendance || []);
+  const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<'ALL' | 'ACTIVE' | 'CHECKED_OUT' | 'NOT_MARKED' | 'LEAVE'>('ALL');
   // Live Leaderboard Timeframe Switcher
   const [leaderboardMode, setLeaderboardMode] = useState<'DAILY' | 'MONTHLY'>('DAILY');
+
+  // Keep attendanceData in sync with server props
+  useEffect(() => {
+    if (liveAttendance && liveAttendance.length > 0) {
+      setAttendanceData(liveAttendance);
+    }
+  }, [liveAttendance]);
+
+  // Live polling every 20s to ensure mobile & desktop attendance stay fresh
+  useEffect(() => {
+    let isMounted = true;
+    const refreshLiveTeam = async () => {
+      if (document.hidden) return;
+      try {
+        const res = await getLiveTeamAttendance();
+        if (isMounted && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setAttendanceData(res.data);
+        }
+      } catch (e) {}
+    };
+
+    // Initial fetch if liveAttendance was empty
+    if (!liveAttendance || liveAttendance.length === 0) {
+      refreshLiveTeam();
+    }
+
+    const interval = setInterval(refreshLiveTeam, 20000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [liveAttendance]);
 
   // Deduplicate liveAttendance by employee to guarantee each candidate is unique
   const uniqueLiveAttendance = useMemo(() => {
     const seen = new Map<string, any>();
-    (liveAttendance || []).forEach((att: any) => {
+    (attendanceData || []).forEach((att: any) => {
       const key = att.employeeId || att.id || att.name;
       if (!seen.has(key)) {
         seen.set(key, att);
@@ -88,7 +122,7 @@ export default function AdminDashboard({
       }
     });
     return Array.from(seen.values());
-  }, [liveAttendance]);
+  }, [attendanceData]);
 
   const activeTeamCount = useMemo(() => {
     return uniqueLiveAttendance.filter((att: any) => att.isShiftActive).length;
@@ -102,10 +136,15 @@ export default function AdminDashboard({
     return uniqueLiveAttendance.filter((att: any) => att.status === 'Leave' || att.status === 'On Leave').length;
   }, [uniqueLiveAttendance]);
 
+  const notMarkedTeamCount = useMemo(() => {
+    return uniqueLiveAttendance.filter((att: any) => !att.isShiftActive && !att.isCheckedOut && att.status !== 'Leave' && att.status !== 'On Leave').length;
+  }, [uniqueLiveAttendance]);
+
   const filteredAttendance = useMemo(() => {
     return uniqueLiveAttendance.filter((att: any) => {
       if (teamAttendanceFilter === 'ACTIVE') return att.isShiftActive;
       if (teamAttendanceFilter === 'CHECKED_OUT') return (att.isCheckedOut || att.status === 'Shift Ended') && !att.isShiftActive;
+      if (teamAttendanceFilter === 'NOT_MARKED') return !att.isShiftActive && !att.isCheckedOut && att.status !== 'Leave' && att.status !== 'On Leave';
       if (teamAttendanceFilter === 'LEAVE') return att.status === 'Leave' || att.status === 'On Leave';
       return true;
     });
@@ -467,7 +506,8 @@ export default function AdminDashboard({
                 padding: '2px',
                 borderRadius: '7px',
                 border: '1px solid #e2e8f0',
-                gap: '2px'
+                gap: '2px',
+                flexWrap: 'wrap'
               }}>
                 <button
                   type="button"
@@ -523,6 +563,26 @@ export default function AdminDashboard({
                 >
                   Shift Ended ({checkedOutTeamCount})
                 </button>
+                {notMarkedTeamCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTeamAttendanceFilter('NOT_MARKED')}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '5px',
+                      border: 'none',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      backgroundColor: teamAttendanceFilter === 'NOT_MARKED' ? '#ffffff' : 'transparent',
+                      color: teamAttendanceFilter === 'NOT_MARKED' ? '#64748b' : '#94a3b8',
+                      boxShadow: teamAttendanceFilter === 'NOT_MARKED' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    Not Marked ({notMarkedTeamCount})
+                  </button>
+                )}
                 {leaveTeamCount > 0 && (
                   <button
                     type="button"

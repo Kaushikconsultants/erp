@@ -155,8 +155,19 @@ export default async function Home() {
       }).then((atts: any[]) => atts.find((a: any) => !a.checkOut) || atts[0] || null).catch(() => null) : Promise.resolve(null),
       prisma.attendance.findMany({
         where: {
-          date: { gte: todayStartOfDay, lte: todayEndOfDay },
-          ...(orgId ? { employee: { organizationId: orgId } } : {})
+          OR: [
+            { date: { gte: todayStartOfDay, lte: todayEndOfDay } },
+            { checkIn: { gte: todayStartOfDay, lte: todayEndOfDay } },
+            { createdAt: { gte: todayStartOfDay, lte: todayEndOfDay } }
+          ],
+          ...(orgId ? {
+            employee: {
+              OR: [
+                { organizationId: orgId },
+                { user: { organizationId: orgId } }
+              ]
+            }
+          } : {})
         },
         include: { employee: { include: { user: true } } },
         orderBy: [
@@ -170,14 +181,23 @@ export default async function Home() {
         take: 100
       }).catch(() => []),
       prisma.employee.findMany({
-        where: orgId ? { organizationId: orgId } : {},
+        where: {
+          employmentStatus: { not: 'Inactive' },
+          ...(orgId ? {
+            OR: [
+              { organizationId: orgId },
+              { user: { organizationId: orgId } }
+            ]
+          } : {})
+        },
         include: {
           user: true,
           orders: {
             where: { ...(orgId ? { organizationId: orgId } : {}), orderDate: { gte: startOfMonth } },
             select: { totalValue: true }
           }
-        }
+        },
+        orderBy: { user: { name: 'asc' } }
       }).catch(() => []),
       prisma.customer.findMany({
         where: { ...(orgId ? { organizationId: orgId } : {}), leadStage: 'Negotiation' },
@@ -246,12 +266,14 @@ export default async function Home() {
       }
     });
 
-    const liveAttendance = Array.from(attendanceByEmployee.values())
-      .filter((a: any) => {
-        const d = new Date(a.date || a.checkIn || a.createdAt);
-        return d >= todayStartOfDay && d <= todayEndOfDay;
-      })
-      .map((a: any) => {
+    const liveAttendance: any[] = [];
+    const processedEmpIds = new Set<string>();
+
+    (employees || []).forEach((emp: any) => {
+      processedEmpIds.add(emp.id);
+      const a = attendanceByEmployee.get(emp.id);
+
+      if (a) {
         const hasActualCheckIn = !!a.checkIn;
         const hasActualCheckOut = !!a.checkOut;
         const rawStatus = (a.status || '').toLowerCase();
@@ -260,7 +282,6 @@ export default async function Home() {
         const isAbsent = rawStatus === 'absent';
         const isPresent = rawStatus === 'present' || (!isLeave && !isAbsent && !isHalfDay);
 
-        // Shift is actively ongoing ONLY if employee has checked in and has NOT checked out
         const isShiftActive = isPresent && hasActualCheckIn && !hasActualCheckOut;
 
         let checkInStr = 'Not Checked In';
@@ -310,10 +331,11 @@ export default async function Home() {
           resolvedStatus = a.status || 'Pending';
         }
 
-        return {
+        liveAttendance.push({
           id: a.id,
-          employeeId: a.employeeId || a.employee?.id,
-          name: a.employee?.user?.name || 'Team Member',
+          employeeId: emp.id,
+          name: emp.user?.name || emp.employeeId || 'Team Member',
+          role: emp.user?.role || emp.department || 'Staff',
           checkIn: a.checkIn ? new Date(a.checkIn).toISOString() : null,
           checkOut: a.checkOut ? new Date(a.checkOut).toISOString() : null,
           checkInStr,
@@ -321,8 +343,97 @@ export default async function Home() {
           status: resolvedStatus,
           isShiftActive,
           isCheckedOut: hasActualCheckOut
-        };
-      });
+        });
+      } else {
+        // Employee exists but has not checked in today
+        liveAttendance.push({
+          id: `unmarked-${emp.id}`,
+          employeeId: emp.id,
+          name: emp.user?.name || emp.employeeId || 'Team Member',
+          role: emp.user?.role || emp.department || 'Staff',
+          checkIn: null,
+          checkOut: null,
+          checkInStr: 'Not Checked In',
+          checkOutStr: null,
+          status: 'Not Marked',
+          isShiftActive: false,
+          isCheckedOut: false
+        });
+      }
+    });
+
+    // Also include any attendee not in the main employees array
+    attendanceByEmployee.forEach((a: any, empId: string) => {
+      if (!processedEmpIds.has(empId)) {
+        const hasActualCheckIn = !!a.checkIn;
+        const hasActualCheckOut = !!a.checkOut;
+        const rawStatus = (a.status || '').toLowerCase();
+        const isLeave = rawStatus === 'leave';
+        const isHalfDay = rawStatus === 'half day';
+        const isAbsent = rawStatus === 'absent';
+        const isPresent = rawStatus === 'present' || (!isLeave && !isAbsent && !isHalfDay);
+        const isShiftActive = isPresent && hasActualCheckIn && !hasActualCheckOut;
+
+        let checkInStr = 'Not Checked In';
+        if (a.checkIn) {
+          try {
+            checkInStr = new Date(a.checkIn).toLocaleTimeString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            }).toUpperCase();
+          } catch {
+            checkInStr = new Date(a.checkIn).toLocaleTimeString().toUpperCase();
+          }
+        }
+
+        let checkOutStr = null;
+        if (a.checkOut) {
+          try {
+            checkOutStr = new Date(a.checkOut).toLocaleTimeString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            }).toUpperCase();
+          } catch {
+            checkOutStr = new Date(a.checkOut).toLocaleTimeString().toUpperCase();
+          }
+        }
+
+        let resolvedStatus = 'Present';
+        if (isLeave) resolvedStatus = 'Leave';
+        else if (isAbsent) resolvedStatus = 'Absent';
+        else if (isHalfDay) resolvedStatus = 'Half Day';
+        else if (hasActualCheckOut) resolvedStatus = 'Shift Ended';
+        else if (hasActualCheckIn) resolvedStatus = 'Present';
+        else resolvedStatus = a.status || 'Pending';
+
+        liveAttendance.push({
+          id: a.id,
+          employeeId: empId,
+          name: a.employee?.user?.name || a.employee?.employeeId || 'Team Member',
+          role: a.employee?.user?.role || a.employee?.department || 'Staff',
+          checkIn: a.checkIn ? new Date(a.checkIn).toISOString() : null,
+          checkOut: a.checkOut ? new Date(a.checkOut).toISOString() : null,
+          checkInStr,
+          checkOutStr,
+          status: resolvedStatus,
+          isShiftActive,
+          isCheckedOut: hasActualCheckOut
+        });
+      }
+    });
+
+    // Sort: Active first, then Shift Ended, then Leave, then Not Marked
+    liveAttendance.sort((a, b) => {
+      if (a.isShiftActive && !b.isShiftActive) return -1;
+      if (!a.isShiftActive && b.isShiftActive) return 1;
+      if (a.isCheckedOut && !b.isCheckedOut) return -1;
+      if (!a.isCheckedOut && b.isCheckedOut) return 1;
+      return a.name.localeCompare(b.name);
+    });
 
     // Today's orders count and live leaderboard
     const salesMap: Record<string, { name: string, total: number, orders: number }> = {};
