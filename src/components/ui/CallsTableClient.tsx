@@ -147,6 +147,7 @@ export default function CallsTableClient({
               <th>Type</th>
               <th>Duration</th>
               <th>Outcome</th>
+              <th>Recording / AI Transcript</th>
               <th>Follow-up Date</th>
               <th>Rep</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
@@ -181,6 +182,15 @@ export default function CallsTableClient({
                     <span className={`status-badge ${getOutcomeBadgeClass(call.outcome)}`}>
                       {call.outcome ? call.outcome.replace('_', ' ') : 'N/A'}
                     </span>
+                  </td>
+                  <td>
+                    {call.recordingUrl ? (
+                      <audio controls src={call.recordingUrl} style={{ height: '30px', maxWidth: '190px' }} />
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                        {call.summary || call.notes ? (call.summary || call.notes).slice(0, 50) + "..." : "No recording"}
+                      </span>
+                    )}
                   </td>
                   <td>
                     {call.followUpDate ? (

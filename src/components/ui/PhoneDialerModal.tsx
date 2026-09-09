@@ -843,6 +843,22 @@ function PhoneDialerModalContent({
         }
       }
 
+      // Encode auto-recorded audio chunks to Base64 URL if available
+      let recordingUrl = "";
+      if (autoRecordChunksRef.current && autoRecordChunksRef.current.length > 0) {
+        try {
+          const audioBlob = new Blob(autoRecordChunksRef.current, { type: "audio/webm" });
+          recordingUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string) || "");
+            reader.onerror = () => resolve("");
+            reader.readAsDataURL(audioBlob);
+          });
+        } catch (e) {
+          console.warn("Error encoding audio blob:", e);
+        }
+      }
+
       const formData = new FormData();
       if (activeCustomerId) formData.append("customerId", activeCustomerId);
       if (activeLeadId) formData.append("leadId", activeLeadId);
@@ -854,6 +870,8 @@ function PhoneDialerModalContent({
       formData.append("outcome", outcome);
       formData.append("durationSec", String(callDurationSec));
       formData.append("notes", notes);
+      if (recordingUrl) formData.append("recordingUrl", recordingUrl);
+      if (autoRecordTranscriptRef.current) formData.append("summary", autoRecordTranscriptRef.current);
 
       const compiledFollowUp = getCompiledFollowUpDate();
       if (compiledFollowUp) {
