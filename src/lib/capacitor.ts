@@ -384,3 +384,39 @@ export const requestDefaultDialer = () => {
     console.warn("Failed to request default dialer:", e);
   }
 };
+
+/**
+ * Start native two-way call recording (Android ROLE_PHONE_CALL_SCREENING builds only).
+ * Returns true if native recording started, false on web / unsupported devices.
+ * On web, the MediaRecorder mic-only path is used instead.
+ */
+export const startNativeCallRecording = (callId: string = ''): boolean => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.startCallRecording === 'function') {
+      const result = (window as any).AndroidNative.startCallRecording(callId);
+      return Boolean(result);
+    }
+  } catch (e) {
+    console.warn('startNativeCallRecording: not available', e);
+  }
+  return false;
+};
+
+/**
+ * Stop native call recording and return the local file path (if any).
+ * On web / unsupported devices, returns { success: false }.
+ */
+export const stopNativeCallRecording = (): { success: boolean; filePath?: string } => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.stopCallRecording === 'function') {
+      const json = (window as any).AndroidNative.stopCallRecording();
+      if (json && typeof json === 'string') {
+        const parsed = JSON.parse(json);
+        return { success: true, filePath: parsed?.filePath };
+      }
+    }
+  } catch (e) {
+    console.warn('stopNativeCallRecording: not available', e);
+  }
+  return { success: false };
+};

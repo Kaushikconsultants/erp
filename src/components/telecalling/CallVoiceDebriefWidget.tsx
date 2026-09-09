@@ -37,6 +37,10 @@ interface CallVoiceDebriefWidgetProps {
   callType?: "OUTBOUND" | "INBOUND";
   /** Trigger timestamp from parent when a call ends to automatically start voice debrief listening */
   autoStartTrigger?: number;
+  /** When true, auto-starts recording immediately after autoStartTrigger fires */
+  autoStartRecording?: boolean;
+  /** Pre-seeded transcript from parallel dialer-level background recording */
+  initialTranscript?: string;
   /** Callback when AI debrief analysis completes and updates parent form state */
   onApplyToForm?: (data: {
     outcome: string;
@@ -116,6 +120,8 @@ export default function CallVoiceDebriefWidget({
   callDurationSec = 0,
   callType = "OUTBOUND",
   autoStartTrigger,
+  autoStartRecording = false,
+  initialTranscript = "",
   onApplyToForm,
   onCallSaved,
   initialExpanded = true
@@ -149,19 +155,37 @@ export default function CallVoiceDebriefWidget({
     };
   }, []);
 
-  // When call ends: expand widget and show prompt — do NOT auto-start recording
-  // (auto-start captures silence since mic just released from phone call)
+  // Pre-seed transcript from dialer-level auto-recording
+  useEffect(() => {
+    if (initialTranscript && initialTranscript.trim()) {
+      setLiveTranscript(initialTranscript.trim());
+    }
+  }, [initialTranscript]);
+
+  // When call ends: expand widget, show prompt, and auto-start if autoStartRecording is enabled
   const hasAutoTriggered = useRef(false);
+  // Ref to hold latest startRecording so the timeout closure captures the right function
+  const startRecordingRef = useRef<(() => Promise<void>) | null>(null);
   useEffect(() => {
     if (autoStartTrigger && autoStartTrigger > 0) {
       hasAutoTriggered.current = true;
       setIsExpanded(true);
       // Reset any previous analysis so the fresh record button is shown
       setAnalysis(null);
-      setLiveTranscript("");
       setErrorMessage("");
+      // Reset only if no pre-seeded transcript from dialer-level recording
+      if (!initialTranscript) {
+        setLiveTranscript("");
+      }
+      // Auto-start recording if enabled — 1.2s delay lets mic release from cellular audio
+      if (autoStartRecording) {
+        const timer = setTimeout(() => {
+          startRecordingRef.current?.();
+        }, 1200);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [autoStartTrigger]);
+  }, [autoStartTrigger, autoStartRecording, initialTranscript]);
 
   // Start Voice Debrief Recording
   const startRecording = async () => {
@@ -232,6 +256,7 @@ export default function CallVoiceDebriefWidget({
     }
 
     setIsRecording(true);
+    // Keep startRecordingRef in sync so the autoStartTrigger timeout can call it
     // Use a local counter to avoid calling stopRecording() inside a setState updater
     // (calling async state-setting functions inside setState is illegal in React)
     let sec = 0;
@@ -245,6 +270,10 @@ export default function CallVoiceDebriefWidget({
       }
     }, 1000);
   };
+
+  // Keep startRecordingRef in sync so delayed auto-trigger always calls latest closure
+  // (assigned right after startRecording is defined)
+  startRecordingRef.current = startRecording as any;
 
   // Stop Recording & Send to Gemini AI
   const stopRecording = async () => {

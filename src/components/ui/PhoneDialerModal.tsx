@@ -35,7 +35,10 @@ import {
   Plus,
   ArrowRight,
   ShieldCheck,
-  Check
+  Check,
+  Radio,
+  StopCircle,
+  Settings2
 } from "lucide-react";
 import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
@@ -47,6 +50,8 @@ import {
   isDefaultDialer,
   requestDefaultDialer,
   isAndroidNativeApp,
+  startNativeCallRecording,
+  stopNativeCallRecording,
   NativeSimInfo,
   RecordingCapabilityInfo
 } from "@/lib/capacitor";
@@ -308,6 +313,19 @@ function PhoneDialerModalContent({
   const [isDefaultApp, setIsDefaultApp] = useState<boolean>(true);
   const [recordingCap, setRecordingCap] = useState<RecordingCapabilityInfo | null>(null);
 
+  // Auto-Record Call State
+  const [autoRecordEnabled, setAutoRecordEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem('crm_auto_record_calls') === 'true'; } catch { return false; }
+  });
+  const [isAutoRecording, setIsAutoRecording] = useState<boolean>(false);
+  const [autoRecordTranscript, setAutoRecordTranscript] = useState<string>('');
+  const [showRecordConsentDialog, setShowRecordConsentDialog] = useState<boolean>(false);
+  // Refs for the parallel MediaRecorder + SpeechRecognition running during the call
+  const autoRecordMediaRef = useRef<MediaRecorder | null>(null);
+  const autoRecordChunksRef = useRef<Blob[]>([]);
+  const autoRecordSpeechRef = useRef<any>(null);
+  const autoRecordTranscriptRef = useRef<string>('');
+
   // Load Recent Calls safely
   const loadRecentCalls = async () => {
     setIsLoadingCalls(true);
@@ -429,6 +447,14 @@ function PhoneDialerModalContent({
         setCallStatus("Connected");
         setFeedbackMsg("🟢 Call connected! Live talk timer started.");
       } else if (state === "ENDED") {
+        // Stop auto-recording if it was running
+        if (isAutoRecording) {
+          const { transcript } = stopAutoRecording();
+          if (transcript) {
+            setAutoRecordTranscript(transcript);
+            setNotes(prev => prev ? `${prev}\n\n[Auto-Transcript]: ${transcript}` : `[Auto-Transcript]: ${transcript}`);
+          }
+        }
         setIsTimerRunning(false);
         const finalDur = dur > 0 ? dur : (callStartTimeRef.current ? Math.max(0, Math.round((Date.now() - callStartTimeRef.current) / 1000)) : 0);
         callStartTimeRef.current = null;
@@ -519,6 +545,15 @@ function PhoneDialerModalContent({
           callStartTimeRef.current = null;
           setCallDurationSec(duration);
 
+          // Stop auto-recording and harvest transcript when app returns from call
+          if (isAutoRecording) {
+            const { transcript } = stopAutoRecording();
+            if (transcript) {
+              setAutoRecordTranscript(transcript);
+              setNotes(prev => prev ? `${prev}\n\n[Auto-Transcript]: ${transcript}` : `[Auto-Transcript]: ${transcript}`);
+            }
+          }
+
           if (duration > 0) {
             setCallStatus("Completed");
             setFeedbackMsg(`⏹ Returned from call (${formatDuration(duration)}). AI Voice Debrief starting... 🎙️`);
@@ -601,6 +636,89 @@ function PhoneDialerModalContent({
     }
   };
 
+  // Helper: Start automatic mic + speech recording during a call
+  const startAutoRecording = useCallback(async () => {
+    autoRecordChunksRef.current = [];
+    autoRecordTranscriptRef.current = '';
+    setAutoRecordTranscript('');
+    setIsAutoRecording(true);
+
+    // 1. Web Speech API for live transcript
+    const SpeechRec = typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+    if (SpeechRec) {
+      try {
+        const recognition = new SpeechRec();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'hi-IN'; // Hindi + English + Hinglish
+        recognition.onresult = (event: any) => {
+          let accumulated = '';
+          for (let i = 0; i < event.results.length; i++) {
+            accumulated += event.results[i][0].transcript + ' ';
+          }
+          autoRecordTranscriptRef.current = accumulated.trim();
+          setAutoRecordTranscript(accumulated.trim());
+        };
+        recognition.onerror = () => {};
+        recognition.onend = () => {};
+        autoRecordSpeechRef.current = recognition;
+        recognition.start();
+      } catch (e) {
+        console.warn('Auto-record speech init:', e);
+      }
+    }
+
+    // 2. MediaRecorder for audio blob (used by AI debrief)
+    try {
+      if (navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mr = new MediaRecorder(stream);
+        mr.ondataavailable = (ev) => { if (ev.data.size > 0) autoRecordChunksRef.current.push(ev.data); };
+        mr.start(250);
+        autoRecordMediaRef.current = mr;
+      }
+    } catch (e) {
+      console.warn('Auto-record mic init:', e);
+    }
+
+    // 3. Native two-way recording if capable
+    startNativeCallRecording(`call-${Date.now()}`);
+  }, []);
+
+  // Helper: Stop automatic recording and return collected data
+  const stopAutoRecording = useCallback((): { transcript: string; audioChunks: Blob[] } => {
+    setIsAutoRecording(false);
+    stopNativeCallRecording();
+
+    // Stop speech
+    if (autoRecordSpeechRef.current) {
+      try { autoRecordSpeechRef.current.stop(); } catch {}
+      autoRecordSpeechRef.current = null;
+    }
+
+    // Stop MediaRecorder
+    if (autoRecordMediaRef.current && autoRecordMediaRef.current.state !== 'inactive') {
+      try {
+        autoRecordMediaRef.current.stop();
+        autoRecordMediaRef.current.stream?.getTracks().forEach(t => { try { t.stop(); } catch {} });
+      } catch {}
+    }
+    autoRecordMediaRef.current = null;
+
+    const transcript = autoRecordTranscriptRef.current || '';
+    const chunks = [...autoRecordChunksRef.current];
+    autoRecordChunksRef.current = [];
+    autoRecordTranscriptRef.current = '';
+    return { transcript, audioChunks: chunks };
+  }, []);
+
+  // Cleanup auto-record on dialer close
+  useEffect(() => {
+    if (!isOpen && isAutoRecording) {
+      stopAutoRecording();
+    }
+  }, [isOpen, isAutoRecording, stopAutoRecording]);
+
   // Trigger Phone Call & Switch to Post-Call Session
   const handleInitiateCall = (targetPhone?: string, targetContact?: any) => {
     const numberToCall = targetPhone || phoneDigits;
@@ -623,6 +741,11 @@ function PhoneDialerModalContent({
     setCallStatus("Connected");
     setCallType("OUTBOUND");
 
+    // Start auto-recording if enabled
+    if (autoRecordEnabled) {
+      startAutoRecording();
+    }
+
     // Grant App Lock exemption & trigger SIM cellular call
     if (typeof window !== "undefined") {
       (window as any).grantAppLockExemption?.(300);
@@ -630,8 +753,9 @@ function PhoneDialerModalContent({
     }
 
     // Switch to post-call maintenance view
+    const recMsg = autoRecordEnabled ? " ⏺ Auto-recording your voice notes." : "";
     setActiveTab("POST_CALL");
-    setFeedbackMsg("📞 Outbound call dialed. Live stopwatch active.");
+    setFeedbackMsg(`📞 Outbound call dialed. Live stopwatch active.${recMsg}`);
   };
 
   // WhatsApp Message
@@ -1052,6 +1176,110 @@ function PhoneDialerModalContent({
                 </div>
               )}
 
+              {/* Auto-Record Toggle Pill */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", margin: "0 0 10px 0" }}>
+                <button
+                  type="button"
+                  id="auto-record-toggle-btn"
+                  onClick={() => {
+                    if (!autoRecordEnabled) {
+                      setShowRecordConsentDialog(true);
+                    } else {
+                      const newVal = false;
+                      setAutoRecordEnabled(newVal);
+                      try { localStorage.setItem('crm_auto_record_calls', 'false'); } catch {}
+                    }
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "7px",
+                    padding: "5px 14px",
+                    borderRadius: "20px",
+                    border: autoRecordEnabled ? "1.5px solid #dc2626" : "1.5px solid #cbd5e1",
+                    backgroundColor: autoRecordEnabled ? "#fef2f2" : "#f8fafc",
+                    color: autoRecordEnabled ? "#dc2626" : "#64748b",
+                    fontSize: "0.74rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  {autoRecordEnabled
+                    ? <><Radio size={13} style={{ animation: 'pulse-rec 1.2s ease-in-out infinite' }} /> Auto-Record: ON</>
+                    : <><Radio size={13} /> Auto-Record: OFF</>}
+                </button>
+                {isAutoRecording && (
+                  <span style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    fontSize: "0.69rem",
+                    fontWeight: 800,
+                    color: "#dc2626",
+                    backgroundColor: "#fef2f2",
+                    border: "1px solid #fca5a5",
+                    padding: "2px 8px",
+                    borderRadius: "10px",
+                    animation: "fadeInBanner 0.2s ease-out"
+                  }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: "#dc2626", display: "inline-block", animation: "pulse-rec 0.9s ease-in-out infinite" }} />
+                    REC
+                  </span>
+                )}
+              </div>
+
+              {/* Consent Dialog for first-time enable */}
+              {showRecordConsentDialog && (
+                <div style={{
+                  position: "fixed", inset: 0, backgroundColor: "rgba(15,23,42,0.55)", backdropFilter: "blur(4px)",
+                  display: "flex", alignItems: "center", justifyContent: "center", zIndex: 999999, padding: "20px"
+                }}>
+                  <div style={{
+                    backgroundColor: "#ffffff", borderRadius: "18px", padding: "22px 20px",
+                    maxWidth: "360px", width: "100%", boxShadow: "0 20px 40px rgba(0,0,0,0.25)",
+                    border: "1px solid #e2e8f0"
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                      <div style={{ width: 40, height: 40, borderRadius: "12px", backgroundColor: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <Radio size={20} color="#dc2626" />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "0.95rem", fontWeight: 800, color: "#0f172a" }}>Enable Auto Call Recording?</div>
+                        <div style={{ fontSize: "0.72rem", color: "#64748b" }}>AI Voice Debrief & Transcription</div>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: "0.78rem", color: "#475569", lineHeight: 1.55, margin: "0 0 14px 0" }}>
+                      📋 This will automatically record your <strong>microphone voice</strong> while you're on a call.
+                      The audio is processed on-device and only the <strong>AI-generated transcript</strong> is saved to CRM — no raw audio is stored.
+                    </p>
+                    <div style={{ backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "8px", padding: "8px 12px", fontSize: "0.72rem", color: "#92400e", marginBottom: "16px" }}>
+                      ⚠️ <strong>Legal Notice:</strong> Depending on your jurisdiction, recording calls may require informing all parties. Ensure compliance with local laws before enabling.
+                    </div>
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRecordConsentDialog(false);
+                          setAutoRecordEnabled(true);
+                          try { localStorage.setItem('crm_auto_record_calls', 'true'); } catch {}
+                        }}
+                        style={{ flex: 1, backgroundColor: "#dc2626", color: "#ffffff", border: "none", padding: "9px 14px", borderRadius: "8px", fontSize: "0.82rem", fontWeight: 700, cursor: "pointer" }}
+                      >
+                        I Understand — Enable
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowRecordConsentDialog(false)}
+                        style={{ padding: "9px 14px", borderRadius: "8px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#64748b", fontSize: "0.82rem", fontWeight: 600, cursor: "pointer" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Cellular Audio Recording Capability Status */}
               {recordingCap && (
                 <div style={{ textAlign: "center", margin: "0 0 8px 0" }}>
@@ -1064,7 +1292,11 @@ function PhoneDialerModalContent({
                     border: `1px solid ${recordingCap.canRecordBothSides ? "#a7f3d0" : "#e2e8f0"}`,
                     fontWeight: 600
                   }}>
-                    {recordingCap.canRecordBothSides ? "🎙️ Two-Way Cellular Audio Capture Active" : "🎙️ Voice Debrief Capture Active"}
+                    {recordingCap.canRecordBothSides
+                      ? "🎙️ Two-Way Cellular Audio Capture Active"
+                      : autoRecordEnabled
+                        ? "🎙️ Mic Recording Active — Auto-Transcript Enabled"
+                        : "🎙️ Voice Debrief Capture Available"}
                   </span>
                 </div>
               )}
@@ -1354,6 +1586,8 @@ function PhoneDialerModalContent({
                   callDurationSec={callDurationSec}
                   callType={callType}
                   autoStartTrigger={autoDebriefTrigger}
+                  autoStartRecording={autoRecordEnabled}
+                  initialTranscript={autoRecordTranscript}
                   onApplyToForm={(data) => {
                     if (data.outcome) setOutcome(data.outcome);
                     if (data.notes) setNotes(data.notes);

@@ -602,3 +602,33 @@
   cursor: not-allowed;
   transform: none;
 }
+
+/* ─── AUTO CALL RECORDING INDICATOR ─── */
+@keyframes pulse-rec {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.dialer-rec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.69rem;
+  font-weight: 800;
+  color: #dc2626;
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  padding: 2px 8px;
+  border-radius: 10px;
+  animation: fadeInBanner 0.2s ease-out;
+}
+
+.dialer-rec-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #dc2626;
+  display: inline-block;
+  animation: pulse-rec 0.9s ease-in-out infinite;
+}
+

@@ -1376,6 +1376,9 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
       </div>
 
       {/* ─── 6. SAVE BUTTON BAR ─── */}
+      {/* ─── CALL RECORDING SECTION ─── */}
+      <CallRecordingSettingsSection />
+
       <div
         style={{
           display: "flex",
@@ -1412,3 +1415,183 @@ export default function NotificationSettingsClient({ initialSettings }: Props) {
     </div>
   );
 }
+
+/* ─── Call Recording Settings (standalone client section) ─── */
+function CallRecordingSettingsSection() {
+  const [autoRecord, setAutoRecord] = React.useState<boolean>(() => {
+    try { return typeof window !== "undefined" && localStorage.getItem("crm_auto_record_calls") === "true"; } catch { return false; }
+  });
+  const [quality, setQuality] = React.useState<"standard" | "high">(() => {
+    try { return (typeof window !== "undefined" && localStorage.getItem("crm_record_quality") as any) || "standard"; } catch { return "standard"; }
+  });
+  const [saved, setSaved] = React.useState(false);
+
+  const handleToggle = () => {
+    const next = !autoRecord;
+    setAutoRecord(next);
+    try { localStorage.setItem("crm_auto_record_calls", String(next)); } catch {}
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleQualityChange = (q: "standard" | "high") => {
+    setQuality(q);
+    try { localStorage.setItem("crm_record_quality", q); } catch {}
+  };
+
+  return (
+    <div
+      style={{
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        borderRadius: "16px",
+        padding: "20px",
+        marginBottom: "20px",
+        boxShadow: "0 2px 8px rgba(15,23,42,0.04)"
+      }}
+    >
+      {/* Section Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: "10px",
+          background: autoRecord ? "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)" : "linear-gradient(135deg, #64748b 0%, #94a3b8 100%)",
+          color: "#ffffff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          boxShadow: autoRecord ? "0 4px 10px rgba(220,38,38,0.25)" : "none",
+          transition: "all 0.3s ease"
+        }}>
+          <Radio size={20} />
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a" }}>
+            Automatic Call Recording & Transcription
+          </h3>
+          <p style={{ margin: "2px 0 0 0", fontSize: "0.78rem", color: "#64748b" }}>
+            Auto-capture your voice during calls for AI-powered transcripts and smarter follow-ups
+          </p>
+        </div>
+        {saved && (
+          <span style={{
+            marginLeft: "auto", display: "flex", alignItems: "center", gap: "4px",
+            fontSize: "0.72rem", fontWeight: 700, color: "#10b981",
+            backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0",
+            padding: "3px 10px", borderRadius: "8px"
+          }}>
+            <Check size={12} /> Saved
+          </span>
+        )}
+      </div>
+
+      {/* Legal Warning */}
+      <div style={{
+        backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px",
+        padding: "10px 14px", marginBottom: "16px", display: "flex", gap: "10px", alignItems: "flex-start"
+      }}>
+        <AlertTriangle size={16} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
+        <p style={{ margin: 0, fontSize: "0.75rem", color: "#92400e", lineHeight: 1.55 }}>
+          <strong>Legal Notice:</strong> Recording calls without all parties' consent may be unlawful in your jurisdiction (e.g., India IT Act, GDPR).
+          Ensure you comply with applicable laws and inform callers when recording is active. Only your microphone is captured — not the remote party's audio — unless your device supports two-way call recording.
+        </p>
+      </div>
+
+      {/* How it works info card */}
+      <div style={{
+        backgroundColor: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "10px",
+        padding: "10px 14px", marginBottom: "16px", fontSize: "0.75rem", color: "#0369a1", lineHeight: 1.6
+      }}>
+        <strong>🎙️ How it works:</strong> When enabled, the dialer automatically starts recording your voice when you place a call.
+        On call end, the audio is processed by Gemini AI <em>on-device</em> to generate a transcript &amp; smart call notes.
+        <strong> Raw audio is never stored on the server.</strong> Only the AI-generated text summary is saved to the CRM.
+      </div>
+
+      {/* Main Toggle */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "14px 16px", borderRadius: "12px",
+        backgroundColor: autoRecord ? "#fef2f2" : "#f8fafc",
+        border: `1.5px solid ${autoRecord ? "#fca5a5" : "#e2e8f0"}`,
+        marginBottom: "12px",
+        transition: "all 0.25s ease"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: "10px",
+            backgroundColor: autoRecord ? "#fecaca" : "#f1f5f9",
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0
+          }}>
+            <Mic size={18} style={{ color: autoRecord ? "#dc2626" : "#64748b" }} />
+          </div>
+          <div>
+            <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0f172a" }}>
+              Auto-Record Calls
+            </div>
+            <div style={{ fontSize: "0.72rem", color: "#64748b" }}>
+              {autoRecord ? "🔴 Recording will start automatically when you dial" : "Off — tap to enable automatic recording"}
+            </div>
+          </div>
+        </div>
+        <button
+          id="call-recording-master-toggle"
+          type="button"
+          onClick={handleToggle}
+          style={{
+            width: 48, height: 26, borderRadius: 13, border: "none", cursor: "pointer",
+            backgroundColor: autoRecord ? "#dc2626" : "#cbd5e1",
+            position: "relative", transition: "background-color 0.25s ease", flexShrink: 0
+          }}
+          aria-label={`Turn call recording ${autoRecord ? "off" : "on"}`}
+          title={`Auto-record is ${autoRecord ? "enabled" : "disabled"}`}
+        >
+          <span style={{
+            position: "absolute", top: 3, left: autoRecord ? 25 : 3,
+            width: 20, height: 20, borderRadius: "50%", backgroundColor: "#ffffff",
+            transition: "left 0.22s ease", boxShadow: "0 1px 4px rgba(0,0,0,0.18)"
+          }} />
+        </button>
+      </div>
+
+      {/* Recording Quality (shown only when enabled) */}
+      {autoRecord && (
+        <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+          {(["standard", "high"] as const).map(q => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => handleQualityChange(q)}
+              style={{
+                flex: 1, padding: "8px 12px", borderRadius: "8px", cursor: "pointer",
+                border: quality === q ? "2px solid #dc2626" : "1.5px solid #e2e8f0",
+                backgroundColor: quality === q ? "#fef2f2" : "#f8fafc",
+                color: quality === q ? "#dc2626" : "#64748b",
+                fontSize: "0.78rem", fontWeight: 700, transition: "all 0.15s ease",
+                textAlign: "center"
+              }}
+            >
+              {q === "standard" ? "🎙️ Standard Quality" : "🎚️ High Quality (uses more battery)"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Feature list */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "8px" }}>
+        {[
+          { icon: "🎙️", title: "Auto-Transcript", desc: "Your voice captured live during call" },
+          { icon: "🤖", title: "AI Analysis", desc: "Gemini extracts outcome, intent & next steps" },
+          { icon: "📝", title: "Auto-Fill Notes", desc: "Call form pre-filled from transcript" },
+          { icon: "🔒", title: "Privacy First", desc: "Audio processed locally, never stored raw" }
+        ].map(f => (
+          <div key={f.title} style={{
+            backgroundColor: "#f8fafc", borderRadius: "10px", padding: "10px 12px",
+            border: "1px solid #e2e8f0", display: "flex", gap: "8px", alignItems: "flex-start"
+          }}>
+            <span style={{ fontSize: "1rem", flexShrink: 0 }}>{f.icon}</span>
+            <div>
+              <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#0f172a" }}>{f.title}</div>
+              <div style={{ fontSize: "0.7rem", color: "#64748b", lineHeight: 1.4 }}>{f.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
