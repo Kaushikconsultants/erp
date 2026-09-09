@@ -1594,4 +1594,4 @@ function CallRecordingSettingsSection() {
       </div>
     </div>
   );
-
+}
