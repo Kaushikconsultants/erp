@@ -10,8 +10,8 @@ export default function OnboardingBanner() {
 
   useEffect(() => {
     try {
-      const isCompleted = localStorage.getItem('erp_onboarding_completed_v1');
-      const isDismissed = sessionStorage.getItem('erp_onboarding_banner_dismissed');
+      const isCompleted = localStorage.getItem('erp_onboarding_completed_v1') || localStorage.getItem('erp_setup_tour_completed');
+      const isDismissed = localStorage.getItem('erp_onboarding_banner_dismissed') || localStorage.getItem('erp_setup_tour_dismissed');
       if (!isCompleted && !isDismissed) {
         setShowBanner(true);
       }
@@ -21,7 +21,8 @@ export default function OnboardingBanner() {
   const handleDismiss = () => {
     setShowBanner(false);
     try {
-      sessionStorage.setItem('erp_onboarding_banner_dismissed', 'true');
+      localStorage.setItem('erp_onboarding_banner_dismissed', 'true');
+      localStorage.setItem('erp_setup_tour_dismissed', 'true');
     } catch {}
   };
 
@@ -29,7 +30,15 @@ export default function OnboardingBanner() {
     return isWizardOpen ? (
       <OnboardingWizardModal
         isOpen={isWizardOpen}
-        onClose={() => setIsWizardOpen(false)}
+        onClose={() => {
+          setIsWizardOpen(false);
+          try {
+            localStorage.setItem('erp_onboarding_completed_v1', 'true');
+            localStorage.setItem('erp_onboarding_banner_dismissed', 'true');
+            localStorage.setItem('erp_setup_tour_completed', 'true');
+            localStorage.setItem('erp_setup_tour_dismissed', 'true');
+          } catch {}
+        }}
       />
     ) : null;
   }
