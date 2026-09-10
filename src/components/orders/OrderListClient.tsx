@@ -115,7 +115,7 @@ export default function OrderListClient({
   // Tab Count Computation
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = {
-      'All': docList.length,
+      'All': 0,
       'Printed': 0,
       'AWB Assigned': 0,
       'In Transit': 0,
@@ -125,6 +125,12 @@ export default function OrderListClient({
     };
 
     docList.forEach(doc => {
+      // In Orders view, quotations MUST be Confirmed
+      if (doc.type === 'Quotation' && (doc.status || '').toLowerCase() !== 'confirmed') {
+        return;
+      }
+      counts['All'] += 1;
+
       if (doc.type === 'Quotation') {
         counts['Quotations'] = (counts['Quotations'] || 0) + 1;
         return;
@@ -142,6 +148,11 @@ export default function OrderListClient({
 
   const filteredDocs = useMemo(() => {
     return docList.filter(doc => {
+      // In Orders view, quotations MUST be Confirmed
+      if (doc.type === 'Quotation' && (doc.status || '').toLowerCase() !== 'confirmed') {
+        return false;
+      }
+
       // 1. Tab filter
       if (activeTab === 'Quotations' && doc.type !== 'Quotation') return false;
       if (activeTab !== 'All' && activeTab !== 'Quotations') {

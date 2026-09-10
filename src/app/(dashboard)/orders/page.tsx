@@ -22,7 +22,10 @@ export default async function OrdersPage() {
 
   let orderWhereClause: any = { organizationId };
   let customerWhereClause: any = { organizationId };
-  let quotationWhereClause: any = { organizationId };
+  let quotationWhereClause: any = { 
+    ...(organizationId ? { organizationId } : {}),
+    status: { in: ['Confirmed', 'confirmed'] }
+  };
 
   // Strict Scoping: Sales Candidate / Non-Admin can ONLY see orders, quotations & customers assigned to them
   if (!isAdmin) {
@@ -44,6 +47,7 @@ export default async function OrdersPage() {
     };
     quotationWhereClause = {
       ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {}),
+      status: { in: ['Confirmed', 'confirmed'] },
       OR: [
         { salespersonId: empId },
         { customer: { assignedSalespersonId: empId } }
@@ -122,6 +126,7 @@ export default async function OrdersPage() {
     if (s.includes('printed') || s.includes('processing')) return { bg: '#fef3c7', color: '#854d0e' };
     if (s.includes('transit') || s.includes('ofd') || s.includes('out for delivery')) return { bg: '#cffafe', color: '#0369a1' };
     if (s.includes('delivered') || s.includes('converted') || s.includes('accepted')) return { bg: '#dcfce7', color: '#166534' };
+    if (s.includes('confirmed')) return { bg: '#ecfdf5', color: '#047857' };
     if (s.includes('pending') || s.includes('draft')) return { bg: '#f1f5f9', color: '#475569' };
     if (s.includes('cancelled') || s.includes('declined') || s.includes('rejected')) return { bg: '#fee2e2', color: '#991b1b' };
     return { bg: '#f1f5f9', color: '#475569' };
@@ -257,9 +262,10 @@ export default async function OrdersPage() {
     }
   });
 
-  // Map Quotations: Exclude converted quotations that are already represented as Sales Orders
+  // Map Quotations: ONLY include Confirmed quotations, and exclude those already converted into Sales Orders
   quotations.forEach(q => {
-    if (q.status === 'Converted' || convertedQuoteNumbers.has((q.quotationNumber || '').trim())) {
+    const s = (q.status || '').toLowerCase();
+    if (s !== 'confirmed' || convertedQuoteNumbers.has((q.quotationNumber || '').trim())) {
       return;
     }
 
