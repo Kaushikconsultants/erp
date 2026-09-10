@@ -156,8 +156,8 @@ export async function createBranch(formData: FormData): Promise<{
     const existing = await prisma.branch.findFirst({
       where: {
         OR: [
-          { name: { equals: name, mode: 'insensitive' } },
-          ...(code ? [{ code: { equals: code, mode: 'insensitive' } }] : [])
+          { name: { equals: name, mode: 'insensitive' as const } },
+          ...(code ? [{ code: { equals: code, mode: 'insensitive' as const } }] : [])
         ]
       }
     });

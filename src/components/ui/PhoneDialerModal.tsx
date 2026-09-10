@@ -38,7 +38,10 @@ import {
   Check,
   Radio,
   StopCircle,
-  Settings2
+  Settings2,
+  Upload,
+  Volume2,
+  FileAudio
 } from "lucide-react";
 import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
@@ -315,14 +318,22 @@ function PhoneDialerModalContent({
 
   // Auto-Record Call State
   const [autoRecordEnabled, setAutoRecordEnabled] = useState<boolean>(() => {
-    try { return localStorage.getItem('crm_auto_record_calls') === 'true'; } catch { return false; }
+    try {
+      const saved = localStorage.getItem('crm_auto_record_calls');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
   });
   const [isAutoRecording, setIsAutoRecording] = useState<boolean>(false);
   const [autoRecordTranscript, setAutoRecordTranscript] = useState<string>('');
   const [showRecordConsentDialog, setShowRecordConsentDialog] = useState<boolean>(false);
+  const [recordingUrl, setRecordingUrl] = useState<string>('');
+  const [callSummary, setCallSummary] = useState<string>('');
   // Refs for the parallel MediaRecorder + SpeechRecognition running during the call
   const autoRecordMediaRef = useRef<MediaRecorder | null>(null);
   const autoRecordChunksRef = useRef<Blob[]>([]);
+  const lastRecordedChunksRef = useRef<Blob[]>([]);
   const autoRecordSpeechRef = useRef<any>(null);
   const autoRecordTranscriptRef = useRef<string>('');
 
@@ -713,8 +724,26 @@ function PhoneDialerModalContent({
 
     const transcript = autoRecordTranscriptRef.current || '';
     const chunks = [...autoRecordChunksRef.current];
+    lastRecordedChunksRef.current = chunks;
     autoRecordChunksRef.current = [];
     autoRecordTranscriptRef.current = '';
+
+    if (chunks.length > 0) {
+      try {
+        const audioBlob = new Blob(chunks, { type: "audio/webm" });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const res = reader.result as string;
+          if (res && res.length > 100) {
+            setRecordingUrl(res);
+          }
+        };
+        reader.readAsDataURL(audioBlob);
+      } catch (e) {
+        console.warn("Auto-record blob conversion notice:", e);
+      }
+    }
+
     return { transcript, audioChunks: chunks };
   }, []);
 
@@ -827,6 +856,61 @@ function PhoneDialerModalContent({
     }
   };
 
+  // Attach Audio File from phone storage (e.g. Xiaomi OEM call recorder)
+  const handleAttachAudioFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64Data = reader.result as string;
+        setRecordingUrl(base64Data);
+        setFeedbackMsg("📁 Audio recording attached! Analyzing with Gemini 3.6 AI...");
+
+        try {
+          const rawB64 = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
+          const mime = file.type || "audio/mp4";
+          const res = await fetch("/api/calls/analyze-debrief", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              audioBase64: rawB64,
+              mimeType: mime,
+              callContext: {
+                contactName: selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact",
+                contactPhone: phoneDigits || selectedContact?.phone || "",
+                durationSec: callDurationSec
+              }
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.success && data?.analysis) {
+              const a = data.analysis;
+              if (a.detectedOutcome) setOutcome(a.detectedOutcome);
+              if (a.summary) {
+                setCallSummary(a.summary);
+                setNotes(prev => prev ? `${prev}\n\n[AI Summary]: ${a.summary}` : `[AI Summary]: ${a.summary}`);
+              }
+              if (a.suggestedFollowUp?.date) {
+                setFollowUpDate(a.suggestedFollowUp.date);
+                setFollowUpHour(a.suggestedFollowUp.hour12 || "11");
+                setFollowUpMinute(a.suggestedFollowUp.minute || "00");
+                setFollowUpPeriod(a.suggestedFollowUp.period || "AM");
+              }
+              setFeedbackMsg("✨ Audio file transcribed and AI insights populated!");
+            }
+          }
+        } catch (aiErr) {
+          console.warn("AI analysis of attached file notice:", aiErr);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.warn("Error reading attached audio:", err);
+    }
+  };
+
   // Save Call Record & Maintain CRM Lead
   const handleSaveCallRecord = async () => {
     setIsSaving(true);
@@ -849,12 +933,12 @@ function PhoneDialerModalContent({
         }
       }
 
-      // Encode auto-recorded audio chunks to Base64 URL if available
-      let recordingUrl = "";
-      if (autoRecordChunksRef.current && autoRecordChunksRef.current.length > 0) {
+      // Encode auto-recorded audio chunks to Base64 URL if recordingUrl not already set
+      let finalRecordingUrl = recordingUrl;
+      if (!finalRecordingUrl && lastRecordedChunksRef.current && lastRecordedChunksRef.current.length > 0) {
         try {
-          const audioBlob = new Blob(autoRecordChunksRef.current, { type: "audio/webm" });
-          recordingUrl = await new Promise<string>((resolve) => {
+          const audioBlob = new Blob(lastRecordedChunksRef.current, { type: "audio/webm" });
+          finalRecordingUrl = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve((reader.result as string) || "");
             reader.onerror = () => resolve("");
@@ -876,8 +960,9 @@ function PhoneDialerModalContent({
       formData.append("outcome", outcome);
       formData.append("durationSec", String(callDurationSec));
       formData.append("notes", notes);
-      if (recordingUrl) formData.append("recordingUrl", recordingUrl);
-      if (autoRecordTranscriptRef.current) formData.append("summary", autoRecordTranscriptRef.current);
+      if (finalRecordingUrl) formData.append("recordingUrl", finalRecordingUrl);
+      const effectiveSummary = callSummary || autoRecordTranscriptRef.current || autoRecordTranscript;
+      if (effectiveSummary) formData.append("summary", effectiveSummary);
 
       const compiledFollowUp = getCompiledFollowUpDate();
       if (compiledFollowUp) {
@@ -1615,11 +1700,13 @@ function PhoneDialerModalContent({
                   onApplyToForm={(data) => {
                     if (data.outcome) setOutcome(data.outcome);
                     if (data.notes) setNotes(data.notes);
+                    if (data.summary) setCallSummary(data.summary);
+                    if (data.recordingUrl) setRecordingUrl(data.recordingUrl);
                     if (data.followUpDate) setFollowUpDate(data.followUpDate);
                     if (data.followUpHour) setFollowUpHour(data.followUpHour);
                     if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
                     if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
-                    setFeedbackMsg("✨ AI Intelligence populated into call log!");
+                    setFeedbackMsg("✨ AI Intelligence & Recording attached!");
                   }}
                   onCallSaved={() => {
                     setFeedbackMsg("✅ Call logged with AI Debrief & Follow-up scheduled!");
@@ -1630,6 +1717,69 @@ function PhoneDialerModalContent({
                   }}
                 />
               </AIDebriefSafeWrapper>
+
+              {/* 🎙️ RECORDING ATTACHMENT & AUDIO PLAYER PREVIEW */}
+              <div
+                style={{
+                  marginBottom: "14px",
+                  backgroundColor: recordingUrl ? "#f0fdf4" : "#f8fafc",
+                  border: `1.5px solid ${recordingUrl ? "#86efac" : "#e2e8f0"}`,
+                  borderRadius: "12px",
+                  padding: "10px 12px"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: recordingUrl ? "8px" : "0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Volume2 size={16} color={recordingUrl ? "#15803d" : "#64748b"} />
+                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: recordingUrl ? "#15803d" : "#334155" }}>
+                      {recordingUrl ? "🎙️ Call Recording Attached" : "Call Audio Recording"}
+                    </span>
+                  </div>
+                  <label
+                    style={{
+                      fontSize: "0.74rem",
+                      padding: "4px 8px",
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "6px",
+                      color: "#4f46e5",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    <Upload size={12} /> {recordingUrl ? "Replace File" : "Attach File"}
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      style={{ display: "none" }}
+                      onChange={handleAttachAudioFile}
+                    />
+                  </label>
+                </div>
+
+                {recordingUrl ? (
+                  <div>
+                    <audio controls src={recordingUrl} style={{ width: "100%", height: "32px", borderRadius: "6px" }} />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                      <span style={{ fontSize: "0.68rem", color: "#15803d" }}>✓ Ready to save to CRM • Replayable in web & mobile app</span>
+                      <button
+                        type="button"
+                        onClick={() => setRecordingUrl("")}
+                        style={{ background: "none", border: "none", color: "#dc2626", fontSize: "0.68rem", cursor: "pointer", fontWeight: 600 }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "4px" }}>
+                    No recording attached yet. Use the 1-Tap Debrief above, or tap "Attach File" to attach a call recording from your phone (e.g. Xiaomi Call Recorder).
+                  </div>
+                )}
+              </div>
 
               {/* CALL OUTCOME DISPOSITION */}
               <div style={{ marginBottom: "12px" }}>
@@ -1843,71 +1993,148 @@ function PhoneDialerModalContent({
                   {filteredCallLogs.map((c) => {
                     const isOutbound = c.type === "OUTBOUND";
                     const isConnected = c.status === "Connected" || (c.durationSec || 0) > 0;
+                    const callPhone = c.phoneNumber || c.phone || "";
+                    const hasAudio = Boolean(c.recordingUrl && String(c.recordingUrl).length > 20);
+
                     return (
                       <div
                         key={c.id}
                         style={{
                           padding: "10px 12px",
-                          borderRadius: "10px",
+                          borderRadius: "12px",
                           backgroundColor: "#f8fafc",
                           border: "1px solid #e2e8f0",
                           display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between"
+                          flexDirection: "column",
+                          gap: "8px"
                         }}
                       >
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
-                          <div
-                            style={{
-                              width: "32px",
-                              height: "32px",
-                              borderRadius: "8px",
-                              backgroundColor: isConnected ? "#f0fdf4" : "#fef2f2",
-                              color: isConnected ? "#16a34a" : "#dc2626",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              flexShrink: 0
-                            }}
-                          >
-                            {isConnected ? (
-                              isOutbound ? <PhoneOutgoing size={15} /> : <PhoneIncoming size={15} />
-                            ) : (
-                              <PhoneMissed size={15} />
-                            )}
+                        {/* Top row: Icon, Name/Phone, Actions */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
+                            <div
+                              style={{
+                                width: "32px",
+                                height: "32px",
+                                borderRadius: "8px",
+                                backgroundColor: isConnected ? "#f0fdf4" : "#fef2f2",
+                                color: isConnected ? "#16a34a" : "#dc2626",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0
+                              }}
+                            >
+                              {isConnected ? (
+                                isOutbound ? <PhoneOutgoing size={15} /> : <PhoneIncoming size={15} />
+                              ) : (
+                                <PhoneMissed size={15} />
+                              )}
+                            </div>
+                            <div style={{ overflow: "hidden" }}>
+                              <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {c.contactName || c.contactPerson || "Direct Contact"}
+                              </div>
+                              <div style={{ fontSize: "0.72rem", color: "#64748b", display: "flex", gap: "6px", alignItems: "center" }}>
+                                <span>{callPhone || "No Phone"}</span>
+                                <span>•</span>
+                                <span>{formatDuration(c.durationSec || 0)}</span>
+                                <span>•</span>
+                                <span>{formatRelativeTime(c.createdAt)}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div style={{ overflow: "hidden" }}>
-                            <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                              {c.contactName || c.contactPerson || "Direct Contact"}
-                            </div>
-                            <div style={{ fontSize: "0.72rem", color: "#64748b", display: "flex", gap: "6px" }}>
-                              <span>{c.phoneNumber}</span>
-                              <span>•</span>
-                              <span>{formatDuration(c.durationSec || 0)}</span>
-                              <span>•</span>
-                              <span>{formatRelativeTime(c.createdAt)}</span>
-                            </div>
+
+                          <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                            {callPhone && (
+                              <button
+                                type="button"
+                                onClick={() => handleInitiateWhatsApp("", callPhone)}
+                                style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#25d366", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                title="WhatsApp"
+                              >
+                                <MessageSquare size={13} />
+                              </button>
+                            )}
+                            {callPhone && (
+                              <button
+                                type="button"
+                                onClick={() => handleInitiateCall(callPhone, { companyName: c.contactName, phone: callPhone })}
+                                style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#10b981", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                title="Call"
+                              >
+                                <PhoneCall size={13} />
+                              </button>
+                            )}
                           </div>
                         </div>
 
-                        <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => handleInitiateWhatsApp("", c.phoneNumber)}
-                            style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#25d366", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                            title="WhatsApp"
+                        {/* Middle row: Outcome badge */}
+                        {c.outcome && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <span
+                              style={{
+                                fontSize: "0.68rem",
+                                fontWeight: 700,
+                                padding: "2px 8px",
+                                borderRadius: "6px",
+                                backgroundColor: c.outcome.includes("Order") ? "#dcfce7" : c.outcome.includes("Interested") ? "#e0e7ff" : "#f1f5f9",
+                                color: c.outcome.includes("Order") ? "#15803d" : c.outcome.includes("Interested") ? "#3730a3" : "#475569",
+                                border: `1px solid ${c.outcome.includes("Order") ? "#86efac" : c.outcome.includes("Interested") ? "#c7d2fe" : "#e2e8f0"}`
+                              }}
+                            >
+                              {c.outcome}
+                            </span>
+                            {hasAudio && (
+                              <span
+                                style={{
+                                  fontSize: "0.66rem",
+                                  fontWeight: 700,
+                                  color: "#059669",
+                                  backgroundColor: "#ecfdf5",
+                                  border: "1px solid #a7f3d0",
+                                  padding: "1px 6px",
+                                  borderRadius: "4px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "3px"
+                                }}
+                              >
+                                <Volume2 size={10} /> Recording
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* AI Summary / Notes snippet */}
+                        {(c.summary || c.notes) && (
+                          <div
+                            style={{
+                              fontSize: "0.72rem",
+                              color: "#334155",
+                              backgroundColor: "#ffffff",
+                              border: "1px solid #e2e8f0",
+                              borderRadius: "8px",
+                              padding: "6px 8px",
+                              lineHeight: 1.4
+                            }}
                           >
-                            <MessageSquare size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleInitiateCall(c.phoneNumber, { companyName: c.contactName, phone: c.phoneNumber })}
-                            style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#10b981", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                            title="Call"
-                          >
-                            <PhoneCall size={13} />
-                          </button>
-                        </div>
+                            <span style={{ fontWeight: 700, color: "#4f46e5" }}>AI Notes: </span>
+                            {(c.summary || c.notes).slice(0, 160)}
+                            {(c.summary || c.notes).length > 160 ? "..." : ""}
+                          </div>
+                        )}
+
+                        {/* Call Recording Audio Player */}
+                        {hasAudio && (
+                          <div style={{ width: "100%", marginTop: "2px" }}>
+                            <audio
+                              controls
+                              src={c.recordingUrl}
+                              style={{ width: "100%", height: "30px", borderRadius: "6px" }}
+                            />
+                          </div>
+                        )}
                       </div>
                     );
                   })}

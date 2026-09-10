@@ -105,6 +105,8 @@ export default function LogCallModal({
   const [followUpPeriod, setFollowUpPeriod] = useState<"AM" | "PM">("AM");
   const [notes, setNotes] = useState("");
   const [durationSec, setDurationSec] = useState<number>(60);
+  const [recordingUrl, setRecordingUrl] = useState<string>("");
+  const [callSummary, setCallSummary] = useState<string>("");
 
   // Preselect customer if passed via props
   useEffect(() => {
@@ -318,6 +320,8 @@ export default function LogCallModal({
     } else {
       formData.delete("followUpDate");
     }
+    if (recordingUrl) formData.set("recordingUrl", recordingUrl);
+    if (callSummary) formData.set("summary", callSummary);
 
     const result = await logCall(formData);
 
@@ -383,6 +387,8 @@ export default function LogCallModal({
               onApplyToForm={(data) => {
                 if (data.outcome) setSelectedOutcome(data.outcome);
                 if (data.notes) setNotes(data.notes);
+                if (data.summary) setCallSummary(data.summary);
+                if (data.recordingUrl) setRecordingUrl(data.recordingUrl);
                 if (data.followUpDate) setFollowUpDate(data.followUpDate);
                 if (data.followUpHour) setFollowUpHour(data.followUpHour);
                 if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
@@ -397,6 +403,24 @@ export default function LogCallModal({
               }}
               initialExpanded={false}
             />
+
+            {/* Audio Recording Playback Preview if attached */}
+            {recordingUrl && (
+              <div
+                style={{
+                  marginBottom: "16px",
+                  padding: "10px 12px",
+                  backgroundColor: "#f0fdf4",
+                  border: "1.5px solid #86efac",
+                  borderRadius: "10px"
+                }}
+              >
+                <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#15803d", marginBottom: "4px" }}>
+                  🎙️ Call Audio Recording Attached (Ready to Save)
+                </div>
+                <audio controls src={recordingUrl} style={{ width: "100%", height: "32px", borderRadius: "6px" }} />
+              </div>
+            )}
 
             {/* Hidden field carries the real customer ID */}
             <input type="hidden" name="customerId" value={selectedCustomerId} />

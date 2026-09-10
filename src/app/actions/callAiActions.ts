@@ -230,6 +230,7 @@ export async function saveCallWithAIDebrief(payload: {
   followUpDateStr?: string | null;
   followUpTaskTitle?: string;
   createTask?: boolean;
+  recordingUrl?: string | null;
 }) {
   try {
     const session = await getServerSession(authOptions);
@@ -315,6 +316,7 @@ export async function saveCallWithAIDebrief(payload: {
         summary: enrichedSummary,
         followUpDate,
         nextAction: payload.followUpTaskTitle || null,
+        recordingUrl: payload.recordingUrl || null,
       },
       include: {
         customer: true,

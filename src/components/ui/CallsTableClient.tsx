@@ -184,13 +184,18 @@ export default function CallsTableClient({
                     </span>
                   </td>
                   <td>
-                    {call.recordingUrl ? (
-                      <audio controls src={call.recordingUrl} style={{ height: '30px', maxWidth: '190px' }} />
-                    ) : (
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-                        {call.summary || call.notes ? (call.summary || call.notes).slice(0, 50) + "..." : "No recording"}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '220px' }}>
+                      {call.recordingUrl && (
+                        <audio controls src={call.recordingUrl} style={{ height: '30px', width: '100%' }} />
+                      )}
+                      {(call.summary || call.notes) ? (
+                        <span style={{ fontSize: '0.74rem', color: '#475569', lineHeight: 1.3 }} title={call.summary || call.notes}>
+                          {(call.summary || call.notes).slice(0, 60)}{(call.summary || call.notes).length > 60 ? "..." : ""}
+                        </span>
+                      ) : (
+                        !call.recordingUrl && <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No recording</span>
+                      )}
+                    </div>
                   </td>
                   <td>
                     {call.followUpDate ? (

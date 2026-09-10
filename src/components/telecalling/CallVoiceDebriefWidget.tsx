@@ -52,6 +52,8 @@ interface CallVoiceDebriefWidgetProps {
     followUpPeriod: "AM" | "PM";
     dealSentiment?: "HOT" | "WARM" | "COLD";
     keyPoints?: string[];
+    recordingUrl?: string | null;
+    transcript?: string;
   }) => void;
   /** Callback when call is saved directly via 1-tap in this widget */
   onCallSaved?: (result: any) => void;
@@ -133,6 +135,7 @@ export default function CallVoiceDebriefWidget({
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysis, setAnalysis] = useState<CallVoiceDebriefAnalysis | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [recordedAudioUrl, setRecordedAudioUrl] = useState<string>("");
 
   // Audio / Speech refs
   const speechRecognitionRef = useRef<any>(null);
@@ -193,10 +196,14 @@ export default function CallVoiceDebriefWidget({
     setLiveTranscript("");
     setAnalysis(null);
     setRecordingSec(0);
+    setRecordedAudioUrl("");
 
-    // Grant app lock exemption
+    // Grant app lock exemption & request native Android microphone permission
     if (typeof window !== "undefined") {
       (window as any).grantAppLockExemption?.(180);
+      try {
+        (window as any).AndroidNative?.requestMicrophonePermission?.();
+      } catch {}
     }
 
     let speechActive = false;
@@ -340,21 +347,28 @@ export default function CallVoiceDebriefWidget({
             reader.onerror = () => resolve("");
             reader.readAsDataURL(blob);
           });
+          if (audioBase64) {
+            const fullUrl = `data:${mimeType};base64,${audioBase64}`;
+            setRecordedAudioUrl(fullUrl);
+          }
         }
       } catch (err) {
         console.warn("Audio processing fallback notice:", err);
       }
     }
 
+    const currentAudioDataUrl = (audioBase64 && mimeType) ? `data:${mimeType};base64,${audioBase64}` : recordedAudioUrl;
+
     // Trigger AI Analysis
-    processWithGeminiAI(liveTranscript, audioBase64, mimeType);
+    processWithGeminiAI(liveTranscript, audioBase64, mimeType, currentAudioDataUrl);
   };
 
-  // Call Server Action
+  // Process Debrief via REST API route with resilience fallbacks
   const processWithGeminiAI = async (
     text: string,
     audioBase64?: string,
-    mimeType?: string
+    mimeType?: string,
+    audioDataUrl?: string
   ) => {
     setIsAnalyzing(true);
     setErrorMessage("");
@@ -363,52 +377,81 @@ export default function CallVoiceDebriefWidget({
     // If speech was silent / not captured, provide graceful context fallback
     const effectiveText = speechText || `Discussion with ${contactName || "Customer"}. Call duration ${callDurationSec}s. Follow-up required.`;
 
-    try {
-      const res = await analyzeCallVoiceDebrief({
-        spokenText: effectiveText,
-        audioBase64: audioBase64 && audioBase64.length > 50 ? audioBase64 : undefined,
-        mimeType,
-        callContext: {
-          contactName,
-          contactPhone,
-          durationSec: callDurationSec,
-          customerId: customerId || undefined,
-          leadId: leadId || undefined
-        }
-      });
-
-      if (res.success && res.analysis) {
-        setAnalysis(res.analysis);
-        if (onApplyToForm) {
-          onApplyToForm({
-            outcome: res.analysis.detectedOutcome || "Interested / Follow-up Needed",
-            summary: res.analysis.summary || "",
-            notes: res.analysis.summary
-              ? `${res.analysis.summary}\n\n[Key Takeaways]:\n${(res.analysis.keyPoints || []).map((p) => `• ${p}`).join("\n")}`
-              : res.analysis.transcript || "",
-            followUpDate: res.analysis.suggestedFollowUp?.date || "",
-            followUpHour: res.analysis.suggestedFollowUp?.hour12 || "11",
-            followUpMinute: res.analysis.suggestedFollowUp?.minute || "00",
-            followUpPeriod: res.analysis.suggestedFollowUp?.period || "AM",
-            dealSentiment: res.analysis.dealSentiment,
-            keyPoints: res.analysis.keyPoints
-          });
-        }
-      } else {
-        // Apply immediate fallback preset
-        handleApplyPreset(QUICK_PRESETS[0]);
+    const payload = {
+      spokenText: effectiveText,
+      audioBase64: audioBase64 && audioBase64.length > 50 ? audioBase64 : undefined,
+      mimeType: mimeType || "audio/webm",
+      callContext: {
+        contactName,
+        contactPhone,
+        durationSec: callDurationSec,
+        customerId: customerId || undefined,
+        leadId: leadId || undefined
       }
-    } catch (err: any) {
-      console.error("AI Debrief error:", err);
-      handleApplyPreset(QUICK_PRESETS[0]);
-    } finally {
-      setIsAnalyzing(false);
+    };
+
+    let resultAnalysis: CallVoiceDebriefAnalysis | null = null;
+
+    // 1. Call REST API route (most robust across Mobile WebView & Web)
+    try {
+      const response = await fetch("/api/calls/analyze-debrief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.success && data.analysis) {
+          resultAnalysis = data.analysis;
+        }
+      }
+    } catch (fetchErr) {
+      console.warn("REST analyze-debrief attempt notice:", fetchErr);
     }
+
+    // 2. Fallback to Server Action if REST call didn't complete
+    if (!resultAnalysis) {
+      try {
+        const res = await analyzeCallVoiceDebrief(payload);
+        if (res && res.success && res.analysis) {
+          resultAnalysis = res.analysis;
+        }
+      } catch (actErr) {
+        console.warn("Server action analyzeCallVoiceDebrief fallback notice:", actErr);
+      }
+    }
+
+    const effectiveAudioUrl = audioDataUrl || (audioBase64 ? `data:${mimeType || "audio/webm"};base64,${audioBase64}` : recordedAudioUrl) || null;
+
+    if (resultAnalysis) {
+      setAnalysis(resultAnalysis);
+      if (onApplyToForm) {
+        onApplyToForm({
+          outcome: resultAnalysis.detectedOutcome || "Interested / Follow-up Needed",
+          summary: resultAnalysis.summary || "",
+          notes: resultAnalysis.summary
+            ? `${resultAnalysis.summary}\n\n[Key Takeaways]:\n${(resultAnalysis.keyPoints || []).map((p) => `• ${p}`).join("\n")}`
+            : resultAnalysis.transcript || "",
+          followUpDate: resultAnalysis.suggestedFollowUp?.date || "",
+          followUpHour: resultAnalysis.suggestedFollowUp?.hour12 || "11",
+          followUpMinute: resultAnalysis.suggestedFollowUp?.minute || "00",
+          followUpPeriod: resultAnalysis.suggestedFollowUp?.period || "AM",
+          dealSentiment: resultAnalysis.dealSentiment,
+          keyPoints: resultAnalysis.keyPoints,
+          recordingUrl: effectiveAudioUrl,
+          transcript: resultAnalysis.transcript || speechText
+        });
+      }
+    } else {
+      // Immediate fallback preset
+      handleApplyPreset(QUICK_PRESETS[0], effectiveAudioUrl || undefined);
+    }
+    setIsAnalyzing(false);
   };
 
   // Keep stopRecordingRef in sync with latest stopRecording closure
   stopRecordingRef.current = stopRecording as any;
-  const handleApplyPreset = (preset: typeof QUICK_PRESETS[0]) => {
+  const handleApplyPreset = (preset: typeof QUICK_PRESETS[0], audioUrl?: string) => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + preset.followUpDays);
     const dateStr = targetDate.toISOString().split("T")[0];
@@ -434,6 +477,8 @@ export default function CallVoiceDebriefWidget({
     setAnalysis(syntheticAnalysis);
     setErrorMessage("");
 
+    const effectiveAudio = audioUrl || recordedAudioUrl || null;
+
     if (onApplyToForm) {
       onApplyToForm({
         outcome: preset.outcome,
@@ -444,7 +489,9 @@ export default function CallVoiceDebriefWidget({
         followUpMinute: preset.min,
         followUpPeriod: preset.period,
         dealSentiment: preset.sentiment,
-        keyPoints: syntheticAnalysis.keyPoints
+        keyPoints: syntheticAnalysis.keyPoints,
+        recordingUrl: effectiveAudio,
+        transcript: preset.summary
       });
     }
   };
@@ -508,7 +555,7 @@ export default function CallVoiceDebriefWidget({
                   borderRadius: "6px"
                 }}
               >
-                Gemini 2.5
+                Gemini 3.6 AI
               </span>
             </div>
             <p style={{ margin: 0, fontSize: "0.72rem", color: "#64748b" }}>
@@ -861,6 +908,35 @@ export default function CallVoiceDebriefWidget({
                       • {point}
                     </span>
                   ))}
+                </div>
+              )}
+
+              {/* Audio Playback Player if Recorded */}
+              {recordedAudioUrl && (
+                <div
+                  style={{
+                    backgroundColor: "#f8fafc",
+                    borderRadius: "8px",
+                    padding: "8px 10px",
+                    marginBottom: "8px",
+                    border: "1px solid #e2e8f0"
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      color: "#334155",
+                      marginBottom: "4px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px"
+                    }}
+                  >
+                    <Volume2 size={13} style={{ color: "#4f46e5" }} />
+                    <span>Debrief Audio Recording (Attached)</span>
+                  </div>
+                  <audio controls src={recordedAudioUrl} style={{ width: "100%", height: "32px", borderRadius: "6px" }} />
                 </div>
               )}
 

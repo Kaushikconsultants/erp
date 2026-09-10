@@ -402,10 +402,13 @@ export async function getDialerRecentCalls(limit: number = 40) {
         contactName,
         contactPerson,
         phone,
+        phoneNumber: phone,
         contactType,
         customerId: c.customerId,
         leadId: c.leadId,
-        employeeName: c.employee?.user?.name || "Agent"
+        employeeName: c.employee?.user?.name || "Agent",
+        recordingUrl: c.recordingUrl || null,
+        summary: c.summary || null
       };
     });
 
