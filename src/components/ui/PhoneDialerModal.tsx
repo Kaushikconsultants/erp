@@ -478,12 +478,30 @@ function PhoneDialerModalContent({
         isCallInitiatedRef.current = false;
         setCallDurationSec(finalDur);
 
+        // Retrieve native cellular call recording from detail or Android bridge
+        const nativeRecUrl = (detail?.recordingUrl) || ((window as any).AndroidNative?.getLastCallRecording?.());
+        if (nativeRecUrl && typeof nativeRecUrl === "string" && nativeRecUrl.startsWith("data:audio")) {
+          setRecordingUrl(nativeRecUrl);
+          setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached automatically!`);
+        } else {
+          // Check AndroidNative bridge after brief delay for file flush
+          setTimeout(() => {
+            try {
+              const delayedRec = (window as any).AndroidNative?.getLastCallRecording?.();
+              if (delayedRec && typeof delayedRec === "string" && delayedRec.startsWith("data:audio")) {
+                setRecordingUrl(delayedRec);
+                setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached automatically!`);
+              }
+            } catch (e) {}
+          }, 1200);
+        }
+
         if (finalDur > 0) {
           setCallStatus("Completed");
           if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
             setOutcome("Interested / Follow-up Needed");
           }
-          setFeedbackMsg(`⏹ Call completed (${formatDuration(finalDur)}). AI Voice Debrief starting... 🎙️`);
+          setFeedbackMsg(`⏹ Call completed (${formatDuration(finalDur)}). Review or tap Debrief below.`);
           setAutoDebriefTrigger(Date.now());
         } else {
           setCallStatus("Busy");
@@ -1695,18 +1713,18 @@ function PhoneDialerModalContent({
                   callDurationSec={callDurationSec}
                   callType={callType}
                   autoStartTrigger={autoDebriefTrigger}
-                  autoStartRecording={autoRecordEnabled}
+                  autoStartRecording={false}
                   initialTranscript={autoRecordTranscript}
                   onApplyToForm={(data) => {
                     if (data.outcome) setOutcome(data.outcome);
                     if (data.notes) setNotes(data.notes);
                     if (data.summary) setCallSummary(data.summary);
-                    if (data.recordingUrl) setRecordingUrl(data.recordingUrl);
+                    if (data.recordingUrl && !recordingUrl) setRecordingUrl(data.recordingUrl);
                     if (data.followUpDate) setFollowUpDate(data.followUpDate);
                     if (data.followUpHour) setFollowUpHour(data.followUpHour);
                     if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
                     if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
-                    setFeedbackMsg("✨ AI Intelligence & Recording attached!");
+                    setFeedbackMsg("✨ AI Debrief intelligence applied!");
                   }}
                   onCallSaved={() => {
                     setFeedbackMsg("✅ Call logged with AI Debrief & Follow-up scheduled!");
@@ -1735,29 +1753,62 @@ function PhoneDialerModalContent({
                       {recordingUrl ? "🎙️ Call Recording Attached" : "Call Audio Recording"}
                     </span>
                   </div>
-                  <label
-                    style={{
-                      fontSize: "0.74rem",
-                      padding: "4px 8px",
-                      backgroundColor: "#ffffff",
-                      border: "1px solid #cbd5e1",
-                      borderRadius: "6px",
-                      color: "#4f46e5",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "4px"
-                    }}
-                  >
-                    <Upload size={12} /> {recordingUrl ? "Replace File" : "Attach File"}
-                    <input
-                      type="file"
-                      accept="audio/*"
-                      style={{ display: "none" }}
-                      onChange={handleAttachAudioFile}
-                    />
-                  </label>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          const audioData = (window as any).AndroidNative?.getLastCallRecording?.();
+                          if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio")) {
+                            setRecordingUrl(audioData);
+                            setFeedbackMsg("✅ Found and attached call recording from phone!");
+                          } else {
+                            setFeedbackMsg("ℹ️ No new call recording found on phone. Ensure Call Recording is ON in Phone Settings or tap 'Attach File'.");
+                          }
+                        } catch {
+                          setFeedbackMsg("Tap 'Attach File' to select your call recording.");
+                        }
+                      }}
+                      style={{
+                        fontSize: "0.74rem",
+                        padding: "4px 8px",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        color: "#0f172a",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      <RotateCcw size={12} /> Scan Phone
+                    </button>
+                    <label
+                      style={{
+                        fontSize: "0.74rem",
+                        padding: "4px 8px",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        color: "#4f46e5",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      <Upload size={12} /> {recordingUrl ? "Replace" : "Attach File"}
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        style={{ display: "none" }}
+                        onChange={handleAttachAudioFile}
+                      />
+                    </label>
+                  </div>
                 </div>
 
                 {recordingUrl ? (
@@ -1775,8 +1826,26 @@ function PhoneDialerModalContent({
                     </div>
                   </div>
                 ) : (
-                  <div style={{ fontSize: "0.7rem", color: "#64748b", marginTop: "4px" }}>
-                    No recording attached yet. Use the 1-Tap Debrief above, or tap "Attach File" to attach a call recording from your phone (e.g. Xiaomi Call Recorder).
+                  <div style={{ marginTop: "6px" }}>
+                    <div style={{ fontSize: "0.72rem", color: "#64748b", marginBottom: "6px" }}>
+                      No recording attached yet. Tap <strong>Scan Phone</strong> to auto-detect from device storage, or <strong>Attach File</strong> to upload.
+                    </div>
+                    <div
+                      style={{
+                        backgroundColor: "#f0f9ff",
+                        border: "1px solid #bae6fd",
+                        borderRadius: "8px",
+                        padding: "6px 10px",
+                        fontSize: "0.68rem",
+                        color: "#0369a1",
+                        lineHeight: "1.3"
+                      }}
+                    >
+                      💡 <strong>Xiaomi / Redmi / Android Tip:</strong> Turn on auto-recording in your phone dialer:
+                      <span style={{ display: "block", color: "#0c4a6e", marginTop: "2px", fontWeight: 600 }}>
+                        Open Phone App ➔ Settings (⚙️) ➔ Call Recording ➔ Turn ON "Record calls automatically".
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>

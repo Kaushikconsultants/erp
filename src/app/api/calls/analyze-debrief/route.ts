@@ -14,10 +14,10 @@ const CRM_OUTCOMES = [
   "Support / General Inquiry",
 ];
 
-const GEMINI_MODELS = ["gemini-3.6-flash", "gemini-1.5-flash", "gemini-2.0-flash"];
+const GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash"];
 
 function getAIClient() {
-  const apiKey = process.env.GEMINI_API_KEY || "";
+  const apiKey = (process.env.GEMINI_API_KEY || "").replace(/^["']|["']$/g, "").trim();
   return new GoogleGenAI({ apiKey });
 }
 

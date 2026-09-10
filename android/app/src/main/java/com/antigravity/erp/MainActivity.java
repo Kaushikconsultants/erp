@@ -44,6 +44,129 @@ public class MainActivity extends BridgeActivity {
     private int lastCallDurationSec = 0;
     public String pendingCallNumber = null;
     public String activeRecordingCallId = null;
+    public String lastRecordedAudioDataUrl = null;
+
+    public java.io.File findRecentCallAudioFile(String phoneNumber) {
+        long tenMinutesAgo = System.currentTimeMillis() - 600000;
+        java.io.File bestFile = null;
+        long latestMod = 0;
+
+        java.util.List<java.io.File> candidateDirs = new java.util.ArrayList<>();
+        try {
+            java.io.File ext = android.os.Environment.getExternalStorageDirectory();
+            if (ext != null && ext.exists()) {
+                candidateDirs.add(new java.io.File(ext, "MIUI/sound_recorder/call_rec"));
+                candidateDirs.add(new java.io.File(ext, "MIUI/sound_recorder"));
+                candidateDirs.add(new java.io.File(ext, "sound_recorder/call_rec"));
+                candidateDirs.add(new java.io.File(ext, "Recordings/Call"));
+                candidateDirs.add(new java.io.File(ext, "Recordings/call"));
+                candidateDirs.add(new java.io.File(ext, "Recordings/Call Recordings"));
+                candidateDirs.add(new java.io.File(ext, "Recordings/Calls"));
+                candidateDirs.add(new java.io.File(ext, "Recordings"));
+                candidateDirs.add(new java.io.File(ext, "VoiceRecorder"));
+                candidateDirs.add(new java.io.File(ext, "Call"));
+            }
+            java.io.File pubRec = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_RECORDINGS);
+            if (pubRec != null && pubRec.exists()) {
+                candidateDirs.add(pubRec);
+                candidateDirs.add(new java.io.File(pubRec, "Call"));
+                candidateDirs.add(new java.io.File(pubRec, "call"));
+            }
+            java.io.File pubMusic = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_MUSIC);
+            if (pubMusic != null && pubMusic.exists()) {
+                candidateDirs.add(new java.io.File(pubMusic, "Recordings"));
+            }
+            java.io.File extFiles = getExternalFilesDir(null);
+            if (extFiles != null && extFiles.exists()) {
+                candidateDirs.add(new java.io.File(extFiles, "call_recordings"));
+            }
+            candidateDirs.add(new java.io.File(getFilesDir(), "call_recordings"));
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+
+        for (java.io.File dir : candidateDirs) {
+            if (dir != null && dir.exists() && dir.isDirectory()) {
+                try {
+                    java.io.File[] files = dir.listFiles();
+                    if (files != null) {
+                        for (java.io.File f : files) {
+                            if (f != null && f.isFile() && f.length() > 1024 && f.lastModified() >= tenMinutesAgo) {
+                                String name = f.getName().toLowerCase();
+                                if (name.endsWith(".m4a") || name.endsWith(".mp3") || name.endsWith(".aac") || name.endsWith(".wav") || name.endsWith(".ogg") || name.endsWith(".3gp") || name.endsWith(".amr")) {
+                                    if (f.lastModified() > latestMod) {
+                                        latestMod = f.lastModified();
+                                        bestFile = f;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Throwable t) {}
+            }
+        }
+
+        // Secondary fallback: Query MediaStore.Audio.Media for recent audio additions
+        if (bestFile == null) {
+            try {
+                android.content.ContentResolver cr = getContentResolver();
+                android.net.Uri uri = android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                String[] projection = {
+                        android.provider.MediaStore.Audio.Media._ID,
+                        android.provider.MediaStore.Audio.Media.DATA,
+                        android.provider.MediaStore.Audio.Media.DATE_ADDED,
+                        android.provider.MediaStore.Audio.Media.SIZE
+                };
+                long tenMinutesSec = (System.currentTimeMillis() - 600000) / 1000;
+                String selection = android.provider.MediaStore.Audio.Media.DATE_ADDED + " >= ? AND " + android.provider.MediaStore.Audio.Media.SIZE + " > 1024";
+                String[] selectionArgs = new String[]{ String.valueOf(tenMinutesSec) };
+                String sortOrder = android.provider.MediaStore.Audio.Media.DATE_ADDED + " DESC";
+
+                try (android.database.Cursor cursor = cr.query(uri, projection, selection, selectionArgs, sortOrder)) {
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int dataIdx = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.DATA);
+                        if (dataIdx != -1) {
+                            String path = cursor.getString(dataIdx);
+                            if (path != null) {
+                                java.io.File f = new java.io.File(path);
+                                if (f.exists() && f.length() > 1024) {
+                                    bestFile = f;
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        }
+
+        return bestFile;
+    }
+
+    public String fileToAudioDataUrl(java.io.File file) {
+        if (file == null || !file.exists() || file.length() < 1024) return null;
+        try {
+            long len = Math.min(file.length(), 15 * 1024 * 1024);
+            byte[] bytes = new byte[(int) len];
+            try (java.io.FileInputStream fis = new java.io.FileInputStream(file)) {
+                int read = fis.read(bytes);
+                if (read <= 0) return null;
+            }
+            String b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
+            String name = file.getName().toLowerCase();
+            String mime = "audio/mp4";
+            if (name.endsWith(".mp3")) mime = "audio/mp3";
+            else if (name.endsWith(".wav")) mime = "audio/wav";
+            else if (name.endsWith(".aac")) mime = "audio/aac";
+            else if (name.endsWith(".m4a")) mime = "audio/mp4";
+            else if (name.endsWith(".ogg")) mime = "audio/ogg";
+            return "data:" + mime + ";base64," + b64;
+        } catch (Throwable t) {
+            t.printStackTrace();
+            return null;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -217,6 +340,19 @@ public class MainActivity extends BridgeActivity {
                 permissionsNeeded.add(Manifest.permission.READ_PHONE_STATE);
             }
 
+            // External Media / Audio Read Permission (to auto-detect Xiaomi & Android Call Recordings)
+            if (Build.VERSION.SDK_INT >= 33) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    permissionsNeeded.add(Manifest.permission.READ_MEDIA_AUDIO);
+                }
+            } else {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    permissionsNeeded.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+                }
+            }
+
             if (!permissionsNeeded.isEmpty()) {
                 ActivityCompat.requestPermissions(
                         this,
@@ -307,16 +443,25 @@ public class MainActivity extends BridgeActivity {
                 activeRecordingCallId = null;
                 final String phoneForTranscription = pendingCallNumber != null ? pendingCallNumber : "Unknown";
 
-                sendNativeCallEvent("ENDED", durationSec, callIdForTranscription, phoneForTranscription);
-                bringAppToForeground();
+                // Stop recording & scan device storage for native Xiaomi / Android call recording
+                new Thread(() -> {
+                    try {
+                        java.io.File audioFile = com.antigravity.erp.audio.CallAudioRecordingService.Companion.stopRecording(getApplicationContext());
+                        if (audioFile == null || !audioFile.exists() || audioFile.length() <= 512) {
+                            // Xiaomi & Android dialers write the recorded file right at hangup. Retry scan for up to 1.8s.
+                            for (int retry = 0; retry < 3; retry++) {
+                                try { Thread.sleep(600); } catch (Exception e) {}
+                                audioFile = findRecentCallAudioFile(phoneForTranscription);
+                                if (audioFile != null && audioFile.exists() && audioFile.length() > 1024) {
+                                    break;
+                                }
+                            }
+                        }
 
-                // Stop recording & enqueue transcription
-                try {
-                    java.io.File audioFile = com.antigravity.erp.audio.CallAudioRecordingService.Companion.stopRecording(getApplicationContext());
-                    if (audioFile != null && audioFile.exists() && audioFile.length() > 512) {
-                        final String finalCallId = callIdForTranscription != null ? callIdForTranscription : ("call_" + System.currentTimeMillis());
-                        final String finalPath = audioFile.getAbsolutePath();
-                        new Thread(() -> {
+                        if (audioFile != null && audioFile.exists() && audioFile.length() > 512) {
+                            lastRecordedAudioDataUrl = fileToAudioDataUrl(audioFile);
+                            final String finalCallId = callIdForTranscription != null ? callIdForTranscription : ("call_" + System.currentTimeMillis());
+                            final String finalPath = audioFile.getAbsolutePath();
                             try {
                                 com.antigravity.erp.transcription.TranscriptionWorker.Companion.enqueue(
                                         getApplicationContext(),
@@ -328,11 +473,16 @@ public class MainActivity extends BridgeActivity {
                             } catch (Exception ex) {
                                 ex.printStackTrace();
                             }
-                        }).start();
+                        } else {
+                            lastRecordedAudioDataUrl = null;
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+
+                    sendNativeCallEvent("ENDED", durationSec, callIdForTranscription, phoneForTranscription, lastRecordedAudioDataUrl);
+                    bringAppToForeground();
+                }).start();
             }
         } else if (state == TelephonyManager.CALL_STATE_RINGING) {
             sendNativeCallEvent("RINGING", 0);
@@ -398,10 +548,14 @@ public class MainActivity extends BridgeActivity {
      * Broadcasts native call events directly into WebView JavaScript window event bus
      */
     public void sendNativeCallEvent(final String state, final int durationSec) {
-        sendNativeCallEvent(state, durationSec, null, null);
+        sendNativeCallEvent(state, durationSec, null, null, null);
     }
 
     public void sendNativeCallEvent(final String state, final int durationSec, final String callId, final String phoneNumber) {
+        sendNativeCallEvent(state, durationSec, callId, phoneNumber, null);
+    }
+
+    public void sendNativeCallEvent(final String state, final int durationSec, final String callId, final String phoneNumber, final String recordingUrl) {
         runOnUiThread(() -> {
             try {
                 WebView webView = getBridge().getWebView();
@@ -412,6 +566,7 @@ public class MainActivity extends BridgeActivity {
                     detail.put("timestamp", System.currentTimeMillis());
                     if (callId != null) detail.put("callId", callId);
                     if (phoneNumber != null) detail.put("phoneNumber", phoneNumber);
+                    if (recordingUrl != null && !recordingUrl.isEmpty()) detail.put("recordingUrl", recordingUrl);
 
                     String script = "window.dispatchEvent(new CustomEvent('native-call-state', { detail: " + detail.toString() + " }));";
                     webView.evaluateJavascript(script, null);
@@ -816,6 +971,24 @@ public class MainActivity extends BridgeActivity {
                 t.printStackTrace();
                 return "{\"success\": false, \"error\": \"" + t.getMessage() + "\"}";
             }
+        }
+
+        @JavascriptInterface
+        public String getLastCallRecording() {
+            if (activity.lastRecordedAudioDataUrl != null && !activity.lastRecordedAudioDataUrl.isEmpty()) {
+                return activity.lastRecordedAudioDataUrl;
+            }
+            try {
+                String phone = activity.pendingCallNumber != null ? activity.pendingCallNumber : "";
+                java.io.File file = activity.findRecentCallAudioFile(phone);
+                if (file != null && file.exists() && file.length() > 512) {
+                    activity.lastRecordedAudioDataUrl = activity.fileToAudioDataUrl(file);
+                    return activity.lastRecordedAudioDataUrl != null ? activity.lastRecordedAudioDataUrl : "";
+                }
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+            return "";
         }
     }
 }
