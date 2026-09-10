@@ -419,11 +419,17 @@ function PhoneDialerModalContent({
     const handleTranscription = (e: any) => {
       const detail = e.detail || {};
       if (detail.text) {
-        setNotes((prev) => (prev ? `${prev}\n\n[Auto-Transcript]: ${detail.text}` : `[Auto-Transcript]: ${detail.text}`));
+        const transcriptText = detail.text;
+        const summaryText = detail.summary ? `\n\n[AI Summary]: ${detail.summary}` : "";
+        setNotes((prev) => {
+          const cleanPrev = prev ? prev.replace(/\[Auto-Transcript\][\s\S]*$/, "").trim() : "";
+          return cleanPrev ? `${cleanPrev}\n\n[Auto-Transcript]: ${transcriptText}${summaryText}` : `[Auto-Transcript]: ${transcriptText}${summaryText}`;
+        });
         if (detail.outcome) {
           setOutcome(detail.outcome);
         }
-        setFeedbackMsg(`🎙️ Automatic Cellular Transcript Attached!`);
+        setAutoRecordTranscript(transcriptText);
+        setFeedbackMsg("🎙️ Automatic AI Call Transcript & Summary Attached!");
       }
     };
     if (typeof window !== "undefined") {

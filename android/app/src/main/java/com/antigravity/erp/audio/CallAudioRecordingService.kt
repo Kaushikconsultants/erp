@@ -29,6 +29,12 @@ class CallAudioRecordingService : Service() {
         @Volatile
         private var instance: CallAudioRecordingService? = null
 
+        fun isRecording(): Boolean = instance?.recorder?.isRecording() == true
+
+        fun getCurrentCallId(): String? = instance?.currentCallId
+
+        fun getCurrentPhoneNumber(): String? = instance?.currentPhoneNumber
+
         fun startRecording(context: Context, callId: String, phoneNumber: String) {
             val intent = Intent(context, CallAudioRecordingService::class.java).apply {
                 action = ACTION_START
@@ -54,6 +60,7 @@ class CallAudioRecordingService : Service() {
 
     private var recorder: CallAudioRecorder? = null
     private var currentCallId: String? = null
+    private var currentPhoneNumber: String? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -78,6 +85,7 @@ class CallAudioRecordingService : Service() {
             val callId = intent.getStringExtra(EXTRA_CALL_ID) ?: System.currentTimeMillis().toString()
             val phone = intent.getStringExtra(EXTRA_PHONE_NUMBER) ?: "Active Call"
             currentCallId = callId
+            currentPhoneNumber = phone
 
             val notification = buildForegroundNotification(phone)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

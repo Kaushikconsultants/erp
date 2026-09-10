@@ -33,15 +33,15 @@ interface TranscriptionProvider {
 class GeminiCloudTranscriptionProvider(private val context: Context) : TranscriptionProvider {
 
     override suspend fun transcribeAudio(audioFile: File, phoneNumber: String, durationSec: Int): TranscriptionResult {
-        val prefs = context.getSharedPreferences(NotificationSyncReceiver.PREFS_NAME, Context.MODE_PRIVATE)
-        val serverUrl = prefs.getString(NotificationSyncReceiver.PREF_SERVER_URL, NotificationSyncReceiver.DEFAULT_SERVER_URL)
+        val rawServerUrl = prefs.getString(NotificationSyncReceiver.PREF_SERVER_URL, NotificationSyncReceiver.DEFAULT_SERVER_URL)
             ?: NotificationSyncReceiver.DEFAULT_SERVER_URL
+        val serverUrl = rawServerUrl.trim().trimEnd('/')
 
-        if (!audioFile.exists() || audioFile.length() == 0L) {
+        if (!audioFile.exists() || audioFile.length() < 512L) {
             return TranscriptionResult(
                 success = false,
                 text = "",
-                errorMessage = "Audio file is empty or missing."
+                errorMessage = "Audio file is empty or too short."
             )
         }
 
@@ -64,8 +64,8 @@ class GeminiCloudTranscriptionProvider(private val context: Context) : Transcrip
             val url = URL(targetUrl)
             val conn = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
-                connectTimeout = 15000
-                readTimeout = 30000
+                connectTimeout = 20000
+                readTimeout = 45000
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
                 setRequestProperty("User-Agent", "Antigravity-Android-TranscriptionService")
@@ -104,8 +104,8 @@ class GeminiCloudTranscriptionProvider(private val context: Context) : Transcrip
                         detectedOutcome = outcome,
                         dealSentiment = sentiment,
                         sentimentReason = reason,
-                        confidence = 0.96f,
-                        provider = "GEMINI_2.5_FLASH"
+                        confidence = 0.98f,
+                        provider = "GEMINI_3.6_FLASH"
                     )
                 }
             }

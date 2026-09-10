@@ -43,6 +43,7 @@ public class MainActivity extends BridgeActivity {
     private boolean isCallInProgress = false;
     private int lastCallDurationSec = 0;
     public String pendingCallNumber = null;
+    public String activeRecordingCallId = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -276,6 +277,23 @@ public class MainActivity extends BridgeActivity {
             }
             isCallInProgress = true;
             sendNativeCallEvent("CONNECTED", 0);
+
+            // Ensure background call recording is active if RECORD_AUDIO permission is granted
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                if (activeRecordingCallId == null) {
+                    activeRecordingCallId = "call_" + System.currentTimeMillis();
+                }
+                String numberToRecord = pendingCallNumber != null ? pendingCallNumber : "Active Call";
+                try {
+                    com.antigravity.erp.audio.CallAudioRecordingService.Companion.startRecording(
+                            getApplicationContext(),
+                            activeRecordingCallId,
+                            numberToRecord
+                    );
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         } else if (state == TelephonyManager.CALL_STATE_IDLE) {
             // Call ended / hung up
             if (isCallInProgress || callStartTime > 0) {
@@ -284,8 +302,37 @@ public class MainActivity extends BridgeActivity {
                 lastCallDurationSec = durationSec;
                 isCallInProgress = false;
                 callStartTime = 0;
-                sendNativeCallEvent("ENDED", durationSec);
+
+                final String callIdForTranscription = activeRecordingCallId;
+                activeRecordingCallId = null;
+                final String phoneForTranscription = pendingCallNumber != null ? pendingCallNumber : "Unknown";
+
+                sendNativeCallEvent("ENDED", durationSec, callIdForTranscription, phoneForTranscription);
                 bringAppToForeground();
+
+                // Stop recording & enqueue transcription
+                try {
+                    java.io.File audioFile = com.antigravity.erp.audio.CallAudioRecordingService.Companion.stopRecording(getApplicationContext());
+                    if (audioFile != null && audioFile.exists() && audioFile.length() > 512) {
+                        final String finalCallId = callIdForTranscription != null ? callIdForTranscription : ("call_" + System.currentTimeMillis());
+                        final String finalPath = audioFile.getAbsolutePath();
+                        new Thread(() -> {
+                            try {
+                                com.antigravity.erp.transcription.TranscriptionWorker.Companion.enqueue(
+                                        getApplicationContext(),
+                                        finalCallId,
+                                        finalPath,
+                                        phoneForTranscription,
+                                        durationSec
+                                );
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        }).start();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         } else if (state == TelephonyManager.CALL_STATE_RINGING) {
             sendNativeCallEvent("RINGING", 0);
@@ -615,13 +662,29 @@ public class MainActivity extends BridgeActivity {
                     activity.callStartTime = System.currentTimeMillis();
                     activity.isCallInProgress = true;
                     activity.lastCallDurationSec = 0;
+                    activity.pendingCallNumber = clean;
+                    if (activity.activeRecordingCallId == null) {
+                        activity.activeRecordingCallId = "call_" + System.currentTimeMillis();
+                    }
+
+                    // Pre-start audio recording while in foreground if RECORD_AUDIO granted
+                    if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                        try {
+                            com.antigravity.erp.audio.CallAudioRecordingService.Companion.startRecording(
+                                    activity,
+                                    activity.activeRecordingCallId,
+                                    clean
+                            );
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
 
                     // If CALL_PHONE permission is granted, place call using SimManager
                     if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
                         com.antigravity.erp.telecom.SimManager simManager = new com.antigravity.erp.telecom.SimManager(activity);
                         simManager.placeCallWithSim(clean, subscriptionId);
                     } else {
-                        activity.pendingCallNumber = clean;
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             ActivityCompat.requestPermissions(
                                     activity,
@@ -688,6 +751,71 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean isCallActive() {
             return activity.isCallInProgress;
+        }
+
+        @JavascriptInterface
+        public boolean startCallRecording(String callId) {
+            try {
+                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    activity.runOnUiThread(activity::requestMicrophonePermission);
+                    return false;
+                }
+                final String idToUse = (callId != null && !callId.trim().isEmpty()) ? callId : ("call_" + System.currentTimeMillis());
+                activity.activeRecordingCallId = idToUse;
+                final String phone = activity.pendingCallNumber != null ? activity.pendingCallNumber : "Active Call";
+
+                activity.runOnUiThread(() -> {
+                    try {
+                        com.antigravity.erp.audio.CallAudioRecordingService.Companion.startRecording(activity, idToUse, phone);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+                return true;
+            } catch (Throwable t) {
+                t.printStackTrace();
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public String stopCallRecording() {
+            try {
+                final String callId = activity.activeRecordingCallId != null ? activity.activeRecordingCallId : ("call_" + System.currentTimeMillis());
+                final String phone = activity.pendingCallNumber != null ? activity.pendingCallNumber : "Active Call";
+                activity.activeRecordingCallId = null;
+
+                java.io.File file = com.antigravity.erp.audio.CallAudioRecordingService.Companion.stopRecording(activity);
+                org.json.JSONObject result = new org.json.JSONObject();
+                if (file != null && file.exists() && file.length() > 512) {
+                    result.put("success", true);
+                    result.put("filePath", file.getAbsolutePath());
+                    result.put("callId", callId);
+
+                    final String aPath = file.getAbsolutePath();
+                    final int durationSec = activity.lastCallDurationSec;
+                    new Thread(() -> {
+                        try {
+                            com.antigravity.erp.transcription.TranscriptionWorker.Companion.enqueue(
+                                activity.getApplicationContext(),
+                                callId,
+                                aPath,
+                                phone,
+                                durationSec
+                            );
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }).start();
+                } else {
+                    result.put("success", false);
+                    result.put("error", "No audio recorded or file empty");
+                }
+                return result.toString();
+            } catch (Throwable t) {
+                t.printStackTrace();
+                return "{\"success\": false, \"error\": \"" + t.getMessage() + "\"}";
+            }
         }
     }
 }

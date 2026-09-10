@@ -142,16 +142,33 @@ Output strict JSON only conforming to the schema.
     }
 
     const ai = getAIClient();
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
+    const candidateModels = ["gemini-3.6-flash", "gemini-1.5-flash", "gemini-2.0-flash"];
+    let responseText = "";
 
-    const responseText = response.text || "{}";
-    const parsed = JSON.parse(responseText);
+    for (const model of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model,
+          contents,
+          config: {
+            responseMimeType: "application/json",
+          },
+        });
+        if (response.text && response.text.trim()) {
+          responseText = response.text.trim();
+          break;
+        }
+      } catch (err: any) {
+        console.warn(`callAiActions: Model ${model} failed, trying next:`, err?.message || err);
+      }
+    }
+
+    if (!responseText) {
+      throw new Error("No response received from Gemini AI models");
+    }
+
+    const cleanJson = responseText.replace(/```json/gi, "").replace(/```/g, "").trim();
+    const parsed = JSON.parse(cleanJson);
 
     const validOutcome = CRM_OUTCOMES.includes(parsed.detectedOutcome)
       ? parsed.detectedOutcome

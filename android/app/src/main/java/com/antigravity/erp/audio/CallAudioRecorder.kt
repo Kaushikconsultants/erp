@@ -35,15 +35,20 @@ class CallAudioRecorder(private val context: Context) {
         val capability = checker.evaluateCapability()
         val preferredSource = capability.recommendedSource
 
-        // Attempt preferred source, then fallback to MIC if preferred fails
-        val sourcesToTry = mutableListOf(preferredSource)
-        if (preferredSource != MediaRecorder.AudioSource.MIC) {
-            sourcesToTry.add(MediaRecorder.AudioSource.MIC)
-        }
+        // Build candidate sources in order of preference
+        val sourcesToTry = linkedSetOf<Int>()
+        sourcesToTry.add(preferredSource)
+        sourcesToTry.add(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+        sourcesToTry.add(MediaRecorder.AudioSource.VOICE_RECOGNITION)
+        sourcesToTry.add(MediaRecorder.AudioSource.MIC)
+        sourcesToTry.add(MediaRecorder.AudioSource.DEFAULT)
 
         var started = false
         for (source in sourcesToTry) {
             try {
+                if (file.exists()) {
+                    file.delete()
+                }
                 mediaRecorder = createRecorder().apply {
                     setAudioSource(source)
                     setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
@@ -88,7 +93,13 @@ class CallAudioRecorder(private val context: Context) {
             isRecording = false
         }
 
-        return outputFile
+        val file = outputFile
+        if (file != null && file.exists() && file.length() == 0L) {
+            try { file.delete() } catch (e: Exception) {}
+            return null
+        }
+
+        return file
     }
 
     private fun releaseRecorder() {

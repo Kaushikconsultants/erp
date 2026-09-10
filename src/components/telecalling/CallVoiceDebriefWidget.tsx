@@ -255,6 +255,11 @@ export default function CallVoiceDebriefWidget({
       }
     }
 
+    if (!speechActive && !mediaRecorderRef.current) {
+      setIsRecording(false);
+      return;
+    }
+
     setIsRecording(true);
     // Keep startRecordingRef in sync so the autoStartTrigger timeout can call it
     // Use a local counter to avoid calling stopRecording() inside a setState updater

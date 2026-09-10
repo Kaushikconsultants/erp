@@ -133,7 +133,7 @@ Available routes for suggestedActions: /orders, /customers, /quotations, /accoun
 `;
 
         const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           contents: businessContext,
           config: {
             responseMimeType: "application/json",
