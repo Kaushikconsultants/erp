@@ -33,6 +33,7 @@ interface TranscriptionProvider {
 class GeminiCloudTranscriptionProvider(private val context: Context) : TranscriptionProvider {
 
     override suspend fun transcribeAudio(audioFile: File, phoneNumber: String, durationSec: Int): TranscriptionResult {
+        val prefs = context.getSharedPreferences(NotificationSyncReceiver.PREFS_NAME, Context.MODE_PRIVATE)
         val rawServerUrl = prefs.getString(NotificationSyncReceiver.PREF_SERVER_URL, NotificationSyncReceiver.DEFAULT_SERVER_URL)
             ?: NotificationSyncReceiver.DEFAULT_SERVER_URL
         val serverUrl = rawServerUrl.trim().trimEnd('/')

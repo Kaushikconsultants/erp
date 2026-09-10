@@ -757,7 +757,7 @@ public class MainActivity extends BridgeActivity {
         public boolean startCallRecording(String callId) {
             try {
                 if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    activity.runOnUiThread(activity::requestMicrophonePermission);
+                    activity.runOnUiThread(activity::requestAppPermissions);
                     return false;
                 }
                 final String idToUse = (callId != null && !callId.trim().isEmpty()) ? callId : ("call_" + System.currentTimeMillis());
