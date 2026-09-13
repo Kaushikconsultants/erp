@@ -264,6 +264,26 @@ function PhoneDialerModalContent({
   const callStartTimeRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isCallInitiatedRef = useRef<boolean>(false);
+  const phoneDigitsRef = useRef<string>(initialPhone);
+  phoneDigitsRef.current = phoneDigits;
+  const selectedContactRef = useRef<any>(null);
+  selectedContactRef.current = selectedContact;
+  const [allFilesGranted, setAllFilesGranted] = useState<boolean>(true);
+
+  const checkStoragePermission = useCallback(() => {
+    if (isAndroidNativeApp() && typeof window !== "undefined") {
+      try {
+        const granted = (window as any).AndroidNative?.hasAllFilesPermission?.();
+        if (typeof granted === "boolean") {
+          setAllFilesGranted(granted);
+        }
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    checkStoragePermission();
+  }, [isOpen, activeTab, checkStoragePermission]);
 
   // Post-Call Maintenance State
   const [callType, setCallType] = useState<"OUTBOUND" | "INBOUND">("OUTBOUND");
@@ -556,9 +576,11 @@ function PhoneDialerModalContent({
         isCallInitiatedRef.current = false;
         setCallDurationSec(finalDur);
 
-        // Stop auto-recording if running
-        if (isAutoRecording) {
+        // Stop auto-recording if running (only on desktop web)
+        if (!isAndroidNativeApp() && isAutoRecording) {
           stopAutoRecording(finalDur);
+        } else if (isAndroidNativeApp()) {
+          setIsAutoRecording(false);
         }
 
         // On Native Android, retrieve the actual recording from device / MediaStore
@@ -569,11 +591,13 @@ function PhoneDialerModalContent({
           handleTranscribeAudioRef.current?.(nativeCandidate, finalDur);
         } else if (isAndroidNativeApp()) {
           // Poll the AndroidNative bridge over 3.5 seconds (OEM dialers write file right upon hangup)
+          const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
           let attempts = 0;
           const pollTimer = setInterval(() => {
             attempts++;
             try {
-              const rec = (window as any).AndroidNative?.getLastCallRecording?.();
+              const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam)
+                || (window as any).AndroidNative?.getLastCallRecording?.();
               if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
                 clearInterval(pollTimer);
                 setRecordingUrl(rec);
@@ -586,7 +610,7 @@ function PhoneDialerModalContent({
             if (attempts >= 5) {
               clearInterval(pollTimer);
               setRecordingUrl("");
-              setFeedbackMsg("ℹ️ Call completed. No audio recording detected on device storage.");
+              setFeedbackMsg("ℹ️ Call completed. Ensure auto-recording is ON in Phone Settings, or tap 'Scan Phone'.");
             }
           }, 700);
         }
@@ -676,17 +700,34 @@ function PhoneDialerModalContent({
           setCallDurationSec(duration);
 
           // Stop auto-recording and trigger transcription when app returns from call
-          if (isAutoRecording) {
+          if (isAndroidNativeApp()) {
+            setIsAutoRecording(false);
+            const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
+            let attempts = 0;
+            const scanNativeRec = () => {
+              attempts++;
+              try {
+                const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam)
+                  || (window as any).AndroidNative?.getLastCallRecording?.();
+                if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
+                  setRecordingUrl(rec);
+                  setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(duration)}) attached! Transcribing with Gemini AI...`);
+                  handleTranscribeAudioRef.current?.(rec, duration);
+                  return true;
+                }
+              } catch (e) {}
+              return false;
+            };
+
+            if (!scanNativeRec()) {
+              const poll = setInterval(() => {
+                if (scanNativeRec() || attempts >= 5) {
+                  clearInterval(poll);
+                }
+              }, 700);
+            }
+          } else if (isAutoRecording) {
             stopAutoRecording(duration);
-          } else {
-            // Also check native cellular recording if on Android
-            try {
-              const nativeRec = (window as any).AndroidNative?.getLastCallRecording?.();
-              if (nativeRec && typeof nativeRec === "string" && nativeRec.startsWith("data:audio")) {
-                setRecordingUrl(nativeRec);
-                handleTranscribeAudioRef.current?.(nativeRec, duration);
-              }
-            } catch (e) {}
           }
 
           if (duration > 0) {
@@ -1844,6 +1885,49 @@ function PhoneDialerModalContent({
                     </div>
                   </div>
                 )}
+                {/* Storage Permission Banner for Android 11+ / HyperOS */}
+                {!allFilesGranted && isAndroidNativeApp() && (
+                  <div
+                    style={{
+                      backgroundColor: "#fffbeb",
+                      border: "1px solid #fde68a",
+                      borderRadius: "10px",
+                      padding: "8px 12px",
+                      marginBottom: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "10px"
+                    }}
+                  >
+                    <div style={{ fontSize: "0.72rem", color: "#92400e", lineHeight: 1.4 }}>
+                      📁 <strong>Enable Call Recording Access:</strong> Allow All Files Access so the CRM can automatically scan and transcribe your phone's call recordings.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try {
+                          (window as any).AndroidNative?.requestAllFilesPermission?.();
+                          setTimeout(checkStoragePermission, 1500);
+                        } catch {}
+                      }}
+                      style={{
+                        backgroundColor: "#d97706",
+                        color: "#ffffff",
+                        border: "none",
+                        borderRadius: "6px",
+                        padding: "5px 10px",
+                        fontSize: "0.72rem",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      Allow Access
+                    </button>
+                  </div>
+                )}
+
                 <div
                   style={{
                     marginBottom: "14px",
@@ -1865,13 +1949,21 @@ function PhoneDialerModalContent({
                         type="button"
                         onClick={() => {
                           try {
-                            const audioData = (window as any).AndroidNative?.getLastCallRecording?.();
+                            const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
+                            const audioData = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam)
+                              || (window as any).AndroidNative?.getLastCallRecording?.();
                             if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio") && audioData.length > 500) {
                               setRecordingUrl(audioData);
                               setFeedbackMsg("✅ Found call recording from phone! Transcribing with Gemini AI...");
                               handleTranscribeAudioRef.current?.(audioData, callDurationSec);
                             } else {
-                              setFeedbackMsg("ℹ️ No call recording found on phone. Ensure 'Record calls automatically' is ON in Phone Settings.");
+                              const hasPerm = (window as any).AndroidNative?.hasAllFilesPermission?.();
+                              if (hasPerm === false) {
+                                setFeedbackMsg("⚠️ Storage permission required. Please allow All Files Access.");
+                                (window as any).AndroidNative?.requestAllFilesPermission?.();
+                              } else {
+                                setFeedbackMsg("ℹ️ No call recording found on phone yet. Ensure 'Record calls automatically' is ON in Phone Settings.");
+                              }
                             }
                           } catch {
                             setFeedbackMsg("Tap 'Attach File' to select your call recording.");
