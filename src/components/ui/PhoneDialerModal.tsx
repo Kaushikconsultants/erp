@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
+import { analyzeCallVoiceDebrief } from "@/app/actions/callAiActions";
 import CallVoiceDebriefWidget from "@/components/telecalling/CallVoiceDebriefWidget";
 import {
   getNativeSims,
@@ -363,7 +364,7 @@ function PhoneDialerModalContent({
   const handleTranscribeAudio = useCallback(async (audioDataUrl: string, explicitDuration?: number) => {
     if (!audioDataUrl || audioDataUrl.length < 50) return;
     setIsTranscribingAudio(true);
-    setFeedbackMsg("🎙️ Automatically transcribing call conversation with Gemini AI...");
+    setFeedbackMsg("🎙️ Transcribing call conversation with Gemini AI...");
 
     try {
       let rawB64 = audioDataUrl;
@@ -371,65 +372,98 @@ function PhoneDialerModalContent({
       if (audioDataUrl.startsWith("data:")) {
         const match = audioDataUrl.match(/^data:([^;]+);base64,/);
         if (match && match[1]) {
-          mime = match[1];
+          mime = match[1].trim().toLowerCase();
         }
         if (audioDataUrl.includes(",")) {
           rawB64 = audioDataUrl.split(",")[1];
         }
       }
+      if (mime === "audio/mp3") mime = "audio/mpeg";
+      if (mime === "audio/m4a" || mime === "audio/x-m4a") mime = "audio/mp4";
 
       const dur = explicitDuration !== undefined && explicitDuration > 0 ? explicitDuration : (callDurationSec || 0);
+      const contactName = selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact";
+      const contactPhone = phoneDigits || selectedContact?.phone || "";
 
-      const res = await fetch("/api/calls/analyze-debrief", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          audioBase64: rawB64,
-          mimeType: mime,
-          callContext: {
-            contactName: selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact",
-            contactPhone: phoneDigits || selectedContact?.phone || "",
-            durationSec: dur
-          }
-        })
-      });
+      let analysisResult: any = null;
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.success && data?.analysis) {
-          const a = data.analysis;
-          if (a.transcript) {
-            setAutoRecordTranscript(a.transcript);
-            autoRecordTranscriptRef.current = a.transcript;
-            setNotes((prev) => {
-              const cleanPrev = prev ? prev.replace(/\[Auto-Transcript\][\s\S]*$/, "").trim() : "";
-              const summaryPart = a.summary ? `\n\n[AI Summary]: ${a.summary}` : "";
-              return cleanPrev ? `${cleanPrev}\n\n[Auto-Transcript]: ${a.transcript}${summaryPart}` : `[Auto-Transcript]: ${a.transcript}${summaryPart}`;
-            });
+      // 1. Primary: REST API route
+      try {
+        const res = await fetch("/api/calls/analyze-debrief", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            audioBase64: rawB64,
+            mimeType: mime,
+            callContext: {
+              contactName,
+              contactPhone,
+              durationSec: dur
+            }
+          })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.success && data?.analysis) {
+            analysisResult = data.analysis;
           }
-          if (a.detectedOutcome) {
-            setOutcome(a.detectedOutcome);
+        }
+      } catch (restErr) {
+        console.warn("REST analyze-debrief attempt notice:", restErr);
+      }
+
+      // 2. Secondary: Server Action fallback if REST didn't complete
+      if (!analysisResult) {
+        try {
+          const actionRes = await analyzeCallVoiceDebrief({
+            audioBase64: rawB64,
+            mimeType: mime,
+            callContext: {
+              contactName,
+              contactPhone,
+              durationSec: dur
+            }
+          });
+          if (actionRes?.success && actionRes?.analysis) {
+            analysisResult = actionRes.analysis;
           }
-          if (a.summary) {
-            setCallSummary(a.summary);
-          }
-          if (a.suggestedFollowUp?.date) {
-            setFollowUpDate(a.suggestedFollowUp.date);
-            if (a.suggestedFollowUp.hour12) setFollowUpHour(a.suggestedFollowUp.hour12);
-            if (a.suggestedFollowUp.minute) setFollowUpMinute(a.suggestedFollowUp.minute);
-            if (a.suggestedFollowUp.period) setFollowUpPeriod(a.suggestedFollowUp.period);
-          }
-          const isSilent = a.transcript?.includes("No discernible speech detected");
-          if (isSilent) {
-            setFeedbackMsg("ℹ️ Audio attached. No speech detected (silence). Tap 'Dictate' to add discussion notes.");
-          } else {
-            setFeedbackMsg("✨ Call transcribed & AI summary attached automatically!");
-          }
+        } catch (actErr) {
+          console.warn("Server Action analyzeCallVoiceDebrief fallback notice:", actErr);
+        }
+      }
+
+      if (analysisResult) {
+        const a = analysisResult;
+        if (a.transcript) {
+          setAutoRecordTranscript(a.transcript);
+          autoRecordTranscriptRef.current = a.transcript;
+          setNotes((prev) => {
+            const cleanPrev = prev ? prev.replace(/\[Auto-Transcript\][\s\S]*$/, "").trim() : "";
+            const summaryPart = a.summary ? `\n\n[AI Summary]: ${a.summary}` : "";
+            return cleanPrev ? `${cleanPrev}\n\n[Auto-Transcript]: ${a.transcript}${summaryPart}` : `[Auto-Transcript]: ${a.transcript}${summaryPart}`;
+          });
+        }
+        if (a.detectedOutcome) {
+          setOutcome(a.detectedOutcome);
+        }
+        if (a.summary) {
+          setCallSummary(a.summary);
+        }
+        if (a.suggestedFollowUp?.date) {
+          setFollowUpDate(a.suggestedFollowUp.date);
+          if (a.suggestedFollowUp.hour12) setFollowUpHour(a.suggestedFollowUp.hour12);
+          if (a.suggestedFollowUp.minute) setFollowUpMinute(a.suggestedFollowUp.minute);
+          if (a.suggestedFollowUp.period) setFollowUpPeriod(a.suggestedFollowUp.period);
+        }
+        const isSilent = a.transcript?.includes("[Call connected - silence/hold tone]") || a.transcript?.includes("No discernible speech detected");
+        if (isSilent) {
+          setFeedbackMsg("ℹ️ Audio attached. Tap 'Dictate' to add discussion notes.");
         } else {
-          setFeedbackMsg("⚠️ Could not transcribe audio. Recording saved.");
+          setFeedbackMsg("✨ Call transcribed & AI summary attached automatically!");
         }
       } else {
-        setFeedbackMsg("⚠️ Transcription service unavailable. Recording saved.");
+        setFeedbackMsg("⚠️ Could not transcribe audio. Recording saved.");
       }
     } catch (err) {
       console.warn("Auto-transcription error:", err);

@@ -7,9 +7,16 @@ import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 
+const DEFAULT_GEMINI_KEY = "00000000000000000000000000000000000000000000000000000";
+
+function getApiKey(): string {
+  const envKey = (process.env.GEMINI_API_KEY || "").replace(/^["']|["']$/g, "").trim();
+  if (envKey && envKey !== "dummy") return envKey;
+  return DEFAULT_GEMINI_KEY;
+}
+
 function getAIClient() {
-  const apiKey = process.env.GEMINI_API_KEY || "";
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({ apiKey: getApiKey() });
 }
 
 export interface CallVoiceDebriefAnalysis {
@@ -78,7 +85,7 @@ export async function analyzeCallVoiceDebrief(
     const dayOfWeek = today.toLocaleDateString("en-US", { weekday: "long" });
 
     // Fallback parser if API key is not configured
-    if (!process.env.GEMINI_API_KEY) {
+    if (!getApiKey()) {
       const fallbackAnalysis = generateFallbackDebrief(rawText, today);
       return { success: true, analysis: fallbackAnalysis };
     }
@@ -137,7 +144,8 @@ Output strict JSON only conforming to the schema.
           rawAudioB64 = rawAudioB64.split(",")[1];
         }
       }
-      if (cleanMime === "audio/m4a") cleanMime = "audio/mp4";
+      if (cleanMime === "audio/mp3") cleanMime = "audio/mpeg";
+      if (cleanMime === "audio/m4a" || cleanMime === "audio/x-m4a") cleanMime = "audio/mp4";
 
       contents = [
         { text: systemPrompt },
@@ -156,7 +164,13 @@ Output strict JSON only conforming to the schema.
     }
 
     const ai = getAIClient();
-    const candidateModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
+    const candidateModels = [
+      "gemini-flash-latest",
+      "gemini-3.5-flash",
+      "gemini-3.6-flash",
+      "gemini-3.7-flash",
+      "gemini-3.5-flash-lite",
+    ];
     let responseText = "";
 
     for (const model of candidateModels) {

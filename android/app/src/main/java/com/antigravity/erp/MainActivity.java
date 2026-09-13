@@ -296,11 +296,12 @@ public class MainActivity extends BridgeActivity {
             String b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
             String name = file.getName().toLowerCase();
             String mime = "audio/mp4";
-            if (name.endsWith(".mp3")) mime = "audio/mp3";
+            if (name.endsWith(".mp3")) mime = "audio/mpeg";
             else if (name.endsWith(".wav")) mime = "audio/wav";
             else if (name.endsWith(".aac")) mime = "audio/aac";
             else if (name.endsWith(".m4a")) mime = "audio/mp4";
             else if (name.endsWith(".ogg")) mime = "audio/ogg";
+            else if (name.endsWith(".3gp") || name.endsWith(".amr")) mime = "audio/amr";
             return "data:" + mime + ";base64," + b64;
         } catch (Throwable t) {
             t.printStackTrace();
