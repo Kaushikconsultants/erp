@@ -234,8 +234,10 @@ function generateFallback(text: string, contactName: string, phone: string, dura
   const dd = String(d.getDate()).padStart(2, "0");
 
   return {
-    transcript: text || `Cellular call with ${contactName} (${phone}). Duration: ${durationSec}s.`,
-    summary: `Call connected with ${contactName}. Spoke for ${durationSec}s. Outcome marked as ${outcome}.`,
+    transcript: text ? text : (durationSec > 0 ? "No discernible speech detected in call recording (audio was silent or inaudible)." : ""),
+    summary: text
+      ? `Call connected with ${contactName}. Spoke for ${durationSec}s. Outcome marked as ${outcome}.`
+      : `Call placed to ${contactName} (${phone}) for ${durationSec}s. No speech detected in recording.`,
     keyPoints: [
       `Contact: ${contactName} (${phone})`,
       `Duration: ${durationSec} seconds`,

@@ -399,7 +399,12 @@ function PhoneDialerModalContent({
             if (a.suggestedFollowUp.minute) setFollowUpMinute(a.suggestedFollowUp.minute);
             if (a.suggestedFollowUp.period) setFollowUpPeriod(a.suggestedFollowUp.period);
           }
-          setFeedbackMsg("✨ Call transcribed & AI summary attached automatically!");
+          const isSilent = a.transcript?.includes("No discernible speech detected");
+          if (isSilent) {
+            setFeedbackMsg("ℹ️ Audio attached. No speech detected (silence). Tap 'Dictate' to add discussion notes.");
+          } else {
+            setFeedbackMsg("✨ Call transcribed & AI summary attached automatically!");
+          }
         } else {
           setFeedbackMsg("⚠️ Could not transcribe audio. Recording saved.");
         }
@@ -551,29 +556,39 @@ function PhoneDialerModalContent({
         isCallInitiatedRef.current = false;
         setCallDurationSec(finalDur);
 
-        // Stop auto-recording if running and trigger transcription
+        // Stop auto-recording if running
         if (isAutoRecording) {
           stopAutoRecording(finalDur);
         }
 
-        // Retrieve native cellular call recording from detail or Android bridge
-        const nativeRecUrl = (detail?.recordingUrl) || ((window as any).AndroidNative?.getLastCallRecording?.());
-        if (nativeRecUrl && typeof nativeRecUrl === "string" && nativeRecUrl.startsWith("data:audio")) {
-          setRecordingUrl(nativeRecUrl);
+        // On Native Android, retrieve the actual recording from device / MediaStore
+        const nativeCandidate = detail?.recordingUrl;
+        if (nativeCandidate && typeof nativeCandidate === "string" && nativeCandidate.startsWith("data:audio") && nativeCandidate.length > 500) {
+          setRecordingUrl(nativeCandidate);
           setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached! Transcribing with Gemini AI...`);
-          handleTranscribeAudioRef.current?.(nativeRecUrl, finalDur);
-        } else {
-          // Check AndroidNative bridge after brief delay for file flush
-          setTimeout(() => {
+          handleTranscribeAudioRef.current?.(nativeCandidate, finalDur);
+        } else if (isAndroidNativeApp()) {
+          // Poll the AndroidNative bridge over 3.5 seconds (OEM dialers write file right upon hangup)
+          let attempts = 0;
+          const pollTimer = setInterval(() => {
+            attempts++;
             try {
-              const delayedRec = (window as any).AndroidNative?.getLastCallRecording?.();
-              if (delayedRec && typeof delayedRec === "string" && delayedRec.startsWith("data:audio")) {
-                setRecordingUrl(delayedRec);
+              const rec = (window as any).AndroidNative?.getLastCallRecording?.();
+              if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
+                clearInterval(pollTimer);
+                setRecordingUrl(rec);
                 setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached! Transcribing with Gemini AI...`);
-                handleTranscribeAudioRef.current?.(delayedRec, finalDur);
+                handleTranscribeAudioRef.current?.(rec, finalDur);
+                return;
               }
             } catch (e) {}
-          }, 1200);
+
+            if (attempts >= 5) {
+              clearInterval(pollTimer);
+              setRecordingUrl("");
+              setFeedbackMsg("ℹ️ Call completed. No audio recording detected on device storage.");
+            }
+          }, 700);
         }
 
         if (finalDur > 0) {
@@ -763,6 +778,14 @@ function PhoneDialerModalContent({
     setAutoRecordTranscript('');
     setIsAutoRecording(true);
 
+    // In Native Android app, do NOT use browser getUserMedia mic capture during cellular calls.
+    // Android OS automatically mutes browser WebRTC mic input during active phone calls,
+    // which records pure silence and overrides real phone call recordings.
+    if (isAndroidNativeApp()) {
+      startNativeCallRecording(`call-${Date.now()}`);
+      return;
+    }
+
     // 1. Web Speech API for live transcript
     const SpeechRec = typeof window !== 'undefined' && ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
     if (SpeechRec) {
@@ -830,6 +853,12 @@ function PhoneDialerModalContent({
     lastRecordedChunksRef.current = chunks;
     autoRecordChunksRef.current = [];
     autoRecordTranscriptRef.current = '';
+
+    // In Android Native app, cellular call recording is retrieved from device/MediaStore upon hangup.
+    // Ignore any browser-level audio chunks.
+    if (isAndroidNativeApp()) {
+      return { transcript, audioChunks: [] };
+    }
 
     if (chunks.length > 0) {
       try {
@@ -1837,12 +1866,12 @@ function PhoneDialerModalContent({
                         onClick={() => {
                           try {
                             const audioData = (window as any).AndroidNative?.getLastCallRecording?.();
-                            if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio")) {
+                            if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio") && audioData.length > 500) {
                               setRecordingUrl(audioData);
                               setFeedbackMsg("✅ Found call recording from phone! Transcribing with Gemini AI...");
                               handleTranscribeAudioRef.current?.(audioData, callDurationSec);
                             } else {
-                              setFeedbackMsg("ℹ️ No new call recording found on phone. Ensure Call Recording is ON in Phone Settings or tap 'Attach File'.");
+                              setFeedbackMsg("ℹ️ No call recording found on phone. Ensure 'Record calls automatically' is ON in Phone Settings.");
                             }
                           } catch {
                             setFeedbackMsg("Tap 'Attach File' to select your call recording.");
