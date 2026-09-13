@@ -124,13 +124,27 @@ Output strict JSON only conforming to the schema.
     let contents: any;
 
     if (hasAudio && payload.audioBase64) {
-      const cleanMime = (payload.mimeType || "audio/webm").split(";")[0].trim();
+      let cleanMime = (payload.mimeType || "audio/webm").split(";")[0].trim();
+      let rawAudioB64 = payload.audioBase64;
+      if (typeof rawAudioB64 === "string") {
+        if (rawAudioB64.startsWith("data:")) {
+          const match = rawAudioB64.match(/^data:([^;]+);base64,/);
+          if (match && match[1]) {
+            cleanMime = match[1].trim();
+          }
+        }
+        if (rawAudioB64.includes(",")) {
+          rawAudioB64 = rawAudioB64.split(",")[1];
+        }
+      }
+      if (cleanMime === "audio/m4a") cleanMime = "audio/mp4";
+
       contents = [
         { text: systemPrompt },
         {
           inlineData: {
             mimeType: cleanMime,
-            data: payload.audioBase64,
+            data: rawAudioB64,
           },
         },
       ];
@@ -142,7 +156,7 @@ Output strict JSON only conforming to the schema.
     }
 
     const ai = getAIClient();
-    const candidateModels = ["gemini-3.6-flash", "gemini-1.5-flash", "gemini-2.0-flash"];
+    const candidateModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
     let responseText = "";
 
     for (const model of candidateModels) {

@@ -14,7 +14,7 @@ const CRM_OUTCOMES = [
   "Support / General Inquiry",
 ];
 
-const GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash"];
+const GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"];
 
 function getAIClient() {
   const apiKey = (process.env.GEMINI_API_KEY || "").replace(/^["']|["']$/g, "").trim();
@@ -92,13 +92,26 @@ Output a single valid JSON object strictly matching this schema:
     let contents: any;
     if (hasAudio) {
       let cleanMime = (mimeType || "audio/mp4").split(";")[0].trim();
+      let rawAudioB64 = audioBase64;
+      if (typeof rawAudioB64 === "string") {
+        if (rawAudioB64.startsWith("data:")) {
+          const match = rawAudioB64.match(/^data:([^;]+);base64,/);
+          if (match && match[1]) {
+            cleanMime = match[1].trim();
+          }
+        }
+        if (rawAudioB64.includes(",")) {
+          rawAudioB64 = rawAudioB64.split(",")[1];
+        }
+      }
       if (cleanMime === "audio/m4a") cleanMime = "audio/mp4";
+
       contents = [
         { text: systemPrompt },
         {
           inlineData: {
             mimeType: cleanMime,
-            data: audioBase64,
+            data: rawAudioB64,
           },
         },
       ];

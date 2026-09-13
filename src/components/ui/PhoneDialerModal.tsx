@@ -330,12 +330,93 @@ function PhoneDialerModalContent({
   const [showRecordConsentDialog, setShowRecordConsentDialog] = useState<boolean>(false);
   const [recordingUrl, setRecordingUrl] = useState<string>('');
   const [callSummary, setCallSummary] = useState<string>('');
+  const [isTranscribingAudio, setIsTranscribingAudio] = useState<boolean>(false);
+  const handleTranscribeAudioRef = useRef<((audioDataUrl: string, explicitDuration?: number) => Promise<void>) | null>(null);
   // Refs for the parallel MediaRecorder + SpeechRecognition running during the call
   const autoRecordMediaRef = useRef<MediaRecorder | null>(null);
   const autoRecordChunksRef = useRef<Blob[]>([]);
   const lastRecordedChunksRef = useRef<Blob[]>([]);
   const autoRecordSpeechRef = useRef<any>(null);
   const autoRecordTranscriptRef = useRef<string>('');
+
+  // Helper: Automatically analyze and transcribe recorded audio via Gemini AI
+  const handleTranscribeAudio = useCallback(async (audioDataUrl: string, explicitDuration?: number) => {
+    if (!audioDataUrl || audioDataUrl.length < 50) return;
+    setIsTranscribingAudio(true);
+    setFeedbackMsg("🎙️ Automatically transcribing call conversation with Gemini AI...");
+
+    try {
+      let rawB64 = audioDataUrl;
+      let mime = "audio/webm";
+      if (audioDataUrl.startsWith("data:")) {
+        const match = audioDataUrl.match(/^data:([^;]+);base64,/);
+        if (match && match[1]) {
+          mime = match[1];
+        }
+        if (audioDataUrl.includes(",")) {
+          rawB64 = audioDataUrl.split(",")[1];
+        }
+      }
+
+      const dur = explicitDuration !== undefined && explicitDuration > 0 ? explicitDuration : (callDurationSec || 0);
+
+      const res = await fetch("/api/calls/analyze-debrief", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          audioBase64: rawB64,
+          mimeType: mime,
+          callContext: {
+            contactName: selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact",
+            contactPhone: phoneDigits || selectedContact?.phone || "",
+            durationSec: dur
+          }
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.success && data?.analysis) {
+          const a = data.analysis;
+          if (a.transcript) {
+            setAutoRecordTranscript(a.transcript);
+            autoRecordTranscriptRef.current = a.transcript;
+            setNotes((prev) => {
+              const cleanPrev = prev ? prev.replace(/\[Auto-Transcript\][\s\S]*$/, "").trim() : "";
+              const summaryPart = a.summary ? `\n\n[AI Summary]: ${a.summary}` : "";
+              return cleanPrev ? `${cleanPrev}\n\n[Auto-Transcript]: ${a.transcript}${summaryPart}` : `[Auto-Transcript]: ${a.transcript}${summaryPart}`;
+            });
+          }
+          if (a.detectedOutcome) {
+            setOutcome(a.detectedOutcome);
+          }
+          if (a.summary) {
+            setCallSummary(a.summary);
+          }
+          if (a.suggestedFollowUp?.date) {
+            setFollowUpDate(a.suggestedFollowUp.date);
+            if (a.suggestedFollowUp.hour12) setFollowUpHour(a.suggestedFollowUp.hour12);
+            if (a.suggestedFollowUp.minute) setFollowUpMinute(a.suggestedFollowUp.minute);
+            if (a.suggestedFollowUp.period) setFollowUpPeriod(a.suggestedFollowUp.period);
+          }
+          setFeedbackMsg("✨ Call transcribed & AI summary attached automatically!");
+        } else {
+          setFeedbackMsg("⚠️ Could not transcribe audio. Recording saved.");
+        }
+      } else {
+        setFeedbackMsg("⚠️ Transcription service unavailable. Recording saved.");
+      }
+    } catch (err) {
+      console.warn("Auto-transcription error:", err);
+      setFeedbackMsg("⚠️ Transcription error. Recording saved.");
+    } finally {
+      setIsTranscribingAudio(false);
+    }
+  }, [callDurationSec, selectedContact, newLeadName, phoneDigits]);
+
+  useEffect(() => {
+    handleTranscribeAudioRef.current = handleTranscribeAudio;
+  }, [handleTranscribeAudio]);
 
   // Load Recent Calls safely
   const loadRecentCalls = async () => {
@@ -464,25 +545,23 @@ function PhoneDialerModalContent({
         setCallStatus("Connected");
         setFeedbackMsg("🟢 Call connected! Live talk timer started.");
       } else if (state === "ENDED") {
-        // Stop auto-recording if it was running
-        if (isAutoRecording) {
-          const { transcript } = stopAutoRecording();
-          if (transcript) {
-            setAutoRecordTranscript(transcript);
-            setNotes(prev => prev ? `${prev}\n\n[Auto-Transcript]: ${transcript}` : `[Auto-Transcript]: ${transcript}`);
-          }
-        }
         setIsTimerRunning(false);
         const finalDur = dur > 0 ? dur : (callStartTimeRef.current ? Math.max(0, Math.round((Date.now() - callStartTimeRef.current) / 1000)) : 0);
         callStartTimeRef.current = null;
         isCallInitiatedRef.current = false;
         setCallDurationSec(finalDur);
 
+        // Stop auto-recording if running and trigger transcription
+        if (isAutoRecording) {
+          stopAutoRecording(finalDur);
+        }
+
         // Retrieve native cellular call recording from detail or Android bridge
         const nativeRecUrl = (detail?.recordingUrl) || ((window as any).AndroidNative?.getLastCallRecording?.());
         if (nativeRecUrl && typeof nativeRecUrl === "string" && nativeRecUrl.startsWith("data:audio")) {
           setRecordingUrl(nativeRecUrl);
-          setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached automatically!`);
+          setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached! Transcribing with Gemini AI...`);
+          handleTranscribeAudioRef.current?.(nativeRecUrl, finalDur);
         } else {
           // Check AndroidNative bridge after brief delay for file flush
           setTimeout(() => {
@@ -490,7 +569,8 @@ function PhoneDialerModalContent({
               const delayedRec = (window as any).AndroidNative?.getLastCallRecording?.();
               if (delayedRec && typeof delayedRec === "string" && delayedRec.startsWith("data:audio")) {
                 setRecordingUrl(delayedRec);
-                setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached automatically!`);
+                setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached! Transcribing with Gemini AI...`);
+                handleTranscribeAudioRef.current?.(delayedRec, finalDur);
               }
             } catch (e) {}
           }, 1200);
@@ -580,13 +660,18 @@ function PhoneDialerModalContent({
           callStartTimeRef.current = null;
           setCallDurationSec(duration);
 
-          // Stop auto-recording and harvest transcript when app returns from call
+          // Stop auto-recording and trigger transcription when app returns from call
           if (isAutoRecording) {
-            const { transcript } = stopAutoRecording();
-            if (transcript) {
-              setAutoRecordTranscript(transcript);
-              setNotes(prev => prev ? `${prev}\n\n[Auto-Transcript]: ${transcript}` : `[Auto-Transcript]: ${transcript}`);
-            }
+            stopAutoRecording(duration);
+          } else {
+            // Also check native cellular recording if on Android
+            try {
+              const nativeRec = (window as any).AndroidNative?.getLastCallRecording?.();
+              if (nativeRec && typeof nativeRec === "string" && nativeRec.startsWith("data:audio")) {
+                setRecordingUrl(nativeRec);
+                handleTranscribeAudioRef.current?.(nativeRec, duration);
+              }
+            } catch (e) {}
           }
 
           if (duration > 0) {
@@ -721,7 +806,7 @@ function PhoneDialerModalContent({
   }, []);
 
   // Helper: Stop automatic recording and return collected data
-  const stopAutoRecording = useCallback((): { transcript: string; audioChunks: Blob[] } => {
+  const stopAutoRecording = useCallback((explicitDuration?: number): { transcript: string; audioChunks: Blob[] } => {
     setIsAutoRecording(false);
     stopNativeCallRecording();
 
@@ -754,6 +839,8 @@ function PhoneDialerModalContent({
           const res = reader.result as string;
           if (res && res.length > 100) {
             setRecordingUrl(res);
+            // Automatically invoke Gemini AI transcription on the recorded audio!
+            handleTranscribeAudioRef.current?.(res, explicitDuration);
           }
         };
         reader.readAsDataURL(audioBlob);
@@ -883,45 +970,8 @@ function PhoneDialerModalContent({
       reader.onloadend = async () => {
         const base64Data = reader.result as string;
         setRecordingUrl(base64Data);
-        setFeedbackMsg("📁 Audio recording attached! Analyzing with Gemini 3.6 AI...");
-
-        try {
-          const rawB64 = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
-          const mime = file.type || "audio/mp4";
-          const res = await fetch("/api/calls/analyze-debrief", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              audioBase64: rawB64,
-              mimeType: mime,
-              callContext: {
-                contactName: selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact",
-                contactPhone: phoneDigits || selectedContact?.phone || "",
-                durationSec: callDurationSec
-              }
-            })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data?.success && data?.analysis) {
-              const a = data.analysis;
-              if (a.detectedOutcome) setOutcome(a.detectedOutcome);
-              if (a.summary) {
-                setCallSummary(a.summary);
-                setNotes(prev => prev ? `${prev}\n\n[AI Summary]: ${a.summary}` : `[AI Summary]: ${a.summary}`);
-              }
-              if (a.suggestedFollowUp?.date) {
-                setFollowUpDate(a.suggestedFollowUp.date);
-                setFollowUpHour(a.suggestedFollowUp.hour12 || "11");
-                setFollowUpMinute(a.suggestedFollowUp.minute || "00");
-                setFollowUpPeriod(a.suggestedFollowUp.period || "AM");
-              }
-              setFeedbackMsg("✨ Audio file transcribed and AI insights populated!");
-            }
-          }
-        } catch (aiErr) {
-          console.warn("AI analysis of attached file notice:", aiErr);
-        }
+        setFeedbackMsg("📁 Audio recording attached! Transcribing with Gemini AI...");
+        await handleTranscribeAudioRef.current?.(base64Data, callDurationSec);
       };
       reader.readAsDataURL(file);
     } catch (err) {
@@ -1562,10 +1612,14 @@ function PhoneDialerModalContent({
                       <button
                         type="button"
                         onClick={() => {
+                          const currentDur = callDurationSec;
                           setIsTimerRunning(false);
                           callStartTimeRef.current = null;
-                          if (callDurationSec > 0) {
+                          if (currentDur > 0) {
                             setCallStatus("Completed");
+                          }
+                          if (isAutoRecording) {
+                            stopAutoRecording(currentDur);
                           }
                           setAutoDebriefTrigger(Date.now());
                         }}
@@ -1736,96 +1790,140 @@ function PhoneDialerModalContent({
                 />
               </AIDebriefSafeWrapper>
 
-              {/* 🎙️ RECORDING ATTACHMENT & AUDIO PLAYER PREVIEW */}
-              <div
-                style={{
-                  marginBottom: "14px",
-                  backgroundColor: recordingUrl ? "#f0fdf4" : "#f8fafc",
-                  border: `1.5px solid ${recordingUrl ? "#86efac" : "#e2e8f0"}`,
-                  borderRadius: "12px",
-                  padding: "10px 12px"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: recordingUrl ? "8px" : "0" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Volume2 size={16} color={recordingUrl ? "#15803d" : "#64748b"} />
-                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: recordingUrl ? "#15803d" : "#334155" }}>
-                      {recordingUrl ? "🎙️ Call Recording Attached" : "Call Audio Recording"}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try {
-                          const audioData = (window as any).AndroidNative?.getLastCallRecording?.();
-                          if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio")) {
-                            setRecordingUrl(audioData);
-                            setFeedbackMsg("✅ Found and attached call recording from phone!");
-                          } else {
-                            setFeedbackMsg("ℹ️ No new call recording found on phone. Ensure Call Recording is ON in Phone Settings or tap 'Attach File'.");
-                          }
-                        } catch {
-                          setFeedbackMsg("Tap 'Attach File' to select your call recording.");
-                        }
-                      }}
-                      style={{
-                        fontSize: "0.74rem",
-                        padding: "4px 8px",
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "6px",
-                        color: "#0f172a",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}
-                    >
-                      <RotateCcw size={12} /> Scan Phone
-                    </button>
-                    <label
-                      style={{
-                        fontSize: "0.74rem",
-                        padding: "4px 8px",
-                        backgroundColor: "#ffffff",
-                        border: "1px solid #cbd5e1",
-                        borderRadius: "6px",
-                        color: "#4f46e5",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px"
-                      }}
-                    >
-                      <Upload size={12} /> {recordingUrl ? "Replace" : "Attach File"}
-                      <input
-                        type="file"
-                        accept="audio/*"
-                        style={{ display: "none" }}
-                        onChange={handleAttachAudioFile}
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                {recordingUrl ? (
-                  <div>
-                    <audio controls src={recordingUrl} style={{ width: "100%", height: "32px", borderRadius: "6px" }} />
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
-                      <span style={{ fontSize: "0.68rem", color: "#15803d" }}>✓ Ready to save to CRM • Replayable in web & mobile app</span>
-                      <button
-                        type="button"
-                        onClick={() => setRecordingUrl("")}
-                        style={{ background: "none", border: "none", color: "#dc2626", fontSize: "0.68rem", cursor: "pointer", fontWeight: 600 }}
-                      >
-                        Remove
-                      </button>
+                {/* 🎙️ RECORDING ATTACHMENT & AUDIO PLAYER PREVIEW */}
+                {isTranscribingAudio && (
+                  <div
+                    style={{
+                      backgroundColor: "#eff6ff",
+                      border: "1.5px solid #93c5fd",
+                      borderRadius: "10px",
+                      padding: "8px 12px",
+                      marginBottom: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "10px"
+                    }}
+                  >
+                    <Loader2 size={16} className="animate-spin" color="#2563eb" />
+                    <div>
+                      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
+                        🎙️ Transcribing Call Audio with Gemini AI...
+                      </div>
+                      <div style={{ fontSize: "0.70rem", color: "#3b82f6" }}>
+                        Automatically extracting dialogue, summary, and follow-up actions.
+                      </div>
                     </div>
                   </div>
-                ) : (
+                )}
+                <div
+                  style={{
+                    marginBottom: "14px",
+                    backgroundColor: recordingUrl ? "#f0fdf4" : "#f8fafc",
+                    border: `1.5px solid ${recordingUrl ? "#86efac" : "#e2e8f0"}`,
+                    borderRadius: "12px",
+                    padding: "10px 12px"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: recordingUrl ? "8px" : "0" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <Volume2 size={16} color={recordingUrl ? "#15803d" : "#64748b"} />
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: recordingUrl ? "#15803d" : "#334155" }}>
+                        {recordingUrl ? "🎙️ Call Recording Attached" : "Call Audio Recording"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          try {
+                            const audioData = (window as any).AndroidNative?.getLastCallRecording?.();
+                            if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio")) {
+                              setRecordingUrl(audioData);
+                              setFeedbackMsg("✅ Found call recording from phone! Transcribing with Gemini AI...");
+                              handleTranscribeAudioRef.current?.(audioData, callDurationSec);
+                            } else {
+                              setFeedbackMsg("ℹ️ No new call recording found on phone. Ensure Call Recording is ON in Phone Settings or tap 'Attach File'.");
+                            }
+                          } catch {
+                            setFeedbackMsg("Tap 'Attach File' to select your call recording.");
+                          }
+                        }}
+                        style={{
+                          fontSize: "0.74rem",
+                          padding: "4px 8px",
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "6px",
+                          color: "#0f172a",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <RotateCcw size={12} /> Scan Phone
+                      </button>
+                      <label
+                        style={{
+                          fontSize: "0.74rem",
+                          padding: "4px 8px",
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #cbd5e1",
+                          borderRadius: "6px",
+                          color: "#4f46e5",
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px"
+                        }}
+                      >
+                        <Upload size={12} /> {recordingUrl ? "Replace" : "Attach File"}
+                        <input
+                          type="file"
+                          accept="audio/*"
+                          style={{ display: "none" }}
+                          onChange={handleAttachAudioFile}
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {recordingUrl ? (
+                    <div>
+                      <audio controls src={recordingUrl} style={{ width: "100%", height: "32px", borderRadius: "6px" }} />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                        <span style={{ fontSize: "0.68rem", color: "#15803d" }}>✓ Ready to save to CRM • Replayable in web & mobile app</span>
+                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => handleTranscribeAudioRef.current?.(recordingUrl, callDurationSec)}
+                            disabled={isTranscribingAudio}
+                            style={{
+                              background: "#eff6ff",
+                              border: "1px solid #bfdbfe",
+                              color: "#1d4ed8",
+                              fontSize: "0.68rem",
+                              cursor: "pointer",
+                              fontWeight: 700,
+                              borderRadius: "4px",
+                              padding: "2px 6px"
+                            }}
+                          >
+                            {isTranscribingAudio ? "Transcribing..." : "✨ Re-transcribe"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setRecordingUrl("")}
+                            style={{ background: "none", border: "none", color: "#dc2626", fontSize: "0.68rem", cursor: "pointer", fontWeight: 600 }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
                   <div style={{ marginTop: "6px" }}>
                     <div style={{ fontSize: "0.72rem", color: "#64748b", marginBottom: "6px" }}>
                       No recording attached yet. Tap <strong>Scan Phone</strong> to auto-detect from device storage, or <strong>Attach File</strong> to upload.
