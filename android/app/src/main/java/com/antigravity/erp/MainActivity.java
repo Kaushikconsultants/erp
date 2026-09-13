@@ -985,12 +985,12 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public void directPhoneCallWithContact(String phoneNumber, String contactName, int subscriptionId) {
-            activity.lastContactName = contactName;
-            directPhoneCallWithSim(phoneNumber, subscriptionId);
+            directPhoneCallWithContactAndSlot(phoneNumber, contactName, subscriptionId, -1);
         }
 
         @JavascriptInterface
-        public void directPhoneCallWithSim(String phoneNumber, int subscriptionId) {
+        public void directPhoneCallWithContactAndSlot(String phoneNumber, String contactName, int subscriptionId, int slotIndex) {
+            activity.lastContactName = contactName;
             activity.runOnUiThread(() -> {
                 try {
                     if (phoneNumber == null || phoneNumber.trim().isEmpty()) return;
@@ -1011,7 +1011,7 @@ public class MainActivity extends BridgeActivity {
                     // If CALL_PHONE permission is granted, place call using SimManager
                     if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
                         com.antigravity.erp.telecom.SimManager simManager = new com.antigravity.erp.telecom.SimManager(activity);
-                        simManager.placeCallWithSim(clean, subscriptionId);
+                        simManager.placeCallWithSim(clean, subscriptionId, slotIndex);
                     } else {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                             ActivityCompat.requestPermissions(
@@ -1025,6 +1025,11 @@ public class MainActivity extends BridgeActivity {
                     e.printStackTrace();
                 }
             });
+        }
+
+        @JavascriptInterface
+        public void directPhoneCallWithSim(String phoneNumber, int subscriptionId) {
+            directPhoneCallWithContactAndSlot(phoneNumber, activity.lastContactName != null ? activity.lastContactName : "", subscriptionId, -1);
         }
 
         @JavascriptInterface

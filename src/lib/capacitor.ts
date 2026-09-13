@@ -320,14 +320,16 @@ export const getNativeSims = (): NativeSimInfo[] => {
 };
 
 /**
- * Place a cellular call with a specific SIM subscription
+ * Place a cellular call with a specific SIM subscription and slot
  */
-export const makeDirectCellularCall = (phoneNumber: string, subscriptionId: number = -1, contactName: string = "") => {
+export const makeDirectCellularCall = (phoneNumber: string, subscriptionId: number = -1, contactName: string = "", slotIndex: number = -1) => {
   try {
     const clean = String(phoneNumber || '').replace(/[^0-9+]/g, '');
     if (!clean) return;
 
-    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCallWithContact === 'function') {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCallWithContactAndSlot === 'function') {
+      (window as any).AndroidNative.directPhoneCallWithContactAndSlot(clean, contactName, subscriptionId, slotIndex);
+    } else if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCallWithContact === 'function') {
       (window as any).AndroidNative.directPhoneCallWithContact(clean, contactName, subscriptionId);
     } else if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCallWithSim === 'function') {
       (window as any).AndroidNative.directPhoneCallWithSim(clean, subscriptionId);
