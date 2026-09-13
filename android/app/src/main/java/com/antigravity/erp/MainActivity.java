@@ -45,15 +45,30 @@ public class MainActivity extends BridgeActivity {
     private int lastCallDurationSec = 0;
     public String pendingCallNumber = null;
     public String lastDialedNumber = null;
+    public String lastContactName = null;
     public String activeRecordingCallId = null;
     public String lastRecordedAudioDataUrl = null;
 
     public String findRecentCallAudioDataUrl(String phoneNumber) {
+        return findRecentCallAudioDataUrl(phoneNumber, lastContactName, lastCallDurationSec);
+    }
+
+    public String findRecentCallAudioDataUrl(String phoneNumber, String contactName, int callDurationSec) {
         String cleanPhone = (phoneNumber != null) ? phoneNumber.replaceAll("[^0-9]", "") : "";
         if (cleanPhone.isEmpty() && lastDialedNumber != null) {
             cleanPhone = lastDialedNumber.replaceAll("[^0-9]", "");
         }
         String phone10 = (cleanPhone.length() == 12 && cleanPhone.startsWith("91")) ? cleanPhone.substring(2) : cleanPhone;
+
+        String rawName = (contactName != null && !contactName.trim().isEmpty()) ? contactName : (lastContactName != null ? lastContactName : "");
+        String cleanName = rawName.toLowerCase().replaceAll("[^a-z0-9 ]", " ").trim();
+        String firstWordName = "";
+        if (!cleanName.isEmpty()) {
+            String[] parts = cleanName.split("\\s+");
+            if (parts.length > 0 && parts[0].length() >= 3) {
+                firstWordName = parts[0];
+            }
+        }
 
         // Trigger MediaScanner on standard recording directories asynchronously
         try {
@@ -71,9 +86,9 @@ public class MainActivity extends BridgeActivity {
             );
         } catch (Throwable t) {}
 
-        // 1. First, check direct filesystem (works when MANAGE_EXTERNAL_STORAGE is granted or public directories readable)
+        // 1. First, check direct filesystem (primary when MANAGE_EXTERNAL_STORAGE is granted or public directories readable)
         try {
-            java.io.File directFile = findRecentCallAudioFile(cleanPhone);
+            java.io.File directFile = findRecentCallAudioFile(cleanPhone, cleanName, firstWordName, callDurationSec);
             if (directFile != null && directFile.exists() && directFile.length() > 2048) {
                 String directDataUrl = fileToAudioDataUrl(directFile);
                 if (directDataUrl != null && !directDataUrl.isEmpty()) {
@@ -96,26 +111,42 @@ public class MainActivity extends BridgeActivity {
                     android.provider.MediaStore.Audio.Media.DATE_ADDED,
                     android.provider.MediaStore.Audio.Media.DATE_MODIFIED,
                     android.provider.MediaStore.Audio.Media.SIZE,
-                    android.provider.MediaStore.Audio.Media.DATA
+                    android.provider.MediaStore.Audio.Media.DATA,
+                    android.provider.MediaStore.Audio.Media.DURATION
             };
-            String selection = android.provider.MediaStore.Audio.Media.SIZE + " > 2048";
+
+            // Calculate strict time boundary
+            long nowMs = System.currentTimeMillis();
+            long minTimeSec = (callStartTime > 0)
+                    ? ((callStartTime - 60_000L) / 1000L)
+                    : ((nowMs - (10 * 60 * 1000L)) / 1000L); // Max 10 minutes ago for manual scan
+
+            String selection = android.provider.MediaStore.Audio.Media.SIZE + " > 2048 AND (" 
+                    + android.provider.MediaStore.Audio.Media.DATE_MODIFIED + " >= " + minTimeSec + " OR " 
+                    + android.provider.MediaStore.Audio.Media.DATE_ADDED + " >= " + minTimeSec + ")";
             String sortOrder = android.provider.MediaStore.Audio.Media.DATE_MODIFIED + " DESC, " 
                              + android.provider.MediaStore.Audio.Media.DATE_ADDED + " DESC";
 
             try (android.database.Cursor cursor = cr.query(uri, projection, selection, null, sortOrder)) {
                 if (cursor != null) {
                     long bestId = -1;
-                    String bestMime = "audio/mp4";
+                    String bestMime = "audio/mpeg";
                     long bestSize = 0;
                     int count = 0;
 
-                    while (cursor.moveToNext() && count < 100) {
+                    while (cursor.moveToNext() && count < 30) {
                         count++;
                         long id = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Audio.Media._ID));
                         String name = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Audio.Media.DISPLAY_NAME));
                         String title = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Audio.Media.TITLE));
                         String mime = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Audio.Media.MIME_TYPE));
                         long size = cursor.getLong(cursor.getColumnIndexOrThrow(android.provider.MediaStore.Audio.Media.SIZE));
+                        long durationMs = 0;
+                        try {
+                            int durIdx = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.DURATION);
+                            if (durIdx >= 0) durationMs = cursor.getLong(durIdx);
+                        } catch (Throwable t) {}
+
                         String dataPath = "";
                         try {
                             int dataIdx = cursor.getColumnIndex(android.provider.MediaStore.Audio.Media.DATA);
@@ -123,28 +154,36 @@ public class MainActivity extends BridgeActivity {
                         } catch (Throwable t) {}
 
                         String combined = ((name != null ? name : "") + " " + (title != null ? title : "") + " " + (dataPath != null ? dataPath : "")).toLowerCase();
-                        
-                        // Priority 1: Exact phone number match (10 or clean digits)
-                        if (!cleanPhone.isEmpty() && cleanPhone.length() >= 3 && combined.contains(cleanPhone)) {
-                            bestId = id;
-                            bestMime = mime;
-                            bestSize = size;
-                            break;
+
+                        // Duration sanity check: if callDurationSec is known and > 5s, reject recordings > 3x the call duration
+                        if (callDurationSec > 5 && durationMs > 0) {
+                            long durSec = durationMs / 1000L;
+                            if (durSec > (callDurationSec + 90) || (durSec > 90 && callDurationSec < 30)) {
+                                continue; // Reject files with huge duration mismatch
+                            }
                         }
-                        if (!phone10.isEmpty() && phone10.length() >= 5 && combined.contains(phone10)) {
+
+                        // Priority 1: Phone number match
+                        boolean phoneMatch = (!cleanPhone.isEmpty() && cleanPhone.length() >= 3 && combined.contains(cleanPhone))
+                                || (!phone10.isEmpty() && phone10.length() >= 5 && combined.contains(phone10));
+
+                        // Priority 2: Contact name match
+                        boolean nameMatch = (!cleanName.isEmpty() && cleanName.length() >= 3 && combined.contains(cleanName))
+                                || (!firstWordName.isEmpty() && firstWordName.length() >= 3 && combined.contains(firstWordName));
+
+                        if (phoneMatch || nameMatch) {
                             bestId = id;
                             bestMime = mime;
                             bestSize = size;
                             break;
                         }
 
-                        // Priority 2: Identified call recording within last 24h
-                        if (combined.contains("call") || combined.contains("rec") || combined.contains("recording") || combined.contains("miui") || combined.contains("sound_recorder") || combined.contains("voice")) {
-                            if (bestId == -1) {
-                                bestId = id;
-                                bestMime = mime;
-                                bestSize = size;
-                            }
+                        // Priority 3: File recorded strictly in call window in a call-recording path
+                        boolean isCallRecordingPath = combined.contains("call") || combined.contains("rec") || combined.contains("sound_recorder");
+                        if (isCallRecordingPath && callStartTime > 0 && bestId == -1) {
+                            bestId = id;
+                            bestMime = mime;
+                            bestSize = size;
                         }
                     }
 
@@ -183,7 +222,8 @@ public class MainActivity extends BridgeActivity {
             }
             if (bytes == null || bytes.length < 2048) return null;
             String b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
-            String mime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "audio/mp4";
+            String mime = (mimeType != null && !mimeType.isEmpty()) ? mimeType : "audio/mpeg";
+            if (mime.equals("audio/mp3")) mime = "audio/mpeg";
             return "data:" + mime + ";base64," + b64;
         } catch (Throwable t) {
             t.printStackTrace();
@@ -191,16 +231,15 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    public java.io.File findRecentCallAudioFile(String phoneNumber) {
-        long twentyFourHoursAgo = System.currentTimeMillis() - 86400000L;
-        long fortyEightHoursAgo = System.currentTimeMillis() - (86400000L * 2);
+    public java.io.File findRecentCallAudioFile(String cleanPhone, String cleanName, String firstWordName, int callDurationSec) {
+        long nowMs = System.currentTimeMillis();
+        long minAllowedTime = (callStartTime > 0)
+                ? (callStartTime - 60_000L) // strictly during this call
+                : (nowMs - (10 * 60 * 1000L)); // max 10 min for manual scan
+
         java.io.File bestFile = null;
         long latestMod = 0;
 
-        String cleanPhone = (phoneNumber != null) ? phoneNumber.replaceAll("[^0-9]", "") : "";
-        if (cleanPhone.isEmpty() && lastDialedNumber != null) {
-            cleanPhone = lastDialedNumber.replaceAll("[^0-9]", "");
-        }
         String phone10 = (cleanPhone.length() == 12 && cleanPhone.startsWith("91")) ? cleanPhone.substring(2) : cleanPhone;
 
         java.util.List<java.io.File> candidateDirs = new java.util.ArrayList<>();
@@ -261,16 +300,33 @@ public class MainActivity extends BridgeActivity {
                             if (f != null && f.isFile() && f.length() > 2048) {
                                 String name = f.getName().toLowerCase();
                                 if (name.endsWith(".mp3") || name.endsWith(".m4a") || name.endsWith(".aac") || name.endsWith(".wav") || name.endsWith(".ogg") || name.endsWith(".3gp") || name.endsWith(".amr")) {
-                                    // 1. Exact phone number match in filename within 48h
-                                    if (!cleanPhone.isEmpty() && cleanPhone.length() >= 3 && name.contains(cleanPhone) && f.lastModified() >= fortyEightHoursAgo) {
-                                        return f;
+                                    long fMod = f.lastModified();
+
+                                    // Strictly reject any file created before minAllowedTime
+                                    if (fMod < minAllowedTime) {
+                                        continue;
                                     }
-                                    if (!phone10.isEmpty() && phone10.length() >= 5 && name.contains(phone10) && f.lastModified() >= fortyEightHoursAgo) {
-                                        return f;
+
+                                    // File size sanity check: for short calls (<45s), reject large files (>1.5MB)
+                                    if (callDurationSec > 0 && callDurationSec < 45 && f.length() > (1500 * 1024)) {
+                                        continue;
                                     }
-                                    // 2. Latest modified recording in candidate folder within 24h
-                                    if (f.lastModified() >= twentyFourHoursAgo && f.lastModified() > latestMod) {
-                                        latestMod = f.lastModified();
+
+                                    // 1. Exact phone number match in filename
+                                    boolean phoneMatch = (!cleanPhone.isEmpty() && cleanPhone.length() >= 3 && name.contains(cleanPhone))
+                                            || (!phone10.isEmpty() && phone10.length() >= 5 && name.contains(phone10));
+
+                                    // 2. Contact name match in filename
+                                    boolean nameMatch = (!cleanName.isEmpty() && cleanName.length() >= 3 && name.contains(cleanName))
+                                            || (!firstWordName.isEmpty() && firstWordName.length() >= 3 && name.contains(firstWordName));
+
+                                    if (phoneMatch || nameMatch) {
+                                        return f; // Direct high-confidence match!
+                                    }
+
+                                    // 3. Fallback: file created strictly during this active call in dedicated recording folder
+                                    if (callStartTime > 0 && fMod >= (callStartTime - 30_000L) && fMod > latestMod) {
+                                        latestMod = fMod;
                                         bestFile = f;
                                     }
                                 }
@@ -282,6 +338,10 @@ public class MainActivity extends BridgeActivity {
         }
 
         return bestFile;
+    }
+
+    public java.io.File findRecentCallAudioFile(String phoneNumber) {
+        return findRecentCallAudioFile(phoneNumber, lastContactName, "", lastCallDurationSec);
     }
 
     public String fileToAudioDataUrl(java.io.File file) {
@@ -559,24 +619,26 @@ public class MainActivity extends BridgeActivity {
             if (isCallInProgress || callStartTime > 0) {
                 long elapsedMs = callStartTime > 0 ? (System.currentTimeMillis() - callStartTime) : 0;
                 int durationSec = (int) Math.max(0, elapsedMs / 1000);
+                final long actualCallStart = (callStartTime > 0) ? callStartTime : (System.currentTimeMillis() - (durationSec * 1000L));
                 lastCallDurationSec = durationSec;
                 isCallInProgress = false;
-                callStartTime = 0;
+                callStartTime = actualCallStart;
 
                 final String callIdForTranscription = activeRecordingCallId;
                 activeRecordingCallId = null;
                 final String phoneForTranscription = (pendingCallNumber != null && !pendingCallNumber.isEmpty()) 
                         ? pendingCallNumber 
                         : (lastDialedNumber != null ? lastDialedNumber : "Unknown");
+                final String contactNameForTranscription = lastContactName;
 
                 // Scan device storage for native Xiaomi / Android call recording
                 new Thread(() -> {
                     try {
                         // Scan device storage & MediaStore for native call recording (Xiaomi writes file on call tear-down)
                         String foundAudioUrl = null;
-                        for (int retry = 0; retry < 4; retry++) {
-                            try { Thread.sleep(600); } catch (Exception e) {}
-                            foundAudioUrl = findRecentCallAudioDataUrl(phoneForTranscription);
+                        for (int retry = 0; retry < 5; retry++) {
+                            try { Thread.sleep(700); } catch (Exception e) {}
+                            foundAudioUrl = findRecentCallAudioDataUrl(phoneForTranscription, contactNameForTranscription, durationSec);
                             if (foundAudioUrl != null && !foundAudioUrl.isEmpty()) {
                                 break;
                             }
@@ -593,6 +655,8 @@ public class MainActivity extends BridgeActivity {
                     } catch (Exception e) {
                         e.printStackTrace();
                         sendNativeCallEvent("ENDED", durationSec, callIdForTranscription, phoneForTranscription, null);
+                    } finally {
+                        callStartTime = 0;
                     }
 
                     bringAppToForeground();
@@ -920,6 +984,12 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public void directPhoneCallWithContact(String phoneNumber, String contactName, int subscriptionId) {
+            activity.lastContactName = contactName;
+            directPhoneCallWithSim(phoneNumber, subscriptionId);
+        }
+
+        @JavascriptInterface
         public void directPhoneCallWithSim(String phoneNumber, int subscriptionId) {
             activity.runOnUiThread(() -> {
                 try {
@@ -927,7 +997,8 @@ public class MainActivity extends BridgeActivity {
                     String clean = phoneNumber.replaceAll("[^0-9+]", "");
                     if (clean.isEmpty()) return;
 
-                    // Initialize call timer state in Java
+                    // Initialize call timer state in Java and reset previous audio
+                    activity.lastRecordedAudioDataUrl = null;
                     activity.callStartTime = System.currentTimeMillis();
                     activity.isCallInProgress = true;
                     activity.lastCallDurationSec = 0;
@@ -1059,16 +1130,31 @@ public class MainActivity extends BridgeActivity {
 
         @JavascriptInterface
         public String getLastCallRecording() {
-            return getLastCallRecording("");
+            return getLastCallRecording("", "", 0);
         }
 
         @JavascriptInterface
         public String getLastCallRecording(String phoneNumber) {
+            return getLastCallRecording(phoneNumber, "", 0);
+        }
+
+        @JavascriptInterface
+        public String getLastCallRecording(String phoneNumber, String contactName) {
+            return getLastCallRecording(phoneNumber, contactName, 0);
+        }
+
+        @JavascriptInterface
+        public String getLastCallRecording(String phoneNumber, String contactName, int durationSec) {
             try {
                 String phone = (phoneNumber != null && !phoneNumber.trim().isEmpty()) 
                         ? phoneNumber 
                         : ((activity.pendingCallNumber != null && !activity.pendingCallNumber.isEmpty()) ? activity.pendingCallNumber : activity.lastDialedNumber);
-                String dataUrl = activity.findRecentCallAudioDataUrl(phone);
+                String name = (contactName != null && !contactName.trim().isEmpty())
+                        ? contactName
+                        : activity.lastContactName;
+                int dur = (durationSec > 0) ? durationSec : activity.lastCallDurationSec;
+
+                String dataUrl = activity.findRecentCallAudioDataUrl(phone, name, dur);
                 if (dataUrl != null && !dataUrl.isEmpty()) {
                     activity.lastRecordedAudioDataUrl = dataUrl;
                     return dataUrl;
@@ -1076,7 +1162,12 @@ public class MainActivity extends BridgeActivity {
             } catch (Throwable t) {
                 t.printStackTrace();
             }
-            return activity.lastRecordedAudioDataUrl != null ? activity.lastRecordedAudioDataUrl : "";
+            return ""; // NEVER return stale audio from previous calls
+        }
+
+        @JavascriptInterface
+        public void clearLastCallRecording() {
+            activity.lastRecordedAudioDataUrl = null;
         }
 
         @JavascriptInterface

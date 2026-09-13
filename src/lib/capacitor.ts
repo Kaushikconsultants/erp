@@ -322,12 +322,14 @@ export const getNativeSims = (): NativeSimInfo[] => {
 /**
  * Place a cellular call with a specific SIM subscription
  */
-export const makeDirectCellularCall = (phoneNumber: string, subscriptionId: number = -1) => {
+export const makeDirectCellularCall = (phoneNumber: string, subscriptionId: number = -1, contactName: string = "") => {
   try {
     const clean = String(phoneNumber || '').replace(/[^0-9+]/g, '');
     if (!clean) return;
 
-    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCallWithSim === 'function') {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCallWithContact === 'function') {
+      (window as any).AndroidNative.directPhoneCallWithContact(clean, contactName, subscriptionId);
+    } else if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCallWithSim === 'function') {
       (window as any).AndroidNative.directPhoneCallWithSim(clean, subscriptionId);
     } else if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.directPhoneCall === 'function') {
       (window as any).AndroidNative.directPhoneCall(clean);

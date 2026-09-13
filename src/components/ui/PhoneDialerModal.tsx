@@ -626,12 +626,13 @@ function PhoneDialerModalContent({
         } else if (isAndroidNativeApp()) {
           // Poll the AndroidNative bridge over 3.5 seconds (OEM dialers write file right upon hangup)
           const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
+          const nameParam = selectedContactRef.current?.companyName || selectedContactRef.current?.contactPerson || newLeadName || "";
           let attempts = 0;
           const pollTimer = setInterval(() => {
             attempts++;
             try {
-              const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam)
-                || (window as any).AndroidNative?.getLastCallRecording?.();
+              const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, finalDur)
+                || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
               if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
                 clearInterval(pollTimer);
                 setRecordingUrl(rec);
@@ -681,8 +682,17 @@ function PhoneDialerModalContent({
       isCallInitiatedRef.current = false;
       setNotes("");
       setFeedbackMsg("");
+      setRecordingUrl("");
+      setAutoRecordTranscript("");
+      setCallSummary("");
       setShowNewLeadForm(false);
       setActiveTab(initialTab || "DIALPAD");
+
+      if (typeof window !== "undefined") {
+        try {
+          (window as any).AndroidNative?.clearLastCallRecording?.();
+        } catch (e) {}
+      }
 
       loadContacts();
       loadRecentCalls();
@@ -737,12 +747,13 @@ function PhoneDialerModalContent({
           if (isAndroidNativeApp()) {
             setIsAutoRecording(false);
             const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
+            const nameParam = selectedContactRef.current?.companyName || selectedContactRef.current?.contactPerson || newLeadName || "";
             let attempts = 0;
             const scanNativeRec = () => {
               attempts++;
               try {
-                const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam)
-                  || (window as any).AndroidNative?.getLastCallRecording?.();
+                const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, duration)
+                  || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
                 if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
                   setRecordingUrl(rec);
                   setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(duration)}) attached! Transcribing with Gemini AI...`);
@@ -985,15 +996,23 @@ function PhoneDialerModalContent({
     setCallStatus("Connected");
     setCallType("OUTBOUND");
 
+    setRecordingUrl("");
+    setAutoRecordTranscript("");
+    setCallSummary("");
+
     // Start auto-recording if enabled
     if (autoRecordEnabled) {
       startAutoRecording();
     }
 
     // Grant App Lock exemption & trigger SIM cellular call
+    const targetContactName = targetContact?.companyName || targetContact?.contactPerson || selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "";
     if (typeof window !== "undefined") {
       (window as any).grantAppLockExemption?.(300);
-      makeDirectCellularCall(cleanNum, selectedSim?.subscriptionId ?? -1);
+      try {
+        (window as any).AndroidNative?.clearLastCallRecording?.();
+      } catch (e) {}
+      makeDirectCellularCall(cleanNum, selectedSim?.subscriptionId ?? -1, targetContactName);
     }
 
     // Switch to post-call maintenance view
@@ -1984,8 +2003,9 @@ function PhoneDialerModalContent({
                         onClick={() => {
                           try {
                             const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
-                            const audioData = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam)
-                              || (window as any).AndroidNative?.getLastCallRecording?.();
+                            const nameParam = selectedContactRef.current?.companyName || selectedContactRef.current?.contactPerson || newLeadName || "";
+                            const audioData = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, callDurationSec)
+                              || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
                             if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio") && audioData.length > 500) {
                               setRecordingUrl(audioData);
                               setFeedbackMsg("✅ Found call recording from phone! Transcribing with Gemini AI...");
@@ -1996,7 +2016,7 @@ function PhoneDialerModalContent({
                                 setFeedbackMsg("⚠️ Storage permission required. Please allow All Files Access.");
                                 (window as any).AndroidNative?.requestAllFilesPermission?.();
                               } else {
-                                setFeedbackMsg("ℹ️ No call recording found on phone yet. Ensure 'Record calls automatically' is ON in Phone Settings.");
+                                setFeedbackMsg("ℹ️ No recent recording found for this contact yet. Ensure auto-recording is ON in Phone Settings.");
                               }
                             }
                           } catch {
