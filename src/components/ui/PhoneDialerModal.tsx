@@ -758,7 +758,6 @@ function PhoneDialerModalContent({
             localStorage.setItem("crm_device_contacts_cache", JSON.stringify(found.slice(0, 1500)));
           } catch {}
         }
-        setFeedbackMsg(`📱 Loaded ${found.length} phone contacts!`);
       } else if (isAndroidNativeApp()) {
         if (deviceContacts.length === 0) {
           setFeedbackMsg("📱 No device contacts found. Ensure contacts permission is allowed.");
@@ -1292,6 +1291,34 @@ function PhoneDialerModalContent({
     setNewLeadShop("");
   };
 
+  const eraseHoldTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isEraseHeldRef = useRef<boolean>(false);
+
+  const handleErasePressStart = () => {
+    isEraseHeldRef.current = false;
+    if (eraseHoldTimerRef.current) clearTimeout(eraseHoldTimerRef.current);
+    eraseHoldTimerRef.current = setTimeout(() => {
+      isEraseHeldRef.current = true;
+      handleClear();
+      setShowNewLeadForm(false);
+    }, 450);
+  };
+
+  const handleErasePressEnd = () => {
+    if (eraseHoldTimerRef.current) {
+      clearTimeout(eraseHoldTimerRef.current);
+      eraseHoldTimerRef.current = null;
+    }
+  };
+
+  const handleEraseClick = () => {
+    if (isEraseHeldRef.current) {
+      isEraseHeldRef.current = false;
+      return;
+    }
+    handleBackspace();
+  };
+
   const handleCopyNumber = (num: string) => {
     if (!num) return;
     try {
@@ -1818,23 +1845,7 @@ function PhoneDialerModalContent({
   return (
     <div className="dialer-backdrop" onClick={onClose}>
       <div className="dialer-sheet" onClick={(e) => e.stopPropagation()}>
-        {/* 1. S26 SIMULATED FLAGSHIP STATUS BAR */}
-        <div className="s26-status-bar">
-          <div className="s26-status-left">
-            <span>{currentTimeStr}</span>
-          </div>
-          <div className="s26-status-right">
-            <Signal size={13} strokeWidth={2.5} />
-            <span style={{ fontSize: "0.72rem", fontWeight: 800 }}>5G</span>
-            <Wifi size={14} strokeWidth={2.5} />
-            <div className="s26-status-battery">
-              <span>100</span>
-              <Battery size={15} strokeWidth={2.2} />
-            </div>
-          </div>
-        </div>
-
-        {/* 2. S26 MINIMAL TOP ACTION BAR */}
+        {/* S26 TOP ACTION BAR */}
         <div className="s26-top-bar">
           <div className="s26-top-left">
             {activeTab !== "DIALPAD" ? (
@@ -2081,22 +2092,6 @@ function PhoneDialerModalContent({
                     readOnly
                     tabIndex={-1}
                   />
-                  {phoneDigits && (
-                    <button
-                      type="button"
-                      onClick={handleBackspace}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setPhoneDigits("");
-                        setSelectedContact(null);
-                        setShowNewLeadForm(false);
-                      }}
-                      className="s26-backspace-btn"
-                      title="Tap to delete, hold to clear all"
-                    >
-                      <Delete size={22} />
-                    </button>
-                  )}
                 </div>
 
                 {/* S26 CONTEXT CANVAS */}
@@ -2127,21 +2122,23 @@ function PhoneDialerModalContent({
                       </button>
                     </div>
                   ) : phoneDigits.length >= 3 && filteredKeypadContacts.length > 0 ? (
-                    <div className="dialer-suggestions-box" style={{ width: "100%", maxWidth: "360px" }}>
-                      <div className="dialer-suggestions-header">Matching Contacts ({filteredKeypadContacts.length}):</div>
-                      <div className="dialer-suggestions-list">
+                    <div className="s26-suggestions-box">
+                      <div className="s26-suggestions-header">
+                        <span>Matching Contacts ({filteredKeypadContacts.length})</span>
+                      </div>
+                      <div className="s26-suggestions-list">
                         {filteredKeypadContacts.slice(0, 3).map((c: any) => (
                           <div
                             key={c.id}
                             onClick={() => handleSelectMatchedContact(c)}
-                            className="dialer-suggestion-row"
+                            className="s26-suggestion-row"
                           >
-                            <div className="dialer-suggestion-avatar">
+                            <div className="s26-suggestion-avatar">
                               {(c.companyName || c.contactPerson || "C").charAt(0).toUpperCase()}
                             </div>
-                            <div className="dialer-suggestion-info">
-                              <span className="dialer-suggestion-name">{c.companyName || c.contactPerson}</span>
-                              <span className="dialer-suggestion-phone">{c.phone}</span>
+                            <div className="s26-suggestion-info">
+                              <span className="s26-suggestion-name">{c.companyName || c.contactPerson}</span>
+                              <span className="s26-suggestion-phone">{c.phone}</span>
                             </div>
                             <button
                               type="button"
@@ -2149,10 +2146,10 @@ function PhoneDialerModalContent({
                                 e.stopPropagation();
                                 handleInitiateCall(c.phone, c);
                               }}
-                              style={{ width: "26px", height: "26px", borderRadius: "50%", backgroundColor: "#10b981", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              className="s26-suggestion-call-btn"
                               title="Call"
                             >
-                              <PhoneCall size={12} />
+                              <PhoneCall size={13} />
                             </button>
                           </div>
                         ))}
@@ -2338,13 +2335,29 @@ function PhoneDialerModalContent({
                     <PhoneCall size={28} />
                   </button>
 
+                  {/* S26 / iPhone 17 Erase / Backspace Button below # button */}
                   <button
                     type="button"
-                    className="s26-aux-btn log"
-                    onClick={() => setActiveTab("POST_CALL")}
-                    title="Log Call / Notes"
+                    className={`s26-aux-btn erase ${phoneDigits ? "active" : "muted"}`}
+                    onClick={phoneDigits ? handleEraseClick : undefined}
+                    onTouchStart={phoneDigits ? handleErasePressStart : undefined}
+                    onTouchEnd={phoneDigits ? handleErasePressEnd : undefined}
+                    onTouchCancel={phoneDigits ? handleErasePressEnd : undefined}
+                    onMouseDown={phoneDigits ? handleErasePressStart : undefined}
+                    onMouseUp={phoneDigits ? handleErasePressEnd : undefined}
+                    onMouseLeave={phoneDigits ? handleErasePressEnd : undefined}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      if (phoneDigits) {
+                        handleClear();
+                        setShowNewLeadForm(false);
+                      }
+                    }}
+                    disabled={!phoneDigits}
+                    title={phoneDigits ? "Tap to erase digit, hold to clear all" : "Backspace"}
+                    aria-label="Erase"
                   >
-                    <Clock size={20} />
+                    <Delete size={22} />
                   </button>
                 </div>
               </div>
