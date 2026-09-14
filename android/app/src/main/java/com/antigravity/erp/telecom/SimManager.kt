@@ -34,13 +34,15 @@ class SimManager(private val context: Context) {
     fun getActiveSims(): List<SimInfo> {
         val simList = mutableListOf<SimInfo>()
 
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            return simList
-        }
-
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1 && subscriptionManager != null) {
-                val subList: List<SubscriptionInfo>? = subscriptionManager?.activeSubscriptionInfoList
+            val hasPhoneState = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED
+            if (hasPhoneState && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1 && subscriptionManager != null) {
+                val subList: List<SubscriptionInfo>? = try {
+                    subscriptionManager?.activeSubscriptionInfoList
+                } catch (t: Throwable) {
+                    null
+                }
+
                 if (subList != null && subList.isNotEmpty()) {
                     val defaultSubId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                         SubscriptionManager.getDefaultVoiceSubscriptionId()
@@ -54,14 +56,14 @@ class SimManager(private val context: Context) {
                         val carrierName = subInfo.carrierName?.toString() ?: "Carrier"
                         val displayName = subInfo.displayName?.toString() ?: "SIM ${slotIndex + 1}"
                         val countryIso = subInfo.countryIso ?: "in"
-                        val number = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            try {
-                                subscriptionManager?.getPhoneNumber(subId) ?: subInfo.number
-                            } catch (e: Exception) {
+                        val number = try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                subscriptionManager?.getPhoneNumber(subId)
+                            } else {
                                 subInfo.number
                             }
-                        } else {
-                            subInfo.number
+                        } catch (t: Throwable) {
+                            null
                         }
 
                         simList.add(
@@ -72,31 +74,78 @@ class SimManager(private val context: Context) {
                                 carrierName = carrierName,
                                 number = number,
                                 countryIso = countryIso,
-                                iccId = subInfo.iccId,
+                                iccId = try { subInfo.iccId } catch (t: Throwable) { null },
                                 isDefault = (subId == defaultSubId)
                             )
                         )
                     }
                 }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
 
-            // Fallback for single SIM device if subList is empty
-            if (simList.isEmpty()) {
+        // Fallback: If subscription list is empty or permission not yet granted,
+        // detect active SIM modem count to guarantee Dual-SIM / Single-SIM choice pills
+        if (simList.isEmpty()) {
+            try {
                 val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-                val carrier = telephonyManager?.networkOperatorName ?: "Cellular SIM"
+                val carrier = telephonyManager?.networkOperatorName?.takeIf { it.isNotBlank() }
+                    ?: telephonyManager?.simOperatorName?.takeIf { it.isNotBlank() }
+                    ?: "Cellular"
+                val phoneCount = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    telephonyManager?.activeModemCount ?: 2
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    telephonyManager?.phoneCount ?: 2
+                } else {
+                    2
+                }
+
+                if (phoneCount >= 2) {
+                    simList.add(
+                        SimInfo(
+                            subscriptionId = 1,
+                            slotIndex = 0,
+                            displayName = "SIM 1",
+                            carrierName = if (carrier.isNotBlank() && carrier != "Cellular") "$carrier (SIM 1)" else "SIM 1",
+                            number = null,
+                            isDefault = true
+                        )
+                    )
+                    simList.add(
+                        SimInfo(
+                            subscriptionId = 2,
+                            slotIndex = 1,
+                            displayName = "SIM 2",
+                            carrierName = if (carrier.isNotBlank() && carrier != "Cellular") "$carrier (SIM 2)" else "SIM 2",
+                            number = null,
+                            isDefault = false
+                        )
+                    )
+                } else {
+                    simList.add(
+                        SimInfo(
+                            subscriptionId = 1,
+                            slotIndex = 0,
+                            displayName = "SIM 1",
+                            carrierName = carrier,
+                            number = null,
+                            isDefault = true
+                        )
+                    )
+                }
+            } catch (t: Throwable) {
                 simList.add(
                     SimInfo(
                         subscriptionId = 1,
                         slotIndex = 0,
                         displayName = "SIM 1",
-                        carrierName = if (carrier.isNotBlank()) carrier else "Cellular Network",
+                        carrierName = "Cellular",
                         number = null,
                         isDefault = true
                     )
                 )
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
         }
 
         return simList
@@ -235,6 +284,9 @@ class SimManager(private val context: Context) {
      * Configures Intent with all known OEM dual-SIM extras to guarantee placing call via selected SIM
      */
     fun applySimToIntent(intent: Intent, subscriptionId: Int, slotIndex: Int) {
+        val safeSlot = if (slotIndex >= 0) slotIndex else 0
+        val safeSub = if (subscriptionId > 0) subscriptionId else (safeSlot + 1)
+
         val isDefault = try {
             DefaultDialerManager(context).isDefaultDialer()
         } catch (e: Exception) { false }
@@ -243,7 +295,7 @@ class SimManager(private val context: Context) {
         // On modern Android (API 29+), passing EXTRA_PHONE_ACCOUNT_HANDLE from a non-default dialer in ACTION_CALL
         // causes SecurityException: PhoneAccountHandle does not belong to calling user or process, which broke direct calling.
         if (isDefault) {
-            val handle = getPhoneAccountHandleForSubscription(subscriptionId, slotIndex)
+            val handle = getPhoneAccountHandleForSubscription(safeSub, safeSlot)
             if (handle != null) {
                 try {
                     intent.putExtra(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle)
@@ -254,22 +306,22 @@ class SimManager(private val context: Context) {
             }
         }
 
-        // Broad OEM Dual-SIM compatibility extras (Samsung, Xiaomi, Oppo, Vivo, MediaTek, Qualcomm)
+        // Broad OEM Dual-SIM compatibility extras (Samsung, Xiaomi, Oppo, Vivo, Realme, MediaTek, Qualcomm)
         intent.putExtra("com.android.phone.force.slot", true)
-        intent.putExtra("com.android.phone.extra.slot", slotIndex)
-        intent.putExtra("Cdma_info", slotIndex)
-        intent.putExtra("simSlot", slotIndex)
-        intent.putExtra("slot", slotIndex)
-        intent.putExtra("sim_slot", slotIndex)
-        intent.putExtra("simId", slotIndex)
-        intent.putExtra("simnum", slotIndex)
-        intent.putExtra("slot_id", slotIndex)
-        intent.putExtra("subscription", subscriptionId)
-        intent.putExtra("subscription_id", subscriptionId)
-        intent.putExtra("phone_subscription", subscriptionId)
-        intent.putExtra("sub_id", subscriptionId)
-        intent.putExtra("com.android.phone.DialingMode", slotIndex)
-        intent.putExtra("android.telecom.extra.PHONE_ACCOUNT_HANDLE_SLOT", slotIndex)
+        intent.putExtra("com.android.phone.extra.slot", safeSlot)
+        intent.putExtra("Cdma_info", safeSlot)
+        intent.putExtra("simSlot", safeSlot)
+        intent.putExtra("slot", safeSlot)
+        intent.putExtra("sim_slot", safeSlot)
+        intent.putExtra("simId", safeSlot)
+        intent.putExtra("simnum", safeSlot)
+        intent.putExtra("slot_id", safeSlot)
+        intent.putExtra("subscription", safeSub)
+        intent.putExtra("subscription_id", safeSub)
+        intent.putExtra("phone_subscription", safeSub)
+        intent.putExtra("sub_id", safeSub)
+        intent.putExtra("com.android.phone.DialingMode", safeSlot)
+        intent.putExtra("android.telecom.extra.PHONE_ACCOUNT_HANDLE_SLOT", safeSlot)
     }
 
     /**
@@ -285,13 +337,13 @@ class SimManager(private val context: Context) {
             ?: (if (requestedSlotIndex >= 0) sims.find { it.slotIndex == requestedSlotIndex } else null)
             ?: sims.firstOrNull()
 
-        val targetSlot = selectedSim?.slotIndex ?: (if (requestedSlotIndex >= 0) requestedSlotIndex else 0)
-        val targetSubId = selectedSim?.subscriptionId ?: subscriptionId
+        val safeSlot = selectedSim?.slotIndex ?: (if (requestedSlotIndex >= 0) requestedSlotIndex else 0)
+        val safeSub = selectedSim?.subscriptionId ?: (if (subscriptionId > 0) subscriptionId else (safeSlot + 1))
 
         val uri = Uri.parse("tel:$clean")
-        val handle = getPhoneAccountHandleForSubscription(targetSubId, targetSlot)
+        val handle = getPhoneAccountHandleForSubscription(safeSub, safeSlot)
 
-        android.util.Log.d("SimManager", "placeCallWithSim: clean=$clean, targetSubId=$targetSubId, targetSlot=$targetSlot, carrier=${selectedSim?.carrierName}, handle=${handle?.id}")
+        android.util.Log.d("SimManager", "placeCallWithSim: clean=$clean, safeSub=$safeSub, safeSlot=$safeSlot, carrier=${selectedSim?.carrierName}, handle=${handle?.id}")
 
         try {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
@@ -299,12 +351,8 @@ class SimManager(private val context: Context) {
                 return false
             }
 
-            val isDefault = try {
-                DefaultDialerManager(context).isDefaultDialer()
-            } catch (e: Exception) { false }
-
-            // 1. Direct TelecomManager.placeCall ONLY if app is default dialer
-            if (isDefault && telecomManager != null && handle != null) {
+            // 1. Try TelecomManager.placeCall with handle
+            if (telecomManager != null && handle != null) {
                 try {
                     val extras = Bundle()
                     extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle)
@@ -312,23 +360,24 @@ class SimManager(private val context: Context) {
                         extras.putParcelable("android.telecom.extra.PHONE_ACCOUNT_HANDLE", handle)
                     }
                     extras.putBoolean("com.android.phone.force.slot", true)
-                    extras.putInt("com.android.phone.extra.slot", targetSlot)
-                    extras.putInt("simSlot", targetSlot)
-                    extras.putInt("slot", targetSlot)
-                    extras.putInt("sim_slot", targetSlot)
-                    extras.putInt("simId", targetSlot)
-                    extras.putInt("simnum", targetSlot)
-                    extras.putInt("slot_id", targetSlot)
-                    extras.putInt("subscription", targetSubId)
-                    extras.putInt("subscription_id", targetSubId)
-                    extras.putInt("phone_subscription", targetSubId)
-                    extras.putInt("sub_id", targetSubId)
-                    extras.putInt("android.telecom.extra.PHONE_ACCOUNT_HANDLE_SLOT", targetSlot)
-                    extras.putInt("com.android.phone.DialingMode", targetSlot)
+                    extras.putInt("com.android.phone.extra.slot", safeSlot)
+                    extras.putInt("simSlot", safeSlot)
+                    extras.putInt("slot", safeSlot)
+                    extras.putInt("sim_slot", safeSlot)
+                    extras.putInt("simId", safeSlot)
+                    extras.putInt("simnum", safeSlot)
+                    extras.putInt("slot_id", safeSlot)
+                    extras.putInt("subscription", safeSub)
+                    extras.putInt("subscription_id", safeSub)
+                    extras.putInt("phone_subscription", safeSub)
+                    extras.putInt("sub_id", safeSub)
+                    extras.putInt("android.telecom.extra.PHONE_ACCOUNT_HANDLE_SLOT", safeSlot)
+                    extras.putInt("com.android.phone.DialingMode", safeSlot)
 
                     telecomManager?.placeCall(uri, extras)
+                    android.util.Log.d("SimManager", "telecomManager.placeCall succeeded for sub=$safeSub slot=$safeSlot")
                     return true
-                } catch (te: Exception) {
+                } catch (te: Throwable) {
                     android.util.Log.w("SimManager", "telecomManager.placeCall failed, falling back to ACTION_CALL", te)
                 }
             }
@@ -337,26 +386,27 @@ class SimManager(private val context: Context) {
             try {
                 val callIntent = Intent(Intent.ACTION_CALL, uri)
                 callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                applySimToIntent(callIntent, targetSubId, targetSlot)
+                applySimToIntent(callIntent, safeSub, safeSlot)
                 context.startActivity(callIntent)
+                android.util.Log.d("SimManager", "ACTION_CALL with SIM extras succeeded: slot=$safeSlot, sub=$safeSub")
                 return true
-            } catch (ce: Exception) {
+            } catch (ce: Throwable) {
                 android.util.Log.w("SimManager", "ACTION_CALL with SIM extras failed, trying bare ACTION_CALL", ce)
                 val bareCallIntent = Intent(Intent.ACTION_CALL, uri)
                 bareCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 context.startActivity(bareCallIntent)
                 return true
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             android.util.Log.w("SimManager", "ACTION_CALL failed, falling back to ACTION_DIAL", e)
             // 3. Ultimate fallback: ACTION_DIAL only if permission is completely denied
             try {
                 val dialIntent = Intent(Intent.ACTION_DIAL, uri)
                 dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                applySimToIntent(dialIntent, targetSubId, targetSlot)
+                applySimToIntent(dialIntent, safeSub, safeSlot)
                 context.startActivity(dialIntent)
                 return true
-            } catch (ex: Exception) {
+            } catch (ex: Throwable) {
                 ex.printStackTrace()
             }
         }

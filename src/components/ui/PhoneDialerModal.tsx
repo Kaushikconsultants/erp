@@ -347,8 +347,13 @@ function PhoneDialerModalContent({
   }, [followUpDate, followUpHour, followUpMinute, followUpPeriod]);
 
   // Telecom Multi-SIM & Recording Capability State
-  const [availableSims, setAvailableSims] = useState<NativeSimInfo[]>([]);
-  const [selectedSim, setSelectedSim] = useState<NativeSimInfo | null>(null);
+  const [availableSims, setAvailableSims] = useState<NativeSimInfo[]>(() => [
+    { subscriptionId: 1, slotIndex: 0, slotLabel: "SIM 1", displayName: "SIM 1", carrierName: "SIM 1", isDefault: true },
+    { subscriptionId: 2, slotIndex: 1, slotLabel: "SIM 2", displayName: "SIM 2", carrierName: "SIM 2", isDefault: false }
+  ]);
+  const [selectedSim, setSelectedSim] = useState<NativeSimInfo | null>(() => ({
+    subscriptionId: 1, slotIndex: 0, slotLabel: "SIM 1", displayName: "SIM 1", carrierName: "SIM 1", isDefault: true
+  }));
   const [isDefaultApp, setIsDefaultApp] = useState<boolean>(true);
   const [recordingCap, setRecordingCap] = useState<RecordingCapabilityInfo | null>(null);
 
@@ -628,7 +633,9 @@ function PhoneDialerModalContent({
         }
         setFeedbackMsg(`📱 Loaded ${found.length} phone contacts!`);
       } else if (isAndroidNativeApp()) {
-        setFeedbackMsg("📱 No device contacts found. Ensure contacts permission is allowed.");
+        if (deviceContacts.length === 0) {
+          setFeedbackMsg("📱 No device contacts found. Ensure contacts permission is allowed.");
+        }
       }
     } catch (err) {
       console.warn("Error loading device contacts:", err);
@@ -663,35 +670,42 @@ function PhoneDialerModalContent({
   // Multi-SIM & Capability Discovery on Mount
   useEffect(() => {
     if (!isOpen) return;
-    if (isAndroidNativeApp()) {
-      try {
-        const sims = getNativeSims();
-        if (Array.isArray(sims) && sims.length > 0) {
-          setAvailableSims(sims);
-          let savedSubId: string | null = null;
-          let savedSlot: string | null = null;
-          try {
-            savedSubId = typeof window !== "undefined" ? localStorage.getItem("crm_preferred_sim_id") : null;
-            savedSlot = typeof window !== "undefined" ? localStorage.getItem("crm_preferred_sim_slot") : null;
-          } catch (storageErr) {
-            console.warn("Could not read preferred sim from storage:", storageErr);
+
+    const discoverTelephony = () => {
+      if (isAndroidNativeApp()) {
+        try {
+          const sims = getNativeSims();
+          if (Array.isArray(sims) && sims.length > 0) {
+            setAvailableSims(sims);
+            let savedSubId: string | null = null;
+            let savedSlot: string | null = null;
+            try {
+              savedSubId = typeof window !== "undefined" ? localStorage.getItem("crm_preferred_sim_id") : null;
+              savedSlot = typeof window !== "undefined" ? localStorage.getItem("crm_preferred_sim_slot") : null;
+            } catch (storageErr) {
+              console.warn("Could not read preferred sim from storage:", storageErr);
+            }
+            const preferred = (savedSubId ? sims.find((s) => s && s.subscriptionId != null && String(s.subscriptionId) === savedSubId) : null)
+              || (savedSlot ? sims.find((s) => s && s.slotIndex != null && String(s.slotIndex) === savedSlot) : null)
+              || sims.find((s) => s && s.isDefault)
+              || sims[0];
+            setSelectedSim(preferred || null);
           }
-          const preferred = (savedSubId ? sims.find((s) => s && s.subscriptionId != null && String(s.subscriptionId) === savedSubId) : null)
-            || (savedSlot ? sims.find((s) => s && s.slotIndex != null && String(s.slotIndex) === savedSlot) : null)
-            || sims.find((s) => s && s.isDefault)
-            || sims[0];
-          setSelectedSim(preferred || null);
+          try {
+            setIsDefaultApp(isDefaultDialer());
+          } catch (e) {}
+          try {
+            setRecordingCap(getCallRecordingCapability());
+          } catch (e) {}
+        } catch (e) {
+          console.warn("Telephony discovery error:", e);
         }
-        try {
-          setIsDefaultApp(isDefaultDialer());
-        } catch (e) {}
-        try {
-          setRecordingCap(getCallRecordingCapability());
-        } catch (e) {}
-      } catch (e) {
-        console.warn("Telephony discovery error:", e);
       }
-    }
+    };
+
+    discoverTelephony();
+    window.addEventListener("native-telephony-permission-granted", discoverTelephony);
+    return () => window.removeEventListener("native-telephony-permission-granted", discoverTelephony);
   }, [isOpen]);
 
   // Listen for Automatic Post-Call Cellular Audio Transcription
@@ -1230,7 +1244,9 @@ function PhoneDialerModalContent({
       try {
         (window as any).AndroidNative?.clearLastCallRecording?.();
       } catch (e) {}
-      makeDirectCellularCall(cleanNum, selectedSim?.subscriptionId ?? -1, targetContactName, selectedSim?.slotIndex ?? -1);
+      const targetSub = selectedSim?.subscriptionId != null && selectedSim.subscriptionId > 0 ? selectedSim.subscriptionId : 1;
+      const targetSlot = selectedSim?.slotIndex != null && selectedSim.slotIndex >= 0 ? selectedSim.slotIndex : 0;
+      makeDirectCellularCall(cleanNum, targetSub, targetContactName, targetSlot);
     }
 
     // Switch to post-call maintenance view

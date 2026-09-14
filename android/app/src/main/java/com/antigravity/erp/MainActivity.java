@@ -488,22 +488,24 @@ public class MainActivity extends BridgeActivity {
                 String toCall = pendingCallNumber;
                 pendingCallNumber = null;
                 try {
-                    Intent callIntent = new Intent(Intent.ACTION_CALL);
-                    callIntent.setData(Uri.parse("tel:" + toCall));
-                    callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(callIntent);
+                    com.antigravity.erp.telecom.SimManager simManager = new com.antigravity.erp.telecom.SimManager(this);
+                    simManager.placeCallWithSim(toCall, -1, -1);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
 
             boolean contactsGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
-            if (contactsGranted) {
+            boolean phoneStateGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+            if (contactsGranted || callPhoneGranted || phoneStateGranted) {
                 runOnUiThread(() -> {
                     try {
                         WebView webView = getBridge().getWebView();
                         if (webView != null) {
-                            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-contacts-permission-granted'));", null);
+                            if (contactsGranted) {
+                                webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-contacts-permission-granted'));", null);
+                            }
+                            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-telephony-permission-granted'));", null);
                         }
                     } catch (Exception e) {}
                 });
@@ -945,6 +947,16 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public boolean hasPhoneCallPermission() {
+            return ContextCompat.checkSelfPermission(activity, Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public boolean hasPhoneStatePermission() {
+            return ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
         public void requestContactsPermission() {
             activity.runOnUiThread(() -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -975,34 +987,65 @@ public class MainActivity extends BridgeActivity {
                     String param = "%" + searchQuery.trim() + "%";
                     selectionArgs = new String[]{param, param};
                 }
-                // Sort by name ASC (DO NOT put LIMIT here as modern Android throws IllegalArgumentException)
-                String sortOrder = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC";
-                android.database.Cursor cursor = cr.query(
-                    uri,
-                    new String[]{
-                        android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
-                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                        android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
-                    },
-                    selection,
-                    selectionArgs,
-                    sortOrder
-                );
+
+                android.database.Cursor cursor = null;
+                // Strategy 1: Standard query with projection and sort order
+                try {
+                    String sortOrder = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC";
+                    cursor = cr.query(
+                        uri,
+                        new String[]{
+                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                            android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                            android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+                        },
+                        selection,
+                        selectionArgs,
+                        sortOrder
+                    );
+                } catch (Throwable t) {
+                    android.util.Log.w("MainActivity", "cr.query with sortOrder failed, attempting fallback query", t);
+                }
+
+                // Strategy 2: Query without sort order if Strategy 1 failed
+                if (cursor == null) {
+                    try {
+                        cursor = cr.query(
+                            uri,
+                            null,
+                            selection,
+                            selectionArgs,
+                            null
+                        );
+                    } catch (Throwable t) {
+                        android.util.Log.e("MainActivity", "cr.query fallback failed", t);
+                    }
+                }
+
                 if (cursor != null) {
                     try {
                         java.util.Set<String> seen = new java.util.HashSet<>();
                         int nameIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
-                        int numIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER);
-                        int idIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID);
+                        if (nameIdx < 0) nameIdx = cursor.getColumnIndex("display_name_primary");
+                        if (nameIdx < 0) nameIdx = cursor.getColumnIndex("display_name_alt");
+                        if (nameIdx < 0) nameIdx = cursor.getColumnIndex("name");
 
-                        while (cursor.moveToNext() && list.length() < 15000) {
+                        int numIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER);
+                        if (numIdx < 0) numIdx = cursor.getColumnIndex("data1");
+                        if (numIdx < 0) numIdx = cursor.getColumnIndex("data4");
+
+                        int idIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID);
+                        if (idIdx < 0) idIdx = cursor.getColumnIndex("contact_id");
+                        if (idIdx < 0) idIdx = cursor.getColumnIndex("_id");
+
+                        while (cursor.moveToNext() && list.length() < 10000) {
                             String name = (nameIdx >= 0) ? cursor.getString(nameIdx) : null;
                             String number = (numIdx >= 0) ? cursor.getString(numIdx) : null;
                             String contactId = (idIdx >= 0) ? cursor.getString(idIdx) : String.valueOf(list.length());
 
                             if (number == null || number.trim().isEmpty()) continue;
                             String clean = number.replaceAll("[^0-9+]", "");
-                            if (clean.isEmpty()) continue;
+                            if (clean.isEmpty() || clean.length() < 5) continue;
                             String key = (name != null ? name.trim().toLowerCase() : "") + "_" + clean;
                             if (seen.contains(key)) continue;
                             seen.add(key);
