@@ -995,6 +995,7 @@
   font-weight: 800;
   color: var(--dialer-key-text);
   line-height: 1;
+  pointer-events: none;
 }
 
 .dialer-key-sub {
@@ -1003,6 +1004,7 @@
   color: var(--dialer-text-sub);
   letter-spacing: 1.4px;
   margin-top: 2px;
+  pointer-events: none;
 }
 
 /* Call Controls Floating Dock */

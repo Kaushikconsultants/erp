@@ -336,6 +336,8 @@ function PhoneDialerModalContent({
   phoneDigitsRef.current = phoneDigits;
   const selectedContactRef = useRef<any>(null);
   selectedContactRef.current = selectedContact;
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isLongPressRef = useRef<boolean>(false);
   const [allFilesGranted, setAllFilesGranted] = useState<boolean>(true);
 
   const checkStoragePermission = useCallback(() => {
@@ -623,7 +625,7 @@ function PhoneDialerModalContent({
           if (match && (!cleanInitPhone || matchPhone.includes(cleanInitPhone) || cleanInitPhone.includes(matchPhone))) {
             setSelectedContact(match);
             if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || "");
-            if (!newLeadShop) setNewLeadShop(match.shopName || match.companyName || "");
+            if (!newLeadShop) setNewLeadShop((match as any)?.shopName || match.companyName || "");
           }
         } else if (initialLeadId) {
           const match = res.customers.find((c: any) => c.id === initialLeadId && c.type === "Lead");
@@ -632,7 +634,7 @@ function PhoneDialerModalContent({
           if (match && (!cleanInitPhone || matchPhone.includes(cleanInitPhone) || cleanInitPhone.includes(matchPhone))) {
             setSelectedContact(match);
             if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || "");
-            if (!newLeadShop) setNewLeadShop(match.shopName || match.companyName || "");
+            if (!newLeadShop) setNewLeadShop((match as any)?.shopName || match.companyName || "");
           }
         } else if (initialPhone) {
           const cleanInit = String(initialPhone).replace(/\D/g, '');
@@ -646,8 +648,8 @@ function PhoneDialerModalContent({
           }
           if (match) {
             setSelectedContact(match);
-            if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || match.name || "");
-            if (!newLeadShop) setNewLeadShop(match.shopName || match.companyName || "");
+            if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || (match as any)?.name || "");
+            if (!newLeadShop) setNewLeadShop((match as any)?.shopName || match.companyName || "");
           }
         }
       }
@@ -1172,6 +1174,11 @@ function PhoneDialerModalContent({
   };
 
   const handleDigitClick = (digit: string) => {
+    if (digit === "0" && isLongPressRef.current) {
+      // Long-press already typed '+', skip entering '0'
+      isLongPressRef.current = false;
+      return;
+    }
     handleVibrate(15);
     setPhoneDigits(prev => prev + digit);
   };
@@ -1181,9 +1188,9 @@ function PhoneDialerModalContent({
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
     longPressTimerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
-      handleVibrate(35);
+      handleVibrate(40);
       setPhoneDigits(prev => prev + "+");
-    }, 380);
+    }, 450);
   };
 
   const handleZeroPressEnd = () => {
@@ -1191,10 +1198,6 @@ function PhoneDialerModalContent({
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-    if (!isLongPressRef.current) {
-      handleDigitClick("0");
-    }
-    isLongPressRef.current = false;
   };
 
   const handleBackspace = () => {
@@ -2126,15 +2129,10 @@ function PhoneDialerModalContent({
                       key={k.digit}
                       type="button"
                       className="dialer-key-btn"
-                      onClick={() => {
-                        if (k.digit !== "0") {
-                          handleDigitClick(k.digit);
-                        }
-                      }}
-                      onTouchStart={k.digit === "0" ? handleZeroPressStart : undefined}
-                      onTouchEnd={k.digit === "0" ? handleZeroPressEnd : undefined}
-                      onMouseDown={k.digit === "0" ? handleZeroPressStart : undefined}
-                      onMouseUp={k.digit === "0" ? handleZeroPressEnd : undefined}
+                      onClick={() => handleDigitClick(k.digit)}
+                      onPointerDown={k.digit === "0" ? handleZeroPressStart : undefined}
+                      onPointerUp={k.digit === "0" ? handleZeroPressEnd : undefined}
+                      onPointerCancel={k.digit === "0" ? handleZeroPressEnd : undefined}
                       onContextMenu={(e) => {
                         if (k.digit === "0") {
                           e.preventDefault();
