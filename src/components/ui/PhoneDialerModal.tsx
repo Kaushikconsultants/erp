@@ -43,7 +43,9 @@ import {
   Settings2,
   Upload,
   Volume2,
-  FileAudio
+  FileAudio,
+  Store,
+  Smartphone
 } from "lucide-react";
 import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
@@ -258,7 +260,18 @@ function PhoneDialerModalContent({
   const [callLogSearch, setCallLogSearch] = useState<string>("");
   const [callLogFilter, setCallLogFilter] = useState<"ALL" | "CONNECTED" | "MISSED" | "OUTBOUND" | "INBOUND">("ALL");
   const [contactSearch, setContactSearch] = useState<string>("");
-  const [contactFilter, setContactFilter] = useState<"ALL" | "CUSTOMER" | "LEAD">("ALL");
+  const [contactFilter, setContactFilter] = useState<"ALL" | "DEVICE" | "CUSTOMER" | "LEAD">("ALL");
+
+  // Device Phone Contacts state (synced from Android native phonebook or Web Contact Picker)
+  const [deviceContacts, setDeviceContacts] = useState<any[]>(() => {
+    try {
+      const cached = typeof window !== "undefined" ? localStorage.getItem("crm_device_contacts_cache") : null;
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isScanningContacts, setIsScanningContacts] = useState<boolean>(false);
 
   // Call Duration & Auto Debrief Engine State
   const [callDurationSec, setCallDurationSec] = useState<number>(0);
@@ -507,6 +520,8 @@ function PhoneDialerModalContent({
           const matchPhone = String(match?.phone || '').replace(/\D/g, '');
           if (match && (!cleanInitPhone || matchPhone.includes(cleanInitPhone) || cleanInitPhone.includes(matchPhone))) {
             setSelectedContact(match);
+            if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || "");
+            if (!newLeadShop) setNewLeadShop(match.shopName || match.companyName || "");
           }
         } else if (initialLeadId) {
           const match = res.customers.find((c: any) => c.id === initialLeadId && c.type === "Lead");
@@ -514,13 +529,19 @@ function PhoneDialerModalContent({
           const matchPhone = String(match?.phone || '').replace(/\D/g, '');
           if (match && (!cleanInitPhone || matchPhone.includes(cleanInitPhone) || cleanInitPhone.includes(matchPhone))) {
             setSelectedContact(match);
+            if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || "");
+            if (!newLeadShop) setNewLeadShop(match.shopName || match.companyName || "");
           }
         } else if (initialPhone) {
           const cleanInit = String(initialPhone).replace(/\D/g, '');
           const match = res.customers.find((c: any) =>
             c.phone && String(c.phone).replace(/\D/g, '').includes(cleanInit)
           );
-          if (match) setSelectedContact(match);
+          if (match) {
+            setSelectedContact(match);
+            if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || "");
+            if (!newLeadShop) setNewLeadShop(match.shopName || match.companyName || "");
+          }
         }
       }
     } catch (err) {
@@ -529,6 +550,67 @@ function PhoneDialerModalContent({
       setIsLoadingContacts(false);
     }
   };
+
+  // Load Device Phone Contacts from Android native bridge or Web Contact Picker
+  const loadDeviceContacts = useCallback(async (searchQuery: string = "") => {
+    setIsScanningContacts(true);
+    let found: any[] = [];
+    try {
+      if (isAndroidNativeApp() && typeof window !== "undefined") {
+        const hasPerm = (window as any).AndroidNative?.hasContactsPermission?.();
+        if (hasPerm === false) {
+          (window as any).AndroidNative?.requestContactsPermission?.();
+          setFeedbackMsg("📱 Grant Contacts permission in prompt to load saved phone contacts.");
+          setIsScanningContacts(false);
+          return;
+        }
+        const rawJson = (window as any).AndroidNative?.getDeviceContacts?.(searchQuery || "");
+        if (rawJson && typeof rawJson === "string") {
+          const parsed = JSON.parse(rawJson);
+          if (Array.isArray(parsed)) {
+            found = parsed.map((item: any, idx: number) => ({
+              id: `dev_${item.id || idx}_${(item.phone || '').replace(/\D/g, '')}`,
+              companyName: item.name || item.contactPerson || item.companyName || "Phone Contact",
+              contactPerson: item.name || item.contactPerson || item.companyName || "Phone Contact",
+              phone: item.phone,
+              type: "DeviceContact",
+              source: "device"
+            }));
+          }
+        }
+      } else if (typeof navigator !== "undefined" && "contacts" in navigator && "ContactsManager" in window) {
+        try {
+          const props = ["name", "tel"];
+          const contactsList = await (navigator as any).contacts.select(props, { multiple: true });
+          if (Array.isArray(contactsList)) {
+            found = contactsList.map((c: any, idx: number) => ({
+              id: `webcontact_${idx}_${(c.tel?.[0] || '').replace(/\D/g, '')}`,
+              companyName: c.name?.[0] || "Phone Contact",
+              contactPerson: c.name?.[0] || "Phone Contact",
+              phone: c.tel?.[0] || "",
+              type: "DeviceContact",
+              source: "device"
+            }));
+          }
+        } catch (pickerErr) {
+          console.warn("Contact picker cancelled or unsupported:", pickerErr);
+        }
+      }
+      if (found.length > 0) {
+        setDeviceContacts(found);
+        try {
+          localStorage.setItem("crm_device_contacts_cache", JSON.stringify(found.slice(0, 500)));
+        } catch {}
+        setFeedbackMsg(`📱 Loaded ${found.length} phone contacts!`);
+      } else if (isAndroidNativeApp()) {
+        setFeedbackMsg("📱 No device contacts found. Ensure contacts permission is allowed.");
+      }
+    } catch (err) {
+      console.warn("Error loading device contacts:", err);
+    } finally {
+      setIsScanningContacts(false);
+    }
+  }, []);
 
   // Global listener for open-phone-dialer event
   useEffect(() => {
@@ -710,8 +792,11 @@ function PhoneDialerModalContent({
 
       loadContacts();
       loadRecentCalls();
+      if (isAndroidNativeApp()) {
+        loadDeviceContacts();
+      }
     }
-  }, [isOpen, initialPhone, initialName, initialCustomerId, initialLeadId, initialTab]);
+  }, [isOpen, initialPhone, initialName, initialCustomerId, initialLeadId, initialTab, loadDeviceContacts]);
 
   // Single Clean Live Stopwatch Timer
   useEffect(() => {
@@ -940,6 +1025,10 @@ function PhoneDialerModalContent({
     if (contact?.phone) {
       setPhoneDigits(contact.phone);
     }
+    const cName = contact?.companyName || contact?.contactPerson || "";
+    if (cName) setNewLeadName(cName);
+    const sName = contact?.shopName || contact?.companyName || "";
+    if (sName) setNewLeadShop(sName);
   };
 
   // Helper: Start automatic mic + speech recording during a call
@@ -1069,7 +1158,13 @@ function PhoneDialerModalContent({
     }
 
     if (targetPhone) setPhoneDigits(targetPhone);
-    if (targetContact) setSelectedContact(targetContact);
+    if (targetContact) {
+      setSelectedContact(targetContact);
+      const cName = targetContact?.companyName || targetContact?.contactPerson || "";
+      if (cName) setNewLeadName(cName);
+      const sName = targetContact?.shopName || targetContact?.companyName || "";
+      if (sName) setNewLeadShop(sName);
+    }
 
     handleVibrate(30);
 
@@ -1287,18 +1382,48 @@ function PhoneDialerModalContent({
     }
   };
 
-  // Filter contacts dropdown in keypad
+  // Combined CRM and Phone Device Contacts
+  const allCombinedContacts = useMemo(() => {
+    const list: any[] = [];
+    const seenPhones = new Set<string>();
+
+    // 1. First add CRM contacts (Customers and Leads)
+    if (Array.isArray(contacts)) {
+      contacts.forEach(c => {
+        if (!c) return;
+        list.push(c);
+        const clean = String(c.phone || '').replace(/\D/g, '').slice(-10);
+        if (clean.length >= 7) seenPhones.add(clean);
+      });
+    }
+
+    // 2. Add Device Phone contacts (skip exact duplicates if already in CRM)
+    if (Array.isArray(deviceContacts)) {
+      deviceContacts.forEach(dc => {
+        if (!dc) return;
+        const clean = String(dc.phone || '').replace(/\D/g, '').slice(-10);
+        if (clean.length >= 7 && seenPhones.has(clean)) {
+          return;
+        }
+        list.push(dc);
+      });
+    }
+
+    return list;
+  }, [contacts, deviceContacts]);
+
+  // Filter contacts dropdown in keypad — matches across BOTH CRM and Phone contacts!
   const filteredKeypadContacts = useMemo(() => {
-    if (!phoneDigits || !Array.isArray(contacts)) return [];
+    if (!phoneDigits || !Array.isArray(allCombinedContacts)) return [];
     const q = phoneDigits.toLowerCase();
     const cleanQ = q.replace(/\D/g, '');
-    return contacts.filter(c => {
+    return allCombinedContacts.filter(c => {
       const cPhone = (c?.phone || '').replace(/\D/g, '');
-      const cName = (c?.contactPerson || '').toLowerCase();
+      const cName = (c?.contactPerson || c?.companyName || '').toLowerCase();
       const cComp = (c?.companyName || '').toLowerCase();
       return (cleanQ && cPhone.includes(cleanQ)) || cName.includes(q) || cComp.includes(q);
-    }).slice(0, 3);
-  }, [contacts, phoneDigits]);
+    }).slice(0, 4);
+  }, [allCombinedContacts, phoneDigits]);
 
   // Filtered Call Logs list
   const filteredCallLogs = useMemo(() => {
@@ -1323,8 +1448,8 @@ function PhoneDialerModalContent({
 
   // Filtered Contacts list
   const filteredContacts = useMemo(() => {
-    if (!Array.isArray(contacts)) return [];
-    return contacts.filter(c => {
+    if (!Array.isArray(allCombinedContacts)) return [];
+    return allCombinedContacts.filter(c => {
       if (!c) return false;
       if (contactSearch) {
         const q = contactSearch.toLowerCase();
@@ -1336,9 +1461,23 @@ function PhoneDialerModalContent({
       }
       if (contactFilter === "CUSTOMER") return c.type === "Customer";
       if (contactFilter === "LEAD") return c.type === "Lead";
+      if (contactFilter === "DEVICE") return c.type === "DeviceContact";
       return true;
     });
-  }, [contacts, contactSearch, contactFilter]);
+  }, [allCombinedContacts, contactSearch, contactFilter]);
+
+  // Counts breakdown for directory filter badges
+  const contactCounts = useMemo(() => {
+    let customers = 0;
+    let leads = 0;
+    let phoneContacts = 0;
+    allCombinedContacts.forEach(c => {
+      if (c.type === "Customer") customers++;
+      else if (c.type === "Lead") leads++;
+      else if (c.type === "DeviceContact") phoneContacts++;
+    });
+    return { all: allCombinedContacts.length, customers, leads, phoneContacts };
+  }, [allCombinedContacts]);
 
   return (
     <div className="dialer-backdrop" onClick={onClose}>
@@ -1499,7 +1638,7 @@ function PhoneDialerModalContent({
                   ) : phoneDigits.length >= 3 && filteredKeypadContacts.length > 0 ? (
                     /* 2. Multiple Contact Search Matches */
                     <div className="dialer-suggestions-box">
-                      <div className="dialer-suggestions-header">Matching CRM Contacts ({filteredKeypadContacts.length}):</div>
+                      <div className="dialer-suggestions-header">Matching Contacts ({filteredKeypadContacts.length}):</div>
                       <div className="dialer-suggestions-list">
                         {filteredKeypadContacts.map((c: any) => (
                           <div
@@ -1514,9 +1653,33 @@ function PhoneDialerModalContent({
                               <span className="dialer-suggestion-name">{c.companyName || c.contactPerson}</span>
                               <span className="dialer-suggestion-phone">{c.phone}</span>
                             </div>
-                            <span className={`dialer-pill-badge ${c.type === "Customer" ? "customer" : "lead"}`}>
-                              {c.type || "Contact"}
+                            <span className={`dialer-pill-badge ${c.type === "Customer" ? "customer" : c.type === "Lead" ? "lead" : "device"}`}>
+                              {c.type === "DeviceContact" ? "📱 Phone" : c.type || "Contact"}
                             </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleInitiateCall(c.phone, c);
+                              }}
+                              style={{
+                                width: "28px",
+                                height: "28px",
+                                borderRadius: "8px",
+                                backgroundColor: "#10b981",
+                                color: "#fff",
+                                border: "none",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                marginLeft: "auto",
+                                flexShrink: 0
+                              }}
+                              title="Call Now"
+                            >
+                              <PhoneCall size={13} />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -1770,61 +1933,87 @@ function PhoneDialerModalContent({
               ========================================================= */}
           {activeTab === "POST_CALL" && (
             <div>
-              {/* CONTACT HEADER CARD */}
-              <div className="dialer-contact-pill">
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div className="dialer-contact-avatar">
-                    {((selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "C")[0] || "C").toUpperCase()}
+              {/* ─── LEAD IDENTITY & EDITABLE DETAILS CARD ─── */}
+              <div className="dialer-lead-save-card">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div className="dialer-contact-avatar">
+                      {((newLeadName || selectedContact?.companyName || selectedContact?.contactPerson || "L")[0] || "L").toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ fontSize: "0.86rem", fontWeight: 800, color: "var(--dialer-text-main, #0f172a)" }}>
+                          {selectedContact?.type === "Customer" ? "🏢 Saved Customer" : selectedContact?.type === "Lead" ? "🎯 Saved Lead" : selectedContact?.type === "DeviceContact" ? "📱 Phone Contact" : "✨ Lead Details"}
+                        </span>
+                        <span style={{
+                          fontSize: "0.64rem",
+                          padding: "1px 6px",
+                          borderRadius: "4px",
+                          backgroundColor: selectedContact?.type === "Customer" ? "#e0e7ff" : selectedContact?.type === "Lead" ? "#fef3c7" : "#dcfce7",
+                          color: selectedContact?.type === "Customer" ? "#3730a3" : selectedContact?.type === "Lead" ? "#92400e" : "#15803d",
+                          fontWeight: 700
+                        }}>
+                          {selectedContact?.type === "DeviceContact" ? "Phonebook" : selectedContact?.type || "New Lead"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--dialer-text-sub, #64748b)", fontFamily: "monospace", marginTop: "1px" }}>
+                        {phoneDigits || selectedContact?.phone || "No phone entered"}
+                      </div>
+                    </div>
                   </div>
-                  <div className="dialer-contact-info">
-                    <h4>{selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}</h4>
-                    <span>{phoneDigits || selectedContact?.phone || "No phone entered"}</span>
+
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {phoneDigits && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleInitiateWhatsApp()}
+                          className="dialer-mini-action-btn wa"
+                          title="WhatsApp"
+                        >
+                          <MessageSquare size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleInitiateCall()}
+                          className="dialer-mini-action-btn call"
+                          title="Re-dial"
+                        >
+                          <PhoneCall size={14} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: "flex", gap: "6px" }}>
-                  {phoneDigits && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleInitiateWhatsApp()}
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "8px",
-                          backgroundColor: "#25d366",
-                          color: "#fff",
-                          border: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer"
-                        }}
-                        title="WhatsApp"
-                      >
-                        <MessageSquare size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInitiateCall()}
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "8px",
-                          backgroundColor: "#10b981",
-                          color: "#fff",
-                          border: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer"
-                        }}
-                        title="Re-dial"
-                      >
-                        <PhoneCall size={14} />
-                      </button>
-                    </>
-                  )}
+                {/* Editable Lead Name and Shop Name Input Fields */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--dialer-text-sub, #475569)", marginBottom: "3px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <User size={12} style={{ color: "#4f46e5" }} /> Lead Name *
+                    </label>
+                    <input
+                      type="text"
+                      className="dialer-text-input"
+                      style={{ height: "36px", fontSize: "0.82rem", fontWeight: 600 }}
+                      placeholder="e.g. Rahul Sharma"
+                      value={newLeadName}
+                      onChange={(e) => setNewLeadName(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--dialer-text-sub, #475569)", marginBottom: "3px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <Store size={12} style={{ color: "#4f46e5" }} /> Shop / Business
+                    </label>
+                    <input
+                      type="text"
+                      className="dialer-text-input"
+                      style={{ height: "36px", fontSize: "0.82rem", fontWeight: 600 }}
+                      placeholder="e.g. Sharma Hardware"
+                      value={newLeadShop}
+                      onChange={(e) => setNewLeadShop(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -2605,108 +2794,203 @@ function PhoneDialerModalContent({
               ========================================================= */}
           {activeTab === "CONTACTS" && (
             <div>
-              <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
-                <div style={{ position: "relative", flex: 1 }}>
-                  <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
-                  <input
-                    type="text"
-                    className="dialer-text-input"
-                    style={{ paddingLeft: "30px", height: "36px" }}
-                    placeholder="Search customers or leads..."
-                    value={contactSearch}
-                    onChange={(e) => setContactSearch(e.target.value)}
-                  />
-                </div>
-                <select
-                  className="dialer-select-input"
-                  style={{ width: "110px", height: "36px" }}
-                  value={contactFilter}
-                  onChange={(e: any) => setContactFilter(e.target.value)}
+              {/* Search Bar */}
+              <div style={{ position: "relative", marginBottom: "10px" }}>
+                <Search size={15} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }} />
+                <input
+                  type="text"
+                  className="dialer-text-input"
+                  style={{ paddingLeft: "34px", paddingRight: contactSearch ? "32px" : "12px", height: "38px" }}
+                  placeholder="Search phone contacts, customers or leads..."
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                />
+                {contactSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setContactSearch("")}
+                    style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", display: "flex" }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Pills Bar */}
+              <div className="dialer-contacts-filter-bar">
+                <button
+                  type="button"
+                  className={`dialer-contacts-filter-pill ${contactFilter === "ALL" ? "active" : ""}`}
+                  onClick={() => setContactFilter("ALL")}
                 >
-                  <option value="ALL">All Types</option>
-                  <option value="CUSTOMER">Customers</option>
-                  <option value="LEAD">Leads</option>
-                </select>
+                  <Users size={12} /> All ({contactCounts.all})
+                </button>
+                <button
+                  type="button"
+                  className={`dialer-contacts-filter-pill ${contactFilter === "DEVICE" ? "active" : ""}`}
+                  onClick={() => setContactFilter("DEVICE")}
+                >
+                  <Smartphone size={12} /> 📱 Phone ({contactCounts.phoneContacts})
+                </button>
+                <button
+                  type="button"
+                  className={`dialer-contacts-filter-pill ${contactFilter === "CUSTOMER" ? "active" : ""}`}
+                  onClick={() => setContactFilter("CUSTOMER")}
+                >
+                  <Building size={12} /> Customers ({contactCounts.customers})
+                </button>
+                <button
+                  type="button"
+                  className={`dialer-contacts-filter-pill ${contactFilter === "LEAD" ? "active" : ""}`}
+                  onClick={() => setContactFilter("LEAD")}
+                >
+                  <UserPlus size={12} /> Leads ({contactCounts.leads})
+                </button>
+              </div>
+
+              {/* Sync Device Contacts Banner */}
+              <div className="dialer-sync-contacts-banner">
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Smartphone size={18} style={{ color: "#2563eb", flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: "0.78rem", fontWeight: 800, color: "#0f172a" }}>
+                      Phonebook Contacts ({contactCounts.phoneContacts} synced)
+                    </div>
+                    <div style={{ fontSize: "0.68rem", color: "#64748b" }}>
+                      Scan phone to call or WhatsApp contacts directly
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => loadDeviceContacts(contactSearch)}
+                  disabled={isScanningContacts}
+                  className="dialer-sync-contacts-btn"
+                >
+                  {isScanningContacts ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Syncing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw size={13} />
+                      <span>Sync Phone</span>
+                    </>
+                  )}
+                </button>
               </div>
 
               {isLoadingContacts ? (
                 <div style={{ textAlign: "center", padding: "30px 0", color: "#64748b" }}>
                   <Loader2 size={24} style={{ animation: "spin 1s linear infinite", margin: "0 auto 8px auto" }} />
-                  <span style={{ fontSize: "0.82rem" }}>Loading Contacts...</span>
+                  <span style={{ fontSize: "0.82rem" }}>Loading Contacts Directory...</span>
                 </div>
               ) : filteredContacts.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "30px 10px", color: "#94a3b8" }}>
                   <Users size={32} style={{ margin: "0 auto 8px auto", opacity: 0.5 }} />
-                  <p style={{ margin: 0, fontSize: "0.82rem" }}>No contacts found</p>
+                  <p style={{ margin: "0 0 10px 0", fontSize: "0.82rem" }}>No contacts found</p>
+                  <button
+                    type="button"
+                    onClick={() => loadDeviceContacts()}
+                    className="dialer-sync-contacts-btn"
+                    style={{ margin: "0 auto" }}
+                  >
+                    <Smartphone size={13} /> Import Phonebook Contacts
+                  </button>
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  {filteredContacts.map((c) => (
-                    <div
-                      key={c.id}
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: "10px",
-                        backgroundColor: "#f8fafc",
-                        border: "1px solid #e2e8f0",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between"
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
-                        <div
-                          style={{
-                            width: "34px",
-                            height: "34px",
-                            borderRadius: "8px",
-                            backgroundColor: c.type === "Customer" ? "#eef2ff" : "#fffbeb",
-                            color: c.type === "Customer" ? "#4f46e5" : "#d97706",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: 800,
-                            fontSize: "0.85rem",
-                            flexShrink: 0
-                          }}
-                        >
-                          {(c.companyName || c.contactPerson || "C")[0].toUpperCase()}
-                        </div>
-                        <div style={{ overflow: "hidden" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                              {c.companyName || c.contactPerson}
-                            </span>
-                            <span style={{ fontSize: "0.62rem", padding: "1px 5px", borderRadius: "4px", backgroundColor: "#e2e8f0", color: "#475569", fontWeight: 700 }}>
-                              {c.type}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: "0.72rem", color: "#64748b", fontFamily: "monospace" }}>
-                            {c.phone}
-                          </div>
-                        </div>
-                      </div>
+                  {filteredContacts.map((c) => {
+                    const isDevice = c.type === "DeviceContact";
+                    const isCustomer = c.type === "Customer";
+                    const isLead = c.type === "Lead";
 
-                      <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
-                        <button
-                          type="button"
-                          onClick={() => handleInitiateWhatsApp("", c.phone)}
-                          style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#25d366", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                          title="WhatsApp"
-                        >
-                          <MessageSquare size={13} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleInitiateCall(c.phone, c)}
-                          style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#10b981", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                          title="Call"
-                        >
-                          <PhoneCall size={13} />
-                        </button>
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          handleSelectMatchedContact(c);
+                          setActiveTab("DIALPAD");
+                        }}
+                        style={{
+                          padding: "10px 12px",
+                          borderRadius: "12px",
+                          backgroundColor: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          cursor: "pointer",
+                          transition: "background-color 0.15s ease"
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
+                          <div
+                            style={{
+                              width: "36px",
+                              height: "36px",
+                              borderRadius: "10px",
+                              backgroundColor: isCustomer ? "#eef2ff" : isDevice ? "#ecfdf5" : "#fffbeb",
+                              color: isCustomer ? "#4f46e5" : isDevice ? "#059669" : "#d97706",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 800,
+                              fontSize: "0.88rem",
+                              flexShrink: 0
+                            }}
+                          >
+                            {(c.companyName || c.contactPerson || "C")[0].toUpperCase()}
+                          </div>
+                          <div style={{ overflow: "hidden" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                              <span style={{ fontSize: "0.86rem", fontWeight: 800, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {c.companyName || c.contactPerson}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: "0.62rem",
+                                  padding: "1px 5px",
+                                  borderRadius: "4px",
+                                  backgroundColor: isCustomer ? "#e0e7ff" : isDevice ? "#dcfce7" : "#fef3c7",
+                                  color: isCustomer ? "#3730a3" : isDevice ? "#15803d" : "#92400e",
+                                  fontWeight: 700
+                                }}
+                              >
+                                {isDevice ? "📱 Phone" : c.type}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: "0.74rem", color: "#64748b", fontFamily: "monospace", marginTop: "1px" }}>
+                              {c.phone}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", gap: "6px", flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={() => handleInitiateWhatsApp("", c.phone)}
+                            className="dialer-mini-action-btn wa"
+                            style={{ width: "30px", height: "30px" }}
+                            title="WhatsApp"
+                          >
+                            <MessageSquare size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInitiateCall(c.phone, c)}
+                            className="dialer-mini-action-btn call"
+                            style={{ width: "30px", height: "30px" }}
+                            title="Call Directly"
+                          >
+                            <PhoneCall size={13} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

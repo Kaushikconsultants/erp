@@ -97,6 +97,20 @@ export async function logCall(formData: FormData) {
           });
           if (matchLead) {
             leadId = matchLead.id;
+            // If user supplied a custom/real name, update the lead's name in CRM
+            if (newLeadName && (matchLead.name.startsWith("Contact ") || matchLead.name === "New Phone Lead" || matchLead.name !== newLeadName)) {
+              try {
+                await prisma.lead.update({
+                  where: { id: matchLead.id },
+                  data: {
+                    name: newLeadName,
+                    ...(newLeadShop ? { shopName: newLeadShop } : {})
+                  }
+                });
+              } catch (updateErr) {
+                console.warn("Could not update lead name on call log:", updateErr);
+              }
+            }
           } else if (newLeadName || newLeadShop || phone) {
             // Auto-create a quick lead so CRM integrity is maintained
             try {
@@ -126,6 +140,21 @@ export async function logCall(formData: FormData) {
             }
           }
         }
+      }
+    }
+
+    // Also update existing lead if leadId was directly provided and newLeadName or newLeadShop is provided
+    if (leadId && (newLeadName || newLeadShop)) {
+      try {
+        await prisma.lead.update({
+          where: { id: leadId },
+          data: {
+            ...(newLeadName ? { name: newLeadName } : {}),
+            ...(newLeadShop ? { shopName: newLeadShop } : {})
+          }
+        });
+      } catch (e) {
+        console.warn("Notice: could not update lead name from leadId:", e);
       }
     }
 
@@ -327,21 +356,25 @@ export async function getCustomersForCallModal() {
     const session = await getServerSession(authOptions).catch(() => null);
     if (!session?.user) return { success: false, customers: [] };
 
+    const whereScope = orgId 
+      ? { OR: [{ organizationId: orgId }, { organizationId: null }, { organizationId: "default-org" }] }
+      : {};
+
     const [customers, leads] = await Promise.all([
       prisma.customer.findMany({
-        where: orgId ? { organizationId: orgId } : {},
-        select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true },
+        where: whereScope,
+        select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, alternatePhone: true, city: true },
         orderBy: { businessName: 'asc' },
-        take: 200
+        take: 500
       }).catch(err => {
         console.warn("Customer findMany error in call modal:", err);
         return [];
       }),
       prisma.lead.findMany({
-        where: orgId ? { organizationId: orgId } : {},
+        where: whereScope,
         select: { id: true, name: true, shopName: true, whatsappNumber: true },
         orderBy: { name: 'asc' },
-        take: 200
+        take: 500
       }).catch(err => {
         console.warn("Lead findMany error in call modal:", err);
         return [];
@@ -351,16 +384,16 @@ export async function getCustomersForCallModal() {
     const mapped = [
       ...(Array.isArray(customers) ? customers : []).map(c => ({
         id: c.id,
-        companyName: c.businessName || "Customer",
-        contactPerson: c.contactPerson || "",
-        phone: c.mobile || c.whatsappNumber || '',
+        companyName: c.businessName || c.contactPerson || "Customer",
+        contactPerson: c.contactPerson || c.businessName || "",
+        phone: c.mobile || c.whatsappNumber || (c as any).alternatePhone || '',
         city: c.city || '',
         type: 'Customer'
       })),
       ...(Array.isArray(leads) ? leads : []).map(l => ({
         id: l.id,
         companyName: l.shopName || l.name || "Lead",
-        contactPerson: l.name || "",
+        contactPerson: l.name || l.shopName || "",
         phone: l.whatsappNumber || '',
         city: '',
         type: 'Lead'

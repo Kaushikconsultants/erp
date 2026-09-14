@@ -901,6 +901,83 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
+        public boolean hasContactsPermission() {
+            return ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public void requestContactsPermission() {
+            activity.runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    ActivityCompat.requestPermissions(
+                            activity,
+                            new String[]{Manifest.permission.READ_CONTACTS},
+                            PERMISSION_REQUEST_CODE
+                    );
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String getDeviceContacts(String searchQuery) {
+            org.json.JSONArray list = new org.json.JSONArray();
+            try {
+                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+                    requestContactsPermission();
+                    return "[]";
+                }
+                android.content.ContentResolver cr = activity.getContentResolver();
+                android.net.Uri uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
+                String selection = null;
+                String[] selectionArgs = null;
+                if (searchQuery != null && !searchQuery.trim().isEmpty()) {
+                    selection = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? OR " +
+                                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?";
+                    String param = "%" + searchQuery.trim() + "%";
+                    selectionArgs = new String[]{param, param};
+                }
+                android.database.Cursor cursor = cr.query(
+                    uri,
+                    new String[]{
+                        android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER
+                    },
+                    selection,
+                    selectionArgs,
+                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC LIMIT 300"
+                );
+                if (cursor != null) {
+                    try {
+                        java.util.Set<String> seen = new java.util.HashSet<>();
+                        while (cursor.moveToNext()) {
+                            String name = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
+                            String number = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER));
+                            if (number == null || number.trim().isEmpty()) continue;
+                            String clean = number.replaceAll("[^0-9+]", "");
+                            String key = (name != null ? name : "") + "_" + clean;
+                            if (seen.contains(key)) continue;
+                            seen.add(key);
+
+                            org.json.JSONObject obj = new org.json.JSONObject();
+                            obj.put("id", "device_" + cursor.getString(cursor.getColumnIndexOrThrow(android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID)));
+                            obj.put("contactPerson", name != null ? name : "Phone Contact");
+                            obj.put("companyName", name != null ? name : "Phone Contact");
+                            obj.put("phone", number);
+                            obj.put("type", "Phone Contact");
+                            list.put(obj);
+                        }
+                    } finally {
+                        cursor.close();
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return list.toString();
+        }
+
+        @JavascriptInterface
         public void openAppNotificationSettings() {
             activity.runOnUiThread(() -> {
                 try {
