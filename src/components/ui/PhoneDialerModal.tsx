@@ -252,6 +252,23 @@ export function matchesT9(targetName: string, queryDigits: string): boolean {
   return words.some(w => w.startsWith(cleanQuery));
 }
 
+// Pure module-level utility: Normalize 12-hour follow-up time
+export function normalizeFollowUpHour(raw: any): string {
+  if (!raw) return "11";
+  const num = parseInt(String(raw).replace(/\D/g, ""), 10);
+  if (isNaN(num) || num < 1 || num > 12) return "11";
+  return String(num).padStart(2, "0");
+}
+
+export function normalizeFollowUpMinute(raw: any): string {
+  if (raw == null) return "00";
+  const num = parseInt(String(raw).replace(/\D/g, ""), 10);
+  if (isNaN(num) || num < 0 || num > 59) return "00";
+  const rounded = Math.round(num / 5) * 5;
+  const clamped = rounded >= 60 ? 55 : rounded;
+  return String(clamped).padStart(2, "0");
+}
+
 // Pure module-level utility: Format phone number preserving '+' and E.164 compliance
 export function formatPhoneNumberForCall(raw: string | null | undefined): string {
   if (!raw) return "";
@@ -338,6 +355,7 @@ function PhoneDialerModalContent({
   selectedContactRef.current = selectedContact;
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPressRef = useRef<boolean>(false);
+  const isLeadNameManuallyEditedRef = useRef<boolean>(false);
   const [allFilesGranted, setAllFilesGranted] = useState<boolean>(true);
 
   const checkStoragePermission = useCallback(() => {
@@ -541,9 +559,9 @@ function PhoneDialerModalContent({
         }
         if (a.suggestedFollowUp?.date) {
           setFollowUpDate(a.suggestedFollowUp.date);
-          if (a.suggestedFollowUp.hour12) setFollowUpHour(a.suggestedFollowUp.hour12);
-          if (a.suggestedFollowUp.minute) setFollowUpMinute(a.suggestedFollowUp.minute);
-          if (a.suggestedFollowUp.period) setFollowUpPeriod(a.suggestedFollowUp.period);
+          if (a.suggestedFollowUp.hour12) setFollowUpHour(normalizeFollowUpHour(a.suggestedFollowUp.hour12));
+          if (a.suggestedFollowUp.minute) setFollowUpMinute(normalizeFollowUpMinute(a.suggestedFollowUp.minute));
+          if (a.suggestedFollowUp.period) setFollowUpPeriod(a.suggestedFollowUp.period === "PM" ? "PM" : "AM");
         }
         const isSilent = a.transcript?.includes("[Call connected - silence/hold tone]") || a.transcript?.includes("No discernible speech detected");
         if (isSilent) {
@@ -941,6 +959,8 @@ function PhoneDialerModalContent({
     if (isOpen) {
       setPhoneDigits(initialPhone || "");
       setNewLeadName(initialName || "");
+      setNewLeadShop("");
+      isLeadNameManuallyEditedRef.current = false;
       setSelectedContact(null);
       setCallDurationSec(0);
       setIsTimerRunning(false);
@@ -1126,6 +1146,10 @@ function PhoneDialerModalContent({
   useEffect(() => {
     if (!phoneDigits) {
       setSelectedContact(null);
+      if (!isLeadNameManuallyEditedRef.current) {
+        setNewLeadName("");
+        setNewLeadShop("");
+      }
       return;
     }
     const cleanNum = phoneDigits.replace(/\D/g, '');
@@ -1133,9 +1157,17 @@ function PhoneDialerModalContent({
     // Check if the currently selected contact still matches cleanNum
     if (selectedContact) {
       const cPhone = String(selectedContact.phone || selectedContact.mobile || '').replace(/\D/g, '');
-      const stillMatches = cPhone && (cPhone.includes(cleanNum) || cleanNum.includes(cPhone));
+      const stillMatches = cPhone && (
+        cPhone === cleanNum || 
+        (cleanNum.length >= 3 && cPhone.startsWith(cleanNum)) || 
+        (cleanNum.length >= 7 && (cPhone.endsWith(cleanNum) || cPhone.slice(-10) === cleanNum.slice(-10)))
+      );
       if (!stillMatches) {
         setSelectedContact(null);
+        if (!isLeadNameManuallyEditedRef.current) {
+          setNewLeadName("");
+          setNewLeadShop("");
+        }
       }
     }
 
@@ -1144,7 +1176,13 @@ function PhoneDialerModalContent({
         const cPhone = String(c?.phone || c?.mobile || '').replace(/\D/g, '');
         const cName = String(c?.contactPerson || c?.companyName || c?.name || '').toLowerCase();
         const cComp = String(c?.shopName || c?.companyName || '').toLowerCase();
-        const phoneMatch = cPhone && (cPhone.includes(cleanNum) || cleanNum.includes(cPhone));
+
+        // Realistic phone matching: Short numbers (< 5 digits, e.g. 198) must NOT match random middle substrings
+        const exactMatch = cPhone && cPhone === cleanNum;
+        const prefixMatch = cPhone && cleanNum.length >= 3 && cPhone.startsWith(cleanNum);
+        const suffixMatch = cPhone && cleanNum.length >= 7 && (cPhone.endsWith(cleanNum) || cPhone.slice(-10) === cleanNum.slice(-10));
+        const phoneMatch = exactMatch || prefixMatch || suffixMatch;
+
         const nameMatch = cName.includes(phoneDigits.toLowerCase()) || cComp.includes(phoneDigits.toLowerCase());
         const t9Match = cleanNum.length >= 2 && (matchesT9(cName, cleanNum) || matchesT9(cComp, cleanNum));
         return phoneMatch || nameMatch || t9Match;
@@ -1152,14 +1190,24 @@ function PhoneDialerModalContent({
       if (match) {
         setSelectedContact(match);
         const cName = match.contactPerson || match.companyName || match.name || "";
-        if (cName && !newLeadName) setNewLeadName(cName);
         const sName = match.shopName || match.companyName || "";
-        if (sName && !newLeadShop) setNewLeadShop(sName);
+        if (!isLeadNameManuallyEditedRef.current) {
+          setNewLeadName(cName);
+          setNewLeadShop(sName);
+        }
       } else {
         setSelectedContact(null);
+        if (!isLeadNameManuallyEditedRef.current) {
+          setNewLeadName("");
+          setNewLeadShop("");
+        }
       }
     } else if (cleanNum.length < 2) {
       setSelectedContact(null);
+      if (!isLeadNameManuallyEditedRef.current) {
+        setNewLeadName("");
+        setNewLeadShop("");
+      }
     }
   }, [phoneDigits, allCombinedContacts]);
 
@@ -1202,13 +1250,26 @@ function PhoneDialerModalContent({
 
   const handleBackspace = () => {
     handleVibrate(20);
-    setPhoneDigits(prev => prev.slice(0, -1));
+    setPhoneDigits(prev => {
+      const next = prev.slice(0, -1);
+      if (!next) {
+        setSelectedContact(null);
+        if (!isLeadNameManuallyEditedRef.current) {
+          setNewLeadName("");
+          setNewLeadShop("");
+        }
+      }
+      return next;
+    });
   };
 
   const handleClear = () => {
     handleVibrate(25);
     setPhoneDigits("");
     setSelectedContact(null);
+    isLeadNameManuallyEditedRef.current = false;
+    setNewLeadName("");
+    setNewLeadShop("");
   };
 
   const handleCopyNumber = (num: string) => {
@@ -1280,9 +1341,10 @@ function PhoneDialerModalContent({
       setPhoneDigits(formatted || p);
     }
     const cName = contact?.companyName || contact?.contactPerson || contact?.name || "";
-    if (cName) setNewLeadName(cName);
+    setNewLeadName(cName);
     const sName = contact?.shopName || contact?.companyName || "";
-    if (sName) setNewLeadShop(sName);
+    setNewLeadShop(sName);
+    isLeadNameManuallyEditedRef.current = false;
   };
 
   // Helper: Start automatic mic + speech recording during a call
@@ -1414,10 +1476,11 @@ function PhoneDialerModalContent({
     if (targetPhone) setPhoneDigits(targetPhone);
     if (targetContact) {
       setSelectedContact(targetContact);
-      const cName = targetContact?.companyName || targetContact?.contactPerson || "";
-      if (cName) setNewLeadName(cName);
+      const cName = targetContact?.companyName || targetContact?.contactPerson || targetContact?.name || "";
+      setNewLeadName(cName);
       const sName = targetContact?.shopName || targetContact?.companyName || "";
-      if (sName) setNewLeadShop(sName);
+      setNewLeadShop(sName);
+      isLeadNameManuallyEditedRef.current = false;
     }
 
     handleVibrate(30);
@@ -1591,10 +1654,10 @@ function PhoneDialerModalContent({
         }
       }
 
-      if (!activeCustomerId && !activeLeadId && (newLeadName || newLeadShop) && cleanPhone.length >= 7) {
+      if (!activeCustomerId && !activeLeadId && (newLeadName.trim() || newLeadShop.trim()) && cleanPhone.length >= 7) {
         const leadRes = await createQuickLead({
-          name: newLeadName || "New Phone Lead",
-          shopName: newLeadShop || "Phone Inquiry",
+          name: newLeadName.trim() || "New Phone Lead",
+          shopName: newLeadShop.trim() || "Phone Inquiry",
           whatsappNumber: phoneDigits,
           notes: `Created from Phone Dialer call (${outcome}) - Duration: ${callDurationSec}s`
         });
@@ -2195,22 +2258,30 @@ function PhoneDialerModalContent({
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <div className="dialer-postcall-header-avatar">
-                      {((newLeadName || selectedContact?.companyName || selectedContact?.contactPerson || "L")[0] || "L").toUpperCase()}
+                      {((selectedContact?.companyName || selectedContact?.contactPerson || newLeadName.trim() || "D")[0] || "D").toUpperCase()}
                     </div>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span style={{ fontSize: "0.92rem", fontWeight: 800, color: "var(--dialer-text-main, #0f172a)" }}>
-                          {selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Call"}
+                          {selectedContact?.companyName || selectedContact?.contactPerson || newLeadName.trim() || (phoneDigits ? `Direct: ${phoneDigits}` : "Direct Call")}
                         </span>
                         <span style={{
                           fontSize: "0.62rem",
                           padding: "1px 6px",
                           borderRadius: "4px",
-                          backgroundColor: selectedContact?.type === "Customer" ? "#e0e7ff" : selectedContact?.type === "Lead" ? "#fef3c7" : "#dcfce7",
-                          color: selectedContact?.type === "Customer" ? "#3730a3" : selectedContact?.type === "Lead" ? "#92400e" : "#15803d",
+                          backgroundColor: selectedContact?.type === "Customer" ? "#e0e7ff" : selectedContact?.type === "Lead" ? "#fef3c7" : "#f1f5f9",
+                          color: selectedContact?.type === "Customer" ? "#3730a3" : selectedContact?.type === "Lead" ? "#92400e" : "#475569",
                           fontWeight: 700
                         }}>
-                          {selectedContact?.type === "DeviceContact" ? "📱 Phonebook" : selectedContact?.type || "New Lead"}
+                          {selectedContact?.type === "DeviceContact" 
+                            ? "📱 Phonebook" 
+                            : selectedContact?.type === "Customer"
+                              ? "Customer"
+                              : selectedContact?.type === "Lead"
+                                ? "CRM Lead"
+                                : newLeadName.trim()
+                                  ? "New Lead"
+                                  : "Direct Call"}
                         </span>
                       </div>
                       <div style={{ fontSize: "0.78rem", color: "var(--dialer-text-sub, #64748b)", fontFamily: "monospace", marginTop: "2px" }}>
@@ -2255,7 +2326,10 @@ function PhoneDialerModalContent({
                       style={{ height: "36px", fontSize: "0.82rem", fontWeight: 600 }}
                       placeholder="e.g. Rahul Sharma"
                       value={newLeadName}
-                      onChange={(e) => setNewLeadName(e.target.value)}
+                      onChange={(e) => {
+                        isLeadNameManuallyEditedRef.current = true;
+                        setNewLeadName(e.target.value);
+                      }}
                     />
                   </div>
                   <div>
@@ -2268,7 +2342,10 @@ function PhoneDialerModalContent({
                       style={{ height: "36px", fontSize: "0.82rem", fontWeight: 600 }}
                       placeholder="e.g. Sharma Hardware"
                       value={newLeadShop}
-                      onChange={(e) => setNewLeadShop(e.target.value)}
+                      onChange={(e) => {
+                        isLeadNameManuallyEditedRef.current = true;
+                        setNewLeadShop(e.target.value);
+                      }}
                     />
                   </div>
                 </div>
@@ -2314,34 +2391,37 @@ function PhoneDialerModalContent({
                   <div className="dialer-datetime-row">
                     <input
                       type="date"
-                      className="dialer-text-input"
+                      className="dialer-text-input dialer-date-input"
                       value={followUpDate}
                       onChange={(e) => setFollowUpDate(e.target.value)}
                     />
                     <div className="dialer-time-selects">
                       <select
-                        className="dialer-select-input"
+                        className="dialer-select-input dialer-time-select"
                         value={followUpHour}
                         onChange={(e) => setFollowUpHour(e.target.value)}
+                        aria-label="Hour"
                       >
                         {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
                           <option key={h} value={h}>{h}</option>
                         ))}
                       </select>
+                      <span className="dialer-time-colon">:</span>
                       <select
-                        className="dialer-select-input"
+                        className="dialer-select-input dialer-time-select"
                         value={followUpMinute}
                         onChange={(e) => setFollowUpMinute(e.target.value)}
+                        aria-label="Minute"
                       >
-                        <option value="00">00</option>
-                        <option value="15">15</option>
-                        <option value="30">30</option>
-                        <option value="45">45</option>
+                        {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
                       </select>
                       <button
                         type="button"
                         onClick={() => setFollowUpPeriod(prev => prev === "AM" ? "PM" : "AM")}
                         className="dialer-period-toggle-btn"
+                        title="Toggle AM/PM"
                       >
                         {followUpPeriod}
                       </button>
@@ -2357,10 +2437,12 @@ function PhoneDialerModalContent({
                           ? "Existing Customer Record" 
                           : selectedContact?.type === "Lead" 
                             ? "Existing CRM Lead" 
-                            : "New Lead (Auto-saved to CRM upon Log Call)"}
+                            : newLeadName.trim()
+                              ? "Will be saved as CRM Lead on Log Call"
+                              : "Call will be logged (No Lead created)"}
                       </span>
                     </div>
-                    {(!selectedContact || selectedContact.type === "DeviceContact") && (
+                    {(!selectedContact || selectedContact.type === "DeviceContact") && newLeadName.trim().length > 0 && (
                       <button
                         type="button"
                         onClick={handleCreateQuickLeadInline}
@@ -2781,9 +2863,9 @@ function PhoneDialerModalContent({
                     if (data.summary) setCallSummary(data.summary);
                     if (data.recordingUrl && !recordingUrl) setRecordingUrl(data.recordingUrl);
                     if (data.followUpDate) setFollowUpDate(data.followUpDate);
-                    if (data.followUpHour) setFollowUpHour(data.followUpHour);
-                    if (data.followUpMinute) setFollowUpMinute(data.followUpMinute);
-                    if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod);
+                    if (data.followUpHour) setFollowUpHour(normalizeFollowUpHour(data.followUpHour));
+                    if (data.followUpMinute) setFollowUpMinute(normalizeFollowUpMinute(data.followUpMinute));
+                    if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod === "PM" ? "PM" : "AM");
                     setFeedbackMsg("✨ AI Debrief intelligence applied!");
                   }}
                   onCallSaved={() => {
