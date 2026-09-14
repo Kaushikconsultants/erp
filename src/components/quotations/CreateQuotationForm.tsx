@@ -761,6 +761,18 @@ export default function CreateQuotationForm({
     );
   }).slice(0, 30);
 
+  const handleBack = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/quotations');
+    }
+  };
+
   return (
     <div className="quotation-form-wrapper" style={{ padding: '24px 16px' }}>
       
@@ -809,9 +821,30 @@ export default function CreateQuotationForm({
       {/* ─── STANDARD ZOHO PAGE HEADER ─── */}
       <div className="quotation-header-bar" style={{ maxWidth: '1200px', margin: '0 auto 20px auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Link href="/quotations" style={{ color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none', width: '36px', height: '36px', borderRadius: '8px', backgroundColor: '#ffffff', border: '1px solid #cbd5e1' }}>
-            <ArrowLeft size={18} />
-          </Link>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="quotation-back-btn"
+            title="Go Back"
+            aria-label="Go Back"
+            style={{
+              color: '#475569',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '36px',
+              height: '36px',
+              borderRadius: '8px',
+              backgroundColor: '#ffffff',
+              border: '1px solid #cbd5e1',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+              padding: 0
+            }}
+          >
+            <ArrowLeft size={18} style={{ pointerEvents: 'none' }} />
+          </button>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <h1 style={{ fontSize: '1.35rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
@@ -826,9 +859,24 @@ export default function CreateQuotationForm({
         </div>
 
         <div className="quotation-header-actions" style={{ display: 'flex', gap: '10px', width: 'auto' }}>
-          <Link href="/quotations" style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#475569', textDecoration: 'none', fontWeight: 500, fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={handleBack}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+              backgroundColor: '#ffffff',
+              color: '#475569',
+              fontWeight: 500,
+              fontSize: '0.85rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              cursor: 'pointer'
+            }}
+          >
             Cancel
-          </Link>
+          </button>
           {/* Only show Save Draft button if status is NOT already Confirmed/Converted */}
           {(!initialQuotation || (initialQuotation?.status !== 'Confirmed' && initialQuotation?.status !== 'Converted')) && (
             <button 

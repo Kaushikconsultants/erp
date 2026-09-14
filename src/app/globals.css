@@ -899,6 +899,17 @@ button {
     margin-bottom: 12px !important;
   }
 
+  .quotation-back-btn:hover {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+  }
+
+  .quotation-back-btn:active {
+    transform: scale(0.94);
+    background-color: #e2e8f0 !important;
+  }
+
   /* Hide redundant top action buttons on mobile since sticky bottom bar exists */
   .quotation-header-actions {
     display: none !important;
