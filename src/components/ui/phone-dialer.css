@@ -1,38 +1,86 @@
-/* =========================================================
-   TELECRM ENTERPRISE SMART DIALER - FULL SCREEN MODERN THEME
-   ========================================================= */
+/* ==========================================================================
+   TELECRM FLAGSHIP SMART DIALER - SAMSUNG GALAXY S26 & iPHONE 17 PRO THEME
+   Inspired by Samsung One UI 7/8 & iOS 18 Flagship Dialers with Full CRM Power
+   ========================================================================== */
 
 :root {
-  --dialer-bg: #ffffff;
-  --dialer-bg-subtle: #f8fafc;
-  --dialer-border: #e2e8f0;
-  --dialer-text-main: #0f172a;
-  --dialer-text-sub: #64748b;
-  --dialer-accent: #4f46e5;
-  --dialer-accent-hover: #4338ca;
-  --dialer-accent-subtle: #eef2ff;
-  --dialer-key-bg: #f8fafc;
-  --dialer-key-border: #e2e8f0;
-  --dialer-key-text: #0f172a;
-  --dialer-call-bg: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  --dialer-call-shadow: rgba(16, 185, 129, 0.45);
+  --s26-bg: #ffffff;
+  --s26-bg-subtle: #f8f9fa;
+  --s26-surface: #ffffff;
+  --s26-surface-subtle: #f1f3f5;
+  --s26-border: #e9ecef;
+  --s26-border-subtle: #f1f3f5;
+  --s26-text-main: #1c1e21;
+  --s26-text-sub: #70757a;
+  --s26-accent: #2563eb;
+  --s26-accent-subtle: #eff6ff;
+
+  /* S26 Keypad Buttons */
+  --s26-key-bg: #f8f9fa;
+  --s26-key-active: #e9ecef;
+  --s26-key-border: #e5e7eb;
+  --s26-key-digit: #111827;
+  --s26-key-sub: #8c959f;
+
+  /* S26 Iconic Green Call Button */
+  --s26-call-bg: linear-gradient(145deg, #22c55e 0%, #16a34a 100%);
+  --s26-call-shadow: rgba(34, 197, 94, 0.42);
+
+  /* Legacy variables compatibility */
+  --dialer-bg: var(--s26-bg);
+  --dialer-bg-subtle: var(--s26-bg-subtle);
+  --dialer-border: var(--s26-border);
+  --dialer-text-main: var(--s26-text-main);
+  --dialer-text-sub: var(--s26-text-sub);
+  --dialer-accent: var(--s26-accent);
+  --dialer-accent-hover: #1d4ed8;
+  --dialer-accent-subtle: var(--s26-accent-subtle);
+  --dialer-key-bg: var(--s26-key-bg);
+  --dialer-key-border: var(--s26-key-border);
+  --dialer-key-text: var(--s26-key-digit);
+  --dialer-call-bg: var(--s26-call-bg);
+  --dialer-call-shadow: var(--s26-call-shadow);
 }
 
 .dark {
-  --dialer-bg: #0b0f19;
-  --dialer-bg-subtle: #111827;
-  --dialer-border: #1f2937;
-  --dialer-text-main: #f8fafc;
-  --dialer-text-sub: #94a3b8;
-  --dialer-accent: #6366f1;
-  --dialer-accent-hover: #818cf8;
-  --dialer-accent-subtle: rgba(99, 102, 241, 0.15);
-  --dialer-key-bg: #161f30;
-  --dialer-key-border: #243048;
-  --dialer-key-text: #f8fafc;
+  --s26-bg: #000000;
+  --s26-bg-subtle: #0f1115;
+  --s26-surface: #14171d;
+  --s26-surface-subtle: #1c2027;
+  --s26-border: #222731;
+  --s26-border-subtle: #191e26;
+  --s26-text-main: #f3f4f6;
+  --s26-text-sub: #9ca3af;
+  --s26-accent: #3b82f6;
+  --s26-accent-subtle: rgba(59, 130, 246, 0.15);
+
+  --s26-key-bg: #15181e;
+  --s26-key-active: #232833;
+  --s26-key-border: #232833;
+  --s26-key-digit: #f9fafb;
+  --s26-key-sub: #6b7280;
+
+  --s26-call-bg: linear-gradient(145deg, #22c55e 0%, #15803d 100%);
+  --s26-call-shadow: rgba(34, 197, 94, 0.35);
+
+  --dialer-bg: var(--s26-bg);
+  --dialer-bg-subtle: var(--s26-bg-subtle);
+  --dialer-border: var(--s26-border);
+  --dialer-text-main: var(--s26-text-main);
+  --dialer-text-sub: var(--s26-text-sub);
+  --dialer-accent: var(--s26-accent);
+  --dialer-accent-hover: #60a5fa;
+  --dialer-accent-subtle: var(--s26-accent-subtle);
+  --dialer-key-bg: var(--s26-key-bg);
+  --dialer-key-border: var(--s26-key-border);
+  --dialer-key-text: var(--s26-key-digit);
+  --dialer-call-bg: var(--s26-call-bg);
+  --dialer-call-shadow: var(--s26-call-shadow);
 }
 
-/* Full Screen Backdrop */
+/* ─────────────────────────────────────────────────────────────
+   FULL SCREEN BACKDROP & S26 SMARTPHONE CANVAS
+   ───────────────────────────────────────────────────────────── */
 .dialer-backdrop {
   position: fixed !important;
   inset: 0 !important;
@@ -40,185 +88,294 @@
   width: 100vw !important;
   height: 100% !important;
   height: 100dvh !important;
-  z-index: 99999999 !important; /* Above everything */
-  background-color: var(--dialer-bg) !important;
+  z-index: 99999999 !important;
+  background-color: var(--s26-bg) !important;
   display: flex !important;
   flex-direction: column !important;
   padding: 0 !important;
   margin: 0 !important;
   overflow: hidden !important;
-  animation: dialerFadeIn 0.2s ease-out;
+  animation: s26FadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-@keyframes dialerFadeIn {
-  from { opacity: 0; transform: scale(0.98); }
+@keyframes s26FadeIn {
+  from { opacity: 0; transform: scale(0.985); }
   to { opacity: 1; transform: scale(1); }
 }
 
-/* Full Screen Sheet Canvas */
 .dialer-sheet {
   width: 100% !important;
   max-width: 100% !important;
   height: 100% !important;
   height: 100dvh !important;
-  max-height: 100dvh !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
   display: flex !important;
   flex-direction: column !important;
-  background-color: var(--dialer-bg) !important;
-  color: var(--dialer-text-main) !important;
+  background-color: var(--s26-bg) !important;
+  color: var(--s26-text-main) !important;
   overflow: hidden !important;
-  padding-top: max(6px, env(safe-area-inset-top, 0px)) !important;
-  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
-  box-sizing: border-box !important;
+  padding: 0 !important;
   margin: 0 !important;
   border: none !important;
+  box-sizing: border-box !important;
+  position: relative !important;
 }
 
-/* Hide drag handle since dialer is full-screen */
-.dialer-drag-handle {
-  display: none !important;
-}
-
-/* Header */
-.dialer-header {
-  padding: 12px 20px 14px 20px;
-  border-bottom: 1px solid var(--dialer-border);
+/* ─────────────────────────────────────────────────────────────
+   1. S26 TOP STATUS BAR (SIMULATED FLAGSHIP HEADER)
+   ───────────────────────────────────────────────────────────── */
+.s26-status-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: max(8px, env(safe-area-inset-top, 8px)) 22px 4px 22px;
+  background-color: var(--s26-bg);
   flex-shrink: 0;
-  background-color: var(--dialer-bg);
-}
-
-.dialer-title-box {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.dialer-icon-badge {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
-  flex-shrink: 0;
-}
-
-.dialer-title-text h3 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--dialer-text-main);
+  user-select: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--s26-text-main);
   letter-spacing: -0.02em;
+}
+
+.s26-status-left {
   display: flex;
   align-items: center;
   gap: 6px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--s26-text-main);
 }
 
-.dialer-title-text span {
-  font-size: 0.74rem;
-  color: var(--dialer-text-sub);
-  font-weight: 600;
+.s26-status-right {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
+  color: var(--s26-text-main);
 }
 
-.dialer-close-btn {
-  background: var(--dialer-bg-subtle);
-  border: 1px solid var(--dialer-border);
-  color: var(--dialer-text-sub);
-  border-radius: 50%;
+.s26-status-battery {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   2. S26 TOP ACTION HEADER (SEARCH, 3-DOTS OVERFLOW MENU, CLOSE)
+   ───────────────────────────────────────────────────────────── */
+.s26-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px 10px 18px;
+  background-color: var(--s26-bg);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 100;
+}
+
+.s26-top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.s26-back-btn {
+  background: transparent;
+  border: none;
+  color: var(--s26-text-main);
   width: 36px;
   height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.s26-back-btn:active {
+  background-color: var(--s26-surface-subtle);
+}
+
+.s26-screen-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--s26-text-main);
+  letter-spacing: -0.02em;
+}
+
+.s26-brand-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background-color: var(--s26-bg-subtle);
+  border: 1px solid var(--s26-border);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--s26-text-sub);
+}
+
+.s26-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.7);
+}
+
+.s26-top-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.s26-icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--s26-text-main);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
-  flex-shrink: 0;
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.dialer-close-btn:hover {
-  background-color: #fee2e2;
-  color: #ef4444;
-  border-color: #fca5a5;
-  transform: rotate(90deg);
+.s26-icon-btn:hover {
+  background-color: var(--s26-surface-subtle);
 }
 
-/* Navigation Tabs Bar */
-.dialer-tabs-bar {
+.s26-icon-btn:active {
+  transform: scale(0.92);
+}
+
+/* 3-DOTS OVERFLOW MENU WITH ORANGE NOTIFICATION DOT (MATCHING REFERENCE IMAGE) */
+.s26-badge-dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 7.5px;
+  height: 7.5px;
+  border-radius: 50%;
+  background-color: #f97316; /* Authentic Samsung One UI orange dot */
+  box-shadow: 0 0 0 2px var(--s26-bg);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   3. S26 FROSTED GLASS OVERFLOW POPUP MENU
+   ───────────────────────────────────────────────────────────── */
+.s26-overflow-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  background: transparent;
+}
+
+.s26-overflow-menu {
+  position: absolute;
+  top: 50px;
+  right: 12px;
+  width: 250px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.06);
+  padding: 8px;
   display: flex;
-  background-color: var(--dialer-bg-subtle);
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--dialer-border);
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 1000000;
+  animation: s26MenuPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
 }
 
-.dialer-tabs-bar::-webkit-scrollbar {
-  display: none;
+.dark .s26-overflow-menu {
+  background: rgba(24, 27, 34, 0.94);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
 }
 
-.dialer-tab-pill {
-  flex-shrink: 0;
-  padding: 7px 14px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-  background-color: transparent;
-  color: var(--dialer-text-sub);
-  display: inline-flex;
+@keyframes s26MenuPop {
+  from { opacity: 0; transform: scale(0.92) translateY(-8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.s26-menu-item {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  transition: all 0.15s ease;
-  white-space: nowrap;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: var(--s26-text-main);
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  text-align: left;
 }
 
-.dialer-tab-pill:hover {
-  background-color: rgba(79, 70, 229, 0.08);
-  color: var(--dialer-accent);
+.s26-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
-.dialer-tab-pill.active {
-  background-color: var(--dialer-bg);
-  color: var(--dialer-accent);
-  border-color: var(--dialer-border);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+.dark .s26-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
-.dialer-count-badge {
-  font-size: 0.65rem;
-  padding: 1px 6px;
-  border-radius: 8px;
-  background-color: var(--dialer-border);
-  color: var(--dialer-text-sub);
+.s26-menu-item:active {
+  transform: scale(0.98);
+}
+
+.s26-menu-item.danger {
+  color: #ef4444;
+}
+
+.s26-menu-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.s26-menu-badge {
+  font-size: 0.68rem;
   font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background-color: var(--s26-accent-subtle);
+  color: var(--s26-accent);
 }
 
-.dialer-tab-pill.active .dialer-count-badge {
-  background-color: var(--dialer-accent-subtle);
-  color: var(--dialer-accent);
+.s26-menu-divider {
+  height: 1px;
+  background-color: var(--s26-border);
+  margin: 4px 6px;
 }
 
-/* Feedback Msg Toast */
+/* ─────────────────────────────────────────────────────────────
+   4. TOAST NOTIFICATIONS
+   ───────────────────────────────────────────────────────────── */
 .dialer-feedback-toast {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 18px;
+  padding: 9px 18px;
   background-color: #f0fdf4;
   border-bottom: 1px solid #bbf7d0;
   color: #15803d;
@@ -226,12 +383,18 @@
   font-weight: 700;
   flex-shrink: 0;
   gap: 8px;
+  animation: s26SlideDown 0.2s ease-out;
 }
 
 .dark .dialer-feedback-toast {
-  background-color: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #34d399;
+  background-color: rgba(34, 197, 94, 0.15);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+@keyframes s26SlideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .dialer-toast-close {
@@ -241,874 +404,635 @@
   cursor: pointer;
   padding: 2px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
 }
 
-/* Scrollable Body Content */
+/* ─────────────────────────────────────────────────────────────
+   5. S26 DIALPAD CANVAS (THE CORE SPACIOUS S26 SCREEN)
+   ───────────────────────────────────────────────────────────── */
 .dialer-body-scroll {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 14px 18px 20px 18px;
+  padding: 12px 18px;
   display: flex;
   flex-direction: column;
 }
 
 .dialer-body-scroll.dialpad-tab-active {
-  padding: 6px 14px max(10px, env(safe-area-inset-bottom, 10px)) 14px;
-  overflow-y: auto;
-  overflow-x: hidden;
+  padding: 0 16px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.dialpad-container {
-  max-width: 420px;
+.s26-dialpad-screen {
+  width: 100%;
+  max-width: 440px;
   margin: 0 auto;
-  width: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   height: 100%;
-  min-height: 100%;
+  justify-content: space-between;
+  padding-bottom: 4px;
   box-sizing: border-box;
-  gap: 6px;
 }
 
-.dialer-screen-zone {
+/* S26 DISPLAY ZONE: Clean, spacious typography */
+.s26-display-zone {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  gap: 6px;
+  align-items: center;
+  justify-content: center;
   flex: 1;
-  min-height: 0;
-  justify-content: space-between;
+  min-height: 110px;
+  position: relative;
+  padding: 10px 0;
+  box-sizing: border-box;
 }
 
-/* Phone Number Display Box */
-.dialer-display-box {
+.s26-digits-wrapper {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  min-height: 48px;
-  padding: 2px 0;
+  min-height: 52px;
 }
 
-.dialer-digits-input {
+.s26-digits-text {
   width: 100%;
   text-align: center;
-  font-size: clamp(1.7rem, 5.2vw, 2.2rem);
-  font-weight: 800;
-  color: var(--dialer-text-main);
+  font-size: clamp(2.0rem, 6.2vw, 2.45rem);
+  font-weight: 500;
+  color: var(--s26-text-main);
   border: none;
   outline: none;
   background: transparent;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   font-variant-numeric: tabular-nums;
-  padding: 0 46px;
+  padding: 0 48px;
   box-sizing: border-box;
+  caret-color: transparent;
+  user-select: none;
 }
 
-.dialer-digits-input::placeholder {
-  color: var(--dialer-text-sub);
-  opacity: 0.5;
-  font-size: 1.15rem;
-  font-weight: 600;
+.s26-digits-text::placeholder {
+  color: var(--s26-text-sub);
+  opacity: 0.35;
+  font-size: 1.25rem;
+  font-weight: 500;
   letter-spacing: 0.5px;
 }
 
-.dialer-backspace-btn {
+.s26-backspace-btn {
   position: absolute;
-  right: 4px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  background: var(--dialer-bg-subtle);
-  border: 1px solid var(--dialer-border);
-  border-radius: 12px;
-  width: 38px;
-  height: 38px;
-  cursor: pointer;
-  color: var(--dialer-text-sub);
+  background: transparent;
+  border: none;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  color: var(--s26-text-sub);
   transition: all 0.15s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  -webkit-tap-highlight-color: transparent;
 }
 
-.dialer-backspace-btn:active {
-  transform: translateY(-50%) scale(0.92);
-  background: #fee2e2;
-  color: #dc2626;
-  border-color: #fca5a5;
+.s26-backspace-btn:hover {
+  background-color: var(--s26-surface-subtle);
+  color: var(--s26-text-main);
 }
 
-/* Smart Canvas: Fills the screen dynamically */
-.dialer-smart-canvas {
+.s26-backspace-btn:active {
+  transform: translateY(-50%) scale(0.90);
+  color: #ef4444;
+}
+
+/* S26 CONTEXT CANVAS (MATCHED CONTACT / SPEED DIAL / INLINE ACTIONS) */
+.s26-context-canvas {
   width: 100%;
-  flex: 1;
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  margin: 2px 0;
-  box-sizing: border-box;
-  min-height: 85px;
+  margin-top: 6px;
 }
 
-/* Premium Matched Contact Card */
-.dialer-contact-card-premium {
+/* Clean S26 Matched Contact Pill */
+.s26-matched-contact-pill {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-  border: 1.5px solid #a7f3d0;
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.12);
   width: 100%;
-  box-sizing: border-box;
-  animation: dialerCardIn 0.2s ease-out;
+  max-width: 360px;
+  padding: 8px 14px;
+  border-radius: 20px;
+  background-color: var(--s26-bg-subtle);
+  border: 1px solid var(--s26-border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  animation: s26FadeIn 0.18s ease-out;
 }
 
-.dark .dialer-contact-card-premium {
-  background: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
-  border-color: #059669;
-}
-
-.dialer-contact-card-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  color: #ffffff;
-  font-size: 1.15rem;
-  font-weight: 800;
+.s26-matched-contact-left {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.3);
-}
-
-.dialer-contact-card-details {
-  flex: 1;
+  gap: 10px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 
-.dialer-contact-card-name {
+.s26-matched-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-weight: 800;
   font-size: 0.95rem;
-  font-weight: 800;
-  color: #0f172a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dark .dialer-contact-card-name {
-  color: #f8fafc;
-}
-
-.dialer-contact-card-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
-  color: #047857;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dark .dialer-contact-card-meta {
-  color: #6ee7b7;
-}
-
-.dialer-pill-badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  padding: 1px 7px;
-  border-radius: 6px;
-  text-transform: uppercase;
-}
-
-.dialer-pill-badge.customer {
-  background-color: #dbeafe;
-  color: #1e40af;
-}
-
-.dialer-pill-badge.lead {
-  background-color: #f3e8ff;
-  color: #6b21a8;
-}
-
-.dialer-contact-card-dismiss {
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  color: #64748b;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   flex-shrink: 0;
-  transition: all 0.15s ease;
 }
 
-.dialer-contact-card-dismiss:active {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-/* Multiple Matching Suggestions */
-.dialer-suggestions-box {
-  padding: 8px 12px;
-  border-radius: 14px;
-  background: var(--dialer-bg-subtle);
-  border: 1px solid var(--dialer-border);
-  box-sizing: border-box;
+.s26-matched-info {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  animation: dialerCardIn 0.2s ease-out;
+  overflow: hidden;
 }
 
-.dialer-suggestions-header {
-  font-size: 0.70rem;
-  font-weight: 800;
-  color: var(--dialer-text-sub);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+.s26-matched-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--s26-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.dialer-suggestions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.dialer-suggestion-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 5px 8px;
-  border-radius: 8px;
-  background: var(--dialer-bg);
-  border: 1px solid var(--dialer-border);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.dialer-suggestion-row:active {
-  border-color: var(--dialer-accent);
-  background: var(--dialer-accent-subtle);
-}
-
-.dialer-suggestion-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  color: #ffffff;
+.s26-matched-meta {
   font-size: 0.72rem;
-  font-weight: 800;
+  color: var(--s26-text-sub);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* S26 Actions Pill Row (Add Lead / WhatsApp / Copy) */
+.s26-action-pills-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.dialer-suggestion-info {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.dialer-suggestion-name {
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--dialer-text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dialer-suggestion-phone {
-  font-size: 0.68rem;
-  color: var(--dialer-text-sub);
-  font-family: monospace;
-}
-
-/* Unsaved Number Card */
-.dialer-unsaved-card {
-  padding: 10px 14px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 1.5px solid #e2e8f0;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
   gap: 8px;
-  animation: dialerCardIn 0.2s ease-out;
+  margin-top: 4px;
+  flex-wrap: wrap;
 }
 
-.dark .dialer-unsaved-card {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border-color: #334155;
-}
-
-.dialer-unsaved-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.dialer-unsaved-left {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  color: var(--dialer-text-sub);
-}
-
-.dialer-unsaved-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background-color: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
-}
-
-.dialer-add-lead-btn {
+.s26-pill-action {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  color: #ffffff;
-  border: none;
-  font-size: 0.74rem;
-  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 18px;
+  background-color: var(--s26-bg-subtle);
+  border: 1px solid var(--s26-border);
+  color: var(--s26-text-main);
+  font-size: 0.76rem;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.25);
-  transition: transform 0.15s ease;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.dialer-add-lead-btn:active {
+.s26-pill-action:hover {
+  background-color: var(--s26-surface-subtle);
+  border-color: #cbd5e1;
+}
+
+.s26-pill-action:active {
   transform: scale(0.95);
 }
 
-.dialer-unsaved-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.s26-pill-action.add-lead {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
 }
 
-.dialer-chip-action {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 7px 8px;
-  border-radius: 10px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-}
-
-.dialer-chip-action.wa {
-  background-color: #dcfce7;
-  color: #15803d;
+.s26-pill-action.wa {
+  background-color: #f0fdf4;
   border-color: #bbf7d0;
+  color: #15803d;
 }
 
-.dialer-chip-action.copy {
-  background-color: var(--dialer-bg-subtle);
-  color: var(--dialer-text-sub);
-  border-color: var(--dialer-border);
-}
-
-.dialer-chip-action.log {
-  background-color: #eef2ff;
-  color: #4338ca;
-  border-color: #c7d2fe;
-}
-
-.dialer-chip-action:active {
-  transform: scale(0.96);
-}
-
-/* Quick Save Lead Form */
-.dialer-quick-lead-form {
+/* S26 Inline Lead Creation Card */
+.s26-inline-lead-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background-color: var(--s26-bg-subtle);
+  border: 1.5px solid var(--s26-border);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  animation: dialerCardIn 0.2s ease-out;
+  gap: 8px;
+  animation: s26FadeIn 0.18s ease-out;
 }
 
-.dialer-quick-lead-title {
+.s26-inline-lead-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: var(--dialer-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--s26-accent);
 }
 
-.dialer-quick-lead-title button {
-  background: none;
-  border: none;
-  color: var(--dialer-text-sub);
-  cursor: pointer;
-  padding: 2px;
-}
-
-.dialer-quick-lead-inputs {
+.s26-inline-lead-inputs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
-.dialer-quick-input {
+.s26-inline-input {
   width: 100%;
   padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid var(--dialer-border);
-  background-color: var(--dialer-bg);
-  color: var(--dialer-text-main);
-  font-size: 0.75rem;
+  border: 1px solid var(--s26-border);
+  background-color: var(--s26-bg);
+  color: var(--s26-text-main);
+  font-size: 0.78rem;
   box-sizing: border-box;
   outline: none;
 }
 
-.dialer-quick-input:focus {
-  border-color: var(--dialer-accent);
-}
-
-.dialer-quick-save-btn {
+.s26-inline-save-btn {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   padding: 6px 12px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: var(--s26-call-bg);
   color: #ffffff;
   border: none;
-  font-size: 0.75rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
 }
 
-/* Empty State: Recent Speed Dial */
-.dialer-recent-speed-dial {
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--dialer-bg-subtle);
-  border: 1px solid var(--dialer-border);
-  width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.dialer-speed-dial-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.72rem;
-  font-weight: 800;
-  color: var(--dialer-text-sub);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.dialer-paste-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--dialer-bg);
-  border: 1px solid var(--dialer-border);
-  border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 0.70rem;
-  font-weight: 700;
-  color: var(--dialer-accent);
-  cursor: pointer;
-}
-
-.dialer-speed-dial-chips {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.dialer-speed-dial-chips::-webkit-scrollbar {
-  display: none;
-}
-
-.dialer-speed-chip {
-  flex: 1;
-  min-width: 100px;
-  padding: 6px 10px;
-  border-radius: 10px;
-  background: var(--dialer-bg);
-  border: 1px solid var(--dialer-border);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.dialer-speed-chip:active {
-  border-color: var(--dialer-accent);
-  background-color: var(--dialer-accent-subtle);
-}
-
-.dialer-speed-avatar {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
-  color: #ffffff;
-  font-size: 0.74rem;
-  font-weight: 800;
+/* ─────────────────────────────────────────────────────────────
+   6. S26 DUAL-SIM INDICATOR BAR
+   ───────────────────────────────────────────────────────────── */
+.s26-sim-bar {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-}
-
-.dialer-speed-text {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.dialer-speed-name {
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: var(--dialer-text-main);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dialer-speed-phone {
-  font-size: 0.66rem;
-  color: var(--dialer-text-sub);
-  font-family: monospace;
-}
-
-/* Integrated Dual-SIM & REC Meta Bar */
-.dialer-meta-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 8px;
   width: 100%;
-  margin: 2px 0 4px 0;
-  box-sizing: border-box;
+  margin-bottom: 6px;
+  user-select: none;
 }
 
-.dialer-sim-pill-group {
-  display: flex;
-  gap: 4px;
-  background: var(--dialer-bg-subtle);
-  padding: 3px;
-  border-radius: 12px;
-  border: 1px solid var(--dialer-border);
-  flex: 1;
-  overflow: hidden;
-}
-
-.dialer-sim-switch-pill {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 5px 8px;
-  border-radius: 9px;
-  border: none;
-  background: transparent;
-  color: var(--dialer-text-sub);
-  font-size: 0.71rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dialer-sim-switch-pill.active {
-  background: var(--dialer-bg);
-  color: var(--dialer-accent);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--dialer-border);
-}
-
-.dialer-sim-single-badge {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--dialer-text-sub);
-  background: var(--dialer-bg-subtle);
-  padding: 4px 10px;
-  border-radius: 10px;
-  border: 1px solid var(--dialer-border);
-}
-
-.dialer-rec-pill {
+.s26-sim-pill {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 10px;
-  border-radius: 12px;
-  border: 1px solid var(--dialer-border);
-  background: var(--dialer-bg-subtle);
-  color: var(--dialer-text-sub);
-  font-size: 0.70rem;
+  padding: 4px 12px;
+  border-radius: 16px;
+  border: 1px solid var(--s26-border);
+  background-color: var(--s26-bg-subtle);
+  color: var(--s26-text-sub);
+  font-size: 0.72rem;
   font-weight: 700;
   cursor: pointer;
-  flex-shrink: 0;
   transition: all 0.15s ease;
 }
 
-.dialer-rec-pill.active {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #dc2626;
+.s26-sim-pill.active {
+  background-color: var(--s26-accent-subtle);
+  border-color: #bfdbfe;
+  color: var(--s26-accent);
 }
 
-.dialer-rec-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #94a3b8;
+.s26-sim-pill:active {
+  transform: scale(0.96);
 }
 
-.dialer-rec-dot.pulse {
-  background-color: #dc2626;
-  box-shadow: 0 0 6px #dc2626;
-  animation: pulse-rec 1.2s ease-in-out infinite;
-}
-
-@keyframes pulse-rec {
-  0% { transform: scale(0.9); opacity: 0.7; }
-  50% { transform: scale(1.3); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0.7; }
-}
-
-@keyframes dialerCardIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Keypad Dock */
-.dialer-keypad-dock {
+/* ─────────────────────────────────────────────────────────────
+   7. S26 / iPHONE 17 FLAGSHIP KEYPAD GRID (PURE ELEGANCE)
+   ───────────────────────────────────────────────────────────── */
+.s26-keypad-container {
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
   flex-shrink: 0;
-  gap: 4px;
 }
 
-.dialer-keypad-grid {
+.s26-keypad-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   justify-items: center;
-  row-gap: clamp(6px, 1.4vh, 12px);
-  column-gap: clamp(16px, 5vw, 28px);
+  row-gap: clamp(6px, 1.3vh, 12px);
+  column-gap: clamp(16px, 5vw, 32px);
   width: 100%;
   max-width: 320px;
-  margin: 2px auto 4px auto;
-  flex-shrink: 0;
+  margin: 0 auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.dialer-key-btn {
-  width: clamp(56px, 15.5vw, 68px);
-  height: clamp(56px, 15.5vw, 68px);
-  min-width: clamp(56px, 15.5vw, 68px);
-  min-height: clamp(56px, 15.5vw, 68px);
+.s26-key-btn {
+  width: clamp(60px, 16vw, 70px);
+  height: clamp(60px, 16vw, 70px);
+  min-width: clamp(60px, 16vw, 70px);
+  min-height: clamp(60px, 16vw, 70px);
   border-radius: 50%;
-  border: 1px solid var(--dialer-key-border);
-  background: linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%);
+  border: none;
+  background-color: var(--s26-key-bg);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.10s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.12s ease;
   padding: 0;
-  user-select: none;
-  -webkit-user-select: none;
-  -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-.dark .dialer-key-btn {
-  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #334155;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+.s26-key-btn:active {
+  transform: scale(0.91) !important;
+  background-color: var(--s26-key-active) !important;
 }
 
-.dialer-key-btn:active {
-  transform: scale(0.90) !important;
-  background: #e2e8f0 !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
-}
-
-.dark .dialer-key-btn:active {
-  background: #334155 !important;
-}
-
-.dialer-key-digit {
-  font-size: clamp(1.45rem, 4.2vw, 1.75rem);
-  font-weight: 800;
-  color: var(--dialer-key-text);
+.s26-key-digit {
+  font-size: clamp(1.65rem, 4.8vw, 1.95rem);
+  font-weight: 400; /* Signature light Samsung digit style */
+  color: var(--s26-key-digit);
   line-height: 1;
   pointer-events: none;
 }
 
-.dialer-key-sub {
-  font-size: clamp(0.55rem, 1.7vw, 0.64rem);
+.s26-key-sub {
+  font-size: clamp(0.55rem, 1.8vw, 0.65rem);
   font-weight: 700;
-  color: var(--dialer-text-sub);
-  letter-spacing: 1.4px;
+  color: var(--s26-key-sub);
+  letter-spacing: 1.5px;
   margin-top: 2px;
   pointer-events: none;
+  text-transform: uppercase;
 }
 
-/* Call Controls Floating Dock */
-.dialer-actions-dock {
+/* ─────────────────────────────────────────────────────────────
+   8. S26 CALL CONTROLS DOCK (ICONIC GREEN CALL BUTTON)
+   ───────────────────────────────────────────────────────────── */
+.s26-actions-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: clamp(18px, 6vw, 28px);
+  gap: clamp(20px, 6.5vw, 32px);
   width: 100%;
-  margin: 4px auto 2px auto;
-  flex-shrink: 0;
+  max-width: 320px;
+  margin: clamp(8px, 1.6vh, 16px) auto 4px auto;
+  user-select: none;
 }
 
-.dialer-call-btn {
-  width: clamp(62px, 17vw, 72px);
-  height: clamp(62px, 17vw, 72px);
+.s26-call-btn {
+  width: clamp(64px, 17.5vw, 72px);
+  height: clamp(64px, 17.5vw, 72px);
   border-radius: 50%;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: var(--s26-call-bg);
   color: #ffffff;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 8px 24px var(--s26-call-shadow);
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
 }
 
-.dialer-call-btn:active {
+.s26-call-btn:active {
   transform: scale(0.92);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 12px var(--s26-call-shadow);
 }
 
-.dialer-wa-btn {
-  width: clamp(46px, 12.5vw, 52px);
-  height: clamp(46px, 12.5vw, 52px);
+.s26-aux-btn {
+  width: clamp(48px, 13vw, 54px);
+  height: clamp(48px, 13vw, 54px);
   border-radius: 50%;
-  background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
-  color: #ffffff;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 5px 16px rgba(37, 211, 102, 0.35);
-  transition: transform 0.15s ease;
+  transition: transform 0.12s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   flex-shrink: 0;
 }
 
-.dialer-wa-btn:active {
+.s26-aux-btn:active {
   transform: scale(0.92);
 }
 
-.dialer-schedule-btn {
-  width: clamp(46px, 12.5vw, 52px);
-  height: clamp(46px, 12.5vw, 52px);
-  border-radius: 50%;
-  background: linear-gradient(135deg, #f8fafc 0%, #eef2ff 100%);
-  color: #4f46e5;
-  border: 1.5px solid #c7d2fe;
+.s26-aux-btn.wa {
+  background: linear-gradient(145deg, #25d366 0%, #128c7e 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+}
+
+.s26-aux-btn.log {
+  background-color: var(--s26-key-bg);
+  color: var(--s26-text-sub);
+  border: 1px solid var(--s26-border);
+}
+
+.s26-aux-btn.log:hover {
+  color: var(--s26-accent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   9. S26 BOTTOM NAVIGATION PILL DOCK (EXACT REFERENCE DESIGN)
+   ───────────────────────────────────────────────────────────── */
+.s26-bottom-dock {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
-  transition: transform 0.15s ease;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
+  background-color: var(--s26-bg);
+  padding: 6px 16px 2px 16px;
   flex-shrink: 0;
+  user-select: none;
 }
 
-.dark .dialer-schedule-btn {
-  background: linear-gradient(135deg, #1e293b 0%, #1e1b4b 100%);
-  border-color: #4338ca;
-  color: #818cf8;
+.s26-dock-pill-bar {
+  display: flex;
+  align-items: center;
+  background-color: var(--s26-bg-subtle);
+  border: 1px solid var(--s26-border);
+  border-radius: 30px;
+  padding: 4px;
+  gap: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
 }
 
-.dialer-schedule-btn:active {
-  transform: scale(0.92);
-}
-
-/* Carrier Subtitle */
-.dialer-carrier-subtitle {
-  text-align: center;
-  font-size: 0.72rem;
+.s26-dock-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 18px;
+  border-radius: 24px;
+  border: none;
+  background: transparent;
+  color: var(--s26-text-sub);
+  font-size: 0.82rem;
   font-weight: 700;
-  color: #059669;
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+
+.s26-dock-item:hover {
+  color: var(--s26-text-main);
+}
+
+.s26-dock-item.active {
+  background-color: var(--s26-surface);
+  color: var(--s26-text-main);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.s26-dock-badge {
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: var(--s26-border);
+  color: var(--s26-text-sub);
+  font-weight: 800;
+}
+
+.s26-dock-item.active .s26-dock-badge {
+  background-color: var(--s26-accent-subtle);
+  color: var(--s26-accent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   10. S26 SYSTEM 3-BUTTON NAVIGATION BAR (|||  ○  <)
+   ───────────────────────────────────────────────────────────── */
+.s26-system-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 4px 20px max(8px, env(safe-area-inset-bottom, 8px)) 20px;
+  background-color: var(--s26-bg);
   flex-shrink: 0;
-  padding-bottom: 2px;
+  user-select: none;
 }
 
-.dark .dialer-carrier-subtitle {
-  color: #34d399;
+.s26-sys-btn {
+  background: transparent;
+  border: none;
+  color: var(--s26-text-sub);
+  width: 54px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* =========================================================
-   ENTERPRISE POST-CALL / LOG CALL WORKSPACE
-   ========================================================= */
+.s26-sys-btn:active {
+  background-color: var(--s26-surface-subtle);
+  color: var(--s26-text-main);
+}
 
+.s26-sys-recents-icon {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.s26-sys-recents-bar {
+  width: 2.5px;
+  height: 14px;
+  background-color: currentColor;
+  border-radius: 2px;
+}
+
+.s26-sys-home-icon {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   11. CRM QUICK FEATURES SUB-BAR (LOG CALL, WHATSAPP, SCRIPTS)
+   ───────────────────────────────────────────────────────────── */
+.s26-crm-quick-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 16px;
+  background-color: var(--s26-bg);
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.s26-crm-quick-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.s26-crm-tab-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--s26-border);
+  background-color: var(--s26-bg-subtle);
+  color: var(--s26-text-sub);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.s26-crm-tab-chip:hover {
+  color: var(--s26-accent);
+  background-color: var(--s26-accent-subtle);
+}
+
+.s26-crm-tab-chip.active {
+  background-color: var(--s26-accent);
+  color: #ffffff;
+  border-color: var(--s26-accent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   12. BACKWARD-COMPATIBLE STYLES FOR RECENT CALL LOGS & POST-CALL
+   ───────────────────────────────────────────────────────────── */
 .dialer-contact-pill {
   display: flex;
   align-items: center;
@@ -1315,7 +1239,7 @@
   border: 1px solid #fca5a5;
   padding: 3px 10px;
   border-radius: 12px;
-  animation: fadeInBanner 0.2s ease-out;
+  animation: s26SlideDown 0.2s ease-out;
 }
 
 .dark .dialer-rec-badge {
@@ -1331,83 +1255,6 @@
   background-color: #dc2626;
   display: inline-block;
   animation: pulse-rec 0.9s ease-in-out infinite;
-}
-
-/* ─── MOBILE RESPONSIVENESS & SCREEN FIT ─── */
-@media (max-width: 600px), (max-height: 820px) {
-  .dialer-header {
-    padding: 8px 14px;
-  }
-  .dialer-icon-badge {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-  }
-  .dialer-icon-badge svg {
-    width: 17px;
-    height: 17px;
-  }
-  .dialer-title-text h3 {
-    font-size: 0.92rem;
-  }
-  .dialer-title-text span {
-    font-size: 0.68rem;
-  }
-  .dialer-close-btn {
-    width: 32px;
-    height: 32px;
-  }
-  .dialer-tabs-bar {
-    padding: 5px 10px;
-    gap: 4px;
-  }
-  .dialer-tab-pill {
-    padding: 5px 10px;
-    font-size: 0.74rem;
-    border-radius: 8px;
-  }
-}
-
-/* ─── LEAD IDENTITY & POST-CALL SAVE CARD ─── */
-.dialer-lead-save-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 1.5px solid #cbd5e1;
-  border-radius: 16px;
-  padding: 12px 14px;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
-}
-
-.dark .dialer-lead-save-card {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border-color: #334155;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-}
-
-.dialer-mini-action-btn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: #ffffff;
-  transition: transform 0.15s ease, opacity 0.15s ease;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-.dialer-mini-action-btn:active {
-  transform: scale(0.92);
-}
-
-.dialer-mini-action-btn.wa {
-  background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
-}
-
-.dialer-mini-action-btn.call {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
 /* ─── CONTACTS DIRECTORY FILTER PILLS ─── */
@@ -1516,7 +1363,7 @@
   border: 1px solid #a7f3d0;
 }
 
-/* ─── TOP-NOTCH REDESIGNED LOG CALL (POST-CALL) SECTION ─── */
+/* ─── TOP-NOTCH POST-CALL WORKSPACE ─── */
 .dialer-postcall-container {
   display: flex;
   flex-direction: column;
@@ -1696,7 +1543,7 @@
   cursor: not-allowed;
 }
 
-/* ─── FOLLOW-UP & SAVE LEAD SECTION (BELOW NAME/SHOP) ─── */
+/* ─── FOLLOW-UP & SAVE LEAD SECTION ─── */
 .dialer-lead-followup-box {
   margin-top: 10px;
   background: var(--dialer-bg-subtle, #f8fafc);
@@ -1863,4 +1710,46 @@
   transform: scale(0.96);
 }
 
+.dialer-mini-action-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #ffffff;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
 
+.dialer-mini-action-btn:active {
+  transform: scale(0.92);
+}
+
+.dialer-mini-action-btn.wa {
+  background: linear-gradient(135deg, #25d366 0%, #128c7e 100%);
+}
+
+.dialer-mini-action-btn.call {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.dialer-pill-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 6px;
+  text-transform: uppercase;
+}
+
+.dialer-pill-badge.customer {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.dialer-pill-badge.lead {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
