@@ -2298,9 +2298,12 @@ function PhoneDialerModalContent({
                       type="button"
                       className="s26-key-btn"
                       onClick={() => handleDigitClick(k.digit)}
-                      onPointerDown={k.digit === "0" ? handleZeroPressStart : undefined}
-                      onPointerUp={k.digit === "0" ? handleZeroPressEnd : undefined}
-                      onPointerCancel={k.digit === "0" ? handleZeroPressEnd : undefined}
+                      onTouchStart={k.digit === "0" ? handleZeroPressStart : undefined}
+                      onTouchEnd={k.digit === "0" ? handleZeroPressEnd : undefined}
+                      onTouchCancel={k.digit === "0" ? handleZeroPressEnd : undefined}
+                      onMouseDown={k.digit === "0" ? handleZeroPressStart : undefined}
+                      onMouseUp={k.digit === "0" ? handleZeroPressEnd : undefined}
+                      onMouseLeave={k.digit === "0" ? handleZeroPressEnd : undefined}
                       onContextMenu={(e) => {
                         if (k.digit === "0") {
                           e.preventDefault();
@@ -2357,7 +2360,7 @@ function PhoneDialerModalContent({
                     title={phoneDigits ? "Tap to erase digit, hold to clear all" : "Backspace"}
                     aria-label="Erase"
                   >
-                    <Delete size={22} />
+                    <Delete size={26} strokeWidth={2.2} />
                   </button>
                 </div>
               </div>

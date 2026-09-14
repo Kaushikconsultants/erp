@@ -955,19 +955,22 @@
 }
 
 .s26-aux-btn.erase {
-  background-color: transparent;
+  background-color: var(--s26-key-bg);
   color: var(--s26-text-main);
-  border: none;
-  transition: opacity 0.15s ease, transform 0.12s ease;
+  border: 1px solid var(--s26-key-border);
+  transition: all 0.15s ease;
 }
 
 .s26-aux-btn.erase:hover {
-  background-color: var(--s26-surface-subtle);
+  background-color: var(--s26-key-active);
+  color: #ef4444;
 }
 
 .s26-aux-btn.erase:active {
   transform: scale(0.88);
-  color: #ef4444;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
 }
 
 .s26-aux-btn.erase.muted {
