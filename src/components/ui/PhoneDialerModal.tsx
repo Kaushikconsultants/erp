@@ -501,10 +501,18 @@ function PhoneDialerModalContent({
         setContacts(res.customers);
         if (initialCustomerId) {
           const match = res.customers.find((c: any) => c.id === initialCustomerId && c.type === "Customer");
-          if (match) setSelectedContact(match);
+          const cleanInitPhone = String(initialPhone || '').replace(/\D/g, '');
+          const matchPhone = String(match?.phone || '').replace(/\D/g, '');
+          if (match && (!cleanInitPhone || matchPhone.includes(cleanInitPhone) || cleanInitPhone.includes(matchPhone))) {
+            setSelectedContact(match);
+          }
         } else if (initialLeadId) {
           const match = res.customers.find((c: any) => c.id === initialLeadId && c.type === "Lead");
-          if (match) setSelectedContact(match);
+          const cleanInitPhone = String(initialPhone || '').replace(/\D/g, '');
+          const matchPhone = String(match?.phone || '').replace(/\D/g, '');
+          if (match && (!cleanInitPhone || matchPhone.includes(cleanInitPhone) || cleanInitPhone.includes(matchPhone))) {
+            setSelectedContact(match);
+          }
         } else if (initialPhone) {
           const cleanInit = String(initialPhone).replace(/\D/g, '');
           const match = res.customers.find((c: any) =>
@@ -676,8 +684,9 @@ function PhoneDialerModalContent({
   // Initialize on open
   useEffect(() => {
     if (isOpen) {
-      if (initialPhone) setPhoneDigits(initialPhone);
-      if (initialName) setNewLeadName(initialName);
+      setPhoneDigits(initialPhone || "");
+      setNewLeadName(initialName || "");
+      setSelectedContact(null);
       setCallDurationSec(0);
       setIsTimerRunning(false);
       setAutoDebriefTrigger(0);
@@ -809,23 +818,35 @@ function PhoneDialerModalContent({
   // Auto match contact as user types
   useEffect(() => {
     if (!phoneDigits) {
-      if (!initialCustomerId && !initialLeadId) setSelectedContact(null);
+      setSelectedContact(null);
       return;
     }
     const cleanNum = phoneDigits.replace(/\D/g, '');
+
+    // Check if the currently selected contact still matches cleanNum
+    if (selectedContact) {
+      const cPhone = String(selectedContact.phone || selectedContact.mobile || '').replace(/\D/g, '');
+      const stillMatches = cPhone && (cPhone.includes(cleanNum) || cleanNum.includes(cPhone));
+      if (!stillMatches) {
+        setSelectedContact(null);
+      }
+    }
+
     if (cleanNum.length >= 3 && Array.isArray(contacts)) {
       const match = contacts.find(c => {
-        const cPhone = (c?.phone || '').replace(/\D/g, '');
-        const cName = (c?.contactPerson || c?.companyName || '').toLowerCase();
-        return (cPhone && cPhone.includes(cleanNum)) || cName.includes(phoneDigits.toLowerCase());
+        const cPhone = String(c?.phone || c?.mobile || '').replace(/\D/g, '');
+        const cName = String(c?.contactPerson || c?.companyName || '').toLowerCase();
+        return (cPhone && (cPhone.includes(cleanNum) || cleanNum.includes(cPhone))) || (cleanNum.length >= 3 && cName.includes(phoneDigits.toLowerCase()));
       });
       if (match) {
         setSelectedContact(match);
       } else {
-        if (!initialCustomerId && !initialLeadId) setSelectedContact(null);
+        setSelectedContact(null);
       }
+    } else if (cleanNum.length < 3) {
+      setSelectedContact(null);
     }
-  }, [phoneDigits, contacts, initialCustomerId, initialLeadId]);
+  }, [phoneDigits, contacts]);
 
   if (!isOpen) return null;
 
@@ -1112,10 +1133,30 @@ function PhoneDialerModalContent({
     handleVibrate(25);
 
     try {
-      let activeLeadId = selectedContact?.type === "Lead" ? selectedContact.id : (initialLeadId || null);
-      let activeCustomerId = selectedContact?.type === "Customer" ? selectedContact.id : (initialCustomerId || null);
+      const cleanPhone = (phoneDigits || "").replace(/\D/g, "");
+      let activeLeadId: string | null = null;
+      let activeCustomerId: string | null = null;
 
-      if (!activeCustomerId && !activeLeadId && (newLeadName || newLeadShop) && phoneDigits) {
+      // 1. If a contact is explicitly matched and selected, ensure the phone actually matches
+      if (selectedContact) {
+        const cPhone = String(selectedContact.phone || selectedContact.mobile || "").replace(/\D/g, "");
+        const isMatch = !cleanPhone || !cPhone || cPhone.includes(cleanPhone) || cleanPhone.includes(cPhone) || (cleanPhone.length >= 7 && cPhone.slice(-10) === cleanPhone.slice(-10));
+        if (isMatch) {
+          if (selectedContact.type === "Customer") activeCustomerId = selectedContact.id;
+          else if (selectedContact.type === "Lead") activeLeadId = selectedContact.id;
+        }
+      } 
+      // 2. Only fall back to initial IDs if the dialed digits actually match the initial phone
+      else if (initialPhone && cleanPhone) {
+        const initClean = String(initialPhone).replace(/\D/g, "");
+        const matchesInit = initClean && (initClean.includes(cleanPhone) || cleanPhone.includes(initClean) || (cleanPhone.length >= 7 && initClean.slice(-10) === cleanPhone.slice(-10)));
+        if (matchesInit) {
+          if (initialCustomerId) activeCustomerId = initialCustomerId;
+          if (initialLeadId) activeLeadId = initialLeadId;
+        }
+      }
+
+      if (!activeCustomerId && !activeLeadId && (newLeadName || newLeadShop) && cleanPhone.length >= 7) {
         const leadRes = await createQuickLead({
           name: newLeadName || "New Phone Lead",
           shopName: newLeadShop || "Phone Inquiry",
@@ -1323,116 +1364,97 @@ function PhoneDialerModalContent({
         )}
 
         {/* BODY SCROLL CONTENT */}
-        <div className="dialer-body-scroll">
+        <div className={`dialer-body-scroll ${activeTab === "DIALPAD" ? "dialpad-tab-active" : ""}`}>
           {/* =========================================================
               TAB 1: NUMERIC KEYPAD & DIALER
               ========================================================= */}
           {activeTab === "DIALPAD" && (
             <div className="dialpad-container">
-              {/* Phone Input Box */}
-              <div className="dialer-display-box">
-                <input
-                  type="text"
-                  inputMode="none"
-                  className="dialer-digits-input"
-                  placeholder="Enter phone number"
-                  value={phoneDigits}
-                  onChange={() => {/* controlled via keypad buttons only */}}
-                  readOnly
-                  tabIndex={-1}
-                  style={{ caretColor: "transparent", cursor: "default", userSelect: "none" }}
-                />
-                {phoneDigits && (
-                  <button
-                    type="button"
-                    onClick={handleBackspace}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      setPhoneDigits("");
-                      setSelectedContact(null);
-                    }}
-                    className="dialer-backspace-btn"
-                    title="Tap to delete, hold to clear all"
-                  >
-                    <Delete size={20} />
-                  </button>
-                )}
-              </div>
-
-              {/* Matched Contact Snippet */}
-              {selectedContact ? (
-                <div className="dialer-matched-contact">
-                  <div className="dialer-matched-contact-left">
-                    <div style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: "50%",
-                      background: "linear-gradient(135deg, #4f46e5 0%, #6366f1 100%)",
-                      color: "#ffffff",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 800,
-                      fontSize: "0.78rem",
-                      flexShrink: 0
-                    }}>
-                      {(selectedContact.companyName || selectedContact.contactPerson || "C").charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ overflow: "hidden" }}>
-                      <div style={{ fontWeight: 800, color: "var(--dialer-text-main)", fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {selectedContact.companyName || selectedContact.contactPerson}
-                      </div>
-                      <div style={{ fontSize: "0.68rem", color: "var(--dialer-text-sub)" }}>
-                        {selectedContact.phone} · <span style={{ color: "#4f46e5", fontWeight: 700 }}>{selectedContact.type || "Customer"}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedContact(null)}
-                    style={{ background: "none", border: "none", color: "var(--dialer-text-sub)", cursor: "pointer", padding: "4px" }}
-                    title="Clear Contact Match"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              ) : filteredKeypadContacts.length > 0 ? (
-                <div style={{ marginBottom: "10px", display: "flex", flexDirection: "column", gap: "5px" }}>
-                  {filteredKeypadContacts.slice(0, 2).map((c: any) => (
-                    <div
-                      key={c.id}
-                      onClick={() => handleSelectMatchedContact(c)}
-                      style={{
-                        padding: "7px 12px",
-                        borderRadius: "10px",
-                        backgroundColor: "var(--dialer-bg-subtle)",
-                        border: "1px solid var(--dialer-border)",
-                        fontSize: "0.78rem",
-                        cursor: "pointer",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center"
+              {/* TOP SECTION: Phone Display, Contact Matches, SIM & Controls */}
+              <div className="dialer-keypad-top-section">
+                {/* Phone Input Box */}
+                <div className="dialer-display-box">
+                  <input
+                    type="text"
+                    inputMode="none"
+                    className="dialer-digits-input"
+                    placeholder="Enter phone number"
+                    value={phoneDigits}
+                    onChange={() => {/* controlled via keypad buttons only */}}
+                    readOnly
+                    tabIndex={-1}
+                    style={{ caretColor: "transparent", cursor: "default", userSelect: "none" }}
+                  />
+                  {phoneDigits && (
+                    <button
+                      type="button"
+                      onClick={handleBackspace}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setPhoneDigits("");
+                        setSelectedContact(null);
                       }}
+                      className="dialer-backspace-btn"
+                      title="Tap to delete, hold to clear all"
                     >
-                      <span style={{ fontWeight: 800, color: "var(--dialer-text-main)" }}>
-                        {c.companyName || c.contactPerson}
-                      </span>
-                      <span style={{ color: "var(--dialer-text-sub)", fontFamily: "monospace", fontSize: "0.75rem" }}>{c.phone}</span>
-                    </div>
-                  ))}
+                      <Delete size={18} />
+                    </button>
+                  )}
                 </div>
-              ) : null}
 
-              {/* Multi-SIM Cellular Selector Cards */}
-              {availableSims.length > 1 ? (
-                <div className="dialer-sim-selector-container">
-                  <div className="dialer-sim-selector-header">
-                    <span className="dialer-sim-selector-title">Outbound SIM:</span>
-                    <span className="dialer-sim-selected-badge">
-                      Selected: <strong>{selectedSim?.slotLabel || "SIM 1"}</strong> ({selectedSim?.carrierName || "Cellular"})
-                    </span>
+                {/* Matched Contact: Selected Pill or Quick Suggestion Chips */}
+                {selectedContact ? (
+                  <div className="dialer-matched-contact-compact">
+                    <div className="dialer-matched-contact-compact-left">
+                      <div className="dialer-matched-avatar-small">
+                        {(selectedContact.companyName || selectedContact.contactPerson || "C").charAt(0).toUpperCase()}
+                      </div>
+                      <div className="dialer-matched-text-small">
+                        <span className="dialer-matched-name-small">
+                          {selectedContact.companyName || selectedContact.contactPerson}
+                        </span>
+                        <span className="dialer-matched-phone-small">
+                          {selectedContact.phone}
+                        </span>
+                        {selectedContact.type && (
+                          <span className="dialer-matched-badge-small">{selectedContact.type}</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedContact(null)}
+                      className="dialer-matched-clear-btn"
+                      title="Clear Contact Match"
+                    >
+                      <X size={14} />
+                    </button>
                   </div>
-                  <div className="dialer-sim-cards-grid">
+                ) : filteredKeypadContacts.length > 0 ? (
+                  <div className="dialer-matched-chips-scroll">
+                    {filteredKeypadContacts.map((c: any) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => handleSelectMatchedContact(c)}
+                        className="dialer-matched-chip-btn"
+                        title={`${c.companyName || c.contactPerson} (${c.phone})`}
+                      >
+                        <span className="dialer-matched-chip-avatar">
+                          {(c.companyName || c.contactPerson || "C").charAt(0).toUpperCase()}
+                        </span>
+                        <span className="dialer-matched-chip-name">
+                          {c.companyName || c.contactPerson}
+                        </span>
+                        <span className="dialer-matched-chip-phone">{c.phone}</span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {/* Multi-SIM Cellular Selector (Compact modern pill bar) */}
+                {availableSims.length > 1 ? (
+                  <div className="dialer-sim-selector-compact">
                     {availableSims.map((sim, idx) => {
                       const simId = sim?.subscriptionId ?? idx;
                       const isSelected = (selectedSim?.subscriptionId != null && selectedSim.subscriptionId === sim?.subscriptionId)
@@ -1451,110 +1473,100 @@ function PhoneDialerModalContent({
                               } catch {}
                             }
                           }}
-                          className={`dialer-sim-card ${isSelected ? "selected" : ""}`}
+                          className={`dialer-sim-compact-pill ${isSelected ? "selected" : ""}`}
                         >
-                          <div className="dialer-sim-chip-icon">
-                            <Radio size={14} />
-                          </div>
-                          <div className="dialer-sim-info">
-                            <div className="dialer-sim-slot-row">
-                              <span className={`dialer-sim-slot-tag ${isSelected ? "selected" : ""}`}>
-                                {sim?.slotLabel || `SIM ${idx + 1}`}
-                              </span>
-                              {isSelected && <span className="dialer-sim-check-icon">✓</span>}
-                            </div>
-                            <span className="dialer-sim-carrier">
-                              {sim?.carrierName || sim?.displayName || `Carrier ${idx + 1}`}
-                            </span>
-                          </div>
+                          <Radio size={12} />
+                          <span className="dialer-sim-compact-label">{sim?.slotLabel || `SIM ${idx + 1}`}</span>
+                          <span className="dialer-sim-compact-carrier">{sim?.carrierName || sim?.displayName || `Carrier ${idx + 1}`}</span>
+                          {isSelected && <span className="dialer-sim-compact-check">✓</span>}
                         </button>
                       );
                     })}
                   </div>
-                </div>
-              ) : availableSims.length === 1 ? (
-                <div className="dialer-single-sim-bar">
-                  <Radio size={13} style={{ color: "var(--dialer-accent)" }} />
-                  <span>
-                    Cellular SIM: <strong style={{ color: "var(--dialer-text-main)" }}>{availableSims[0]?.carrierName || availableSims[0]?.displayName || "Cellular SIM"}</strong> ({availableSims[0]?.slotLabel || "SIM 1"})
-                  </span>
-                </div>
-              ) : null}
-
-              {/* Default Phone App Prompt Banner (Optional / Dismissable) */}
-              {!isDefaultApp && isAndroidNativeApp() && !isPromptDismissed && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "7px 12px", margin: "0 0 8px 0", fontSize: "0.74rem", color: "#166534" }}>
-                  <span>⚡ Optional: Set as Default Phone App for system in-call HUD.</span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <button
-                      type="button"
-                      onClick={() => requestDefaultDialer()}
-                      style={{ padding: "3px 9px", borderRadius: "6px", backgroundColor: "#16a34a", color: "#ffffff", border: "none", fontWeight: 700, fontSize: "0.72rem", cursor: "pointer", whiteSpace: "nowrap" }}
-                    >
-                      Enable
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsPromptDismissed(true)}
-                      style={{ background: "none", border: "none", color: "#166534", cursor: "pointer", padding: "2px 6px", fontSize: "0.85rem", fontWeight: "bold" }}
-                      title="Dismiss"
-                    >
-                      ✕
-                    </button>
+                ) : availableSims.length === 1 ? (
+                  <div className="dialer-single-sim-bar">
+                    <Radio size={12} style={{ color: "var(--dialer-accent)" }} />
+                    <span>
+                      SIM: <strong style={{ color: "var(--dialer-text-main)" }}>{availableSims[0]?.carrierName || availableSims[0]?.displayName || "Cellular"}</strong> ({availableSims[0]?.slotLabel || "SIM 1"})
+                    </span>
                   </div>
-                </div>
-              )}
+                ) : null}
 
-              {/* Auto-Record Toggle & Recording Status Pill */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px", margin: "0 0 6px 0" }}>
-                <button
-                  type="button"
-                  id="auto-record-toggle-btn"
-                  onClick={() => {
-                    if (!autoRecordEnabled) {
-                      setShowRecordConsentDialog(true);
-                    } else {
-                      const newVal = false;
-                      setAutoRecordEnabled(newVal);
-                      try { localStorage.setItem('crm_auto_record_calls', 'false'); } catch {}
-                    }
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "4px 12px",
-                    borderRadius: "20px",
-                    border: autoRecordEnabled ? "1.5px solid #dc2626" : "1.5px solid var(--dialer-border)",
-                    backgroundColor: autoRecordEnabled ? "#fef2f2" : "var(--dialer-bg-subtle)",
-                    color: autoRecordEnabled ? "#dc2626" : "var(--dialer-text-sub)",
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  {autoRecordEnabled
-                    ? <><Radio size={12} style={{ animation: 'pulse-rec 1.2s ease-in-out infinite' }} /> Auto-Record: ON</>
-                    : <><Radio size={12} /> Auto-Record: OFF</>}
-                </button>
-                {recordingCap && (
-                  <span style={{
-                    fontSize: "0.68rem",
-                    padding: "3px 9px",
-                    borderRadius: "12px",
-                    backgroundColor: recordingCap.canRecordBothSides ? "#ecfdf5" : "var(--dialer-bg-subtle)",
-                    color: recordingCap.canRecordBothSides ? "#047857" : "var(--dialer-text-sub)",
-                    border: `1px solid ${recordingCap.canRecordBothSides ? "#a7f3d0" : "var(--dialer-border)"}`,
-                    fontWeight: 600
-                  }}>
-                    {recordingCap.canRecordBothSides
-                      ? "🎙️ Dual Audio"
-                      : autoRecordEnabled
-                        ? "🎙️ Mic & AI Debrief"
-                        : "🎙️ AI Debrief"}
-                  </span>
+                {/* Default Phone App Prompt Banner (Optional / Dismissable) */}
+                {!isDefaultApp && isAndroidNativeApp() && !isPromptDismissed && (
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "4px 10px", margin: "0 0 4px 0", fontSize: "0.71rem", color: "#166534", width: "100%", boxSizing: "border-box" }}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>⚡ Set as Default Phone App for HUD</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => requestDefaultDialer()}
+                        style={{ padding: "2px 8px", borderRadius: "6px", backgroundColor: "#16a34a", color: "#ffffff", border: "none", fontWeight: 700, fontSize: "0.68rem", cursor: "pointer", whiteSpace: "nowrap" }}
+                      >
+                        Enable
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsPromptDismissed(true)}
+                        style={{ background: "none", border: "none", color: "#166534", cursor: "pointer", padding: "2px 4px", fontSize: "0.80rem", fontWeight: "bold" }}
+                        title="Dismiss"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
                 )}
+
+                {/* Auto-Record Toggle & Recording Status Pill */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", margin: "0 0 4px 0" }}>
+                  <button
+                    type="button"
+                    id="auto-record-toggle-btn"
+                    onClick={() => {
+                      if (!autoRecordEnabled) {
+                        setShowRecordConsentDialog(true);
+                      } else {
+                        const newVal = false;
+                        setAutoRecordEnabled(newVal);
+                        try { localStorage.setItem('crm_auto_record_calls', 'false'); } catch {}
+                      }
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      padding: "3px 10px",
+                      borderRadius: "16px",
+                      border: autoRecordEnabled ? "1.5px solid #dc2626" : "1.5px solid var(--dialer-border)",
+                      backgroundColor: autoRecordEnabled ? "#fef2f2" : "var(--dialer-bg-subtle)",
+                      color: autoRecordEnabled ? "#dc2626" : "var(--dialer-text-sub)",
+                      fontSize: "0.70rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    {autoRecordEnabled
+                      ? <><Radio size={11} style={{ animation: 'pulse-rec 1.2s ease-in-out infinite' }} /> Auto-Record: ON</>
+                      : <><Radio size={11} /> Auto-Record: OFF</>}
+                  </button>
+                  {recordingCap && (
+                    <span style={{
+                      fontSize: "0.66rem",
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      backgroundColor: recordingCap.canRecordBothSides ? "#ecfdf5" : "var(--dialer-bg-subtle)",
+                      color: recordingCap.canRecordBothSides ? "#047857" : "var(--dialer-text-sub)",
+                      border: `1px solid ${recordingCap.canRecordBothSides ? "#a7f3d0" : "var(--dialer-border)"}`,
+                      fontWeight: 600
+                    }}>
+                      {recordingCap.canRecordBothSides
+                        ? "🎙️ Dual Audio"
+                        : autoRecordEnabled
+                          ? "🎙️ Mic & AI Debrief"
+                          : "🎙️ AI Debrief"}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Consent Dialog for first-time enable */}
@@ -1608,62 +1620,65 @@ function PhoneDialerModalContent({
                 </div>
               )}
 
-              {/* Keypad Grid */}
-              <div className="dialer-keypad-grid">
-                {DIALPAD_KEYS.map((k) => (
+              {/* BOTTOM FIXED DOCK: Keypad, Call Actions & Active SIM Subtext */}
+              <div className="dialer-keypad-bottom-dock">
+                {/* Keypad Grid */}
+                <div className="dialer-keypad-grid">
+                  {DIALPAD_KEYS.map((k) => (
+                    <button
+                      key={k.digit}
+                      type="button"
+                      className="dialer-key-btn"
+                      onClick={() => handleDigitClick(k.digit)}
+                      onContextMenu={(e) => {
+                        if (k.digit === "0") {
+                          e.preventDefault();
+                          handleDigitClick("+");
+                        }
+                      }}
+                    >
+                      <span className="dialer-key-digit">{k.digit}</span>
+                      {k.sub && <span className="dialer-key-sub">{k.sub}</span>}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Action Buttons Dock */}
+                <div className="dialer-actions-dock">
                   <button
-                    key={k.digit}
                     type="button"
-                    className="dialer-key-btn"
-                    onClick={() => handleDigitClick(k.digit)}
-                    onContextMenu={(e) => {
-                      if (k.digit === "0") {
-                        e.preventDefault();
-                        handleDigitClick("+");
-                      }
-                    }}
+                    className="dialer-wa-btn"
+                    onClick={() => handleInitiateWhatsApp()}
+                    title="Open WhatsApp Chat"
                   >
-                    <span className="dialer-key-digit">{k.digit}</span>
-                    {k.sub && <span className="dialer-key-sub">{k.sub}</span>}
+                    <MessageSquare size={20} />
                   </button>
-                ))}
-              </div>
 
-              {/* Action Buttons Dock */}
-              <div className="dialer-actions-dock">
-                <button
-                  type="button"
-                  className="dialer-wa-btn"
-                  onClick={() => handleInitiateWhatsApp()}
-                  title="Open WhatsApp Chat"
-                >
-                  <MessageSquare size={22} />
-                </button>
+                  <button
+                    type="button"
+                    className="dialer-call-btn"
+                    onClick={() => handleInitiateCall()}
+                    title="Place Cellular Call"
+                  >
+                    <PhoneCall size={26} />
+                  </button>
 
-                <button
-                  type="button"
-                  className="dialer-call-btn"
-                  onClick={() => handleInitiateCall()}
-                  title="Place Cellular Call"
-                >
-                  <PhoneCall size={28} />
-                </button>
+                  <button
+                    type="button"
+                    className="dialer-notes-btn"
+                    onClick={() => {
+                      setActiveTab("POST_CALL");
+                    }}
+                    title="Open Log Call / AI Debrief"
+                  >
+                    <Clock size={20} />
+                  </button>
+                </div>
 
-                <button
-                  type="button"
-                  className="dialer-notes-btn"
-                  onClick={() => {
-                    setActiveTab("POST_CALL");
-                  }}
-                  title="Open Log Call / AI Debrief"
-                >
-                  <Clock size={22} />
-                </button>
-              </div>
-
-              {/* Active SIM Outbound Subtext */}
-              <div className="dialer-call-subtext">
-                Calling via <strong>{selectedSim?.carrierName || (selectedSim?.slotIndex === 1 ? "SIM 2" : "SIM 1")}</strong> ({selectedSim?.slotLabel || "SIM 1"})
+                {/* Active SIM Outbound Subtext */}
+                <div className="dialer-call-subtext">
+                  Calling via <strong>{selectedSim?.carrierName || (selectedSim?.slotIndex === 1 ? "SIM 2" : "SIM 1")}</strong> ({selectedSim?.slotLabel || "SIM 1"})
+                </div>
               </div>
             </div>
           )}

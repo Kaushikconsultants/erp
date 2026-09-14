@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import CallScriptingPanel from '@/components/telecalling/CallScriptingPanel';
 import CustomerTimeline from '@/components/customers/CustomerTimeline';
+import CustomerInteractionHistory from '@/components/customers/CustomerInteractionHistory';
 import CustomerIntelligencePanel from '@/components/customers/CustomerIntelligencePanel';
 import CustomerSendEmailButton from '@/components/email/CustomerSendEmailButton';
 
@@ -37,6 +38,11 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
         orderBy: { createdAt: 'desc' }
       },
       calls: {
+        include: {
+          employee: {
+            include: { user: true }
+          }
+        },
         orderBy: { createdAt: 'desc' }
       }
     }
@@ -222,35 +228,12 @@ export default async function CustomerProfilePage({ params }: { params: Promise<
             </div>
           </div>
 
-          {/* Calls Table */}
-          <div className="glass-panel" style={{ padding: '24px' }}>
-            <h3 style={{ marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>Interaction History ({customer.calls.length})</h3>
-            <div className="table-responsive">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Outcome</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customer.calls.map(call => (
-                    <tr key={call.id}>
-                      <td>{new Date(call.createdAt).toLocaleDateString()}</td>
-                      <td>{call.callType}</td>
-                      <td>{call.outcome}</td>
-                    </tr>
-                  ))}
-                  {customer.calls.length === 0 && (
-                    <tr>
-                      <td colSpan={3} style={{ textAlign: 'center', padding: '16px', color: 'var(--text-muted)' }}>No interactions logged.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          {/* Calls & Transcripts History */}
+          <CustomerInteractionHistory
+            calls={customer.calls}
+            customerName={customer.businessName || customer.contactPerson}
+            customerPhone={customer.mobile || customer.whatsappNumber || customer.alternatePhone || ""}
+          />
 
           {/* 360 Customer Timeline */}
           <CustomerTimeline customerId={customer.id} />

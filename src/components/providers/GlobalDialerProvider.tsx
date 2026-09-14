@@ -27,10 +27,10 @@ export default function GlobalDialerProvider({ children }: { children: React.Rea
   const [dialerTab, setDialerTab] = useState<"DIALPAD" | "CALL_LOGS" | "CONTACTS" | "POST_CALL" | "WHATSAPP" | "SCRIPTS">("DIALPAD");
 
   const openDialer = useCallback((options?: OpenDialerOptions) => {
-    if (options?.phone !== undefined) setDialerPhone(options.phone || "");
-    if (options?.name !== undefined) setDialerName(options.name || "");
-    setDialerCustomerId(options?.customerId);
-    setDialerLeadId(options?.leadId);
+    setDialerPhone(options?.phone || "");
+    setDialerName(options?.name || "");
+    setDialerCustomerId(options?.customerId || undefined);
+    setDialerLeadId(options?.leadId || undefined);
     if (options?.tab) setDialerTab(options.tab);
     else setDialerTab("DIALPAD");
     setIsOpen(true);
@@ -38,6 +38,10 @@ export default function GlobalDialerProvider({ children }: { children: React.Rea
 
   const closeDialer = useCallback(() => {
     setIsOpen(false);
+    setDialerPhone("");
+    setDialerName("");
+    setDialerCustomerId(undefined);
+    setDialerLeadId(undefined);
   }, []);
 
   // 1. Listen for global custom event 'open-phone-dialer' and register window.openPhoneDialer

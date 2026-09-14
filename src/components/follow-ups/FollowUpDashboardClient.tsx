@@ -70,9 +70,10 @@ export default function FollowUpDashboardClient({
 
   const renderCard = (c: any, urgency: "overdue" | "today" | "upcoming") => {
     const isLead = !c.customer && !!c.lead;
-    const customerName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || "Unknown";
-    const contactPerson = c.customer?.contactPerson || (c.lead?.shopName ? c.lead?.name : "") || "";
-    const rawPhone = c.customer?.mobile || c.customer?.phone || c.customer?.whatsappNumber || c.lead?.whatsappNumber || "";
+    const extractedPhone = c.notes?.match(/\[(?:Dialed|Phone): ([^\]]+)\]/)?.[1];
+    const customerName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || (extractedPhone ? `Helpline / Direct (${extractedPhone})` : "Direct Call");
+    const contactPerson = c.customer?.contactPerson || (c.lead?.shopName ? c.lead?.name : "") || (extractedPhone ? `Number: ${extractedPhone}` : "");
+    const rawPhone = c.customer?.mobile || c.customer?.phone || c.customer?.whatsappNumber || c.lead?.whatsappNumber || extractedPhone || "";
     const cleanPhone = rawPhone.replace(/[^0-9+]/g, "");
     const waPhone = cleanPhone.startsWith("+") ? cleanPhone.slice(1) : cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
     const location = [c.customer?.city || c.lead?.city, c.customer?.state || c.lead?.state].filter(Boolean).join(", ");

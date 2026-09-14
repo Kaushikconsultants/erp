@@ -69,8 +69,8 @@
   background-color: var(--dialer-bg) !important;
   color: var(--dialer-text-main) !important;
   overflow: hidden !important;
-  padding-top: max(8px, env(safe-area-inset-top, 0px)) !important;
-  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px)) !important;
+  padding-top: max(6px, env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 8px)) !important;
   box-sizing: border-box !important;
   margin: 0 !important;
   border: none !important;
@@ -252,7 +252,15 @@
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 16px 20px 24px 20px;
+  padding: 14px 18px 20px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialer-body-scroll.dialpad-tab-active {
+  padding: 6px 14px max(10px, env(safe-area-inset-bottom, 10px)) 14px;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -265,23 +273,45 @@
   flex-direction: column;
   flex: 1;
   justify-content: space-between;
+  height: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+.dialer-keypad-top-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  justify-content: flex-start;
+}
+
+.dialer-keypad-bottom-dock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 /* Phone Number Display Box */
 .dialer-display-box {
   width: 100%;
-  margin: 4px auto 10px auto;
+  margin: 2px auto 4px auto;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  min-height: 54px;
+  min-height: 44px;
 }
 
 .dialer-digits-input {
   width: 100%;
   text-align: center;
-  font-size: 2.15rem;
+  font-size: clamp(1.6rem, 5vw, 2.1rem);
   font-weight: 800;
   color: var(--dialer-text-main);
   border: none;
@@ -289,28 +319,28 @@
   background: transparent;
   letter-spacing: 2px;
   font-variant-numeric: tabular-nums;
-  padding: 0 46px;
+  padding: 0 42px;
   box-sizing: border-box;
 }
 
 .dialer-digits-input::placeholder {
   color: var(--dialer-text-sub);
   opacity: 0.6;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: 0.5px;
 }
 
 .dialer-backspace-btn {
   position: absolute;
-  right: 6px;
+  right: 4px;
   top: 50%;
   transform: translateY(-50%);
   background: var(--dialer-bg-subtle);
   border: 1px solid var(--dialer-border);
   border-radius: 10px;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   cursor: pointer;
   color: var(--dialer-text-sub);
   display: flex;
@@ -324,17 +354,168 @@
   transform: translateY(-50%) scale(0.92);
 }
 
-/* Matched Contact Snippet */
+/* Matched Contact Chips (Horizontal Scrollable Row) */
+.dialer-matched-chips-scroll {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 2px 2px;
+  margin: 2px 0 4px 0;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+.dialer-matched-chips-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.dialer-matched-chip-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 18px;
+  background-color: var(--dialer-bg-subtle);
+  border: 1px solid var(--dialer-border);
+  cursor: pointer;
+  max-width: 220px;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.dialer-matched-chip-btn:hover, .dialer-matched-chip-btn:active {
+  background-color: var(--dialer-accent-subtle);
+  border-color: var(--dialer-accent);
+}
+
+.dialer-matched-chip-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dialer-matched-chip-name {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--dialer-text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 110px;
+}
+
+.dialer-matched-chip-phone {
+  font-size: 0.68rem;
+  color: var(--dialer-text-sub);
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+/* Compact Selected Contact Pill */
+.dialer-matched-contact-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 10px;
+  background-color: var(--dialer-accent-subtle);
+  border: 1px solid var(--dialer-border);
+  border-radius: 12px;
+  margin: 2px 0 4px 0;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+.dialer-matched-contact-compact-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.dialer-matched-avatar-small {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.70rem;
+  flex-shrink: 0;
+}
+
+.dialer-matched-text-small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.dialer-matched-name-small {
+  font-weight: 800;
+  color: var(--dialer-text-main);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 130px;
+}
+
+.dialer-matched-phone-small {
+  font-size: 0.68rem;
+  color: var(--dialer-text-sub);
+  font-family: monospace;
+}
+
+.dialer-matched-badge-small {
+  font-size: 0.60rem;
+  font-weight: 800;
+  color: var(--dialer-accent);
+  background-color: rgba(79, 70, 229, 0.1);
+  padding: 1px 5px;
+  border-radius: 6px;
+}
+
+.dialer-matched-clear-btn {
+  background: none;
+  border: none;
+  color: var(--dialer-text-sub);
+  cursor: pointer;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Legacy Matched Contact Snippet */
 .dialer-matched-contact {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 6px 12px;
   background-color: var(--dialer-accent-subtle);
   border: 1px solid var(--dialer-border);
   border-radius: 12px;
-  margin-bottom: 10px;
-  font-size: 0.82rem;
+  margin-bottom: 6px;
+  font-size: 0.80rem;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
 }
 
@@ -346,18 +527,68 @@
 }
 
 /* =========================================================
-   DUAL-SIM SELECTOR SUITE
+   COMPACT DUAL-SIM SELECTOR
    ========================================================= */
 
+.dialer-sim-selector-compact {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px;
+  width: 100%;
+  margin: 2px 0 4px 0;
+}
+
+.dialer-sim-compact-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  background: var(--dialer-bg);
+  border: 1.5px solid var(--dialer-border);
+  color: var(--dialer-text-sub);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.dialer-sim-compact-pill.selected {
+  border-color: var(--dialer-accent) !important;
+  background-color: var(--dialer-accent-subtle) !important;
+  color: var(--dialer-accent) !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.15);
+}
+
+.dialer-sim-compact-label {
+  font-weight: 800;
+}
+
+.dialer-sim-compact-carrier {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 90px;
+}
+
+.dialer-sim-compact-check {
+  font-weight: 900;
+  color: var(--dialer-accent);
+}
+
+/* Legacy Dual-SIM Suite */
 .dialer-sim-selector-container {
   background: var(--dialer-bg-subtle);
   border: 1px solid var(--dialer-border);
-  border-radius: 14px;
-  padding: 8px 12px;
-  margin: 6px 0 12px 0;
+  border-radius: 12px;
+  padding: 6px 10px;
+  margin: 4px 0 8px 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .dialer-sim-selector-header {
@@ -368,7 +599,7 @@
 }
 
 .dialer-sim-selector-title {
-  font-size: 0.72rem;
+  font-size: 0.70rem;
   font-weight: 700;
   color: var(--dialer-text-sub);
   text-transform: uppercase;
@@ -376,7 +607,7 @@
 }
 
 .dialer-sim-selected-badge {
-  font-size: 0.72rem;
+  font-size: 0.70rem;
   font-weight: 600;
   color: var(--dialer-accent);
 }
@@ -384,15 +615,15 @@
 .dialer-sim-cards-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
 }
 
 .dialer-sim-card {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
   background: var(--dialer-bg);
   border: 1.5px solid var(--dialer-border);
   color: var(--dialer-text-sub);
@@ -413,8 +644,8 @@
 }
 
 .dialer-sim-chip-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 6px;
   background: var(--dialer-bg-subtle);
   display: flex;
@@ -459,7 +690,7 @@
 }
 
 .dialer-sim-carrier {
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 800;
   color: var(--dialer-text-main);
   white-space: nowrap;
@@ -475,9 +706,9 @@
   background: var(--dialer-bg-subtle);
   border: 1px solid var(--dialer-border);
   border-radius: 10px;
-  padding: 6px 12px;
-  margin: 4px 0 10px 0;
-  font-size: 0.76rem;
+  padding: 4px 10px;
+  margin: 2px 0 6px 0;
+  font-size: 0.72rem;
   color: var(--dialer-text-sub);
 }
 
@@ -486,18 +717,19 @@
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   justify-items: center;
-  row-gap: 12px;
-  column-gap: 20px;
+  row-gap: clamp(5px, 1.3vh, 10px);
+  column-gap: clamp(14px, 4.5vw, 24px);
   width: 100%;
   max-width: 320px;
-  margin: 6px auto 14px auto;
+  margin: 3px auto 6px auto;
+  flex-shrink: 0;
 }
 
 .dialer-key-btn {
-  width: 68px;
-  height: 68px;
-  min-width: 68px;
-  min-height: 68px;
+  width: clamp(52px, 14.5vw, 64px);
+  height: clamp(52px, 14.5vw, 64px);
+  min-width: clamp(52px, 14.5vw, 64px);
+  min-height: clamp(52px, 14.5vw, 64px);
   border-radius: 50%;
   border: 1.5px solid var(--dialer-key-border);
   background-color: var(--dialer-key-bg);
@@ -506,7 +738,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 2px 5px rgba(15, 23, 42, 0.04);
   transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease;
   padding: 0;
   user-select: none;
@@ -522,18 +754,18 @@
 }
 
 .dialer-key-digit {
-  font-size: 1.65rem;
+  font-size: clamp(1.35rem, 3.8vw, 1.6rem);
   font-weight: 800;
   color: var(--dialer-key-text);
   line-height: 1;
 }
 
 .dialer-key-sub {
-  font-size: 0.62rem;
+  font-size: clamp(0.52rem, 1.6vw, 0.60rem);
   font-weight: 700;
   color: var(--dialer-text-sub);
-  letter-spacing: 1.4px;
-  margin-top: 2px;
+  letter-spacing: 1.2px;
+  margin-top: 1px;
 }
 
 /* Call Controls Floating Dock */
@@ -541,14 +773,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: clamp(16px, 5vw, 24px);
   width: 100%;
-  margin: 8px auto 6px auto;
+  margin: 3px auto 3px auto;
+  flex-shrink: 0;
 }
 
 .dialer-call-btn {
-  width: 68px;
-  height: 68px;
+  width: clamp(58px, 16vw, 66px);
+  height: clamp(58px, 16vw, 66px);
   border-radius: 50%;
   background: var(--dialer-call-bg);
   color: #ffffff;
@@ -557,10 +790,11 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 8px 24px var(--dialer-call-shadow);
+  box-shadow: 0 6px 18px var(--dialer-call-shadow);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .dialer-call-btn:active {
@@ -568,8 +802,8 @@
 }
 
 .dialer-wa-btn {
-  width: 50px;
-  height: 50px;
+  width: clamp(42px, 11.5vw, 48px);
+  height: clamp(42px, 11.5vw, 48px);
   border-radius: 50%;
   background-color: #25d366;
   color: #ffffff;
@@ -578,10 +812,11 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
   transition: transform 0.15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .dialer-wa-btn:active {
@@ -589,8 +824,8 @@
 }
 
 .dialer-notes-btn {
-  width: 50px;
-  height: 50px;
+  width: clamp(42px, 11.5vw, 48px);
+  height: clamp(42px, 11.5vw, 48px);
   border-radius: 50%;
   background-color: var(--dialer-bg-subtle);
   color: var(--dialer-accent);
@@ -599,10 +834,11 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   transition: transform 0.15s ease;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
 }
 
 .dialer-notes-btn:active {
@@ -612,10 +848,12 @@
 /* Call Confirmation Subtext */
 .dialer-call-subtext {
   text-align: center;
-  margin-top: 4px;
-  font-size: 0.75rem;
+  margin-top: 2px;
+  font-size: 0.71rem;
   font-weight: 700;
   color: #059669;
+  flex-shrink: 0;
+  padding-bottom: 2px;
 }
 
 .dark .dialer-call-subtext {
@@ -849,3 +1087,39 @@
   display: inline-block;
   animation: pulse-rec 0.9s ease-in-out infinite;
 }
+
+/* ─── MOBILE RESPONSIVENESS & SCREEN FIT ─── */
+@media (max-width: 600px), (max-height: 820px) {
+  .dialer-header {
+    padding: 8px 14px;
+  }
+  .dialer-icon-badge {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+  .dialer-icon-badge svg {
+    width: 17px;
+    height: 17px;
+  }
+  .dialer-title-text h3 {
+    font-size: 0.92rem;
+  }
+  .dialer-title-text span {
+    font-size: 0.68rem;
+  }
+  .dialer-close-btn {
+    width: 32px;
+    height: 32px;
+  }
+  .dialer-tabs-bar {
+    padding: 5px 10px;
+    gap: 4px;
+  }
+  .dialer-tab-pill {
+    padding: 5px 10px;
+    font-size: 0.74rem;
+    border-radius: 8px;
+  }
+}
+

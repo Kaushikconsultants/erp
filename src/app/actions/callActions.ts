@@ -50,6 +50,27 @@ export async function logCall(formData: FormData) {
       return { error: "No employee record found. Please set up your profile first." };
     }
 
+    // Safety check: if customerId is provided with phone, ensure the phone actually matches customer
+    if (customerId && phone) {
+      const cleanPhone = phone.replace(/\D/g, "");
+      // If phone is short (e.g. 121, 100, 198) or doesn't match the customer at all, detach customerId
+      if (cleanPhone.length < 7) {
+        customerId = null;
+      } else {
+        const cust = await prisma.customer.findUnique({
+          where: { id: customerId },
+          select: { mobile: true, whatsappNumber: true, alternatePhone: true }
+        });
+        if (cust) {
+          const custPhones = [cust.mobile, cust.whatsappNumber, cust.alternatePhone].filter(Boolean).map(p => p!.replace(/\D/g, ""));
+          const matches = custPhones.some(cp => cp.includes(cleanPhone) || cleanPhone.includes(cp) || cp.slice(-10) === cleanPhone.slice(-10));
+          if (!matches) {
+            customerId = null;
+          }
+        }
+      }
+    }
+
     // Auto-match or create lead if unmapped phone is provided
     if (!customerId && !leadId && phone) {
       const cleanPhone = phone.replace(/\D/g, "");
@@ -116,6 +137,13 @@ export async function logCall(formData: FormData) {
       }
     }
 
+    let finalNotes = notes || null;
+    if (phone && !customerId && !leadId) {
+      if (!finalNotes || !finalNotes.includes("[Dialed:")) {
+        finalNotes = finalNotes ? `[Dialed: ${phone}]\n${finalNotes}` : `[Dialed: ${phone}]`;
+      }
+    }
+
     // Build base call data
     const dataObj: any = {
       employeeId: employee.id,
@@ -123,7 +151,7 @@ export async function logCall(formData: FormData) {
       durationSec: durationSec,
       status: status,
       outcome: outcome || "Completed",
-      notes: notes || null,
+      notes: finalNotes,
       followUpDate,
       recordingUrl: recordingUrl || null,
       summary: summary || await generateCallSummary(notes, outcome, durationSec),
@@ -385,9 +413,10 @@ export async function getDialerRecentCalls(limit: number = 40) {
     });
 
     const formattedCalls = (Array.isArray(calls) ? calls : []).map(c => {
-      const contactName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || "Direct Contact";
+      const extractedPhone = c.notes?.match(/\[(?:Dialed|Phone): ([^\]]+)\]/)?.[1];
+      const contactName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || (extractedPhone ? `Helpline / Direct (${extractedPhone})` : "Direct Contact");
       const contactPerson = c.customer?.contactPerson || c.lead?.name || "";
-      const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || "";
+      const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || extractedPhone || "";
       const contactType = c.customer ? "Customer" : c.lead ? "Lead" : "Direct";
 
       return {

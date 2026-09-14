@@ -2,7 +2,7 @@
 
 import DatePicker from '@/components/ui/DatePicker';
 import React, { useState } from 'react';
-import { Pencil, Trash2, Calendar, CheckCircle, Clock, Phone, MessageSquare, PhoneCall } from 'lucide-react';
+import { Pencil, Trash2, Calendar, CheckCircle, Clock, Phone, MessageSquare, PhoneCall, FileText, Sparkles, X } from 'lucide-react';
 import { updateCall, deleteCall } from '@/app/actions/callActions';
 import PhoneDialerModal from './PhoneDialerModal';
 
@@ -29,6 +29,7 @@ export default function CallsTableClient({
   availableCallTypes = ["OUTBOUND", "INBOUND", "In-person Meeting", "WhatsApp Chat"]
 }: CallsTableClientProps) {
   const [editingCall, setEditingCall] = useState<any | null>(null);
+  const [viewingTranscriptCall, setViewingTranscriptCall] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -156,8 +157,9 @@ export default function CallsTableClient({
           <tbody>
             {calls.map(call => {
               const isOverdue = call.followUpDate && new Date(call.followUpDate) < new Date();
-              const customerName = call.customer?.businessName || call.lead?.shopName || call.lead?.name || call.customer?.contactPerson || 'Customer';
-              const phone = call.customer?.mobile || call.customer?.whatsappNumber || call.lead?.whatsappNumber || '';
+              const extractedPhone = call.notes?.match(/\[(?:Dialed|Phone): ([^\]]+)\]/)?.[1];
+              const customerName = call.customer?.businessName || call.lead?.shopName || call.lead?.name || call.customer?.contactPerson || (extractedPhone ? `Helpline / Direct (${extractedPhone})` : 'Direct Call');
+              const phone = call.customer?.mobile || call.customer?.whatsappNumber || call.lead?.whatsappNumber || extractedPhone || '';
               
               return (
                 <tr key={call.id}>
@@ -165,7 +167,7 @@ export default function CallsTableClient({
                   <td>
                     <strong>{customerName}</strong>
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                      {call.customer?.contactPerson || (call.lead ? `Lead • ${call.lead.name || ''}` : '')}
+                      {call.customer?.contactPerson || (call.lead ? `Lead • ${call.lead.name || ''}` : extractedPhone ? `Dialed: ${extractedPhone}` : '')}
                     </div>
                   </td>
                   <td>
@@ -194,6 +196,29 @@ export default function CallsTableClient({
                         </span>
                       ) : (
                         !call.recordingUrl && <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No recording</span>
+                      )}
+                      {(call.summary || call.notes?.includes("[Auto-Transcript]")) && (
+                        <button
+                          type="button"
+                          onClick={() => setViewingTranscriptCall(call)}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "2px 6px",
+                            borderRadius: "4px",
+                            border: "1px solid #c7d2fe",
+                            backgroundColor: "#eef2ff",
+                            color: "#4338ca",
+                            fontSize: "0.7rem",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            width: "fit-content",
+                            marginTop: "2px"
+                          }}
+                        >
+                          <FileText size={11} /> View Transcript & AI Summary
+                        </button>
                       )}
                     </div>
                   </td>
@@ -419,6 +444,143 @@ export default function CallsTableClient({
               </div>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Transcript & Summary Modal */}
+      {viewingTranscriptCall && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid #e2e8f0',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '16px 20px',
+              borderBottom: '1px solid #f1f5f9',
+              backgroundColor: '#f8fafc'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <FileText size={18} color="#4f46e5" /> Call Transcript & Debrief
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  {new Date(viewingTranscriptCall.createdAt).toLocaleDateString('en-GB')} at {new Date(viewingTranscriptCall.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} • Rep: {viewingTranscriptCall.employee?.user?.name || "Agent"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingTranscriptCall(null)}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: '#64748b',
+                  borderRadius: '6px'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Badges Info */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', backgroundColor: viewingTranscriptCall.callType === 'INBOUND' ? '#e0e7ff' : '#dbeafe', color: viewingTranscriptCall.callType === 'INBOUND' ? '#3730a3' : '#1d4ed8' }}>
+                  {viewingTranscriptCall.callType || 'OUTBOUND'}
+                </span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#047857' }}>
+                  ⏱ {formatDuration(viewingTranscriptCall.durationSec)}
+                </span>
+                <span className={`status-badge ${getOutcomeBadgeClass(viewingTranscriptCall.outcome)}`}>
+                  {viewingTranscriptCall.outcome || 'Completed'}
+                </span>
+              </div>
+
+              {/* Audio recording */}
+              {viewingTranscriptCall.recordingUrl && (
+                <div style={{ padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#15803d', display: 'block', marginBottom: '6px' }}>
+                    Call Audio Recording
+                  </span>
+                  <audio controls src={viewingTranscriptCall.recordingUrl} style={{ width: '100%', height: '32px' }} />
+                </div>
+              )}
+
+              {/* AI Summary */}
+              {viewingTranscriptCall.summary && (
+                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                    <Sparkles size={14} color="#9333ea" />
+                    <strong style={{ fontSize: '0.78rem', color: '#7e22ce', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      AI Summary
+                    </strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#3b0764', lineHeight: 1.5 }}>
+                    {viewingTranscriptCall.summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Full Notes / Transcript */}
+              {viewingTranscriptCall.notes && (
+                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                  <strong style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: '#334155' }}>
+                    Notes & Dialogue Transcript:
+                  </strong>
+                  <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.82rem', color: '#1e293b', lineHeight: 1.5, maxHeight: '250px', overflowY: 'auto' }}>
+                    {viewingTranscriptCall.notes}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '12px 20px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', backgroundColor: '#f8fafc' }}>
+              <button
+                type="button"
+                onClick={() => setViewingTranscriptCall(null)}
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: '#475569',
+                  fontWeight: 600,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

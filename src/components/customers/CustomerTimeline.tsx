@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { getCustomerTimeline } from "@/app/actions/customerActions";
-import { Phone, CheckSquare, ShoppingCart, CheckCircle2, FileText, Receipt, IndianRupee, Clock, Mail } from "lucide-react";
+import { Phone, CheckSquare, ShoppingCart, CheckCircle2, FileText, Receipt, IndianRupee, Clock, Mail, Sparkles, Volume2 } from "lucide-react";
 
 export default function CustomerTimeline({ customerId }: { customerId: string }) {
   const [timeline, setTimeline] = useState<any[]>([]);
@@ -53,14 +53,34 @@ export default function CustomerTimeline({ customerId }: { customerId: string })
           let borderColor = "#cbd5e1";
           let title = "";
           let desc = "";
+          let callSummary = "";
+          let callTranscript = "";
+          let callRecordingUrl = "";
 
           if (item.type === "CALL") {
             Icon = Phone;
             color = "#2563eb";
             bgColor = "#dbeafe";
             borderColor = "#93c5fd";
-            title = `Call: ${item.data.outcome}`;
-            desc = item.data.notes || "No call notes.";
+            const duration = item.data.durationSec ? ` (${item.data.durationSec}s)` : "";
+            title = `Call: ${item.data.outcome}${duration}`;
+            callSummary = item.data.summary || "";
+            callRecordingUrl = item.data.recordingUrl || "";
+            
+            const rawNotes = item.data.notes || "";
+            if (rawNotes) {
+              const sMatch = rawNotes.match(/\[AI Summary\]:\s*([\s\S]*?)(?=(\n\n\[|$))/i);
+              if (sMatch && !callSummary) callSummary = sMatch[1].trim();
+
+              const tMatch = rawNotes.match(/\[Auto-Transcript\]:\s*([\s\S]*?)(?=(\n\n\[AI Summary\]|\n\n\[Dialed|\n\n\[|$))/i);
+              if (tMatch) callTranscript = tMatch[1].trim();
+
+              desc = rawNotes
+                .replace(/\[Auto-Transcript\]:\s*[\s\S]*?(?=(\n\n\[AI Summary\]|\n\n\[Dialed|\n\n\[|$))/i, "")
+                .replace(/\[AI Summary\]:\s*[\s\S]*?(?=(\n\n\[|$))/i, "")
+                .replace(/\[Dialed:\s*[^\]]+\]/gi, "")
+                .trim();
+            }
           } else if (item.type === "FOLLOW_UP") {
             Icon = CheckSquare;
             color = "#ea580c";
@@ -127,14 +147,37 @@ export default function CustomerTimeline({ customerId }: { customerId: string })
               </div>
 
               {/* Event Content Card */}
-              <div style={{ backgroundColor: '#f8fafc', padding: '14px 18px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+              <div style={{ backgroundColor: '#f8fafc', padding: '14px 18px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <h4 style={{ fontSize: '0.9rem', fontWeight: '700', color: '#0f172a', margin: 0 }}>{title}</h4>
                   <span style={{ fontSize: '0.75rem', fontWeight: '600', color: '#94a3b8' }}>
                     {new Date(item.date).toLocaleDateString()}
                   </span>
                 </div>
-                <p style={{ fontSize: '0.825rem', color: '#475569', margin: 0, lineHeight: '1.4' }}>{desc}</p>
+
+                {callRecordingUrl && (
+                  <audio controls src={callRecordingUrl} style={{ width: '100%', height: '30px' }} />
+                )}
+
+                {callSummary && (
+                  <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#faf5ff', border: '1px solid #f3e8ff', fontSize: '0.8rem', color: '#581c87' }}>
+                    <strong style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', color: '#7e22ce' }}>
+                      <Sparkles size={12} /> AI Summary:
+                    </strong>
+                    {callSummary}
+                  </div>
+                )}
+
+                {callTranscript && (
+                  <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', fontSize: '0.78rem', color: '#334155', maxHeight: '120px', overflowY: 'auto' }}>
+                    <strong style={{ display: 'block', marginBottom: '4px', color: '#2563eb' }}>📜 Auto-Transcript:</strong>
+                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{callTranscript}</div>
+                  </div>
+                )}
+
+                {desc && (
+                  <p style={{ fontSize: '0.825rem', color: '#475569', margin: 0, lineHeight: '1.4' }}>{desc}</p>
+                )}
               </div>
             </div>
           );
