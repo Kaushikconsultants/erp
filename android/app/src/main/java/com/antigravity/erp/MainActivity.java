@@ -90,6 +90,10 @@ public class MainActivity extends BridgeActivity {
         try {
             java.io.File directFile = findRecentCallAudioFile(cleanPhone, cleanName, firstWordName, callDurationSec);
             if (directFile != null && directFile.exists() && directFile.length() > 2048) {
+                int exactAudioSec = getAudioFileDurationSec(directFile);
+                if (exactAudioSec > 0) {
+                    lastCallDurationSec = exactAudioSec;
+                }
                 String directDataUrl = fileToAudioDataUrl(directFile);
                 if (directDataUrl != null && !directDataUrl.isEmpty()) {
                     return directDataUrl;
@@ -132,6 +136,7 @@ public class MainActivity extends BridgeActivity {
                     long bestId = -1;
                     String bestMime = "audio/mpeg";
                     long bestSize = 0;
+                    long bestDurationMs = 0;
                     int count = 0;
 
                     while (cursor.moveToNext() && count < 30) {
@@ -175,6 +180,7 @@ public class MainActivity extends BridgeActivity {
                             bestId = id;
                             bestMime = mime;
                             bestSize = size;
+                            bestDurationMs = durationMs;
                             break;
                         }
 
@@ -184,10 +190,17 @@ public class MainActivity extends BridgeActivity {
                             bestId = id;
                             bestMime = mime;
                             bestSize = size;
+                            bestDurationMs = durationMs;
                         }
                     }
 
                     if (bestId != -1) {
+                        if (bestDurationMs > 0) {
+                            int exactSec = (int) Math.round(bestDurationMs / 1000.0);
+                            if (exactSec > 0) {
+                                lastCallDurationSec = exactSec;
+                            }
+                        }
                         android.net.Uri contentUri = android.content.ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, bestId);
                         String dataUrl = uriToAudioDataUrl(contentUri, bestMime, bestSize);
                         if (dataUrl != null && !dataUrl.isEmpty()) {
@@ -229,6 +242,24 @@ public class MainActivity extends BridgeActivity {
             t.printStackTrace();
             return null;
         }
+    }
+
+    public int getAudioFileDurationSec(java.io.File file) {
+        if (file == null || !file.exists()) return 0;
+        android.media.MediaMetadataRetriever mmr = new android.media.MediaMetadataRetriever();
+        try {
+            mmr.setDataSource(file.getAbsolutePath());
+            String durStr = mmr.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION);
+            if (durStr != null) {
+                long ms = Long.parseLong(durStr);
+                return (int) Math.round(ms / 1000.0);
+            }
+        } catch (Throwable t) {
+            // Ignored
+        } finally {
+            try { mmr.release(); } catch (Throwable t) {}
+        }
+        return 0;
     }
 
     public java.io.File findRecentCallAudioFile(String cleanPhone, String cleanName, String firstWordName, int callDurationSec) {
@@ -465,6 +496,18 @@ public class MainActivity extends BridgeActivity {
                     e.printStackTrace();
                 }
             }
+
+            boolean contactsGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
+            if (contactsGranted) {
+                runOnUiThread(() -> {
+                    try {
+                        WebView webView = getBridge().getWebView();
+                        if (webView != null) {
+                            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-contacts-permission-granted'));", null);
+                        }
+                    } catch (Exception e) {}
+                });
+            }
         }
     }
 
@@ -539,6 +582,12 @@ public class MainActivity extends BridgeActivity {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
                     != PackageManager.PERMISSION_GRANTED) {
                 permissionsNeeded.add(Manifest.permission.READ_PHONE_STATE);
+            }
+
+            // Contacts Permission (for syncing and displaying phone contacts in dialer)
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                permissionsNeeded.add(Manifest.permission.READ_CONTACTS);
             }
 
             // External Media / Audio Read Permission (to auto-detect Xiaomi & Android Call Recordings)
@@ -647,7 +696,8 @@ public class MainActivity extends BridgeActivity {
                         if (foundAudioUrl != null && !foundAudioUrl.isEmpty()) {
                             lastRecordedAudioDataUrl = foundAudioUrl;
                             final String finalCallId = callIdForTranscription != null ? callIdForTranscription : ("call_" + System.currentTimeMillis());
-                            sendNativeCallEvent("ENDED", durationSec, finalCallId, phoneForTranscription, foundAudioUrl);
+                            int finalReportedDur = (lastCallDurationSec > 0) ? lastCallDurationSec : durationSec;
+                            sendNativeCallEvent("ENDED", finalReportedDur, finalCallId, phoneForTranscription, foundAudioUrl);
                         } else {
                             lastRecordedAudioDataUrl = null;
                             sendNativeCallEvent("ENDED", durationSec, callIdForTranscription, phoneForTranscription, null);
@@ -781,23 +831,12 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
-     * Configures WebChromeClient for WebRTC media access and injects AndroidNative JavaScript Bridge
+     * Injects AndroidNative JavaScript Bridge into WebView without overriding Capacitor's BridgeWebChromeClient
      */
     private void configureWebView() {
         try {
             WebView webView = getBridge().getWebView();
             if (webView != null) {
-                // 1. WebRTC Permission handler
-                webView.setWebChromeClient(new WebChromeClient() {
-                    @Override
-                    public void onPermissionRequest(final PermissionRequest request) {
-                        MainActivity.this.runOnUiThread(() -> {
-                            request.grant(request.getResources());
-                        });
-                    }
-                });
-
-                // 2. Inject AndroidNative JavaScript interface
                 webView.addJavascriptInterface(new AndroidNativeBridge(this), "AndroidNative");
             }
         } catch (Exception e) {
@@ -936,6 +975,8 @@ public class MainActivity extends BridgeActivity {
                     String param = "%" + searchQuery.trim() + "%";
                     selectionArgs = new String[]{param, param};
                 }
+                // Sort by name ASC (DO NOT put LIMIT here as modern Android throws IllegalArgumentException)
+                String sortOrder = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC";
                 android.database.Cursor cursor = cr.query(
                     uri,
                     new String[]{
@@ -945,24 +986,31 @@ public class MainActivity extends BridgeActivity {
                     },
                     selection,
                     selectionArgs,
-                    android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " ASC LIMIT 300"
+                    sortOrder
                 );
                 if (cursor != null) {
                     try {
                         java.util.Set<String> seen = new java.util.HashSet<>();
-                        while (cursor.moveToNext()) {
-                            String name = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME));
-                            String number = cursor.getString(cursor.getColumnIndexOrThrow(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER));
+                        int nameIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME);
+                        int numIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER);
+                        int idIdx = cursor.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID);
+
+                        while (cursor.moveToNext() && list.length() < 15000) {
+                            String name = (nameIdx >= 0) ? cursor.getString(nameIdx) : null;
+                            String number = (numIdx >= 0) ? cursor.getString(numIdx) : null;
+                            String contactId = (idIdx >= 0) ? cursor.getString(idIdx) : String.valueOf(list.length());
+
                             if (number == null || number.trim().isEmpty()) continue;
                             String clean = number.replaceAll("[^0-9+]", "");
-                            String key = (name != null ? name : "") + "_" + clean;
+                            if (clean.isEmpty()) continue;
+                            String key = (name != null ? name.trim().toLowerCase() : "") + "_" + clean;
                             if (seen.contains(key)) continue;
                             seen.add(key);
 
                             org.json.JSONObject obj = new org.json.JSONObject();
-                            obj.put("id", "device_" + cursor.getString(cursor.getColumnIndexOrThrow(android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID)));
-                            obj.put("contactPerson", name != null ? name : "Phone Contact");
-                            obj.put("companyName", name != null ? name : "Phone Contact");
+                            obj.put("id", "device_" + contactId + "_" + clean);
+                            obj.put("contactPerson", (name != null && !name.trim().isEmpty()) ? name.trim() : number);
+                            obj.put("companyName", (name != null && !name.trim().isEmpty()) ? name.trim() : "Phone Contact");
                             obj.put("phone", number);
                             obj.put("type", "Phone Contact");
                             list.put(obj);
@@ -971,8 +1019,9 @@ public class MainActivity extends BridgeActivity {
                         cursor.close();
                     }
                 }
+                android.util.Log.d("MainActivity", "getDeviceContacts loaded: " + list.length() + " contacts");
             } catch (Exception e) {
-                e.printStackTrace();
+                android.util.Log.e("MainActivity", "getDeviceContacts error", e);
             }
             return list.toString();
         }

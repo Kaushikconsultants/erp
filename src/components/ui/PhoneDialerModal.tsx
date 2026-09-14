@@ -375,6 +375,21 @@ function PhoneDialerModalContent({
   const autoRecordSpeechRef = useRef<any>(null);
   const autoRecordTranscriptRef = useRef<string>('');
 
+  // Auto-sync call duration to actual recorded audio length whenever recordingUrl is set
+  useEffect(() => {
+    if (!recordingUrl || typeof recordingUrl !== "string") return;
+    try {
+      const audio = new Audio();
+      audio.src = recordingUrl;
+      audio.onloadedmetadata = () => {
+        const d = Math.round(audio.duration);
+        if (d > 0 && !isNaN(d) && isFinite(d)) {
+          setCallDurationSec(d);
+        }
+      };
+    } catch (e) {}
+  }, [recordingUrl]);
+
   // Helper: Automatically analyze and transcribe recorded audio via Gemini AI
   const handleTranscribeAudio = useCallback(async (audioDataUrl: string, explicitDuration?: number) => {
     if (!audioDataUrl || audioDataUrl.length < 50) return;
@@ -561,6 +576,12 @@ function PhoneDialerModalContent({
         if (hasPerm === false) {
           (window as any).AndroidNative?.requestContactsPermission?.();
           setFeedbackMsg("📱 Grant Contacts permission in prompt to load saved phone contacts.");
+          // Retry automatically after prompt
+          setTimeout(() => {
+            if ((window as any).AndroidNative?.hasContactsPermission?.()) {
+              loadDeviceContacts(searchQuery);
+            }
+          }, 2500);
           setIsScanningContacts(false);
           return;
         }
@@ -599,8 +620,12 @@ function PhoneDialerModalContent({
       if (found.length > 0) {
         setDeviceContacts(found);
         try {
-          localStorage.setItem("crm_device_contacts_cache", JSON.stringify(found.slice(0, 500)));
-        } catch {}
+          localStorage.setItem("crm_device_contacts_cache", JSON.stringify(found.slice(0, 5000)));
+        } catch {
+          try {
+            localStorage.setItem("crm_device_contacts_cache", JSON.stringify(found.slice(0, 1500)));
+          } catch {}
+        }
         setFeedbackMsg(`📱 Loaded ${found.length} phone contacts!`);
       } else if (isAndroidNativeApp()) {
         setFeedbackMsg("📱 No device contacts found. Ensure contacts permission is allowed.");
@@ -611,6 +636,15 @@ function PhoneDialerModalContent({
       setIsScanningContacts(false);
     }
   }, []);
+
+  // Listener for native contacts permission granted event from Android Bridge
+  useEffect(() => {
+    const handlePermGranted = () => {
+      loadDeviceContacts();
+    };
+    window.addEventListener("native-contacts-permission-granted", handlePermGranted);
+    return () => window.removeEventListener("native-contacts-permission-granted", handlePermGranted);
+  }, [loadDeviceContacts]);
 
   // Global listener for open-phone-dialer event
   useEffect(() => {
@@ -730,9 +764,11 @@ function PhoneDialerModalContent({
                 || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
               if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
                 clearInterval(pollTimer);
+                const exactDur = (window as any).AndroidNative?.getLastCallDuration?.() || finalDur;
+                if (exactDur > 0) setCallDurationSec(exactDur);
                 setRecordingUrl(rec);
-                setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached! Transcribing with Gemini AI...`);
-                handleTranscribeAudioRef.current?.(rec, finalDur);
+                setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(exactDur)}) attached! Transcribing with Gemini AI...`);
+                handleTranscribeAudioRef.current?.(rec, exactDur);
                 return;
               }
             } catch (e) {}
@@ -854,9 +890,11 @@ function PhoneDialerModalContent({
                 const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, duration)
                   || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
                 if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
+                  const exactDur = (window as any).AndroidNative?.getLastCallDuration?.() || duration;
+                  if (exactDur > 0) setCallDurationSec(exactDur);
                   setRecordingUrl(rec);
-                  setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(duration)}) attached! Transcribing with Gemini AI...`);
-                  handleTranscribeAudioRef.current?.(rec, duration);
+                  setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(exactDur)}) attached! Transcribing with Gemini AI...`);
+                  handleTranscribeAudioRef.current?.(rec, exactDur);
                   return true;
                 }
               } catch (e) {}
@@ -1273,6 +1311,16 @@ function PhoneDialerModalContent({
       reader.onloadend = async () => {
         const base64Data = reader.result as string;
         setRecordingUrl(base64Data);
+        try {
+          const tempAudio = new Audio();
+          tempAudio.src = base64Data;
+          tempAudio.onloadedmetadata = () => {
+            const d = Math.round(tempAudio.duration);
+            if (d > 0 && !isNaN(d) && isFinite(d)) {
+              setCallDurationSec(d);
+            }
+          };
+        } catch (e) {}
         setFeedbackMsg("📁 Audio recording attached! Transcribing with Gemini AI...");
         await handleTranscribeAudioRef.current?.(base64Data, callDurationSec);
       };
@@ -2015,6 +2063,107 @@ function PhoneDialerModalContent({
                     />
                   </div>
                 </div>
+
+                {/* Follow-up Task & Save Lead Option directly below Lead Name / Shop Section */}
+                <div style={{ marginTop: "12px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px 12px" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
+                    <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: "5px" }}>
+                      <Calendar size={14} style={{ color: "#4f46e5" }} /> Next Follow-up Task
+                    </span>
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      <button
+                        type="button"
+                        onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
+                        style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontWeight: 700, cursor: "pointer" }}
+                      >
+                        Tomorrow 11 AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickFollowUp(2, 11, 0, "AM")}
+                        style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontWeight: 700, cursor: "pointer" }}
+                      >
+                        In 2 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickFollowUp(-1, 0, 0, "AM")}
+                        style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#94a3b8", cursor: "pointer" }}
+                      >
+                        None
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "8px", marginBottom: "10px" }}>
+                    <input
+                      type="date"
+                      className="dialer-text-input"
+                      value={followUpDate}
+                      onChange={(e) => setFollowUpDate(e.target.value)}
+                    />
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      <select
+                        className="dialer-select-input"
+                        style={{ flex: 1, padding: "6px 4px" }}
+                        value={followUpHour}
+                        onChange={(e) => setFollowUpHour(e.target.value)}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <select
+                        className="dialer-select-input"
+                        style={{ flex: 1, padding: "6px 4px" }}
+                        value={followUpMinute}
+                        onChange={(e) => setFollowUpMinute(e.target.value)}
+                      >
+                        <option value="00">00</option>
+                        <option value="15">15</option>
+                        <option value="30">30</option>
+                        <option value="45">45</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpPeriod(prev => prev === "AM" ? "PM" : "AM")}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: "8px",
+                          border: "1px solid #cbd5e1",
+                          backgroundColor: "#ffffff",
+                          fontWeight: 800,
+                          fontSize: "0.74rem",
+                          color: "#4f46e5",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {followUpPeriod}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Primary Save Lead & Schedule Task CTA */}
+                  <button
+                    type="button"
+                    className="dialer-save-cta"
+                    onClick={handleSaveCallRecord}
+                    disabled={isSaving}
+                    style={{ margin: 0, width: "100%", padding: "10px 14px", fontSize: "0.86rem" }}
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                        <span>Saving Lead & Call to CRM...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={16} />
+                        <span>Save Lead & Schedule Follow-up</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* CALL STATS & DURATION CARD */}
@@ -2311,9 +2460,11 @@ function PhoneDialerModalContent({
                             const audioData = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, callDurationSec)
                               || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
                             if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio") && audioData.length > 500) {
+                              const nativeDur = (window as any).AndroidNative?.getLastCallDuration?.() || 0;
+                              if (nativeDur > 0) setCallDurationSec(nativeDur);
                               setRecordingUrl(audioData);
                               setFeedbackMsg("✅ Found call recording from phone! Transcribing with Gemini AI...");
-                              handleTranscribeAudioRef.current?.(audioData, callDurationSec);
+                              handleTranscribeAudioRef.current?.(audioData, nativeDur > 0 ? nativeDur : callDurationSec);
                             } else {
                               const hasPerm = (window as any).AndroidNative?.hasAllFilesPermission?.();
                               if (hasPerm === false) {
@@ -2371,7 +2522,17 @@ function PhoneDialerModalContent({
 
                   {recordingUrl ? (
                     <div>
-                      <audio controls src={recordingUrl} style={{ width: "100%", height: "32px", borderRadius: "6px" }} />
+                      <audio
+                        controls
+                        src={recordingUrl}
+                        onLoadedMetadata={(e) => {
+                          const d = Math.round(e.currentTarget.duration);
+                          if (d > 0 && !isNaN(d) && isFinite(d)) {
+                            setCallDurationSec(d);
+                          }
+                        }}
+                        style={{ width: "100%", height: "32px", borderRadius: "6px" }}
+                      />
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
                         <span style={{ fontSize: "0.68rem", color: "#15803d" }}>✓ Ready to save to CRM • Replayable in web & mobile app</span>
                         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
@@ -2490,87 +2651,7 @@ function PhoneDialerModalContent({
                 </div>
               </div>
 
-              {/* FOLLOW-UP TASK SCHEDULER */}
-              <div style={{ marginBottom: "12px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "10px 12px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-                  <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: "5px" }}>
-                    <Calendar size={14} style={{ color: "#4f46e5" }} /> Next Follow-up Task
-                  </span>
-                  <div style={{ display: "flex", gap: "4px" }}>
-                    <button
-                      type="button"
-                      onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
-                      style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontWeight: 700, cursor: "pointer" }}
-                    >
-                      Tomorrow 11 AM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickFollowUp(2, 11, 0, "AM")}
-                      style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontWeight: 700, cursor: "pointer" }}
-                    >
-                      In 2 Days
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setQuickFollowUp(-1, 0, 0, "AM")}
-                      style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#94a3b8", cursor: "pointer" }}
-                    >
-                      None
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "8px" }}>
-                  <input
-                    type="date"
-                    className="dialer-text-input"
-                    value={followUpDate}
-                    onChange={(e) => setFollowUpDate(e.target.value)}
-                  />
-                  <div style={{ display: "flex", gap: "4px" }}>
-                    <select
-                      className="dialer-select-input"
-                      style={{ flex: 1, padding: "6px 4px" }}
-                      value={followUpHour}
-                      onChange={(e) => setFollowUpHour(e.target.value)}
-                    >
-                      {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
-                    </select>
-                    <select
-                      className="dialer-select-input"
-                      style={{ flex: 1, padding: "6px 4px" }}
-                      value={followUpMinute}
-                      onChange={(e) => setFollowUpMinute(e.target.value)}
-                    >
-                      <option value="00">00</option>
-                      <option value="15">15</option>
-                      <option value="30">30</option>
-                      <option value="45">45</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setFollowUpPeriod(prev => prev === "AM" ? "PM" : "AM")}
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        backgroundColor: "#ffffff",
-                        fontWeight: 800,
-                        fontSize: "0.74rem",
-                        color: "#4f46e5",
-                        cursor: "pointer"
-                      }}
-                    >
-                      {followUpPeriod}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* SINGLE UNIFIED PRIMARY ACTION CTA */}
+              {/* BOTTOM QUICK SAVE CTA */}
               <button
                 type="button"
                 className="dialer-save-cta"
@@ -2864,7 +2945,7 @@ function PhoneDialerModalContent({
 
                 <button
                   type="button"
-                  onClick={() => loadDeviceContacts(contactSearch)}
+                  onClick={() => loadDeviceContacts("")}
                   disabled={isScanningContacts}
                   className="dialer-sync-contacts-btn"
                 >

@@ -235,11 +235,22 @@ class SimManager(private val context: Context) {
      * Configures Intent with all known OEM dual-SIM extras to guarantee placing call via selected SIM
      */
     fun applySimToIntent(intent: Intent, subscriptionId: Int, slotIndex: Int) {
-        val handle = getPhoneAccountHandleForSubscription(subscriptionId, slotIndex)
-        if (handle != null) {
-            intent.putExtra(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                intent.putExtra("android.telecom.extra.PHONE_ACCOUNT_HANDLE", handle)
+        val isDefault = try {
+            DefaultDialerManager(context).isDefaultDialer()
+        } catch (e: Exception) { false }
+
+        // Only attach TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE if app is the default dialer.
+        // On modern Android (API 29+), passing EXTRA_PHONE_ACCOUNT_HANDLE from a non-default dialer in ACTION_CALL
+        // causes SecurityException: PhoneAccountHandle does not belong to calling user or process, which broke direct calling.
+        if (isDefault) {
+            val handle = getPhoneAccountHandleForSubscription(subscriptionId, slotIndex)
+            if (handle != null) {
+                try {
+                    intent.putExtra(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        intent.putExtra("android.telecom.extra.PHONE_ACCOUNT_HANDLE", handle)
+                    }
+                } catch (e: Exception) {}
             }
         }
 
@@ -284,11 +295,16 @@ class SimManager(private val context: Context) {
 
         try {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                android.util.Log.w("SimManager", "CALL_PHONE permission not granted, cannot place direct call")
                 return false
             }
 
-            // 1. Direct TelecomManager.placeCall with SIM PhoneAccountHandle
-            if (telecomManager != null && handle != null) {
+            val isDefault = try {
+                DefaultDialerManager(context).isDefaultDialer()
+            } catch (e: Exception) { false }
+
+            // 1. Direct TelecomManager.placeCall ONLY if app is default dialer
+            if (isDefault && telecomManager != null && handle != null) {
                 try {
                     val extras = Bundle()
                     extras.putParcelable(TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, handle)
@@ -317,16 +333,23 @@ class SimManager(private val context: Context) {
                 }
             }
 
-            // 2. Fallback: ACTION_CALL intent with SIM extras
-            val callIntent = Intent(Intent.ACTION_CALL, uri)
-            callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            applySimToIntent(callIntent, targetSubId, targetSlot)
-
-            context.startActivity(callIntent)
-            return true
+            // 2. Primary direct cellular call: ACTION_CALL intent with OEM SIM extras
+            try {
+                val callIntent = Intent(Intent.ACTION_CALL, uri)
+                callIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                applySimToIntent(callIntent, targetSubId, targetSlot)
+                context.startActivity(callIntent)
+                return true
+            } catch (ce: Exception) {
+                android.util.Log.w("SimManager", "ACTION_CALL with SIM extras failed, trying bare ACTION_CALL", ce)
+                val bareCallIntent = Intent(Intent.ACTION_CALL, uri)
+                bareCallIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(bareCallIntent)
+                return true
+            }
         } catch (e: Exception) {
             android.util.Log.w("SimManager", "ACTION_CALL failed, falling back to ACTION_DIAL", e)
-            // 3. Ultimate fallback: ACTION_DIAL
+            // 3. Ultimate fallback: ACTION_DIAL only if permission is completely denied
             try {
                 val dialIntent = Intent(Intent.ACTION_DIAL, uri)
                 dialIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
