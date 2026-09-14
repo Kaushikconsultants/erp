@@ -4,6 +4,7 @@ import DatePicker from '@/components/ui/DatePicker';
 import React, { useState } from 'react';
 import { Pencil, Trash2, Calendar, CheckCircle, Clock, Phone, MessageSquare, PhoneCall, FileText, Sparkles, X } from 'lucide-react';
 import { updateCall, deleteCall } from '@/app/actions/callActions';
+import { openPhoneDialer } from '@/lib/dialer';
 
 interface CallsTableClientProps {
   calls: any[];
@@ -118,10 +119,8 @@ export default function CallsTableClient({
     return "";
   };
 
-  const openDialer = (phone: string, name: string) => {
-    setDialerPhone(phone || "");
-    setDialerName(name || "");
-    setIsDialerOpen(true);
+  const openDialer = (phone: string, name: string, customerId?: string, leadId?: string) => {
+    openPhoneDialer({ phone, name, customerId, leadId });
   };
 
   const openWhatsApp = (phone: string) => {
@@ -232,7 +231,7 @@ export default function CallsTableClient({
                       {phone && (
                         <button
                           type="button"
-                          onClick={() => openDialer(phone, customerName)}
+                          onClick={() => openDialer(phone, customerName, call.customerId, call.leadId)}
                           style={{ padding: '5px 8px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #c7d2fe', backgroundColor: '#eef2ff', color: '#4f46e5', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                           title="Call Contact"
                         >
