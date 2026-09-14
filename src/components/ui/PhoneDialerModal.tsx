@@ -45,9 +45,10 @@ import {
   Volume2,
   FileAudio,
   Store,
-  Smartphone
+  Smartphone,
+  Trash2
 } from "lucide-react";
-import { logCall, getCustomersForCallModal, getDialerRecentCalls } from "@/app/actions/callActions";
+import { logCall, getCustomersForCallModal, getDialerRecentCalls, deleteCall } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
 import { analyzeCallVoiceDebrief } from "@/app/actions/callAiActions";
 import CallVoiceDebriefWidget from "@/components/telecalling/CallVoiceDebriefWidget";
@@ -526,6 +527,36 @@ function PhoneDialerModalContent({
       setIsLoadingCalls(false);
     }
   };
+
+  // Delete Call Log and attached recording
+  const handleDeleteCallLog = async (callId: string, contactName?: string) => {
+    if (!confirm(`Are you sure you want to delete this call record and recording for ${contactName || "this contact"}?`)) {
+      return;
+    }
+    try {
+      // Optimistically remove from state immediately
+      setRecentCalls(prev => prev.filter(c => c.id !== callId));
+      handleVibrate(20);
+      const res = await deleteCall(callId);
+      if (res && res.success) {
+        setFeedbackMsg("✓ Call record and recording deleted.");
+        setTimeout(() => setFeedbackMsg(""), 2000);
+      } else {
+        setFeedbackMsg("❌ Failed to delete call record.");
+        loadRecentCalls();
+      }
+    } catch (err) {
+      console.warn("Delete call log error:", err);
+      loadRecentCalls();
+    }
+  };
+
+  // Re-fetch recent calls whenever user navigates to Call Logs tab
+  useEffect(() => {
+    if (activeTab === "CALL_LOGS") {
+      loadRecentCalls();
+    }
+  }, [activeTab]);
 
   // Load Contacts Directory safely
   const loadContacts = async () => {
@@ -2809,6 +2840,25 @@ function PhoneDialerModalContent({
                                 <PhoneCall size={13} />
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCallLog(c.id, c.contactName)}
+                              style={{
+                                width: "28px",
+                                height: "28px",
+                                borderRadius: "6px",
+                                backgroundColor: "#fee2e2",
+                                color: "#dc2626",
+                                border: "none",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center"
+                              }}
+                              title="Delete call record & recording"
+                            >
+                              <Trash2 size={13} />
+                            </button>
                           </div>
                         </div>
 

@@ -273,6 +273,8 @@ export async function deleteCall(callId: string) {
     });
     revalidatePath("/calls");
     revalidatePath("/follow-ups");
+    revalidatePath("/leads");
+    revalidatePath("/customers");
     revalidatePath("/");
     return { success: true };
   } catch (error) {
@@ -445,34 +447,45 @@ export async function getDialerRecentCalls(limit: number = 40) {
       return [];
     });
 
-    const formattedCalls = (Array.isArray(calls) ? calls : []).map(c => {
-      const extractedPhone = c.notes?.match(/\[(?:Dialed|Phone): ([^\]]+)\]/)?.[1];
-      const contactName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || (extractedPhone ? `Helpline / Direct (${extractedPhone})` : "Direct Contact");
-      const contactPerson = c.customer?.contactPerson || c.lead?.name || "";
-      const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || extractedPhone || "";
-      const contactType = c.customer ? "Customer" : c.lead ? "Lead" : "Direct";
+    const formattedCalls = (Array.isArray(calls) ? calls : [])
+      .filter(c => {
+        const extractedPhone = c.notes?.match(/\[(?:Dialed|Phone): ([^\]]+)\]/)?.[1];
+        const hasValidParty = !!(c.customer || c.lead || extractedPhone);
+        if (!hasValidParty) {
+          // Asynchronously clean up orphan whose lead/customer was deleted
+          prisma.call.delete({ where: { id: c.id } }).catch(() => {});
+          return false;
+        }
+        return true;
+      })
+      .map(c => {
+        const extractedPhone = c.notes?.match(/\[(?:Dialed|Phone): ([^\]]+)\]/)?.[1];
+        const contactName = c.customer?.businessName || c.lead?.shopName || c.lead?.name || (extractedPhone ? `Helpline / Direct (${extractedPhone})` : "Direct Contact");
+        const contactPerson = c.customer?.contactPerson || c.lead?.name || "";
+        const phone = c.customer?.mobile || c.customer?.whatsappNumber || c.lead?.whatsappNumber || extractedPhone || "";
+        const contactType = c.customer ? "Customer" : c.lead ? "Lead" : "Direct";
 
-      return {
-        id: c.id,
-        createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
-        callType: c.callType || "OUTBOUND",
-        durationSec: c.durationSec || 0,
-        status: c.status || "Completed",
-        outcome: c.outcome || "Completed",
-        notes: c.notes || "",
-        followUpDate: c.followUpDate ? new Date(c.followUpDate).toISOString() : null,
-        contactName,
-        contactPerson,
-        phone,
-        phoneNumber: phone,
-        contactType,
-        customerId: c.customerId,
-        leadId: c.leadId,
-        employeeName: c.employee?.user?.name || "Agent",
-        recordingUrl: c.recordingUrl || null,
-        summary: c.summary || null
-      };
-    });
+        return {
+          id: c.id,
+          createdAt: c.createdAt ? new Date(c.createdAt).toISOString() : new Date().toISOString(),
+          callType: c.callType || "OUTBOUND",
+          durationSec: c.durationSec || 0,
+          status: c.status || "Completed",
+          outcome: c.outcome || "Completed",
+          notes: c.notes || "",
+          followUpDate: c.followUpDate ? new Date(c.followUpDate).toISOString() : null,
+          contactName,
+          contactPerson,
+          phone,
+          phoneNumber: phone,
+          contactType,
+          customerId: c.customerId,
+          leadId: c.leadId,
+          employeeName: c.employee?.user?.name || "Agent",
+          recordingUrl: c.recordingUrl || null,
+          summary: c.summary || null
+        };
+      });
 
     return { success: true, calls: formattedCalls };
   } catch (err: any) {

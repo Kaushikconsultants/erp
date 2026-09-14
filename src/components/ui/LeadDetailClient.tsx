@@ -6,6 +6,7 @@ import AddCustomerModal from './AddCustomerModal';
 import LogCallModal from './LogCallModal';
 import { openPhoneDialer } from '@/lib/dialer';
 import { updateLead } from '@/actions/leads';
+import { deleteCall } from '@/app/actions/callActions';
 import { 
   Phone, 
   PhoneCall, 
@@ -24,7 +25,8 @@ import {
   Volume2, 
   Loader2,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import './leadDetail.css';
 
@@ -67,6 +69,25 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
       alert("Error updating lead: " + (err?.message || "Unknown error"));
     } finally {
       setIsSavingName(false);
+    }
+  };
+
+  const handleDeleteLeadCall = async (callId: string) => {
+    if (!window.confirm("Are you sure you want to delete this call record and recording?")) return;
+    try {
+      const res = await deleteCall(callId);
+      if (res && res.success) {
+        setLead((prev: any) => ({
+          ...prev,
+          calls: (prev?.calls || []).filter((c: any) => c.id !== callId)
+        }));
+        setToastMsg("✅ Call record and recording deleted.");
+        setTimeout(() => setToastMsg(''), 2500);
+      } else {
+        alert(res?.error || "Failed to delete call record");
+      }
+    } catch (err: any) {
+      alert("Error deleting call: " + (err?.message || "Unknown error"));
     }
   };
 
@@ -383,6 +404,23 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
                               month: "short"
                             })}
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteLeadCall(call.id)}
+                            style={{
+                              background: "none",
+                              border: "none",
+                              color: "#ef4444",
+                              cursor: "pointer",
+                              padding: "2px",
+                              display: "flex",
+                              alignItems: "center",
+                              opacity: 0.8
+                            }}
+                            title="Delete call & recording"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       </div>
 

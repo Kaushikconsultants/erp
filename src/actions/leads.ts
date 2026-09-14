@@ -241,11 +241,30 @@ export async function deleteLead(id: string) {
     const orgId = await getTenantOrgId();
     if (!orgId) return { success: false, error: "Unauthorized" };
 
+    // 1. Delete all calls and recordings associated with this lead
+    await prisma.call.deleteMany({
+      where: { leadId: id }
+    });
+
+    // 2. Delete all follow-ups associated with this lead
+    await prisma.followUp.deleteMany({
+      where: { leadId: id }
+    });
+
+    // 3. Delete all tasks associated with this lead
+    await prisma.task.deleteMany({
+      where: { leadId: id }
+    });
+
+    // 4. Delete the lead itself
     await prisma.lead.delete({
       where: { id, organizationId: orgId }
     });
 
     revalidatePath("/leads");
+    revalidatePath("/calls");
+    revalidatePath("/follow-ups");
+    revalidatePath("/");
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting lead:", error);
