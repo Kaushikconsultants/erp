@@ -340,7 +340,7 @@ class SimManager(private val context: Context) {
         val safeSlot = selectedSim?.slotIndex ?: (if (requestedSlotIndex >= 0) requestedSlotIndex else 0)
         val safeSub = selectedSim?.subscriptionId ?: (if (subscriptionId > 0) subscriptionId else (safeSlot + 1))
 
-        val uri = Uri.parse("tel:$clean")
+        val uri = Uri.fromParts("tel", clean, null)
         val handle = getPhoneAccountHandleForSubscription(safeSub, safeSlot)
 
         android.util.Log.d("SimManager", "placeCallWithSim: clean=$clean, safeSub=$safeSub, safeSlot=$safeSlot, carrier=${selectedSim?.carrierName}, handle=${handle?.id}")

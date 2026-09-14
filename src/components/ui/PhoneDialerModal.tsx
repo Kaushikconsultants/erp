@@ -214,6 +214,19 @@ function formatDuration(totalSec: number | null | undefined): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// Pure module-level utility: Format phone number preserving '+' and E.164 compliance
+export function formatPhoneNumberForCall(raw: string | null | undefined): string {
+  if (!raw) return "";
+  let clean = String(raw).trim().replace(/[^\d+*#]/g, "");
+  if (clean.startsWith("+")) {
+    clean = "+" + clean.replace(/\+/g, "");
+  } else if (clean.length === 12 && clean.startsWith("91")) {
+    // 12-digit Indian number without '+', add '+' so telecom network routes properly
+    clean = "+" + clean;
+  }
+  return clean;
+}
+
 // Pure module-level utility: Relative time formatter for call logs
 function formatRelativeTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "";
@@ -915,7 +928,9 @@ function PhoneDialerModalContent({
             if (nativeDur > 0) duration = nativeDur;
           }
 
-          if (duration === 0 && callStartTimeRef.current) {
+          // On Android Native, do NOT fallback to elapsed wall-clock time!
+          // An unanswered, busy, rejected or dropped call has duration 0s.
+          if (!isAndroidNativeApp() && duration === 0 && callStartTimeRef.current) {
             const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
             if (elapsed > 0) duration = elapsed;
           }
@@ -936,7 +951,10 @@ function PhoneDialerModalContent({
                   || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
                 if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
                   const exactDur = (window as any).AndroidNative?.getLastCallDuration?.() || duration;
-                  if (exactDur > 0) setCallDurationSec(exactDur);
+                  if (exactDur > 0) {
+                    setCallDurationSec(exactDur);
+                    setCallStatus("Completed");
+                  }
                   setRecordingUrl(rec);
                   setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(exactDur)}) attached! Transcribing with Gemini AI...`);
                   handleTranscribeAudioRef.current?.(rec, exactDur);
@@ -962,10 +980,11 @@ function PhoneDialerModalContent({
             setFeedbackMsg(`⏹ Returned from call (${formatDuration(duration)}). AI Voice Debrief starting... 🎙️`);
             setAutoDebriefTrigger(Date.now());
           } else {
-            setCallStatus("Busy");
+            setCallStatus("No Answer");
             setOutcome("No Answer / Busy");
+            setCallDurationSec(0);
             setQuickFollowUp(1, 11, 0, "AM");
-            setFeedbackMsg("❌ Call ended (0s). Scheduled follow-up for tomorrow 11 AM.");
+            setFeedbackMsg("❌ Call not connected (0s). Scheduled follow-up for tomorrow 11 AM.");
           }
         }
       }
@@ -1234,7 +1253,7 @@ function PhoneDialerModalContent({
   // Trigger Phone Call & Switch to Post-Call Session
   const handleInitiateCall = (targetPhone?: string, targetContact?: any) => {
     const numberToCall = targetPhone || phoneDigits;
-    const cleanNum = (numberToCall || '').replace(/\D/g, '');
+    const cleanNum = formatPhoneNumberForCall(numberToCall);
     if (!cleanNum) {
       setFeedbackMsg("⚠️ Please enter a valid phone number to call.");
       return;
@@ -1284,6 +1303,19 @@ function PhoneDialerModalContent({
     const recMsg = autoRecordEnabled ? " ⏺ Auto-recording your voice notes." : "";
     setActiveTab("POST_CALL");
     setFeedbackMsg(`📞 Outbound call dialed. Live stopwatch active.${recMsg}`);
+  };
+
+  // Handle connection status toggle — immediately reset duration to 0 if not connected
+  const handleCallStatusChange = (newStatus: string) => {
+    setCallStatus(newStatus);
+    if (newStatus !== "Connected" && newStatus !== "Completed") {
+      setCallDurationSec(0);
+      setIsTimerRunning(false);
+      callStartTimeRef.current = null;
+      if (newStatus === "Busy" || newStatus === "No Answer") {
+        setOutcome("No Answer / Busy");
+      }
+    }
   };
 
   // WhatsApp Message
@@ -1510,13 +1542,15 @@ function PhoneDialerModalContent({
   // Filter contacts dropdown in keypad — matches across BOTH CRM and Phone contacts!
   const filteredKeypadContacts = useMemo(() => {
     if (!phoneDigits || !Array.isArray(allCombinedContacts)) return [];
-    const q = phoneDigits.toLowerCase();
+    const q = phoneDigits.trim().toLowerCase();
     const cleanQ = q.replace(/\D/g, '');
     return allCombinedContacts.filter(c => {
-      const cPhone = (c?.phone || '').replace(/\D/g, '');
-      const cName = (c?.contactPerson || c?.companyName || '').toLowerCase();
-      const cComp = (c?.companyName || '').toLowerCase();
-      return (cleanQ && cPhone.includes(cleanQ)) || cName.includes(q) || cComp.includes(q);
+      const cPhone = (c?.phone || c?.mobile || '').replace(/\D/g, '');
+      const cName = (c?.contactPerson || c?.companyName || c?.name || '').toLowerCase();
+      const cComp = (c?.companyName || c?.shopName || '').toLowerCase();
+      const phoneMatch = cleanQ.length > 0 && cPhone.includes(cleanQ);
+      const nameMatch = q.length > 0 && (cName.includes(q) || cComp.includes(q));
+      return phoneMatch || nameMatch;
     }).slice(0, 4);
   }, [allCombinedContacts, phoneDigits]);
 
@@ -1526,11 +1560,11 @@ function PhoneDialerModalContent({
     return recentCalls.filter(c => {
       if (!c) return false;
       if (callLogSearch) {
-        const q = callLogSearch.toLowerCase();
+        const q = callLogSearch.trim().toLowerCase();
         const cleanQ = q.replace(/\D/g, '');
         const matchName = (c.contactName || "").toLowerCase().includes(q);
         const matchPerson = (c.contactPerson || "").toLowerCase().includes(q);
-        const matchPhone = (c.phoneNumber || "").replace(/\D/g, '').includes(cleanQ);
+        const matchPhone = cleanQ.length > 0 ? (c.phoneNumber || "").replace(/\D/g, '').includes(cleanQ) : false;
         if (!matchName && !matchPerson && !matchPhone) return false;
       }
       if (callLogFilter === "CONNECTED") return c.status === "Connected" || (c.durationSec || 0) > 0;
@@ -1547,11 +1581,11 @@ function PhoneDialerModalContent({
     return allCombinedContacts.filter(c => {
       if (!c) return false;
       if (contactSearch) {
-        const q = contactSearch.toLowerCase();
+        const q = contactSearch.trim().toLowerCase();
         const cleanQ = q.replace(/\D/g, '');
-        const matchName = (c.contactPerson || "").toLowerCase().includes(q);
-        const matchComp = (c.companyName || "").toLowerCase().includes(q);
-        const matchPhone = (c.phone || "").replace(/\D/g, '').includes(cleanQ);
+        const matchName = (c.contactPerson || "").toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q);
+        const matchComp = (c.companyName || "").toLowerCase().includes(q) || (c.shopName || "").toLowerCase().includes(q);
+        const matchPhone = cleanQ.length > 0 ? (c.phone || c.mobile || "").replace(/\D/g, '').includes(cleanQ) : false;
         if (!matchName && !matchComp && !matchPhone) return false;
       }
       if (contactFilter === "CUSTOMER") return c.type === "Customer";
@@ -2024,34 +2058,34 @@ function PhoneDialerModalContent({
           )}
 
           {/* =========================================================
-              TAB 2: UNIFIED POST-CALL / LOG CALL WORKSPACE
+              TAB 2: REDESIGNED CLEAN LOG CALL / POST-CALL WORKSPACE
               ========================================================= */}
           {activeTab === "POST_CALL" && (
-            <div>
-              {/* ─── LEAD IDENTITY & EDITABLE DETAILS CARD ─── */}
-              <div className="dialer-lead-save-card">
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+            <div className="dialer-postcall-container">
+              {/* CARD 1: CONTACT IDENTITY & CRM LEAD DETAILS */}
+              <div className="dialer-postcall-card">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <div className="dialer-contact-avatar">
+                    <div className="dialer-postcall-header-avatar">
                       {((newLeadName || selectedContact?.companyName || selectedContact?.contactPerson || "L")[0] || "L").toUpperCase()}
                     </div>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span style={{ fontSize: "0.86rem", fontWeight: 800, color: "var(--dialer-text-main, #0f172a)" }}>
-                          {selectedContact?.type === "Customer" ? "🏢 Saved Customer" : selectedContact?.type === "Lead" ? "🎯 Saved Lead" : selectedContact?.type === "DeviceContact" ? "📱 Phone Contact" : "✨ Lead Details"}
+                        <span style={{ fontSize: "0.92rem", fontWeight: 800, color: "var(--dialer-text-main, #0f172a)" }}>
+                          {selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Call"}
                         </span>
                         <span style={{
-                          fontSize: "0.64rem",
+                          fontSize: "0.62rem",
                           padding: "1px 6px",
                           borderRadius: "4px",
                           backgroundColor: selectedContact?.type === "Customer" ? "#e0e7ff" : selectedContact?.type === "Lead" ? "#fef3c7" : "#dcfce7",
                           color: selectedContact?.type === "Customer" ? "#3730a3" : selectedContact?.type === "Lead" ? "#92400e" : "#15803d",
                           fontWeight: 700
                         }}>
-                          {selectedContact?.type === "DeviceContact" ? "Phonebook" : selectedContact?.type || "New Lead"}
+                          {selectedContact?.type === "DeviceContact" ? "📱 Phonebook" : selectedContact?.type || "New Lead"}
                         </span>
                       </div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--dialer-text-sub, #64748b)", fontFamily: "monospace", marginTop: "1px" }}>
+                      <div style={{ fontSize: "0.78rem", color: "var(--dialer-text-sub, #64748b)", fontFamily: "monospace", marginTop: "2px" }}>
                         {phoneDigits || selectedContact?.phone || "No phone entered"}
                       </div>
                     </div>
@@ -2110,12 +2144,221 @@ function PhoneDialerModalContent({
                     />
                   </div>
                 </div>
+              </div>
 
-                {/* Follow-up Task & Save Lead Option directly below Lead Name / Shop Section */}
-                <div style={{ marginTop: "12px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px 12px" }}>
+              {/* CARD 2: CALL STATUS & TALK DURATION */}
+              <div className="dialer-postcall-card">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <label className="dialer-field-label" style={{ margin: 0 }}>Call Connection Status</label>
+                  <div className="dialer-segment-group" style={{ height: "28px" }}>
+                    <button
+                      type="button"
+                      className={`dialer-segment-btn ${callType === "OUTBOUND" ? "active" : ""}`}
+                      onClick={() => setCallType("OUTBOUND")}
+                      style={{ padding: "0 8px", fontSize: "0.72rem" }}
+                    >
+                      <PhoneOutgoing size={11} /> Out
+                    </button>
+                    <button
+                      type="button"
+                      className={`dialer-segment-btn ${callType === "INBOUND" ? "active" : ""}`}
+                      onClick={() => setCallType("INBOUND")}
+                      style={{ padding: "0 8px", fontSize: "0.72rem" }}
+                    >
+                      <PhoneIncoming size={11} /> In
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Interactive Status Chips */}
+                <div className="dialer-status-chips-grid">
+                  <button
+                    type="button"
+                    className={`dialer-status-chip ${callStatus === "Completed" || callStatus === "Connected" ? "active-completed" : ""}`}
+                    onClick={() => {
+                      setCallStatus("Completed");
+                      if (callDurationSec === 0) setCallDurationSec(30);
+                    }}
+                  >
+                    <span>🟢 Talked</span>
+                    <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>Connected</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`dialer-status-chip ${callStatus === "Busy" ? "active-busy" : ""}`}
+                    onClick={() => handleCallStatusChange("Busy")}
+                  >
+                    <span>🔴 Busy</span>
+                    <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>Engaged</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`dialer-status-chip ${callStatus === "No Answer" ? "active-noanswer" : ""}`}
+                    onClick={() => handleCallStatusChange("No Answer")}
+                  >
+                    <span>🟡 No Answer</span>
+                    <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>Missed</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`dialer-status-chip ${callStatus === "Callback" ? "active-callback" : ""}`}
+                    onClick={() => handleCallStatusChange("Callback")}
+                  >
+                    <span>🟣 Callback</span>
+                    <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>Call later</span>
+                  </button>
+                </div>
+
+                {/* Talk Duration - Only if status is Connected or Completed */}
+                {(callStatus === "Completed" || callStatus === "Connected") ? (
+                  <div className="dialer-stopwatch-box">
+                    <div>
+                      <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+                        Talk Duration
+                      </span>
+                      <div className="dialer-stopwatch-digits">
+                        {isTimerRunning && <span className="dialer-pulse-dot" />}
+                        <span>{formatDuration(callDurationSec)}</span>
+                        {isTimerRunning && (
+                          <span style={{ fontSize: "0.68rem", color: "#10b981", fontWeight: 700, background: "#dcfce7", padding: "1px 6px", borderRadius: "4px" }}>
+                            LIVE
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                      <button
+                        type="button"
+                        onClick={() => setCallDurationSec(prev => Math.max(0, prev - 15))}
+                        style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                        title="Minus 15s"
+                      >
+                        -15s
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCallDurationSec(prev => prev + 15)}
+                        style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                        title="Plus 15s"
+                      >
+                        +15s
+                      </button>
+                      {isTimerRunning ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = callDurationSec;
+                            setIsTimerRunning(false);
+                            callStartTimeRef.current = null;
+                            if (cur > 0) setCallStatus("Completed");
+                            if (isAutoRecording) stopAutoRecording(cur);
+                            setAutoDebriefTrigger(Date.now());
+                          }}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: "8px",
+                            backgroundColor: "#fee2e2",
+                            color: "#dc2626",
+                            border: "1px solid #fca5a5",
+                            fontSize: "0.74rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <PhoneOff size={12} /> End Talk
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            callStartTimeRef.current = Date.now() - (callDurationSec * 1000);
+                            setIsTimerRunning(true);
+                            setCallStatus("Connected");
+                          }}
+                          style={{
+                            padding: "6px 12px",
+                            borderRadius: "8px",
+                            backgroundColor: "#f0fdf4",
+                            color: "#16a34a",
+                            border: "1px solid #bbf7d0",
+                            fontSize: "0.74rem",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px"
+                          }}
+                        >
+                          <Play size={12} /> Resume
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    marginTop: "10px",
+                    padding: "8px 12px",
+                    borderRadius: "10px",
+                    backgroundColor: "var(--dialer-bg-subtle, #f8fafc)",
+                    border: "1px dashed var(--dialer-border, #cbd5e1)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between"
+                  }}>
+                    <span style={{ fontSize: "0.76rem", color: "var(--dialer-text-sub, #64748b)", fontWeight: 600 }}>
+                      Talk Duration: <strong style={{ color: "#ef4444" }}>00:00 (Not Connected)</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCallStatus("Completed");
+                        setCallDurationSec(30);
+                      }}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "6px",
+                        border: "1px solid #cbd5e1",
+                        backgroundColor: "#ffffff",
+                        color: "#4f46e5",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      + Add Talk Time
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* CARD 3: CALL OUTCOME & FOLLOW-UP TASK */}
+              <div className="dialer-postcall-card">
+                <div style={{ marginBottom: "10px" }}>
+                  <label className="dialer-field-label">Call Outcome / Disposition</label>
+                  <select
+                    className="dialer-select-input"
+                    value={outcome}
+                    onChange={(e) => setOutcome(e.target.value)}
+                    style={{ height: "38px", fontSize: "0.82rem", fontWeight: 600 }}
+                  >
+                    {DEFAULT_OUTCOMES.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Follow-up Task */}
+                <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px 12px" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
                     <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: "5px" }}>
-                      <Calendar size={14} style={{ color: "#4f46e5" }} /> Next Follow-up Task
+                      <Calendar size={13} style={{ color: "#4f46e5" }} /> Next Follow-up Task
                     </span>
                     <div style={{ display: "flex", gap: "4px" }}>
                       <button
@@ -2142,7 +2385,7 @@ function PhoneDialerModalContent({
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "8px", marginBottom: "10px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "8px" }}>
                     <input
                       type="date"
                       className="dialer-text-input"
@@ -2189,198 +2432,192 @@ function PhoneDialerModalContent({
                       </button>
                     </div>
                   </div>
-
-                  {/* Primary Save Lead & Schedule Task CTA */}
-                  <button
-                    type="button"
-                    className="dialer-save-cta"
-                    onClick={handleSaveCallRecord}
-                    disabled={isSaving}
-                    style={{ margin: 0, width: "100%", padding: "10px 14px", fontSize: "0.86rem" }}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
-                        <span>Saving Lead & Call to CRM...</span>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 size={16} />
-                        <span>Save Lead & Schedule Follow-up</span>
-                      </>
-                    )}
-                  </button>
                 </div>
               </div>
 
-              {/* CALL STATS & DURATION CARD */}
-              <div className="dialer-stats-card">
-                <div className="dialer-timer-row">
-                  <div>
-                    <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
-                      Call Duration
-                    </span>
-                    <div className="dialer-timer-digits">
-                      {isTimerRunning && <span className="dialer-pulse-dot" />}
-                      <span>{formatDuration(callDurationSec)}</span>
-                      {isTimerRunning && (
-                        <span style={{ fontSize: "0.7rem", color: "#10b981", fontWeight: 700 }}>LIVE</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Stop/Start timer toggle */}
-                  <div>
-                    {isTimerRunning ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const currentDur = callDurationSec;
-                          setIsTimerRunning(false);
-                          callStartTimeRef.current = null;
-                          if (currentDur > 0) {
-                            setCallStatus("Completed");
-                          }
-                          if (isAutoRecording) {
-                            stopAutoRecording(currentDur);
-                          }
-                          setAutoDebriefTrigger(Date.now());
-                        }}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: "8px",
-                          backgroundColor: "#fee2e2",
-                          color: "#dc2626",
-                          border: "1px solid #fca5a5",
-                          fontSize: "0.75rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                      >
-                        <PhoneOff size={13} /> End Talk
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          callStartTimeRef.current = Date.now() - (callDurationSec * 1000);
-                          setIsTimerRunning(true);
-                          setCallStatus("Connected");
-                        }}
-                        style={{
-                          padding: "6px 12px",
-                          borderRadius: "8px",
-                          backgroundColor: "#f0fdf4",
-                          color: "#16a34a",
-                          border: "1px solid #bbf7d0",
-                          fontSize: "0.75rem",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                      >
-                        <Play size={13} /> Resume Timer
-                      </button>
-                    )}
-                  </div>
+              {/* CARD 4: DISCUSSION NOTES & TAGS */}
+              <div className="dialer-postcall-card">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
+                  <label className="dialer-field-label" style={{ margin: 0 }}>
+                    Discussion Notes
+                  </label>
+                  <button
+                    type="button"
+                    onClick={toggleSpeechRecognition}
+                    style={{
+                      background: isListeningSpeech ? "#fee2e2" : "#f1f5f9",
+                      border: "none",
+                      borderRadius: "6px",
+                      padding: "3px 8px",
+                      color: isListeningSpeech ? "#dc2626" : "#4f46e5",
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px"
+                    }}
+                  >
+                    <Mic size={12} /> {isListeningSpeech ? "Listening..." : "Dictate"}
+                  </button>
                 </div>
+                <textarea
+                  className="dialer-textarea-input"
+                  rows={2}
+                  placeholder="Key discussion points, customer requirements, pricing quotes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
 
-                {/* Quick Duration Preset Chips */}
-                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginBottom: "10px" }}>
-                  {QUICK_DURATIONS.map((d) => (
+                {/* Tag chips */}
+                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "6px" }}>
+                  {DISCUSSION_TAGS.map((tag) => (
                     <button
-                      key={d.label}
+                      key={tag}
+                      type="button"
+                      onClick={() => handleAddTag(tag)}
+                      className="dialer-tag-chip"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* CARD 5: 🎙️ RECORDING ATTACHMENT & PREVIEW */}
+              <div className="dialer-postcall-card">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: recordingUrl ? "8px" : "0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Volume2 size={16} color={recordingUrl ? "#15803d" : "#64748b"} />
+                    <span style={{ fontSize: "0.8rem", fontWeight: 700, color: recordingUrl ? "#15803d" : "#334155" }}>
+                      {recordingUrl ? "🎙️ Call Recording Attached" : "Call Audio Recording"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <button
                       type="button"
                       onClick={() => {
-                        setCallDurationSec(d.sec);
-                        setIsTimerRunning(false);
-                        callStartTimeRef.current = null;
-                        if (d.sec === 0) {
-                          setCallStatus("Busy");
-                          setOutcome("No Answer / Busy");
-                        } else {
-                          setCallStatus("Completed");
+                        try {
+                          const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
+                          const nameParam = selectedContactRef.current?.companyName || selectedContactRef.current?.contactPerson || newLeadName || "";
+                          const audioData = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, callDurationSec)
+                            || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
+                          if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio") && audioData.length > 500) {
+                            const nativeDur = (window as any).AndroidNative?.getLastCallDuration?.() || 0;
+                            if (nativeDur > 0) {
+                              setCallDurationSec(nativeDur);
+                              setCallStatus("Completed");
+                            }
+                            setRecordingUrl(audioData);
+                            setFeedbackMsg("✅ Found call recording from phone! Transcribing with Gemini AI...");
+                            handleTranscribeAudioRef.current?.(audioData, nativeDur > 0 ? nativeDur : callDurationSec);
+                          } else {
+                            const hasPerm = (window as any).AndroidNative?.hasAllFilesPermission?.();
+                            if (hasPerm === false) {
+                              setFeedbackMsg("⚠️ Storage permission required. Please allow All Files Access.");
+                              (window as any).AndroidNative?.requestAllFilesPermission?.();
+                            } else {
+                              setFeedbackMsg("ℹ️ No recent recording found for this contact yet. Ensure auto-recording is ON in Phone Settings.");
+                            }
+                          }
+                        } catch {
+                          setFeedbackMsg("Tap 'Attach File' to select your call recording.");
                         }
                       }}
                       style={{
-                        padding: "3px 8px",
+                        fontSize: "0.72rem",
+                        padding: "4px 8px",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #cbd5e1",
                         borderRadius: "6px",
-                        border: callDurationSec === d.sec ? "1px solid var(--accent-primary, #4f46e5)" : "1px solid #e2e8f0",
-                        backgroundColor: callDurationSec === d.sec ? "#eef2ff" : "#f8fafc",
-                        color: callDurationSec === d.sec ? "var(--accent-primary, #4f46e5)" : "#64748b",
-                        fontSize: "0.7rem",
+                        color: "#0f172a",
                         fontWeight: 700,
-                        cursor: "pointer"
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px"
                       }}
                     >
-                      {d.label}
+                      <RotateCcw size={12} /> Scan Phone
                     </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setCallDurationSec(prev => Math.max(0, prev - 15))}
-                    style={{ padding: "3px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#64748b", fontSize: "0.7rem", cursor: "pointer" }}
-                  >
-                    -15s
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCallDurationSec(prev => prev + 15)}
-                    style={{ padding: "3px 6px", borderRadius: "6px", border: "1px solid #e2e8f0", backgroundColor: "#f8fafc", color: "#64748b", fontSize: "0.7rem", cursor: "pointer" }}
-                  >
-                    +15s
-                  </button>
+                    <label
+                      style={{
+                        fontSize: "0.72rem",
+                        padding: "4px 8px",
+                        backgroundColor: "#ffffff",
+                        border: "1px solid #cbd5e1",
+                        borderRadius: "6px",
+                        color: "#4f46e5",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px"
+                      }}
+                    >
+                      <Upload size={12} /> {recordingUrl ? "Replace" : "Attach File"}
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        style={{ display: "none" }}
+                        onChange={handleAttachAudioFile}
+                      />
+                    </label>
+                  </div>
                 </div>
 
-                {/* Call Type Toggle & Status Chips */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "8px" }}>
-                  <div>
-                    <label className="dialer-field-label">Direction</label>
-                    <div className="dialer-segment-group">
-                      <button
-                        type="button"
-                        className={`dialer-segment-btn ${callType === "OUTBOUND" ? "active" : ""}`}
-                        onClick={() => setCallType("OUTBOUND")}
-                      >
-                        <PhoneOutgoing size={12} /> Outbound
-                      </button>
-                      <button
-                        type="button"
-                        className={`dialer-segment-btn ${callType === "INBOUND" ? "active" : ""}`}
-                        onClick={() => setCallType("INBOUND")}
-                      >
-                        <PhoneIncoming size={12} /> Inbound
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="dialer-field-label">Connection Status</label>
-                    <select
-                      className="dialer-select-input"
-                      value={callStatus}
-                      onChange={(e) => {
-                        setCallStatus(e.target.value);
-                        if (e.target.value === "Busy" || e.target.value === "No Answer") {
-                          setOutcome("No Answer / Busy");
-                          setCallDurationSec(0);
+                {recordingUrl ? (
+                  <div style={{ marginTop: "6px" }}>
+                    <audio
+                      controls
+                      src={recordingUrl}
+                      onLoadedMetadata={(e) => {
+                        const d = Math.round(e.currentTarget.duration);
+                        if (d > 0 && !isNaN(d) && isFinite(d)) {
+                          setCallDurationSec(d);
+                          setCallStatus("Completed");
                         }
                       }}
-                    >
-                      {CALL_STATUSES.map(st => (
-                        <option key={st.value} value={st.value}>{st.label}</option>
-                      ))}
-                    </select>
+                      style={{ width: "100%", height: "32px", borderRadius: "6px" }}
+                    />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
+                      <span style={{ fontSize: "0.68rem", color: "#15803d" }}>✓ Ready to save to CRM</span>
+                      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleTranscribeAudioRef.current?.(recordingUrl, callDurationSec)}
+                          disabled={isTranscribingAudio}
+                          style={{
+                            background: "#eff6ff",
+                            border: "1px solid #bfdbfe",
+                            color: "#1d4ed8",
+                            fontSize: "0.68rem",
+                            cursor: "pointer",
+                            fontWeight: 700,
+                            borderRadius: "4px",
+                            padding: "2px 6px"
+                          }}
+                        >
+                          {isTranscribingAudio ? "Transcribing..." : "✨ Re-transcribe"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRecordingUrl("")}
+                          style={{ background: "none", border: "none", color: "#dc2626", fontSize: "0.68rem", cursor: "pointer", fontWeight: 600 }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ marginTop: "6px", fontSize: "0.72rem", color: "#64748b" }}>
+                    Auto-recording scanned from phone storage upon call completion.
+                  </div>
+                )}
               </div>
 
-              {/* 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET — wrapped in local error boundary so a crash here doesn't kill the whole dialer */}
+              {/* CARD 6: 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET */}
               <AIDebriefSafeWrapper>
                 <CallVoiceDebriefWidget
                   contactName={selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}
@@ -2413,307 +2650,22 @@ function PhoneDialerModalContent({
                 />
               </AIDebriefSafeWrapper>
 
-                {/* 🎙️ RECORDING ATTACHMENT & AUDIO PLAYER PREVIEW */}
-                {isTranscribingAudio && (
-                  <div
-                    style={{
-                      backgroundColor: "#eff6ff",
-                      border: "1.5px solid #93c5fd",
-                      borderRadius: "10px",
-                      padding: "8px 12px",
-                      marginBottom: "10px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px"
-                    }}
-                  >
-                    <Loader2 size={16} className="animate-spin" color="#2563eb" />
-                    <div>
-                      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
-                        🎙️ Transcribing Call Audio with Gemini AI...
-                      </div>
-                      <div style={{ fontSize: "0.70rem", color: "#3b82f6" }}>
-                        Automatically extracting dialogue, summary, and follow-up actions.
-                      </div>
-                    </div>
-                  </div>
-                )}
-                {/* Storage Permission Banner for Android 11+ / HyperOS */}
-                {!allFilesGranted && isAndroidNativeApp() && (
-                  <div
-                    style={{
-                      backgroundColor: "#fffbeb",
-                      border: "1px solid #fde68a",
-                      borderRadius: "10px",
-                      padding: "8px 12px",
-                      marginBottom: "10px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: "10px"
-                    }}
-                  >
-                    <div style={{ fontSize: "0.72rem", color: "#92400e", lineHeight: 1.4 }}>
-                      📁 <strong>Enable Call Recording Access:</strong> Allow All Files Access so the CRM can automatically scan and transcribe your phone's call recordings.
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        try {
-                          (window as any).AndroidNative?.requestAllFilesPermission?.();
-                          setTimeout(checkStoragePermission, 1500);
-                        } catch {}
-                      }}
-                      style={{
-                        backgroundColor: "#d97706",
-                        color: "#ffffff",
-                        border: "none",
-                        borderRadius: "6px",
-                        padding: "5px 10px",
-                        fontSize: "0.72rem",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        whiteSpace: "nowrap"
-                      }}
-                    >
-                      Allow Access
-                    </button>
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    marginBottom: "14px",
-                    backgroundColor: recordingUrl ? "#f0fdf4" : "#f8fafc",
-                    border: `1.5px solid ${recordingUrl ? "#86efac" : "#e2e8f0"}`,
-                    borderRadius: "12px",
-                    padding: "10px 12px"
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: recordingUrl ? "8px" : "0" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <Volume2 size={16} color={recordingUrl ? "#15803d" : "#64748b"} />
-                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: recordingUrl ? "#15803d" : "#334155" }}>
-                        {recordingUrl ? "🎙️ Call Recording Attached" : "Call Audio Recording"}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          try {
-                            const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
-                            const nameParam = selectedContactRef.current?.companyName || selectedContactRef.current?.contactPerson || newLeadName || "";
-                            const audioData = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, callDurationSec)
-                              || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
-                            if (audioData && typeof audioData === "string" && audioData.startsWith("data:audio") && audioData.length > 500) {
-                              const nativeDur = (window as any).AndroidNative?.getLastCallDuration?.() || 0;
-                              if (nativeDur > 0) setCallDurationSec(nativeDur);
-                              setRecordingUrl(audioData);
-                              setFeedbackMsg("✅ Found call recording from phone! Transcribing with Gemini AI...");
-                              handleTranscribeAudioRef.current?.(audioData, nativeDur > 0 ? nativeDur : callDurationSec);
-                            } else {
-                              const hasPerm = (window as any).AndroidNative?.hasAllFilesPermission?.();
-                              if (hasPerm === false) {
-                                setFeedbackMsg("⚠️ Storage permission required. Please allow All Files Access.");
-                                (window as any).AndroidNative?.requestAllFilesPermission?.();
-                              } else {
-                                setFeedbackMsg("ℹ️ No recent recording found for this contact yet. Ensure auto-recording is ON in Phone Settings.");
-                              }
-                            }
-                          } catch {
-                            setFeedbackMsg("Tap 'Attach File' to select your call recording.");
-                          }
-                        }}
-                        style={{
-                          fontSize: "0.74rem",
-                          padding: "4px 8px",
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #cbd5e1",
-                          borderRadius: "6px",
-                          color: "#0f172a",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                      >
-                        <RotateCcw size={12} /> Scan Phone
-                      </button>
-                      <label
-                        style={{
-                          fontSize: "0.74rem",
-                          padding: "4px 8px",
-                          backgroundColor: "#ffffff",
-                          border: "1px solid #cbd5e1",
-                          borderRadius: "6px",
-                          color: "#4f46e5",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                      >
-                        <Upload size={12} /> {recordingUrl ? "Replace" : "Attach File"}
-                        <input
-                          type="file"
-                          accept="audio/*"
-                          style={{ display: "none" }}
-                          onChange={handleAttachAudioFile}
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  {recordingUrl ? (
-                    <div>
-                      <audio
-                        controls
-                        src={recordingUrl}
-                        onLoadedMetadata={(e) => {
-                          const d = Math.round(e.currentTarget.duration);
-                          if (d > 0 && !isNaN(d) && isFinite(d)) {
-                            setCallDurationSec(d);
-                          }
-                        }}
-                        style={{ width: "100%", height: "32px", borderRadius: "6px" }}
-                      />
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px" }}>
-                        <span style={{ fontSize: "0.68rem", color: "#15803d" }}>✓ Ready to save to CRM • Replayable in web & mobile app</span>
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                          <button
-                            type="button"
-                            onClick={() => handleTranscribeAudioRef.current?.(recordingUrl, callDurationSec)}
-                            disabled={isTranscribingAudio}
-                            style={{
-                              background: "#eff6ff",
-                              border: "1px solid #bfdbfe",
-                              color: "#1d4ed8",
-                              fontSize: "0.68rem",
-                              cursor: "pointer",
-                              fontWeight: 700,
-                              borderRadius: "4px",
-                              padding: "2px 6px"
-                            }}
-                          >
-                            {isTranscribingAudio ? "Transcribing..." : "✨ Re-transcribe"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setRecordingUrl("")}
-                            style={{ background: "none", border: "none", color: "#dc2626", fontSize: "0.68rem", cursor: "pointer", fontWeight: 600 }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                  <div style={{ marginTop: "6px" }}>
-                    <div style={{ fontSize: "0.72rem", color: "#64748b", marginBottom: "6px" }}>
-                      No recording attached yet. Tap <strong>Scan Phone</strong> to auto-detect from device storage, or <strong>Attach File</strong> to upload.
-                    </div>
-                    <div
-                      style={{
-                        backgroundColor: "#f0f9ff",
-                        border: "1px solid #bae6fd",
-                        borderRadius: "8px",
-                        padding: "6px 10px",
-                        fontSize: "0.68rem",
-                        color: "#0369a1",
-                        lineHeight: "1.3"
-                      }}
-                    >
-                      💡 <strong>Xiaomi / Redmi / Android Tip:</strong> Turn on auto-recording in your phone dialer:
-                      <span style={{ display: "block", color: "#0c4a6e", marginTop: "2px", fontWeight: 600 }}>
-                        Open Phone App ➔ Settings (⚙️) ➔ Call Recording ➔ Turn ON "Record calls automatically".
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* CALL OUTCOME DISPOSITION */}
-              <div style={{ marginBottom: "12px" }}>
-                <label className="dialer-field-label">Call Outcome / Disposition</label>
-                <select
-                  className="dialer-select-input"
-                  value={outcome}
-                  onChange={(e) => setOutcome(e.target.value)}
-                >
-                  {DEFAULT_OUTCOMES.map((o) => (
-                    <option key={o} value={o}>{o}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* DISCUSSION NOTES & TAGS */}
-              <div style={{ marginBottom: "12px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
-                  <label className="dialer-field-label" style={{ margin: 0 }}>
-                    Discussion Notes
-                  </label>
-                  <button
-                    type="button"
-                    onClick={toggleSpeechRecognition}
-                    style={{
-                      background: isListeningSpeech ? "#fee2e2" : "#f1f5f9",
-                      border: "none",
-                      borderRadius: "6px",
-                      padding: "2px 8px",
-                      color: isListeningSpeech ? "#dc2626" : "#4f46e5",
-                      fontSize: "0.72rem",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "4px"
-                    }}
-                  >
-                    <Mic size={12} /> {isListeningSpeech ? "Listening..." : "Dictate"}
-                  </button>
-                </div>
-                <textarea
-                  className="dialer-textarea-input"
-                  rows={3}
-                  placeholder="Key discussion points, customer requirements, pricing quotes..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-
-                {/* Tag chips */}
-                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "6px" }}>
-                  {DISCUSSION_TAGS.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => handleAddTag(tag)}
-                      className="dialer-tag-chip"
-                    >
-                      + {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* BOTTOM QUICK SAVE CTA */}
+              {/* SINGLE UNIFIED PRIMARY CTA ACTION BUTTON */}
               <button
                 type="button"
-                className="dialer-save-cta"
+                className="dialer-unified-save-cta"
                 onClick={handleSaveCallRecord}
                 disabled={isSaving}
               >
                 {isSaving ? (
                   <>
                     <Loader2 size={18} style={{ animation: "spin 1s linear infinite" }} />
-                    <span>Saving Call to CRM...</span>
+                    <span>Saving Call & Lead to CRM...</span>
                   </>
                 ) : (
                   <>
                     <CheckCircle2 size={18} />
-                    <span>Save Call Log & Schedule Task</span>
+                    <span>Save Call & Lead to CRM</span>
                   </>
                 )}
               </button>
