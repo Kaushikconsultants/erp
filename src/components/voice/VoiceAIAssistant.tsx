@@ -81,6 +81,17 @@ export default function VoiceAIAssistant() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toggleAssistant]);
 
+  // Hardware back button listener to dismiss assistant overlay
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleBack = (e: Event) => {
+      e.preventDefault();
+      closeAssistant();
+    };
+    window.addEventListener("app-back-button", handleBack);
+    return () => window.removeEventListener("app-back-button", handleBack);
+  }, [isOpen, closeAssistant]);
+
   // Initialize Speech Recognition
   const startListeningSession = () => {
     stopSpeaking();

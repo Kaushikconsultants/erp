@@ -42,6 +42,9 @@ export default function GlobalDialerProvider({ children }: { children: React.Rea
     setDialerName("");
     setDialerCustomerId(undefined);
     setDialerLeadId(undefined);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("dialer-closed"));
+    }
   }, []);
 
   // 1. Listen for global custom event 'open-phone-dialer' and register window.openPhoneDialer

@@ -37,6 +37,17 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
   const pathname = usePathname();
   const [showActionSheet, setShowActionSheet] = useState<boolean>(false);
 
+  // Close Action Sheet on Android hardware back button
+  React.useEffect(() => {
+    if (!showActionSheet) return;
+    const handleBack = (e: Event) => {
+      e.preventDefault();
+      setShowActionSheet(false);
+    };
+    window.addEventListener('app-back-button', handleBack);
+    return () => window.removeEventListener('app-back-button', handleBack);
+  }, [showActionSheet]);
+
   const isActive = (path: string) => {
     if (path === "/" && pathname !== "/") return false;
     return pathname.startsWith(path);

@@ -48,6 +48,8 @@ public class MainActivity extends BridgeActivity {
     public String lastContactName = null;
     public String activeRecordingCallId = null;
     public String lastRecordedAudioDataUrl = null;
+    public String launchNotificationUrl = null;
+    private boolean isBridgeConfigured = false;
 
     public String findRecentCallAudioDataUrl(String phoneNumber) {
         return findRecentCallAudioDataUrl(phoneNumber, lastContactName, lastCallDurationSec);
@@ -404,22 +406,52 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. Create Default & Leads Notification Channels (Unlocks notification toggles on Android 8+)
+        // 1. Process notification deep links if launched from status bar notification
+        handleNotificationIntent(getIntent());
+
+        // 2. Create Default & Leads Notification Channels (Unlocks notification toggles on Android 8+)
         createNotificationChannels();
 
-        // 2. Request Essential Runtime Permissions on Launch (Notifications, Camera, Microphone, Calls, Phone State)
+        // 3. Request Essential Runtime Permissions on Launch (Notifications, Camera, Microphone, Calls, Phone State)
         requestAppPermissions();
 
-        // 3. Grant WebRTC Camera & Microphone permissions and inject JavaScript Native Bridge
+        // 4. Grant WebRTC Camera & Microphone permissions and inject JavaScript Native Bridge
         configureWebView();
 
-        // 4. Start 24/7 background notification polling sync service & alarm fallback
+        // 5. Start 24/7 background notification polling sync service & alarm fallback
         NotificationSyncService.start(this);
         NotificationSyncReceiver.schedule(this);
 
-        // 5. Register Telephony Call State Listener
+        // 6. Register Telephony Call State Listener
         registerTelephonyListener();
         registerTelecomReceiver();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleNotificationIntent(intent);
+    }
+
+    private void handleNotificationIntent(Intent intent) {
+        if (intent != null && intent.hasExtra("notification_url")) {
+            String url = intent.getStringExtra("notification_url");
+            if (url != null && !url.trim().isEmpty()) {
+                launchNotificationUrl = url;
+                runOnUiThread(() -> {
+                    try {
+                        WebView webView = getBridge().getWebView();
+                        if (webView != null) {
+                            org.json.JSONObject detail = new org.json.JSONObject();
+                            detail.put("url", url);
+                            String script = "window.dispatchEvent(new CustomEvent('native-notification-open', { detail: " + detail.toString() + " }));";
+                            webView.evaluateJavascript(script, null);
+                        }
+                    } catch (Exception e) {}
+                });
+            }
+        }
     }
 
     private boolean isTelecomReceiverRegistered = false;
@@ -917,8 +949,9 @@ public class MainActivity extends BridgeActivity {
     private void configureWebView() {
         try {
             WebView webView = getBridge().getWebView();
-            if (webView != null) {
+            if (webView != null && !isBridgeConfigured) {
                 webView.addJavascriptInterface(new AndroidNativeBridge(this), "AndroidNative");
+                isBridgeConfigured = true;
             }
         } catch (Exception e) {
             // Silently handle if bridge is not ready
@@ -938,6 +971,16 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean isNativeApp() {
             return true;
+        }
+
+        @JavascriptInterface
+        public String getLaunchNotificationUrl() {
+            return activity.launchNotificationUrl != null ? activity.launchNotificationUrl : "";
+        }
+
+        @JavascriptInterface
+        public void clearLaunchNotificationUrl() {
+            activity.launchNotificationUrl = null;
         }
 
         @JavascriptInterface

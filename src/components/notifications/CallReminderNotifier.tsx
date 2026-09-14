@@ -2,13 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { PhoneCall, Calendar, Clock, X, Bell, ExternalLink, Volume2 } from "lucide-react";
-import PhoneDialerModal from "@/components/ui/PhoneDialerModal";
+import { openPhoneDialer } from "@/lib/dialer";
 
 export default function CallReminderNotifier() {
   const [activeReminder, setActiveReminder] = useState<any | null>(null);
-  const [isDialerOpen, setIsDialerOpen] = useState<boolean>(false);
-  const [dialerPhone, setDialerPhone] = useState<string>("");
-  const [dialerName, setDialerName] = useState<string>("");
 
   useEffect(() => {
     // Request Notification permission on mount
@@ -53,9 +50,7 @@ export default function CallReminderNotifier() {
   const handleCallNow = () => {
     const phone = activeReminder.phone || "";
     const name = activeReminder.customerName || activeReminder.leadName || "";
-    setDialerPhone(phone);
-    setDialerName(name);
-    setIsDialerOpen(true);
+    openPhoneDialer({ phone, name });
     setActiveReminder(null);
   };
 
@@ -142,14 +137,6 @@ export default function CallReminderNotifier() {
           </button>
         </div>
       </div>
-
-      {/* Embedded Phone Dialer Modal */}
-      <PhoneDialerModal
-        isOpen={isDialerOpen}
-        onClose={() => setIsDialerOpen(false)}
-        initialPhone={dialerPhone}
-        initialName={dialerName}
-      />
     </>
   );
 }

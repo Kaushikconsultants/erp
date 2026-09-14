@@ -32,7 +32,7 @@ import {
   Check,
   FileText
 } from "lucide-react";
-import PhoneDialerModal from "@/components/ui/PhoneDialerModal";
+import { openPhoneDialer } from "@/lib/dialer";
 import { getEmployeeCallAnalytics, getTelecallingQueue, deleteCall, updateCall } from "@/app/actions/callActions";
 import LogCallModal from "@/components/ui/LogCallModal";
 import "./telecrm.css";
@@ -69,14 +69,6 @@ export default function TeleCrmMobileHub({
   const [queueData, setQueueData] = useState<any>({ overdue: [], todayDue: [], freshLeads: [] });
   const [loadingAnalytics, setLoadingAnalytics] = useState<boolean>(true);
   const [loadingQueue, setLoadingQueue] = useState<boolean>(false);
-
-  // Phone Dialer State
-  const [isDialerOpen, setIsDialerOpen] = useState<boolean>(false);
-  const [dialerPhone, setDialerPhone] = useState<string>("");
-  const [dialerName, setDialerName] = useState<string>("");
-  const [dialerCustomerId, setDialerCustomerId] = useState<string | undefined>(undefined);
-  const [dialerLeadId, setDialerLeadId] = useState<string | undefined>(undefined);
-  const [dialerTab, setDialerTab] = useState<"DIALPAD" | "CALL_LOGS" | "CONTACTS" | "POST_CALL" | "WHATSAPP" | "SCRIPTS">("DIALPAD");
 
   // Manual Log Call Modal State
   const [isLogModalOpen, setIsLogModalOpen] = useState<boolean>(false);
@@ -119,7 +111,19 @@ export default function TeleCrmMobileHub({
 
   useEffect(() => {
     loadQueue();
-  }, []);
+
+    const handleRefresh = () => {
+      loadAnalytics(timeframe);
+      loadQueue();
+    };
+
+    window.addEventListener("native-call-state", handleRefresh);
+    window.addEventListener("dialer-closed", handleRefresh);
+    return () => {
+      window.removeEventListener("native-call-state", handleRefresh);
+      window.removeEventListener("dialer-closed", handleRefresh);
+    };
+  }, [timeframe]);
 
   const openDialerWithContact = (
     phone: string,
@@ -128,12 +132,7 @@ export default function TeleCrmMobileHub({
     leadId?: string,
     tab: "DIALPAD" | "CALL_LOGS" | "CONTACTS" | "POST_CALL" | "WHATSAPP" | "SCRIPTS" = "DIALPAD"
   ) => {
-    setDialerPhone(phone || "");
-    setDialerName(name || "");
-    setDialerCustomerId(customerId);
-    setDialerLeadId(leadId);
-    setDialerTab(tab);
-    setIsDialerOpen(true);
+    openPhoneDialer({ phone, name, customerId, leadId, tab });
   };
 
   const openWhatsApp = (phone: string, text?: string) => {
@@ -957,21 +956,6 @@ export default function TeleCrmMobileHub({
           </div>
         </div>
       )}
-
-      {/* Unified Phone Dialer Modal */}
-      <PhoneDialerModal
-        isOpen={isDialerOpen}
-        onClose={() => {
-          setIsDialerOpen(false);
-          loadAnalytics(timeframe);
-          loadQueue();
-        }}
-        initialPhone={dialerPhone}
-        initialName={dialerName}
-        initialCustomerId={dialerCustomerId}
-        initialLeadId={dialerLeadId}
-        initialTab={dialerTab}
-      />
 
       {/* Manual Log Call Modal */}
       {isLogModalOpen && (

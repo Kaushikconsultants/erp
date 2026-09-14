@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { updateLead, deleteLead } from '@/actions/leads';
 import AddCustomerModal from './AddCustomerModal';
-import PhoneDialerModal from './PhoneDialerModal';
+import { openPhoneDialer } from '@/lib/dialer';
 import './leadTable.css';
 
 export default function LeadTable({
@@ -40,17 +40,8 @@ export default function LeadTable({
   const [agentFilter, setAgentFilter] = useState("All Agents");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Phone Dialer State
-  const [isDialerOpen, setIsDialerOpen] = useState<boolean>(false);
-  const [dialerPhone, setDialerPhone] = useState<string>("");
-  const [dialerName, setDialerName] = useState<string>("");
-  const [dialerLeadId, setDialerLeadId] = useState<string | undefined>(undefined);
-
   const openDialerWithContact = (phone: string, name: string, leadId?: string) => {
-    setDialerPhone(phone || "");
-    setDialerName(name || "");
-    setDialerLeadId(leadId);
-    setIsDialerOpen(true);
+    openPhoneDialer({ phone, name, leadId });
   };
 
   const openWhatsApp = (phone: string) => {
@@ -449,15 +440,6 @@ export default function LeadTable({
           leadToConvert={leadToConvert}
         />
       )}
-
-      {/* Phone Dialer Modal */}
-      <PhoneDialerModal
-        isOpen={isDialerOpen}
-        onClose={() => setIsDialerOpen(false)}
-        initialPhone={dialerPhone}
-        initialName={dialerName}
-        initialLeadId={dialerLeadId}
-      />
     </div>
   );
 }

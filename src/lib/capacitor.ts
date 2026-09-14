@@ -49,6 +49,8 @@ export const triggerHaptic = async (
   }
 };
 
+let lastBackPressTime = 0;
+
 /**
  * Initialize native status bar, splash screen, and Android hardware back button listener
  */
@@ -69,13 +71,49 @@ export const initNativeMobileShell = (onNavigateBack?: () => void) => {
     SplashScreen.hide().catch(() => {});
   } catch (e) {}
 
-  // 3. Android Hardware Back Button Handler
+  // 3. Android Hardware Back Button Handler with Modal Interception & Double-Tap Exit
   try {
     CapApp.removeAllListeners().then(() => {
       CapApp.addListener('backButton', ({ canGoBack }) => {
+        // A. If app lock is enabled and session is not unlocked, exit app on back press
+        try {
+          const isPinEnabled = localStorage.getItem('app_mpin_enabled') === 'true';
+          const isSessionUnlocked = sessionStorage.getItem('app_session_unlocked') === 'true';
+          const savedPin = localStorage.getItem('app_mpin_code');
+          if (isPinEnabled && savedPin && !isSessionUnlocked) {
+            CapApp.exitApp();
+            return;
+          }
+        } catch (e) {}
+
+        // B. Dispatch cancelable custom event for active modals, drawers, or sheets
+        const backEvent = new CustomEvent('app-back-button', { cancelable: true });
+        const wasHandled = !window.dispatchEvent(backEvent);
+        if (wasHandled) {
+          // An active modal / sheet intercepted the back press and closed itself!
+          return;
+        }
+
+        // C. Check if at root dashboard or home page
+        const currentPath = window.location.pathname;
+        const isRoot = currentPath === '/' || currentPath === '/dashboard';
+
+        if (isRoot) {
+          const now = Date.now();
+          if (now - lastBackPressTime < 2000) {
+            CapApp.exitApp();
+          } else {
+            lastBackPressTime = now;
+            triggerHaptic('light').catch(() => {});
+            window.dispatchEvent(new CustomEvent('app-exit-prompt'));
+          }
+          return;
+        }
+
+        // D. Navigate back in history
         if (onNavigateBack) {
           onNavigateBack();
-        } else if (canGoBack) {
+        } else if (canGoBack || window.history.length > 1) {
           window.history.back();
         } else {
           CapApp.exitApp();
@@ -423,4 +461,27 @@ export const stopNativeCallRecording = (): { success: boolean; filePath?: string
     console.warn('stopNativeCallRecording: not available', e);
   }
   return { success: false };
+};
+
+/**
+ * Get notification link URL if app was launched from a push alert
+ */
+export const getNativeLaunchNotificationUrl = (): string => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.getLaunchNotificationUrl === 'function') {
+      return (window as any).AndroidNative.getLaunchNotificationUrl() || '';
+    }
+  } catch (e) {}
+  return '';
+};
+
+/**
+ * Clear notification link URL after navigating
+ */
+export const clearNativeLaunchNotificationUrl = () => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.clearLaunchNotificationUrl === 'function') {
+      (window as any).AndroidNative.clearLaunchNotificationUrl();
+    }
+  } catch (e) {}
 };

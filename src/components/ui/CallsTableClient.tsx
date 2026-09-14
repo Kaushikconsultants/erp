@@ -4,7 +4,6 @@ import DatePicker from '@/components/ui/DatePicker';
 import React, { useState } from 'react';
 import { Pencil, Trash2, Calendar, CheckCircle, Clock, Phone, MessageSquare, PhoneCall, FileText, Sparkles, X } from 'lucide-react';
 import { updateCall, deleteCall } from '@/app/actions/callActions';
-import PhoneDialerModal from './PhoneDialerModal';
 
 interface CallsTableClientProps {
   calls: any[];
@@ -32,11 +31,6 @@ export default function CallsTableClient({
   const [viewingTranscriptCall, setViewingTranscriptCall] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Dialer
-  const [isDialerOpen, setIsDialerOpen] = useState(false);
-  const [dialerPhone, setDialerPhone] = useState("");
-  const [dialerName, setDialerName] = useState("");
 
   // Edit state
   const [editOutcome, setEditOutcome] = useState("");
@@ -584,14 +578,6 @@ export default function CallsTableClient({
           </div>
         </div>
       )}
-
-      {/* Dialer Modal for 1-tap re-dials */}
-      <PhoneDialerModal
-        isOpen={isDialerOpen}
-        onClose={() => setIsDialerOpen(false)}
-        initialPhone={dialerPhone}
-        initialName={dialerName}
-      />
     </>
   );
 }

@@ -25,7 +25,7 @@ import { deleteCustomer } from '@/app/actions/customerActions';
 import EditCustomerModal from './EditCustomerModal';
 import ReassignCustomerModal from './ReassignCustomerModal';
 import AIReorderPredictorModal from '../ai/AIReorderPredictorModal';
-import PhoneDialerModal from './PhoneDialerModal';
+import { openPhoneDialer } from '@/lib/dialer';
 import './customerTable.css';
 
 interface Customer {
@@ -78,17 +78,8 @@ export default function CustomerTable({
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
 
-  // Phone Dialer State
-  const [isDialerOpen, setIsDialerOpen] = useState<boolean>(false);
-  const [dialerPhone, setDialerPhone] = useState<string>("");
-  const [dialerName, setDialerName] = useState<string>("");
-  const [dialerCustomerId, setDialerCustomerId] = useState<string | undefined>(undefined);
-
   const openDialerWithContact = (phone: string, name: string, customerId?: string) => {
-    setDialerPhone(phone || "");
-    setDialerName(name || "");
-    setDialerCustomerId(customerId);
-    setIsDialerOpen(true);
+    openPhoneDialer({ phone, name, customerId });
   };
 
   const openWhatsApp = (phone: string) => {
@@ -506,15 +497,6 @@ export default function CustomerTable({
           onClose={() => setShowReorderModal(false)}
         />
       )}
-
-      {/* Phone Dialer Modal */}
-      <PhoneDialerModal
-        isOpen={isDialerOpen}
-        onClose={() => setIsDialerOpen(false)}
-        initialPhone={dialerPhone}
-        initialName={dialerName}
-        initialCustomerId={dialerCustomerId}
-      />
     </div>
   );
 }

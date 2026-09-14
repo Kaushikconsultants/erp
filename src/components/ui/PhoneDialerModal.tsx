@@ -598,12 +598,17 @@ function PhoneDialerModalContent({
           }
         } else if (initialPhone) {
           const cleanInit = String(initialPhone).replace(/\D/g, '');
-          const match = res.customers.find((c: any) =>
+          let match = res.customers.find((c: any) =>
             c.phone && String(c.phone).replace(/\D/g, '').includes(cleanInit)
           );
+          if (!match && Array.isArray(deviceContacts)) {
+            match = deviceContacts.find((c: any) =>
+              c.phone && String(c.phone).replace(/\D/g, '').includes(cleanInit)
+            );
+          }
           if (match) {
             setSelectedContact(match);
-            if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || "");
+            if (!newLeadName) setNewLeadName(match.contactPerson || match.companyName || match.name || "");
             if (!newLeadShop) setNewLeadShop(match.shopName || match.companyName || "");
           }
         }
@@ -710,6 +715,38 @@ function PhoneDialerModalContent({
     window.addEventListener("open-phone-dialer", handleGlobalOpen);
     return () => window.removeEventListener("open-phone-dialer", handleGlobalOpen);
   }, []);
+
+  // Hardware Back Button (Android Gesture / Key) & Escape Key Listener
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleBackButton = (e: Event) => {
+      e.preventDefault();
+      if (activeTab !== "DIALPAD") {
+        setActiveTab("DIALPAD");
+      } else {
+        onClose();
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (activeTab !== "DIALPAD") {
+          setActiveTab("DIALPAD");
+        } else {
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener("app-back-button", handleBackButton);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("app-back-button", handleBackButton);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, activeTab, onClose]);
 
   // Multi-SIM & Capability Discovery on Mount
   useEffect(() => {
@@ -892,6 +929,17 @@ function PhoneDialerModalContent({
     }
   }, [isOpen, initialPhone, initialName, initialCustomerId, initialLeadId, initialTab, loadDeviceContacts]);
 
+  // Lock background body scroll when dialer modal is open
+  useEffect(() => {
+    if (isOpen && typeof document !== "undefined") {
+      const origOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = origOverflow;
+      };
+    }
+  }, [isOpen]);
+
   // Single Clean Live Stopwatch Timer
   useEffect(() => {
     if (isTimerRunning) {
@@ -1004,7 +1052,37 @@ function PhoneDialerModalContent({
     };
   }, []);
 
-  // Auto match contact as user types
+  // Combined CRM and Phone Device Contacts
+  const allCombinedContacts = useMemo(() => {
+    const list: any[] = [];
+    const seenPhones = new Set<string>();
+
+    // 1. First add CRM contacts (Customers and Leads)
+    if (Array.isArray(contacts)) {
+      contacts.forEach(c => {
+        if (!c) return;
+        list.push(c);
+        const clean = String(c.phone || '').replace(/\D/g, '').slice(-10);
+        if (clean.length >= 7) seenPhones.add(clean);
+      });
+    }
+
+    // 2. Add Device Phone contacts (skip exact duplicates if already in CRM)
+    if (Array.isArray(deviceContacts)) {
+      deviceContacts.forEach(dc => {
+        if (!dc) return;
+        const clean = String(dc.phone || '').replace(/\D/g, '').slice(-10);
+        if (clean.length >= 7 && seenPhones.has(clean)) {
+          return;
+        }
+        list.push(dc);
+      });
+    }
+
+    return list;
+  }, [contacts, deviceContacts]);
+
+  // Auto match contact as user types across BOTH CRM and phonebook contacts
   useEffect(() => {
     if (!phoneDigits) {
       setSelectedContact(null);
@@ -1021,21 +1099,25 @@ function PhoneDialerModalContent({
       }
     }
 
-    if (cleanNum.length >= 3 && Array.isArray(contacts)) {
-      const match = contacts.find(c => {
+    if (cleanNum.length >= 3 && Array.isArray(allCombinedContacts)) {
+      const match = allCombinedContacts.find(c => {
         const cPhone = String(c?.phone || c?.mobile || '').replace(/\D/g, '');
-        const cName = String(c?.contactPerson || c?.companyName || '').toLowerCase();
+        const cName = String(c?.contactPerson || c?.companyName || c?.name || '').toLowerCase();
         return (cPhone && (cPhone.includes(cleanNum) || cleanNum.includes(cPhone))) || (cleanNum.length >= 3 && cName.includes(phoneDigits.toLowerCase()));
       });
       if (match) {
         setSelectedContact(match);
+        const cName = match.contactPerson || match.companyName || match.name || "";
+        if (cName && !newLeadName) setNewLeadName(cName);
+        const sName = match.shopName || match.companyName || "";
+        if (sName && !newLeadShop) setNewLeadShop(sName);
       } else {
         setSelectedContact(null);
       }
     } else if (cleanNum.length < 3) {
       setSelectedContact(null);
     }
-  }, [phoneDigits, contacts]);
+  }, [phoneDigits, allCombinedContacts]);
 
   if (!isOpen) return null;
 
@@ -1508,36 +1590,6 @@ function PhoneDialerModalContent({
       setFeedbackMsg("❌ Error saving call record. Check connection and retry.");
     }
   };
-
-  // Combined CRM and Phone Device Contacts
-  const allCombinedContacts = useMemo(() => {
-    const list: any[] = [];
-    const seenPhones = new Set<string>();
-
-    // 1. First add CRM contacts (Customers and Leads)
-    if (Array.isArray(contacts)) {
-      contacts.forEach(c => {
-        if (!c) return;
-        list.push(c);
-        const clean = String(c.phone || '').replace(/\D/g, '').slice(-10);
-        if (clean.length >= 7) seenPhones.add(clean);
-      });
-    }
-
-    // 2. Add Device Phone contacts (skip exact duplicates if already in CRM)
-    if (Array.isArray(deviceContacts)) {
-      deviceContacts.forEach(dc => {
-        if (!dc) return;
-        const clean = String(dc.phone || '').replace(/\D/g, '').slice(-10);
-        if (clean.length >= 7 && seenPhones.has(clean)) {
-          return;
-        }
-        list.push(dc);
-      });
-    }
-
-    return list;
-  }, [contacts, deviceContacts]);
 
   // Filter contacts dropdown in keypad — matches across BOTH CRM and Phone contacts!
   const filteredKeypadContacts = useMemo(() => {
