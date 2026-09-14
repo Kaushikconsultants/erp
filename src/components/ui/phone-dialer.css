@@ -1694,3 +1694,114 @@
   cursor: not-allowed;
 }
 
+/* ─── FOLLOW-UP & SAVE LEAD SECTION (BELOW NAME/SHOP) ─── */
+.dialer-lead-followup-box {
+  margin-top: 10px;
+  background: var(--dialer-bg-subtle, #f8fafc);
+  border: 1px solid var(--dialer-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.dark .dialer-lead-followup-box {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+.dialer-followup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dialer-followup-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--dialer-text-main, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dialer-quick-preset-chips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.dialer-preset-chip {
+  font-size: 0.68rem;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background-color: var(--dialer-bg, #ffffff);
+  border: 1px solid var(--dialer-border, #cbd5e1);
+  color: var(--dialer-text-main, #334155);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dialer-preset-chip:hover {
+  background-color: var(--dialer-bg-subtle, #f1f5f9);
+  border-color: #94a3b8;
+}
+
+.dialer-preset-chip.clear {
+  color: var(--dialer-text-sub, #94a3b8);
+}
+
+.dialer-datetime-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 8px;
+}
+
+.dialer-time-selects {
+  display: flex;
+  gap: 4px;
+}
+
+.dialer-period-toggle-btn {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--dialer-border, #cbd5e1);
+  background-color: var(--dialer-bg, #ffffff);
+  font-weight: 800;
+  font-size: 0.74rem;
+  color: var(--dialer-accent, #4f46e5);
+  cursor: pointer;
+}
+
+.dialer-save-lead-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dialer-border, #e2e8f0);
+}
+
+.dialer-quick-save-lead-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: #ffffff;
+  border: none;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(79, 70, 229, 0.25);
+  transition: transform 0.15s ease;
+}
+
+.dialer-quick-save-lead-btn:active {
+  transform: scale(0.96);
+}
+
+

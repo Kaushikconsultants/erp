@@ -214,6 +214,44 @@ function formatDuration(totalSec: number | null | undefined): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// T9 Keypad mapping for fast name matching while typing digits (2=ABC, 3=DEF, 4=GHI, 5=JKL, 6=MNO, 7=PQRS, 8=TUV, 9=WXYZ)
+const T9_CHAR_MAP: Record<string, string> = {
+  a: '2', b: '2', c: '2',
+  d: '3', e: '3', f: '3',
+  g: '4', h: '4', i: '4',
+  j: '5', k: '5', l: '5',
+  m: '6', n: '6', o: '6',
+  p: '7', q: '7', r: '7', s: '7',
+  t: '8', u: '8', v: '8',
+  w: '9', x: '9', y: '9', z: '9',
+};
+
+export function stringToT9Digits(str: string): string {
+  if (!str) return "";
+  let digits = "";
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i].toLowerCase();
+    if (T9_CHAR_MAP[ch]) {
+      digits += T9_CHAR_MAP[ch];
+    } else if (ch >= '0' && ch <= '9') {
+      digits += ch;
+    } else if (ch === ' ' || ch === '-' || ch === '_') {
+      digits += ' ';
+    }
+  }
+  return digits;
+}
+
+export function matchesT9(targetName: string, queryDigits: string): boolean {
+  if (!targetName || !queryDigits) return false;
+  const cleanQuery = queryDigits.replace(/[^0-9]/g, '');
+  if (!cleanQuery) return false;
+  const t9Digits = stringToT9Digits(targetName);
+  if (t9Digits.includes(cleanQuery)) return true;
+  const words = t9Digits.split(' ');
+  return words.some(w => w.startsWith(cleanQuery));
+}
+
 // Pure module-level utility: Format phone number preserving '+' and E.164 compliance
 export function formatPhoneNumberForCall(raw: string | null | undefined): string {
   if (!raw) return "";
@@ -1099,11 +1137,15 @@ function PhoneDialerModalContent({
       }
     }
 
-    if (cleanNum.length >= 3 && Array.isArray(allCombinedContacts)) {
+    if (cleanNum.length >= 2 && Array.isArray(allCombinedContacts)) {
       const match = allCombinedContacts.find(c => {
         const cPhone = String(c?.phone || c?.mobile || '').replace(/\D/g, '');
         const cName = String(c?.contactPerson || c?.companyName || c?.name || '').toLowerCase();
-        return (cPhone && (cPhone.includes(cleanNum) || cleanNum.includes(cPhone))) || (cleanNum.length >= 3 && cName.includes(phoneDigits.toLowerCase()));
+        const cComp = String(c?.shopName || c?.companyName || '').toLowerCase();
+        const phoneMatch = cPhone && (cPhone.includes(cleanNum) || cleanNum.includes(cPhone));
+        const nameMatch = cName.includes(phoneDigits.toLowerCase()) || cComp.includes(phoneDigits.toLowerCase());
+        const t9Match = cleanNum.length >= 2 && (matchesT9(cName, cleanNum) || matchesT9(cComp, cleanNum));
+        return phoneMatch || nameMatch || t9Match;
       });
       if (match) {
         setSelectedContact(match);
@@ -1114,7 +1156,7 @@ function PhoneDialerModalContent({
       } else {
         setSelectedContact(null);
       }
-    } else if (cleanNum.length < 3) {
+    } else if (cleanNum.length < 2) {
       setSelectedContact(null);
     }
   }, [phoneDigits, allCombinedContacts]);
@@ -1132,6 +1174,27 @@ function PhoneDialerModalContent({
   const handleDigitClick = (digit: string) => {
     handleVibrate(15);
     setPhoneDigits(prev => prev + digit);
+  };
+
+  const handleZeroPressStart = () => {
+    isLongPressRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      handleVibrate(35);
+      setPhoneDigits(prev => prev + "+");
+    }, 380);
+  };
+
+  const handleZeroPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    if (!isLongPressRef.current) {
+      handleDigitClick("0");
+    }
+    isLongPressRef.current = false;
   };
 
   const handleBackspace = () => {
@@ -1207,9 +1270,13 @@ function PhoneDialerModalContent({
   const handleSelectMatchedContact = (contact: any) => {
     setSelectedContact(contact);
     if (contact?.phone) {
-      setPhoneDigits(contact.phone);
+      const p = String(contact.phone).trim();
+      const hasPlus = p.startsWith("+");
+      const cleanDigits = p.replace(/[^\d]/g, "");
+      const formatted = hasPlus ? `+${cleanDigits}` : (cleanDigits.length === 12 && cleanDigits.startsWith("91") ? `+${cleanDigits}` : cleanDigits);
+      setPhoneDigits(formatted || p);
     }
-    const cName = contact?.companyName || contact?.contactPerson || "";
+    const cName = contact?.companyName || contact?.contactPerson || contact?.name || "";
     if (cName) setNewLeadName(cName);
     const sName = contact?.shopName || contact?.companyName || "";
     if (sName) setNewLeadShop(sName);
@@ -1591,7 +1658,7 @@ function PhoneDialerModalContent({
     }
   };
 
-  // Filter contacts dropdown in keypad — matches across BOTH CRM and Phone contacts!
+  // Filter contacts dropdown in keypad — matches across BOTH CRM and Phone contacts with T9 name search!
   const filteredKeypadContacts = useMemo(() => {
     if (!phoneDigits || !Array.isArray(allCombinedContacts)) return [];
     const q = phoneDigits.trim().toLowerCase();
@@ -1602,8 +1669,9 @@ function PhoneDialerModalContent({
       const cComp = (c?.companyName || c?.shopName || '').toLowerCase();
       const phoneMatch = cleanQ.length > 0 && cPhone.includes(cleanQ);
       const nameMatch = q.length > 0 && (cName.includes(q) || cComp.includes(q));
-      return phoneMatch || nameMatch;
-    }).slice(0, 4);
+      const t9Match = cleanQ.length >= 2 && (matchesT9(cName, cleanQ) || matchesT9(cComp, cleanQ));
+      return phoneMatch || nameMatch || t9Match;
+    }).slice(0, 5);
   }, [allCombinedContacts, phoneDigits]);
 
   // Filtered Call Logs list
@@ -1638,7 +1706,8 @@ function PhoneDialerModalContent({
         const matchName = (c.contactPerson || "").toLowerCase().includes(q) || (c.name || "").toLowerCase().includes(q);
         const matchComp = (c.companyName || "").toLowerCase().includes(q) || (c.shopName || "").toLowerCase().includes(q);
         const matchPhone = cleanQ.length > 0 ? (c.phone || c.mobile || "").replace(/\D/g, '').includes(cleanQ) : false;
-        if (!matchName && !matchComp && !matchPhone) return false;
+        const matchT9 = cleanQ.length >= 2 && (matchesT9(c.contactPerson || c.name || "", cleanQ) || matchesT9(c.companyName || c.shopName || "", cleanQ));
+        if (!matchName && !matchComp && !matchPhone && !matchT9) return false;
       }
       if (contactFilter === "CUSTOMER") return c.type === "Customer";
       if (contactFilter === "LEAD") return c.type === "Lead";
@@ -2057,11 +2126,20 @@ function PhoneDialerModalContent({
                       key={k.digit}
                       type="button"
                       className="dialer-key-btn"
-                      onClick={() => handleDigitClick(k.digit)}
+                      onClick={() => {
+                        if (k.digit !== "0") {
+                          handleDigitClick(k.digit);
+                        }
+                      }}
+                      onTouchStart={k.digit === "0" ? handleZeroPressStart : undefined}
+                      onTouchEnd={k.digit === "0" ? handleZeroPressEnd : undefined}
+                      onMouseDown={k.digit === "0" ? handleZeroPressStart : undefined}
+                      onMouseUp={k.digit === "0" ? handleZeroPressEnd : undefined}
                       onContextMenu={(e) => {
                         if (k.digit === "0") {
                           e.preventDefault();
-                          handleDigitClick("+");
+                          handleVibrate(30);
+                          setPhoneDigits(prev => prev + "+");
                         }
                       }}
                     >
@@ -2168,7 +2246,7 @@ function PhoneDialerModalContent({
                 </div>
 
                 {/* Editable Lead Name and Shop Name Input Fields */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "10px" }}>
                   <div>
                     <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--dialer-text-sub, #475569)", marginBottom: "3px", display: "flex", alignItems: "center", gap: "4px" }}>
                       <User size={12} style={{ color: "#4f46e5" }} /> Lead Name *
@@ -2196,9 +2274,109 @@ function PhoneDialerModalContent({
                     />
                   </div>
                 </div>
+
+                {/* ── Follow-up & Save Lead Option (Placed right below Lead Name / Shop Section) ── */}
+                <div className="dialer-lead-followup-box">
+                  <div className="dialer-followup-header">
+                    <span className="dialer-followup-title">
+                      <Calendar size={13} style={{ color: "#4f46e5" }} /> Next Follow-up & Reminder
+                    </span>
+                    <div className="dialer-quick-preset-chips">
+                      <button
+                        type="button"
+                        onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
+                        className="dialer-preset-chip"
+                      >
+                        Tomorrow 11 AM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickFollowUp(2, 11, 0, "AM")}
+                        className="dialer-preset-chip"
+                      >
+                        In 2 Days
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickFollowUp(7, 11, 0, "AM")}
+                        className="dialer-preset-chip"
+                      >
+                        In 1 Week
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setQuickFollowUp(-1, 0, 0, "AM")}
+                        className="dialer-preset-chip clear"
+                      >
+                        None
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="dialer-datetime-row">
+                    <input
+                      type="date"
+                      className="dialer-text-input"
+                      value={followUpDate}
+                      onChange={(e) => setFollowUpDate(e.target.value)}
+                    />
+                    <div className="dialer-time-selects">
+                      <select
+                        className="dialer-select-input"
+                        value={followUpHour}
+                        onChange={(e) => setFollowUpHour(e.target.value)}
+                      >
+                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <select
+                        className="dialer-select-input"
+                        value={followUpMinute}
+                        onChange={(e) => setFollowUpMinute(e.target.value)}
+                      >
+                        <option value="00">00</option>
+                        <option value="15">15</option>
+                        <option value="30">30</option>
+                        <option value="45">45</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setFollowUpPeriod(prev => prev === "AM" ? "PM" : "AM")}
+                        className="dialer-period-toggle-btn"
+                      >
+                        {followUpPeriod}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Save Lead Status / Quick Save Button */}
+                  <div className="dialer-save-lead-row">
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <CheckCircle2 size={13} color="#10b981" />
+                      <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--dialer-text-sub, #475569)" }}>
+                        {selectedContact?.type === "Customer" 
+                          ? "Existing Customer Record" 
+                          : selectedContact?.type === "Lead" 
+                            ? "Existing CRM Lead" 
+                            : "New Lead (Auto-saved to CRM upon Log Call)"}
+                      </span>
+                    </div>
+                    {(!selectedContact || selectedContact.type === "DeviceContact") && (
+                      <button
+                        type="button"
+                        onClick={handleCreateQuickLeadInline}
+                        disabled={isSaving}
+                        className="dialer-quick-save-lead-btn"
+                      >
+                        <UserPlus size={12} /> {isSaving ? "Saving..." : "Save Lead Now"}
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* CARD 2: CALL STATUS & TALK DURATION */}
+              {/* CARD 2: CALL STATUS & OUTCOME */}
               <div className="dialer-postcall-card">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                   <label className="dialer-field-label" style={{ margin: 0 }}>Call Connection Status</label>
@@ -2388,11 +2566,9 @@ function PhoneDialerModalContent({
                     </button>
                   </div>
                 )}
-              </div>
 
-              {/* CARD 3: CALL OUTCOME & FOLLOW-UP TASK */}
-              <div className="dialer-postcall-card">
-                <div style={{ marginBottom: "10px" }}>
+                {/* Call Outcome / Disposition */}
+                <div style={{ marginTop: "10px" }}>
                   <label className="dialer-field-label">Call Outcome / Disposition</label>
                   <select
                     className="dialer-select-input"
@@ -2404,86 +2580,6 @@ function PhoneDialerModalContent({
                       <option key={o} value={o}>{o}</option>
                     ))}
                   </select>
-                </div>
-
-                {/* Follow-up Task */}
-                <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "10px 12px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px", flexWrap: "wrap", gap: "4px" }}>
-                    <span style={{ fontSize: "0.76rem", fontWeight: 800, color: "#0f172a", display: "flex", alignItems: "center", gap: "5px" }}>
-                      <Calendar size={13} style={{ color: "#4f46e5" }} /> Next Follow-up Task
-                    </span>
-                    <div style={{ display: "flex", gap: "4px" }}>
-                      <button
-                        type="button"
-                        onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
-                        style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontWeight: 700, cursor: "pointer" }}
-                      >
-                        Tomorrow 11 AM
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickFollowUp(2, 11, 0, "AM")}
-                        style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontWeight: 700, cursor: "pointer" }}
-                      >
-                        In 2 Days
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickFollowUp(-1, 0, 0, "AM")}
-                        style={{ fontSize: "0.68rem", padding: "2px 6px", borderRadius: "4px", backgroundColor: "#ffffff", border: "1px solid #cbd5e1", color: "#94a3b8", cursor: "pointer" }}
-                      >
-                        None
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "8px" }}>
-                    <input
-                      type="date"
-                      className="dialer-text-input"
-                      value={followUpDate}
-                      onChange={(e) => setFollowUpDate(e.target.value)}
-                    />
-                    <div style={{ display: "flex", gap: "4px" }}>
-                      <select
-                        className="dialer-select-input"
-                        style={{ flex: 1, padding: "6px 4px" }}
-                        value={followUpHour}
-                        onChange={(e) => setFollowUpHour(e.target.value)}
-                      >
-                        {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
-                          <option key={h} value={h}>{h}</option>
-                        ))}
-                      </select>
-                      <select
-                        className="dialer-select-input"
-                        style={{ flex: 1, padding: "6px 4px" }}
-                        value={followUpMinute}
-                        onChange={(e) => setFollowUpMinute(e.target.value)}
-                      >
-                        <option value="00">00</option>
-                        <option value="15">15</option>
-                        <option value="30">30</option>
-                        <option value="45">45</option>
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => setFollowUpPeriod(prev => prev === "AM" ? "PM" : "AM")}
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
-                          backgroundColor: "#ffffff",
-                          fontWeight: 800,
-                          fontSize: "0.74rem",
-                          color: "#4f46e5",
-                          cursor: "pointer"
-                        }}
-                      >
-                        {followUpPeriod}
-                      </button>
-                    </div>
-                  </div>
                 </div>
               </div>
 
@@ -2816,7 +2912,7 @@ function PhoneDialerModalContent({
                               <div style={{ fontSize: "0.72rem", color: "#64748b", display: "flex", gap: "6px", alignItems: "center" }}>
                                 <span>{callPhone || "No Phone"}</span>
                                 <span>•</span>
-                                <span>{formatDuration(c.durationSec || 0)}</span>
+                                <span>{isConnected && (c.durationSec || 0) > 0 ? formatDuration(c.durationSec || 0) : "00:00 (Not Connected)"}</span>
                                 <span>•</span>
                                 <span>{formatRelativeTime(c.createdAt)}</span>
                               </div>

@@ -22,11 +22,19 @@ export async function logCall(formData: FormData) {
   // Enterprise TeleCRM Duration & Status
   const rawDuration = formData.get("durationSec") as string;
   const parsedDuration = rawDuration ? parseInt(rawDuration, 10) : null;
-  const durationSec = (parsedDuration !== null && !isNaN(parsedDuration) && parsedDuration >= 0) ? parsedDuration : null;
+  let durationSec = (parsedDuration !== null && !isNaN(parsedDuration) && parsedDuration >= 0) ? parsedDuration : null;
   const status = (formData.get("status") as string || "Completed").trim();
   const phone = (formData.get("phone") as string || "").trim();
   const newLeadName = (formData.get("newLeadName") as string || "").trim();
   const newLeadShop = (formData.get("newLeadShop") as string || "").trim();
+
+  // If call was not connected or answered, duration is strictly 0
+  const isNotConnected = ["missed", "busy", "no answer", "rejected", "failed", "cancelled", "not connected", "voicemail"].some(
+    s => status.toLowerCase().includes(s) || outcome.toLowerCase().includes(s)
+  );
+  if (isNotConnected) {
+    durationSec = 0;
+  }
 
   try {
     const organizationId = await getTenantOrgId();
@@ -245,13 +253,17 @@ export async function updateCall(callId: string, data: {
   followUpDate?: string | null 
 }) {
   try {
+    const isNotConnected = (data.status && ["missed", "busy", "no answer", "rejected", "failed", "cancelled", "not connected", "voicemail"].some(s => data.status!.toLowerCase().includes(s))) ||
+      (data.outcome && ["missed", "busy", "no answer", "rejected", "failed", "cancelled", "not connected", "voicemail"].some(s => data.outcome!.toLowerCase().includes(s)));
+    const finalDuration = isNotConnected ? 0 : data.durationSec;
+
     const updated = await prisma.call.update({
       where: { id: callId },
       data: {
         ...(data.outcome ? { outcome: data.outcome } : {}),
         ...(data.callType ? { callType: data.callType } : {}),
         ...(data.status ? { status: data.status } : {}),
-        ...(data.durationSec !== undefined ? { durationSec: data.durationSec } : {}),
+        ...(finalDuration !== undefined ? { durationSec: finalDuration } : {}),
         ...(data.notes !== undefined ? { notes: data.notes } : {}),
         followUpDate: data.followUpDate ? new Date(data.followUpDate) : null,
       }
@@ -268,13 +280,28 @@ export async function updateCall(callId: string, data: {
 
 export async function deleteCall(callId: string) {
   try {
+    const existing = await prisma.call.findUnique({
+      where: { id: callId },
+      select: { id: true, leadId: true, customerId: true, recordingUrl: true }
+    });
+    if (!existing) {
+      return { success: true };
+    }
+
     await prisma.call.delete({
       where: { id: callId }
     });
+
     revalidatePath("/calls");
     revalidatePath("/follow-ups");
     revalidatePath("/leads");
+    if (existing.leadId) {
+      revalidatePath(`/leads/${existing.leadId}`);
+    }
     revalidatePath("/customers");
+    if (existing.customerId) {
+      revalidatePath(`/customers/${existing.customerId}`);
+    }
     revalidatePath("/");
     return { success: true };
   } catch (error) {

@@ -406,8 +406,9 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 1. Process notification deep links if launched from status bar notification
+        // 1. Process notification deep links and incoming dial intents
         handleNotificationIntent(getIntent());
+        handleDialIntent(getIntent());
 
         // 2. Create Default & Leads Notification Channels (Unlocks notification toggles on Android 8+)
         createNotificationChannels();
@@ -432,6 +433,31 @@ public class MainActivity extends BridgeActivity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleNotificationIntent(intent);
+        handleDialIntent(intent);
+    }
+
+    private void handleDialIntent(Intent intent) {
+        if (intent == null) return;
+        String action = intent.getAction();
+        if (Intent.ACTION_DIAL.equals(action) || Intent.ACTION_VIEW.equals(action)) {
+            Uri data = intent.getData();
+            if (data != null && "tel".equalsIgnoreCase(data.getScheme())) {
+                String phone = data.getSchemeSpecificPart();
+                if (phone != null && !phone.trim().isEmpty()) {
+                    runOnUiThread(() -> {
+                        try {
+                            WebView webView = getBridge().getWebView();
+                            if (webView != null) {
+                                org.json.JSONObject detail = new org.json.JSONObject();
+                                detail.put("phone", phone.trim());
+                                String script = "window.dispatchEvent(new CustomEvent('open-phone-dialer', { detail: " + detail.toString() + " }));";
+                                webView.evaluateJavascript(script, null);
+                            }
+                        } catch (Exception e) {}
+                    });
+                }
+            }
+        }
     }
 
     private void handleNotificationIntent(Intent intent) {
@@ -1103,11 +1129,21 @@ public class MainActivity extends BridgeActivity {
                 android.net.Uri uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
                 String selection = null;
                 String[] selectionArgs = null;
-                if (searchQuery != null && !searchQuery.trim().isEmpty()) {
-                    selection = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? OR " +
-                                android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?";
-                    String param = "%" + searchQuery.trim() + "%";
-                    selectionArgs = new String[]{param, param};
+
+                boolean hasFilter = (searchQuery != null && !searchQuery.trim().isEmpty());
+                if (hasFilter) {
+                    try {
+                        uri = android.net.Uri.withAppendedPath(
+                            android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_FILTER_URI,
+                            android.net.Uri.encode(searchQuery.trim())
+                        );
+                    } catch (Exception e) {
+                        uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
+                        selection = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? OR " +
+                                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?";
+                        String param = "%" + searchQuery.trim() + "%";
+                        selectionArgs = new String[]{param, param};
+                    }
                 }
 
                 android.database.Cursor cursor = null;
@@ -1144,6 +1180,18 @@ public class MainActivity extends BridgeActivity {
                     }
                 }
 
+                // Strategy 3: Direct LIKE query on base CONTENT_URI if filter returned no cursor
+                if (cursor == null && hasFilter) {
+                    try {
+                        uri = android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI;
+                        selection = android.provider.ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME + " LIKE ? OR " +
+                                    android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER + " LIKE ?";
+                        String param = "%" + searchQuery.trim() + "%";
+                        selectionArgs = new String[]{param, param};
+                        cursor = cr.query(uri, null, selection, selectionArgs, null);
+                    } catch (Throwable t) {}
+                }
+
                 if (cursor != null) {
                     try {
                         java.util.Set<String> seen = new java.util.HashSet<>();
@@ -1172,12 +1220,15 @@ public class MainActivity extends BridgeActivity {
                             if (seen.contains(key)) continue;
                             seen.add(key);
 
+                            String resolvedName = (name != null && !name.trim().isEmpty()) ? name.trim() : number;
+
                             org.json.JSONObject obj = new org.json.JSONObject();
                             obj.put("id", "device_" + contactId + "_" + clean);
-                            obj.put("contactPerson", (name != null && !name.trim().isEmpty()) ? name.trim() : number);
-                            obj.put("companyName", (name != null && !name.trim().isEmpty()) ? name.trim() : "Phone Contact");
+                            obj.put("contactPerson", resolvedName);
+                            obj.put("companyName", resolvedName);
+                            obj.put("name", resolvedName);
                             obj.put("phone", number);
-                            obj.put("type", "Phone Contact");
+                            obj.put("type", "DeviceContact");
                             list.put(obj);
                         }
                     } finally {

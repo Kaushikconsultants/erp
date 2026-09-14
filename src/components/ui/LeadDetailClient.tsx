@@ -83,6 +83,9 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
         }));
         setToastMsg("✅ Call record and recording deleted.");
         setTimeout(() => setToastMsg(''), 2500);
+        try {
+          router.refresh();
+        } catch (e) {}
       } else {
         alert(res?.error || "Failed to delete call record");
       }
