@@ -1,4 +1,6 @@
-# Heart Of Business
+# ERP Tinkal
+
+Made by tinkal.in
 
 A Next.js CRM and ERP application backed by PostgreSQL and Prisma.
 

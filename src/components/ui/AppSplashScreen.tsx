@@ -53,7 +53,7 @@ export default function AppSplashScreen() {
           transition: "transform 0.4s ease-out"
         }}
       >
-        {/* Heart of Business Welcome Logo */}
+        {/* ERP Tinkal Welcome Logo */}
         <BrandLogo size="lg" showSubtitle={true} />
 
         {/* Loading Indicator */}

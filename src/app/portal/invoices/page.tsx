@@ -5,6 +5,9 @@ import { getCustomerPortalData } from "@/app/actions/portalActions";
 import { FileText, CreditCard, CheckCircle2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
+
 function PortalInvoicesContent() {
   const searchParams = useSearchParams();
   const customerIdParam = searchParams.get("customerId") || undefined;

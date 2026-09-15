@@ -13,7 +13,7 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
   const [successMsg, setSuccessMsg] = useState('');
   const [logoUrl, setLogoUrl] = useState(initialData?.logoUrl || '');
   const [signatoryUrl, setSignatoryUrl] = useState(initialData?.signatoryUrl || '');
-  const [signatoryName, setSignatoryName] = useState(initialData?.signatoryName || 'Ashish Goyal');
+  const [signatoryName, setSignatoryName] = useState(initialData?.signatoryName || 'Tinkal');
   const [signatoryDesignation, setSignatoryDesignation] = useState(initialData?.signatoryDesignation || 'Authorized Signatory');
 
   const [callOutcomes, setCallOutcomes] = useState<string[]>(initialData?.callOutcomes || ["Interested / Follow-up Needed", "Not Interested", "No Answer / Voicemail", "Order Placed", "Complaint / Support"]);
@@ -173,7 +173,7 @@ export default function OrganizationForm({ initialData }: OrganizationFormProps)
                   name="signatoryName" 
                   value={signatoryName} 
                   onChange={e => setSignatoryName(e.target.value)}
-                  placeholder="e.g. Ashish Goyal" 
+                  placeholder="e.g. Tinkal" 
                   className="zoho-input-field"
                 />
               </div>

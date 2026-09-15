@@ -1,6 +1,6 @@
 {
-  "appId": "com.espon.heartofbusiness",
-  "appName": "Heart of Business ERP",
+  "appId": "com.tinkal.erp",
+  "appName": "ERP Tinkal",
   "webDir": "public",
   "bundledWebRuntime": false,
   "server": {

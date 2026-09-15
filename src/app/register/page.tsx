@@ -192,7 +192,7 @@ function RegisterWizardContent() {
                     name="adminName"
                     value={formData.adminName}
                     onChange={handleChange}
-                    placeholder="e.g. Ashish Goyal"
+                    placeholder="e.g. Tinkal Admin"
                     required
                     style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '0.875rem', boxSizing: 'border-box' }}
                   />

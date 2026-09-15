@@ -5,6 +5,9 @@ import { getCustomerPortalData, acceptQuotationFromPortal } from "@/app/actions/
 import { FileCheck, CheckCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
+
 function PortalQuotationsContent() {
   const searchParams = useSearchParams();
   const customerIdParam = searchParams.get("customerId") || undefined;

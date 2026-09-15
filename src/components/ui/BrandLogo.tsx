@@ -57,12 +57,12 @@ export default function BrandLogo({
           flexShrink: 0,
           ...style
         }}
-        title="Heart of Business"
+        title="ERP Tinkal"
       >
         {!imgFailed ? (
           <img
             src={imgSrc}
-            alt="Heart of Business"
+            alt="ERP Tinkal"
             onError={handleImageError}
             style={{
               height: "36px",
@@ -134,7 +134,7 @@ export default function BrandLogo({
         {!imgFailed ? (
           <img
             src={imgSrc}
-            alt="Heart of Business"
+            alt="ERP Tinkal"
             className="brand-logo-img"
             onError={handleImageError}
             style={{
@@ -182,7 +182,7 @@ export default function BrandLogo({
                   lineHeight: 1.1
                 }}
               >
-                Heart of <span style={{ color: "#e11d48" }}>Business</span>
+                ERP <span style={{ color: "#2563eb" }}>Tinkal</span>
               </div>
               {showSubtitle && (
                 <div
@@ -195,7 +195,7 @@ export default function BrandLogo({
                     marginTop: "2px"
                   }}
                 >
-                  Enterprise CRM & ERP
+                  Made by tinkal.in
                 </div>
               )}
             </div>

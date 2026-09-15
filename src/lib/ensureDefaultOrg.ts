@@ -78,7 +78,7 @@ export async function ensureDefaultOrganization() {
 
     const adminEmails = [
       { email: "admin@company.com", name: "Admin User" },
-      { email: "clothingespon@gmail.com", name: "Ashish Goyal" }
+      { email: "clothingespon@gmail.com", name: "Tinkal Admin" }
     ];
 
     for (const item of adminEmails) {
@@ -107,10 +107,10 @@ export async function ensureDefaultOrganization() {
             target: 2000000
           }
         }).catch(() => {});
-      } else if (item.email === "clothingespon@gmail.com" && existingUser.name !== "Ashish Goyal") {
+      } else if (item.email === "clothingespon@gmail.com" && existingUser.name !== "Tinkal Admin") {
         await prisma.user.update({
           where: { id: existingUser.id },
-          data: { name: "Ashish Goyal" }
+          data: { name: "Tinkal Admin" }
         }).catch(() => {});
       }
     }

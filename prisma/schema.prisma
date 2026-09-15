@@ -812,7 +812,7 @@ model CompanySettings {
   upiId           String? @default("7206066678@OKBIZAXIS")
   
   signatoryUrl    String?
-  signatoryName   String? @default("Ashish Aggarwal")
+  signatoryName   String? @default("Tinkal")
   signatoryDesignation String? @default("Authorized Signatory")
   
   themeColor      String? @default("#4f46e5")

@@ -9,7 +9,7 @@ import { getTenantOrgId } from "@/lib/tenant";
 
 const FALLBACK_SETTINGS = {
   id: "default",
-  companyName: "Espon Clothing Private Limited",
+  companyName: "ERP Tinkal",
   gstin: "06AAHCE7721Q1Z4",
   pan: "AAHCE7721Q",
   address: "Sco 71A , 2nd Floor , Ashoka PlazaDelhi Road",
@@ -19,7 +19,7 @@ const FALLBACK_SETTINGS = {
   country: "India",
   mobile: "7206066678",
   email: "clothingespon@gmail.com",
-  website: "www.espon.in",
+  website: "www.tinkal.in",
   logoUrl: null as string | null,
   signatoryUrl: null as string | null,
   signatoryName: "Authorized Signatory",

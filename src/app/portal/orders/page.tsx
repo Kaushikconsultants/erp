@@ -5,6 +5,9 @@ import { getCustomerPortalData } from "@/app/actions/portalActions";
 import { ShoppingBag, Package, Truck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
+
 function PortalOrdersContent() {
   const searchParams = useSearchParams();
   const customerIdParam = searchParams.get("customerId") || undefined;

@@ -77,7 +77,7 @@ export default async function CreditNoteDetailPage({ params }: { params: Promise
     accountNumber: "016805006415",
     ifscCode: "ICIC0000168",
     branch: "Rohtak",
-    signatoryName: "Ashish Goyal",
+    signatoryName: "Tinkal",
     signatoryDesignation: "Authorized Signatory"
   };
 

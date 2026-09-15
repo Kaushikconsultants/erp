@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.antigravity.erp',
-  appName: 'Antigravity ERP',
+  appId: 'com.tinkal.erp',
+  appName: 'ERP Tinkal',
   webDir: 'public',
   server: {
     url: 'https://erp.esponsports.com',

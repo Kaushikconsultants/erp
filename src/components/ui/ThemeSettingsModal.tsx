@@ -203,7 +203,7 @@ export default function ThemeSettingsModal({ onClose }: ThemeSettingsModalProps)
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
               <div>
                 <h4 style={{ margin: 0, fontSize: `${(currentSizeNum / 16) * 1.0}rem`, fontWeight: useBoldText ? 800 : 600, color: '#0f172a' }}>
-                  Heart of Business CRM
+                  ERP Tinkal
                 </h4>
                 <p style={{ margin: '2px 0 0 0', fontSize: `${(currentSizeNum / 16) * 0.8}rem`, color: '#64748b', fontWeight: useBoldText ? 700 : 400 }}>
                   This text scales in real-time to preview full application font size.

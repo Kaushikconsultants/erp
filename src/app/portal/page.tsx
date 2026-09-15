@@ -6,6 +6,9 @@ import { ShoppingBag, FileText, FileCheck, ArrowUpRight, Clock, CheckCircle, Pho
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
+
 function PortalDashboardContent() {
   const searchParams = useSearchParams();
   const customerIdParam = searchParams.get("customerId") || undefined;

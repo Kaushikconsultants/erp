@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Heart Of Business - CRM & Sales ERP',
-    short_name: 'HOB CRM',
-    description: 'Comprehensive Enterprise B2B CRM and Sales ERP Software by Ashish Goyal',
+    name: 'ERP Tinkal - CRM & Sales ERP',
+    short_name: 'ERP Tinkal',
+    description: 'Comprehensive Enterprise B2B CRM and Sales ERP Software - Made by tinkal.in',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

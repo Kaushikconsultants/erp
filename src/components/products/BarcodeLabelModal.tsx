@@ -107,7 +107,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
   const [customColumns, setCustomColumns] = useState<number>(2);
 
   // Fully Customizable Label Designer States
-  const [headerText, setHeaderText] = useState<string>("HEART OF BUSINESS");
+  const [headerText, setHeaderText] = useState<string>("ERP TINKAL");
   const [showHeader, setShowHeader] = useState<boolean>(true);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoSize, setLogoSize] = useState<number>(20);
@@ -745,7 +745,7 @@ export default function BarcodeLabelModal({ product, onClose }: BarcodeLabelModa
                       type="text"
                       value={headerText}
                       onChange={e => setHeaderText(e.target.value)}
-                      placeholder="e.g. HEART OF BUSINESS"
+                      placeholder="e.g. ERP TINKAL"
                       style={{ width: "100%", padding: "5px 8px", borderRadius: "5px", border: "1px solid #cbd5e1", fontSize: "0.8rem", marginBottom: "4px" }}
                     />
                     <div style={{ display: "flex", gap: "6px" }}>

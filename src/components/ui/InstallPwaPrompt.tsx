@@ -115,7 +115,7 @@ export default function InstallPwaPrompt() {
                   Get Mobile App
                 </h4>
                 <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
-                  Espon Heart of Business
+                  ERP Tinkal - Made by tinkal.in
                 </span>
               </div>
             </div>

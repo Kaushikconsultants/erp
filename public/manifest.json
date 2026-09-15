@@ -1,7 +1,7 @@
 {
-  "name": "Heart Of Business CRM",
-  "short_name": "HOB CRM",
-  "description": "Comprehensive B2B CRM and Sales ERP",
+  "name": "ERP Tinkal - CRM & Sales ERP",
+  "short_name": "ERP Tinkal",
+  "description": "Comprehensive B2B CRM and Sales ERP - Made by tinkal.in",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f172a",

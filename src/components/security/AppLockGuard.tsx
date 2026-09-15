@@ -523,7 +523,7 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
         >
           <img
             src="/brand-logo.jpg"
-            alt="Heart of Business"
+            alt="ERP Tinkal"
             style={{
               height: "38px",
               width: "auto",

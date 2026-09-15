@@ -21,13 +21,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Heart Of Business",
-  description: "Comprehensive CRM & ERP Suite",
+  title: "ERP Tinkal",
+  description: "ERP Tinkal - Made by tinkal.in",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "HOB CRM"
+    title: "ERP Tinkal"
   }
 };
 
