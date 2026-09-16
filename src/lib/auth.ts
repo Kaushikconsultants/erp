@@ -3,7 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "espon_erp_production_auth_secure_fallback_secret_key_2026";
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "tinkal_erp_production_auth_secure_fallback_secret_key_2026";
 
 export const authOptions: NextAuthOptions = {
   secret: NEXTAUTH_SECRET,
