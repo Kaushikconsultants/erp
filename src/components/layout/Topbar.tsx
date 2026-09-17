@@ -7,7 +7,6 @@ import Link from 'next/link';
 import NotificationBell from './NotificationBell';
 import GlobalSearch from './GlobalSearch';
 import BranchCompanySwitcher from './BranchCompanySwitcher';
-import InstallPwaPrompt from '../ui/InstallPwaPrompt';
 import OnboardingWizardModal from '../onboarding/OnboardingWizardModal';
 import { openPhoneDialer } from '@/lib/dialer';
 import './Topbar.css';
@@ -73,7 +72,6 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
           <PhoneCall size={18} color="#fff" />
         </button>
 
-        <InstallPwaPrompt />
         <NotificationBell />
         
         <div className="user-profile-container" ref={dropdownRef}>

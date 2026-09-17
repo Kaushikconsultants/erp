@@ -29,13 +29,14 @@ import {
   Landmark
 } from 'lucide-react';
 import Link from 'next/link';
-import { updatePlatformPricingSettings, updateTenantSubscriptionAndServices } from '@/app/actions/tenantActions';
+import { updatePlatformPricingSettings, updateTenantSubscriptionAndServices, createTenantByAdmin, deleteTenantByAdmin } from '@/app/actions/tenantActions';
 
 interface PlatformAdminClientProps {
   initialData: any;
+  isOwner?: boolean;
 }
 
-export default function PlatformAdminClient({ initialData }: PlatformAdminClientProps) {
+export default function PlatformAdminClient({ initialData, isOwner = false }: PlatformAdminClientProps) {
   const [data, setData] = useState(initialData);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'TRIAL' | 'EXPIRED'>('ALL');
@@ -44,9 +45,28 @@ export default function PlatformAdminClient({ initialData }: PlatformAdminClient
   // Modals State
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [isEditTenantModalOpen, setIsEditTenantModalOpen] = useState(false);
+  const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<any>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Add Tenant Form State
+  const [addTenantForm, setAddTenantForm] = useState({
+    adminName: '',
+    adminEmail: '',
+    adminPassword: '',
+    adminMobile: '',
+    companyName: '',
+    tradeName: '',
+    industry: 'Apparel & Garments',
+    businessType: 'Private Limited',
+    gstin: '',
+    city: '',
+    state: 'Haryana',
+    pincode: '',
+    plan: 'GROWTH' as 'STARTER' | 'GROWTH' | 'ENTERPRISE',
+    billingCycle: 'MONTHLY' as 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY',
+  });
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -129,6 +149,52 @@ export default function PlatformAdminClient({ initialData }: PlatformAdminClient
     if (res.success) {
       showToast(res.message || "Customer services updated!");
       setIsEditTenantModalOpen(false);
+      window.location.reload();
+    } else {
+      alert("Error: " + res.error);
+    }
+  };
+
+  // Handle Create New Tenant
+  const handleCreateTenant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    const res = await createTenantByAdmin(addTenantForm);
+    setIsSaving(false);
+    if (res.success) {
+      showToast(`Tenant "${addTenantForm.companyName}" created successfully!`);
+      setIsAddTenantModalOpen(false);
+      setAddTenantForm({
+        adminName: '',
+        adminEmail: '',
+        adminPassword: '',
+        adminMobile: '',
+        companyName: '',
+        tradeName: '',
+        industry: 'Apparel & Garments',
+        businessType: 'Private Limited',
+        gstin: '',
+        city: '',
+        state: 'Haryana',
+        pincode: '',
+        plan: 'GROWTH',
+        billingCycle: 'MONTHLY',
+      });
+      window.location.reload();
+    } else {
+      alert("Error: " + res.error);
+    }
+  };
+
+  // Handle Delete Tenant
+  const handleDeleteTenant = async (org: any) => {
+    const confirmed = window.confirm(`⚠️ PERMANENT DELETE\n\nAre you sure you want to permanently delete "${org.name}" and ALL its data?\n\nThis action cannot be undone.`);
+    if (!confirmed) return;
+    setIsSaving(true);
+    const res = await deleteTenantByAdmin(org.id);
+    setIsSaving(false);
+    if (res.success) {
+      showToast(res.message || "Tenant deleted.");
       window.location.reload();
     } else {
       alert("Error: " + res.error);
@@ -663,7 +729,17 @@ export default function PlatformAdminClient({ initialData }: PlatformAdminClient
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setIsAddTenantModalOpen(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '8px', backgroundColor: '#059669', color: '#ffffff', fontSize: '0.84rem', fontWeight: 600, border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)' }}
+            >
+              <Plus size={15} /> Add New Tenant
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsPricingModalOpen(true)}
@@ -843,7 +919,7 @@ export default function PlatformAdminClient({ initialData }: PlatformAdminClient
                   </td>
 
                   <td style={{ padding: '12px', textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '6px' }}>
+                    <div style={{ display: 'inline-flex', gap: '6px', flexWrap: 'wrap' }}>
                       <button
                         type="button"
                         onClick={() => openEditTenantModal(org)}
@@ -858,6 +934,15 @@ export default function PlatformAdminClient({ initialData }: PlatformAdminClient
                       >
                         Inspect
                       </button>
+                      {isOwner && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTenant(org)}
+                          style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #fca5a5', backgroundColor: '#fff1f2', color: '#dc2626', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <X size={12} /> Remove
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -876,5 +961,112 @@ export default function PlatformAdminClient({ initialData }: PlatformAdminClient
       </div>
 
     </div>
+
+      {/* MODAL 3: ADD NEW TENANT — Owner Only */}
+      {isOwner && isAddTenantModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '16px' }}>
+          <div style={{ backgroundColor: '#ffffff', borderRadius: '20px', maxWidth: '700px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '28px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ padding: '8px', borderRadius: '10px', backgroundColor: '#ecfdf5', color: '#059669', display: 'flex' }}>
+                  <Plus size={20} />
+                </span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>Add New Tenant Account</h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b' }}>Provision a new business workspace with a 14-day trial.</p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setIsAddTenantModalOpen(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={22} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTenant} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              
+              {/* Admin User Info */}
+              <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ fontSize: '0.82rem', color: '#0f172a' }}>Admin User Details</strong>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Admin Full Name *</label>
+                    <input type="text" required value={addTenantForm.adminName} onChange={e => setAddTenantForm({...addTenantForm, adminName: e.target.value})} placeholder="e.g. Rahul Sharma" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Admin Email *</label>
+                    <input type="email" required value={addTenantForm.adminEmail} onChange={e => setAddTenantForm({...addTenantForm, adminEmail: e.target.value})} placeholder="admin@company.com" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Password *</label>
+                    <input type="text" required value={addTenantForm.adminPassword} onChange={e => setAddTenantForm({...addTenantForm, adminPassword: e.target.value})} placeholder="Set a secure password" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Mobile *</label>
+                    <input type="tel" required value={addTenantForm.adminMobile} onChange={e => setAddTenantForm({...addTenantForm, adminMobile: e.target.value})} placeholder="9876543210" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Info */}
+              <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ fontSize: '0.82rem', color: '#0f172a' }}>Business Details</strong>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Company Legal Name *</label>
+                    <input type="text" required value={addTenantForm.companyName} onChange={e => setAddTenantForm({...addTenantForm, companyName: e.target.value})} placeholder="e.g. ABC Enterprises Pvt. Ltd." style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Trade / Brand Name</label>
+                    <input type="text" value={addTenantForm.tradeName} onChange={e => setAddTenantForm({...addTenantForm, tradeName: e.target.value})} placeholder="e.g. ABC" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>City *</label>
+                    <input type="text" required value={addTenantForm.city} onChange={e => setAddTenantForm({...addTenantForm, city: e.target.value})} placeholder="e.g. Rohtak" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>State *</label>
+                    <input type="text" required value={addTenantForm.state} onChange={e => setAddTenantForm({...addTenantForm, state: e.target.value})} placeholder="e.g. Haryana" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>GSTIN (Optional)</label>
+                    <input type="text" value={addTenantForm.gstin} onChange={e => setAddTenantForm({...addTenantForm, gstin: e.target.value})} placeholder="22AAAAA0000A1Z5" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Pincode</label>
+                    <input type="text" value={addTenantForm.pincode} onChange={e => setAddTenantForm({...addTenantForm, pincode: e.target.value})} placeholder="124001" style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan & Cycle */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Subscription Plan *</label>
+                  <select required value={addTenantForm.plan} onChange={e => setAddTenantForm({...addTenantForm, plan: e.target.value as any})} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#fff', boxSizing: 'border-box' }}>
+                    <option value="STARTER">STARTER</option>
+                    <option value="GROWTH">GROWTH</option>
+                    <option value="ENTERPRISE">ENTERPRISE</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Billing Cycle *</label>
+                  <select required value={addTenantForm.billingCycle} onChange={e => setAddTenantForm({...addTenantForm, billingCycle: e.target.value as any})} style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#fff', boxSizing: 'border-box' }}>
+                    <option value="MONTHLY">MONTHLY</option>
+                    <option value="QUARTERLY">QUARTERLY</option>
+                    <option value="ANNUALLY">ANNUALLY</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
+                <button type="button" onClick={() => setIsAddTenantModalOpen(false)} style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#fff', color: '#475569', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer' }}>Cancel</button>
+                <button type="submit" disabled={isSaving} style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#059669', color: '#fff', fontWeight: 700, fontSize: '0.875rem', cursor: isSaving ? 'not-allowed' : 'pointer' }}>
+                  {isSaving ? 'Creating Tenant...' : 'Create Tenant Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
   );
 }

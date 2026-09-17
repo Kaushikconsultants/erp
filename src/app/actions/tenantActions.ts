@@ -645,3 +645,80 @@ export async function updateTenantSubscriptionAndServices(input: {
   }
 }
 
+
+/**
+ * Owner Only: Create a new tenant/organization account from the platform admin panel.
+ * Only the platform Owner account (owner@tinkal.in) can call this.
+ */
+export async function createTenantByAdmin(input: RegisterBusinessInput) {
+  try {
+    const ctx = await getTenantContext();
+    if (!ctx || !ctx.isOwner) {
+      return { success: false, error: "Access denied. Only the platform Owner account can create new tenants." };
+    }
+
+    // Reuse the registerNewBusiness logic
+    const result = await registerNewBusiness(input);
+
+    if (result.success) {
+      revalidatePath('/platform-admin');
+    }
+
+    return result;
+  } catch (error: any) {
+    console.error("Error creating tenant by admin:", error);
+    return { success: false, error: error.message || "Failed to create tenant." };
+  }
+}
+
+/**
+ * Owner Only: Permanently delete a tenant organization and all its data.
+ * Only the platform Owner account (owner@tinkal.in) can call this.
+ */
+export async function deleteTenantByAdmin(organizationId: string) {
+  try {
+    const ctx = await getTenantContext();
+    if (!ctx || !ctx.isOwner) {
+      return { success: false, error: "Access denied. Only the platform Owner account can delete tenants." };
+    }
+
+    // Safety: Cannot delete the platform root org
+    const org = await prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org) return { success: false, error: "Organization not found." };
+    if (org.slug === "espon-global") {
+      return { success: false, error: "Cannot delete the platform root organization." };
+    }
+
+    // Delete in proper dependency order to avoid FK constraint errors
+    await prisma.$transaction(async (tx) => {
+      // Delete subscription invoices & history
+      await tx.subscriptionInvoice.deleteMany({ where: { organizationId } });
+      await tx.subscriptionHistory.deleteMany({ where: { organizationId } });
+
+      // Delete employees and their linked records
+      const employees = await tx.employee.findMany({ where: { organizationId } });
+      const employeeIds = employees.map((e: any) => e.id);
+      if (employeeIds.length > 0) {
+        await tx.attendance.deleteMany({ where: { employeeId: { in: employeeIds } } });
+        await tx.task.deleteMany({ where: { assigneeId: { in: employeeIds } } });
+      }
+      await tx.employee.deleteMany({ where: { organizationId } });
+
+      // Delete users
+      await tx.user.deleteMany({ where: { organizationId } });
+
+      // Delete company settings & GST settings
+      await tx.companySettings.deleteMany({ where: { organizationId } });
+      await tx.gstSetting.deleteMany({ where: { organizationId } });
+
+      // Delete the organization itself
+      await tx.organization.delete({ where: { id: organizationId } });
+    });
+
+    revalidatePath('/platform-admin');
+    return { success: true, message: `Organization "${org.name}" and all its data have been permanently deleted.` };
+  } catch (error: any) {
+    console.error("Error deleting tenant:", error);
+    return { success: false, error: error.message || "Failed to delete tenant. Some related records may need manual cleanup." };
+  }
+}

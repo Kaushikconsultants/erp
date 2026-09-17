@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { getOrCreateEmployee } from "./employeeHelper";
 
 export const PLATFORM_ROOT_ORG_SLUG = "espon-global";
+// Only this specific email is the true platform owner with add/delete tenant rights
+export const PLATFORM_ROOT_OWNER_EMAIL = "owner@tinkal.in";
+
 export function isPlatformRootOwner(
   userEmail?: string | null, 
   orgSlug?: string | null, 
@@ -12,6 +15,20 @@ export function isPlatformRootOwner(
 ): boolean {
   return Boolean(
     userEmail &&
+    orgSlug === PLATFORM_ROOT_ORG_SLUG &&
+    (userRole === "SUPER_ADMIN" || userRole === "ADMIN")
+  );
+}
+
+/** Stricter check — only the designated owner email can add/delete tenants */
+export function isPlatformSuperOwner(
+  userEmail?: string | null,
+  orgSlug?: string | null,
+  userRole?: string | null
+): boolean {
+  return Boolean(
+    userEmail &&
+    userEmail.trim().toLowerCase() === PLATFORM_ROOT_OWNER_EMAIL &&
     orgSlug === PLATFORM_ROOT_ORG_SLUG &&
     (userRole === "SUPER_ADMIN" || userRole === "ADMIN")
   );
@@ -28,6 +45,8 @@ export interface TenantContext {
   canManageSettings: boolean;
   allowedSections: string[] | null;
   isPlatformOwner: boolean;
+  /** True only for the designated platform super-owner (owner@tinkal.in) */
+  isOwner: boolean;
 }
 
 export const getTenantContext = cache(async function getTenantContext(): Promise<TenantContext | null> {
@@ -82,6 +101,7 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
   }
 
   const isPlatformOwner = isPlatformRootOwner(userEmail, org.slug, effectiveRole);
+  const isOwner = isPlatformSuperOwner(userEmail, org.slug, effectiveRole);
 
   return {
     organizationId: org.id,
@@ -94,6 +114,7 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
     canManageSettings,
     allowedSections: allowedSectionsList,
     isPlatformOwner,
+    isOwner,
   };
 });
 
