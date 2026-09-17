@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateEmployee } from "./employeeHelper";
 
-export const PLATFORM_ROOT_ORG_SLUG = "espon-global";
+export const PLATFORM_ROOT_ORG_SLUG = "tinkal-erp";
+export const PLATFORM_ROOT_ORG_SLUGS = ["tinkal-erp", "espon-global"];
 // Only this specific email is the true platform owner with add/delete tenant rights
 export const PLATFORM_ROOT_OWNER_EMAIL = "owner@tinkal.in";
 
@@ -13,25 +14,32 @@ export function isPlatformRootOwner(
   orgSlug?: string | null, 
   userRole?: string | null
 ): boolean {
+  if (!userEmail) return false;
+  const email = userEmail.trim().toLowerCase();
+
+  // The platform super-owner (owner@tinkal.in) is always granted platform admin access
+  if (email === PLATFORM_ROOT_OWNER_EMAIL) {
+    return true;
+  }
+
+  // Root organization super admins / admins can view platform overview
+  const isRootOrg = !orgSlug || PLATFORM_ROOT_ORG_SLUGS.includes(orgSlug);
   return Boolean(
-    userEmail &&
-    orgSlug === PLATFORM_ROOT_ORG_SLUG &&
+    isRootOrg &&
+    (email === "admin@tinkal.in" || email === PLATFORM_ROOT_OWNER_EMAIL) &&
     (userRole === "SUPER_ADMIN" || userRole === "ADMIN")
   );
 }
 
-/** Stricter check — only the designated owner email can add/delete tenants */
+/** Stricter check — only the designated owner email (owner@tinkal.in) can add/delete tenants */
 export function isPlatformSuperOwner(
   userEmail?: string | null,
   orgSlug?: string | null,
   userRole?: string | null
 ): boolean {
-  return Boolean(
-    userEmail &&
-    userEmail.trim().toLowerCase() === PLATFORM_ROOT_OWNER_EMAIL &&
-    orgSlug === PLATFORM_ROOT_ORG_SLUG &&
-    (userRole === "SUPER_ADMIN" || userRole === "ADMIN")
-  );
+  if (!userEmail) return false;
+  const email = userEmail.trim().toLowerCase();
+  return email === PLATFORM_ROOT_OWNER_EMAIL;
 }
 
 export interface TenantContext {

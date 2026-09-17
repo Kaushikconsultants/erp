@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, LogOut, Settings, Menu, PhoneCall, Sparkles } from 'lucide-react';
+import { Bell, Search, User, LogOut, Settings, Menu, PhoneCall, Sparkles, Landmark } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
@@ -125,6 +125,17 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
                 <Settings size={16} />
                 <span>My Profile</span>
               </Link>
+              {session?.user?.email?.toLowerCase() === 'owner@tinkal.in' && (
+                <Link 
+                  href="/platform-admin" 
+                  className="dropdown-item" 
+                  onClick={() => setIsDropdownOpen(false)}
+                  style={{ backgroundColor: '#f0fdf4', color: '#15803d', fontWeight: 600 }}
+                >
+                  <Landmark size={16} style={{ color: '#15803d' }} />
+                  <span>SaaS Platform Admin (Manage Tenants)</span>
+                </Link>
+              )}
               <button 
                 type="button"
                 className="dropdown-item" 

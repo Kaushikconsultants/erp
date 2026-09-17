@@ -13,7 +13,7 @@ async function getAuthOrgId(): Promise<string | null> {
   } catch {}
   try {
     const defaultOrg = await prisma.organization.findFirst({
-      where: { slug: "espon-global" }
+      where: { slug: { in: ["tinkal-erp", "espon-global"] } }
     }) || await prisma.organization.findFirst();
     return defaultOrg?.id || null;
   } catch {

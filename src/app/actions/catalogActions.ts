@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 export async function getPublicCatalogData(productIds?: string[]) {
   try {
     const defaultOrg = await prisma.organization.findFirst({
-      where: { slug: "espon-global" }
+      where: { slug: { in: ["tinkal-erp", "espon-global"] } }
     }) || await prisma.organization.findFirst();
 
     const orgId = defaultOrg?.id;

@@ -685,7 +685,7 @@ export async function deleteTenantByAdmin(organizationId: string) {
     // Safety: Cannot delete the platform root org
     const org = await prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) return { success: false, error: "Organization not found." };
-    if (org.slug === "espon-global") {
+    if (org.slug === "espon-global" || org.slug === "tinkal-erp") {
       return { success: false, error: "Cannot delete the platform root organization." };
     }
 
