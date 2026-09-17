@@ -965,8 +965,6 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
 
     </div>
 
-      </div> {/* End Main Content */}
-
       {/* MODAL 3: ADD NEW TENANT — Owner Only */}
       {isOwner && isAddTenantModalOpen && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '16px' }}>
