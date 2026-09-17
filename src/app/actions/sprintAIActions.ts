@@ -7,8 +7,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getSprintData } from "./sprintActions";
 import { getOrCreateEmployee } from "@/lib/employeeHelper";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
+import { getTenantAIClient } from "@/lib/gemini";
 
 export interface AISprintPlanResult {
   diagnostic: string;
@@ -103,7 +102,8 @@ export async function generateAISalespersonSprintPlan(employeeId: string): Promi
     const isBehind = sprint.healthStatus === "AT_RISK" || sprint.sprintProgressPercent < 70;
 
     // AI Engine using Gemini
-    if (process.env.GEMINI_API_KEY) {
+    const { ai, isConfigured, model } = await getTenantAIClient(employee.organizationId);
+    if (isConfigured) {
       try {
         const prompt = `
 You are an expert Chief Revenue Officer & AI Sales Sprint Coach for an enterprise ERP platform.
@@ -155,7 +155,7 @@ Output a strict JSON object with:
 `;
 
         const response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+          model: model || "gemini-2.5-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json",

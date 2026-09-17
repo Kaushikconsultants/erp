@@ -1,10 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { GoogleGenAI } from "@google/genai";
+import { getTenantAIClient } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
 
 export async function calculateLeadScore(customerId: string) {
   try {
@@ -20,7 +18,9 @@ export async function calculateLeadScore(customerId: string) {
 
     if (!customer) return { success: false, error: "Customer not found" };
 
-    if (!process.env.GEMINI_API_KEY) {
+    const { ai, isConfigured, model } = await getTenantAIClient(customer.organizationId);
+
+    if (!isConfigured) {
        // Fallback logic if no API key
        const score = customer.totalOrders > 0 ? 80 : 40;
        const temp = score >= 70 ? "HOT" : score >= 40 ? "WARM" : "COLD";
@@ -54,7 +54,7 @@ export async function calculateLeadScore(customerId: string) {
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: model || "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -94,11 +94,13 @@ export async function generateSmartFollowUp(customerId: string) {
 
     if (!customer) return { success: false, error: "Customer not found" };
 
-    if (!process.env.GEMINI_API_KEY) {
+    const { ai, isConfigured, model } = await getTenantAIClient(customer.organizationId);
+
+    if (!isConfigured) {
       return { 
         success: true, 
         email: "Subject: Checking in\n\nHi there,\n\nJust wanted to follow up. Please let me know if you need anything.\n\nBest,\nSales Team",
-        script: "Hi, this is calling from Espon Clothing. Am I speaking with the decision maker?"
+        script: "Hi, this is calling from our sales team. Am I speaking with the decision maker?"
       };
     }
 
@@ -124,7 +126,7 @@ export async function generateSmartFollowUp(customerId: string) {
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: model || "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",

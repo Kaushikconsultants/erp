@@ -1,12 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { GoogleGenAI } from "@google/genai";
 import { getTenantOrgId } from "@/lib/tenant";
+import { getTenantAIClient } from "@/lib/gemini";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
 
 export interface AskERPMetric {
   label: string;
@@ -94,7 +92,8 @@ export async function askERPAssistant(query: string): Promise<{
     const pipelineQuotationsValue = pendingQuotations.reduce((sum, q) => sum + (q.totalValue || 0), 0);
 
     // Call Gemini AI
-    if (process.env.GEMINI_API_KEY) {
+    const { ai, isConfigured, model } = await getTenantAIClient(organizationId);
+    if (isConfigured) {
       try {
         const businessContext = `
 You are the Chief Financial Officer & Executive AI Business Copilot for "${companyName}".
@@ -133,7 +132,7 @@ Available routes for suggestedActions: /orders, /customers, /quotations, /accoun
 `;
 
         const response = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+          model: model || "gemini-2.5-flash",
           contents: businessContext,
           config: {
             responseMimeType: "application/json",

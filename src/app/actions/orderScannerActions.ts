@@ -1,10 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { GoogleGenAI } from "@google/genai";
+import { getTenantAIClient } from "@/lib/gemini";
 import { getTenantOrgId } from "@/lib/tenant";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
 
 export interface ExtractedOrderItem {
   matchedProductId?: string;
@@ -122,7 +120,9 @@ Return ONLY valid JSON matching this schema:
 }
 `;
 
-    if (!process.env.GEMINI_API_KEY) {
+    const { ai, isConfigured, model } = await getTenantAIClient(organizationId);
+
+    if (!isConfigured) {
       // Fallback response for offline environment
       const cust = existingCustomers[0];
       const prod1 = existingProducts[0];
@@ -163,7 +163,7 @@ Return ONLY valid JSON matching this schema:
           subtotal: 10626,
           estimatedTax: 1275.12,
           totalAmount: 11901.12,
-          notes: "Auto-extracted order slip",
+          notes: "Auto-extracted order slip (Configure Gemini in Integrations for Live OCR)",
           confidenceScore: 92,
           isHandwritten: true
         }
@@ -171,7 +171,7 @@ Return ONLY valid JSON matching this schema:
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: model || "gemini-2.5-flash",
       contents: [
         {
           inlineData: {

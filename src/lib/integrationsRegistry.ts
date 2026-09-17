@@ -12,7 +12,7 @@ export interface IntegrationFieldDef {
 export interface IntegrationProviderDef {
   id: string;
   name: string;
-  category: "SHIPPING" | "ECOMMERCE" | "MESSAGING" | "PAYMENT" | "ACCOUNTING";
+  category: "SHIPPING" | "ECOMMERCE" | "MESSAGING" | "PAYMENT" | "ACCOUNTING" | "AI";
   tagline: string;
   description: string;
   logo: string;
@@ -249,5 +249,59 @@ export const INTEGRATION_REGISTRY: IntegrationProviderDef[] = [
       "Dynamic Payment Links"
     ],
     supportedEvents: ["payment.captured", "payment.failed", "payment_link.paid", "refund.processed"]
+  },
+
+  // ─── 🤖 AI & INTELLIGENCE ───
+  {
+    id: "gemini",
+    name: "Google Gemini AI",
+    category: "AI",
+    tagline: "Organization-Specific Multimodal Gemini Intelligence Engine",
+    description: "Connect your organization's private Gemini API key to power Call Voice Debriefs, Smart Audio Transcription, Purchase Bill OCR Scanning, and AI Sales Predictions.",
+    logo: "✨",
+    brandColor: "#6366f1",
+    badge: "AI Powered",
+    docsUrl: "https://aistudio.google.com/app/apikey",
+    fields: [
+      {
+        key: "apiKey",
+        label: "Gemini API Key",
+        type: "password",
+        placeholder: "AIzaSy...",
+        description: "Your organization's API key from Google AI Studio (aistudio.google.com)",
+        required: true
+      },
+      {
+        key: "model",
+        label: "Preferred Gemini Model",
+        type: "select",
+        options: [
+          { label: "gemini-2.5-flash (Fast, Multimodal & Recommended)", value: "gemini-2.5-flash" },
+          { label: "gemini-2.0-flash (Next-Gen Flash)", value: "gemini-2.0-flash" },
+          { label: "gemini-1.5-flash (Balanced)", value: "gemini-1.5-flash" },
+          { label: "gemini-1.5-pro (High Reasoning)", value: "gemini-1.5-pro" }
+        ],
+        defaultValue: "gemini-2.5-flash",
+        required: true
+      },
+      {
+        key: "autoTranscribeCalls",
+        label: "Auto-Transcribe & Summarize Sales Calls",
+        type: "checkbox",
+        defaultValue: true
+      },
+      {
+        key: "enableBillOcr",
+        label: "Enable AI Purchase Bill & Order Slip OCR",
+        type: "checkbox",
+        defaultValue: true
+      }
+    ],
+    features: [
+      "Voice Debrief Audio Transcription",
+      "Purchase Bill & Order Slip OCR",
+      "Sales Conversation Lead Scoring",
+      "AI Inventory & Reorder Predictions"
+    ]
   }
 ];

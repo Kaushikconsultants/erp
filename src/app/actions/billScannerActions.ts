@@ -1,11 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { GoogleGenAI } from "@google/genai";
+import { getTenantAIClient } from "@/lib/gemini";
 import { getTenantOrgId } from "@/lib/tenant";
-
-const apiKey = process.env.GEMINI_API_KEY || "00000000000000000000000000000000000000000000000000000";
-const ai = new GoogleGenAI({ apiKey });
 
 export interface ExtractedBillItem {
   matchedProductId?: string;
@@ -60,6 +57,14 @@ export async function scanPurchaseBillWithAI(
 ): Promise<{ success: boolean; data?: ExtractedBillData; error?: string; rawText?: string }> {
   try {
     const organizationId = await getTenantOrgId();
+    const { ai, isConfigured, model } = await getTenantAIClient(organizationId);
+
+    if (!isConfigured) {
+      return { 
+        success: false, 
+        error: "Gemini AI is not configured for your organization. Please enter your Gemini API key in 'Integrations & APIs Hub' to enable automatic purchase bill OCR scanning." 
+      };
+    }
 
     // Fetch existing vendors and products to perform intelligent fuzzy matching
     const [existingVendors, existingProducts] = await Promise.all([
@@ -181,7 +186,7 @@ Return ONLY valid JSON matching this schema:
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.6-flash",
+      model: model || "gemini-2.5-flash",
       contents: [
         {
           inlineData: {

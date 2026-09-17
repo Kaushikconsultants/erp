@@ -158,8 +158,17 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
       badge: "Mobile Push"
     },
     {
+      label: "Gemini AI & Intelligence",
+      desc: "Configure your organization's Gemini API key for Voice Debriefs, Bill OCR & Predictions",
+      icon: <Sparkles size={18} />,
+      iconBg: "#eef2ff",
+      iconColor: "#4f46e5",
+      href: "/integrations",
+      badge: "Per-Tenant AI"
+    },
+    {
       label: "Integrations & APIs Hub",
-      desc: "Connect Shiprocket, Shipmozo, Shopify, WooCommerce & webhooks",
+      desc: "Connect Shiprocket, Shipmozo, Shopify, WooCommerce, Gemini & webhooks",
       icon: <Layers size={18} />,
       iconBg: "#f5f3ff",
       iconColor: "#7c3aed",

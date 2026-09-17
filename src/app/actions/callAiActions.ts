@@ -1,23 +1,11 @@
 "use server";
 
-import { GoogleGenAI } from "@google/genai";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
+import { getTenantAIClient } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
-
-const DEFAULT_GEMINI_KEY = "00000000000000000000000000000000000000000000000000000";
-
-function getApiKey(): string {
-  const envKey = (process.env.GEMINI_API_KEY || "").replace(/^["']|["']$/g, "").trim();
-  if (envKey && envKey !== "dummy") return envKey;
-  return DEFAULT_GEMINI_KEY;
-}
-
-function getAIClient() {
-  return new GoogleGenAI({ apiKey: getApiKey() });
-}
 
 export interface CallVoiceDebriefAnalysis {
   transcript: string;
@@ -163,14 +151,16 @@ Output strict JSON only conforming to the schema.
       contents = `${systemPrompt}\n\nSpoken Debrief Voice Text:\n"${rawText}"`;
     }
 
-    const ai = getAIClient();
+    const orgId = await getTenantOrgId().catch(() => null);
+    const { ai, isConfigured, model: preferredModel } = await getTenantAIClient(orgId);
+
     const candidateModels = [
+      preferredModel,
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
       "gemini-flash-latest",
-      "gemini-3.5-flash",
-      "gemini-3.6-flash",
-      "gemini-3.7-flash",
-      "gemini-3.5-flash-lite",
-    ];
+    ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
     let responseText = "";
 
     for (const model of candidateModels) {

@@ -144,7 +144,8 @@ export default function IntegrationsHubClient({
     SHIPPING: integrations.filter(i => i.category === "SHIPPING").length,
     ECOMMERCE: integrations.filter(i => i.category === "ECOMMERCE").length,
     MESSAGING: integrations.filter(i => i.category === "MESSAGING").length,
-    PAYMENT: integrations.filter(i => i.category === "PAYMENT").length
+    PAYMENT: integrations.filter(i => i.category === "PAYMENT").length,
+    AI: integrations.filter(i => i.category === "AI").length
   };
 
   return (
@@ -276,6 +277,13 @@ export default function IntegrationsHubClient({
             onClick={() => setSelectedCategory("PAYMENT")}
           >
             <CreditCard size={15} /> Payments & Finance <span className="tab-badge">{categoryCounts.PAYMENT}</span>
+          </button>
+          <button
+            className={`category-tab-btn ${selectedCategory === "AI" ? "active" : ""}`}
+            onClick={() => setSelectedCategory("AI")}
+            style={{ color: selectedCategory === "AI" ? "#ffffff" : "#6366f1" }}
+          >
+            <Sparkles size={15} /> AI & Intelligence <span className="tab-badge" style={{ backgroundColor: selectedCategory === "AI" ? "rgba(255,255,255,0.25)" : "#e0e7ff", color: selectedCategory === "AI" ? "#fff" : "#4338ca" }}>{categoryCounts.AI}</span>
           </button>
         </div>
 

@@ -1,14 +1,11 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { GoogleGenAI } from "@google/genai";
 import { getTenantOrgId } from "@/lib/tenant";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getOrCreateEmployee } from "@/lib/employeeHelper";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
 
 export interface CustomerReorderInsight {
   customerId: string;

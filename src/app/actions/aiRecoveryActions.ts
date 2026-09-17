@@ -1,10 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { GoogleGenAI } from "@google/genai";
 import { getTenantOrgId } from "@/lib/tenant";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
 
 export interface DebtorRecoveryItem {
   customerId: string;

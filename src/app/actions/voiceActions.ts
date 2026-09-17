@@ -19,11 +19,10 @@ export interface VoiceAssistantResponse {
   actionText: string;
   route?: string;
   cardType?: 'BALANCE_SHEET' | 'CUSTOMER' | 'ORDER' | 'STOCK' | 'PAYROLL' | 'EXPENSE' | 'NAVIGATION' | 'GENERAL';
-  cardData?: any;
   success: boolean;
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
+import { getTenantAIClient } from "@/lib/gemini";
 
 /**
  * Universal Voice AI Command & Navigation Engine
@@ -656,7 +655,8 @@ export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssi
     // ========================================================================
     // 7. GEMINI LLM NATURAL LANGUAGE REASONING (For complex Hinglish / natural queries)
     // ========================================================================
-    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== "dummy") {
+    const { ai, isConfigured, model } = await getTenantAIClient();
+    if (isConfigured) {
       const prompt = `
         You are Antigravity ERP & CRM Universal Voice Router for an Indian B2B enterprise.
         User Command: "${raw}"
@@ -715,7 +715,7 @@ export async function executeVoiceCommand(spokenText: string): Promise<VoiceAssi
       `;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
+        model: model || "gemini-2.5-flash",
         contents: prompt,
         config: { responseMimeType: "application/json" }
       });

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenAI } from "@google/genai";
+import { getTenantAIClient } from "@/lib/gemini";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const CRM_OUTCOMES = [
   "Interested / Follow-up Needed",
@@ -13,26 +15,6 @@ const CRM_OUTCOMES = [
   "Wrong / Invalid Number",
   "Support / General Inquiry",
 ];
-
-const DEFAULT_GEMINI_KEY = "00000000000000000000000000000000000000000000000000000";
-
-function getApiKey(): string {
-  const envKey = (process.env.GEMINI_API_KEY || "").replace(/^["']|["']$/g, "").trim();
-  if (envKey && envKey !== "dummy") return envKey;
-  return DEFAULT_GEMINI_KEY;
-}
-
-const GEMINI_MODELS = [
-  "gemini-flash-latest",
-  "gemini-3.5-flash",
-  "gemini-3.6-flash",
-  "gemini-3.7-flash",
-  "gemini-3.5-flash-lite",
-];
-
-function getAIClient() {
-  return new GoogleGenAI({ apiKey: getApiKey() });
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -57,10 +39,14 @@ export async function POST(req: NextRequest) {
     const todayStr = today.toISOString().split("T")[0];
     const dayOfWeek = today.toLocaleDateString("en-US", { weekday: "long" });
 
-    const effectiveKey = getApiKey();
-    if (!effectiveKey) {
+    // Resolve tenant organization
+    const session = await getServerSession(authOptions).catch(() => null);
+    const orgId = (session?.user as any)?.organizationId || callContext?.organizationId || body.organizationId || null;
+    const { ai, isConfigured, model: preferredModel } = await getTenantAIClient(orgId);
+
+    if (!isConfigured) {
       const fallback = generateFallback(rawText, contactName, contactPhone, durationSec, today);
-      return NextResponse.json({ success: true, analysis: fallback });
+      return NextResponse.json({ success: true, analysis: fallback, note: "Offline heuristic applied (Configure Gemini in Integrations)" });
     }
 
     const systemPrompt = `
@@ -144,12 +130,19 @@ Output a single valid JSON object strictly matching this schema:
       contents = `${systemPrompt}\n\nSpoken Debrief Voice Text:\n"${rawText}"`;
     }
 
-    const ai = getAIClient();
     let responseText = "";
     let parseSuccess = false;
 
+    const candidateModels = [
+      preferredModel,
+      "gemini-2.5-flash",
+      "gemini-2.0-flash",
+      "gemini-1.5-flash",
+      "gemini-flash-latest"
+    ].filter((m, idx, arr) => m && arr.indexOf(m) === idx);
+
     // Multi-model resilience loop
-    for (const model of GEMINI_MODELS) {
+    for (const model of candidateModels) {
       try {
         const response = await ai.models.generateContent({
           model,
