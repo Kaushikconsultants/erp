@@ -30,8 +30,10 @@ export async function adjustInventory(skuOrArticle: string, quantity: number, ty
   }
 
   try {
+    const organizationId = await getTenantOrgId();
     const product = await prisma.product.findFirst({
       where: {
+        ...(organizationId ? { organizationId } : {}),
         OR: [
           { sku: skuOrArticle },
           { articleNumber: skuOrArticle }

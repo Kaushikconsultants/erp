@@ -29,13 +29,21 @@ export default async function SettingsPage() {
     redirect('/');
   }
 
-  const users = await prisma.user.findMany({
-    where: { organizationId: orgId },
-    include: { employee: true },
-    orderBy: { createdAt: 'desc' }
-  });
+  const [users, org] = await Promise.all([
+    prisma.user.findMany({
+      where: { organizationId: orgId },
+      include: { employee: true },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { maxUsers: true, subscriptionPlan: true, billingCycle: true }
+    })
+  ]);
 
+  const maxUsers = org?.maxUsers || 10;
   const totalUsers = users.length;
+  const isAtCapacity = totalUsers >= maxUsers;
   const activeUsers = users.filter((u) => u.isActive).length;
   const adminUsers = users.filter((u) => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN').length;
 
@@ -271,10 +279,46 @@ export default async function SettingsPage() {
               Grant section access, assign roles (Super Admin, Sales, HR, Accounts, Dispatch, Warehouse), and reset security credentials.
             </p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ fontSize: '0.75rem', backgroundColor: '#eff6ff', color: '#1d4ed8', padding: '5px 12px', borderRadius: '20px', fontWeight: 600, border: '1px solid #bfdbfe' }}>
-              {totalUsers} Members
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ 
+              fontSize: '0.78rem', 
+              backgroundColor: isAtCapacity ? '#fff1f2' : '#eff6ff', 
+              color: isAtCapacity ? '#e11d48' : '#1d4ed8', 
+              padding: '5px 12px', 
+              borderRadius: '20px', 
+              fontWeight: 700, 
+              border: isAtCapacity ? '1px solid #fecdd3' : '1px solid #bfdbfe',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>{totalUsers} / {maxUsers} Seats Used</span>
+              {isAtCapacity && (
+                <span style={{ fontSize: '0.65rem', backgroundColor: '#e11d48', color: '#ffffff', padding: '1px 5px', borderRadius: '4px' }}>
+                  FULL
+                </span>
+              )}
             </div>
+            {isAtCapacity && (
+              <a
+                href="/settings/billing"
+                style={{
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#4f46e5',
+                  backgroundColor: '#eef2ff',
+                  border: '1px solid #c7d2fe',
+                  padding: '5px 12px',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}
+              >
+                + Buy Extra Seats
+              </a>
+            )}
             <AddUserButton />
           </div>
         </div>

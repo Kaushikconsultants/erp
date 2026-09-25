@@ -258,7 +258,7 @@ export default function CustomerLedgerClient({ initialData, customerId }: Custom
             <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px', lineHeight: 1.4 }}>
               Attn: {customer.contactPerson}<br />
               {customer.billingAddress || customer.city || 'Rohtak'}<br />
-              Mobile: {customer.mobile} {customer.gstNumber ? `• GSTIN: ${customer.gstNumber}` : ''}
+              Mobile: {customer.mobile} {customer.gstNumber ? `• GSTIN: ${customer.gstNumber.toUpperCase()}` : ''}
             </div>
           </div>
 

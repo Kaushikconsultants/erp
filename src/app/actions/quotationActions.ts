@@ -273,6 +273,7 @@ export async function getNextPaymentNumber(): Promise<string> {
 
 export async function createQuotation(data: {
   customerId: string;
+  customerGst?: string;
   quotationNumber?: string;
   referenceNumber?: string;
   quoteDate?: string;
@@ -325,6 +326,16 @@ export async function createQuotation(data: {
 
     const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
     if (!customer) return { error: "Customer not found" };
+
+    // Auto-normalize and sync customer GSTIN to uppercase
+    const targetGst = data.customerGst ? data.customerGst.trim().toUpperCase() : (customer.gstNumber ? customer.gstNumber.toUpperCase() : null);
+    if (targetGst && customer.gstNumber !== targetGst) {
+      await prisma.customer.update({
+        where: { id: data.customerId },
+        data: { gstNumber: targetGst }
+      }).catch(() => {});
+      customer.gstNumber = targetGst;
+    }
 
     let resolvedSalespersonId: string = data.salespersonId || "";
 
@@ -544,6 +555,7 @@ export async function createQuotation(data: {
           totalWeight: finalTotalWeight,
           
           status: finalStatus,
+          acceptedDate: finalStatus === "Confirmed" ? new Date() : null,
           approvalStatus: "Approved",
           
           notes: data.notes || "Additional Details -",
@@ -664,7 +676,7 @@ export async function createQuotation(data: {
     try {
       const currentCustomer = await prisma.customer.findUnique({
         where: { id: data.customerId },
-        select: { leadStage: true, expectedValue: true }
+        select: { leadStage: true, expectedValue: true, assignedSalespersonId: true }
       });
       if (currentCustomer && currentCustomer.leadStage !== "Won" && currentCustomer.leadStage !== "Converted") {
         await prisma.customer.update({
@@ -673,7 +685,11 @@ export async function createQuotation(data: {
             leadStage: "Opportunity",
             status: "Opportunity",
             expectedValue: Math.max(currentCustomer.expectedValue || 0, totalValue),
-            ...(resolvedSalespersonId ? { assignedSalespersonId: resolvedSalespersonId } : {})
+            // ONLY assign salesperson if customer has NO existing assignment.
+            // Never overwrite a salesperson that was manually set by an admin.
+            ...(!currentCustomer.assignedSalespersonId && resolvedSalespersonId
+              ? { assignedSalespersonId: resolvedSalespersonId }
+              : {})
           }
         });
       }
@@ -696,6 +712,7 @@ export async function createQuotation(data: {
 
 export async function updateQuotationFull(id: string, data: {
   customerId: string;
+  customerGst?: string;
   quotationNumber?: string;
   referenceNumber?: string;
   quoteDate?: string;
@@ -748,6 +765,16 @@ export async function updateQuotationFull(id: string, data: {
 
     const customer = await prisma.customer.findUnique({ where: { id: data.customerId } });
     if (!customer) return { error: "Customer not found" };
+
+    // Auto-normalize and sync customer GSTIN to uppercase
+    const targetGst = data.customerGst ? data.customerGst.trim().toUpperCase() : (customer.gstNumber ? customer.gstNumber.toUpperCase() : null);
+    if (targetGst && customer.gstNumber !== targetGst) {
+      await prisma.customer.update({
+        where: { id: data.customerId },
+        data: { gstNumber: targetGst }
+      }).catch(() => {});
+      customer.gstNumber = targetGst;
+    }
 
     const companyRes = await getCompanySettings();
     const companyState = companyRes.settings?.state || "Haryana";
@@ -1018,7 +1045,7 @@ export async function updateQuotationFull(id: string, data: {
     try {
       const currentCustomer = await prisma.customer.findUnique({
         where: { id: data.customerId },
-        select: { leadStage: true, expectedValue: true }
+        select: { leadStage: true, expectedValue: true, assignedSalespersonId: true }
       });
       if (currentCustomer && currentCustomer.leadStage !== "Won" && currentCustomer.leadStage !== "Converted") {
         await prisma.customer.update({
@@ -1027,7 +1054,11 @@ export async function updateQuotationFull(id: string, data: {
             leadStage: "Opportunity",
             status: "Opportunity",
             expectedValue: Math.max(currentCustomer.expectedValue || 0, totalValue),
-            ...(resolvedSalespersonId ? { assignedSalespersonId: resolvedSalespersonId } : {})
+            // ONLY assign salesperson if customer has NO existing assignment.
+            // Never overwrite a salesperson that was manually set by an admin.
+            ...(!currentCustomer.assignedSalespersonId && resolvedSalespersonId
+              ? { assignedSalespersonId: resolvedSalespersonId }
+              : {})
           }
         });
       }
@@ -1055,7 +1086,13 @@ export async function getQuotations() {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
 
-    const organizationId = await getTenantOrgId();
+    let organizationId: string | null = null;
+    try {
+      organizationId = await getTenantOrgId();
+    } catch {
+      organizationId = (session.user as any)?.organizationId || null;
+    }
+
     const rawRole = (session.user as any).role || 'SALES';
     const normRole = String(rawRole).trim().toUpperCase();
     const userId = (session.user as any).id;
@@ -1090,37 +1127,38 @@ export async function getQuotations() {
 
     const quotations = await prisma.quotation.findMany({
       where: whereClause,
-      include: {
-        customer: true,
-        salesperson: { include: { user: true } },
-        items: { include: { product: true } },
-        activities: true
+      select: {
+        id: true,
+        quotationNumber: true,
+        date: true,
+        totalValue: true,
+        taxableAmount: true,
+        subtotal: true,
+        itemDiscount: true,
+        additionalDiscount: true,
+        receivedAmount: true,
+        status: true,
+        discountSlab: true,
+        createdAt: true,
+        customer: {
+          select: {
+            id: true,
+            businessName: true,
+            contactPerson: true,
+            mobile: true
+          }
+        },
+        salesperson: {
+          select: {
+            id: true,
+            user: {
+              select: { name: true }
+            }
+          }
+        }
       },
       orderBy: { createdAt: "desc" }
     });
-
-    // Auto-heal quotations marked as Converted that have no active invoice in the database
-    const convertedQuotes = quotations.filter(q => q.status === "Converted");
-    if (convertedQuotes.length > 0) {
-      for (const q of convertedQuotes) {
-        const invoiceExists = await prisma.invoice.findFirst({
-          where: {
-            OR: [
-              { notes: { contains: q.quotationNumber } },
-              { order: { notes: { contains: q.quotationNumber } } }
-            ]
-          }
-        });
-
-        if (!invoiceExists) {
-          await prisma.quotation.update({
-            where: { id: q.id },
-            data: { status: "Confirmed" }
-          }).catch(() => {});
-          q.status = "Confirmed";
-        }
-      }
-    }
 
     return { success: true, quotations };
   } catch (error) {
@@ -1142,26 +1180,6 @@ export async function getQuotationById(id: string) {
     });
 
     if (!quotation) return { error: "Quotation not found" };
-
-    // Auto-heal quotation marked as Converted that has no active invoice
-    if (quotation.status === "Converted") {
-      const invoiceExists = await prisma.invoice.findFirst({
-        where: {
-          OR: [
-            { notes: { contains: quotation.quotationNumber } },
-            { order: { notes: { contains: quotation.quotationNumber } } }
-          ]
-        }
-      });
-
-      if (!invoiceExists) {
-        await prisma.quotation.update({
-          where: { id: quotation.id },
-          data: { status: "Confirmed" }
-        }).catch(() => {});
-        quotation.status = "Confirmed";
-      }
-    }
 
     return { success: true, quotation };
   } catch (error) {
@@ -1227,10 +1245,30 @@ export async function convertQuotationToOrder(
 
     const quotation = await prisma.quotation.findUnique({
       where: { id: quotationId },
-      include: { items: true, customer: true }
+      include: { 
+        items: true, 
+        customer: true,
+        activities: {
+          where: { action: { in: ['Quotation Confirmed', 'Converted to Order'] } },
+          orderBy: { createdAt: 'desc' },
+          take: 2
+        }
+      }
     });
 
     if (!quotation) return { error: "Quotation not found" };
+
+    const getQuotationWonDate = (q: any): Date => {
+      if (q.acceptedDate) return new Date(q.acceptedDate);
+      const confirmAct = (q.activities || []).find((a: any) => a.action === 'Quotation Confirmed');
+      if (confirmAct?.createdAt) return new Date(confirmAct.createdAt);
+      const convertAct = (q.activities || []).find((a: any) => a.action === 'Converted to Order');
+      if (convertAct?.createdAt) return new Date(convertAct.createdAt);
+      if ((q.status === 'Confirmed' || q.status === 'Converted') && q.updatedAt) {
+        return new Date(q.updatedAt);
+      }
+      return q.date ? new Date(q.date) : (q.createdAt ? new Date(q.createdAt) : new Date());
+    };
 
     const orgId = quotation.organizationId || (session?.user as any)?.organizationId || (await getTenantOrgId());
 
@@ -1249,6 +1287,15 @@ export async function convertQuotationToOrder(
       });
 
       if (existingOrder) {
+        const quotationEffectiveDate = getQuotationWonDate(quotation);
+        if (quotationEffectiveDate && existingOrder.orderDate && Math.abs(existingOrder.orderDate.getTime() - quotationEffectiveDate.getTime()) > 60000) {
+          try {
+            await prisma.order.update({
+              where: { id: existingOrder.id },
+              data: { orderDate: quotationEffectiveDate }
+            });
+          } catch {}
+        }
         const existingInvoice = existingOrder.invoices?.[0] || await prisma.invoice.findFirst({
           where: { orderId: existingOrder.id }
         });
@@ -1394,40 +1441,48 @@ export async function convertQuotationToOrder(
           total: quotation.totalValue || 0
         }] : [];
 
-    // ── Guaranteed Unique Order Number ──
+    // ── Guaranteed Unique Numbers ──
     const orderNumber = await getNextOrderNumber(orgId);
+    const invoiceNumber = await getNextInvoiceNumber(orgId);
+    const paymentNumber = effectiveReceived > 0 ? await getNextPaymentNumber() : null;
+    const invoiceStatus = effectiveReceived >= quotation.totalValue ? 'Paid' : effectiveReceived > 0 ? 'Partially Paid' : 'Unpaid';
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        organizationId: orgId,
-        customerId: quotation.customerId,
-        salespersonId,
-        totalValue: quotation.totalValue,
-        subtotal: quotation.subtotal,
-        discount: overrideDiscount,
-        tax: quotation.taxTotal,
-        cgst: quotation.cgst,
-        sgst: quotation.sgst,
-        igst: quotation.igst,
-        isInterstate: quotation.isInterstate,
-        placeOfSupply: quotation.placeOfSupply || quotation.customer?.state || "Delhi",
-        paymentReceived: effectiveReceived,
-        outstandingAmount: Math.max(0, quotation.totalValue - effectiveReceived),
-        orderStatus: "Processing",
-        paymentStatus: overridePaymentStatus,
-        notes: `Converted from Quotation #${quotation.quotationNumber} [Method: ${paymentOption}, Received: ₹${effectiveReceived}]`,
-        ...(orderItemsData.length > 0 ? {
-          items: {
-            create: orderItemsData
-          }
-        } : {})
-      }
-    });
+    const quotationEffectiveDate = getQuotationWonDate(quotation);
 
-    // ── Update Quotation Status to Converted ──
-    try {
-      await prisma.quotation.update({
+    // ── Execute All Database Mutations Atomically in a Single Transaction ──
+    const { order, invoice } = await prisma.$transaction(async (tx) => {
+      // 1. Create Order
+      const createdOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          organizationId: orgId,
+          customerId: quotation.customerId,
+          salespersonId,
+          orderDate: quotationEffectiveDate,
+          totalValue: quotation.totalValue,
+          subtotal: quotation.subtotal,
+          discount: overrideDiscount,
+          tax: quotation.taxTotal,
+          cgst: quotation.cgst,
+          sgst: quotation.sgst,
+          igst: quotation.igst,
+          isInterstate: quotation.isInterstate,
+          placeOfSupply: quotation.placeOfSupply || quotation.customer?.state || "Delhi",
+          paymentReceived: effectiveReceived,
+          outstandingAmount: Math.max(0, quotation.totalValue - effectiveReceived),
+          orderStatus: "Processing",
+          paymentStatus: overridePaymentStatus,
+          notes: `Converted from Quotation #${quotation.quotationNumber} [Method: ${paymentOption}, Received: ₹${effectiveReceived}]`,
+          ...(orderItemsData.length > 0 ? {
+            items: {
+              create: orderItemsData
+            }
+          } : {})
+        }
+      });
+
+      // 2. Update Quotation Status to Converted
+      await tx.quotation.update({
         where: { id: quotationId },
         data: { 
           status: "Converted",
@@ -1443,24 +1498,16 @@ export async function convertQuotationToOrder(
           }
         }
       });
-    } catch (qErr) {
-      console.warn("Quotation activity update failed, falling back to simple status update:", qErr);
-      await prisma.quotation.update({
-        where: { id: quotationId },
-        data: { status: "Converted", receivedAmount: effectiveReceived }
-      }).catch(() => {});
-    }
 
-    // ── Deduct stock for line items and record transactions ──
-    for (const item of quotation.items || []) {
-      const q = Math.max(1, Math.round(Number(item.quantity) || 1));
-      if (q > 0 && item.productId && existingProductMap.has(item.productId)) {
-        try {
-          await prisma.product.update({
+      // 3. Deduct stock for line items and record inventory transactions
+      for (const item of quotation.items || []) {
+        const q = Math.max(1, Math.round(Number(item.quantity) || 1));
+        if (q > 0 && item.productId && existingProductMap.has(item.productId)) {
+          await tx.product.update({
             where: { id: item.productId },
             data: { stockQuantity: { decrement: q } }
           });
-          await prisma.inventoryTransaction.create({
+          await tx.inventoryTransaction.create({
             data: {
               productId: item.productId,
               quantity: q,
@@ -1469,46 +1516,38 @@ export async function convertQuotationToOrder(
               notes: `Quotation #${quotation.quotationNumber} converted to Sales Order ${orderNumber}`
             }
           });
-        } catch (err) {
-          console.warn(`Failed to deduct inventory for product ${item.productId}:`, err);
         }
       }
-    }
 
-    // ── Automatically generate guaranteed unique Tax Invoice for this order ──
-    const invoiceNumber = await getNextInvoiceNumber(orgId);
-    const invoiceStatus = effectiveReceived >= quotation.totalValue ? 'Paid' : effectiveReceived > 0 ? 'Partially Paid' : 'Unpaid';
+      // 4. Create Tax Invoice for this order
+      const createdInvoice = await tx.invoice.create({
+        data: {
+          invoiceNumber,
+          organizationId: orgId,
+          customerId: quotation.customerId,
+          orderId: createdOrder.id,
+          invoiceDate: quotationEffectiveDate,
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          subtotal: quotation.subtotal,
+          taxAmount: quotation.taxTotal,
+          discountAmount: overrideDiscount,
+          totalAmount: quotation.totalValue,
+          amountPaid: effectiveReceived,
+          amountDue: Math.max(0, quotation.totalValue - effectiveReceived),
+          status: invoiceStatus,
+          paymentTerms: quotation.paymentTerms || 'Net 30',
+          notes: `Auto-generated on converting Quotation #${quotation.quotationNumber}`
+        }
+      });
 
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        organizationId: orgId,
-        customerId: quotation.customerId,
-        orderId: order.id,
-        invoiceDate: new Date(),
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        subtotal: quotation.subtotal,
-        taxAmount: quotation.taxTotal,
-        discountAmount: overrideDiscount,
-        totalAmount: quotation.totalValue,
-        amountPaid: effectiveReceived,
-        amountDue: Math.max(0, quotation.totalValue - effectiveReceived),
-        status: invoiceStatus,
-        paymentTerms: quotation.paymentTerms || 'Net 30',
-        notes: `Auto-generated on converting Quotation #${quotation.quotationNumber}`
-      }
-    });
-
-    // ── If advance payment was received, record Payment transaction ──
-    if (effectiveReceived > 0) {
-      try {
-        const paymentNumber = await getNextPaymentNumber();
-        await prisma.payment.create({
+      // 5. If advance payment was received, record Payment transaction
+      if (effectiveReceived > 0 && paymentNumber) {
+        await tx.payment.create({
           data: {
             paymentNumber,
-            invoiceId: invoice.id,
+            invoiceId: createdInvoice.id,
             customerId: quotation.customerId,
-            orderId: order.id,
+            orderId: createdOrder.id,
             amount: effectiveReceived,
             paymentDate: new Date(),
             paymentMode: confirmationData?.paymentMode || (paymentOption === 'TOKEN' ? 'Token Advance' : 'Bank Transfer'),
@@ -1517,14 +1556,10 @@ export async function convertQuotationToOrder(
             notes: `Advance payment upon converting Quotation #${quotation.quotationNumber}`
           }
         });
-      } catch (payErr) {
-        console.warn("Failed to record advance payment:", payErr);
       }
-    }
 
-    // ── Mark customer as WON in the Sales Pipeline on conversion ──
-    try {
-      await prisma.customer.update({
+      // 6. Mark customer as WON in the Sales Pipeline on conversion
+      await tx.customer.update({
         where: { id: quotation.customerId },
         data: {
           leadStage: "Won",
@@ -1532,9 +1567,9 @@ export async function convertQuotationToOrder(
           totalPurchaseValue: { increment: quotation.totalValue }
         }
       });
-    } catch (cErr) {
-      console.warn("Could not update customer lead stage on convert:", cErr);
-    }
+
+      return { order: createdOrder, invoice: createdInvoice };
+    });
 
     try {
       revalidatePath("/quotations");
@@ -1574,7 +1609,7 @@ export async function deleteQuotation(id: string) {
     const organizationId = await getTenantOrgId();
     const quotation = await prisma.quotation.findUnique({ where: { id } });
     if (!quotation) return { error: "Quotation not found" };
-    if (quotation.organizationId && organizationId && quotation.organizationId !== organizationId) {
+    if (quotation.organizationId !== organizationId) {
       return { error: "Unauthorized access to quotation" };
     }
 
@@ -1647,10 +1682,12 @@ export async function confirmQuotation(
       effectiveReceived = 0;
     }
 
+    const nowConfirmed = new Date();
     await prisma.quotation.update({
       where: { id: quotationId },
       data: {
         status: "Confirmed",
+        acceptedDate: nowConfirmed,
         receivedAmount: effectiveReceived,
         discountSlab: discountSlab,
         activities: {

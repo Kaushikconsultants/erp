@@ -21,15 +21,15 @@ export async function calculateLeadScore(customerId: string) {
     const { ai, isConfigured, model } = await getTenantAIClient(customer.organizationId);
 
     if (!isConfigured) {
-       // Fallback logic if no API key
-       const score = customer.totalOrders > 0 ? 80 : 40;
-       const temp = score >= 70 ? "HOT" : score >= 40 ? "WARM" : "COLD";
-       await prisma.customer.update({
-         where: { id: customerId },
-         data: { leadScore: score, temperature: temp }
-       });
-       revalidatePath(`/customers/${customerId}`);
-       return { success: true, score, temperature: temp, message: "Rule-based score applied (No Gemini API Key)" };
+      // Fallback logic if no API key
+      const score = customer.totalOrders > 0 ? 80 : 40;
+      const temp = score >= 70 ? "HOT" : score >= 40 ? "WARM" : "COLD";
+      await prisma.customer.update({
+        where: { id: customerId },
+        data: { leadScore: score, temperature: temp }
+      });
+      revalidatePath(`/customers/${customerId}`);
+      return { success: true, score, temperature: temp, message: "Rule-based score applied (No Gemini API Key)" };
     }
 
     const customerContext = `
@@ -61,19 +61,31 @@ export async function calculateLeadScore(customerId: string) {
       }
     });
 
-    const text = response.text || "{}";
-    const parsed = JSON.parse(text);
-    
+    let score = 50;
+    let temp: "HOT" | "WARM" | "COLD" = "WARM";
+    try {
+      const parsed = JSON.parse(response.text || "{}");
+      if (parsed.score !== undefined) {
+        score = Math.max(0, Math.min(100, Math.round(Number(parsed.score))));
+      }
+      if (parsed.temperature) {
+        temp = parsed.temperature;
+      } else {
+        temp = score >= 70 ? "HOT" : score >= 40 ? "WARM" : "COLD";
+      }
+    } catch {
+      score = customer.totalOrders > 0 ? 80 : 40;
+      temp = score >= 70 ? "HOT" : score >= 40 ? "WARM" : "COLD";
+    }
+
     await prisma.customer.update({
       where: { id: customerId },
-      data: {
-        leadScore: parsed.score,
-        temperature: parsed.temperature,
-      }
+      data: { leadScore: score, temperature: temp }
     });
 
     revalidatePath(`/customers/${customerId}`);
-    return { success: true, score: parsed.score, temperature: parsed.temperature };
+    return { success: true, score, temperature: temp, provider: "gemini" };
+
   } catch (error) {
     console.error("Failed to calculate lead score:", error);
     return { success: false, error: "Failed to calculate lead score" };
@@ -99,20 +111,20 @@ export async function generateSmartFollowUp(customerId: string) {
     if (!isConfigured) {
       return { 
         success: true, 
-        email: "Subject: Checking in\n\nHi there,\n\nJust wanted to follow up. Please let me know if you need anything.\n\nBest,\nSales Team",
-        script: "Hi, this is calling from our sales team. Am I speaking with the decision maker?"
+        email: `Subject: Checking in\n\nHi ${customer.contactPerson || customer.businessName},\n\nJust wanted to follow up regarding your recent inquiries. Please let us know if you need anything.\n\nBest,\nSales Team`,
+        script: `Hi ${customer.contactPerson || customer.businessName}, this is calling from our sales team. Am I speaking with the decision maker?`
       };
     }
 
     const customerContext = `
-      Name: ${customer.contactPerson} (${customer.businessName})
+      Name: ${customer.contactPerson || customer.businessName} (${customer.businessName})
       Category: ${customer.businessCategory || "Retail"}
       Recent Call Notes:
       ${customer.calls.map(c => `- Date: ${c.createdAt.toDateString()} | Outcome: ${c.outcome} | Notes: ${c.notes}`).join("\n")}
     `;
 
     const prompt = `
-      You are an expert B2B Sales Assistant for a wholesale clothing brand.
+      You are an expert B2B Sales Assistant for a wholesale brand.
       Based on the recent interactions below, generate two things:
       1. A short, professional follow-up email draft.
       2. A brief, punchy telecalling script for the sales rep to use on the next phone call.
@@ -133,10 +145,24 @@ export async function generateSmartFollowUp(customerId: string) {
       }
     });
 
-    const text = response.text || "{}";
-    const parsed = JSON.parse(text);
+    try {
+      const parsed = JSON.parse(response.text || "{}");
+      if (parsed.email) {
+        return {
+          success: true,
+          email: parsed.email,
+          script: parsed.script || "",
+          provider: "gemini"
+        };
+      }
+    } catch {}
 
-    return { success: true, email: parsed.email, script: parsed.script };
+    // Fallback if parsing fails
+    return {
+      success: true,
+      email: `Subject: Following up with ${customer.businessName}\n\nHi ${customer.contactPerson || customer.businessName},\n\nJust checking in following our recent interaction regarding your stock requirements. Please let us know if we can share our updated wholesale catalog.\n\nBest regards,\nSales Team`,
+      script: `Hi ${customer.contactPerson || customer.businessName}, this is calling from our sales team. Am I speaking with the purchase manager?`
+    };
   } catch (error) {
     console.error("Failed to generate follow-up:", error);
     return { success: false, error: "Failed to generate follow-up" };

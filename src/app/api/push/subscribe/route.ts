@@ -34,9 +34,15 @@ export async function POST(req: NextRequest) {
 // DELETE — Remove push subscription on logout or unsubscribe
 export async function DELETE(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { endpoint } = await req.json();
+    const userId = (session.user as any).id;
     if (endpoint) {
-      await prisma.whatsAppPushSubscription.deleteMany({ where: { endpoint } });
+      await prisma.whatsAppPushSubscription.deleteMany({ where: { endpoint, userId } });
     }
     return NextResponse.json({ success: true });
   } catch (e: any) {

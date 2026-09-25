@@ -12,6 +12,9 @@ import PushNotificationManager from '@/components/notifications/PushNotification
 import AppSplashScreen from '../ui/AppSplashScreen';
 import GlobalDialerProvider from '@/components/providers/GlobalDialerProvider';
 import OnboardingBanner from '@/components/onboarding/OnboardingBanner';
+import AskERPAssistantModal from '@/components/ai/AskERPAssistantModal';
+import FloatingVoiceWidget from '@/components/voice/FloatingVoiceWidget';
+import TenantLifecycleBanner from './TenantLifecycleBanner';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -21,6 +24,12 @@ interface DashboardShellProps {
   userRole?: string;
   isPlatformOwner?: boolean;
   allowedSections?: string[] | null;
+  subscriptionPlan?: string;
+  subscriptionStatus?: string;
+  isHardLocked?: boolean;
+  isSoftLocked?: boolean;
+  trialDaysRemaining?: number | null;
+  enabledModules?: any;
 }
 
 export default function DashboardShell({ 
@@ -30,7 +39,13 @@ export default function DashboardShell({
   showProcurement = false, 
   userRole, 
   isPlatformOwner = false,
-  allowedSections = null
+  allowedSections = null,
+  subscriptionPlan = 'GROWTH',
+  subscriptionStatus = 'ACTIVE',
+  isHardLocked = false,
+  isSoftLocked = false,
+  trialDaysRemaining = null,
+  enabledModules = null
 }: DashboardShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showExitToast, setShowExitToast] = useState(false);
@@ -115,13 +130,26 @@ export default function DashboardShell({
             userRole={userRole}
             isPlatformOwner={isPlatformOwner}
             allowedSections={allowedSections}
+            enabledModules={enabledModules}
             onClose={() => setIsSidebarOpen(false)}
           />
 
           <div className="main-wrapper">
+            <TenantLifecycleBanner
+              subscriptionPlan={subscriptionPlan}
+              subscriptionStatus={subscriptionStatus}
+              isHardLocked={isHardLocked}
+              isSoftLocked={isSoftLocked}
+              trialDaysRemaining={trialDaysRemaining}
+              isPlatformOwner={isPlatformOwner}
+            />
             <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
             <main className="main-content">
-              <OnboardingBanner />
+              <OnboardingBanner
+                showSettings={showSettings}
+                userRole={userRole}
+                isPlatformOwner={isPlatformOwner}
+              />
               {children}
             </main>
           </div>
@@ -132,6 +160,10 @@ export default function DashboardShell({
             allowedSections={allowedSections}
             onMenuClick={() => setIsSidebarOpen(true)}
           />
+
+          {/* Global Voice AI ERP Executive Copilot Modal & Floating Widget */}
+          <AskERPAssistantModal />
+          <FloatingVoiceWidget />
 
           {/* Real-time Call Reminders & Notifications Engine */}
           <CallReminderNotifier />

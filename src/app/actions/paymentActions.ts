@@ -211,7 +211,7 @@ export async function recordCustomerPayment(data: {
         include: { order: true }
       });
       if (!invoice) return { error: "Invoice not found" };
-      if (invoice.organizationId && organizationId && invoice.organizationId !== organizationId) {
+      if (invoice.organizationId !== organizationId) {
         return { error: "Unauthorized access to invoice" };
       }
       if (invoice.status === 'Paid') return { error: "Invoice is already fully paid" };
@@ -515,6 +515,21 @@ export async function cancelPayment(paymentId: string, reason: string) {
 export async function deletePayment(paymentId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
+
+  const role = (session.user as any).role;
+  let canManage = role === "ADMIN" || role === "SUPER_ADMIN";
+  if (!canManage && role) {
+    const roleDef = await prisma.role.findUnique({ where: { name: role } });
+    if (roleDef) {
+      try {
+        const perms = JSON.parse(roleDef.permissions) as string[];
+        if (perms.includes("Manage Payments")) canManage = true;
+      } catch {}
+    }
+  }
+  if (!canManage) {
+    return { error: "Permission denied. Only administrators or authorized managers can delete payment records." };
+  }
 
   try {
     const organizationId = await getTenantOrgId();

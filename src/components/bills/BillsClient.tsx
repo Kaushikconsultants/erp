@@ -34,6 +34,7 @@ import { createBill, updateBill, updateBillStatus, deleteBill } from '@/app/acti
 import { recordVendorPayment } from '@/app/actions/vendorPaymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
 import PurchaseBillScannerModal from '@/components/bills/PurchaseBillScannerModal';
+import TablePagination, { paginate } from '@/components/ui/TablePagination';
 import './bills.css';
 
 interface VendorOption {
@@ -131,6 +132,11 @@ export default function BillsClient({
   const [datePreset, setDatePreset] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Pagination State: default 25 per page (options: 25, 50, 100, 200)
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Create / Edit Bill Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -543,6 +549,15 @@ export default function BillsClient({
       return true;
     });
   }, [bills, search, selectedVendor, selectedStatus, startDate, endDate]);
+
+  // Reset to first page when search, filters, or pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedVendor, selectedStatus, startDate, endDate, pageSize]);
+
+  const paginatedBills = useMemo(() => {
+    return paginate(filteredBills, currentPage, pageSize);
+  }, [filteredBills, currentPage, pageSize]);
 
   // Handle Date presets
   const handleDatePreset = (preset: string) => {
@@ -966,7 +981,7 @@ export default function BillsClient({
       </div>
 
       {/* ─── Desktop Table (Visible > 768px) ─── */}
-      <div className="bills-desktop-table">
+      <div className="bills-desktop-table" ref={tableContainerRef}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Vendor Bills Ledger</h3>
@@ -991,7 +1006,7 @@ export default function BillsClient({
               </tr>
             </thead>
             <tbody>
-              {filteredBills.map(bill => (
+              {paginatedBills.map(bill => (
                 <tr key={bill.id}>
                   <td style={{ fontWeight: 600, color: '#2563eb' }}>
                     {bill.billNumber}
@@ -1125,6 +1140,17 @@ export default function BillsClient({
             </tbody>
           </table>
         </div>
+
+        {/* ─── DESKTOP PAGINATION FOOTER ─── */}
+        <TablePagination
+          totalCount={filteredBills.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="bills"
+          containerRef={tableContainerRef}
+        />
       </div>
 
       {/* ─── Mobile Feed (Visible <= 768px) ─── */}
@@ -1136,7 +1162,7 @@ export default function BillsClient({
             <p style={{ margin: '4px 0 0', fontSize: '0.76rem', color: '#94a3b8' }}>Create a vendor purchase bill or adjust filters.</p>
           </div>
         ) : (
-          filteredBills.map(bill => {
+          paginatedBills.map(bill => {
             const statusBg = bill.status === 'Paid' ? '#ecfdf5' : bill.status === 'Partially Paid' ? '#eff6ff' : bill.status === 'Open' ? '#fff1f2' : '#f1f5f9';
             const statusColor = bill.status === 'Paid' ? '#059669' : bill.status === 'Partially Paid' ? '#2563eb' : bill.status === 'Open' ? '#e11d48' : '#64748b';
             const statusBorder = bill.status === 'Paid' ? '#a7f3d0' : bill.status === 'Partially Paid' ? '#bfdbfe' : bill.status === 'Open' ? '#fecdd3' : '#cbd5e1';
@@ -1276,6 +1302,19 @@ export default function BillsClient({
             );
           })
         )}
+      </div>
+
+      {/* ─── MOBILE PAGINATION FOOTER ─── */}
+      <div className="bills-mobile-pagination" style={{ display: 'none', marginTop: '12px' }}>
+        <TablePagination
+          totalCount={filteredBills.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="bills"
+          style={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
+        />
       </div>
 
       {/* CREATE VENDOR BILL POPUP MODAL */}

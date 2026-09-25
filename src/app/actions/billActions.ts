@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { canUserAccessSection } from "@/lib/authPermissions";
 import { getTenantOrgId } from "@/lib/tenant";
 import { syncSystemLedgers } from "@/app/actions/accountingActions";
+import { checkPeriodLock } from "@/app/actions/periodLockActions";
 
 async function canManagePurchases() {
   const session = await getServerSession(authOptions);
@@ -104,6 +105,9 @@ export async function createBill(data: {
   notes?: string;
   discountAmount?: number;
   allowDuplicate?: boolean;
+  tdsSection?: string;
+  tdsRate?: number;
+  tdsAmount?: number;
   items: {
     productId?: string;
     description: string;
@@ -121,6 +125,9 @@ export async function createBill(data: {
   if (!data.vendorId || !data.items?.length) {
     return { error: "Vendor and at least one line item are required" };
   }
+
+  const lockCheck = await checkPeriodLock(data.billDate || new Date());
+  if (lockCheck.isLocked) return { error: lockCheck.error };
 
   try {
     const session = await getServerSession(authOptions);
@@ -184,8 +191,9 @@ export async function createBill(data: {
     });
 
     const discountAmount = data.discountAmount || 0;
+    const tdsAmount = Number(data.tdsAmount) || 0;
     const totalAmount = Math.max(0, subtotal + taxAmount - discountAmount);
-    const amountDue = totalAmount;
+    const amountDue = Math.max(0, totalAmount - tdsAmount);
 
     const bill = await prisma.$transaction(async (tx) => {
       const newBill = await tx.bill.create({
@@ -201,6 +209,9 @@ export async function createBill(data: {
           subtotal,
           taxAmount,
           discountAmount,
+          tdsSection: data.tdsSection || null,
+          tdsRate: Number(data.tdsRate) || 0,
+          tdsAmount,
           totalAmount,
           amountPaid: 0,
           amountDue,
@@ -436,6 +447,9 @@ export async function deleteBill(id: string) {
     });
 
     if (!bill) return { error: "Bill not found." };
+
+    const lockCheck = await checkPeriodLock(bill.billDate);
+    if (lockCheck.isLocked) return { error: lockCheck.error };
 
     await prisma.$transaction(async (tx) => {
       // 1. Reverse stock quantities if products were linked

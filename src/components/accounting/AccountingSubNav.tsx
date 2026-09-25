@@ -9,7 +9,8 @@ import {
   FileText,
   Clock,
   Landmark,
-  LayoutDashboard
+  LayoutDashboard,
+  Lock
 } from "lucide-react";
 
 export default function AccountingSubNav() {
@@ -47,6 +48,12 @@ export default function AccountingSubNav() {
       href: "/accounting/bank-reconciliation",
       label: "Bank Reconciliation (BRS)",
       icon: Landmark
+    },
+    {
+      href: "/accounting/period-lock",
+      label: "Period Locking",
+      badge: "CLOSE",
+      icon: Lock
     }
   ];
 

@@ -27,19 +27,42 @@ export interface RegisterBusinessInput {
   billingCycle: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
 }
 
-import { PLAN_PRICING } from "@/lib/planConfig";
+import { PLAN_PRICING, getAddonSeatPrice } from "@/lib/planConfig";
+import { generateUniqueEmployeeId } from "@/lib/employeeHelper";
 
 /**
  * Register a new Business Organization and provision its SaaS workspace
  */
 export async function registerNewBusiness(input: RegisterBusinessInput) {
   try {
+    const adminEmail = input.adminEmail.toLowerCase().trim();
+
     const existingUser = await prisma.user.findUnique({
-      where: { email: input.adminEmail.toLowerCase().trim() }
+      where: { email: adminEmail },
+      include: { employee: true, organization: true }
     });
 
     if (existingUser) {
-      return { success: false, error: "An account with this email address already exists. Please sign in instead." };
+      if (existingUser.employee) {
+        return { success: false, error: "An account with this email address already exists. Please sign in instead." };
+      }
+
+      // Prior attempt failed mid-way before employee profile was created:
+      // Clean up orphaned records so re-registration succeeds cleanly
+      try {
+        if (existingUser.organizationId) {
+          const orgId = existingUser.organizationId;
+          await prisma.companySettings.deleteMany({ where: { organizationId: orgId } }).catch(() => {});
+          await prisma.gstSetting.deleteMany({ where: { organizationId: orgId } }).catch(() => {});
+          await prisma.subscriptionHistory.deleteMany({ where: { organizationId: orgId } }).catch(() => {});
+          await prisma.user.deleteMany({ where: { organizationId: orgId } }).catch(() => {});
+          await prisma.organization.delete({ where: { id: orgId } }).catch(() => {});
+        } else {
+          await prisma.user.delete({ where: { id: existingUser.id } }).catch(() => {});
+        }
+      } catch (cleanupErr) {
+        console.warn("Cleaned up orphaned prior registration:", cleanupErr);
+      }
     }
 
     // Generate unique slug
@@ -65,119 +88,139 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
     const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
     const periodEnd = trialEndsAt;
 
-    // 1. Create Organization
-    const organization = await prisma.organization.create({
-      data: {
-        name: input.companyName.trim(),
-        slug,
-        tradeName: input.tradeName || input.companyName,
-        industry: input.industry || "Apparel & Garments",
-        businessType: input.businessType || "Private Limited",
-        gstin: input.gstin ? input.gstin.toUpperCase().trim() : null,
-        phone: input.adminMobile.trim(),
-        email: input.adminEmail.toLowerCase().trim(),
-        city: input.city || "Rohtak",
-        state: input.state || "Haryana",
-        pincode: input.pincode || "124001",
-        country: "India",
-        subscriptionPlan: input.plan,
-        billingCycle: input.billingCycle,
-        subscriptionStatus: "TRIAL",
-        trialEndsAt,
-        currentPeriodStart: new Date(),
-        currentPeriodEnd: periodEnd,
-        maxUsers: planConfig.maxUsers,
-        maxBranches: planConfig.maxBranches,
-        maxWarehouses: planConfig.maxWarehouses,
-        monthlyOrderLimit: planConfig.monthlyOrderLimit,
-        whatsAppCreditBalance: planConfig.whatsAppCredits,
-        isGstEnabled: true,
-        isWhatsAppEnabled: true,
-        isEWayBillEnabled: input.plan === 'ENTERPRISE',
-        isHrmsEnabled: true,
-      }
-    });
-
-    // 2. Create Super Admin User
-    const adminUser = await prisma.user.create({
-      data: {
-        organizationId: organization.id,
-        name: input.adminName.trim(),
-        email: input.adminEmail.toLowerCase().trim(),
-        password: hashedPassword,
-        role: "SUPER_ADMIN",
-        canManageSettings: true,
-        isActive: true,
-      }
-    });
-
-    // 2b. Create Employee profile for Super Admin User
-    await prisma.employee.create({
-      data: {
-        userId: adminUser.id,
-        employeeId: "EMP-001",
-        department: "Executive",
-        designation: "Managing Director",
-        employmentStatus: "Active",
-        joiningDate: new Date(),
-        organizationId: organization.id,
-      }
-    });
-
-    // 3. Create Default CompanySettings for this organization
-    await prisma.companySettings.create({
-      data: {
-        id: `settings-${organization.id}`,
-        organizationId: organization.id,
-        companyName: organization.name,
-        address: `${organization.city}, ${organization.state}`,
-        city: organization.city || "Rohtak",
-        state: organization.state || "Haryana",
-        country: "India",
-        gstin: organization.gstin,
-        mobile: organization.phone,
-        email: organization.email,
-        themeColor: "#4f46e5",
-      }
-    });
-
-    // 4. Create Default GST Settings
-    await prisma.gstSetting.create({
-      data: {
-        id: `gst-${organization.id}`,
-        organizationId: organization.id,
-        gstin: organization.gstin,
-        legalName: organization.name,
-        tradeName: organization.tradeName || organization.name,
-        registeredState: organization.state || "Haryana",
-      }
-    });
-
-    // 5. Create initial Subscription History record
     let planAmount = planConfig.monthlyPrice;
     if (input.billingCycle === 'QUARTERLY') planAmount = planConfig.quarterlyPrice;
     if (input.billingCycle === 'ANNUALLY') planAmount = planConfig.annualPrice;
 
-    await prisma.subscriptionHistory.create({
-      data: {
-        organizationId: organization.id,
-        plan: input.plan,
-        billingCycle: input.billingCycle,
-        amount: planAmount,
-        taxAmount: Math.round(planAmount * 0.18),
-        totalAmount: Math.round(planAmount * 1.18),
-        status: "TRIAL_ACTIVE",
-        paymentMethod: "FREE_TRIAL_14_DAYS",
-        startDate: new Date(),
-        endDate: trialEndsAt,
-      }
+    // Execute all registration steps within a single transaction for atomicity
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Create Organization
+      const organization = await tx.organization.create({
+        data: {
+          name: input.companyName.trim(),
+          slug,
+          tradeName: input.tradeName || input.companyName,
+          industry: input.industry || "Apparel & Garments",
+          businessType: input.businessType || "Private Limited",
+          gstin: input.gstin ? input.gstin.toUpperCase().trim() : null,
+          phone: input.adminMobile.trim(),
+          email: adminEmail,
+          city: input.city || "Rohtak",
+          state: input.state || "Haryana",
+          pincode: input.pincode || "124001",
+          country: "India",
+          subscriptionPlan: input.plan,
+          billingCycle: input.billingCycle,
+          subscriptionStatus: "TRIAL",
+          trialEndsAt,
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: periodEnd,
+          maxUsers: planConfig.maxUsers,
+          maxBranches: planConfig.maxBranches,
+          maxWarehouses: planConfig.maxWarehouses,
+          monthlyOrderLimit: planConfig.monthlyOrderLimit,
+          whatsAppCreditBalance: input.billingCycle === 'ANNUALLY'
+            ? planConfig.whatsAppCredits * 12
+            : input.billingCycle === 'QUARTERLY'
+              ? planConfig.whatsAppCredits * 3
+              : planConfig.whatsAppCredits,
+          isGstEnabled: input.plan === 'GROWTH' || input.plan === 'ENTERPRISE',
+          isWhatsAppEnabled: true,
+          isEWayBillEnabled: input.plan === 'GROWTH' || input.plan === 'ENTERPRISE',
+          isHrmsEnabled: input.plan === 'ENTERPRISE',
+          isProductionEnabled: input.plan === 'ENTERPRISE',
+          isAiScannerEnabled: input.plan === 'ENTERPRISE',
+          isTeleCrmEnabled: true,
+          isInventoryEnabled: input.plan === 'GROWTH' || input.plan === 'ENTERPRISE',
+          isAccountingEnabled: input.plan === 'GROWTH' || input.plan === 'ENTERPRISE',
+          isQuotationsEnabled: true,
+        }
+      });
+
+      // 2. Create Super Admin User
+      const adminUser = await tx.user.create({
+        data: {
+          organizationId: organization.id,
+          name: input.adminName.trim(),
+          email: adminEmail,
+          password: hashedPassword,
+          role: "SUPER_ADMIN",
+          canManageSettings: true,
+          isActive: true,
+        }
+      });
+
+      // 2b. Generate guaranteed unique employeeId for Super Admin
+      const uniqueEmpId = await generateUniqueEmployeeId(tx, organization.slug || organization.name);
+
+      await tx.employee.create({
+        data: {
+          userId: adminUser.id,
+          employeeId: uniqueEmpId,
+          department: "Executive",
+          designation: "Managing Director",
+          employmentStatus: "Active",
+          joiningDate: new Date(),
+          organizationId: organization.id,
+        }
+      });
+
+      // 3. Create Default CompanySettings for this organization
+      await tx.companySettings.create({
+        data: {
+          id: `settings-${organization.id}`,
+          organizationId: organization.id,
+          companyName: organization.name,
+          address: `${organization.city}, ${organization.state}`,
+          city: organization.city || "Rohtak",
+          state: organization.state || "Haryana",
+          country: "India",
+          gstin: organization.gstin,
+          mobile: organization.phone,
+          email: organization.email,
+          themeColor: "#4f46e5",
+        }
+      });
+
+      // 4. Create Default GST Settings
+      await tx.gstSetting.create({
+        data: {
+          id: `gst-${organization.id}`,
+          organizationId: organization.id,
+          gstin: organization.gstin,
+          legalName: organization.name,
+          tradeName: organization.tradeName || organization.name,
+          registeredState: organization.state || "Haryana",
+        }
+      });
+
+      // 5. Create initial Subscription History record
+      await tx.subscriptionHistory.create({
+        data: {
+          organizationId: organization.id,
+          plan: input.plan,
+          billingCycle: input.billingCycle,
+          amount: planAmount,
+          taxAmount: Math.round(planAmount * 0.18),
+          totalAmount: Math.round(planAmount * 1.18),
+          status: "TRIAL_ACTIVE",
+          paymentMethod: "FREE_TRIAL_14_DAYS",
+          startDate: new Date(),
+          endDate: trialEndsAt,
+        }
+      });
+
+      return {
+        organization,
+        adminUser,
+      };
     });
 
     return {
       success: true,
-      message: `Welcome to the platform! Your 14-day free trial for ${organization.name} is now active.`,
-      organizationSlug: organization.slug,
-      adminEmail: adminUser.email,
+      message: `Welcome to the platform! Your 14-day free trial for ${result.organization.name} is now active.`,
+      organizationSlug: result.organization.slug,
+      adminEmail: result.adminUser.email,
     };
   } catch (error: any) {
     console.error("Error registering business:", error);
@@ -310,7 +353,22 @@ export async function changeSubscriptionPlan(newPlan: 'STARTER' | 'GROWTH' | 'EN
         maxBranches: planConfig.maxBranches,
         maxWarehouses: planConfig.maxWarehouses,
         monthlyOrderLimit: planConfig.monthlyOrderLimit,
-        whatsAppCreditBalance: { increment: planConfig.whatsAppCredits },
+        whatsAppCreditBalance: {
+          increment: billingCycle === 'ANNUALLY'
+            ? planConfig.whatsAppCredits * 12
+            : billingCycle === 'QUARTERLY'
+              ? planConfig.whatsAppCredits * 3
+              : planConfig.whatsAppCredits
+        },
+        isGstEnabled: newPlan === 'GROWTH' || newPlan === 'ENTERPRISE',
+        isEWayBillEnabled: newPlan === 'GROWTH' || newPlan === 'ENTERPRISE',
+        isHrmsEnabled: newPlan === 'ENTERPRISE',
+        isProductionEnabled: newPlan === 'ENTERPRISE',
+        isAiScannerEnabled: newPlan === 'ENTERPRISE',
+        isTeleCrmEnabled: true,
+        isInventoryEnabled: newPlan === 'GROWTH' || newPlan === 'ENTERPRISE',
+        isAccountingEnabled: newPlan === 'GROWTH' || newPlan === 'ENTERPRISE',
+        isQuotationsEnabled: true,
       }
     });
 
@@ -425,6 +483,13 @@ export async function getPlatformAdminOverview() {
         isWhatsAppEnabled: org.isWhatsAppEnabled,
         isEWayBillEnabled: org.isEWayBillEnabled,
         isHrmsEnabled: org.isHrmsEnabled,
+        isProductionEnabled: org.isProductionEnabled ?? (org.subscriptionPlan === 'ENTERPRISE' || org.subscriptionPlan === 'CUSTOM'),
+        isAiScannerEnabled: org.isAiScannerEnabled ?? (org.subscriptionPlan === 'ENTERPRISE' || org.subscriptionPlan === 'CUSTOM'),
+        isTeleCrmEnabled: org.isTeleCrmEnabled ?? true,
+        isInventoryEnabled: org.isInventoryEnabled ?? (org.subscriptionPlan === 'GROWTH' || org.subscriptionPlan === 'ENTERPRISE' || org.subscriptionPlan === 'CUSTOM'),
+        isAccountingEnabled: org.isAccountingEnabled ?? (org.subscriptionPlan === 'GROWTH' || org.subscriptionPlan === 'ENTERPRISE' || org.subscriptionPlan === 'CUSTOM'),
+        isQuotationsEnabled: org.isQuotationsEnabled ?? true,
+        trialEndsAt: org.trialEndsAt,
       })),
       pricingSettings: await getLivePlanPricing()
     };
@@ -449,7 +514,7 @@ export async function getLivePlanPricing() {
           id: "default",
           starterMonthlyPrice: 999,
           starterQuarterlyPrice: 2699,
-          starterAnnualPrice: 9599,
+          starterAnnualPrice: 9499,
           starterMaxUsers: 3,
           starterMaxOrders: 500,
           starterWhatsAppCredits: 500,
@@ -457,7 +522,7 @@ export async function getLivePlanPricing() {
 
           growthMonthlyPrice: 2499,
           growthQuarterlyPrice: 6749,
-          growthAnnualPrice: 23999,
+          growthAnnualPrice: 23988,
           growthMaxUsers: 10,
           growthMaxOrders: 2000,
           growthWhatsAppCredits: 2500,
@@ -465,7 +530,7 @@ export async function getLivePlanPricing() {
 
           enterpriseMonthlyPrice: 5999,
           enterpriseQuarterlyPrice: 16199,
-          enterpriseAnnualPrice: 57599,
+          enterpriseAnnualPrice: 57499,
           enterpriseMaxUsers: 999,
           enterpriseMaxOrders: 999999,
           enterpriseWhatsAppCredits: 10000,
@@ -586,6 +651,7 @@ export async function updateTenantSubscriptionAndServices(input: {
   billingCycle: string;
   subscriptionStatus: string;
   currentPeriodEnd?: string | Date;
+  trialEndsAt?: string | Date | null;
   maxUsers: number;
   maxBranches: number;
   maxWarehouses: number;
@@ -595,6 +661,12 @@ export async function updateTenantSubscriptionAndServices(input: {
   isWhatsAppEnabled: boolean;
   isEWayBillEnabled: boolean;
   isHrmsEnabled: boolean;
+  isProductionEnabled?: boolean;
+  isAiScannerEnabled?: boolean;
+  isTeleCrmEnabled?: boolean;
+  isInventoryEnabled?: boolean;
+  isAccountingEnabled?: boolean;
+  isQuotationsEnabled?: boolean;
 }) {
   try {
     const ctx = await getTenantContext();
@@ -621,11 +693,20 @@ export async function updateTenantSubscriptionAndServices(input: {
       isWhatsAppEnabled: Boolean(input.isWhatsAppEnabled),
       isEWayBillEnabled: Boolean(input.isEWayBillEnabled),
       isHrmsEnabled: Boolean(input.isHrmsEnabled),
+      isProductionEnabled: Boolean(input.isProductionEnabled ?? true),
+      isAiScannerEnabled: Boolean(input.isAiScannerEnabled ?? true),
+      isTeleCrmEnabled: Boolean(input.isTeleCrmEnabled ?? true),
+      isInventoryEnabled: Boolean(input.isInventoryEnabled ?? true),
+      isAccountingEnabled: Boolean(input.isAccountingEnabled ?? true),
+      isQuotationsEnabled: Boolean(input.isQuotationsEnabled ?? true),
     };
 
     if (input.name) updateData.name = input.name;
     if (input.tradeName) updateData.tradeName = input.tradeName;
     if (input.currentPeriodEnd) updateData.currentPeriodEnd = new Date(input.currentPeriodEnd);
+    if (input.trialEndsAt !== undefined) {
+      updateData.trialEndsAt = input.trialEndsAt ? new Date(input.trialEndsAt) : null;
+    }
 
     await prisma.organization.update({
       where: { id: input.organizationId },
@@ -645,6 +726,108 @@ export async function updateTenantSubscriptionAndServices(input: {
   }
 }
 
+/**
+ * Tenant Self-Service: Purchase Additional User Seats
+ */
+export async function purchaseExtraUserSeats(input: {
+  seatCount: number;
+  paymentMethod?: string;
+}) {
+  try {
+    const ctx = await getTenantContext();
+    if (!ctx?.organizationId) {
+      return { success: false, error: "Authentication required to purchase add-on seats." };
+    }
+
+    if (!ctx.canManageSettings && ctx.userRole !== 'ADMIN' && ctx.userRole !== 'SUPER_ADMIN') {
+      return { success: false, error: "Only administrators can modify subscription seats." };
+    }
+
+    const seatCount = Math.floor(Number(input.seatCount));
+    if (isNaN(seatCount) || seatCount < 1 || seatCount > 100) {
+      return { success: false, error: "Please select between 1 and 100 seats." };
+    }
+
+    const org = await prisma.organization.findUnique({
+      where: { id: ctx.organizationId }
+    });
+
+    if (!org) {
+      return { success: false, error: "Organization workspace not found." };
+    }
+
+    // Determine seat price based on plan and billing cycle
+    const pricing = getAddonSeatPrice(org.subscriptionPlan, org.billingCycle);
+    const unitPrice = pricing.unitPrice;
+    const baseAmount = unitPrice * seatCount;
+    const taxAmount = Math.round(baseAmount * 0.18 * 100) / 100;
+    const totalAmount = Math.round((baseAmount + taxAmount) * 100) / 100;
+
+    // Execute atomic update
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Increment maxUsers on Organization
+      const updatedOrg = await tx.organization.update({
+        where: { id: org.id },
+        data: {
+          maxUsers: { increment: seatCount }
+        }
+      });
+
+      // 2. Generate unique Tax Invoice number
+      const invoiceCount = await tx.subscriptionInvoice.count();
+      const invoiceNumber = `SEAT-${new Date().getFullYear()}-${String(invoiceCount + 1001).padStart(5, '0')}`;
+
+      const invoice = await tx.subscriptionInvoice.create({
+        data: {
+          invoiceNumber,
+          organizationId: org.id,
+          amount: baseAmount,
+          cgst: taxAmount / 2,
+          sgst: taxAmount / 2,
+          igst: 0,
+          total: totalAmount,
+          paidAt: new Date()
+        }
+      });
+
+      // 3. Record in SubscriptionHistory
+      await tx.subscriptionHistory.create({
+        data: {
+          organizationId: org.id,
+          plan: `${org.subscriptionPlan} (+${seatCount} Add-on Seat${seatCount > 1 ? 's' : ''})`,
+          billingCycle: org.billingCycle,
+          amount: baseAmount,
+          currency: "INR",
+          taxAmount,
+          totalAmount,
+          status: "PAID",
+          paymentMethod: input.paymentMethod || "UPI_AUTOPAY",
+          startDate: new Date(),
+          endDate: org.currentPeriodEnd
+        }
+      });
+
+      return { updatedOrg, invoice };
+    });
+
+    revalidatePath('/settings/billing');
+    revalidatePath('/settings');
+    revalidatePath('/settings/roles');
+    revalidatePath('/platform-admin');
+
+    return {
+      success: true,
+      message: `Successfully added ${seatCount} user seat${seatCount > 1 ? 's' : ''}! New total capacity: ${result.updatedOrg.maxUsers} users.`,
+      newMaxUsers: result.updatedOrg.maxUsers,
+      seatsPurchased: seatCount,
+      invoiceNumber: result.invoice.invoiceNumber,
+      totalPaid: totalAmount
+    };
+  } catch (error: any) {
+    console.error("Error purchasing extra user seats:", error);
+    return { success: false, error: error.message || "Failed to purchase additional user seats." };
+  }
+}
 
 /**
  * Owner Only: Create a new tenant/organization account from the platform admin panel.

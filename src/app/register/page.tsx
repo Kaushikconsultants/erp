@@ -418,7 +418,7 @@ function RegisterWizardContent() {
                       boxShadow: formData.billingCycle === cycle ? '0 2px 4px rgba(0,0,0,0.06)' : 'none'
                     }}
                   >
-                    {cycle === 'MONTHLY' ? 'Monthly' : cycle === 'QUARTERLY' ? 'Quarterly (10% Off)' : 'Yearly (20% Off)'}
+                    {cycle === 'MONTHLY' ? 'Monthly' : cycle === 'QUARTERLY' ? 'Quarterly (10% Off)' : 'Yearly (20% Off • 2.5 Mo Free)'}
                   </button>
                 ))}
               </div>
@@ -429,8 +429,14 @@ function RegisterWizardContent() {
                   const plan = plans[planKey] || PLAN_PRICING[planKey];
                   const isSelected = formData.plan === planKey;
                   let price = plan.monthlyPrice;
-                  if (formData.billingCycle === 'QUARTERLY') price = Math.round(plan.quarterlyPrice / 3);
-                  if (formData.billingCycle === 'ANNUALLY') price = Math.round(plan.annualPrice / 12);
+                  if (formData.billingCycle === 'QUARTERLY') price = planKey === 'STARTER' ? 899 : (planKey === 'GROWTH' ? 2249 : 5399);
+                  if (formData.billingCycle === 'ANNUALLY') price = planKey === 'STARTER' ? 799 : (planKey === 'GROWTH' ? 1999 : 4799);
+
+                  const cycleNote = formData.billingCycle === 'ANNUALLY'
+                    ? `Save 20% • ₹${plan.annualPrice.toLocaleString('en-IN')}/yr`
+                    : formData.billingCycle === 'QUARTERLY'
+                    ? `Save 10% • ₹${plan.quarterlyPrice.toLocaleString('en-IN')}/qtr`
+                    : '14 Days Free Trial';
 
                   return (
                     <div
@@ -466,7 +472,7 @@ function RegisterWizardContent() {
                         <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
                           ₹{price.toLocaleString('en-IN')}<span style={{ fontSize: '0.7rem', fontWeight: 500, color: '#64748b' }}>/mo</span>
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 600 }}>14 Days Free</div>
+                        <div style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 600 }}>{cycleNote}</div>
                       </div>
                     </div>
                   );

@@ -31,6 +31,8 @@ export function isPlatformRootOwner(
   );
 }
 
+import { resolveTenantEntitlements, AppModule } from "./entitlements";
+
 /** Stricter check — only the designated owner email (owner@tinkal.in) can add/delete tenants */
 export function isPlatformSuperOwner(
   userEmail?: string | null,
@@ -48,6 +50,11 @@ export interface TenantContext {
   organizationSlug: string;
   subscriptionPlan: string;
   subscriptionStatus: string;
+  trialEndsAt: Date | null;
+  isHardLocked: boolean;
+  isSoftLocked: boolean;
+  trialDaysRemaining: number | null;
+  enabledModules: Record<AppModule, boolean>;
   userId: string;
   userRole: string;
   canManageSettings: boolean;
@@ -109,14 +116,20 @@ export const getTenantContext = cache(async function getTenantContext(): Promise
   }
 
   const isPlatformOwner = isPlatformRootOwner(userEmail, org.slug, effectiveRole);
+  const entitlements = resolveTenantEntitlements(org);
   const isOwner = isPlatformSuperOwner(userEmail, org.slug, effectiveRole);
 
   return {
     organizationId: org.id,
     organizationName: org.name,
     organizationSlug: org.slug,
-    subscriptionPlan: org.subscriptionPlan || "GROWTH",
-    subscriptionStatus: org.subscriptionStatus || "ACTIVE",
+    subscriptionPlan: entitlements.plan,
+    subscriptionStatus: entitlements.status,
+    trialEndsAt: org.trialEndsAt,
+    isHardLocked: isPlatformOwner ? false : entitlements.isHardLocked,
+    isSoftLocked: isPlatformOwner ? false : entitlements.isSoftLocked,
+    trialDaysRemaining: entitlements.trialDaysRemaining,
+    enabledModules: entitlements.modules,
     userId: dbUser.id,
     userRole: effectiveRole,
     canManageSettings,

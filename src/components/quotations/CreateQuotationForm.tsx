@@ -184,6 +184,7 @@ export default function CreateQuotationForm({
   const desktopInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
   const mobileInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
   const activeProductInputRef = useRef<HTMLElement | null>(null);
+  const [voiceToast, setVoiceToast] = useState<{ message: string; type: 'success' | 'info' } | null>(null);
 
   const updateCustomerDropdownCoords = () => {
     if (customerInputRef.current) {
@@ -311,26 +312,191 @@ export default function CreateQuotationForm({
 
   useEffect(() => {
     const custParam = searchParams?.get('customer') || searchParams?.get('search');
-    if (custParam && localCustomers.length > 0 && !formData.customerId) {
+    if (custParam && !formData.customerId) {
       const qLower = custParam.toLowerCase().trim();
+      if (localCustomers.length > 0) {
+        const matchedCust = localCustomers.find((c: any) => {
+          const bName = (c.businessName || c.contactPerson || c.companyName || '').toLowerCase();
+          return bName.includes(qLower) || qLower.includes(bName);
+        });
+        if (matchedCust) {
+          selectCustomer(matchedCust);
+          return;
+        }
+      }
+      // If customer not yet in DB or list, prefill customerSearchTerm and open dropdown so user sees it
+      if (!customerSearchTerm) {
+        setCustomerSearchTerm(custParam);
+        setShowCustomerSearch(true);
+      }
+    }
+  }, [searchParams, localCustomers, formData.customerId, customerSearchTerm]);
+
+  // Listen to Global Voice AI Events for direct seamless manipulation
+  useEffect(() => {
+    const handleVoiceAddItem = (e: any) => {
+      const detail = e.detail;
+      if (!detail || !detail.productName) return;
+
+      const pNameLower = detail.productName.toLowerCase().trim();
+      const qty = Number(detail.quantity) > 0 ? Number(detail.quantity) : 1;
+      const explicitRate = (detail.rate !== null && detail.rate !== undefined && !isNaN(Number(detail.rate))) ? Number(detail.rate) : null;
+
+      // Match product in catalog
+      const matchedProd = products?.find((p: any) => {
+        const pName = (p.name || '').toLowerCase();
+        const pSku = (p.sku || p.articleNumber || '').toLowerCase();
+        return pName.includes(pNameLower) || pNameLower.includes(pName) || pSku === pNameLower;
+      });
+
+      let rateToUse = explicitRate;
+      let finalWeight = 0.25;
+      let finalGst = 5;
+      let finalHsn = '6109';
+      let prodId = '';
+      let prodSku = '';
+      let actualName = detail.productName;
+
+      if (matchedProd) {
+        prodId = matchedProd.id;
+        prodSku = matchedProd.articleNumber || matchedProd.sku || '';
+        actualName = matchedProd.name;
+        finalGst = Number(matchedProd.gstRate) || 5;
+        finalHsn = matchedProd.hsnCode || '6109';
+
+        const catWeight = categoriesData?.find((c: any) => c.name.toLowerCase() === (matchedProd.category || '').toLowerCase())?.weight || 0;
+        finalWeight = (matchedProd.weight && Number(matchedProd.weight) > 0) 
+          ? Number(matchedProd.weight) 
+          : (catWeight > 0 ? catWeight : 0.25);
+
+        if (rateToUse === null) {
+          const tierInfo = getCustomerTierDiscount(selectedCustomer);
+          const basePrice = matchedProd.sellingPrice || 0;
+          const tierRate = calculateTieredRate(basePrice, tierInfo.discountPercent);
+          rateToUse = tierRate > 0 ? tierRate : basePrice;
+        }
+      } else {
+        if (rateToUse === null) rateToUse = 0;
+      }
+
+      setItems(prev => {
+        // If single empty row, replace it
+        if (prev.length === 1 && !prev[0].productId && !prev[0].productName) {
+          return [{
+            ...prev[0],
+            productId: prodId,
+            productName: actualName,
+            sku: prodSku,
+            quantity: qty,
+            rate: rateToUse || 0,
+            unitWeight: finalWeight,
+            gstRate: finalGst,
+            hsnCode: finalHsn,
+            availableStock: matchedProd?.stockQuantity || 0
+          }];
+        }
+
+        // Check if item already exists
+        const existingIdx = prev.findIndex(item =>
+          (prodId && item.productId === prodId) ||
+          (item.productName && item.productName.toLowerCase().trim() === actualName.toLowerCase().trim())
+        );
+
+        if (existingIdx >= 0) {
+          return prev.map((item, idx) => {
+            if (idx !== existingIdx) return item;
+            return {
+              ...item,
+              quantity: item.quantity + qty,
+              rate: explicitRate !== null ? explicitRate : item.rate
+            };
+          });
+        }
+
+        // Otherwise append new line item
+        return [
+          ...prev,
+          {
+            productId: prodId,
+            productName: actualName,
+            sku: prodSku,
+            description: '',
+            hsnCode: finalHsn,
+            quantity: qty,
+            rate: rateToUse || 0,
+            unitWeight: finalWeight,
+            discountType: 'percent',
+            discountPercent: 0,
+            discountAmount: 0,
+            gstRate: finalGst,
+            availableStock: matchedProd?.stockQuantity || 0
+          }
+        ];
+      });
+
+      setVoiceToast({
+        message: `✓ Added ${qty}x ${actualName} (₹${rateToUse || 0}) via Voice`,
+        type: 'success'
+      });
+      setTimeout(() => setVoiceToast(null), 4000);
+    };
+
+    const handleVoiceSetCustomer = (e: any) => {
+      const detail = e.detail;
+      if (!detail || !detail.customerName) return;
+      const cNameLower = detail.customerName.toLowerCase().trim();
       const matchedCust = localCustomers.find((c: any) => {
-        const bName = (c.businessName || c.contactPerson || '').toLowerCase();
-        return bName.includes(qLower) || qLower.includes(bName);
+        const bName = (c.businessName || c.contactPerson || c.companyName || '').toLowerCase();
+        return bName.includes(cNameLower) || cNameLower.includes(bName);
       });
       if (matchedCust) {
         selectCustomer(matchedCust);
+        setVoiceToast({
+          message: `✓ Selected customer: ${matchedCust.businessName || matchedCust.contactPerson}`,
+          type: 'success'
+        });
+      } else {
+        setCustomerSearchTerm(detail.customerName);
+        setShowCustomerSearch(true);
+        setVoiceToast({
+          message: `Pre-filled customer: "${detail.customerName}"`,
+          type: 'info'
+        });
       }
-    }
-  }, [searchParams, localCustomers, formData.customerId]);
+      setTimeout(() => setVoiceToast(null), 4000);
+    };
+
+    window.addEventListener('erp:add-quotation-item', handleVoiceAddItem);
+    window.addEventListener('erp:set-quotation-customer', handleVoiceSetCustomer);
+
+    return () => {
+      window.removeEventListener('erp:add-quotation-item', handleVoiceAddItem);
+      window.removeEventListener('erp:set-quotation-customer', handleVoiceSetCustomer);
+    };
+  }, [products, localCustomers, categoriesData, selectedCustomer]);
 
   useEffect(() => {
     const addProductParam = searchParams?.get('add_product');
-    // Only auto-add if products are loaded and we have exactly 1 empty default item
+    const qtyParam = searchParams?.get('qty');
+    const rateParam = searchParams?.get('rate');
+    // Auto-add if product param is present and products are loaded
     if (addProductParam && products?.length > 0 && items.length === 1 && !items[0].productId) {
-      handleBarcodeScan(addProductParam);
+      const parsedQty = qtyParam ? parseInt(qtyParam, 10) : 1;
+      const parsedRate = rateParam ? parseFloat(rateParam) : null;
+
+      window.dispatchEvent(new CustomEvent('erp:add-quotation-item', {
+        detail: {
+          productName: addProductParam,
+          quantity: parsedQty > 0 ? parsedQty : 1,
+          rate: parsedRate
+        }
+      }));
+
       // Remove it from URL to prevent adding again on re-renders
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('add_product');
+      newUrl.searchParams.delete('qty');
+      newUrl.searchParams.delete('rate');
       window.history.replaceState({}, '', newUrl.toString());
     }
   }, [searchParams, products, items.length]);
@@ -633,6 +799,7 @@ export default function CreateQuotationForm({
 
       const payload = {
         customerId: formData.customerId,
+        customerGst: formData.customerGst ? formData.customerGst.trim().toUpperCase() : undefined,
         quotationNumber: formData.quotationNumber || undefined,
         referenceNumber: formData.referenceNumber || undefined,
         quoteDate: formData.quoteDate,
@@ -774,8 +941,33 @@ export default function CreateQuotationForm({
   };
 
   return (
-    <div className="quotation-form-wrapper" style={{ padding: '24px 16px' }}>
+    <div className="quotation-form-wrapper" style={{ padding: '24px 16px', position: 'relative' }}>
       
+      {voiceToast && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '80px',
+            right: '24px',
+            zIndex: 99999,
+            backgroundColor: voiceToast.type === 'success' ? '#065f46' : '#1e1b4b',
+            color: '#ffffff',
+            padding: '12px 20px',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.28)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontWeight: 600,
+            fontSize: '0.9rem',
+            animation: 'fadeIn 0.2s ease-out',
+            border: voiceToast.type === 'success' ? '1px solid #10b981' : '1px solid #6366f1'
+          }}
+        >
+          <Sparkles size={18} color={voiceToast.type === 'success' ? '#34d399' : '#a78bfa'} />
+          <span>{voiceToast.message}</span>
+        </div>
+      )}
       {showAddCustomerModal && (
         <AddCustomerModal 
           employees={employees} 
@@ -2148,61 +2340,6 @@ export default function CreateQuotationForm({
                 {numberToWords(totals.finalTotal)}
               </div>
             </div>
-
-            {/* DISCOUNT & PRICING STRUCTURE (SLABS) */}
-            <div style={{
-              backgroundColor: '#f8fafc',
-              padding: '16px',
-              borderRadius: '8px',
-              border: '1px solid #e2e8f0',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px'
-            }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Discount & Pricing Structure
-              </span>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {[
-                  { id: '0', title: '0% Discount (Bonus)' },
-                  { id: '1-15', title: '1 - 15% (Standard)' },
-                  { id: '>15', title: 'Above 15% Discount' },
-                  { id: 'credit', title: 'Credit Customer' }
-                ].map((option) => {
-                  const isSelected = (formData.discountSlab || '1-15') === option.id;
-                  return (
-                    <div
-                      key={option.id}
-                      onClick={() => setFormData({ ...formData, discountSlab: option.id })}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 10px',
-                        borderRadius: '6px',
-                        border: isSelected ? '2px solid #059669' : '1px solid #cbd5e1',
-                        backgroundColor: isSelected ? '#ecfdf5' : '#ffffff',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <input 
-                        type="radio"
-                        name="quotationFormDiscountSlab"
-                        value={option.id}
-                        checked={isSelected}
-                        onChange={() => setFormData({ ...formData, discountSlab: option.id })}
-                        style={{ accentColor: '#059669', width: '14px', height: '14px', cursor: 'pointer', margin: 0 }}
-                      />
-                      <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 700 : 500, color: isSelected ? '#065f46' : '#334155' }}>
-                        {option.title}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* TOKEN / ADVANCE PAYMENT SECTION */}
             <div style={{
               backgroundColor: '#f0fdf4',

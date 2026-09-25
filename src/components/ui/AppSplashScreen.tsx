@@ -7,19 +7,30 @@ export default function AppSplashScreen() {
   const [isVisible, setIsVisible] = useState(true);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
+  const dismissImmediately = () => {
+    setIsFadingOut(true);
+    setIsVisible(false);
+  };
+
   useEffect(() => {
-    // Show splash on startup for 1.8 seconds
+    // Fast, responsive startup fadeout
     const timer1 = setTimeout(() => {
       setIsFadingOut(true);
-    }, 1800);
+    }, 600);
 
     const timer2 = setTimeout(() => {
       setIsVisible(false);
-    }, 2200);
+    }, 900);
+
+    // Hard fallback safety: never block the user under any circumstances
+    const fallbackTimer = setTimeout(() => {
+      setIsVisible(false);
+    }, 1200);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
+      clearTimeout(fallbackTimer);
     };
   }, []);
 
@@ -27,6 +38,8 @@ export default function AppSplashScreen() {
 
   return (
     <div
+      onClick={dismissImmediately}
+      onTouchStart={dismissImmediately}
       style={{
         position: "fixed",
         inset: 0,

@@ -586,4 +586,12 @@
   .expenses-select {
     width: 100%;
   }
+
+  .expenses-mobile-pagination {
+    margin-top: 6px;
+    background: #ffffff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+  }
 }

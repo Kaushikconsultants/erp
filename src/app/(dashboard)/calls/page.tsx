@@ -5,8 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import TeleCrmMobileHub from '@/components/telecalling/TeleCrmMobileHub';
 import { getCompanySettings } from '@/app/actions/companyActions';
-import { getOrCreateEmployee } from '@/lib/employeeHelper';
-import { getTenantOrgId } from '@/lib/tenant';
+import { getTenantScope } from '@/lib/tenant';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,51 +16,69 @@ export default async function CallsPage() {
     redirect('/login');
   }
 
-  const rawOrgId = await getTenantOrgId().catch(() => null);
-  const orgId = (rawOrgId && rawOrgId !== "default-org") ? rawOrgId : undefined;
-  const userRole = (session.user as any).role || 'SALES';
-  const userId = (session.user as any).id;
-  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+  const { organizationId, isAdmin, employeeId } = await getTenantScope();
+  const orgId = (organizationId && organizationId !== "default-org" && organizationId !== "UNAUTHENTICATED") ? organizationId : undefined;
+  const empId = employeeId || "no-match";
 
-  let callWhereClause: any = orgId ? {
-    OR: [
-      { customer: { organizationId: orgId } },
-      { lead: { organizationId: orgId } },
-      { employee: { organizationId: orgId } }
+  let callWhereClause: any = {
+    AND: [
+      ...(orgId ? [{
+        OR: [
+          { customer: { organizationId: orgId } },
+          { lead: { organizationId: orgId } },
+          { employee: { organizationId: orgId } }
+        ]
+      }] : []),
+      ...(!isAdmin ? [{
+        OR: [
+          { employeeId: empId },
+          { customer: { assignedSalespersonId: empId } },
+          { lead: { assignedSalespersonId: empId } }
+        ]
+      }] : [])
     ]
-  } : {};
-  let customerWhereClause: any = orgId ? { organizationId: orgId } : {};
-  let leadWhereClause: any = orgId ? { organizationId: orgId } : {};
+  };
 
-  if (!isAdmin) {
-    const employee = await getOrCreateEmployee(userId, session.user).catch(() => null);
-    if (employee) {
-      if (orgId) {
-        callWhereClause = { 
-          employeeId: employee.id, 
-          OR: [
-            { customer: { organizationId: orgId } },
-            { lead: { organizationId: orgId } },
-            { employee: { organizationId: orgId } }
-          ]
-        };
-      } else {
-        callWhereClause = { employeeId: employee.id };
-      }
-      customerWhereClause = { assignedSalespersonId: employee.id, ...(orgId ? { organizationId: orgId } : {}) };
-      leadWhereClause = { assignedSalespersonId: employee.id, ...(orgId ? { organizationId: orgId } : {}) };
-    }
-  }
+  let customerWhereClause: any = {
+    ...(orgId ? { organizationId: orgId } : {}),
+    ...(!isAdmin ? { assignedSalespersonId: empId } : {})
+  };
+
+  let leadWhereClause: any = {
+    ...(orgId ? { organizationId: orgId } : {}),
+    ...(!isAdmin ? { assignedSalespersonId: empId } : {})
+  };
 
   const [calls, customers, leads, companyRes] = await Promise.all([
     prisma.call.findMany({
       where: callWhereClause,
+      take: 100,
       orderBy: { createdAt: 'desc' },
       include: {
-        customer: true,
-        lead: true,
+        customer: {
+          select: {
+            id: true,
+            businessName: true,
+            contactPerson: true,
+            mobile: true,
+            whatsappNumber: true,
+            city: true,
+            state: true
+          }
+        },
+        lead: {
+          select: {
+            id: true,
+            name: true,
+            shopName: true,
+            whatsappNumber: true
+          }
+        },
         employee: {
-          include: { user: true }
+          select: {
+            id: true,
+            user: { select: { id: true, name: true } }
+          }
         }
       }
     }).catch(err => {
@@ -71,6 +88,7 @@ export default async function CallsPage() {
     prisma.customer.findMany({
       where: customerWhereClause,
       select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true },
+      take: 150,
       orderBy: { businessName: 'asc' }
     }).catch(err => {
       console.warn("CallsPage customer.findMany error:", err);
@@ -79,6 +97,7 @@ export default async function CallsPage() {
     prisma.lead.findMany({
       where: leadWhereClause,
       select: { id: true, name: true, shopName: true, whatsappNumber: true },
+      take: 150,
       orderBy: { name: 'asc' }
     }).catch(err => {
       console.warn("CallsPage lead.findMany error:", err);
@@ -128,6 +147,7 @@ export default async function CallsPage() {
         availableCallTypes={callTypes}
         customers={mappedCustomers}
         isAdmin={isAdmin}
+        currentEmployeeId={employeeId}
       />
     </div>
   );

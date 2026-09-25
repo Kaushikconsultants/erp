@@ -1,7 +1,7 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   LayoutDashboard, 
   Users, 
@@ -26,6 +26,7 @@ import {
   MessageSquare, 
   Megaphone, 
   FileMinus, 
+  FilePlus,
   ScrollText,
   ChevronRight,
   Landmark,
@@ -37,7 +38,9 @@ import {
   FileText,
   Factory,
   Blocks,
-  Layers
+  Layers,
+  RotateCcw,
+  ClipboardCheck
 } from 'lucide-react';
 import BrandLogo from '@/components/ui/BrandLogo';
 import './Sidebar.css';
@@ -49,6 +52,7 @@ interface SidebarProps {
   userRole?: string;
   isPlatformOwner?: boolean;
   allowedSections?: string[] | null;
+  enabledModules?: Record<string, boolean> | null;
   onClose?: () => void;
 }
 
@@ -59,27 +63,41 @@ const Sidebar = ({
   userRole, 
   isPlatformOwner = false,
   allowedSections = null, 
+  enabledModules = null,
   onClose 
 }: SidebarProps) => {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (path: string) => {
     if (path === '/' && pathname !== '/') return false;
+    if (path === '/purchases' && pathname.startsWith('/purchases/grn')) return false;
     return pathname.startsWith(path);
   };
 
   const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
 
   const canAccess = (sectionKey: string): boolean => {
+    // 1. Tenant-level plan & module entitlement gating
+    // Platform root owners bypass; otherwise, check if tenant's active package entitles this module
+    if (!isPlatformOwner && enabledModules) {
+      if ((sectionKey === 'production') && enabledModules.PRODUCTION_MANUFACTURING === false) return false;
+      if ((sectionKey === 'hrms' || sectionKey === 'hiring') && enabledModules.HRMS_PAYROLL === false) return false;
+      if ((sectionKey === 'accounting') && enabledModules.ACCOUNTING_LEDGERS === false) return false;
+      if ((sectionKey === 'purchases' || sectionKey === 'procurement') && enabledModules.INVENTORY_PURCHASE === false) return false;
+      if ((sectionKey === 'gst_filing' || sectionKey === 'gst-filing' || sectionKey === 'eway_bills' || sectionKey === 'eway-bills') && enabledModules.GST_EWAYBILL === false) return false;
+      if ((sectionKey === 'leads' || sectionKey === 'calls_tasks' || sectionKey === 'pipeline') && enabledModules.TELECRM === false) return false;
+    }
+
     if (isSuperOrAdmin) return true;
     if (!allowedSections || allowedSections.length === 0) {
       // Default Role Fallbacks if no custom allowedSections specified
       if (userRole === 'DISPATCH') return ['dashboard', 'dispatches', 'eway_bills', 'eway-bills'].includes(sectionKey);
       if (userRole === 'SALES') return ['dashboard', 'customers', 'leads', 'pipeline', 'calls_tasks', 'orders', 'quotations', 'products'].includes(sectionKey);
       if (userRole === 'HR') return ['dashboard', 'hrms', 'hiring'].includes(sectionKey);
-      if (userRole === 'ACCOUNTS') return ['dashboard', 'accounting', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales', 'credit_notes', 'credit-notes', 'gst_filing', 'gst-filing', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
+      if (userRole === 'ACCOUNTS') return ['dashboard', 'accounting', 'invoices', 'payments', 'orders', 'hrms', 'purchases', 'procurement', 'reports', 'sales', 'credit_notes', 'credit-notes', 'debit_notes', 'debit-notes', 'gst_filing', 'gst-filing', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
       if (userRole === 'WAREHOUSE') return ['dashboard', 'products', 'purchases', 'procurement', 'dispatches', 'eway_bills', 'eway-bills', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
-      if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products', 'delivery-challans', 'delivery_challans'].includes(sectionKey);
+      if (userRole === 'PURCHASE') return ['dashboard', 'purchases', 'procurement', 'products', 'delivery-challans', 'delivery_challans', 'debit_notes', 'debit-notes'].includes(sectionKey);
       if (userRole === 'SUPPORT') return ['dashboard', 'customers', 'calls_tasks'].includes(sectionKey);
       return false;
     }
@@ -87,6 +105,8 @@ const Sidebar = ({
       allowedSections.includes(sectionKey) ||
       (sectionKey === 'credit_notes' && allowedSections.includes('credit-notes')) ||
       (sectionKey === 'credit-notes' && allowedSections.includes('credit_notes')) ||
+      (sectionKey === 'debit_notes' && allowedSections.includes('debit-notes')) ||
+      (sectionKey === 'debit-notes' && allowedSections.includes('debit_notes')) ||
       (sectionKey === 'eway_bills' && (allowedSections.includes('eway-bills') || allowedSections.includes('eway'))) ||
       (sectionKey === 'eway-bills' && (allowedSections.includes('eway_bills') || allowedSections.includes('eway'))) ||
       (sectionKey === 'gst_filing' && (allowedSections.includes('gst-filing') || allowedSections.includes('gst') || allowedSections.includes('gst_filings'))) ||
@@ -119,13 +139,25 @@ const Sidebar = ({
     }));
   };
 
+  // Auto-prefetch CRM routes when CRM dropdown is opened or on hover
+  useEffect(() => {
+    if (openCategories.crm) {
+      router.prefetch('/leads');
+      router.prefetch('/calls');
+      router.prefetch('/follow-ups');
+      router.prefetch('/customers');
+      router.prefetch('/pipeline');
+      router.prefetch('/tasks');
+    }
+  }, [openCategories.crm, router]);
+
   // Active state indicators
   const isCrmActive = pathname.startsWith('/customers') || pathname.startsWith('/calls') || pathname.startsWith('/tasks') || pathname.startsWith('/leads') || pathname.startsWith('/follow-ups') || pathname.startsWith('/pipeline');
-  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/delivery-challans') || pathname.startsWith('/eway-bills');
+  const isSalesActive = pathname.startsWith('/orders') || pathname.startsWith('/quotations') || pathname.startsWith('/proforma-invoices') || pathname.startsWith('/invoices') || pathname.startsWith('/credit-notes') || pathname.startsWith('/debit-notes') || pathname.startsWith('/sales-returns') || (pathname.startsWith('/payments') && !pathname.startsWith('/payments-made')) || pathname.startsWith('/products') || pathname.startsWith('/dispatches') || pathname.startsWith('/delivery-challans') || pathname.startsWith('/eway-bills');
   const isPurchasesActive = pathname.startsWith('/vendors') || pathname.startsWith('/purchases') || pathname.startsWith('/bills') || pathname.startsWith('/payments-made') || pathname.startsWith('/vendor-credits') || pathname.startsWith('/warehouses');
   const isAccountingActive = pathname.startsWith('/accounting');
   const isHrmsActive = pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || (pathname.startsWith('/expenses') && !isPurchasesActive) || pathname.startsWith('/leaves') || pathname.startsWith('/hiring');
-  const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs') || pathname.startsWith('/gst-filing');
+  const isReportsActive = pathname.startsWith('/analytics') || pathname.startsWith('/reports') || ((isSuperOrAdmin || showSettings) && (pathname.startsWith('/settings/workflows') || pathname.startsWith('/settings/audit-logs'))) || pathname.startsWith('/gst-filing');
   const isProductionActive = pathname.startsWith('/production');
 
   return (
@@ -177,7 +209,13 @@ const Sidebar = ({
             {openCategories.crm && (
               <div className="category-sub-list">
                 {canAccess('leads') && (
-                  <Link href="/leads" onClick={onClose} className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}>
+                  <Link 
+                    href="/leads" 
+                    prefetch={true}
+                    onMouseEnter={() => router.prefetch('/leads')}
+                    onClick={onClose} 
+                    className={`category-sub-item ${isActive('/leads') ? 'active' : ''}`}
+                  >
                     <TrendingUp size={16} style={{ color: '#8b5cf6' }} />
                     <span>Leads</span>
                   </Link>
@@ -185,11 +223,23 @@ const Sidebar = ({
 
                 {canAccess('calls_tasks') && (
                   <>
-                    <Link href="/calls" onClick={onClose} className={`category-sub-item ${isActive('/calls') ? 'active' : ''}`}>
+                    <Link 
+                      href="/calls" 
+                      prefetch={true}
+                      onMouseEnter={() => router.prefetch('/calls')}
+                      onClick={onClose} 
+                      className={`category-sub-item ${isActive('/calls') ? 'active' : ''}`}
+                    >
                       <PhoneCall size={16} />
                       <span>Calls</span>
                     </Link>
-                    <Link href="/follow-ups" onClick={onClose} className={`category-sub-item ${isActive('/follow-ups') ? 'active' : ''}`}>
+                    <Link 
+                      href="/follow-ups" 
+                      prefetch={true}
+                      onMouseEnter={() => router.prefetch('/follow-ups')}
+                      onClick={onClose} 
+                      className={`category-sub-item ${isActive('/follow-ups') ? 'active' : ''}`}
+                    >
                       <Clock size={16} style={{ color: '#f59e0b' }} />
                       <span>Follow-ups</span>
                     </Link>
@@ -197,21 +247,39 @@ const Sidebar = ({
                 )}
 
                 {canAccess('customers') && (
-                  <Link href="/customers" onClick={onClose} className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}>
+                  <Link 
+                    href="/customers" 
+                    prefetch={true}
+                    onMouseEnter={() => router.prefetch('/customers')}
+                    onClick={onClose} 
+                    className={`category-sub-item ${isActive('/customers') ? 'active' : ''}`}
+                  >
                     <Users size={16} />
                     <span>Customers</span>
                   </Link>
                 )}
 
                 {(canAccess('pipeline') || canAccess('leads') || canAccess('customers')) && (
-                  <Link href="/pipeline" onClick={onClose} className={`category-sub-item ${isActive('/pipeline') ? 'active' : ''}`}>
+                  <Link 
+                    href="/pipeline" 
+                    prefetch={true}
+                    onMouseEnter={() => router.prefetch('/pipeline')}
+                    onClick={onClose} 
+                    className={`category-sub-item ${isActive('/pipeline') ? 'active' : ''}`}
+                  >
                     <Layers size={16} style={{ color: '#6366f1' }} />
                     <span>Sales Pipeline</span>
                   </Link>
                 )}
 
                 {canAccess('calls_tasks') && (
-                  <Link href="/tasks" onClick={onClose} className={`category-sub-item ${isActive('/tasks') ? 'active' : ''}`}>
+                  <Link 
+                    href="/tasks" 
+                    prefetch={true}
+                    onMouseEnter={() => router.prefetch('/tasks')}
+                    onClick={onClose} 
+                    className={`category-sub-item ${isActive('/tasks') ? 'active' : ''}`}
+                  >
                     <CheckSquare size={16} />
                     <span>Tasks</span>
                   </Link>
@@ -254,6 +322,14 @@ const Sidebar = ({
                   </Link>
                 )}
 
+                {canAccess('quotations') && (
+                  <Link href="/proforma-invoices" onClick={onClose} className={`category-sub-item ${isActive('/proforma-invoices') ? 'active' : ''}`}>
+                    <FileText size={16} style={{ color: '#0284c7' }} />
+                    <span>Proforma Invoices</span>
+                    <span style={{ marginLeft: 'auto', background: '#e0f2fe', color: '#0369a1', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>PI</span>
+                  </Link>
+                )}
+
                 {canAccess('invoices') && (
                   <Link href="/invoices" onClick={onClose} className={`category-sub-item ${isActive('/invoices') ? 'active' : ''}`}>
                     <Receipt size={16} />
@@ -265,6 +341,21 @@ const Sidebar = ({
                   <Link href="/credit-notes" onClick={onClose} className={`category-sub-item ${isActive('/credit-notes') ? 'active' : ''}`}>
                     <FileMinus size={16} style={{ color: '#e11d48' }} />
                     <span>Credit Notes</span>
+                  </Link>
+                )}
+
+                {canAccess('debit_notes') && (
+                  <Link href="/debit-notes" onClick={onClose} className={`category-sub-item ${isActive('/debit-notes') ? 'active' : ''}`}>
+                    <FilePlus size={16} style={{ color: '#4f46e5' }} />
+                    <span>Debit Notes</span>
+                  </Link>
+                )}
+
+                {canAccess('invoices') && (
+                  <Link href="/sales-returns" onClick={onClose} className={`category-sub-item ${isActive('/sales-returns') ? 'active' : ''}`}>
+                    <RotateCcw size={16} style={{ color: '#f97316' }} />
+                    <span>Sales Returns</span>
+                    <span style={{ marginLeft: 'auto', background: '#ffedd5', color: '#9a3412', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>RMA</span>
                   </Link>
                 )}
 
@@ -340,6 +431,12 @@ const Sidebar = ({
                   <span>Purchase Orders</span>
                 </Link>
 
+                <Link href="/purchases/grn" onClick={onClose} className={`category-sub-item ${isActive('/purchases/grn') ? 'active' : ''}`}>
+                  <ClipboardCheck size={16} style={{ color: '#10b981' }} />
+                  <span>Goods Receipts</span>
+                  <span style={{ marginLeft: 'auto', background: '#d1fae5', color: '#065f46', fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '8px' }}>GRN</span>
+                </Link>
+
                 <Link 
                   href="/bills" 
                   onClick={onClose} 
@@ -379,7 +476,7 @@ const Sidebar = ({
         )}
 
         {/* 4. ACCOUNTING & LEDGERS CATEGORY DROPDOWN */}
-        {(canAccess('accounting') || canAccess('invoices') || canAccess('payments') || isSuperOrAdmin) && (
+        {canAccess('accounting') && (
           <div className="nav-section">
             <button
               type="button"
@@ -489,7 +586,7 @@ const Sidebar = ({
         )}
 
         {/* 5.5 PRODUCTION & WORKSHOP SECTION */}
-        {(isSuperOrAdmin || canAccess('production')) && (
+        {canAccess('production') && (
           <div className="nav-section">
             <Link
               href="/production"
@@ -542,15 +639,19 @@ const Sidebar = ({
                   </Link>
                 )}
 
-                <Link href="/settings/workflows" onClick={onClose} className={`category-sub-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
-                  <Zap size={16} />
-                  <span>AI Workflows</span>
-                </Link>
+                {(isSuperOrAdmin || showSettings) && (
+                  <>
+                    <Link href="/settings/workflows" onClick={onClose} className={`category-sub-item ${isActive('/settings/workflows') ? 'active' : ''}`}>
+                      <Zap size={16} />
+                      <span>AI Workflows</span>
+                    </Link>
 
-                <Link href="/settings/audit-logs" onClick={onClose} className={`category-sub-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
-                  <ShieldCheck size={16} />
-                  <span>Audit Logs</span>
-                </Link>
+                    <Link href="/settings/audit-logs" onClick={onClose} className={`category-sub-item ${isActive('/settings/audit-logs') ? 'active' : ''}`}>
+                      <ShieldCheck size={16} />
+                      <span>Audit Logs</span>
+                    </Link>
+                  </>
+                )}
               </div>
             )}
           </div>

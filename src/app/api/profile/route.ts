@@ -45,7 +45,7 @@ export async function PUT(req: Request) {
     const userId = (session.user as any).id;
     const userEmail = session.user.email;
     const body = await req.json();
-    const { name, email, password, avatarUrl } = body;
+    const { name, email, password, currentPassword, avatarUrl } = body;
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
@@ -60,6 +60,14 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Email is already in use by another account' }, { status: 400 });
     }
 
+    const currentUser = await prisma.user.findUnique({
+      where: userId ? { id: userId } : { email: userEmail! }
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const updateData: any = {
       name,
       email,
@@ -71,7 +79,22 @@ export async function PUT(req: Request) {
     }
 
     if (password && password.trim().length > 0) {
-      const hashedPassword = await bcrypt.hash(password, 10);
+      if (!currentPassword) {
+        return NextResponse.json({ error: 'Current password is required to set a new password.' }, { status: 400 });
+      }
+
+      if (currentUser.password) {
+        const isMatch = await bcrypt.compare(currentPassword, currentUser.password);
+        if (!isMatch) {
+          return NextResponse.json({ error: 'Current password is incorrect.' }, { status: 400 });
+        }
+      }
+
+      if (password.trim().length < 8) {
+        return NextResponse.json({ error: 'New password must be at least 8 characters long.' }, { status: 400 });
+      }
+
+      const hashedPassword = await bcrypt.hash(password.trim(), 10);
       updateData.password = hashedPassword;
     }
 

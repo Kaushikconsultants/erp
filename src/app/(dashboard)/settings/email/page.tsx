@@ -16,10 +16,9 @@ import {
 } from 'lucide-react';
 import { 
   getEmailSettings, 
-  saveEmailSettings, 
-  DEFAULT_EMAIL_TEMPLATES, 
-  EmailTemplate 
+  saveEmailSettings 
 } from '@/app/actions/emailActions';
+import { DEFAULT_EMAIL_TEMPLATES, type EmailTemplate } from '@/lib/emailTemplates';
 
 export default function EmailSettingsPage() {
   const [loading, setLoading] = useState(true);

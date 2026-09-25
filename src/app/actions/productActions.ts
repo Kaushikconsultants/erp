@@ -244,7 +244,7 @@ export async function updateProduct(id: string, formData: FormData) {
     const organizationId = await getTenantOrgId();
     const existingProd = await prisma.product.findUnique({ where: { id }, select: { organizationId: true } });
     if (!existingProd) return { error: "Product not found" };
-    if (existingProd.organizationId && organizationId && existingProd.organizationId !== organizationId) {
+    if (existingProd.organizationId !== organizationId) {
       return { error: "Unauthorized access to product" };
     }
 
@@ -297,7 +297,7 @@ export async function quickAdjustStock(
       return { error: "Product not found" };
     }
 
-    if (product.organizationId && organizationId && product.organizationId !== organizationId) {
+    if (product.organizationId !== organizationId) {
       return { error: "Unauthorized access" };
     }
 
@@ -374,7 +374,7 @@ export async function deleteProduct(id: string) {
     const organizationId = await getTenantOrgId();
     const existingProd = await prisma.product.findUnique({ where: { id }, select: { organizationId: true } });
     if (!existingProd) return { error: "Product not found" };
-    if (existingProd.organizationId && organizationId && existingProd.organizationId !== organizationId) {
+    if (existingProd.organizationId !== organizationId) {
       return { error: "Unauthorized access to product" };
     }
 
@@ -389,6 +389,101 @@ export async function deleteProduct(id: string) {
     return { error: error.message || "Failed to delete product. It may be linked to existing orders." };
   }
 }
+
+export async function deleteMultipleProducts(ids: string[]) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized. Please log in." };
+
+  const roleName = ((session?.user as any)?.role || "").toUpperCase();
+  let canManage = roleName === 'ADMIN' || roleName === 'SUPER_ADMIN' || roleName === 'OWNER';
+
+  if (!canManage) {
+    const hasAccess = await canUserAccessSection(session.user, 'products') ||
+                      await canUserAccessSection(session.user, 'inventory');
+    if (hasAccess) canManage = true;
+  }
+
+  if (!canManage && roleName) {
+    const roleDef = await prisma.role.findUnique({ where: { name: roleName } });
+    if (roleDef) {
+      try {
+        const perms = JSON.parse(roleDef.permissions) as string[];
+        if (perms.some(p => {
+          const l = p.toLowerCase();
+          return l.includes("inventory") || l.includes("product");
+        })) {
+          canManage = true;
+        }
+      } catch(e) {}
+    }
+  }
+
+  if (!canManage) {
+    return { error: "Unauthorized. You do not have permission to delete products." };
+  }
+
+  if (!ids || ids.length === 0) {
+    return { error: "No products selected for deletion." };
+  }
+
+  try {
+    const organizationId = await getTenantOrgId();
+
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: ids },
+        ...(organizationId ? { organizationId } : {})
+      },
+      include: {
+        orderItems: { select: { id: true }, take: 1 },
+        purchaseOrderItems: { select: { id: true }, take: 1 },
+        billItems: { select: { id: true }, take: 1 }
+      }
+    });
+
+    if (products.length === 0) {
+      return { error: "No valid products found to delete." };
+    }
+
+    const linkedProducts = products.filter(p => p.orderItems.length > 0 || p.purchaseOrderItems.length > 0 || p.billItems.length > 0);
+    const deletableProducts = products.filter(p => p.orderItems.length === 0 && p.purchaseOrderItems.length === 0 && p.billItems.length === 0);
+
+    if (deletableProducts.length === 0) {
+      return {
+        error: `Cannot delete selected products because they are linked to existing orders, purchases, or bills (${linkedProducts.map(p => p.name).slice(0, 3).join(', ')}${linkedProducts.length > 3 ? '...' : ''}).`
+      };
+    }
+
+    const deletableIds = deletableProducts.map(p => p.id);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.inventoryTransaction.deleteMany({ where: { productId: { in: deletableIds } } });
+      await tx.productBatch.deleteMany({ where: { productId: { in: deletableIds } } });
+      await tx.productUnit.deleteMany({ where: { productId: { in: deletableIds } } });
+      await tx.quotationItem.deleteMany({ where: { productId: { in: deletableIds } } });
+      await tx.deliveryChallanItem.deleteMany({ where: { productId: { in: deletableIds } } });
+      await tx.product.deleteMany({ where: { id: { in: deletableIds } } });
+    });
+
+    revalidatePath("/products");
+    revalidatePath("/inventory");
+    revalidatePath("/", "layout");
+
+    if (linkedProducts.length > 0) {
+      return {
+        success: true,
+        count: deletableIds.length,
+        message: `Deleted ${deletableIds.length} products. Skipped ${linkedProducts.length} product(s) linked to existing transactions.`
+      };
+    }
+
+    return { success: true, count: deletableIds.length };
+  } catch (error: any) {
+    console.error("Failed to bulk delete products:", error);
+    return { error: error.message || "Failed to delete selected products." };
+  }
+}
+
 
 /**
  * Fetch list of all articles / products for quick switcher dropdown

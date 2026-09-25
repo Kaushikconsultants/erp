@@ -86,7 +86,7 @@ export async function updateVendor(id: string, formData: FormData) {
     const organizationId = await getTenantOrgId();
     const existing = await prisma.vendor.findUnique({ where: { id }, select: { organizationId: true } });
     if (!existing) return { error: "Vendor not found" };
-    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+    if (existing.organizationId !== organizationId) {
       return { error: "Unauthorized access to vendor" };
     }
 
@@ -131,7 +131,7 @@ export async function deleteVendor(id: string) {
     });
 
     if (!existing) return { error: "Vendor not found" };
-    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+    if (existing.organizationId !== organizationId) {
       return { error: "Unauthorized access to vendor" };
     }
 
@@ -170,6 +170,95 @@ export async function deleteVendor(id: string) {
     return { error: error.message || "Failed to delete vendor" };
   }
 }
+
+export async function deleteMultipleVendors(ids: string[]) {
+  if (!await canManageVendors()) return { error: "Unauthorized" };
+
+  if (!ids || ids.length === 0) {
+    return { error: "No vendors selected for deletion." };
+  }
+
+  try {
+    const organizationId = await getTenantOrgId();
+    const vendors = await prisma.vendor.findMany({
+      where: {
+        id: { in: ids },
+        ...(organizationId ? { organizationId } : {})
+      },
+      include: {
+        purchaseOrders: { select: { id: true }, take: 1 },
+        bills: { select: { id: true }, take: 1 },
+        payments: { select: { id: true }, take: 1 },
+        vendorCredits: { select: { id: true }, take: 1 },
+        deliveryChallans: { select: { id: true }, take: 1 },
+        postDatedCheques: { select: { id: true }, take: 1 }
+      }
+    });
+
+    if (vendors.length === 0) {
+      return { error: "No valid vendors found to delete." };
+    }
+
+    const linkedVendors = vendors.filter(v => 
+      v.purchaseOrders.length > 0 ||
+      v.bills.length > 0 ||
+      v.payments.length > 0 ||
+      v.vendorCredits.length > 0 ||
+      v.deliveryChallans.length > 0 ||
+      v.postDatedCheques.length > 0
+    );
+
+    const deletableVendors = vendors.filter(v => 
+      v.purchaseOrders.length === 0 &&
+      v.bills.length === 0 &&
+      v.payments.length === 0 &&
+      v.vendorCredits.length === 0 &&
+      v.deliveryChallans.length === 0 &&
+      v.postDatedCheques.length === 0
+    );
+
+    if (deletableVendors.length === 0) {
+      return {
+        error: `Cannot delete selected vendors because active records (Bills, POs, Payments) exist for them (${linkedVendors.map(v => v.companyName).slice(0, 3).join(', ')}${linkedVendors.length > 3 ? '...' : ''}).`
+      };
+    }
+
+    const deletableIds = deletableVendors.map(v => v.id);
+
+    await prisma.$transaction(async (tx) => {
+      for (const v of deletableVendors) {
+        await tx.ledgerAccount.deleteMany({
+          where: {
+            organizationId: v.organizationId,
+            code: `VEN-${v.id.slice(0, 8).toUpperCase()}`
+          }
+        }).catch(() => {});
+      }
+
+      await tx.vendor.deleteMany({
+        where: { id: { in: deletableIds } }
+      });
+    });
+
+    revalidatePath("/vendors");
+    revalidatePath("/bills");
+    revalidatePath("/purchases");
+
+    if (linkedVendors.length > 0) {
+      return {
+        success: true,
+        count: deletableIds.length,
+        message: `Deleted ${deletableIds.length} vendor(s). Skipped ${linkedVendors.length} vendor(s) with active records.`
+      };
+    }
+
+    return { success: true, count: deletableIds.length };
+  } catch (error: any) {
+    console.error("Failed to delete multiple vendors:", error);
+    return { error: error.message || "Failed to delete vendors" };
+  }
+}
+
 
 export async function quickCreateVendorFromScan(data: {
   companyName: string;
@@ -248,4 +337,5 @@ export async function quickCreateVendorFromScan(data: {
     return { error: "Failed to create vendor: " + error.message };
   }
 }
+
 

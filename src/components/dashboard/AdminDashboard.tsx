@@ -11,8 +11,8 @@ import AssignTaskModal from './AssignTaskModal';
 import AISprintCoachModal from './AISprintCoachModal';
 import AIReorderPredictorModal from '../ai/AIReorderPredictorModal';
 import DeadStockInsightsModal from '../products/DeadStockInsightsModal';
-import AskERPAssistantModal from '../ai/AskERPAssistantModal';
 import { getLiveTeamAttendance } from '@/app/actions/attendanceActions';
+import { useVoiceStore } from '@/lib/stores/voiceStore';
 
 interface AdminDashboardProps {
   totalRevenue: number;
@@ -20,7 +20,7 @@ interface AdminDashboardProps {
   totalOrders: number;
   pendingCalls: number;
   atRiskCustomersCount?: number;
-  salesData: any[];
+  salesData: any;
   topProductsData: any[];
   teamPerformance: any[];
   hotCustomers: any[];
@@ -54,7 +54,8 @@ export default function AdminDashboard({
   sprintTeamHealth = []
 }: AdminDashboardProps) {
   
-  const [activeModalType, setActiveModalType] = useState<'customers' | 'orders' | 'calls' | null>(null);
+  const [activeModalType, setActiveModalType] = useState<'revenue' | 'customers' | 'orders' | 'calls' | null>(null);
+  const { openAssistant } = useVoiceStore();
 
   // Target & Task Delegation Modals
   const [editingTargetsEmployee, setEditingTargetsEmployee] = useState<any | null>(null);
@@ -62,7 +63,6 @@ export default function AdminDashboard({
   const [aiCoachEmployee, setAiCoachEmployee] = useState<any | null>(null);
 
   // Executive AI Suite Modals
-  const [showAskERPModal, setShowAskERPModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showDeadStockModal, setShowDeadStockModal] = useState(false);
 
@@ -71,6 +71,23 @@ export default function AdminDashboard({
   const [teamAttendanceFilter, setTeamAttendanceFilter] = useState<'ALL' | 'ACTIVE' | 'CHECKED_OUT' | 'NOT_MARKED' | 'LEAVE'>('ALL');
   // Live Leaderboard Timeframe Switcher
   const [leaderboardMode, setLeaderboardMode] = useState<'DAILY' | 'MONTHLY'>('DAILY');
+  // Revenue Overview Timeframe Switcher
+  const [revenueTimeframe, setRevenueTimeframe] = useState<'THIS_WEEK' | 'LAST_7_DAYS' | 'THIS_MONTH' | 'ALL_DAYS'>(
+    (salesData as any)?.defaultView || 'THIS_WEEK'
+  );
+
+  const currentRevenueData = useMemo(() => {
+    if (Array.isArray(salesData)) {
+      return salesData;
+    }
+    if (salesData && typeof salesData === 'object') {
+      if (revenueTimeframe === 'LAST_7_DAYS') return salesData.last7Days || [];
+      if (revenueTimeframe === 'THIS_MONTH') return salesData.thisMonth || [];
+      if (revenueTimeframe === 'ALL_DAYS') return salesData.allDays || [];
+      return salesData.thisWeek || [];
+    }
+    return [];
+  }, [salesData, revenueTimeframe]);
 
   // Keep attendanceData in sync with server props
   useEffect(() => {
@@ -221,7 +238,7 @@ export default function AdminDashboard({
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
-            onClick={() => setShowAskERPModal(true)}
+            onClick={() => openAssistant()}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -252,28 +269,6 @@ export default function AdminDashboard({
             <span className="hero-pulse-dot" />
             <span>LIVE ENTERPRISE COMMAND</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowAskERPModal(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '20px',
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              color: '#ffffff',
-              border: '1px solid rgba(255, 255, 255, 0.25)',
-              fontSize: '0.78rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              backdropFilter: 'blur(8px)',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <Sparkles size={14} color="#f59e0b" />
-            <span>Ask Copilot</span>
-          </button>
         </div>
 
         <div>
@@ -283,21 +278,54 @@ export default function AdminDashboard({
 
         {/* 4-KPI Metric Strip */}
         <div className="hero-metrics-grid">
-          <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('orders')}>
-            <div className="hero-metric-label">Revenue MTD</div>
+          <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('revenue')}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span className="hero-metric-label">Revenue MTD</span>
+              <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <TrendingUp size={12} color="#059669" />
+              </div>
+            </div>
             <div className="hero-metric-val">₹{Number(totalRevenue || 0) >= 1000 ? (Number(totalRevenue || 0) / 1000).toFixed(1) + 'k' : Number(totalRevenue || 0).toLocaleString('en-IN')}</div>
+            <div style={{ fontSize: '0.66rem', color: '#059669', fontWeight: 600, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }} /> Live Inflow
+            </div>
           </div>
+
           <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('orders')}>
-            <div className="hero-metric-label">Total Orders</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span className="hero-metric-label">Total Orders</span>
+              <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Package size={12} color="#2563eb" />
+              </div>
+            </div>
             <div className="hero-metric-val">{Number(totalOrders || 0)}</div>
+            <div style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 500, marginTop: '4px' }}>Processed</div>
           </div>
+
           <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('customers')}>
-            <div className="hero-metric-label">B2B Clients</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span className="hero-metric-label">B2B Clients</span>
+              <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Users size={12} color="#7c3aed" />
+              </div>
+            </div>
             <div className="hero-metric-val">{Number(totalCustomers || 0)}</div>
+            <div style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 500, marginTop: '4px' }}>Active accounts</div>
           </div>
+
           <div className="hero-metric-card hover-lift" onClick={() => setActiveModalType('calls')}>
-            <div className="hero-metric-label">Pending Calls</div>
-            <div className="hero-metric-val" style={{ color: Number(pendingCalls || 0) > 0 ? '#f87171' : '#34d399' }}>{Number(pendingCalls || 0)}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <span className="hero-metric-label">Pending Calls</span>
+              <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: Number(pendingCalls || 0) > 0 ? '#fef2f2' : '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Activity size={12} color={Number(pendingCalls || 0) > 0 ? '#dc2626' : '#059669'} />
+              </div>
+            </div>
+            <div className="hero-metric-val" style={{ color: Number(pendingCalls || 0) > 0 ? '#dc2626' : '#059669' }}>
+              {Number(pendingCalls || 0)}
+            </div>
+            <div style={{ fontSize: '0.66rem', color: Number(pendingCalls || 0) > 0 ? '#dc2626' : '#059669', fontWeight: 600, marginTop: '4px' }}>
+              {Number(pendingCalls || 0) > 0 ? 'Follow-up req.' : 'All cleared'}
+            </div>
           </div>
         </div>
       </div>
@@ -342,7 +370,7 @@ export default function AdminDashboard({
       }}>
         {/* 1. Ask ERP Assistant Card */}
         <div
-          onClick={() => setShowAskERPModal(true)}
+          onClick={() => useVoiceStore.getState().openAssistant()}
           style={{
             backgroundColor: '#f5f3ff',
             border: '1px solid #ddd6fe',
@@ -996,7 +1024,7 @@ export default function AdminDashboard({
 
       {/* KPI Grid */}
       <div className="kpi-grid">
-        <div className="kpi-card glass-panel hover-lift" onClick={() => setActiveModalType('orders')} style={{ cursor: 'pointer' }}>
+        <div className="kpi-card glass-panel hover-lift" onClick={() => setActiveModalType('revenue')} style={{ cursor: 'pointer' }}>
           <div className="kpi-icon-header">
             <div className="kpi-title">Total Revenue</div>
             <TrendingUp size={18} className="kpi-icon positive" />
@@ -1046,8 +1074,90 @@ export default function AdminDashboard({
       {/* Charts Section */}
       <div className="dashboard-charts">
         <div className="chart-container glass-panel">
-          <h3>Revenue Overview</h3>
-          <SalesChart data={salesData} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Revenue Overview</h3>
+              <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                {revenueTimeframe === 'THIS_WEEK' && 'Current week (Mon - Sun) daily sales'}
+                {revenueTimeframe === 'LAST_7_DAYS' && 'Rolling last 7 days daily sales'}
+                {revenueTimeframe === 'THIS_MONTH' && 'Current month daily sales'}
+                {revenueTimeframe === 'ALL_DAYS' && 'Day of week sales distribution'}
+              </p>
+            </div>
+            {salesData && typeof salesData === 'object' && !Array.isArray(salesData) && (
+              <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '8px', gap: '2px' }}>
+                <button
+                  type="button"
+                  onClick={() => setRevenueTimeframe('THIS_WEEK')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: revenueTimeframe === 'THIS_WEEK' ? '#ffffff' : 'transparent',
+                    color: revenueTimeframe === 'THIS_WEEK' ? 'var(--accent-primary)' : '#64748b',
+                    boxShadow: revenueTimeframe === 'THIS_WEEK' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  This Week
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRevenueTimeframe('LAST_7_DAYS')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: revenueTimeframe === 'LAST_7_DAYS' ? '#ffffff' : 'transparent',
+                    color: revenueTimeframe === 'LAST_7_DAYS' ? 'var(--accent-primary)' : '#64748b',
+                    boxShadow: revenueTimeframe === 'LAST_7_DAYS' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  Last 7 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRevenueTimeframe('THIS_MONTH')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: revenueTimeframe === 'THIS_MONTH' ? '#ffffff' : 'transparent',
+                    color: revenueTimeframe === 'THIS_MONTH' ? 'var(--accent-primary)' : '#64748b',
+                    boxShadow: revenueTimeframe === 'THIS_MONTH' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  This Month
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRevenueTimeframe('ALL_DAYS')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: revenueTimeframe === 'ALL_DAYS' ? '#ffffff' : 'transparent',
+                    color: revenueTimeframe === 'ALL_DAYS' ? 'var(--accent-primary)' : '#64748b',
+                    boxShadow: revenueTimeframe === 'ALL_DAYS' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  By Day
+                </button>
+              </div>
+            )}
+          </div>
+          <SalesChart data={currentRevenueData} />
         </div>
         <div className="chart-container glass-panel">
           <h3>Top Categories</h3>
@@ -1103,30 +1213,69 @@ export default function AdminDashboard({
               margin: '0 0 16px 0',
               padding: '14px 16px',
               backgroundColor: '#f8fafc',
-              borderRadius: '10px',
+              borderRadius: '12px',
               border: '1px solid #e2e8f0',
               display: 'flex',
               flexDirection: 'column',
               gap: '12px'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', flexWrap: 'wrap', gap: '12px' }}>
                 
                 {/* Sprint Revenue & Pacing Progress */}
-                <div style={{ flex: '1 1 260px', minWidth: '240px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <Zap size={14} color="#7c3aed" /> Current Sprint Pacing (Week {orgSprintSummary.currentWeekNum})
-                    </span>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a' }}>
-                      ₹{orgSprintSummary.totalSprintRevenue.toLocaleString('en-IN')} <span style={{ fontWeight: 500, color: '#64748b' }}>/ ₹{orgSprintSummary.totalSprintTarget.toLocaleString('en-IN')}</span>
-                      <span style={{ marginLeft: '6px', color: orgSprintSummary.sprintOverallPercent >= 75 ? '#16a34a' : '#6366f1', fontWeight: 700 }}>
-                        ({orgSprintSummary.sprintOverallPercent}%)
+                <div style={{ flex: '1 1 280px', width: '100%', minWidth: '0' }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    flexWrap: 'wrap', 
+                    gap: '6px 10px', 
+                    marginBottom: '8px' 
+                  }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', minWidth: '0' }}>
+                      <Zap size={14} color="#7c3aed" style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: '0.80rem', fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap' }}>
+                        Current Sprint Pacing
                       </span>
-                    </span>
+                      <span style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        padding: '1.5px 7px',
+                        borderRadius: '9999px',
+                        backgroundColor: '#ede9fe',
+                        color: '#6d28d9',
+                        border: '1px solid #ddd6fe',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}>
+                        Week {orgSprintSummary.currentWeekNum}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', flexWrap: 'nowrap' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap' }}>
+                        ₹{orgSprintSummary.totalSprintRevenue.toLocaleString('en-IN')}
+                      </span>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 500, color: '#64748b', whiteSpace: 'nowrap' }}>
+                        / ₹{orgSprintSummary.totalSprintTarget.toLocaleString('en-IN')}
+                      </span>
+                      <span style={{
+                        fontSize: '0.70rem',
+                        fontWeight: 800,
+                        padding: '1.5px 6px',
+                        borderRadius: '6px',
+                        backgroundColor: orgSprintSummary.sprintOverallPercent >= 75 ? '#dcfce7' : '#e0e7ff',
+                        color: orgSprintSummary.sprintOverallPercent >= 75 ? '#15803d' : '#4338ca',
+                        border: `1px solid ${orgSprintSummary.sprintOverallPercent >= 75 ? '#bbf7d0' : '#c7d2fe'}`,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0
+                      }}>
+                        {orgSprintSummary.sprintOverallPercent}%
+                      </span>
+                    </div>
                   </div>
 
                   {/* Team-wide Sprint Progress Bar */}
-                  <div style={{ width: '100%', height: '7px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{
                       width: `${Math.min(100, orgSprintSummary.sprintOverallPercent)}%`,
                       height: '100%',
@@ -1140,25 +1289,26 @@ export default function AdminDashboard({
                 </div>
 
                 {/* Team Momentum & Status Badges */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', width: '100%' }}>
                   <div style={{
-                    padding: '6px 12px',
+                    padding: '5px 10px',
                     backgroundColor: '#ffffff',
                     borderRadius: '8px',
                     border: '1px solid #e2e8f0',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center'
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    flexShrink: 0
                   }}>
-                    <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>TEAM MOMENTUM</span>
-                    <span style={{ fontSize: '0.88rem', fontWeight: 800, color: orgSprintSummary.avgHealthScore >= 70 ? '#16a34a' : orgSprintSummary.avgHealthScore >= 45 ? '#4f46e5' : '#dc2626' }}>
+                    <span style={{ fontSize: '0.66rem', color: '#64748b', fontWeight: 700, letterSpacing: '0.02em' }}>TEAM MOMENTUM</span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 800, color: orgSprintSummary.avgHealthScore >= 70 ? '#16a34a' : orgSprintSummary.avgHealthScore >= 45 ? '#4f46e5' : '#dc2626' }}>
                       {orgSprintSummary.avgHealthScore}% Health
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', gap: '6px' }}>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={{
-                      fontSize: '0.72rem',
+                      fontSize: '0.70rem',
                       fontWeight: 700,
                       padding: '4px 8px',
                       borderRadius: '6px',
@@ -1167,12 +1317,13 @@ export default function AdminDashboard({
                       border: '1px solid #bbf7d0',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      whiteSpace: 'nowrap'
                     }}>
                       🚀 {orgSprintSummary.excellentCount} Ahead
                     </span>
                     <span style={{
-                      fontSize: '0.72rem',
+                      fontSize: '0.70rem',
                       fontWeight: 700,
                       padding: '4px 8px',
                       borderRadius: '6px',
@@ -1181,12 +1332,13 @@ export default function AdminDashboard({
                       border: '1px solid #c7d2fe',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      whiteSpace: 'nowrap'
                     }}>
                       🎯 {orgSprintSummary.onTrackCount} On Track
                     </span>
                     <span style={{
-                      fontSize: '0.72rem',
+                      fontSize: '0.70rem',
                       fontWeight: 700,
                       padding: '4px 8px',
                       borderRadius: '6px',
@@ -1195,7 +1347,8 @@ export default function AdminDashboard({
                       border: '1px solid #fecaca',
                       display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      whiteSpace: 'nowrap'
                     }}>
                       ⚠️ {orgSprintSummary.atRiskCount} At Risk
                     </span>
@@ -1208,14 +1361,14 @@ export default function AdminDashboard({
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                 gap: '8px',
-                paddingTop: '8px',
+                paddingTop: '10px',
                 borderTop: '1px dashed #e2e8f0'
               }}>
                 {[
-                  { week: 1, label: 'Sprint 1 (Days 1–7)', weight: '20% Vol', title: 'Pipeline & Prospecting' },
-                  { week: 2, label: 'Sprint 2 (Days 8–14)', weight: '25% Vol', title: 'Warm Conversions' },
-                  { week: 3, label: 'Sprint 3 (Days 15–21)', weight: '30% Vol', title: 'Peak Volume' },
-                  { week: 4, label: 'Sprint 4 (Days 22–End)', weight: '25% Vol', title: 'Closing & Buffer' },
+                  { week: 1, sprintName: 'Sprint 1', days: 'Days 1–7', weight: '20% Vol', title: 'Pipeline & Prospecting' },
+                  { week: 2, sprintName: 'Sprint 2', days: 'Days 8–14', weight: '25% Vol', title: 'Warm Conversions' },
+                  { week: 3, sprintName: 'Sprint 3', days: 'Days 15–21', weight: '30% Vol', title: 'Peak Volume' },
+                  { week: 4, sprintName: 'Sprint 4', days: 'Days 22–End', weight: '25% Vol', title: 'Closing & Buffer' },
                 ].map((s) => {
                   const isActive = s.week === orgSprintSummary.currentWeekNum;
                   const isCompleted = s.week < orgSprintSummary.currentWeekNum;
@@ -1223,25 +1376,66 @@ export default function AdminDashboard({
                     <div
                       key={s.week}
                       style={{
-                        padding: '6px 10px',
-                        borderRadius: '6px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
                         backgroundColor: isActive ? '#f5f3ff' : isCompleted ? '#f8fafc' : '#ffffff',
                         border: isActive ? '1.5px solid #8b5cf6' : '1px solid #e2e8f0',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '2px',
-                        boxShadow: isActive ? '0 2px 6px rgba(139, 92, 246, 0.12)' : 'none'
+                        gap: '4px',
+                        boxShadow: isActive ? '0 2px 8px rgba(139, 92, 246, 0.12)' : 'none',
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        boxSizing: 'border-box'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 700, color: isActive ? '#6d28d9' : '#334155' }}>
-                          {s.label}
+                      {/* Line 1: Sprint Name & Weight Tag */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ 
+                          fontSize: '0.75rem', 
+                          fontWeight: 700, 
+                          color: isActive ? '#6d28d9' : '#0f172a', 
+                          whiteSpace: 'nowrap' 
+                        }}>
+                          {s.sprintName}
                         </span>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: isActive ? '#7c3aed' : '#94a3b8' }}>
+                        <span style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          padding: '1.5px 5px',
+                          borderRadius: '4px',
+                          backgroundColor: isActive ? '#ede9fe' : '#f1f5f9',
+                          color: isActive ? '#6d28d9' : '#64748b',
+                          border: `1px solid ${isActive ? '#ddd6fe' : '#e2e8f0'}`,
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0
+                        }}>
                           {s.weight}
                         </span>
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: isActive ? '#5b21b6' : '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+
+                      {/* Line 2: Days range */}
+                      <div style={{ 
+                        fontSize: '0.66rem', 
+                        fontWeight: 500, 
+                        color: isActive ? '#7c3aed' : '#64748b', 
+                        whiteSpace: 'nowrap' 
+                      }}>
+                        {s.days}
+                      </div>
+
+                      {/* Line 3: Status / Description */}
+                      <div style={{
+                        fontSize: '0.68rem',
+                        fontWeight: isActive ? 700 : isCompleted ? 600 : 500,
+                        color: isActive ? '#5b21b6' : isCompleted ? '#16a34a' : '#64748b',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
                         {isActive ? `⚡ Active (${orgSprintSummary.daysLeft}d left)` : isCompleted ? '✓ Passed' : s.title}
                       </div>
                     </div>
@@ -1592,13 +1786,6 @@ export default function AdminDashboard({
           salesperson={aiCoachEmployee}
           onClose={() => setAiCoachEmployee(null)}
           onSuccess={() => window.location.reload()}
-        />
-      )}
-
-      {/* Ask ERP Assistant Modal */}
-      {showAskERPModal && (
-        <AskERPAssistantModal
-          onClose={() => setShowAskERPModal(false)}
         />
       )}
 

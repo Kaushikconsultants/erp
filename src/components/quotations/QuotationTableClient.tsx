@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -17,7 +17,12 @@ import {
   Layers,
   ArrowRight,
   FileCheck,
-  Coins
+  Coins,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronDown
 } from 'lucide-react';
 import ConvertQuotationBtn from '@/components/quotations/ConvertQuotationBtn';
 import ConvertToInvoiceBtn from '@/components/quotations/ConvertToInvoiceBtn';
@@ -40,6 +45,11 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
   const [editingQuotation, setEditingQuotation] = useState<any | null>(null);
   const [tokenModalQuote, setTokenModalQuote] = useState<any | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Pagination state: default 25, options: 25, 50, 100, 200 (Max)
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setQuotations(initialQuotations || []);
@@ -105,6 +115,56 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
     const sName = (q.salesperson?.user?.name || '').toLowerCase();
     return qNum.includes(query) || cName.includes(query) || sName.includes(query);
   });
+
+  // Reset to first page when search, KPI filter or page size changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeKpiFilter, pageSize]);
+
+  // Pagination calculations
+  const totalFilteredCount = filteredQuotations.length;
+  const totalPages = Math.max(1, Math.ceil(totalFilteredCount / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalFilteredCount);
+  const paginatedQuotations = filteredQuotations.slice(startIndex, endIndex);
+
+  const fromDisplay = totalFilteredCount === 0 ? 0 : startIndex + 1;
+  const toDisplay = endIndex;
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === safeCurrentPage) return;
+    setCurrentPage(newPage);
+    if (tableContainerRef.current) {
+      const rect = tableContainerRef.current.getBoundingClientRect();
+      if (rect.top < 0) {
+        tableContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (safeCurrentPage > 3) {
+        pages.push('...');
+      }
+      const start = Math.max(2, safeCurrentPage - 1);
+      const end = Math.min(totalPages - 1, safeCurrentPage + 1);
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      if (safeCurrentPage < totalPages - 2) {
+        pages.push('...');
+      }
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -251,14 +311,25 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
       </div>
 
       {/* ─── TABLE PANEL & FILTER BADGES ─── */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      <div ref={tableContainerRef} style={{ backgroundColor: '#ffffff', borderRadius: 'var(--radius-lg, 12px)', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         
         {/* HEADER & SEARCH BAR & ACTIVE FILTER PILL */}
         <div style={{ padding: '18px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a' }}>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {activeKpiFilter === 'ACCEPTED_CONVERTED' ? 'Accepted & Converted Quotations' : activeKpiFilter === 'DRAFT' ? 'Pending Draft Quotations' : 'All Quotations'}
+              <span style={{ 
+                fontSize: '0.75rem', 
+                fontWeight: 700, 
+                color: '#475569', 
+                backgroundColor: '#f1f5f9', 
+                padding: '2px 8px', 
+                borderRadius: '9999px',
+                border: '1px solid #e2e8f0'
+              }}>
+                {totalFilteredCount}
+              </span>
             </h2>
             
             {activeKpiFilter !== 'ALL' && (
@@ -283,21 +354,84 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
             )}
           </div>
 
-          <div style={{ position: 'relative', width: '300px' }}>
-            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
-            <input 
-              type="text" 
-              placeholder="Search Quotes by #, customer..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px 8px 36px', borderRadius: 'var(--radius-md, 8px)', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }} 
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Quick Page Size Selector in Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', fontFamily: 'inherit' }}>
+                Show:
+              </span>
+              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    height: '38px',
+                    padding: '0 32px 0 12px',
+                    borderRadius: 'var(--radius-md, 8px)',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    fontSize: '0.85rem',
+                    fontFamily: 'inherit',
+                    fontWeight: 500,
+                    color: '#1e293b',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Quotation limit per page"
+                >
+                  <option value={25}>25 / page (1–25)</option>
+                  <option value={50}>50 / page (1–50)</option>
+                  <option value={100}>100 / page (1–100)</option>
+                  <option value={200}>200 / page (Max)</option>
+                </select>
+                <ChevronDown 
+                  size={14} 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#64748b', 
+                    pointerEvents: 'none' 
+                  }} 
+                />
+              </div>
+            </div>
+
+            <div style={{ position: 'relative', width: '280px' }}>
+              <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              <input 
+                type="text" 
+                placeholder="Search Quotes by #, customer..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  height: '38px',
+                  padding: '0 12px 0 36px', 
+                  borderRadius: 'var(--radius-md, 8px)', 
+                  border: '1px solid #cbd5e1', 
+                  fontSize: '0.85rem', 
+                  fontFamily: 'inherit',
+                  color: '#1e293b',
+                  backgroundColor: '#ffffff',
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                  transition: 'all 0.15s ease'
+                }} 
+              />
+            </div>
           </div>
         </div>
         
         {/* ─── MOBILE QUOTATION CARDS VIEW (HIDDEN ON DESKTOP) ─── */}
         <div className="mobile-quotation-cards" style={{ display: 'none', flexDirection: 'column', gap: '10px', padding: '12px' }}>
-          {filteredQuotations.map((q) => (
+          {paginatedQuotations.map((q) => (
             <div 
               key={q.id}
               style={{
@@ -491,7 +625,7 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
                   </td>
                 </tr>
               ) : (
-                filteredQuotations.map(q => (
+                paginatedQuotations.map(q => (
                   <tr key={q.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '14px 20px', fontWeight: 700 }}>
                       <Link href={`/quotations/${q.id}`} style={{ textDecoration: 'none', color: 'var(--accent-primary, #4f46e5)' }}>
@@ -681,6 +815,231 @@ export default function QuotationTableClient({ initialQuotations = [] }: { initi
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* ─── PAGINATION FOOTER BAR ─── */}
+        <div style={{
+          padding: '14px 20px',
+          borderTop: '1px solid #e2e8f0',
+          backgroundColor: '#f8fafc',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '14px',
+          fontSize: '0.85rem',
+          fontFamily: 'inherit'
+        }}>
+          {/* Left side: Range information & Page Size selector */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ color: '#475569', fontSize: '0.825rem', fontFamily: 'inherit' }}>
+              Showing <span style={{ fontWeight: 700, color: '#0f172a' }}>{fromDisplay}</span> to{' '}
+              <span style={{ fontWeight: 700, color: '#0f172a' }}>{toDisplay}</span> of{' '}
+              <span style={{ fontWeight: 700, color: '#0f172a' }}>{totalFilteredCount}</span> quotations
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label htmlFor="quotation-page-size-footer" style={{ fontSize: '0.825rem', color: '#64748b', fontWeight: 500, fontFamily: 'inherit' }}>
+                Per page:
+              </label>
+              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                <select
+                  id="quotation-page-size-footer"
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  style={{
+                    appearance: 'none',
+                    WebkitAppearance: 'none',
+                    MozAppearance: 'none',
+                    height: '34px',
+                    padding: '0 28px 0 10px',
+                    borderRadius: 'var(--radius-md, 6px)',
+                    border: '1px solid #cbd5e1',
+                    backgroundColor: '#ffffff',
+                    color: '#1e293b',
+                    fontSize: '0.825rem',
+                    fontFamily: 'inherit',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <option value={25}>25 / page (1–25)</option>
+                  <option value={50}>50 / page (1–50)</option>
+                  <option value={100}>100 / page (1–100)</option>
+                  <option value={200}>200 / page (Max)</option>
+                </select>
+                <ChevronDown 
+                  size={13} 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '8px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#64748b', 
+                    pointerEvents: 'none' 
+                  }} 
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right side: Page Navigation buttons */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+              {/* First page button */}
+              <button
+                type="button"
+                onClick={() => handlePageChange(1)}
+                disabled={safeCurrentPage === 1}
+                title="First Page"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                  cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: safeCurrentPage === 1 ? 0.4 : 1,
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronsLeft size={15} />
+              </button>
+
+              {/* Previous page button */}
+              <button
+                type="button"
+                onClick={() => handlePageChange(safeCurrentPage - 1)}
+                disabled={safeCurrentPage === 1}
+                title="Previous Page"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                  cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                  opacity: safeCurrentPage === 1 ? 0.4 : 1,
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronLeft size={15} />
+              </button>
+
+              {/* Page numbers */}
+              {getPageNumbers().map((p, idx) => {
+                if (p === '...') {
+                  return (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      style={{
+                        width: '28px',
+                        textAlign: 'center',
+                        color: '#94a3b8',
+                        fontSize: '0.85rem',
+                        fontFamily: 'inherit',
+                        userSelect: 'none'
+                      }}
+                    >
+                      …
+                    </span>
+                  );
+                }
+
+                const isCurrent = p === safeCurrentPage;
+                return (
+                  <button
+                    key={`page-${p}`}
+                    type="button"
+                    onClick={() => handlePageChange(Number(p))}
+                    style={{
+                      minWidth: '32px',
+                      height: '32px',
+                      padding: '0 8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: '6px',
+                      border: isCurrent ? '1px solid var(--accent-primary, #4f46e5)' : '1px solid #cbd5e1',
+                      backgroundColor: isCurrent ? 'var(--accent-primary, #4f46e5)' : '#ffffff',
+                      color: isCurrent ? '#ffffff' : '#334155',
+                      fontWeight: isCurrent ? 700 : 500,
+                      fontSize: '0.825rem',
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                      boxShadow: isCurrent ? '0 2px 4px rgba(79, 70, 229, 0.2)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+
+              {/* Next page button */}
+              <button
+                type="button"
+                onClick={() => handlePageChange(safeCurrentPage + 1)}
+                disabled={safeCurrentPage === totalPages}
+                title="Next Page"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: safeCurrentPage === totalPages ? '#94a3b8' : '#334155',
+                  cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                  opacity: safeCurrentPage === totalPages ? 0.4 : 1,
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronRight size={15} />
+              </button>
+
+              {/* Last page button */}
+              <button
+                type="button"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={safeCurrentPage === totalPages}
+                title="Last Page"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  color: safeCurrentPage === totalPages ? '#94a3b8' : '#334155',
+                  cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                  opacity: safeCurrentPage === totalPages ? 0.4 : 1,
+                  fontFamily: 'inherit',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <ChevronsRight size={15} />
+              </button>
+            </div>
+          )}
         </div>
 
       </div>

@@ -3,8 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { canUserAccessSection } from "@/lib/authPermissions";
 import { prisma } from "@/lib/prisma";
-import { getTenantOrgId } from "@/lib/tenant";
+import { getTenantOrgId, getTenantContext } from "@/lib/tenant";
 import ProductionClient from "@/components/production/ProductionClient";
+import ModuleUpgradePrompt from "@/components/ui/ModuleUpgradePrompt";
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,11 @@ export default async function ProductionPage() {
 
   const hasAccess = await canUserAccessSection(session.user, "production");
   if (!hasAccess) redirect("/");
+
+  const tenantCtx = await getTenantContext();
+  if (!tenantCtx?.isPlatformOwner && tenantCtx?.enabledModules?.PRODUCTION_MANUFACTURING === false) {
+    return <ModuleUpgradePrompt moduleKey="PRODUCTION_MANUFACTURING" currentPlan={tenantCtx?.subscriptionPlan} />;
+  }
 
   const organizationId = await getTenantOrgId();
 

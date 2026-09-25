@@ -1,10 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Mic, MicOff, Bot, Sparkles, User, FileText, ShoppingBag, Package, PlusCircle, Settings, BarChart2, Phone, X } from 'lucide-react';
+import { Search, Mic, MicOff, Bot, Sparkles, User, FileText, ShoppingBag, Package, PlusCircle, Settings, BarChart2, Phone, X, Heart } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { parseVoiceIntent } from '@/app/actions/voiceActions';
 import { searchAllModules, SearchResultItem } from '@/app/actions/searchActions';
+import { useVoiceStore } from '@/lib/stores/voiceStore';
+import StylishHeart from '@/components/voice/StylishHeart';
 
 const QUICK_NAV = [
   { title: "Create New Quotation", subtitle: "Issue a new formal quote", url: "/quotations/new", icon: PlusCircle, color: "#4f46e5" },
@@ -27,6 +29,7 @@ export default function GlobalSearch() {
   const [searchingLive, setSearchingLive] = useState(false);
   
   const router = useRouter();
+  const { openAssistant } = useVoiceStore();
   const recognitionRef = useRef<any>(null);
   const latestQueryRef = useRef<string>('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -212,7 +215,7 @@ export default function GlobalSearch() {
 
         <input 
           type="text" 
-          placeholder={isListening ? "Listening..." : "Ask AI or search..."}
+          placeholder={isListening ? "Listening to Heart..." : "Ask Heart or search ERP..."}
           className="search-input"
           value={query}
           onFocus={() => setShowDropdown(true)}
@@ -240,18 +243,18 @@ export default function GlobalSearch() {
         {/* Direct AI Voice Microphone Button */}
         <button
           type="button"
-          onClick={toggleVoiceSearch}
-          title={isListening ? "Listening... Click to stop" : "AI Voice Search (Click & Speak)"}
+          onClick={() => openAssistant('', true)}
+          title="Talk to Heart (Voice AI - Click & Speak)"
           style={{
             position: 'absolute',
-            right: '6px',
+            right: '8px',
             top: '50%',
             transform: 'translateY(-50%)',
             background: isListening
-              ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+              ? 'rgba(16, 185, 129, 0.12)'
               : isAiProcessing
-                ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'
-                : 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
+                ? 'rgba(139, 92, 246, 0.12)'
+                : 'transparent',
             border: 'none',
             borderRadius: '50%',
             width: '28px',
@@ -260,15 +263,22 @@ export default function GlobalSearch() {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: '#ffffff',
             flexShrink: 0,
-            transition: 'all 0.2s ease',
+            transition: 'transform 0.15s ease',
             boxShadow: isListening
-              ? '0 0 0 3px rgba(16, 185, 129, 0.35)'
-              : '0 2px 6px rgba(79, 70, 229, 0.3)',
+              ? '0 0 0 2px rgba(16, 185, 129, 0.35)'
+              : 'none',
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-50%) scale(1.15)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(-50%) scale(1)'; }}
         >
-          {isAiProcessing ? <Sparkles size={14} color="#fff" /> : isListening ? <MicOff size={14} color="#fff" /> : <Mic size={14} color="#fff" />}
+          {isAiProcessing ? (
+            <Sparkles size={15} color="#8b5cf6" />
+          ) : isListening ? (
+            <MicOff size={15} color="#059669" />
+          ) : (
+            <StylishHeart size={20} isBeating={true} showGlow={false} />
+          )}
         </button>
       </div>
 

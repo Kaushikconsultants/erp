@@ -30,19 +30,21 @@ export async function getPipelineData() {
     const [customers, rawLeads, employees] = await Promise.all([
       prisma.customer.findMany({
         where: customerWhere,
+        take: 100,
+        orderBy: { updatedAt: 'desc' },
         include: {
           assignedSalesperson: {
-            include: { user: true }
+            select: { id: true, user: { select: { id: true, name: true } } }
           },
           quotations: {
             select: { id: true, quotationNumber: true, totalValue: true, status: true, date: true },
             orderBy: { createdAt: 'desc' },
-            take: 10
+            take: 5
           },
           orders: {
             select: { id: true, orderNumber: true, totalValue: true, paymentStatus: true, orderDate: true },
             orderBy: { createdAt: 'desc' },
-            take: 10
+            take: 5
           },
           calls: {
             select: { id: true, callType: true, outcome: true, followUpDate: true, notes: true, createdAt: true },
@@ -55,14 +57,15 @@ export async function getPipelineData() {
             orderBy: { date: 'asc' },
             take: 1
           }
-        },
-        orderBy: { updatedAt: 'desc' }
+        }
       }),
       prisma.lead.findMany({
         where: leadWhere,
+        take: 100,
+        orderBy: { updatedAt: 'desc' },
         include: {
           assignedSalesperson: {
-            include: { user: true }
+            select: { id: true, user: { select: { id: true, name: true } } }
           },
           calls: {
             select: { id: true, callType: true, outcome: true, followUpDate: true, notes: true, createdAt: true },
@@ -75,8 +78,7 @@ export async function getPipelineData() {
             orderBy: { date: 'asc' },
             take: 1
           }
-        },
-        orderBy: { updatedAt: 'desc' }
+        }
       }),
       prisma.employee.findMany({
         where: { organizationId, employmentStatus: 'Active' },
@@ -106,14 +108,6 @@ export async function getPipelineData() {
       } else if (hasQuotations && (effectiveStage === 'Contacted' || effectiveStage === 'New Lead')) {
         // If a customer has a quotation created/sent, they automatically belong in Opportunity stage
         effectiveStage = 'Opportunity';
-      }
-
-      // Auto-sync in background if DB is not updated
-      if (c.leadStage !== effectiveStage) {
-        prisma.customer.update({
-          where: { id: c.id },
-          data: { leadStage: effectiveStage, status: effectiveStage === 'Won' ? 'Active Lead' : effectiveStage }
-        }).catch(() => {});
       }
 
       // Accurate Order / Quotation / Deal Value calculation:
@@ -1096,22 +1090,108 @@ export async function deletePipelineLead(leadId: string, isLeadRecord: boolean) 
 
 export async function createQuickLead(data: { name: string; shopName?: string; whatsappNumber?: string; notes?: string }) {
   try {
-    const organizationId = await getTenantOrgId();
+    let organizationId: string | null = null;
+    let employeeId: string | null = null;
+
+    try {
+      organizationId = await getTenantOrgId();
+    } catch (e) {
+      console.warn("Could not get tenant org ID in createQuickLead:", e);
+    }
+
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
-    let employeeId = null;
     if (userId) {
       const emp = await prisma.employee.findUnique({ where: { userId } });
-      if (emp) employeeId = emp.id;
+      if (emp) {
+        employeeId = emp.id;
+        if (!organizationId && emp.organizationId) {
+          organizationId = emp.organizationId;
+        }
+      }
     }
+
+    if (!organizationId) {
+      const firstOrg = await prisma.organization.findFirst({ select: { id: true } });
+      if (firstOrg) organizationId = firstOrg.id;
+    }
+
+    const cleanNumber = (data.whatsappNumber || "").replace(/[^\d+]/g, "").trim();
+    const cleanDigits = cleanNumber.replace(/\D/g, "");
+    const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+
+    // Deduplication: If a lead or customer already exists with this phone number, DO NOT create a duplicate!
+    if (last10.length >= 7) {
+      const existingLead = await prisma.lead.findFirst({
+        where: {
+          ...(organizationId ? {
+            OR: [
+              { organizationId: organizationId },
+              { organizationId: null },
+              { organizationId: "default-org" }
+            ]
+          } : {}),
+          whatsappNumber: { contains: last10 }
+        }
+      });
+
+      if (existingLead) {
+        const hasBetterName = data.name?.trim() && !data.name.startsWith("Lead ") && existingLead.name !== data.name.trim();
+        const hasBetterShop = data.shopName?.trim() && existingLead.shopName !== data.shopName.trim();
+        if (hasBetterName || hasBetterShop) {
+          const updated = await prisma.lead.update({
+            where: { id: existingLead.id },
+            data: {
+              ...(hasBetterName ? { name: data.name.trim() } : {}),
+              ...(hasBetterShop ? { shopName: data.shopName!.trim() } : {})
+            }
+          });
+          revalidatePath("/leads");
+          return { success: true, lead: updated };
+        }
+        return { success: true, lead: existingLead };
+      }
+
+      const existingCustomer = await prisma.customer.findFirst({
+        where: {
+          ...(organizationId ? {
+            OR: [
+              { organizationId: organizationId },
+              { organizationId: null },
+              { organizationId: "default-org" }
+            ]
+          } : {}),
+          OR: [
+            { mobile: { contains: last10 } },
+            { whatsappNumber: { contains: last10 } },
+            { alternatePhone: { contains: last10 } }
+          ]
+        }
+      });
+
+      if (existingCustomer) {
+        return {
+          success: true,
+          lead: {
+            id: existingCustomer.id,
+            name: existingCustomer.contactPerson || existingCustomer.businessName,
+            shopName: existingCustomer.businessName,
+            whatsappNumber: existingCustomer.mobile || existingCustomer.whatsappNumber,
+            isCustomer: true
+          }
+        };
+      }
+    }
+
+    const finalName = data.name?.trim() || data.shopName?.trim() || (cleanNumber ? `Lead ${cleanNumber.slice(-4)}` : "New Lead");
 
     const lead = await prisma.lead.create({
       data: {
-        name: data.name,
-        shopName: data.shopName || null,
-        whatsappNumber: data.whatsappNumber || "",
+        name: finalName,
+        shopName: data.shopName?.trim() || null,
+        whatsappNumber: cleanNumber,
         status: "New Lead",
-        organizationId,
+        organizationId: organizationId || null,
         assignedSalespersonId: employeeId
       }
     });
@@ -1120,7 +1200,7 @@ export async function createQuickLead(data: { name: string; shopName?: string; w
     return { success: true, lead };
   } catch (err: any) {
     console.error("Failed to create quick lead:", err);
-    return { success: false, error: err.message };
+    return { success: false, error: err.message || "Failed to create lead" };
   }
 }
 

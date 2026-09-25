@@ -20,6 +20,7 @@ import {
   Loader2
 } from 'lucide-react';
 import DataImportWizardModal from '@/components/common/DataImportWizardModal';
+import { useSession } from 'next-auth/react';
 
 interface OnboardingWizardModalProps {
   isOpen: boolean;
@@ -56,6 +57,73 @@ export default function OnboardingWizardModal({
   const [enableEmail, setEnableEmail] = useState(true);
 
   if (!isOpen) return null;
+
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role;
+  const isSuperOrAdmin = userRole === 'SUPER_ADMIN' || userRole === 'ADMIN';
+
+  if (session && !isSuperOrAdmin) {
+    return (
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100060,
+        padding: '16px'
+      }}>
+        <div style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '16px',
+          maxWidth: '420px',
+          width: '100%',
+          padding: '24px',
+          textAlign: 'center',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)'
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            backgroundColor: '#fee2e2',
+            color: '#dc2626',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 16px auto'
+          }}>
+            <ShieldCheck size={24} />
+          </div>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+            Administrator Access Required
+          </h3>
+          <p style={{ margin: '0 0 20px 0', fontSize: '0.85rem', color: '#64748b', lineHeight: 1.5 }}>
+            Only Super Admins and Organization Admins have permission to configure company profile, branches, or team member invites.
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '8px',
+              backgroundColor: '#4f46e5',
+              color: '#ffffff',
+              border: 'none',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              width: '100%'
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const totalSteps = 6;
   const progressPercent = Math.round((currentStep / totalSteps) * 100);

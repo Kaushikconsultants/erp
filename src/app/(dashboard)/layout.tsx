@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import DashboardShell from '@/components/layout/DashboardShell';
 import PresenceHeartbeat from '@/components/presence/PresenceHeartbeat';
 import NativeSessionSync from '@/components/notifications/NativeSessionSync';
+import NavigationProgressBar from '@/components/ui/NavigationProgressBar';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getTenantContext } from '@/lib/tenant';
@@ -38,7 +39,16 @@ export default async function DashboardLayout({
       userRole={userRole}
       isPlatformOwner={isPlatformOwner}
       allowedSections={allowedSectionsList}
+      subscriptionPlan={tenantCtx?.subscriptionPlan || "GROWTH"}
+      subscriptionStatus={tenantCtx?.subscriptionStatus || "ACTIVE"}
+      isHardLocked={tenantCtx?.isHardLocked || false}
+      isSoftLocked={tenantCtx?.isSoftLocked || false}
+      trialDaysRemaining={tenantCtx?.trialDaysRemaining ?? null}
+      enabledModules={tenantCtx?.enabledModules || null}
     >
+      <Suspense fallback={null}>
+        <NavigationProgressBar />
+      </Suspense>
       <NativeSessionSync userId={currentUserId} />
       <PresenceHeartbeat />
       {children}

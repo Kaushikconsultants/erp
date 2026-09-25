@@ -26,6 +26,7 @@ import {
   ReorderDashboardData,
   CustomerReorderInsight
 } from "@/app/actions/aiReorderActions";
+import "./AIReorderPredictorModal.css";
 
 interface AIReorderPredictorModalProps {
   onClose: () => void;
@@ -136,35 +137,10 @@ export default function AIReorderPredictorModal({ onClose }: AIReorderPredictorM
   });
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 99999,
-        backgroundColor: "rgba(15, 23, 42, 0.7)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "16px"
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "16px",
-          width: "100%",
-          maxWidth: "1160px",
-          maxHeight: "92vh",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-          border: "1px solid #e2e8f0",
-          overflow: "hidden"
-        }}
-        onClick={e => e.stopPropagation()}
-      >
+    <div className="reorder-modal-overlay" onClick={onClose}>
+      <div className="reorder-modal-container" onClick={e => e.stopPropagation()}>
+        {/* Mobile Drag Indicator Handle */}
+        <div className="reorder-modal-handle-bar" />
         {/* Header */}
         <div
           style={{
@@ -245,7 +221,7 @@ export default function AIReorderPredictorModal({ onClose }: AIReorderPredictorM
         </div>
 
         {/* Modal Body */}
-        <div style={{ padding: "20px 22px", overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: "16px" }}>
+        <div className="reorder-modal-body">
           
           {error && (
             <div style={{ padding: "12px 16px", borderRadius: "8px", backgroundColor: "#fef2f2", border: "1px solid #fecaca", color: "#dc2626", fontSize: "0.85rem" }}>

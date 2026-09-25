@@ -297,7 +297,7 @@ export async function createCustomer(formData: FormData) {
   const status = (formData.get("status") as string)?.trim() || "New Lead";
   const providedSalespersonId = formData.get("salespersonId") as string;
   
-  const gstNumber = (formData.get("gstNumber") as string)?.trim() || null;
+  const gstNumber = (formData.get("gstNumber") as string)?.trim()?.toUpperCase() || null;
   const landmark = (formData.get("landmark") as string)?.trim() || null;
   const regularDiscount = (formData.get("regularDiscount") as string)?.trim() || null;
   const preferredPaymentMethod = (formData.get("preferredPaymentMethod") as string)?.trim() || null;
@@ -306,7 +306,7 @@ export async function createCustomer(formData: FormData) {
   const openingBalance = isNaN(openingBalanceRaw) ? 0 : openingBalanceRaw;
   const openingBalanceType = (formData.get("openingBalanceType") as string) || "DEBIT";
 
-  const pan = (formData.get("pan") as string)?.trim() || (gstNumber && gstNumber.length >= 12 ? gstNumber.slice(2, 12) : null);
+  const pan = (formData.get("pan") as string)?.trim()?.toUpperCase() || (gstNumber && gstNumber.length >= 12 ? gstNumber.slice(2, 12).toUpperCase() : null);
 
   if (!companyName || !phone || phone === "+91" || phone === "+91 ") {
     return { error: "Company Name and Phone Number are required" };
@@ -712,9 +712,9 @@ export async function updateCustomer(id: string, formData: FormData) {
   const status = (formData.get("status") as string)?.trim() || null;
   const assignedSalespersonId = formData.get("assignedSalespersonId") as string;
   
-  const gstNumber = (formData.get("gstNumber") as string)?.trim() || null;
-  const panInput = (formData.get("pan") as string)?.trim();
-  const pan = panInput || (gstNumber && gstNumber.length >= 12 ? gstNumber.slice(2, 12) : null);
+  const gstNumber = (formData.get("gstNumber") as string)?.trim()?.toUpperCase() || null;
+  const panInput = (formData.get("pan") as string)?.trim()?.toUpperCase();
+  const pan = panInput || (gstNumber && gstNumber.length >= 12 ? gstNumber.slice(2, 12).toUpperCase() : null);
   const whatsappNumber = (formData.get("whatsappNumber") as string)?.trim() || null;
   const alternatePhone = (formData.get("alternatePhone") as string)?.trim() || null;
   const landmark = (formData.get("landmark") as string)?.trim() || null;
@@ -748,12 +748,25 @@ export async function updateCustomer(id: string, formData: FormData) {
     const organizationId = await getTenantOrgId();
     const existing = await prisma.customer.findUnique({
       where: { id },
-      select: { id: true, businessName: true, organizationId: true }
+      select: { id: true, businessName: true, organizationId: true, assignedSalespersonId: true }
     });
 
     if (!existing) return { error: "Customer not found." };
-    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+    if (existing.organizationId !== organizationId) {
       return { error: "Unauthorized access to customer" };
+    }
+
+    let targetSalespersonId: string | null | undefined = undefined;
+    if (formData.has("assignedSalespersonId")) {
+      const rawVal = (formData.get("assignedSalespersonId") as string)?.trim();
+      if (rawVal && rawVal !== "unassigned" && rawVal !== "") {
+        targetSalespersonId = rawVal;
+      } else if (rawVal === "unassigned") {
+        targetSalespersonId = null;
+      } else if (rawVal === "" && !existing.assignedSalespersonId) {
+        targetSalespersonId = null;
+      }
+      // If rawVal === "" and existing.assignedSalespersonId is already present, we deliberately preserve it.
     }
 
     await prisma.customer.update({
@@ -781,7 +794,7 @@ export async function updateCustomer(id: string, formData: FormData) {
         ...(openingBalanceRaw !== undefined && !isNaN(openingBalanceRaw) ? { openingBalance: openingBalanceRaw } : {}),
         ...(openingBalanceType ? { openingBalanceType } : {}),
         ...(status ? { status } : {}),
-        ...(assignedSalespersonId !== undefined ? { assignedSalespersonId: assignedSalespersonId || null } : {}),
+        ...(targetSalespersonId !== undefined ? { assignedSalespersonId: targetSalespersonId } : {}),
       },
     });
 
@@ -813,7 +826,7 @@ export async function reassignCustomer(id: string, salespersonId: string) {
     const organizationId = await getTenantOrgId();
     const customer = await prisma.customer.findUnique({ where: { id }, select: { organizationId: true } });
     if (!customer) return { error: "Customer not found." };
-    if (customer.organizationId && organizationId && customer.organizationId !== organizationId) {
+    if (customer.organizationId !== organizationId) {
       return { error: "Unauthorized access to customer" };
     }
 
@@ -829,6 +842,25 @@ export async function reassignCustomer(id: string, salespersonId: string) {
   }
 }
 
+export async function getCustomerById(id: string) {
+  try {
+    const organizationId = await getTenantOrgId();
+    const customer = await prisma.customer.findFirst({
+      where: { id, organizationId },
+      include: {
+        assignedSalesperson: {
+          include: { user: { select: { id: true, name: true, email: true } } }
+        }
+      }
+    });
+    if (!customer) return { success: false, error: "Customer not found." };
+    return { success: true, customer };
+  } catch (error: any) {
+    console.error("Failed to get customer by id:", error);
+    return { success: false, error: error.message || "Failed to fetch customer." };
+  }
+}
+
 export async function deleteCustomer(id: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
@@ -841,7 +873,7 @@ export async function deleteCustomer(id: string) {
     });
 
     if (!customer) return { error: "Customer not found." };
-    if (customer.organizationId && organizationId && customer.organizationId !== organizationId) {
+    if (customer.organizationId !== organizationId) {
       return { error: "Unauthorized access to customer" };
     }
 
@@ -982,3 +1014,162 @@ export async function deleteCustomer(id: string) {
     return { error: "Failed to delete customer: " + (error.message || "Unknown error") };
   }
 }
+
+export async function deleteMultipleCustomers(ids: string[]) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+  if (!ids || ids.length === 0) return { error: "No customers selected to delete." };
+
+  try {
+    const organizationId = await getTenantOrgId();
+    const customers = await prisma.customer.findMany({
+      where: { id: { in: ids }, organizationId },
+      select: { id: true, businessName: true, contactPerson: true, mobile: true }
+    });
+
+    if (customers.length === 0) {
+      return { error: "No matching customers found to delete." };
+    }
+
+    const validIds = customers.map(c => c.id);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete Activity logs / Calls / Followups / Tasks
+      await tx.call.deleteMany({ where: { customerId: { in: validIds } } });
+      await tx.followUp.deleteMany({ where: { customerId: { in: validIds } } });
+      await tx.task.deleteMany({ where: { customerId: { in: validIds } } });
+
+      // 2. Delete WhatsApp communications & links
+      const convos = await tx.whatsAppConversation.findMany({
+        where: { customerId: { in: validIds } },
+        select: { id: true }
+      });
+      if (convos.length > 0) {
+        await tx.whatsAppMessage.deleteMany({
+          where: { conversationId: { in: convos.map(c => c.id) } }
+        });
+        await tx.whatsAppConversation.deleteMany({ where: { customerId: { in: validIds } } });
+      }
+      await tx.whatsAppPaymentLink.deleteMany({ where: { customerId: { in: validIds } } });
+      await tx.whatsAppFormSubmission.deleteMany({ where: { customerId: { in: validIds } } });
+
+      // 3. Delete Post Dated Cheques (PDC)
+      await tx.postDatedCheque.deleteMany({ where: { customerId: { in: validIds } } });
+
+      // 4. Delete Delivery Challans
+      const challans = await tx.deliveryChallan.findMany({
+        where: { customerId: { in: validIds } },
+        select: { id: true }
+      });
+      if (challans.length > 0) {
+        await tx.deliveryChallanItem.deleteMany({
+          where: { challanId: { in: challans.map(c => c.id) } }
+        });
+        await tx.deliveryChallan.deleteMany({ where: { customerId: { in: validIds } } });
+      }
+
+      // 5. Delete EWayBills
+      await tx.eWayBill.deleteMany({ where: { customerId: { in: validIds } } });
+
+      // 6. Delete Credit Notes
+      const creditNotes = await tx.creditNote.findMany({
+        where: { customerId: { in: validIds } },
+        select: { id: true }
+      });
+      if (creditNotes.length > 0) {
+        await tx.creditNoteItem.deleteMany({
+          where: { creditNoteId: { in: creditNotes.map(c => c.id) } }
+        });
+        await tx.creditNote.deleteMany({ where: { customerId: { in: validIds } } });
+      }
+
+      // 7. Delete Bill Allocations
+      await tx.billAllocation.deleteMany({ where: { customerId: { in: validIds } } });
+
+      // 8. Delete Payments
+      await tx.payment.deleteMany({ where: { customerId: { in: validIds } } });
+
+      // 9. Delete Invoices
+      await tx.invoice.deleteMany({ where: { customerId: { in: validIds } } });
+
+      // 10. Delete Quotations
+      const quotes = await tx.quotation.findMany({
+        where: { customerId: { in: validIds } },
+        select: { id: true }
+      });
+      if (quotes.length > 0) {
+        await tx.quotationItem.deleteMany({
+          where: { quotationId: { in: quotes.map(q => q.id) } }
+        });
+        await tx.quotationActivity.deleteMany({
+          where: { quotationId: { in: quotes.map(q => q.id) } }
+        });
+        await tx.quotation.deleteMany({ where: { customerId: { in: validIds } } });
+      }
+
+      // 11. Delete Orders
+      const orders = await tx.order.findMany({
+        where: { customerId: { in: validIds } },
+        select: { id: true }
+      });
+      if (orders.length > 0) {
+        await tx.orderItem.deleteMany({
+          where: { orderId: { in: orders.map(o => o.id) } }
+        });
+        await tx.order.deleteMany({ where: { customerId: { in: validIds } } });
+      }
+
+      // 12. Delete unlinked Party Ledger Accounts if no journal line items
+      const partyLedgers = await tx.ledgerAccount.findMany({
+        where: { partyType: "CUSTOMER", partyId: { in: validIds } },
+        include: { journalLineItems: true }
+      });
+      for (const pl of partyLedgers) {
+        if (pl.journalLineItems.length === 0) {
+          await tx.ledgerAccount.delete({ where: { id: pl.id } });
+        } else {
+          await tx.ledgerAccount.update({
+            where: { id: pl.id },
+            data: { partyId: null, name: `${pl.name} [Archived/Deleted Customer]` }
+          });
+        }
+      }
+
+      // 13. Audit Log
+      await tx.auditLog.create({
+        data: {
+          userId: (session.user as any).id,
+          action: 'CUSTOMERS_BULK_DELETED',
+          module: 'Customer',
+          recordId: 'bulk',
+          newValue: JSON.stringify({
+            count: customers.length,
+            ids: validIds,
+            customers: customers.map(c => ({ id: c.id, name: c.businessName || c.contactPerson, phone: c.mobile }))
+          })
+        }
+      });
+
+      // 14. Delete Customer records
+      await tx.customer.deleteMany({
+        where: { id: { in: validIds }, organizationId }
+      });
+    });
+
+    // Re-sync system ledgers
+    await syncSystemLedgers().catch(() => {});
+
+    revalidatePath("/customers");
+    revalidatePath("/analytics");
+    revalidatePath("/orders");
+    revalidatePath("/invoices");
+    revalidatePath("/payments");
+    revalidatePath("/quotations");
+    revalidatePath("/accounting");
+    return { success: true, count: validIds.length };
+  } catch (error: any) {
+    console.error("Failed to delete multiple customers:", error);
+    return { error: "Failed to delete customers: " + (error.message || "Unknown error") };
+  }
+}
+

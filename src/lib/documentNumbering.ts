@@ -24,7 +24,7 @@ export interface SequenceConfig {
  */
 export async function generateNextDocumentNumber(
   organizationId: string,
-  docType: 'INVOICE' | 'QUOTATION' | 'ORDER' | 'PURCHASE_ORDER' | 'BILL' | 'DELIVERY_CHALLAN' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'PAYMENT' | 'VENDOR_PAYMENT',
+  docType: 'INVOICE' | 'QUOTATION' | 'ORDER' | 'PURCHASE_ORDER' | 'BILL' | 'DELIVERY_CHALLAN' | 'CREDIT_NOTE' | 'DEBIT_NOTE' | 'PAYMENT' | 'VENDOR_PAYMENT' | 'PROFORMA_INVOICE' | 'GRN' | 'SALES_RETURN',
   branchCode?: string
 ): Promise<string> {
   const currentFy = getFinancialYear();
@@ -36,6 +36,7 @@ export async function generateNextDocumentNumber(
   // Default prefixes if not configured
   const DEFAULT_PREFIXES: Record<string, string> = {
     INVOICE: 'INV/{FY}/',
+    PROFORMA_INVOICE: 'PI/{FY}/',
     QUOTATION: 'QT/{FY}/',
     ORDER: 'ORD/{FY}/',
     PURCHASE_ORDER: 'PO/{FY}/',
@@ -44,7 +45,9 @@ export async function generateNextDocumentNumber(
     CREDIT_NOTE: 'CN/{FY}/',
     DEBIT_NOTE: 'DN/{FY}/',
     PAYMENT: 'PAY/{FY}/',
-    VENDOR_PAYMENT: 'VPAY/{FY}/'
+    VENDOR_PAYMENT: 'VPAY/{FY}/',
+    GRN: 'GRN/{FY}/',
+    SALES_RETURN: 'RMA/{FY}/'
   };
 
   try {

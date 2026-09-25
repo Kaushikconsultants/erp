@@ -4,6 +4,7 @@ import DatePicker from '@/components/ui/DatePicker';
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { 
   FileMinus, 
   Printer, 
@@ -24,16 +25,38 @@ import {
   BellRing, 
   FileSpreadsheet, 
   Download,
-  MoreHorizontal
+  MoreHorizontal,
+  Plus,
+  Loader2,
+  ChevronDown,
+  Eye
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { recordPayment } from "@/app/actions/paymentActions";
-import { updateInvoice, deleteInvoice } from "@/app/actions/invoiceActions";
+import { updateInvoice, deleteInvoice, deleteMultipleInvoices } from "@/app/actions/invoiceActions";
 import { sendInvoiceViaWhatsApp, sendPaymentReminder } from "@/app/actions/documentShareActions";
 import { exportTallySalesInvoices } from "@/app/actions/tallyExportActions";
 import EditFullInvoiceModal from "./EditFullInvoiceModal";
+import CreateInvoiceModal from "./CreateInvoiceModal";
 import { openPhoneDialer } from "@/lib/dialer";
+import TablePagination, { paginate } from "@/components/ui/TablePagination";
 import "@/components/ui/modal.css";
 import "./invoices.css";
+
+// Official WhatsApp SVG Brand Logo
+const WhatsAppLogo = ({ size = 14, color = "#25D366", style }: { size?: number; color?: string; style?: React.CSSProperties }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill={color}
+    style={{ flexShrink: 0, display: "inline-block", verticalAlign: "middle", ...style }}
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.888 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+  </svg>
+);
 
 const PAYMENT_MODES = ["Cash", "Bank Transfer", "UPI", "Cheque", "Card", "Other"];
 
@@ -47,7 +70,16 @@ const STATUS_BADGES: Record<string, { bg: string; color: string; border: string 
 };
 
 export default function InvoicesClient({ initialInvoices }: { initialInvoices: any[] }) {
+  const searchParams = useSearchParams();
   const [invoices, setInvoices] = useState(initialInvoices);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+
+  useEffect(() => {
+    const action = searchParams?.get('action') || searchParams?.get('modal');
+    if (action === 'new' || action === 'add' || action === 'create' || searchParams?.get('openCreateModal') === 'true') {
+      setCreateModalOpen(true);
+    }
+  }, [searchParams]);
   const [paymentModal, setPaymentModal] = useState<any | null>(null);
   const [editModal, setEditModal] = useState<any | null>(null);
   const [deleteModal, setDeleteModal] = useState<any | null>(null);
@@ -59,10 +91,25 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
   const [filterStatus, setFilterStatus] = useState("All");
   const [search, setSearch] = useState("");
 
+  // Pagination state: default 25 per page (options: 25, 50, 100, 200)
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Multi-select & Export State
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+  const headerCheckboxRef = React.useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (!(e.target as HTMLElement).closest('.invoice-action-menu-container')) {
         setActionMenuOpenId(null);
+      }
+      if (exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node)) {
+        setIsExportMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -78,6 +125,113 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
       (inv.order?.orderNumber && inv.order.orderNumber.toLowerCase().includes(search.toLowerCase()));
     return matchStatus && matchSearch;
   });
+
+  // Reset to first page when search, filter or pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterStatus, pageSize]);
+
+  const paginatedInvoices = paginate(filtered, currentPage, pageSize);
+
+  const isAllSelected = paginatedInvoices.length > 0 && paginatedInvoices.every(i => selectedInvoiceIds.has(i.id));
+  const isSomeSelected = paginatedInvoices.some(i => selectedInvoiceIds.has(i.id));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected && !isAllSelected;
+    }
+  }, [isSomeSelected, isAllSelected]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedInvoiceIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedInvoiceIds(prev => {
+        const next = new Set(prev);
+        paginatedInvoices.forEach(i => next.delete(i.id));
+        return next;
+      });
+    } else {
+      setSelectedInvoiceIds(prev => {
+        const next = new Set(prev);
+        paginatedInvoices.forEach(i => next.add(i.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedInvoiceIds.size === 0) return;
+    const count = selectedInvoiceIds.size;
+    if (!window.confirm(`Are you sure you want to delete ${count} selected invoice(s)? This will unlink payments and remove accounting journals.`)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    const ids = Array.from(selectedInvoiceIds);
+    const res = await deleteMultipleInvoices(ids);
+    setIsBulkDeleting(false);
+
+    if (res?.error) {
+      alert(`Error: ${res.error}`);
+    } else {
+      setInvoices(prev => prev.filter(i => !selectedInvoiceIds.has(i.id)));
+      setSelectedInvoiceIds(new Set());
+      showToast(`Successfully deleted ${count} invoice(s)`);
+    }
+  };
+
+  const handleExport = (format: 'xlsx' | 'csv') => {
+    const targetInvoices = selectedInvoiceIds.size > 0
+      ? invoices.filter(i => selectedInvoiceIds.has(i.id))
+      : filtered;
+
+    if (targetInvoices.length === 0) {
+      alert("No invoices available to export.");
+      return;
+    }
+
+    const rows = targetInvoices.map(i => ({
+      "Invoice #": i.invoiceNumber || "",
+      "Customer Name": i.customer?.businessName || "",
+      "Mobile / Phone": i.customer?.mobile || "",
+      "GSTIN": i.customer?.gstNumber || "",
+      "Invoice Date": i.invoiceDate ? new Date(i.invoiceDate).toLocaleDateString('en-IN') : "",
+      "Due Date": i.dueDate ? new Date(i.dueDate).toLocaleDateString('en-IN') : "",
+      "Total Amount (₹)": Number(i.totalAmount) || 0,
+      "Paid Amount (₹)": Number(i.amountPaid) || 0,
+      "Outstanding (₹)": Number(i.amountDue) || 0,
+      "Status": i.status || "",
+      "Order #": i.order?.orderNumber || ""
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Invoices");
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (format === 'xlsx') {
+      XLSX.writeFile(wb, `Invoices_Export_${dateStr}.xlsx`);
+    } else {
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `Invoices_Export_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsExportMenuOpen(false);
+  };
+
 
   const totalOutstanding = invoices
     .filter(i => ["Unpaid", "Partially Paid", "Overdue"].includes(i.status))
@@ -288,6 +442,121 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
 
           {/* Action Buttons */}
           <div className="invoice-toolbar-actions">
+            {/* Export Dropdown Menu */}
+            <div className="erp-export-dropdown-container" ref={exportMenuRef}>
+              <button
+                type="button"
+                className="btn-erp-export"
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                title="Export invoices to Excel or CSV"
+              >
+                <Download size={14} />
+                <span>Export {selectedInvoiceIds.size > 0 ? `(${selectedInvoiceIds.size})` : ''}</span>
+                <ChevronDown size={13} style={{ transform: isExportMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+              </button>
+
+              {isExportMenuOpen && (
+                <div className="erp-export-dropdown-menu">
+                  <div className="erp-export-dropdown-header">
+                    <span>{selectedInvoiceIds.size > 0 ? `Export Selected (${selectedInvoiceIds.size})` : `Export All (${filtered.length})`}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="erp-export-dropdown-item"
+                    onClick={() => handleExport('xlsx')}
+                  >
+                    <FileSpreadsheet size={15} style={{ color: '#10b981' }} />
+                    <div className="erp-export-item-text">
+                      <span className="title">Excel Spreadsheet</span>
+                      <span className="sub">.xlsx format</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className="erp-export-dropdown-item"
+                    onClick={() => handleExport('csv')}
+                  >
+                    <Download size={15} style={{ color: '#3b82f6' }} />
+                    <div className="erp-export-item-text">
+                      <span className="title">CSV File</span>
+                      <span className="sub">Standard comma-separated</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className="erp-export-dropdown-item"
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      handleExportTally();
+                    }}
+                  >
+                    <FileSpreadsheet size={15} style={{ color: '#2563eb' }} />
+                    <div className="erp-export-item-text">
+                      <span className="title">Tally Prime / Busy ERP</span>
+                      <span className="sub">CSV ledger import format</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Selection Action Buttons (Matched with Theme) */}
+            {selectedInvoiceIds.size > 0 && (
+              <>
+                <div className="btn-selection-count" title={`${selectedInvoiceIds.size} invoices selected`}>
+                  <span className="selection-count-pill">{selectedInvoiceIds.size}</span>
+                  <span>Selected</span>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn-select-all"
+                  onClick={handleToggleSelectAll}
+                  title={isAllSelected ? "Deselect page" : `Select all ${paginatedInvoices.length} on page`}
+                >
+                  <span>{isAllSelected ? "Deselect Page" : `Select Page (${paginatedInvoices.length})`}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-delete-selected"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  title="Delete selected invoices"
+                >
+                  {isBulkDeleting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={14} />
+                      <span>Delete ({selectedInvoiceIds.size})</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-clear-selection"
+                  onClick={() => setSelectedInvoiceIds(new Set())}
+                  title="Clear selection"
+                >
+                  <X size={14} />
+                </button>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setCreateModalOpen(true)}
+              className="btn-create-invoice"
+              id="btn-create-invoice-direct"
+              title="Create a new Direct Tax Invoice"
+            >
+              <Plus size={16} /> Create Invoice
+            </button>
             <Link href="/credit-notes" className="btn-credit-notes">
               <FileMinus size={15} color="#64748b" /> Credit Notes & Returns
             </Link>
@@ -376,11 +645,20 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
       </div>
 
       {/* ─── DESKTOP DATA TABLE (SCREEN > 768px) ─── */}
-      <div className="invoice-desktop-table">
+      <div className="invoice-desktop-table" ref={tableContainerRef}>
         <div className="table-responsive">
           <table className="data-table" style={{ width: '100%', fontSize: '0.82rem', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th className="table-checkbox-cell">
+                  <input
+                    type="checkbox"
+                    ref={headerCheckboxRef}
+                    checked={isAllSelected}
+                    onChange={handleToggleSelectAll}
+                    className="table-checkbox"
+                  />
+                </th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left', whiteSpace: 'nowrap' }}>Invoice #</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Customer</th>
                 <th style={{ padding: '12px 16px', fontWeight: 600, color: '#475569', fontSize: '0.75rem', letterSpacing: '0.3px', textAlign: 'left' }}>Invoice Date</th>
@@ -392,11 +670,26 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
               </tr>
             </thead>
             <tbody>
-              {filtered.map(inv => {
+              {paginatedInvoices.map(inv => {
                 const badge = STATUS_BADGES[inv.status] || STATUS_BADGES.Unpaid;
 
                 return (
-                  <tr key={inv.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.1s ease' }}>
+                  <tr 
+                    key={inv.id} 
+                    style={{ 
+                      borderBottom: '1px solid #f1f5f9', 
+                      backgroundColor: selectedInvoiceIds.has(inv.id) ? '#f5f3ff' : undefined,
+                      transition: 'background-color 0.1s ease' 
+                    }}
+                  >
+                    <td className="table-checkbox-cell">
+                      <input
+                        type="checkbox"
+                        checked={selectedInvoiceIds.has(inv.id)}
+                        onChange={() => handleToggleSelect(inv.id)}
+                        className="table-checkbox"
+                      />
+                    </td>
                     {/* INVOICE # */}
                     <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                       {inv.orderId ? (
@@ -463,7 +756,38 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                     <td style={{ padding: '10px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end', verticalAlign: 'middle' }}>
                         
-                        {/* 1. Print Button */}
+                        {/* 1. View Invoice Button */}
+                        {inv.orderId && (
+                          <a
+                            href={`/orders/${inv.orderId}/invoice`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              height: '28px',
+                              padding: '0 8px',
+                              borderRadius: '6px',
+                              backgroundColor: '#f5f3ff',
+                              color: '#4f46e5',
+                              border: '1px solid #ddd6fe',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              textDecoration: 'none',
+                              transition: 'all 0.15s ease',
+                              boxSizing: 'border-box'
+                            }}
+                            title="View Tax Invoice"
+                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#ede9fe'; e.currentTarget.style.borderColor = '#c4b5fd'; }}
+                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f5f3ff'; e.currentTarget.style.borderColor = '#ddd6fe'; }}
+                          >
+                            <Eye size={13} /> View
+                          </a>
+                        )}
+
+                        {/* 2. Print Button */}
                         {inv.orderId && (
                           <a
                             href={`/orders/${inv.orderId}/invoice`}
@@ -494,7 +818,7 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           </a>
                         )}
 
-                        {/* 2. WhatsApp Send Invoice Button */}
+                        {/* 3. WhatsApp Send Invoice Button */}
                         <button
                           type="button"
                           onClick={() => handleSendWhatsApp(inv)}
@@ -511,7 +835,7 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '4px',
+                            gap: '5px',
                             transition: 'all 0.15s ease',
                             boxSizing: 'border-box'
                           }}
@@ -519,7 +843,7 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                           onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#dcfce7'; e.currentTarget.style.borderColor = '#86efac'; }}
                           onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f0fdf4'; e.currentTarget.style.borderColor = '#bbf7d0'; }}
                         >
-                          <MessageSquare size={13} /> WhatsApp
+                          <WhatsAppLogo size={14} color="#16a34a" /> WhatsApp
                         </button>
 
                         {/* 3. Overdue Payment Reminder Button */}
@@ -895,11 +1219,22 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
             </tbody>
           </table>
         </div>
+
+        {/* ─── DESKTOP PAGINATION FOOTER ─── */}
+        <TablePagination
+          totalCount={filtered.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="invoices"
+          containerRef={tableContainerRef}
+        />
       </div>
 
       {/* ─── MOBILE INVOICE CARDS FEED (SCREEN <= 768px) ─── */}
       <div className="invoice-mobile-feed">
-        {filtered.map(inv => {
+        {paginatedInvoices.map(inv => {
           const badge = STATUS_BADGES[inv.status] || STATUS_BADGES.Unpaid;
           const due = Number(inv.amountDue) || 0;
           const total = Number(inv.totalAmount) || 0;
@@ -993,6 +1328,19 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
               {/* 1-Tap Quick Action Buttons */}
               <div className="inv-card-actions">
                 <div className="inv-primary-actions">
+                  {/* View Tax Invoice */}
+                  {inv.orderId && (
+                    <a
+                      href={`/orders/${inv.orderId}/invoice`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inv-btn-action inv-btn-view"
+                      title="View Tax Invoice"
+                    >
+                      <Eye size={13} /> View
+                    </a>
+                  )}
+
                   {/* WhatsApp Direct Share */}
                   <button
                     type="button"
@@ -1000,7 +1348,7 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                     className="inv-btn-action inv-btn-whatsapp"
                     title="Send on WhatsApp"
                   >
-                    <MessageSquare size={13} /> WhatsApp
+                    <WhatsAppLogo size={14} color="#16a34a" /> WhatsApp
                   </button>
 
                   {/* Record Payment (if due > 0) */}
@@ -1027,7 +1375,7 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                     </button>
                   )}
 
-                  {/* Print / View Tax Invoice */}
+                  {/* Print Tax Invoice */}
                   {inv.orderId && (
                     <a
                       href={`/orders/${inv.orderId}/invoice`}
@@ -1076,6 +1424,36 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
                       }}
                       onClick={e => e.stopPropagation()}
                     >
+                      {/* View Invoice */}
+                      {inv.orderId && (
+                        <a
+                          href={`/orders/${inv.orderId}/invoice`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => setActionMenuOpenId(null)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 10px',
+                            borderRadius: '6px',
+                            color: '#4f46e5',
+                            fontSize: '0.8rem',
+                            fontWeight: 500,
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            cursor: 'pointer',
+                            width: '100%',
+                            textAlign: 'left',
+                            textDecoration: 'none',
+                            boxSizing: 'border-box'
+                          }}
+                        >
+                          <Eye size={14} color="#4f46e5" />
+                          <span>View Invoice</span>
+                        </a>
+                      )}
+
                       {/* Edit */}
                       <button
                         type="button"
@@ -1164,6 +1542,19 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
             </button>
           </div>
         )}
+      </div>
+
+      {/* ─── MOBILE PAGINATION FOOTER ─── */}
+      <div className="invoice-mobile-pagination" style={{ display: 'none', marginTop: '8px' }}>
+        <TablePagination
+          totalCount={filtered.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="invoices"
+          style={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
+        />
       </div>
 
       {/* ─── MODAL 1: RECORD PAYMENT MODAL ─── */}
@@ -1347,6 +1738,16 @@ export default function InvoicesClient({ initialInvoices }: { initialInvoices: a
           </div>
         </div>
       )}
+
+      {/* CREATE DIRECT INVOICE MODAL */}
+      <CreateInvoiceModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={(newInv) => {
+          setInvoices(prev => [newInv, ...prev]);
+          showToast(`Invoice ${newInv.invoiceNumber} generated successfully!`);
+        }}
+      />
     </div>
   );
 }

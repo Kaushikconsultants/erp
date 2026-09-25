@@ -61,48 +61,68 @@ export const shipmozoService = {
     };
   },
 
-  async fetchTracking(awb: string, apiKey: string, apiSecret: string): Promise<TrackingResponse> {
-    if (!apiKey || !apiSecret) {
+  async fetchTracking(awb: string, apiKey?: string, apiSecret?: string): Promise<TrackingResponse> {
+    const key = apiKey || process.env.SHIPMOZO_API_KEY || "";
+    const secret = apiSecret || process.env.SHIPMOZO_API_SECRET || "";
+
+    if (!key || !secret) {
       return { success: false, error: "Missing Shipmozo API Credentials. Please configure them in the Integrations Hub." };
     }
 
     try {
-      const response = await fetch(`https://shipping-api.com/app/api/v1/track-order?awb_number=${awb}`, {
+      const cleanAwb = encodeURIComponent((awb || "").trim());
+      const response = await fetch(`https://shipping-api.com/app/api/v1/track-order?awb_number=${cleanAwb}`, {
         method: "GET",
-        headers: this.getHeaders(apiKey, apiSecret),
+        headers: this.getHeaders(key, secret),
       });
 
       const json = await response.json();
 
-      if (json.result === "0") {
+      if (json.result === "0" || json.result === 0) {
         return { 
           success: false, 
-          error: json.message || "Shipmozo tracking error" 
+          error: json.message || "Shipmozo tracking error: AWB not found or not yet manifested." 
         };
       }
 
       const data = json.data || {};
+      const rawScans = Array.isArray(data.scan_detail) ? data.scan_detail : [];
+
+      const events: TrackingEvent[] = rawScans.map((evt: any) => ({
+        date: evt.status_time || evt.date || new Date().toISOString(),
+        location: evt.location || "Carrier Hub",
+        status: evt.status || evt.activity || "Update",
+        description: evt.activity || evt.remark || evt.description || evt.status || "Status updated"
+      }));
+
+      // If no scan events exist yet, provide initial order status
+      if (events.length === 0 && (data.current_status || data.order_status)) {
+        events.push({
+          date: data.status_time || new Date().toISOString(),
+          location: "Carrier Hub",
+          status: data.current_status || data.order_status || "Manifested",
+          description: `Shipment status is currently ${data.current_status || data.order_status}`
+        });
+      }
 
       return {
         success: true,
         awb: data.awb_number || awb,
-        courier: data.courier || "Shipmozo",
-        currentStatus: data.current_status || "Unknown",
+        courier: data.courier || "Shipmozo Express",
+        currentStatus: data.current_status || data.order_status || "Unknown",
         expectedDelivery: data.expected_delivery_date || null,
-        events: data.scan_detail?.map((evt: any) => ({
-          date: evt.status_time || evt.date || new Date().toISOString(),
-          location: evt.location || "Unknown",
-          status: evt.status || evt.activity || "Update",
-          description: evt.activity || "Tracking updated"
-        })) || [],
+        events,
       };
     } catch (error: any) {
       return { success: false, error: `Failed to connect to Shipmozo: ${error.message}` };
     }
   },
 
-  async calculateRates(params: RateCalculationParams, apiKey: string, apiSecret: string): Promise<RateCalculationResponse> {
-    if (!apiKey || !apiSecret) {
+  async calculateRates(params: RateCalculationParams, apiKey?: string, apiSecret?: string): Promise<RateCalculationResponse> {
+    const key = apiKey || process.env.SHIPMOZO_API_KEY || "";
+    const secret = apiSecret || process.env.SHIPMOZO_API_SECRET || "";
+
+    if (!key || !secret) {
       return { success: false, error: "Missing Shipmozo API Credentials. Please configure them in the Integrations Hub." };
     }
 
@@ -167,7 +187,7 @@ export const shipmozoService = {
         try {
           const resp = await fetch(`https://shipping-api.com/app/api/v1/rate-calculator`, {
             method: "POST",
-            headers: this.getHeaders(apiKey, apiSecret),
+            headers: this.getHeaders(key, secret),
             body: JSON.stringify({ ...baseBody, type_of_package: packageType })
           });
           const j = await resp.json();

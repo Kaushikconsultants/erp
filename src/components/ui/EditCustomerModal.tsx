@@ -32,7 +32,7 @@ interface Customer {
 interface EditCustomerModalProps {
   customer: Customer;
   employees?: { id: string; name: string }[];
-  onClose: () => void;
+  onClose: (saved?: boolean) => void;
 }
 
 export default function EditCustomerModal({ customer, employees = [], onClose }: EditCustomerModalProps) {
@@ -78,6 +78,10 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
     setError("");
 
     const formData = new FormData(e.currentTarget);
+    const rawGst = (formData.get("gstNumber") as string)?.trim().toUpperCase() || "";
+    if (rawGst) {
+      formData.set("gstNumber", rawGst);
+    }
     formData.append("preferredPaymentMethod", paymentMethod);
     const result = await updateCustomer(customer.id, formData);
 
@@ -85,19 +89,19 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
       setError(result.error);
       setLoading(false);
     } else {
-      onClose();
+      onClose(true);
     }
   };
 
   return (
-    <div className="modal-backdrop">
+    <div className="modal-backdrop" role="dialog" aria-modal="true" style={{ zIndex: 1000000 }}>
       <div className="modal-content glass-panel animate-in" style={{ maxWidth: '650px' }}>
         <div className="modal-header-blue">
           <div>
             <h2><UserCheck size={20} /> Edit Customer</h2>
             <p>Update customer information below</p>
           </div>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <button className="close-btn" onClick={() => onClose()}>×</button>
         </div>
         
         <form onSubmit={handleSubmit} className="modal-body" style={{ maxHeight: '75vh', overflowY: 'auto', padding: '24px 32px' }}>
@@ -302,27 +306,37 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
 
           <div className="vertical-group">
             <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Assigned Sales Representative / Agent</label>
-            <select 
-              name="assignedSalespersonId" 
-              defaultValue={customer.assignedSalespersonId || customer.assignedSalesperson?.id || ""}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: 500 }}
-            >
-              <option value="">Unassigned</option>
-              {employees && employees.length > 0 ? (
-                employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                ))
-              ) : (
-                customer.assignedSalesperson?.user?.name && (
-                  <option value={customer.assignedSalespersonId || customer.assignedSalesperson?.id || ""}>{customer.assignedSalesperson.user.name}</option>
-                )
-              )}
-            </select>
+            {(() => {
+              const resolvedDefaultRepId = 
+                customer.assignedSalespersonId || 
+                customer.assignedSalesperson?.id || 
+                employees.find(e => e.name.toLowerCase() === (customer.assignedSalesperson?.user?.name || '').toLowerCase())?.id || 
+                "";
+
+              return (
+                <select 
+                  name="assignedSalespersonId" 
+                  defaultValue={resolvedDefaultRepId}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: 500 }}
+                >
+                  <option value="">{resolvedDefaultRepId ? "-- Unassigned --" : "Unassigned"}</option>
+                  {employees && employees.length > 0 ? (
+                    employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.name}</option>
+                    ))
+                  ) : (
+                    customer.assignedSalesperson?.user?.name && (
+                      <option value={resolvedDefaultRepId}>{customer.assignedSalesperson.user.name}</option>
+                    )
+                  )}
+                </select>
+              );
+            })()}
             <div className="sub-label">Select an agent to assign or transfer this customer's account.</div>
           </div>
 
-          <div className="modal-footer" style={{ marginTop: '24px', background: 'transparent', padding: '0', border: 'none' }}>
-            <button type="button" className="btn-secondary" onClick={onClose} style={{ border: 'none', background: '#f8fafc' }}>Cancel</button>
+          <div className="modal-footer" style={{ marginTop: '24px', background: 'transparent', padding: '14px 0 max(36px, env(safe-area-inset-bottom, 36px)) 0', border: 'none' }}>
+            <button type="button" className="btn-secondary" onClick={() => onClose(false)} style={{ border: 'none', background: '#f8fafc' }}>Cancel</button>
             <button type="submit" className="primary-btn" disabled={loading} style={{ background: '#3b82f6', borderColor: '#3b82f6', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <UserCheck size={16} /> {loading ? "Saving..." : "Save Changes"}
             </button>

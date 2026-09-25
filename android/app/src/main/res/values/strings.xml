@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Antigravity ERP</string>
-    <string name="title_activity_main">Antigravity ERP</string>
+    <string name="app_name">Heart of Business</string>
+    <string name="title_activity_main">Heart of Business</string>
     <string name="package_name">com.antigravity.erp</string>
     <string name="custom_url_scheme">com.antigravity.erp</string>
 </resources>

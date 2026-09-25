@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import DateRangeFilter from '@/components/ui/DateRangeFilter';
 import { 
   Calendar, 
@@ -18,12 +18,18 @@ import {
   UserCheck, 
   ShoppingBag, 
   Eye, 
-  ExternalLink 
+  ExternalLink,
+  RefreshCw,
+  Download,
+  FileSpreadsheet,
+  Loader2
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import OrderTrackingModal from '@/components/orders/OrderTrackingModal';
 import EditOrderModal from '@/components/orders/EditOrderModal';
-import { deleteOrder } from '@/app/actions/orderActions';
+import { deleteOrder, deleteMultipleOrders, syncActiveOrdersTracking } from '@/app/actions/orderActions';
 import { deleteQuotation } from '@/app/actions/quotationActions';
+import TablePagination, { paginate } from '@/components/ui/TablePagination';
 
 type DocumentType = 'Order' | 'Quotation';
 
@@ -67,6 +73,7 @@ export default function OrderListClient({
   currentUserEmployeeId, 
   currentUserName 
 }: OrderListClientProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const initialSearch = searchParams?.get('search') || '';
   const [activeTab, setActiveTab] = useState('All');
@@ -76,12 +83,87 @@ export default function OrderListClient({
   const [selectedPayment, setSelectedPayment] = useState('All Payment Types');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Pagination state: default 25 per page (options: 25, 50, 100, 200)
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
   const [copiedAwb, setCopiedAwb] = useState<string | null>(null);
   const [commissionModal, setCommissionModal] = useState<UnifiedDocument | null>(null);
   const [trackingOrder, setTrackingOrder] = useState<UnifiedDocument | null>(null);
   const [editingOrder, setEditingOrder] = useState<UnifiedDocument | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [docList, setDocList] = useState<UnifiedDocument[]>(documents);
+  const [isSyncingTracking, setIsSyncingTracking] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+
+  // Multi-select & Export State
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+  const headerCheckboxRef = React.useRef<HTMLInputElement>(null);
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    if (isExportMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isExportMenuOpen]);
+
+  // Sync tracking statuses across active shipments
+  const handleSyncAllTracking = useCallback(async (isManual = false) => {
+    if (isSyncingTracking) return;
+    setIsSyncingTracking(true);
+    try {
+      const res = await syncActiveOrdersTracking();
+      localStorage.setItem('last_awb_tracking_sync', Date.now().toString());
+      setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      if (res?.updatedOrders && res.updatedOrders.length > 0) {
+        setDocList(prev => prev.map(doc => {
+          const match = res.updatedOrders.find((u: any) => u.id === doc.id);
+          if (match) {
+            return {
+              ...doc,
+              status: match.shippingStatus,
+              statusBg: match.statusBg,
+              statusColor: match.statusColor
+            };
+          }
+          return doc;
+        }));
+        router.refresh();
+      }
+    } catch (err) {
+      console.error("Auto tracking sync error:", err);
+    } finally {
+      setIsSyncingTracking(false);
+    }
+  }, [isSyncingTracking, router]);
+
+  // Automatic 30-minute background tracking sync
+  useEffect(() => {
+    const AUTO_REFRESH_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
+    const lastSyncStr = localStorage.getItem('last_awb_tracking_sync');
+    const now = Date.now();
+    if (!lastSyncStr || (now - parseInt(lastSyncStr, 10)) >= AUTO_REFRESH_INTERVAL_MS) {
+      handleSyncAllTracking(false);
+    }
+
+    const interval = setInterval(() => {
+      handleSyncAllTracking(false);
+    }, AUTO_REFRESH_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [handleSyncAllTracking]);
 
   useEffect(() => {
     setDocList(documents);
@@ -216,11 +298,122 @@ export default function OrderListClient({
     });
   }, [docList, activeTab, searchQuery, selectedAgent, selectedPayment, startDate, endDate, isAdmin]);
 
+  // Reset to first page when search, tab, or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeTab, selectedAgent, selectedPayment, startDate, endDate, pageSize]);
+
+  const paginatedDocs = useMemo(() => {
+    return paginate(filteredDocs, currentPage, pageSize);
+  }, [filteredDocs, currentPage, pageSize]);
+
+  const isAllSelected = paginatedDocs.length > 0 && paginatedDocs.every(d => selectedDocIds.has(d.id));
+  const isSomeSelected = paginatedDocs.some(d => selectedDocIds.has(d.id));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected && !isAllSelected;
+    }
+  }, [isSomeSelected, isAllSelected]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedDocIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedDocIds(prev => {
+        const next = new Set(prev);
+        paginatedDocs.forEach(d => next.delete(d.id));
+        return next;
+      });
+    } else {
+      setSelectedDocIds(prev => {
+        const next = new Set(prev);
+        paginatedDocs.forEach(d => next.add(d.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDocIds.size === 0) return;
+    const count = selectedDocIds.size;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} selected order(s)? This will restore inventory, unlink payments, and remove associated records.`)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    const ids = Array.from(selectedDocIds);
+    const res = await deleteMultipleOrders(ids);
+    setIsBulkDeleting(false);
+
+    if (res?.error) {
+      alert(`Error: ${res.error}`);
+    } else {
+      setDocList(prev => prev.filter(d => !selectedDocIds.has(d.id)));
+      setSelectedDocIds(new Set());
+      router.refresh();
+    }
+  };
+
+  const handleExport = (format: 'xlsx' | 'csv') => {
+    const targetDocs = selectedDocIds.size > 0
+      ? docList.filter(d => selectedDocIds.has(d.id))
+      : filteredDocs;
+
+    if (targetDocs.length === 0) {
+      alert("No records available to export.");
+      return;
+    }
+
+    const rows = targetDocs.map(d => ({
+      "Doc #": d.documentNumber || "",
+      "Type": d.type,
+      "Date": d.date,
+      "Customer Name": d.customerName || "",
+      "Customer Details": d.customerSub || "",
+      "Sales Agent": d.agentName || "",
+      "Total Amount (₹)": d.totalAmount || 0,
+      "Taxable Amount (₹)": d.taxableAmount || 0,
+      "Payment Type": d.paymentType || "",
+      "Status": d.status || "",
+      "AWB Number": d.awbNumber || "",
+      "Commission (₹)": d.commissionValue || 0,
+      "Credit Customer": d.isCreditCustomer ? "Yes" : "No"
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Orders");
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (format === 'xlsx') {
+      XLSX.writeFile(wb, `Orders_Export_${dateStr}.xlsx`);
+    } else {
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `Orders_Export_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsExportMenuOpen(false);
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedAwb(text);
     setTimeout(() => setCopiedAwb(null), 2000);
   };
+
 
   const handleReset = () => {
     setSearchQuery('');
@@ -462,11 +655,143 @@ export default function OrderListClient({
             <span>Reset</span>
           </button>
         )}
+
+        {/* Auto Tracking Sync Badge & Manual Trigger (30m Interval) */}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Export Dropdown Menu */}
+          <div className="erp-export-dropdown-container" ref={exportMenuRef}>
+            <button
+              type="button"
+              className="btn-erp-export"
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              title="Export orders to Excel or CSV"
+            >
+              <Download size={14} />
+              <span>Export {selectedDocIds.size > 0 ? `(${selectedDocIds.size})` : ''}</span>
+              <ChevronDown size={13} style={{ transform: isExportMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="erp-export-dropdown-menu">
+                <div className="erp-export-dropdown-header">
+                  <span>{selectedDocIds.size > 0 ? `Export Selected (${selectedDocIds.size})` : `Export All (${filteredDocs.length})`}</span>
+                </div>
+                <button
+                  type="button"
+                  className="erp-export-dropdown-item"
+                  onClick={() => handleExport('xlsx')}
+                >
+                  <FileSpreadsheet size={15} style={{ color: '#10b981' }} />
+                  <div className="erp-export-item-text">
+                    <span className="title">Excel Spreadsheet</span>
+                    <span className="sub">.xlsx format</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="erp-export-dropdown-item"
+                  onClick={() => handleExport('csv')}
+                >
+                  <Download size={15} style={{ color: '#3b82f6' }} />
+                  <div className="erp-export-item-text">
+                    <span className="title">CSV File</span>
+                    <span className="sub">Standard comma-separated</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Selection Action Buttons (Matched with Theme) */}
+          {selectedDocIds.size > 0 && (
+            <>
+              <div className="btn-selection-count" title={`${selectedDocIds.size} orders selected`}>
+                <span className="selection-count-pill">{selectedDocIds.size}</span>
+                <span>Selected</span>
+              </div>
+
+              <button
+                type="button"
+                className="btn-select-all"
+                onClick={handleToggleSelectAll}
+                title={isAllSelected ? "Deselect page" : `Select all ${paginatedDocs.length} on page`}
+              >
+                <span>{isAllSelected ? "Deselect Page" : `Select Page (${paginatedDocs.length})`}</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-delete-selected"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                title="Delete selected orders"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Delete ({selectedDocIds.size})</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="btn-clear-selection"
+                onClick={() => setSelectedDocIds(new Set())}
+                title="Clear selection"
+              >
+                <X size={14} />
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            onClick={() => handleSyncAllTracking(true)}
+            disabled={isSyncingTracking}
+            title={lastSyncTime ? `Last synced at ${lastSyncTime}. Auto-refreshes every 30 minutes.` : "Auto-refreshes every 30 minutes. Click to refresh live AWB tracking now."}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 12px',
+              borderRadius: '8px',
+              border: '1px solid #bbf7d0',
+              backgroundColor: isSyncingTracking ? '#f0fdf4' : '#ffffff',
+              fontSize: '0.78rem',
+              cursor: isSyncingTracking ? 'not-allowed' : 'pointer',
+              fontWeight: 550,
+              color: '#15803d',
+              transition: 'all 0.15s ease',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseEnter={(e) => {
+              if (!isSyncingTracking) {
+                e.currentTarget.style.backgroundColor = '#f0fdf4';
+                e.currentTarget.style.borderColor = '#86efac';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isSyncingTracking) {
+                e.currentTarget.style.backgroundColor = '#ffffff';
+                e.currentTarget.style.borderColor = '#bbf7d0';
+              }
+            }}
+          >
+            <RefreshCw size={13} style={{ animation: isSyncingTracking ? 'spin 1s linear infinite' : 'none' }} />
+            <span>{isSyncingTracking ? 'Syncing AWBs...' : 'Sync Tracking (30m)'}</span>
+          </button>
+        </div>
       </div>
 
       {/* ─── 3. MOBILE ORDER CARDS VIEW (HIDDEN ON DESKTOP) ─── */}
       <div className="mobile-order-cards" style={{ display: 'none', flexDirection: 'column', gap: '12px', padding: '16px' }}>
-        {filteredDocs.map((doc) => (
+        {paginatedDocs.map((doc) => (
           <div 
             key={doc.id}
             style={{
@@ -481,16 +806,25 @@ export default function OrderListClient({
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 550, color: 'var(--accent-primary, #4f46e5)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace' }}>
-                  <FileText size={13} /> {doc.documentNumber} • {doc.date}
-                </span>
-                <h4 style={{ margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 600, color: '#0f172a' }}>
-                  {doc.customerName}
-                </h4>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                  {doc.customerSub} • Rep: {doc.agentName}
-                </p>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <input
+                  type="checkbox"
+                  checked={selectedDocIds.has(doc.id)}
+                  onChange={() => handleToggleSelect(doc.id)}
+                  className="table-checkbox"
+                  style={{ marginTop: '3px' }}
+                />
+                <div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 550, color: 'var(--accent-primary, #4f46e5)', display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'monospace' }}>
+                    <FileText size={13} /> {doc.documentNumber} • {doc.date}
+                  </span>
+                  <h4 style={{ margin: '4px 0 0 0', fontSize: '0.95rem', fontWeight: 600, color: '#0f172a' }}>
+                    {doc.customerName}
+                  </h4>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                    {doc.customerSub} • Rep: {doc.agentName}
+                  </p>
+                </div>
               </div>
 
               <span style={{ 
@@ -637,11 +971,33 @@ export default function OrderListClient({
         )}
       </div>
 
+      {/* ─── MOBILE PAGINATION FOOTER ─── */}
+      <div className="mobile-order-pagination" style={{ display: 'none', padding: '0 16px 16px' }}>
+        <TablePagination
+          totalCount={filteredDocs.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName={activeTab === 'Quotations' ? 'quotations' : 'orders'}
+          style={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
+        />
+      </div>
+
       {/* ─── 4. MODERN DESKTOP DATA TABLE ─── */}
-      <div className="desktop-order-table" style={{ overflowX: 'auto' }}>
+      <div className="desktop-order-table" ref={tableContainerRef} style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1000px', fontSize: '0.85rem' }}>
           <thead>
             <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#64748b', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+              <th className="table-checkbox-cell">
+                <input
+                  type="checkbox"
+                  ref={headerCheckboxRef}
+                  checked={isAllSelected}
+                  onChange={handleToggleSelectAll}
+                  className="table-checkbox"
+                />
+              </th>
               <th style={{ padding: '10px 14px', fontWeight: 550 }}>Date</th>
               <th style={{ padding: '10px 14px', fontWeight: 550 }}>Customer</th>
               <th style={{ padding: '10px 14px', fontWeight: 550 }}>Agent</th>
@@ -649,23 +1005,34 @@ export default function OrderListClient({
               <th style={{ padding: '10px 14px', fontWeight: 550 }}>Payment</th>
               <th style={{ padding: '10px 14px', fontWeight: 550 }}>Discount</th>
               <th style={{ padding: '10px 14px', fontWeight: 550 }}>Commission</th>
-              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Doc # / Status</th>
-              <th style={{ padding: '10px 14px', fontWeight: 550 }}>Notes</th>
+              <th style={{ padding: '10px 14px', fontWeight: 550, whiteSpace: 'nowrap' }}>Doc # / Status</th>
               <th style={{ padding: '10px 14px', fontWeight: 550, textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredDocs.map((doc, idx) => (
+            {paginatedDocs.map((doc, idx) => (
               <tr 
                 key={doc.id} 
                 style={{ 
                   borderBottom: '1px solid #f1f5f9', 
-                  backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa',
+                  backgroundColor: selectedDocIds.has(doc.id) ? '#f5f3ff' : (idx % 2 === 0 ? '#ffffff' : '#fafafa'),
                   transition: 'background-color 0.15s ease' 
                 }} 
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--accent-light, #f8faff)'} 
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#fafafa'}
+                onMouseEnter={(e) => {
+                  if (!selectedDocIds.has(doc.id)) e.currentTarget.style.backgroundColor = 'var(--accent-light, #f8faff)';
+                }} 
+                onMouseLeave={(e) => {
+                  if (!selectedDocIds.has(doc.id)) e.currentTarget.style.backgroundColor = idx % 2 === 0 ? '#ffffff' : '#fafafa';
+                }}
               >
+                <td className="table-checkbox-cell">
+                  <input
+                    type="checkbox"
+                    checked={selectedDocIds.has(doc.id)}
+                    onChange={() => handleToggleSelect(doc.id)}
+                    className="table-checkbox"
+                  />
+                </td>
                 {/* Date */}
                 <td style={{ padding: '12px 14px', color: '#475569', whiteSpace: 'nowrap', verticalAlign: 'middle', fontSize: '0.8125rem' }}>
                   {doc.date}
@@ -789,7 +1156,7 @@ export default function OrderListClient({
                 </td>
 
                 {/* Doc # / Status */}
-                <td style={{ padding: '12px 14px', verticalAlign: 'middle' }}>
+                <td style={{ padding: '12px 14px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-primary, #4f46e5)', fontWeight: 550, fontSize: '0.8125rem', fontFamily: 'monospace', marginBottom: '4px' }}>
                     <FileText size={13} />
                     <span>{doc.documentNumber}</span>
@@ -808,13 +1175,30 @@ export default function OrderListClient({
                   </span>
 
                   {doc.awbNumber && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#64748b', fontSize: '0.75rem', marginTop: '4px' }}>
-                      <span>AWB: {doc.awbNumber}</span>
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '5px', 
+                      color: '#475569', 
+                      fontSize: '0.73rem', 
+                      marginTop: '5px',
+                      whiteSpace: 'nowrap' 
+                    }}>
+                      <span style={{ color: '#64748b', fontWeight: 500 }}>AWB:</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#334155' }}>{doc.awbNumber}</span>
                       <button 
                         type="button"
                         onClick={() => copyToClipboard(doc.awbNumber!)}
                         title="Copy AWB"
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', color: 'var(--accent-primary, #4f46e5)', display: 'flex', alignItems: 'center' }}
+                        style={{ 
+                          background: 'transparent', 
+                          border: 'none', 
+                          cursor: 'pointer', 
+                          padding: '2px', 
+                          color: 'var(--accent-primary, #4f46e5)', 
+                          display: 'inline-flex', 
+                          alignItems: 'center' 
+                        }}
                       >
                         {copiedAwb === doc.awbNumber ? <CheckCircle2 size={13} color="#10b981" /> : <Copy size={13} />}
                       </button>
@@ -826,17 +1210,20 @@ export default function OrderListClient({
                           setTrackingOrder(doc);
                         }}
                         title="Track Shipment Live"
-                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px', color: '#10b981', display: 'flex', alignItems: 'center' }}
+                        style={{ 
+                          background: 'transparent', 
+                          border: 'none', 
+                          cursor: 'pointer', 
+                          padding: '2px', 
+                          color: '#10b981', 
+                          display: 'inline-flex', 
+                          alignItems: 'center' 
+                        }}
                       >
                         <Truck size={13} />
                       </button>
                     </div>
                   )}
-                </td>
-
-                {/* Notes */}
-                <td style={{ padding: '12px 14px', verticalAlign: 'middle', color: '#64748b', fontSize: '0.8125rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 400 }}>
-                  {doc.notes || '-'}
                 </td>
 
                 {/* Actions */}
@@ -985,7 +1372,7 @@ export default function OrderListClient({
             
             {filteredDocs.length === 0 && (
               <tr>
-                <td colSpan={10} style={{ padding: '48px 24px', textAlign: 'center', color: '#64748b' }}>
+                <td colSpan={9} style={{ padding: '48px 24px', textAlign: 'center', color: '#64748b' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                     <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
                       <ShoppingBag size={24} />
@@ -1004,6 +1391,17 @@ export default function OrderListClient({
             )}
           </tbody>
         </table>
+
+        {/* ─── DESKTOP PAGINATION FOOTER ─── */}
+        <TablePagination
+          totalCount={filteredDocs.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName={activeTab === 'Quotations' ? 'quotations' : 'orders'}
+          containerRef={tableContainerRef}
+        />
       </div>
 
       {/* ─── 5. COMMISSION CALCULATION MODAL ─── */}
@@ -1096,7 +1494,10 @@ export default function OrderListClient({
           orderId={trackingOrder.id}
           orderNumber={trackingOrder.documentNumber}
           awbNumber={trackingOrder.awbNumber}
-          onClose={() => setTrackingOrder(null)}
+          onClose={() => {
+            setTrackingOrder(null);
+            router.refresh();
+          }}
         />
       )}
 

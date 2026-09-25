@@ -5,6 +5,8 @@ import { getTenantOrgId } from "@/lib/tenant";
 import { getTenantAIClient } from "@/lib/gemini";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getCanonicalSalesMetrics, sanitizeVoiceOutputText } from "@/lib/voiceEngine";
+import { getSalesTargetLeaderboard } from "@/app/actions/salesTargetActions";
 
 export interface AskERPMetric {
   label: string;
@@ -23,11 +25,16 @@ export interface AskERPResponse {
   keyMetrics: AskERPMetric[];
   suggestedActions: AskERPActionLink[];
   followUpQuestions: string[];
+  provider?: string;
 }
 
-export async function askERPAssistant(query: string): Promise<{
+export async function askERPAssistant(
+  query: string,
+  preferredProvider?: "gemini" | "openai"
+): Promise<{
   success: boolean;
   data?: AskERPResponse;
+  provider?: string;
   error?: string;
 }> {
   try {
@@ -48,7 +55,9 @@ export async function askERPAssistant(query: string): Promise<{
       allCustomers,
       products,
       pendingQuotations,
-      employees
+      employees,
+      canonicalSales,
+      leaderboardRes
     ] = await Promise.all([
       prisma.companySettings.findFirst({ where: { organizationId } }),
       prisma.order.findMany({
@@ -78,11 +87,15 @@ export async function askERPAssistant(query: string): Promise<{
       prisma.employee.findMany({
         where: { organizationId },
         include: { user: true }
-      })
+      }),
+      organizationId ? getCanonicalSalesMetrics(organizationId).catch(() => null) : null,
+      organizationId ? getSalesTargetLeaderboard(organizationId).catch(() => null) : null
     ]);
 
     const companyName = companySettings?.companyName || "ESPON CLOTHING";
-    const mtdRevenue = monthOrders.reduce((sum, o) => sum + (o.subtotal || o.totalValue || 0), 0);
+    const mtdRevenue = canonicalSales?.mtdRevenue ?? monthOrders.reduce((sum, o) => sum + (o.subtotal || o.totalValue || 0), 0);
+    const totalRevenue = canonicalSales?.totalRevenue ?? mtdRevenue;
+    const todayRevenue = canonicalSales?.todayRevenue ?? 0;
     const mtdReceived = monthOrders.reduce((sum, o) => sum + (o.paymentReceived || 0), 0);
     const mtdOutstanding = monthOrders.reduce((sum, o) => sum + (o.outstandingAmount || 0), 0);
 
@@ -91,7 +104,12 @@ export async function askERPAssistant(query: string): Promise<{
 
     const pipelineQuotationsValue = pendingQuotations.reduce((sum, q) => sum + (q.totalValue || 0), 0);
 
-    // Call Gemini AI
+    const topPerformer = leaderboardRes?.leaderboard?.[0];
+    const topPerformerText = topPerformer
+      ? `${topPerformer.name} (₹${topPerformer.achievedSales.toLocaleString('en-IN')}, ${topPerformer.percentAchieved}% of ₹${topPerformer.monthlyTarget.toLocaleString('en-IN')} target, ${topPerformer.dealsWonCount} deals won, status: ${topPerformer.status})`
+      : "No sales rep targets recorded for this month";
+
+    // Call Gemini AI using tenant-configured client
     const { ai, isConfigured, model } = await getTenantAIClient(organizationId);
     if (isConfigured) {
       try {
@@ -100,7 +118,11 @@ You are the Chief Financial Officer & Executive AI Business Copilot for "${compa
 Answer the owner's question concisely, accurately, and strategically based on the live ERP data below:
 
 --- LIVE BUSINESS METRICS SNAPSHOT ---
-- Current Month (MTD) Revenue: ₹${mtdRevenue.toLocaleString('en-IN')} across ${monthOrders.length} orders
+- Total Sales (All-Time Revenue): ₹${totalRevenue.toLocaleString('en-IN')} across ${canonicalSales?.totalOrdersCount ?? monthOrders.length} orders/confirmed deals (matches Admin Dashboard)
+- Current Month (MTD) Revenue: ₹${mtdRevenue.toLocaleString('en-IN')} across ${canonicalSales?.mtdOrdersCount ?? monthOrders.length} orders
+- Today's Sales: ₹${todayRevenue.toLocaleString('en-IN')}
+- Top Performer Till Month: ${topPerformerText}
+- Team Sales Targets Progress: ₹${(leaderboardRes?.totalAchieved || 0).toLocaleString('en-IN')} / ₹${(leaderboardRes?.totalTarget || 0).toLocaleString('en-IN')} (${leaderboardRes?.teamPercent || 0}% achieved)
 - Cash Received MTD: ₹${mtdReceived.toLocaleString('en-IN')}
 - Outstanding Receivables: ₹${mtdOutstanding.toLocaleString('en-IN')}
 - Active Quotation Pipeline: ₹${pipelineQuotationsValue.toLocaleString('en-IN')} across ${pendingQuotations.length} pending quotes
@@ -113,7 +135,7 @@ ${pendingQuotations.slice(0, 5).map(q => `  • Doc #${q.quotationNumber}: ₹${
 
 User Query: "${query}"
 
-Respond strictly in JSON format with the following fields:
+Respond strictly in JSON format without markdown fences:
 {
   "answer": "2-4 concise, professional sentences directly answering the query with relevant numbers in ₹ INR format and strategic takeaway.",
   "keyMetrics": [
@@ -128,7 +150,7 @@ Respond strictly in JSON format with the following fields:
     "Question 3?"
   ]
 }
-Available routes for suggestedActions: /orders, /customers, /quotations, /accounting, /accounting/ageing, /products, /reports, /payroll
+Available routes for suggestedActions: /orders, /customers, /quotations, /accounting, /accounting/ageing, /products, /reports, /payroll, /sales-targets, /analytics
 `;
 
         const response = await ai.models.generateContent({
@@ -145,15 +167,21 @@ Available routes for suggestedActions: /orders, /customers, /quotations, /accoun
         if (parsed.answer && Array.isArray(parsed.keyMetrics)) {
           return {
             success: true,
+            provider: "gemini",
             data: {
-              answer: parsed.answer,
+              answer: sanitizeVoiceOutputText ? sanitizeVoiceOutputText(parsed.answer) : parsed.answer,
+              provider: "gemini",
               keyMetrics: parsed.keyMetrics,
-              suggestedActions: Array.isArray(parsed.suggestedActions) ? parsed.suggestedActions : [{ label: "View Reports", href: "/reports" }],
-              followUpQuestions: Array.isArray(parsed.followUpQuestions) ? parsed.followUpQuestions : [
-                "What is our quotation conversion rate this month?",
-                "Which customers are overdue for repeat orders?",
-                "How much dead stock is tied up in our warehouse?"
-              ]
+              suggestedActions: Array.isArray(parsed.suggestedActions) && parsed.suggestedActions.length > 0
+                ? parsed.suggestedActions
+                : [{ label: "View Reports", href: "/reports" }],
+              followUpQuestions: Array.isArray(parsed.followUpQuestions) && parsed.followUpQuestions.length > 0
+                ? parsed.followUpQuestions
+                : [
+                  "Who is our top performer till month?",
+                  "What is our total sale?",
+                  "What is our pending receivables position?"
+                ]
             }
           };
         }
@@ -161,21 +189,71 @@ Available routes for suggestedActions: /orders, /customers, /quotations, /accoun
         console.error("Gemini AI error in askERPAssistant, using algorithmic fallback:", geminiError);
       }
     }
+          }
+        };
+      }
+    } catch (aiError) {
+      console.error("AI Copilot error in askERPAssistant, using algorithmic fallback:", aiError);
+    }
 
     // High-quality Algorithmic Fallback
     const qLower = query.toLowerCase();
-    let fallbackAnswer = `For ${companyName}, MTD Revenue is currently ₹${mtdRevenue.toLocaleString('en-IN')} across ${monthOrders.length} orders. You have ₹${pipelineQuotationsValue.toLocaleString('en-IN')} in active quotations and ₹${mtdOutstanding.toLocaleString('en-IN')} in pending receivables.`;
+    let fallbackAnswer = `For ${companyName}, all-time total sales stand at ₹${totalRevenue.toLocaleString('en-IN')}, and MTD Revenue is currently ₹${mtdRevenue.toLocaleString('en-IN')} across ${canonicalSales?.mtdOrdersCount ?? monthOrders.length} orders. You have ₹${pipelineQuotationsValue.toLocaleString('en-IN')} in active quotations and ₹${mtdOutstanding.toLocaleString('en-IN')} in pending receivables.`;
     let metrics: AskERPMetric[] = [
-      { label: "MTD Revenue", value: `₹${mtdRevenue.toLocaleString('en-IN')}`, subtext: `${monthOrders.length} orders`, positive: true },
-      { label: "Active Pipeline", value: `₹${pipelineQuotationsValue.toLocaleString('en-IN')}`, subtext: `${pendingQuotations.length} open quotes`, positive: true },
-      { label: "Godown Valuation", value: `₹${Math.round(totalInventoryValue).toLocaleString('en-IN')}`, subtext: `${totalStockUnits} units`, positive: true }
+      { label: "Total Sales", value: `₹${totalRevenue.toLocaleString('en-IN')}`, subtext: "All-time revenue", positive: true },
+      { label: "MTD Revenue", value: `₹${mtdRevenue.toLocaleString('en-IN')}`, subtext: `${canonicalSales?.mtdOrdersCount ?? monthOrders.length} orders`, positive: true },
+      { label: "Today's Sales", value: `₹${todayRevenue.toLocaleString('en-IN')}`, subtext: "Today's bookings", positive: todayRevenue > 0 }
     ];
     let actions: AskERPActionLink[] = [
-      { label: "View Full Reports", href: "/reports" },
-      { label: "Check Quotations", href: "/quotations" }
+      { label: "View Sales Orders", href: "/orders" },
+      { label: "Sales Analytics", href: "/analytics" }
     ];
 
-    if (qLower.includes("profit") || qLower.includes("customer") || qLower.includes("buyer")) {
+    if (
+      qLower.includes("top performer") ||
+      qLower.includes("performer") ||
+      qLower.includes("leaderboard") ||
+      qLower.includes("target") ||
+      (qLower.includes("agent") && (qLower.includes("detail") || qLower.includes("sale") || qLower.includes("month") || qLower.includes("best")))
+    ) {
+      if (topPerformer) {
+        fallbackAnswer = `Our #1 sales performer for this month is **${topPerformer.name}** with **₹${topPerformer.achievedSales.toLocaleString('en-IN')}** in sales (${topPerformer.percentAchieved}% of ₹${topPerformer.monthlyTarget.toLocaleString('en-IN')} target) across ${topPerformer.dealsWonCount} won deals. Overall team target achievement is ${leaderboardRes?.teamPercent || 0}%.`;
+        metrics = [
+          { label: "Top Performer", value: topPerformer.name, subtext: `${topPerformer.designation || "Sales Rep"}`, positive: true },
+          { label: "Achieved Sales", value: `₹${topPerformer.achievedSales.toLocaleString('en-IN')}`, subtext: `${topPerformer.percentAchieved}% of target`, positive: true },
+          { label: "Deals Won", value: `${topPerformer.dealsWonCount} deals`, subtext: `Team achieved: ${leaderboardRes?.teamPercent || 0}%`, positive: true }
+        ];
+        actions = [
+          { label: "🏆 View Sales Leaderboard", href: "/sales-targets" },
+          { label: "Sales Team Orders", href: "/orders" }
+        ];
+      } else {
+        fallbackAnswer = `Sales performance tracking is active, but no individual sales targets or agent deals have been logged for this month yet.`;
+        metrics = [
+          { label: "Team Achieved", value: `₹0`, subtext: "0% of target" },
+          { label: "Active Reps", value: `${employees.length} reps`, subtext: "Team registered", positive: true }
+        ];
+        actions = [{ label: "Set Sales Targets", href: "/sales-targets" }];
+      }
+    } else if (
+      qLower.includes("total sale") ||
+      qLower.includes("total sales") ||
+      qLower.includes("all sale") ||
+      qLower.includes("gross sale") ||
+      (qLower.includes("sale") && (qLower.includes("figure") || qLower.includes("fegure") || qLower.includes("number")))
+    ) {
+      fallbackAnswer = `Our all-time total sales stand at **₹${totalRevenue.toLocaleString('en-IN')}** across ${canonicalSales?.totalOrdersCount ?? monthOrders.length} orders and confirmed deals. Month-to-date (MTD) revenue is **₹${mtdRevenue.toLocaleString('en-IN')}**, and today's sales are **₹${todayRevenue.toLocaleString('en-IN')}**.`;
+      metrics = [
+        { label: "Total Sales (All Time)", value: `₹${totalRevenue.toLocaleString('en-IN')}`, subtext: `${canonicalSales?.totalOrdersCount ?? monthOrders.length} orders & quotes`, positive: true },
+        { label: "This Month (MTD)", value: `₹${mtdRevenue.toLocaleString('en-IN')}`, subtext: `${canonicalSales?.mtdOrdersCount ?? monthOrders.length} orders`, positive: true },
+        { label: "Today's Sales", value: `₹${todayRevenue.toLocaleString('en-IN')}`, subtext: "Today's bookings", positive: todayRevenue > 0 }
+      ];
+      actions = [
+        { label: "Sales Orders", href: "/orders" },
+        { label: "Sales Analytics", href: "/analytics" },
+        { label: "Sales Targets", href: "/sales-targets" }
+      ];
+    } else if (qLower.includes("profit") || qLower.includes("customer") || qLower.includes("buyer")) {
       const topCust = allCustomers[0];
       fallbackAnswer = `Your top account is **${topCust?.businessName || 'Key Client'}** with ₹${topCust?.totalPurchaseValue.toLocaleString('en-IN')} in lifetime purchases across ${topCust?.totalOrders} orders. Total top 5 customers represent ₹${allCustomers.slice(0, 5).reduce((s, c) => s + c.totalPurchaseValue, 0).toLocaleString('en-IN')} in cumulative revenue.`;
       metrics = allCustomers.slice(0, 3).map(c => ({
@@ -208,9 +286,9 @@ Available routes for suggestedActions: /orders, /customers, /quotations, /accoun
         keyMetrics: metrics,
         suggestedActions: actions,
         followUpQuestions: [
-          "Who are our top 5 most profitable customers?",
-          "How much inventory capital is currently locked up?",
-          "What is our pending receivables and cash flow position?"
+          "Who is our top performer till month?",
+          "What is our total sale?",
+          "How much inventory capital is currently locked up?"
         ]
       }
     };

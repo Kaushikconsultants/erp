@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import TablePagination, { paginate } from "@/components/ui/TablePagination";
 import {
   Building2,
   Phone,
@@ -25,10 +26,14 @@ import {
   ExternalLink,
   ShieldCheck,
   CreditCard,
+  Download,
+  FileSpreadsheet,
+  ChevronDown
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import AddVendorButton from "@/components/vendors/AddVendorButton";
 import EditVendorModal, { VendorData } from "@/components/vendors/EditVendorModal";
-import { deleteVendor } from "@/app/actions/vendorActions";
+import { deleteVendor, deleteMultipleVendors } from "@/app/actions/vendorActions";
 import { useRouter } from "next/navigation";
 import { openPhoneDialer } from "@/lib/dialer";
 
@@ -68,10 +73,35 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
   const [sortBy, setSortBy] = useState("recent");
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
   // Modal / Action State
   const [editingVendor, setEditingVendor] = useState<VendorData | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Multi-select & Export State
+  const [selectedVendorIds, setSelectedVendorIds] = useState<Set<string>>(new Set());
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+  const headerCheckboxRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    if (isExportMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isExportMenuOpen]);
 
   // Derive unique states from vendor list for filter dropdown
   const uniqueStates = useMemo(() => {
@@ -150,6 +180,127 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
 
     return list;
   }, [initialVendors, searchQuery, statusFilter, stateFilter, sortBy]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, stateFilter, sortBy, pageSize]);
+
+  const paginatedVendors = useMemo(() => {
+    return paginate(filteredVendors, currentPage, pageSize);
+  }, [filteredVendors, currentPage, pageSize]);
+
+  const isAllSelected = paginatedVendors.length > 0 && paginatedVendors.every((v) => selectedVendorIds.has(v.id));
+  const isSomeSelected = paginatedVendors.some((v) => selectedVendorIds.has(v.id));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected && !isAllSelected;
+    }
+  }, [isSomeSelected, isAllSelected]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedVendorIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedVendorIds((prev) => {
+        const next = new Set(prev);
+        paginatedVendors.forEach((v) => next.delete(v.id));
+        return next;
+      });
+    } else {
+      setSelectedVendorIds((prev) => {
+        const next = new Set(prev);
+        paginatedVendors.forEach((v) => next.add(v.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedVendorIds.size === 0) return;
+    const count = selectedVendorIds.size;
+    if (!confirm(`Are you sure you want to delete ${count} selected vendor(s)?`)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    setDeleteError(null);
+    try {
+      const ids = Array.from(selectedVendorIds);
+      const res = await deleteMultipleVendors(ids);
+      if (res?.error) {
+        setDeleteError(res.error);
+        alert(res.error);
+      } else {
+        setSelectedVendorIds(new Set());
+        if (res?.message) {
+          alert(res.message);
+        }
+        router.refresh();
+      }
+    } catch (err: any) {
+      setDeleteError(err?.message || "Failed to bulk delete vendors");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleExport = (format: "xlsx" | "csv") => {
+    const targetVendors = selectedVendorIds.size > 0
+      ? initialVendors.filter((v) => selectedVendorIds.has(v.id))
+      : filteredVendors;
+
+    if (targetVendors.length === 0) {
+      alert("No vendors available to export.");
+      return;
+    }
+
+    const rows = targetVendors.map((v) => {
+      const totalPOVal = (v.purchaseOrders || []).reduce((sum, po) => sum + (po.totalValue || 0), 0);
+      return {
+        "Company Name": v.companyName || "",
+        "Contact Person": v.contactPerson || "",
+        "Phone / Mobile": v.mobile || "",
+        "Email": v.email || "",
+        "GSTIN": v.gstNumber || "",
+        "PAN": v.pan || "",
+        "Address": v.address || "",
+        "City": v.city || "",
+        "State": v.state || "",
+        "Pincode": v.pincode || "",
+        "Payment Terms": v.paymentTerms || "",
+        "Status": v.status || "Active",
+        "PO Count": v.purchaseOrders?.length || 0,
+        "Total Procurement Spend (₹)": totalPOVal
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Vendors");
+    const dateStr = new Date().toISOString().split("T")[0];
+
+    if (format === "xlsx") {
+      XLSX.writeFile(wb, `Vendors_Export_${dateStr}.xlsx`);
+    } else {
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", `Vendors_Export_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsExportMenuOpen(false);
+  };
 
   // Overall statistics
   const totalVendors = initialVendors.length;
@@ -507,6 +658,98 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
                 <span>Table</span>
               </button>
             </div>
+
+            {/* Export Dropdown Menu */}
+            <div className="erp-export-dropdown-container" ref={exportMenuRef}>
+              <button
+                type="button"
+                className="btn-erp-export"
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                title="Export vendors to Excel or CSV"
+              >
+                <Download size={14} />
+                <span>Export {selectedVendorIds.size > 0 ? `(${selectedVendorIds.size})` : ''}</span>
+                <ChevronDown size={13} style={{ transform: isExportMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+              </button>
+
+              {isExportMenuOpen && (
+                <div className="erp-export-dropdown-menu">
+                  <div className="erp-export-dropdown-header">
+                    <span>{selectedVendorIds.size > 0 ? `Export Selected (${selectedVendorIds.size})` : `Export All (${filteredVendors.length})`}</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="erp-export-dropdown-item"
+                    onClick={() => handleExport('xlsx')}
+                  >
+                    <FileSpreadsheet size={15} style={{ color: '#10b981' }} />
+                    <div className="erp-export-item-text">
+                      <span className="title">Excel Spreadsheet</span>
+                      <span className="sub">.xlsx format</span>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    className="erp-export-dropdown-item"
+                    onClick={() => handleExport('csv')}
+                  >
+                    <Download size={15} style={{ color: '#3b82f6' }} />
+                    <div className="erp-export-item-text">
+                      <span className="title">CSV File</span>
+                      <span className="sub">Standard comma-separated</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Selection Action Buttons (Matched with Theme) */}
+            {selectedVendorIds.size > 0 && (
+              <>
+                <div className="btn-selection-count" title={`${selectedVendorIds.size} vendors selected`}>
+                  <span className="selection-count-pill">{selectedVendorIds.size}</span>
+                  <span>Selected</span>
+                </div>
+
+                <button
+                  type="button"
+                  className="btn-select-all"
+                  onClick={handleToggleSelectAll}
+                  title={isAllSelected ? "Deselect page" : `Select all ${paginatedVendors.length} on page`}
+                >
+                  <span>{isAllSelected ? "Deselect Page" : `Select Page (${paginatedVendors.length})`}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-delete-selected"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  title="Delete selected vendors"
+                >
+                  {isBulkDeleting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 size={14} />
+                      <span>Delete ({selectedVendorIds.size})</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-clear-selection"
+                  onClick={() => setSelectedVendorIds(new Set())}
+                  title="Clear selection"
+                >
+                  <X size={14} />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -547,8 +790,9 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
 
       {/* VENDOR CARDS GRID VIEW */}
       {viewMode === "grid" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "18px" }}>
-          {filteredVendors.map((vendor) => {
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "18px" }}>
+          {paginatedVendors.map((vendor) => {
             const totalPOValue = (vendor.purchaseOrders || []).reduce((sum, po) => sum + (po.totalValue || 0), 0);
             const poCount = vendor.purchaseOrders?.length || 0;
             const isDeletingThis = deletingId === vendor.id;
@@ -573,26 +817,35 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
                 <div>
                   {/* Top Bar: Company Name, Status Pill */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px", gap: "10px" }}>
-                    <div style={{ flex: 1 }}>
-                      <h3
-                        style={{
-                          fontWeight: 700,
-                          fontSize: "1.05rem",
-                          marginBottom: "4px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          color: "var(--text-primary)",
-                        }}
-                      >
-                        <Building2 size={18} style={{ color: "var(--accent-primary, #4f46e5)", flexShrink: 0 }} />
-                        <span style={{ wordBreak: "break-word" }}>{vendor.companyName}</span>
-                      </h3>
-                      {vendor.contactPerson && (
-                        <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 500 }}>
-                          Contact: <strong>{vendor.contactPerson}</strong>
-                        </div>
-                      )}
+                    <div style={{ flex: 1, display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedVendorIds.has(vendor.id)}
+                        onChange={() => handleToggleSelect(vendor.id)}
+                        className="table-checkbox"
+                        style={{ marginTop: "3px" }}
+                      />
+                      <div>
+                        <h3
+                          style={{
+                            fontWeight: 700,
+                            fontSize: "1.05rem",
+                            marginBottom: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            color: "var(--text-primary)",
+                          }}
+                        >
+                          <Building2 size={18} style={{ color: "var(--accent-primary, #4f46e5)", flexShrink: 0 }} />
+                          <span style={{ wordBreak: "break-word" }}>{vendor.companyName}</span>
+                        </h3>
+                        {vendor.contactPerson && (
+                          <div style={{ color: "var(--text-muted)", fontSize: "0.85rem", fontWeight: 500 }}>
+                            Contact: <strong>{vendor.contactPerson}</strong>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -855,7 +1108,21 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
             );
           })}
         </div>
-      )}
+
+        {filteredVendors.length > 0 && (
+          <div style={{ marginTop: '16px', background: '#ffffff', borderRadius: '14px', border: '1px solid rgba(226, 232, 240, 0.8)', overflow: 'hidden' }}>
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredVendors.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              itemName="vendors"
+            />
+          </div>
+        )}
+      </>
+    )}
 
       {/* VENDOR TABLE LIST VIEW */}
       {viewMode === "table" && (
@@ -871,6 +1138,15 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.875rem" }}>
               <thead>
                 <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", color: "#475569", fontWeight: 600, fontSize: "0.8rem" }}>
+                  <th className="table-checkbox-cell">
+                    <input
+                      type="checkbox"
+                      ref={headerCheckboxRef}
+                      checked={isAllSelected}
+                      onChange={handleToggleSelectAll}
+                      className="table-checkbox"
+                    />
+                  </th>
                   <th style={{ padding: "14px 18px" }}>Supplier / Company</th>
                   <th style={{ padding: "14px 18px" }}>Contact Person</th>
                   <th style={{ padding: "14px 18px" }}>Phone & Email</th>
@@ -882,7 +1158,7 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
                 </tr>
               </thead>
               <tbody>
-                {filteredVendors.map((vendor) => {
+                {paginatedVendors.map((vendor) => {
                   const totalPOValue = (vendor.purchaseOrders || []).reduce((sum, po) => sum + (po.totalValue || 0), 0);
                   const poCount = vendor.purchaseOrders?.length || 0;
                   const isDeletingThis = deletingId === vendor.id;
@@ -892,10 +1168,19 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
                       key={vendor.id}
                       style={{
                         borderBottom: "1px solid #f1f5f9",
+                        backgroundColor: selectedVendorIds.has(vendor.id) ? "#f5f3ff" : undefined,
                         transition: "background 0.15s ease",
                         opacity: isDeletingThis ? 0.5 : 1,
                       }}
                     >
+                      <td className="table-checkbox-cell">
+                        <input
+                          type="checkbox"
+                          checked={selectedVendorIds.has(vendor.id)}
+                          onChange={() => handleToggleSelect(vendor.id)}
+                          className="table-checkbox"
+                        />
+                      </td>
                       {/* Company Name */}
                       <td style={{ padding: "14px 18px", fontWeight: 700, color: "var(--text-primary)" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -1075,6 +1360,15 @@ export default function VendorManagementClient({ initialVendors }: VendorManagem
               </tbody>
             </table>
           </div>
+
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={filteredVendors.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemName="vendors"
+          />
         </div>
       )}
 

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Phone, PhoneCall, Clock, User, Calendar, Volume2, Sparkles, FileText, ChevronDown, ChevronUp, Copy, Check } from "lucide-react";
+import CallTranscriptViewer from "@/components/telecalling/CallTranscriptViewer";
 
 interface CallRecord {
   id: string;
@@ -251,171 +252,19 @@ export default function CustomerInteractionHistory({
                     </div>
                   )}
 
-                  {/* AI Summary Block */}
-                  {summary && (
-                    <div
-                      style={{
-                        padding: "12px 16px",
-                        borderRadius: "10px",
-                        backgroundColor: "#faf5ff",
-                        border: "1px solid #e9d5ff",
-                        position: "relative"
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "6px" }}>
-                        <Sparkles size={14} color="#9333ea" />
-                        <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#7e22ce", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                          AI Summary & Debrief
-                        </span>
-                      </div>
-                      <p style={{ margin: 0, fontSize: "0.85rem", color: "#3b0764", lineHeight: 1.5, fontWeight: 500 }}>
-                        {summary}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Auto-Transcript Section */}
-                  {transcript ? (
-                    <div
-                      style={{
-                        padding: "14px",
-                        borderRadius: "10px",
-                        backgroundColor: "#f8fafc",
-                        border: "1px solid #e2e8f0"
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                        <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#334155", display: "flex", alignItems: "center", gap: "6px" }}>
-                          <FileText size={14} color="#3b82f6" />
-                          Call Auto-Transcript
-                        </span>
-
-                        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyTranscript(call.id, transcript)}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "4px",
-                              padding: "4px 8px",
-                              borderRadius: "6px",
-                              border: "1px solid #cbd5e1",
-                              backgroundColor: "#ffffff",
-                              color: "#475569",
-                              fontSize: "0.72rem",
-                              fontWeight: 600,
-                              cursor: "pointer"
-                            }}
-                            title="Copy transcript to clipboard"
-                          >
-                            {copiedId === call.id ? <Check size={12} color="#16a34a" /> : <Copy size={12} />}
-                            {copiedId === call.id ? "Copied!" : "Copy"}
-                          </button>
-
-                          {dialogueLines.length > 3 && (
-                            <button
-                              type="button"
-                              onClick={() => toggleExpand(call.id)}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "4px",
-                                padding: "4px 8px",
-                                borderRadius: "6px",
-                                border: "1px solid #c7d2fe",
-                                backgroundColor: "#eef2ff",
-                                color: "#4338ca",
-                                fontSize: "0.72rem",
-                                fontWeight: 600,
-                                cursor: "pointer"
-                              }}
-                            >
-                              {isExpanded ? (
-                                <>
-                                  <ChevronUp size={12} /> Show Less
-                                </>
-                              ) : (
-                                <>
-                                  <ChevronDown size={12} /> Show All ({dialogueLines.length} lines)
-                                </>
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Formatted Dialogue Bubbles */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                        {(isExpanded ? dialogueLines : dialogueLines.slice(0, 3)).map((line, idx) => {
-                          const isIVR = line.toLowerCase().startsWith("ivr:") || line.toLowerCase().startsWith("system:");
-                          const isCustomer = line.toLowerCase().startsWith("customer:") || line.toLowerCase().startsWith("caller:");
-                          const isAgent = line.toLowerCase().startsWith("agent:") || line.toLowerCase().startsWith("rep:");
-
-                          let tagColor = "#475569";
-                          let bubbleBg = "#ffffff";
-                          let borderColor = "#e2e8f0";
-
-                          if (isIVR) {
-                            tagColor = "#d97706";
-                            bubbleBg = "#fffbeb";
-                            borderColor = "#fef3c7";
-                          } else if (isCustomer) {
-                            tagColor = "#2563eb";
-                            bubbleBg = "#eff6ff";
-                            borderColor = "#dbeafe";
-                          } else if (isAgent) {
-                            tagColor = "#16a34a";
-                            bubbleBg = "#f0fdf4";
-                            borderColor = "#dcfce7";
-                          }
-
-                          return (
-                            <div
-                              key={idx}
-                              style={{
-                                padding: "8px 12px",
-                                borderRadius: "8px",
-                                backgroundColor: bubbleBg,
-                                border: `1px solid ${borderColor}`,
-                                fontSize: "0.82rem",
-                                lineHeight: 1.45,
-                                color: "#1e293b"
-                              }}
-                            >
-                              <strong style={{ color: tagColor, marginRight: "6px" }}>
-                                {line.split(":")[0]}:
-                              </strong>
-                              <span>{line.substring(line.indexOf(":") + 1).trim() || line}</span>
-                            </div>
-                          );
-                        })}
-
-                        {!isExpanded && dialogueLines.length > 3 && (
-                          <div
-                            onClick={() => toggleExpand(call.id)}
-                            style={{
-                              textAlign: "center",
-                              fontSize: "0.75rem",
-                              color: "#4f46e5",
-                              fontWeight: 600,
-                              cursor: "pointer",
-                              padding: "4px"
-                            }}
-                          >
-                            + {dialogueLines.length - 3} more dialogue lines. Click to expand full transcript.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {/* Manual User Notes if present */}
-                  {userNotes && (
-                    <div style={{ fontSize: "0.82rem", color: "#475569", lineHeight: 1.4 }}>
-                      <strong style={{ color: "#334155" }}>Notes: </strong>
-                      <span>{userNotes}</span>
-                    </div>
+                  {/* Call Transcript, AI Summary & Dialogue */}
+                  {(call.notes || call.summary) && (
+                    <CallTranscriptViewer
+                      notes={call.notes}
+                      summary={call.summary}
+                      repName={call.employee?.user?.name || "Sales Rep"}
+                      customerName={customerName}
+                      isOldCustomer={true}
+                      callId={call.id}
+                      durationSec={call.durationSec}
+                      outcome={call.outcome}
+                      status={call.status}
+                    />
                   )}
 
                   {/* Scheduled Follow-up info if present */}

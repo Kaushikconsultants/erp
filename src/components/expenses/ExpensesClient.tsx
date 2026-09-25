@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import DatePicker from "@/components/ui/DatePicker";
+import TablePagination, { paginate } from "@/components/ui/TablePagination";
 import { 
   submitExpense, 
   updateExpense, 
@@ -168,6 +169,8 @@ export default function ExpensesClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterCategory, setFilterCategory] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Modal & Form States
   const [modalOpen, setModalOpen] = useState(false);
@@ -514,6 +517,14 @@ export default function ExpensesClient({
     return num.includes(q) || acc.includes(q) || ven.includes(q) || ref.includes(q) || desc.includes(q) || emp.includes(q) || amt.includes(q);
   });
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, filterCategory, pageSize]);
+
+  const paginatedExpenses = useMemo(() => {
+    return paginate(filteredExpenses, currentPage, pageSize);
+  }, [filteredExpenses, currentPage, pageSize]);
+
   const formatCurrency = (amt: number) => {
     return "₹" + (amt || 0).toLocaleString("en-IN", {
       minimumFractionDigits: 0,
@@ -677,7 +688,7 @@ export default function ExpensesClient({
               </tr>
             </thead>
             <tbody>
-              {filteredExpenses.map((exp, idx) => {
+              {paginatedExpenses.map((exp, idx) => {
                 const bStyle = STATUS_BADGES[exp.status] || STATUS_BADGES.Pending;
                 const isCOGS = exp.details?.accountCategory === "Cost Of Goods Sold";
                 return (
@@ -896,6 +907,15 @@ export default function ExpensesClient({
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredExpenses.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="expenses"
+        />
       </div>
 
       {/* ─── 5. MOBILE EXPENSE CARDS FEED (<= 768px) ─── */}
@@ -909,7 +929,7 @@ export default function ExpensesClient({
             </p>
           </div>
         ) : (
-          filteredExpenses.map(exp => {
+          paginatedExpenses.map(exp => {
             const bStyle = STATUS_BADGES[exp.status] || STATUS_BADGES.Pending;
             const isCOGS = exp.details?.accountCategory === "Cost Of Goods Sold";
             const mileage = exp.details?.mileageData;
@@ -1069,6 +1089,19 @@ export default function ExpensesClient({
               </div>
             );
           })
+        )}
+
+        {filteredExpenses.length > 0 && (
+          <div className="expenses-mobile-pagination">
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredExpenses.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              itemName="expenses"
+            />
+          </div>
         )}
       </div>
 

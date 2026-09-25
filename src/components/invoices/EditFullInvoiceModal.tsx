@@ -20,6 +20,7 @@ import {
 import DatePicker from "@/components/ui/DatePicker";
 import { getInvoiceForFullEdit, saveFullInvoiceDetails } from "@/app/actions/invoiceActions";
 import "@/components/ui/modal.css";
+import "./edit-invoice-modal.css";
 
 interface EditFullInvoiceModalProps {
   invoiceId: string;
@@ -449,45 +450,15 @@ export default function EditFullInvoiceModal({
 
   return (
     <div 
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 99999,
-        backgroundColor: "rgba(15, 23, 42, 0.6)",
-        backdropFilter: "blur(6px)",
-        WebkitBackdropFilter: "blur(6px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "16px"
-      }}
+      className="edit-invoice-modal-overlay"
       onClick={onClose}
     >
       <div 
-        style={{
-          backgroundColor: "#ffffff",
-          width: "100%",
-          maxWidth: "1120px",
-          borderRadius: "16px",
-          overflow: "hidden",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0,0,0,0.04)",
-          border: "1px solid #e2e8f0",
-          maxHeight: "92vh",
-          display: "flex",
-          flexDirection: "column",
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-        }}
+        className="edit-invoice-modal-dialog"
         onClick={e => e.stopPropagation()}
       >
         {/* ─── SYSTEM-THEMED MODAL HEADER ─── */}
-        <div style={{
-          backgroundColor: "#ffffff",
-          padding: "16px 24px 14px 24px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "1px solid #f1f5f9"
-        }}>
+        <div className="edit-invoice-modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div style={{
               width: "38px",
@@ -585,7 +556,7 @@ export default function EditFullInvoiceModal({
             <p style={{ fontSize: "0.88rem", fontWeight: 500 }}>Loading invoice details...</p>
           </div>
         ) : (
-          <form onSubmit={handleSaveInvoice} style={{ overflowY: "auto", flex: 1, padding: "20px 24px" }}>
+          <form onSubmit={handleSaveInvoice} className="edit-invoice-form-body">
             {error && (
               <div style={{
                 backgroundColor: "#fef2f2",
@@ -605,48 +576,20 @@ export default function EditFullInvoiceModal({
             )}
 
             {/* ══════════ SECTION 1: CUSTOMER & INVOICE SCHEDULE (SIDE-BY-SIDE) ══════════ */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1.15fr 0.85fr",
-              gap: "16px",
-              marginBottom: "18px"
-            }}>
+            <div className="edit-invoice-section-1">
               {/* CARD A: CUSTOMER & BILLING DETAILS */}
-              <div style={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                padding: "16px 18px",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
-              }}>
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "12px",
-                  paddingBottom: "8px",
-                  borderBottom: "1px solid #f1f5f9"
-                }}>
-                  <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: "6px" }}>
+              <div className="edit-invoice-card">
+                <div className="edit-invoice-card-header">
+                  <div className="edit-invoice-card-title">
                     <Building2 size={15} color="#059669" /> Customer & Billing Details
                   </div>
 
                   {/* Customer Quick Switcher */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <div className="edit-invoice-customer-switcher">
                     <select
                       value={customerId}
                       onChange={e => handleCustomerSelect(e.target.value)}
-                      style={{
-                        padding: "4px 8px",
-                        borderRadius: "6px",
-                        border: "1px solid #cbd5e1",
-                        fontSize: "0.76rem",
-                        fontWeight: 600,
-                        color: "#1e293b",
-                        backgroundColor: "#f8fafc",
-                        maxWidth: "200px",
-                        outline: "none"
-                      }}
+                      className="edit-invoice-customer-select"
                       title="Switch customer"
                     >
                       {allCustomers.map(c => (
@@ -658,7 +601,7 @@ export default function EditFullInvoiceModal({
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <div className="edit-invoice-customer-grid">
                   <div>
                     <label style={{ display: "block", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "4px" }}>
                       Business Name *
@@ -845,12 +788,7 @@ export default function EditFullInvoiceModal({
               </div>
 
               {/* CARD B: INVOICE DATES, TERMS & TAX MODE */}
-              <div style={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                padding: "16px 18px",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.02)",
+              <div className="edit-invoice-card" style={{
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between"
@@ -872,7 +810,7 @@ export default function EditFullInvoiceModal({
                     <Calendar size={15} color="#4f46e5" /> Invoice Schedule & Terms
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <div className="edit-invoice-schedule-grid">
                     {/* Invoice Number */}
                     <div>
                       <label style={{ display: "block", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "4px" }}>
@@ -1011,20 +949,8 @@ export default function EditFullInvoiceModal({
             </div>
 
             {/* ══════════ SECTION 2: LINE ITEMS & TAX BREAKDOWN (FULL WIDTH) ══════════ */}
-            <div style={{
-              backgroundColor: "#ffffff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "12px",
-              padding: "16px 18px",
-              marginBottom: "18px",
-              boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
-            }}>
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "12px"
-              }}>
+            <div className="edit-invoice-line-items-card">
+              <div className="edit-invoice-line-items-header">
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <Package size={16} color="#059669" />
                   <h3 style={{ margin: 0, fontSize: "0.94rem", fontWeight: 700, color: "#0f172a" }}>
@@ -1042,7 +968,7 @@ export default function EditFullInvoiceModal({
                   </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <div className="edit-invoice-line-items-actions">
                   <button
                     type="button"
                     onClick={handleAddShippingItem}
@@ -1094,15 +1020,15 @@ export default function EditFullInvoiceModal({
                 </div>
               </div>
 
+              {/* Mobile Table Scroll Hint */}
+              <div className="edit-invoice-mobile-hint">
+                👉 Scroll horizontally to view & edit quantities, rates & taxes
+              </div>
+
               {/* Items Table */}
-              <div style={{
-                border: "1px solid #e2e8f0",
-                borderRadius: "10px",
-                overflow: "hidden",
-                backgroundColor: "#ffffff"
-              }}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
+              <div className="edit-invoice-table-scroll">
+                <div>
+                  <table className="edit-invoice-table">
                     <thead>
                       <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
                         <th style={{ padding: "9px 8px", textAlign: "center", width: "32px", color: "#64748b", fontSize: "0.72rem", fontWeight: 700 }}>#</th>
@@ -1328,17 +1254,12 @@ export default function EditFullInvoiceModal({
             </div>
 
             {/* ══════════ SECTION 3: REMARKS & FINANCIAL SUMMARY (SIDE-BY-SIDE) ══════════ */}
-            <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "16px" }}>
+            <div className="edit-invoice-section-3">
               {/* Left Column: Notes & Remarks */}
-              <div style={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                padding: "16px 18px",
+              <div className="edit-invoice-card" style={{
                 display: "flex",
                 flexDirection: "column",
                 gap: "12px",
-                boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
               }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.03em", marginBottom: "5px" }}>
@@ -1369,15 +1290,10 @@ export default function EditFullInvoiceModal({
               </div>
 
               {/* Right Column: Financial Calculation Ledger */}
-              <div style={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
-                borderRadius: "12px",
-                padding: "16px 18px",
+              <div className="edit-invoice-card" style={{
                 display: "flex",
                 flexDirection: "column",
                 gap: "8px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.84rem", color: "#475569" }}>
                   <span>Subtotal (Taxable)</span>
@@ -1543,15 +1459,8 @@ export default function EditFullInvoiceModal({
             </div>
 
             {/* ─── SYSTEM-THEMED MODAL FOOTER ─── */}
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              paddingTop: "16px",
-              marginTop: "20px",
-              borderTop: "1px solid #e2e8f0"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "0.84rem" }}>
+            <div className="edit-invoice-footer">
+              <div className="edit-invoice-footer-summary">
                 <span>
                   Total: <strong style={{ color: "#0f172a" }}>₹{calculations.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                 </span>
@@ -1561,7 +1470,7 @@ export default function EditFullInvoiceModal({
                 </span>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <div className="edit-invoice-footer-buttons">
                 <button
                   type="button"
                   onClick={onClose}

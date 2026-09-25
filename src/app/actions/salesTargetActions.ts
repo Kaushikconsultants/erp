@@ -20,12 +20,20 @@ export interface RepSalesTargetPerformance {
   status: 'AHEAD' | 'ON_TRACK' | 'BEHIND';
 }
 
-export async function getSalesTargetLeaderboard() {
+export async function getSalesTargetLeaderboard(overrideOrgId?: string) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return { success: false, error: "Unauthorized" };
+    let organizationId = overrideOrgId;
+    if (!organizationId) {
+      const session = await getServerSession(authOptions);
+      if (!session?.user) return { success: false, error: "Unauthorized" };
+      organizationId = await getTenantOrgId();
+    }
 
-    const organizationId = await getTenantOrgId();
+    if (!organizationId) {
+      const defaultOrg = await prisma.organization.findFirst();
+      organizationId = defaultOrg?.id || undefined;
+    }
+    if (!organizationId) return { success: false, error: "No organization found" };
 
     // Start & End of current month
     const now = new Date();

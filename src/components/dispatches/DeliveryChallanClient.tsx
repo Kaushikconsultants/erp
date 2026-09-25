@@ -2,8 +2,9 @@
 
 import DatePicker from '@/components/ui/DatePicker';
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import TablePagination, { paginate } from "@/components/ui/TablePagination";
 import {
   Truck,
   Plus,
@@ -38,6 +39,11 @@ export default function DeliveryChallanClient({
   const [search, setSearch] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isConverting, setIsConverting] = useState<string | null>(null);
+
+  // Pagination state: default 25 per page (options: 25, 50, 100, 200)
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Form State
   const [challanType, setChallanType] = useState<any>("JOB_WORK_OUT");
@@ -157,6 +163,13 @@ export default function DeliveryChallanClient({
     );
   });
 
+  // Reset to first page when search, typeFilter or pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, typeFilter, pageSize]);
+
+  const paginatedChallans = paginate(filteredChallans, currentPage, pageSize);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* Top Header */}
@@ -215,7 +228,7 @@ export default function DeliveryChallanClient({
       </div>
 
       {/* Challan Table */}
-      <div className="glass-panel" style={{ padding: "20px" }}>
+      <div className="glass-panel" ref={tableContainerRef} style={{ padding: "20px" }}>
         <div className="table-responsive">
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
@@ -238,7 +251,7 @@ export default function DeliveryChallanClient({
                   </td>
                 </tr>
               ) : (
-                filteredChallans.map(c => (
+                paginatedChallans.map(c => (
                   <tr key={c.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                     <td style={{ padding: "10px 12px", fontFamily: "monospace", fontWeight: 700, color: "#4f46e5" }}>
                       {c.challanNumber}
@@ -378,6 +391,18 @@ export default function DeliveryChallanClient({
             </tbody>
           </table>
         </div>
+
+        {/* ─── PAGINATION FOOTER ─── */}
+        <TablePagination
+          totalCount={filteredChallans.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="delivery challans"
+          containerRef={tableContainerRef}
+          style={{ margin: "16px -20px -20px -20px", borderBottomLeftRadius: "14px", borderBottomRightRadius: "14px" }}
+        />
       </div>
 
       {/* CREATE DELIVERY CHALLAN MODAL */}

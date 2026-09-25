@@ -51,10 +51,13 @@ export async function POST(req: Request) {
 
     const orgIdToUse = org.id;
 
+    const cleanDigits = (whatsappNumber || "").replace(/\D/g, "");
+    const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+
     // Check if lead already exists based on our previous logic
     const existingLead = await prisma.lead.findFirst({
       where: {
-        whatsappNumber,
+        whatsappNumber: { contains: last10 },
         organizationId: orgIdToUse
       },
       include: {

@@ -485,3 +485,61 @@ export const clearNativeLaunchNotificationUrl = () => {
     }
   } catch (e) {}
 };
+
+export interface DeviceCallLogItem {
+  id: string;
+  number: string;
+  name?: string;
+  type: "INCOMING" | "OUTGOING" | "MISSED" | "REJECTED" | "BLOCKED" | "VOICEMAIL";
+  timestamp: number;
+  duration: number; // in seconds
+}
+
+/**
+ * Check if the app has READ_CALL_LOG permission on Android
+ */
+export const hasCallLogPermission = (): boolean => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.hasCallLogPermission === 'function') {
+      return Boolean((window as any).AndroidNative.hasCallLogPermission());
+    }
+  } catch (e) {
+    return false;
+  }
+  return false;
+};
+
+/**
+ * Prompt Android runtime permission dialog for READ_CALL_LOG
+ */
+export const requestCallLogPermission = () => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.requestCallLogPermission === 'function') {
+      (window as any).AndroidNative.requestCallLogPermission();
+    }
+  } catch (e) {
+    console.warn("Failed to request call log permission:", e);
+  }
+};
+
+/**
+ * Fetch native device call history directly from Android CallLog provider.
+ * Returns incoming calls, missed calls, and outbound calls.
+ */
+export const getDeviceCallLogs = async (
+  limit: number = 50,
+  typeFilter: "ALL" | "INCOMING" | "MISSED" | "OUTGOING" = "ALL"
+): Promise<DeviceCallLogItem[]> => {
+  try {
+    if (isAndroidNativeApp() && typeof (window as any).AndroidNative?.getDeviceCallLogs === 'function') {
+      const json = (window as any).AndroidNative.getDeviceCallLogs(limit, typeFilter);
+      if (!json || typeof json !== 'string') return [];
+      const parsed = JSON.parse(json);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch (e) {
+    console.warn("Failed to get device call logs:", e);
+  }
+  return [];
+};
+

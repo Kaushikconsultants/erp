@@ -44,44 +44,72 @@ export default async function TasksPage() {
     }
   }
 
-  const tasks = await prisma.task.findMany({
-    where: taskWhereClause,
-    orderBy: { createdAt: 'desc' },
-    include: {
-      assignee: { include: { user: true } },
-      customer: true
-    }
-  });
+  const [tasks, employees, customers] = await Promise.all([
+    prisma.task.findMany({
+      where: taskWhereClause,
+      take: 100,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        assignee: {
+          select: {
+            id: true,
+            user: { select: { id: true, name: true } }
+          }
+        },
+        customer: {
+          select: {
+            id: true,
+            businessName: true
+          }
+        }
+      }
+    }),
+    prisma.employee.findMany({
+      where: { organizationId: orgId },
+      select: {
+        id: true,
+        user: { select: { name: true } }
+      },
+      orderBy: { user: { name: 'asc' } }
+    }),
+    prisma.customer.findMany({
+      where: customerWhereClause,
+      select: { id: true, businessName: true },
+      take: 200,
+      orderBy: { businessName: 'asc' }
+    })
+  ]);
 
-  const employees = await prisma.employee.findMany({
-    where: { organizationId: orgId },
-    include: { user: true },
-    orderBy: { user: { name: 'asc' } }
-  });
-
-  const customers = await prisma.customer.findMany({
-    where: customerWhereClause,
-    orderBy: { businessName: 'asc' }
-  });
-
-  const mappedEmployees = employees.map(e => ({ id: e.id, name: e.user.name }));
+  const mappedEmployees = employees.map(e => ({ id: e.id, name: e.user?.name || 'Unknown' }));
   const mappedCustomers = customers.map(c => ({ id: c.id, name: c.businessName }));
 
   return (
-    <div className="page-container" style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0, fontSize: '1.5rem', fontWeight: 600, color: '#0f172a' }}>
-            <CheckSquare style={{ color: "var(--accent-primary, #4f46e5)" }} size={26} />
-            Tasks & Action Assignments
-          </h1>
-          <p className="page-subtitle" style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.875rem', fontWeight: 400 }}>
-            Assign, track, and manage salesperson sales tasks and closing to-dos.
-          </p>
+    <div className="task-page-wrapper">
+      {/* Header Banner */}
+      <div className="task-header-card">
+        <div className="task-header-left">
+          <div className="task-header-icon-box">
+            <CheckSquare size={22} />
+          </div>
+          <div className="task-header-titles">
+            <h1 className="task-main-title">
+              Tasks & Action Assignments
+            </h1>
+            <p className="task-main-subtitle">
+              Assign, track, and manage salesperson sales tasks and closing to-dos.
+            </p>
+          </div>
         </div>
-        <CreateTaskButton employees={mappedEmployees} customers={mappedCustomers} />
+        
+        <CreateTaskButton 
+          employees={mappedEmployees} 
+          customers={mappedCustomers}
+          className="btn-create-task-main"
+          buttonText="+ Create Task"
+        />
       </div>
 
+      {/* Interactive Task Client (Filters + Mobile Card Feed + Desktop Table) */}
       <TaskListClient 
         initialTasks={tasks} 
         employees={mappedEmployees} 

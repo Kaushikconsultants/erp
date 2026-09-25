@@ -65,7 +65,7 @@ export async function ensureDefaultOrganization() {
           branch: "Rohtak",
           upiId: "7206066678@OKBIZAXIS",
           themeColor: "#4f46e5",
-          fontFamily: "Inter"
+          fontFamily: "Outfit"
         }
       }).catch(() => {});
     }

@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Outfit } from "next/font/google";
 import "react-datepicker/dist/react-datepicker.css";
 import "./globals.css";
 import "@/components/ui/modal.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { getCompanySettings } from "./actions/companyActions";
+
+const outfit = Outfit({ 
+  subsets: ["latin"], 
+  variable: '--font-outfit', 
+  display: 'swap',
+  weight: ['300', '400', '500', '600', '700', '800', '900'],
+  preload: true 
+});
 
 const inter = Inter({ 
   subsets: ["latin"], 
@@ -44,18 +52,19 @@ export default async function RootLayout({
     console.error("Layout error fetching company settings:", e);
   }
   
-  // Map font name to actual CSS font-family string
-  let fontFamilyString = "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-  if (settings?.fontFamily === 'Roboto') { fontFamilyString = "'Roboto', var(--font-inter), sans-serif"; }
-  else if (settings?.fontFamily === 'Outfit') { fontFamilyString = "'Outfit', var(--font-inter), sans-serif"; }
-  else if (settings?.fontFamily === 'Poppins') { fontFamilyString = "'Poppins', var(--font-inter), sans-serif"; }
-  else if (settings?.fontFamily === 'Open Sans') { fontFamilyString = "'Open Sans', var(--font-inter), sans-serif"; }
-  else if (settings?.fontFamily === 'Montserrat') { fontFamilyString = "'Montserrat', var(--font-inter), sans-serif"; }
-  else if (settings?.fontFamily === 'Lato') { fontFamilyString = "'Lato', var(--font-inter), sans-serif"; }
-  else if (settings?.fontFamily === 'Oswald') { fontFamilyString = "'Oswald', var(--font-inter), sans-serif"; }
+  // Map font name to actual CSS font-family string (Defaults to 'Outfit')
+  let fontFamilyString = "var(--font-outfit), 'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+  if (settings?.fontFamily === 'Inter') { fontFamilyString = "var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, sans-serif"; }
+  else if (settings?.fontFamily === 'Roboto') { fontFamilyString = "'Roboto', var(--font-outfit), sans-serif"; }
+  else if (settings?.fontFamily === 'Outfit') { fontFamilyString = "var(--font-outfit), 'Outfit', sans-serif"; }
+  else if (settings?.fontFamily === 'Poppins') { fontFamilyString = "'Poppins', var(--font-outfit), sans-serif"; }
+  else if (settings?.fontFamily === 'Open Sans') { fontFamilyString = "'Open Sans', var(--font-outfit), sans-serif"; }
+  else if (settings?.fontFamily === 'Montserrat') { fontFamilyString = "'Montserrat', var(--font-outfit), sans-serif"; }
+  else if (settings?.fontFamily === 'Lato') { fontFamilyString = "'Lato', var(--font-outfit), sans-serif"; }
+  else if (settings?.fontFamily === 'Oswald') { fontFamilyString = "'Oswald', var(--font-outfit), sans-serif"; }
   else if (settings?.fontFamily === 'System Default') { fontFamilyString = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"; }
 
-  const fontClasses = `${inter.variable}`;
+  const fontClasses = `${outfit.variable} ${inter.variable}`;
 
   // Inject Theme Variables
   const primaryColor = settings?.themeColor || '#4f46e5';

@@ -26,15 +26,27 @@ export default function DownloadPdfButton({
         return;
       }
 
-      // Load html2pdf bundle (which bundles html2canvas & jsPDF) if not present
-      if (!(window as any).html2canvas || !(window as any).html2pdf) {
-        await new Promise<void>((resolve, reject) => {
+      // Load html2canvas & jsPDF dynamically if not present
+      const loadScript = (src: string): Promise<void> => {
+        return new Promise<void>((resolve, reject) => {
+          if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+          }
           const script = document.createElement("script");
-          script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+          script.src = src;
           script.onload = () => resolve();
-          script.onerror = () => reject(new Error("Failed to load PDF library"));
+          script.onerror = () => reject(new Error(`Failed to load ${src}`));
           document.body.appendChild(script);
         });
+      };
+
+      if (!(window as any).html2canvas) {
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js");
+      }
+
+      if (!(window as any).jspdf) {
+        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
       }
 
       // Ensure all custom web fonts are fully loaded
@@ -42,26 +54,71 @@ export default function DownloadPdfButton({
         await document.fonts.ready;
       }
 
+      const exportWidth = 800; // Standard document width for crisp A4 proportional scaling
+
       // Create an isolated container for clean rendering
       cloneContainer = document.createElement('div');
       cloneContainer.style.position = 'fixed';
       cloneContainer.style.top = '0';
       cloneContainer.style.left = '0';
-      cloneContainer.style.width = '760px';
+      cloneContainer.style.width = `${exportWidth}px`;
       cloneContainer.style.zIndex = '-9999';
       cloneContainer.style.backgroundColor = '#ffffff';
       cloneContainer.style.pointerEvents = 'none';
+      cloneContainer.style.overflow = 'visible';
+      cloneContainer.style.margin = '0';
+      cloneContainer.style.padding = '0';
 
       const clone = sourceElement.cloneNode(true) as HTMLElement;
       clone.id = `${elementId}-pdf-export`;
-      clone.style.width = '760px';
-      clone.style.maxWidth = '760px';
-      clone.style.minWidth = '760px';
+      clone.style.width = `${exportWidth}px`;
+      clone.style.maxWidth = `${exportWidth}px`;
+      clone.style.minWidth = `${exportWidth}px`;
       clone.style.margin = '0';
       clone.style.padding = '24px 28px';
-      clone.style.border = '1px solid #9ca3af';
+      clone.style.border = '1px solid #cbd5e1';
       clone.style.boxSizing = 'border-box';
       clone.style.backgroundColor = '#ffffff';
+
+      // Ensure no print-hidden or widget elements remain in the PDF export clone
+      clone.querySelectorAll('.no-print, .mobile-scroll-hint, .floating-voice-button-container, .floating-voice-capsule, .floating-voice-tooltip, .stylish-heart-container, [data-voice-widget], .voice-widget-root').forEach(el => el.remove());
+
+      // Ensure table scroll containers do not clip horizontally or vertically in PDF export
+      clone.querySelectorAll('.quote-table-scroll-container, .quote-doc-scroll-wrap, .invoice-doc-scroll-wrap').forEach(el => {
+        const c = el as HTMLElement;
+        c.style.overflow = 'visible';
+        c.style.overflowX = 'visible';
+        c.style.border = 'none';
+        c.style.boxShadow = 'none';
+        c.style.padding = '0';
+        c.style.margin = '0';
+        c.style.width = '100%';
+        c.style.maxWidth = '100%';
+      });
+
+      // Align all document section cards to exact 100% width
+      clone.querySelectorAll('.meta-box, .address-box, .items-table, .lower-box, .header-row, .zoho-footer').forEach(el => {
+        const box = el as HTMLElement;
+        box.style.width = '100%';
+        box.style.maxWidth = '100%';
+        box.style.boxSizing = 'border-box';
+      });
+
+      // Table layout and header styling: bold, prominent top border line & adequate vertical breathing room
+      clone.querySelectorAll('.items-table').forEach(tbl => {
+        const table = tbl as HTMLElement;
+        table.style.borderTop = '2.5px solid #334155';
+        table.style.borderCollapse = 'collapse';
+      });
+      clone.querySelectorAll('.items-table thead th').forEach(th => {
+        const cell = th as HTMLElement;
+        cell.style.borderTop = '2.5px solid #334155';
+        cell.style.paddingTop = '10px';
+        cell.style.paddingBottom = '9px';
+        cell.style.verticalAlign = 'middle';
+        cell.style.lineHeight = '1.35';
+        cell.style.boxSizing = 'border-box';
+      });
 
       cloneContainer.appendChild(clone);
       document.body.appendChild(cloneContainer);
@@ -85,16 +142,7 @@ export default function DownloadPdfButton({
       const jsPDFClass = (window as any).jspdf?.jsPDF || (window as any).jsPDF;
 
       if (!html2canvas || !jsPDFClass) {
-        // Fallback to standard html2pdf invocation
-        const opt = {
-          margin: [8, 8, 8, 8],
-          filename: filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, letterRendering: true, logging: false },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-        await (window as any).html2pdf().set(opt).from(clone).save();
-        return;
+        throw new Error("PDF generation libraries could not be loaded.");
       }
 
       // Render high-res crisp canvas
@@ -108,9 +156,8 @@ export default function DownloadPdfButton({
         scrollY: 0
       });
 
-      const imgData = canvas.toDataURL('image/jpeg', 0.98);
-
-      const pdf = new jsPDFClass({
+      const jsPDF = jsPDFClass;
+      const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
@@ -122,26 +169,34 @@ export default function DownloadPdfButton({
       const printableWidth = pageWidth - (margin * 2); // 194mm
       const printableHeight = pageHeight - (margin * 2); // 281mm
 
-      // Scale proportionally so the full document width fits exactly within printable area
-      const imgWidth = printableWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const maxCanvasPageHeight = (printableHeight * canvas.width) / printableWidth;
 
-      if (imgHeight <= printableHeight) {
+      if (canvas.height <= maxCanvasPageHeight) {
         // Fits entirely on a single page
-        pdf.addImage(imgData, 'JPEG', margin, margin, imgWidth, imgHeight);
+        const imgData = canvas.toDataURL('image/png');
+        const imgHeight = (canvas.height * printableWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', margin, margin, printableWidth, imgHeight);
       } else {
-        // Multi-page document support
-        let heightLeft = imgHeight;
-        let position = margin;
-
-        pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
-        heightLeft -= printableHeight;
-
-        while (heightLeft > 0) {
-          position -= printableHeight;
-          pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
-          heightLeft -= printableHeight;
+        // Multi-page document with clean canvas chunk slicing
+        let renderedHeight = 0;
+        let pageIndex = 0;
+        while (renderedHeight < canvas.height) {
+          if (pageIndex > 0) pdf.addPage();
+          const chunkHeight = Math.min(maxCanvasPageHeight, canvas.height - renderedHeight);
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = chunkHeight;
+          const pageCtx = pageCanvas.getContext('2d');
+          if (pageCtx) {
+            pageCtx.fillStyle = '#ffffff';
+            pageCtx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+            pageCtx.drawImage(canvas, 0, renderedHeight, canvas.width, chunkHeight, 0, 0, canvas.width, chunkHeight);
+            const chunkImgData = pageCanvas.toDataURL('image/png');
+            const chunkHeightMm = (chunkHeight * printableWidth) / canvas.width;
+            pdf.addImage(chunkImgData, 'PNG', margin, margin, printableWidth, chunkHeightMm);
+          }
+          renderedHeight += chunkHeight;
+          pageIndex++;
         }
       }
 

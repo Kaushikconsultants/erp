@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-export async function getKPIDetails(type: 'customers' | 'orders' | 'calls', timeRange: 'today' | 'week' | 'month' | 'all') {
+export async function getKPIDetails(type: 'customers' | 'orders' | 'calls' | 'revenue', timeRange: 'today' | 'week' | 'month' | 'all') {
   try {
     const session = await getServerSession(authOptions);
-    const orgId = (session?.user as any)?.organizationId;
+    if (!session?.user) return { error: "Unauthorized" };
+    const orgId = (session.user as any).organizationId;
+    if (!orgId) return { error: "Unauthorized: No organization associated." };
 
     const now = new Date();
     let startDate = new Date(0); // Epoch for 'all'
@@ -35,7 +37,7 @@ export async function getKPIDetails(type: 'customers' | 'orders' | 'calls', time
       return { success: true, data };
     }
 
-    if (type === 'orders') {
+    if (type === 'orders' || type === 'revenue') {
       const [allOrders, allConfirmedQuotes] = await Promise.all([
         prisma.order.findMany({
           where: {

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { recordVendorPayment, cancelVendorPayment } from '@/app/actions/vendorPaymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
+import TablePagination, { paginate } from '@/components/ui/TablePagination';
 
 interface VendorOption {
   id: string;
@@ -98,6 +99,10 @@ export default function PaymentsMadeClient({
   const [datePreset, setDatePreset] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Record Payment Modal State
   const [recordModalOpen, setRecordModalOpen] = useState(false);
@@ -223,6 +228,14 @@ export default function PaymentsMadeClient({
       return true;
     });
   }, [payments, search, selectedVendor, selectedMode, selectedType, startDate, endDate]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedVendor, selectedMode, selectedType, startDate, endDate, pageSize]);
+
+  const paginatedPayments = useMemo(() => {
+    return paginate(filteredPayments, currentPage, pageSize);
+  }, [filteredPayments, currentPage, pageSize]);
 
   // Handle Date presets
   const handleDatePreset = (preset: string) => {
@@ -624,7 +637,7 @@ export default function PaymentsMadeClient({
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.map(pay => (
+              {paginatedPayments.map(pay => (
                 <tr key={pay.id}>
                   <td style={{ fontWeight: 600, color: '#059669' }}>
                     {pay.paymentNumber}
@@ -722,6 +735,15 @@ export default function PaymentsMadeClient({
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredPayments.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="payments"
+        />
       </div>
 
       {/* RECORD VENDOR PAYMENT MODAL */}

@@ -347,12 +347,17 @@ export async function deleteExpense(id: string) {
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
 
   try {
+    const organizationId = await getTenantOrgId();
     const existing = await prisma.expense.findUnique({
       where: { id },
       include: { employee: true }
     });
 
     if (!existing) return { error: "Expense record not found." };
+
+    if (existing.employee?.organizationId && organizationId && existing.employee.organizationId !== organizationId) {
+      return { error: "Unauthorized access to expense." };
+    }
 
     if (!isAdmin && existing.employee?.userId !== userId) {
       return { error: "You can only delete your own claims." };

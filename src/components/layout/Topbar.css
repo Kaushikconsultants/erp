@@ -5,7 +5,8 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
   padding: 8px 16px;
-  width: 320px;
+  width: clamp(140px, 24vw, 320px);
+  min-width: 0;
   transition: var(--transition);
 }
 
@@ -17,6 +18,7 @@
 .search-icon {
   color: var(--text-muted);
   margin-right: 8px;
+  flex-shrink: 0;
 }
 
 .search-input {
@@ -24,6 +26,7 @@
   background: transparent;
   outline: none;
   width: 100%;
+  min-width: 0;
   font-size: 0.875rem;
   color: var(--text-primary);
 }
@@ -31,7 +34,8 @@
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: clamp(8px, 1.8vw, 24px);
+  flex-shrink: 0;
 }
 
 .icon-btn {
@@ -176,6 +180,29 @@
 
 .dropdown-item.text-danger:hover {
   color: var(--danger);
+}
+
+/* Tablet & Small Laptop Reflow (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .topbar {
+    padding: 0 14px;
+    gap: 12px;
+  }
+  .search-container {
+    width: clamp(140px, 18vw, 220px);
+  }
+  .user-role {
+    display: none;
+  }
+  .user-name {
+    max-width: 110px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar-actions {
+    gap: 12px;
+  }
 }
 
 /* Mobile Responsive Voice Search & Topbar Tweaks */

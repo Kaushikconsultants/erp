@@ -32,6 +32,7 @@ import {
   Trash2
 } from "lucide-react";
 import "./modal.css";
+import BuySeatsModal from "@/components/settings/BuySeatsModal";
 
 interface AddUserModalProps {
   onClose: () => void;
@@ -102,6 +103,7 @@ const getDefaultSectionsForRole = (role: string): string[] => {
 export default function AddUserModal({ onClose, onSuccess }: AddUserModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isBuySeatsOpen, setIsBuySeatsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "job" | "docs" | "access">("profile");
 
   // Form Fields
@@ -520,19 +522,60 @@ export default function AddUserModal({ onClose, onSuccess }: AddUserModalProps) 
             {error && (
               <div 
                 style={{ 
-                  padding: '10px 14px', 
-                  borderRadius: '8px', 
-                  backgroundColor: '#fee2e2', 
+                  padding: '12px 16px', 
+                  borderRadius: '10px', 
+                  backgroundColor: '#fef2f2', 
                   color: '#991b1b', 
+                  border: '1px solid #fecaca',
                   fontSize: '0.85rem',
-                  fontWeight: 600,
                   display: 'flex',
-                  alignItems: 'center',
+                  flexDirection: 'column',
                   gap: '8px'
                 }}
               >
-                <AlertCircle size={16} />
-                <span>{error}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+                  <AlertCircle size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
+                  <span>{error}</span>
+                </div>
+
+                {(error.toLowerCase().includes("limit") || error.toLowerCase().includes("user limit")) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsBuySeatsOpen(true)}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        backgroundColor: '#4f46e5',
+                        color: '#ffffff',
+                        border: 'none',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 6px rgba(79, 70, 229, 0.25)'
+                      }}
+                    >
+                      <Sparkles size={13} />
+                      <span>+ Buy Extra User Seats Now</span>
+                    </button>
+                    <a
+                      href="/settings/billing"
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        fontSize: '0.78rem',
+                        color: '#4f46e5',
+                        fontWeight: 600,
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      View Billing & Upgrade Plans
+                    </a>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1271,6 +1314,14 @@ export default function AddUserModal({ onClose, onSuccess }: AddUserModalProps) 
           </div>
         </form>
       </div>
+
+      <BuySeatsModal
+        isOpen={isBuySeatsOpen}
+        onClose={() => setIsBuySeatsOpen(false)}
+        onSuccess={() => {
+          setError("");
+        }}
+      />
     </div>
   );
 }

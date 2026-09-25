@@ -112,7 +112,7 @@ export default async function PaymentReceiptPage({ params }: { params: Promise<{
           </div>
           {payment.customer?.gstNumber && (
             <div style={{ color: '#475569', marginTop: '2px' }}>
-              <strong>Customer GSTIN:</strong> {payment.customer.gstNumber}
+              <strong style={{ textTransform: 'uppercase' }}>Customer GSTIN:</strong> <span style={{ textTransform: 'uppercase' }}>{payment.customer.gstNumber.toUpperCase()}</span>
             </div>
           )}
         </div>

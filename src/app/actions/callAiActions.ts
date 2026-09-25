@@ -7,6 +7,7 @@ import { getTenantOrgId } from "@/lib/tenant";
 import { getTenantAIClient } from "@/lib/gemini";
 import { revalidatePath } from "next/cache";
 
+
 export interface CallVoiceDebriefAnalysis {
   transcript: string;
   summary: string;
@@ -37,6 +38,10 @@ export interface AnalyzeDebriefPayload {
     durationSec?: number;
     customerId?: string;
     leadId?: string;
+    repName?: string;
+    salespersonName?: string;
+    employeeName?: string;
+    isOldCustomer?: boolean;
   };
 }
 
@@ -68,52 +73,181 @@ export async function analyzeCallVoiceDebrief(
       return { success: false, error: "No voice audio or transcription provided." };
     }
 
+    const contactPhone = payload.callContext?.contactPhone || "Unknown";
+    const contactName = payload.callContext?.contactName || "Contact";
+    const durationSec = payload.callContext?.durationSec || 0;
+
+    // Do not transcribe or hallucinate on unconnected calls (0s duration) without explicit spoken text
+    if (!rawText && durationSec <= 0) {
+      return {
+        success: true,
+        analysis: {
+          transcript: "",
+          summary: "",
+          keyPoints: [],
+          detectedOutcome: "No Answer / Busy",
+          dealSentiment: "COLD",
+          sentimentReason: "Call was not connected.",
+          suggestedFollowUp: {
+            hasFollowUp: false,
+            date: null,
+            hour12: "11",
+            minute: "00",
+            period: "AM",
+            actionTitle: "Follow-up Call",
+            reason: "Call not connected"
+          }
+        }
+      };
+    }
+
+    // 1. Resolve Rep Name (Caller)
+    let repName = (
+      payload.callContext?.repName ||
+      payload.callContext?.salespersonName ||
+      payload.callContext?.employeeName ||
+      ""
+    ).trim();
+
+    if (!repName) {
+      try {
+        const session = await getServerSession(authOptions).catch(() => null);
+        const userId = (session?.user as any)?.id;
+        if (userId) {
+          const userRec = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true },
+          });
+          repName = userRec?.name || session?.user?.name || "";
+        } else if (session?.user?.name) {
+          repName = session.user.name;
+        }
+      } catch {}
+    }
+    if (!repName) repName = "Sales Rep";
+
+    // 2. Resolve Customer Name & Old Customer Status
+    let isOldCustomer = Boolean(payload.callContext?.customerId || (payload.callContext as any)?.isOldCustomer);
+    let resolvedCustomerName =
+      contactName && contactName !== "Contact" && contactName !== "Direct Contact" && contactName !== "Phone Inquiry"
+        ? contactName.trim()
+        : "";
+
+    const cleanPhone = String(contactPhone || "").replace(/\D/g, "");
+    if (cleanPhone.length >= 7) {
+      try {
+        const cust = await prisma.customer.findFirst({
+          where: {
+            OR: [
+              { mobile: { contains: cleanPhone.slice(-10) } },
+              { whatsappNumber: { contains: cleanPhone.slice(-10) } },
+            ],
+          },
+          select: { id: true, businessName: true, contactPerson: true },
+        });
+        if (cust) {
+          isOldCustomer = true;
+          if (!resolvedCustomerName) {
+            resolvedCustomerName = cust.businessName || cust.contactPerson || "";
+          }
+        }
+      } catch {}
+    }
+
+    const customerSpeakerLabel = resolvedCustomerName
+      ? `${resolvedCustomerName} (${isOldCustomer ? "Old Customer" : "Customer"})`
+      : isOldCustomer
+      ? "Old Customer"
+      : "Customer";
+
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
     const dayOfWeek = today.toLocaleDateString("en-US", { weekday: "long" });
 
     // Fallback parser if API key is not configured
-    if (!getApiKey()) {
-      const fallbackAnalysis = generateFallbackDebrief(rawText, today);
+    if (!getGeminiApiKey()) {
+      const fallbackAnalysis = generateFallbackDebrief(rawText, today, repName, resolvedCustomerName, isOldCustomer);
       return { success: true, analysis: fallbackAnalysis };
     }
 
+    let companyName = "Espon Clothing Private Limited";
+    try {
+      const orgId = await getTenantOrgId().catch(() => null);
+      if (orgId) {
+        const cSettings = await prisma.companySettings.findFirst({
+          where: { OR: [{ organizationId: orgId }, { id: `settings-${orgId}` }] },
+          select: { companyName: true }
+        });
+        if (cSettings?.companyName) companyName = cSettings.companyName;
+      }
+    } catch {}
+
     const systemPrompt = `
 You are an expert Enterprise CRM Telecalling Sales Analyst & Deal Intelligence AI.
-Analyze the following post-call voice debrief spoken by a sales representative.
-The sales rep may speak in English, Hindi, or Hinglish (e.g., "Customer ko 50 sets summer tracksuits chahiye ₹420 mein. Parso subah 11 baje quotation final karke call karna hai.").
+Analyze the following cellular call recording or post-call voice debrief between a sales representative and a customer.
+The speakers may speak in English, Hindi, or Hinglish (e.g., "Customer ko 50 sets summer tracksuits chahiye ₹420 mein. Parso subah 11 baje quotation final karke call karna hai.").
 
 Current Reference Date & Time:
 - Today's Date: ${todayStr} (${dayOfWeek})
 - Current Time: ${today.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
 
-Call Context:
-- Contact Name: ${payload.callContext?.contactName || "Direct Contact"}
-- Phone: ${payload.callContext?.contactPhone || "Unknown"}
-- Call Duration: ${payload.callContext?.durationSec || 0} seconds
+Call Participants Context:
+- Selling Company: "${companyName}"
+- Sales Representative: "${repName}" (Represents ${companyName})
+- Customer / Buyer: "${customerSpeakerLabel}" (Status: ${isOldCustomer ? "Existing / Old Customer of the company" : "New Contact / Lead"})
+- Phone: ${contactPhone}
+- Call Duration: ${durationSec} seconds
 
 Standard CRM Outcome Categories:
 ${CRM_OUTCOMES.map((o) => `- "${o}"`).join("\n")}
 
-Your task:
-1. "transcript": Clean, punctuated verbatim transcript of what was spoken (preserving key English/Hindi terms accurately).
-2. "summary": A crisp 2-3 sentence executive summary of the conversation, customer intent, agreed numbers, and next action.
-3. "keyPoints": Array of 2 to 4 bullet points highlighting key discussion aspects (e.g., "Requested 50 units @ ₹420", "Samples required before bulk order", "Payment terms: 30 days credit").
-4. "detectedOutcome": Must be EXACTLY ONE of the standard CRM Outcome Categories listed above.
-5. "dealSentiment": Must be exactly "HOT" (Ready to buy, order confirmed, high purchase urgency), "WARM" (Interested, evaluating pricing/samples, need follow-up), or "COLD" (Low interest, budget issues, not looking now, wrong number).
-6. "sentimentReason": 1 concise sentence explaining the sentiment rating.
-7. "suggestedFollowUp":
-   - "hasFollowUp": true/false (true if customer requested a callback, quote, or follow-up).
-   - "date": Calculated YYYY-MM-DD date based on reference date (e.g., "tomorrow" = today+1, "parso" = today+2, "next Monday" = coming Monday). If no date mentioned, set to tomorrow's date or null.
-   - "hour12": 2-digit hour string between "01" and "12" (e.g. "11" for 11 AM, "04" for 4 PM). Default to "11" if time not specified.
-   - "minute": "00", "15", "30", or "45". Default "00".
+CRITICAL SPEAKER IDENTIFICATION & SPEAKER LABELING RULES:
+1. In outbound cellular phone calls:
+   - When the call connects, the person who answers first and says "Hello", "Haanji", or "Yes" is almost always the CUSTOMER ("${customerSpeakerLabel}").
+   - The person who introduces themselves with the company name (e.g. "${repName} this side from ${companyName}", asking about pending orders, sharing catalogs, discussing fabrics or prices) is the SALES REPRESENTATIVE ("${repName}").
+   - The person who responds, asks who is calling ("Aap kaun bol rahe ho?", "You are from, sorry?"), responds with order plans ("Haan madam/sir next week order bolunga"), or negotiates is the CUSTOMER ("${customerSpeakerLabel}").
+2. DO NOT assume the first person to speak is the sales representative. Listen carefully to WHO introduces themselves as ${repName} and who represents ${companyName}.
+3. In the "transcript" dialogue:
+   - ALWAYS format as a clean line-by-line dialogue separated by newlines.
+   - ALWAYS label the sales representative's speech using their exact name: "${repName}: <utterance>"
+   - ALWAYS label the customer's speech using their exact name: "${customerSpeakerLabel}: <utterance>"
+   - NEVER reverse or swap these roles! If a speaker introduces herself as "${repName} this side from [Company]", that speaker MUST be labeled "${repName}:", NEVER "${customerSpeakerLabel}:".
+4. In the "summary", explicitly mention "${repName}" as the sales representative and "${resolvedCustomerName || "the customer"}${isOldCustomer ? " (Old Customer)" : ""}" as the customer.
+5. "keyPoints": Array of 2 to 4 bullet points highlighting key discussion aspects (e.g., "Requested 50 units @ ₹420", "Samples required before bulk order").
+6. "detectedOutcome": Must be EXACTLY ONE of the standard CRM Outcome Categories listed above.
+7. "dealSentiment": Must be exactly "HOT", "WARM", or "COLD".
+8. "sentimentReason": 1 concise sentence explaining the sentiment rating.
+9. "suggestedFollowUp":
+   - "hasFollowUp": true/false.
+   - "date": Calculated YYYY-MM-DD date based on reference date, or null.
+   - "hour12": 2-digit hour string ("01" to "12").
+   - "minute": "00", "15", "30", or "45".
    - "period": "AM" or "PM".
-   - "actionTitle": Clear actionable task title (e.g. "Send Quotation for 50 Tracksuits & Follow-up").
-   - "reason": Brief justification for the follow-up.
-8. "orderValueEstimate": Numeric estimated amount in INR if mentioned (e.g. 21000 for 50 sets @ ₹420), or null.
-9. "suggestedLeadStatus": "Contacted" | "Quotation Sent" | "Negotiation" | "Converted" | "Lost".
+   - "actionTitle": Clear actionable task title.
+   - "reason": Brief justification.
+10. "orderValueEstimate": Numeric estimated amount in INR if mentioned, else null.
+11. "suggestedLeadStatus": "Contacted" | "Quotation Sent" | "Negotiation" | "Converted" | "Lost".
 
-Output strict JSON only conforming to the schema.
+Output strict JSON only conforming to the schema:
+{
+  "transcript": string,
+  "summary": string,
+  "keyPoints": string[],
+  "detectedOutcome": string,
+  "dealSentiment": "HOT" | "WARM" | "COLD",
+  "sentimentReason": string,
+  "suggestedFollowUp": {
+    "hasFollowUp": boolean,
+    "date": string | null,
+    "hour12": string,
+    "minute": string,
+    "period": "AM" | "PM",
+    "actionTitle": string,
+    "reason": string
+  },
+  "orderValueEstimate": number | null,
+  "suggestedLeadStatus": string
+}
 `;
 
     let contents: any;
@@ -198,9 +332,12 @@ Output strict JSON only conforming to the schema.
       ? (parsed.dealSentiment.toUpperCase() as any)
       : "WARM";
 
+    const rawTranscript = parsed.transcript || rawText || "Spoken sales debrief recorded.";
+    const formattedTranscript = formatTranscriptWithNames(rawTranscript, repName, resolvedCustomerName, isOldCustomer);
+
     const analysis: CallVoiceDebriefAnalysis = {
-      transcript: parsed.transcript || rawText || "Spoken sales debrief recorded.",
-      summary: parsed.summary || `Call conversation debrief with ${payload.callContext?.contactName || "Customer"}.`,
+      transcript: formattedTranscript,
+      summary: parsed.summary || `Call conversation with ${customerSpeakerLabel}.`,
       keyPoints: Array.isArray(parsed.keyPoints) && parsed.keyPoints.length > 0
         ? parsed.keyPoints
         : ["Discussion completed", "Follow-up scheduled"],
@@ -215,7 +352,7 @@ Output strict JSON only conforming to the schema.
         period: parsed.suggestedFollowUp?.period === "PM" ? "PM" : "AM",
         actionTitle:
           parsed.suggestedFollowUp?.actionTitle ||
-          `Follow-up call with ${payload.callContext?.contactName || "Contact"}`,
+          `Follow-up call with ${resolvedCustomerName || contactName}`,
         reason: parsed.suggestedFollowUp?.reason || "Discuss next steps",
       },
       orderValueEstimate: parsed.orderValueEstimate || null,
@@ -401,7 +538,13 @@ function getDefaultFollowUpDate(daysAhead: number = 1): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function generateFallbackDebrief(text: string, refDate: Date): CallVoiceDebriefAnalysis {
+function generateFallbackDebrief(
+  text: string,
+  refDate: Date,
+  repName?: string,
+  customerName?: string,
+  isOldCustomer?: boolean
+): CallVoiceDebriefAnalysis {
   const lower = text.toLowerCase();
 
   let outcome = "Interested / Follow-up Needed";
@@ -439,8 +582,10 @@ function generateFallbackDebrief(text: string, refDate: Date): CallVoiceDebriefA
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
 
+  const formattedTranscript = formatTranscriptWithNames(text, repName, customerName, isOldCustomer);
+
   return {
-    transcript: text,
+    transcript: formattedTranscript,
     summary: `Sales debrief: ${text.slice(0, 180)}`,
     keyPoints: text.split(/[.,;\n]+/).filter(Boolean).slice(0, 3).map((s) => s.trim()),
     detectedOutcome: outcome,

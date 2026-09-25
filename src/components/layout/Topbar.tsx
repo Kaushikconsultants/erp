@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Search, User, LogOut, Settings, Menu, PhoneCall, Sparkles, Landmark } from 'lucide-react';
+import { User, LogOut, Settings, Menu, PhoneCall, Sparkles, Landmark } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import NotificationBell from './NotificationBell';
@@ -136,18 +136,20 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
                   <span>SaaS Platform Admin (Manage Tenants)</span>
                 </Link>
               )}
-              <button 
-                type="button"
-                className="dropdown-item" 
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  setIsOnboardingOpen(true);
-                }}
-                style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: '#1e293b' }}
-              >
-                <Sparkles size={16} style={{ color: '#4f46e5' }} />
-                <span>ERP Setup Tour</span>
-              </button>
+              {(userRole === 'Super Admin' || userRole === 'Admin') && (
+                <button 
+                  type="button"
+                  className="dropdown-item" 
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    setIsOnboardingOpen(true);
+                  }}
+                  style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: '#1e293b' }}
+                >
+                  <Sparkles size={16} style={{ color: '#4f46e5' }} />
+                  <span>ERP Setup Tour</span>
+                </button>
+              )}
               <button 
                 className="dropdown-item text-danger" 
                 onClick={() => {

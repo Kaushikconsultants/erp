@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:debug": "node --inspect node_modules/next/dist/bin/next dev",
     "build": "prisma generate && next build",
     "postinstall": "prisma generate",
-    "vercel-build": "prisma generate && prisma db push --accept-data-loss && next build",
+    "vercel-build": "prisma generate && prisma db push && next build",
     "railway-build": "prisma generate && next build",
-    "start": "prisma db push --accept-data-loss && next start -H 0.0.0.0",
-    "lint": "next lint",
+    "start": "next start -H 0.0.0.0",
+    "test": "vitest run",
+    "lint": "eslint .",
     "cap:sync": "cap sync",
     "cap:android": "cap open android",
     "cap:ios": "cap open ios",
@@ -38,8 +40,9 @@
     "html5-qrcode": "^2.3.8",
     "jsbarcode": "^3.12.3",
     "lucide-react": "^1.31.0",
-    "next": "16.3.0",
+    "next": "^16.3.5",
     "next-auth": "^4.24.15",
+    "openai": "^7.17.0",
     "papaparse": "^5.5.4",
     "pg": "^8.23.0",
     "prisma": "^5.21.1",
@@ -60,7 +63,9 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
-    "typescript": "^5"
+    "eslint-config-next": "^16.3.5",
+    "typescript": "^5",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   }
 }

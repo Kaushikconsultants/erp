@@ -14,9 +14,13 @@ import {
   ExternalLink,
   ClipboardList,
   RefreshCw,
-  User
+  User,
+  Package,
+  TrendingUp,
+  Store
 } from "lucide-react";
 import { getDeadStockLiquidationInsights, createClearanceTask, DeadStockReport, DeadStockSKU } from "@/app/actions/aiDeadStockActions";
+import "./DeadStockInsightsModal.css";
 
 interface Props {
   onClose: () => void;
@@ -77,192 +81,122 @@ export default function DeadStockInsightsModal({ onClose }: Props) {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 99999,
-        backgroundColor: "rgba(15, 23, 42, 0.7)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "16px"
-      }}
-      onClick={onClose}
-    >
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "16px",
-          width: "100%",
-          maxWidth: "1160px",
-          maxHeight: "92vh",
-          display: "flex",
-          flexDirection: "column",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-          border: "1px solid #e2e8f0",
-          overflow: "hidden"
-        }}
-        onClick={e => e.stopPropagation()}
-      >
+    <div className="ds-modal-overlay" onClick={onClose}>
+      <div className="ds-modal-container" onClick={(e) => e.stopPropagation()}>
+        {/* Mobile Drag Indicator Handle */}
+        <div className="ds-modal-handle-bar" />
+
         {/* Header */}
-        <div
-          style={{
-            backgroundColor: "#f8fafc",
-            padding: "16px 22px",
-            borderBottom: "1px solid #e2e8f0",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center"
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div
-              style={{
-                width: "36px",
-                height: "36px",
-                borderRadius: "10px",
-                backgroundColor: "#fef2f2",
-                color: "#dc2626",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-              }}
-            >
-              <Flame size={20} />
+        <div className="ds-modal-header">
+          <div className="ds-header-brand">
+            <div className="ds-brand-icon-box">
+              <Flame size={22} />
             </div>
-            <div>
-              <h3 style={{ margin: 0, fontSize: "1.15rem", fontWeight: 600, color: "#0f172a" }}>
-                AI Dead Stock & Inventory Liquidation Engine
-              </h3>
-              <p style={{ margin: "2px 0 0", fontSize: "0.78rem", color: "#64748b", fontWeight: 400 }}>
+            <div className="ds-header-titles">
+              <span className="ds-ai-pill-tag">
+                <span className="ds-ai-pulse-dot" />
+                AI Liquidation Engine
+              </span>
+              <h3 className="ds-modal-title">Dead Stock & Liquidation</h3>
+              <p className="ds-modal-subtitle">
                 Identify idle working capital, match relevant B2B wholesale buyers, and trigger flash clearance campaigns.
               </p>
+              <span className="ds-mobile-status-pill" style={{ display: "none" }}>
+                <Sparkles size={11} color="#059669" />
+                Live Inventory Analytics ({report?.skus.length || 0} SKUs)
+              </span>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+          <div className="ds-header-actions">
             <button
               type="button"
+              className="ds-refresh-btn"
               onClick={loadData}
               disabled={loading}
-              style={{
-                background: "#ffffff",
-                border: "1px solid #cbd5e1",
-                borderRadius: "8px",
-                padding: "6px 12px",
-                fontSize: "0.75rem",
-                fontWeight: 500,
-                color: "#475569",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                cursor: loading ? "not-allowed" : "pointer"
-              }}
+              title="Refresh Analytics"
             >
               <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
               <span>Refresh</span>
             </button>
-            <button 
-              onClick={onClose} 
-              style={{ background: "#f1f5f9", border: "none", borderRadius: "50%", width: "30px", height: "30px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b" }}
+            <button
+              type="button"
+              className="ds-close-btn"
+              onClick={onClose}
+              title="Close modal"
+              aria-label="Close"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* KPI Banner */}
+        {/* KPI Banner: Symmetrical 2x2 on Mobile, 4-col on Desktop */}
         {report && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "12px",
-              padding: "14px 22px",
-              backgroundColor: "#ffffff",
-              borderBottom: "1px solid #f1f5f9"
-            }}
-          >
-            <div style={{ backgroundColor: "#fef2f2", padding: "10px 14px", borderRadius: "10px", border: "1px solid #fee2e2" }}>
-              <span style={{ fontSize: "0.72rem", color: "#991b1b", fontWeight: 550, display: "block" }}>LOCKED IN DEAD STOCK</span>
-              <span style={{ fontSize: "1.25rem", fontWeight: 600, color: "#dc2626", fontVariantNumeric: "tabular-nums" }}>
+          <div className="ds-kpi-grid">
+            <div className="ds-kpi-card ds-kpi-card-dead">
+              <div className="ds-kpi-label-row">
+                <Flame size={13} />
+                <span>Locked Dead Stock</span>
+              </div>
+              <span className="ds-kpi-val">
                 ₹{report.totalLockedCapitalInDeadStock.toLocaleString("en-IN")}
               </span>
             </div>
 
-            <div style={{ backgroundColor: "#fffbeb", padding: "10px 14px", borderRadius: "10px", border: "1px solid #fef3c7" }}>
-              <span style={{ fontSize: "0.72rem", color: "#92400e", fontWeight: 550, display: "block" }}>SLOW MOVING ARTICLES</span>
-              <span style={{ fontSize: "1.25rem", fontWeight: 600, color: "#d97706", fontVariantNumeric: "tabular-nums" }}>
+            <div className="ds-kpi-card ds-kpi-card-slow">
+              <div className="ds-kpi-label-row">
+                <Clock size={13} />
+                <span>Slow Moving</span>
+              </div>
+              <span className="ds-kpi-val">
                 {report.slowMovingCount} Articles
               </span>
             </div>
 
-            <div style={{ backgroundColor: "#f0fdf4", padding: "10px 14px", borderRadius: "10px", border: "1px solid #dcfce7" }}>
-              <span style={{ fontSize: "0.72rem", color: "#166534", fontWeight: 550, display: "block" }}>HEALTHY VELOCITY</span>
-              <span style={{ fontSize: "1.25rem", fontWeight: 600, color: "#16a34a", fontVariantNumeric: "tabular-nums" }}>
+            <div className="ds-kpi-card ds-kpi-card-healthy">
+              <div className="ds-kpi-label-row">
+                <CheckCircle2 size={13} />
+                <span>Healthy Velocity</span>
+              </div>
+              <span className="ds-kpi-val">
                 {report.healthyCount} Articles
               </span>
             </div>
 
-            <div style={{ backgroundColor: "#eff6ff", padding: "10px 14px", borderRadius: "10px", border: "1px solid #dbeafe" }}>
-              <span style={{ fontSize: "0.72rem", color: "#1e40af", fontWeight: 550, display: "block" }}>TOTAL GODOWN VALUATION</span>
-              <span style={{ fontSize: "1.25rem", fontWeight: 600, color: "#2563eb", fontVariantNumeric: "tabular-nums" }}>
+            <div className="ds-kpi-card ds-kpi-card-total">
+              <div className="ds-kpi-label-row">
+                <Package size={13} />
+                <span>Total Valuation</span>
+              </div>
+              <span className="ds-kpi-val">
                 ₹{report.totalLockedCapitalOverall.toLocaleString("en-IN")}
               </span>
             </div>
           </div>
         )}
 
-        {/* Filter Controls */}
-        <div style={{ padding: "12px 22px", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", gap: "6px" }}>
+        {/* Filter Controls & Lookbook Toolbar */}
+        <div className="ds-filter-toolbar">
+          <div className="ds-filter-tabs-wrapper">
             <button
               type="button"
               onClick={() => setFilterStatus("ALL")}
-              style={{
-                padding: "5px 12px",
-                borderRadius: "6px",
-                border: "1px solid #cbd5e1",
-                backgroundColor: filterStatus === "ALL" ? "#0f172a" : "#ffffff",
-                color: filterStatus === "ALL" ? "#ffffff" : "#334155",
-                fontSize: "0.75rem",
-                fontWeight: 500,
-                cursor: "pointer"
-              }}
+              className={`ds-filter-tab-btn ${filterStatus === "ALL" ? "active-all" : ""}`}
             >
               All Articles ({report?.skus.length || 0})
             </button>
             <button
               type="button"
               onClick={() => setFilterStatus("DEAD")}
-              style={{
-                padding: "5px 12px",
-                borderRadius: "6px",
-                border: "1px solid #fecaca",
-                backgroundColor: filterStatus === "DEAD" ? "#dc2626" : "#ffffff",
-                color: filterStatus === "DEAD" ? "#ffffff" : "#dc2626",
-                fontSize: "0.75rem",
-                fontWeight: 500,
-                cursor: "pointer"
-              }}
+              className={`ds-filter-tab-btn ${filterStatus === "DEAD" ? "active-dead" : ""}`}
             >
               🔴 Dead Stock ({report?.deadStockCount || 0})
             </button>
             <button
               type="button"
               onClick={() => setFilterStatus("SLOW")}
-              style={{
-                padding: "5px 12px",
-                borderRadius: "6px",
-                border: "1px solid #fed7aa",
-                backgroundColor: filterStatus === "SLOW" ? "#ea580c" : "#ffffff",
-                color: filterStatus === "SLOW" ? "#ffffff" : "#ea580c",
-                fontSize: "0.75rem",
-                fontWeight: 500,
-                cursor: "pointer"
-              }}
+              className={`ds-filter-tab-btn ${filterStatus === "SLOW" ? "active-slow" : ""}`}
             >
               🟡 Slow Moving ({report?.slowMovingCount || 0})
             </button>
@@ -272,93 +206,126 @@ export default function DeadStockInsightsModal({ onClose }: Props) {
             href="/catalog"
             target="_blank"
             rel="noreferrer"
-            style={{
-              fontSize: "0.75rem",
-              color: "#4f46e5",
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "4px",
-              fontWeight: 500
-            }}
+            className="ds-lookbook-link"
           >
-            <ExternalLink size={13} /> Open Wholesale Lookbook
+            <ExternalLink size={13} />
+            <span>Wholesale Lookbook ↗</span>
           </a>
         </div>
 
-        {/* Table Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "16px 22px" }}>
+        {/* Scrollable Modal Body */}
+        <div className="ds-modal-body">
           {loading ? (
-            <div style={{ padding: "60px", textAlign: "center", color: "#64748b" }}>
-              <RefreshCw size={26} className="animate-spin" style={{ margin: "0 auto 10px", color: "#4f46e5" }} />
-              <p style={{ fontSize: "0.85rem" }}>Analyzing warehouse stock aging and sales velocity...</p>
+            <div style={{ padding: "60px 20px", textAlign: "center", color: "#64748b" }}>
+              <RefreshCw size={28} className="animate-spin" style={{ margin: "0 auto 12px", color: "#4f46e5" }} />
+              <p style={{ fontSize: "0.88rem", fontWeight: 500 }}>Analyzing warehouse stock aging and sales velocity...</p>
             </div>
           ) : filteredSkus.length > 0 ? (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {filteredSkus.map(s => {
                 const isTaskThis = taskStatus?.id === s.productId;
+                const isDead = s.healthStatus === "DEAD";
+                const isSlow = s.healthStatus === "SLOW";
+
                 return (
                   <div
                     key={s.productId}
-                    style={{
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "12px",
-                      padding: "14px 18px",
-                      backgroundColor: "#ffffff",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
-                      borderLeft: s.healthStatus === "DEAD" ? "4px solid #dc2626" : s.healthStatus === "SLOW" ? "4px solid #f59e0b" : "4px solid #10b981"
-                    }}
+                    className={`ds-sku-card ${
+                      isDead
+                        ? "ds-sku-card-dead"
+                        : isSlow
+                        ? "ds-sku-card-slow"
+                        : "ds-sku-card-healthy"
+                    }`}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "8px" }}>
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontWeight: 600, fontSize: "0.95rem", color: "#0f172a" }}>
-                            {s.name}
-                          </span>
-                          <span style={{ fontSize: "0.72rem", backgroundColor: "#f1f5f9", padding: "2px 6px", borderRadius: "4px", fontWeight: 500, color: "#475569" }}>
-                            Art #{s.sku}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              padding: "2px 8px",
-                              borderRadius: "9999px",
-                              backgroundColor: s.healthStatus === "DEAD" ? "#fee2e2" : s.healthStatus === "SLOW" ? "#ffedd5" : "#ecfdf5",
-                              color: s.healthStatus === "DEAD" ? "#dc2626" : s.healthStatus === "SLOW" ? "#ea580c" : "#059669"
-                            }}
-                          >
-                            {s.healthStatus === "DEAD" ? "🔴 Dead Stock" : s.healthStatus === "SLOW" ? "🟡 Slow Moving" : "🟢 Healthy"}
-                          </span>
+                    {/* Header */}
+                    <div className="ds-card-header">
+                      <div className="ds-card-header-left">
+                        <div className="ds-card-title-row">
+                          <span className="ds-card-sku-name">{s.name}</span>
+                          <span className="ds-card-sku-badge">Art #{s.sku}</span>
+                          {s.category && (
+                            <span
+                              style={{
+                                fontSize: "0.72rem",
+                                color: "#64748b",
+                                fontWeight: 550,
+                                backgroundColor: "#f8fafc",
+                                padding: "2px 7px",
+                                borderRadius: "5px",
+                                border: "1px solid #e2e8f0"
+                              }}
+                            >
+                              {s.category}
+                            </span>
+                          )}
                         </div>
-                        <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "#64748b" }}>
-                          Category: <strong>{s.category}</strong> • Last Movement: {s.daysInStock} days ago • Sold last 60 days: <strong>{s.unitsSoldLast60Days} pcs</strong>
-                        </p>
                       </div>
 
-                      <div style={{ textAlign: "right" }}>
-                        <span style={{ fontSize: "0.68rem", color: "#64748b", display: "block" }}>Locked Capital</span>
-                        <span style={{ fontSize: "1.1rem", fontWeight: 600, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
+                      <span
+                        className={`ds-card-status-pill ${
+                          isDead
+                            ? "ds-card-status-pill-dead"
+                            : isSlow
+                            ? "ds-card-status-pill-slow"
+                            : "ds-card-status-pill-healthy"
+                        }`}
+                      >
+                        {isDead ? "🔴 Dead Stock" : isSlow ? "🟡 Slow Moving" : "🟢 Healthy"}
+                      </span>
+                    </div>
+
+                    {/* Telemetry Grid */}
+                    <div className="ds-card-telemetry-grid">
+                      <div className="ds-telemetry-item">
+                        <span className="ds-telemetry-label">
+                          <Package size={11} color="#64748b" /> In Stock
+                        </span>
+                        <span className="ds-telemetry-val">
+                          {s.stockQuantity.toLocaleString("en-IN")} pcs
+                        </span>
+                      </div>
+
+                      <div className="ds-telemetry-item">
+                        <span className="ds-telemetry-label">
+                          <Flame size={11} color="#dc2626" /> Locked Capital
+                        </span>
+                        <span className="ds-telemetry-val" style={{ color: "#dc2626" }}>
                           ₹{s.lockedCapital.toLocaleString("en-IN")}
                         </span>
-                        <span style={{ fontSize: "0.72rem", color: "#64748b" }}> ({s.stockQuantity} pcs in stock)</span>
+                      </div>
+
+                      <div className="ds-telemetry-item">
+                        <span className="ds-telemetry-label">
+                          <Clock size={11} color="#d97706" /> Idle Time
+                        </span>
+                        <span className="ds-telemetry-val">
+                          {s.daysInStock} days
+                        </span>
+                      </div>
+
+                      <div className="ds-telemetry-item">
+                        <span className="ds-telemetry-label">
+                          <TrendingUp size={11} color="#16a34a" /> Sold (60d)
+                        </span>
+                        <span className="ds-telemetry-val">
+                          {s.unitsSoldLast60Days} pcs
+                        </span>
                       </div>
                     </div>
 
                     {/* AI Strategy & Pricing Pill */}
-                    <div style={{ backgroundColor: "#f8fafc", padding: "10px 14px", borderRadius: "8px", border: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px", fontSize: "0.78rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#334155" }}>
-                        <Sparkles size={14} color="#4f46e5" />
+                    <div className="ds-ai-strategy-card">
+                      <div className="ds-ai-strategy-text-wrap">
+                        <Sparkles size={16} color="#4f46e5" style={{ flexShrink: 0, marginTop: "2px" }} />
                         <span>{s.aiStrategy}</span>
                       </div>
 
                       {s.recommendedDiscountPercent > 0 && (
-                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                          <span style={{ color: "#64748b" }}>Clearance Rate:</span>
-                          <strong style={{ color: "#059669", fontSize: "0.9rem", fontVariantNumeric: "tabular-nums" }}>₹{s.recommendedClearancePrice}</strong>
-                          <span style={{ fontSize: "0.68rem", backgroundColor: "#dcfce7", color: "#166534", padding: "1px 5px", borderRadius: "4px", fontWeight: 600 }}>
+                        <div className="ds-ai-pricing-pill">
+                          <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 600 }}>Clearance Rate:</span>
+                          <strong className="ds-ai-clearance-price">₹{s.recommendedClearancePrice}</strong>
+                          <span className="ds-ai-discount-badge">
                             {s.recommendedDiscountPercent}% OFF
                           </span>
                         </div>
@@ -367,103 +334,96 @@ export default function DeadStockInsightsModal({ onClose }: Props) {
 
                     {/* Matched Buyers Preview */}
                     {s.matchedBuyers && s.matchedBuyers.length > 0 && (
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", fontSize: "0.75rem", color: "#475569" }}>
-                        <span style={{ fontWeight: 600, color: "#64748b" }}>🎯 Target Buyers:</span>
+                      <div className="ds-buyers-wrap">
+                        <span className="ds-buyers-title">
+                          <Store size={13} color="#475569" /> Target Buyers:
+                        </span>
                         {s.matchedBuyers.map(b => (
-                          <span key={b.customerId} style={{ padding: "2px 7px", borderRadius: "4px", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", fontSize: "0.72rem" }}>
-                            {b.businessName}
-                          </span>
+                          <button
+                            key={b.customerId}
+                            type="button"
+                            className="ds-buyer-chip"
+                            onClick={() => {
+                              if (b.mobile) {
+                                window.open(`https://wa.me/${b.mobile.replace(/\D/g, '')}?text=${encodeURIComponent(s.whatsappCampaignText)}`, "_blank");
+                              } else {
+                                handleSendWhatsAppPromo(s.whatsappCampaignText);
+                              }
+                            }}
+                            title={b.mobile ? `Send WhatsApp deal directly to ${b.businessName} (${b.mobile})` : b.businessName}
+                          >
+                            <span>{b.businessName}</span>
+                            {b.mobile && <MessageSquare size={11} color="#16a34a" />}
+                          </button>
                         ))}
                       </div>
                     )}
 
                     {isTaskThis && (
-                      <div style={{ padding: "6px 10px", borderRadius: "6px", backgroundColor: "#f0fdf4", color: "#16a34a", fontSize: "0.75rem", fontWeight: 500 }}>
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          backgroundColor: "#f0fdf4",
+                          color: "#16a34a",
+                          fontSize: "0.76rem",
+                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          border: "1px solid #bbf7d0"
+                        }}
+                      >
+                        <CheckCircle2 size={14} />
                         {taskStatus?.text}
                       </div>
                     )}
 
-                    {/* Action Bar */}
-                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", paddingTop: "4px" }}>
-                      
-                      {/* Assign Task */}
-                      <button
-                        type="button"
-                        onClick={() => handleCreateClearanceTask(s)}
-                        disabled={creatingTaskId === s.productId}
-                        style={{
-                          padding: "5px 11px",
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5e1",
-                          backgroundColor: "#ffffff",
-                          color: "#475569",
-                          fontSize: "0.75rem",
-                          fontWeight: 500,
-                          cursor: creatingTaskId === s.productId ? "not-allowed" : "pointer",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                      >
-                        <ClipboardList size={13} />
-                        <span>{creatingTaskId === s.productId ? "Assigning..." : "Assign Push Task"}</span>
-                      </button>
-
-                      {/* Copy Promo */}
-                      <button
-                        type="button"
-                        onClick={() => handleCopyText(s.productId, s.whatsappCampaignText)}
-                        style={{
-                          padding: "5px 11px",
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5e1",
-                          backgroundColor: "#ffffff",
-                          color: "#334155",
-                          fontSize: "0.75rem",
-                          fontWeight: 500,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px"
-                        }}
-                      >
-                        {copiedId === s.productId ? <Check size={13} color="#16a34a" /> : <Copy size={13} />}
-                        <span>{copiedId === s.productId ? "Copied" : "Copy Promo"}</span>
-                      </button>
-
-                      {/* Send WhatsApp Promo */}
+                    {/* Action Bar (Mobile-first responsive layout) */}
+                    <div className="ds-card-actions">
+                      {/* Primary Action: Send WhatsApp Deal */}
                       <button
                         type="button"
                         onClick={() => handleSendWhatsAppPromo(s.whatsappCampaignText)}
-                        style={{
-                          padding: "5px 13px",
-                          borderRadius: "6px",
-                          border: "none",
-                          backgroundColor: "#25D366",
-                          color: "#ffffff",
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "5px"
-                        }}
+                        className="ds-btn-action ds-btn-whatsapp"
                       >
-                        <MessageSquare size={13} />
+                        <MessageSquare size={15} />
                         <span>Send WhatsApp Deal</span>
                       </button>
+
+                      {/* Secondary Actions: 50/50 on mobile */}
+                      <div className="ds-mobile-secondary-actions">
+                        <button
+                          type="button"
+                          onClick={() => handleCreateClearanceTask(s)}
+                          disabled={creatingTaskId === s.productId}
+                          className="ds-btn-action"
+                        >
+                          <ClipboardList size={14} />
+                          <span>{creatingTaskId === s.productId ? "Assigning..." : "Assign Push Task"}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(s.productId, s.whatsappCampaignText)}
+                          className="ds-btn-action"
+                        >
+                          {copiedId === s.productId ? <Check size={14} color="#16a34a" /> : <Copy size={14} />}
+                          <span>{copiedId === s.productId ? "Copied" : "Copy Promo"}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div style={{ padding: "40px", textAlign: "center", color: "#94a3b8" }}>
-              No items matching filter.
+            <div style={{ padding: "50px 20px", textAlign: "center", color: "#94a3b8" }}>
+              <Package size={32} style={{ margin: "0 auto 10px", color: "#cbd5e1" }} />
+              <p style={{ fontSize: "0.88rem" }}>No inventory items matching this filter status.</p>
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

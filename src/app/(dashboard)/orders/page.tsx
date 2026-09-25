@@ -256,16 +256,17 @@ export default async function OrdersPage() {
   // Collect quotation numbers that have already been converted into Orders to prevent duplicates
   const convertedQuoteNumbers = new Set<string>();
   orders.forEach(o => {
-    const match = (o.notes || '').match(/Quotation #([A-Za-z0-9-]+)/);
+    const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
     if (match && match[1]) {
-      convertedQuoteNumbers.add(match[1].trim());
+      convertedQuoteNumbers.add(match[1].trim().toUpperCase());
     }
   });
 
   // Map Quotations: ONLY include Confirmed quotations, and exclude those already converted into Sales Orders
   quotations.forEach(q => {
     const s = (q.status || '').toLowerCase();
-    if (s !== 'confirmed' || convertedQuoteNumbers.has((q.quotationNumber || '').trim())) {
+    const qNum = (q.quotationNumber || '').trim().toUpperCase();
+    if (s !== 'confirmed' || (qNum && convertedQuoteNumbers.has(qNum)) || (qNum && orders.some(o => (o.notes || '').toUpperCase().includes(qNum)))) {
       return;
     }
 

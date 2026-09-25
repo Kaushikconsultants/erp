@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { createVendorCredit, applyVendorCreditToBill, deleteVendorCredit } from '@/app/actions/vendorCreditActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
+import TablePagination, { paginate } from '@/components/ui/TablePagination';
 
 interface VendorOption {
   id: string;
@@ -113,6 +114,10 @@ export default function VendorCreditsClient({
   const [datePreset, setDatePreset] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Create Credit Modal State
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -261,6 +266,14 @@ export default function VendorCreditsClient({
       return true;
     });
   }, [credits, search, selectedVendor, selectedStatus, startDate, endDate]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedVendor, selectedStatus, startDate, endDate, pageSize]);
+
+  const paginatedCredits = useMemo(() => {
+    return paginate(filteredCredits, currentPage, pageSize);
+  }, [filteredCredits, currentPage, pageSize]);
 
   // Handle Date presets
   const handleDatePreset = (preset: string) => {
@@ -665,7 +678,7 @@ export default function VendorCreditsClient({
               </tr>
             </thead>
             <tbody>
-              {filteredCredits.map(cred => (
+              {paginatedCredits.map(cred => (
                 <tr key={cred.id}>
                   <td style={{ fontWeight: 600, color: '#dc2626' }}>
                     {cred.creditNoteNumber}
@@ -776,6 +789,15 @@ export default function VendorCreditsClient({
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredCredits.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="debit notes"
+        />
       </div>
 
       {/* CREATE DEBIT NOTE MODAL */}

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import TablePagination, { paginate } from '@/components/ui/TablePagination';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   MessageCircle,
@@ -19,13 +20,16 @@ import {
   Phone,
   ChevronDown,
   ChevronUp,
-  X
+  X,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
-import { deleteCustomer } from '@/app/actions/customerActions';
+import { deleteCustomer, deleteMultipleCustomers } from '@/app/actions/customerActions';
 import EditCustomerModal from './EditCustomerModal';
 import ReassignCustomerModal from './ReassignCustomerModal';
 import AIReorderPredictorModal from '../ai/AIReorderPredictorModal';
 import { openPhoneDialer } from '@/lib/dialer';
+import * as XLSX from 'xlsx';
 import './customerTable.css';
 
 interface Customer {
@@ -34,10 +38,21 @@ interface Customer {
   contactPerson: string;
   email: string | null;
   mobile: string;
+  whatsappNumber?: string | null;
+  alternatePhone?: string | null;
+  billingAddress?: string | null;
+  city?: string | null;
   state: string | null;
+  pincode?: string | null;
+  landmark?: string | null;
+  gstNumber?: string | null;
+  regularDiscount?: string | null;
+  preferredPaymentMethod?: string | null;
   status: string;
   createdAt: Date;
+  assignedSalespersonId?: string | null;
   assignedSalesperson: {
+    id?: string;
     user: {
       name: string;
     };
@@ -73,6 +88,32 @@ export default function CustomerTable({
   const [agentFilter, setAgentFilter] = useState("All Agents");
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
+  // Selection & Bulk State
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+  const headerCheckboxRef = React.useRef<HTMLInputElement>(null);
+
+  // Close export dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    if (isExportMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isExportMenuOpen]);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [reassigningCustomer, setReassigningCustomer] = useState<Customer | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -100,6 +141,11 @@ export default function CustomerTable({
         alert("Could not delete customer: " + res.error);
       } else {
         setCustomersList(prev => prev.filter(c => c.id !== id));
+        setSelectedCustomerIds(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
         router.refresh();
       }
     } catch (err: any) {
@@ -121,6 +167,118 @@ export default function CustomerTable({
 
     return matchesSearch && matchesStatus && matchesState && matchesAgent;
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, stateFilter, agentFilter, pageSize]);
+
+  const paginatedCustomers = useMemo(() => {
+    return paginate(filteredCustomers, currentPage, pageSize);
+  }, [filteredCustomers, currentPage, pageSize]);
+
+  // Selection helpers
+  const isAllPageSelected = paginatedCustomers.length > 0 && paginatedCustomers.every(c => selectedCustomerIds.has(c.id));
+  const isSomePageSelected = paginatedCustomers.some(c => selectedCustomerIds.has(c.id));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomePageSelected && !isAllPageSelected;
+    }
+  }, [isSomePageSelected, isAllPageSelected]);
+
+  const handleToggleSelectAllPage = () => {
+    if (isAllPageSelected) {
+      setSelectedCustomerIds(prev => {
+        const next = new Set(prev);
+        paginatedCustomers.forEach(c => next.delete(c.id));
+        return next;
+      });
+    } else {
+      setSelectedCustomerIds(prev => {
+        const next = new Set(prev);
+        paginatedCustomers.forEach(c => next.add(c.id));
+        return next;
+      });
+    }
+  };
+
+  const handleSelectAllFiltered = () => {
+    setSelectedCustomerIds(new Set(filteredCustomers.map(c => c.id)));
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedCustomerIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedCustomerIds.size;
+    if (count === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${count} selected customer${count > 1 ? 's' : ''}? This action cannot be undone and will delete related activities/records.`)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      const res = await deleteMultipleCustomers(Array.from(selectedCustomerIds));
+      if (res?.success) {
+        setCustomersList(prev => prev.filter(c => !selectedCustomerIds.has(c.id)));
+        setSelectedCustomerIds(new Set());
+        router.refresh();
+      } else {
+        alert(res?.error || "Failed to delete selected customers.");
+      }
+    } catch (err: any) {
+      alert("An unexpected error occurred: " + (err.message || ""));
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleExport = (format: 'xlsx' | 'csv', onlySelected = false) => {
+    const targetCustomers = onlySelected || selectedCustomerIds.size > 0
+      ? filteredCustomers.filter(c => selectedCustomerIds.has(c.id))
+      : filteredCustomers;
+
+    if (targetCustomers.length === 0) {
+      alert("No customers available to export.");
+      return;
+    }
+
+    const exportRows = targetCustomers.map(c => ({
+      "Business Name": c.businessName || "",
+      "Contact Person": c.contactPerson || "",
+      "Mobile": c.mobile || "",
+      "Email": c.email || "",
+      "State": c.state || "",
+      "Assigned Agent": c.assignedSalesperson?.user?.name || "Unassigned",
+      "Status": c.status || "Active",
+      "Created Date": c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN') : ""
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Customers");
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (format === 'xlsx') {
+      XLSX.writeFile(wb, `Customers_Export_${dateStr}.xlsx`);
+    } else {
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `Customers_Export_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsExportMenuOpen(false);
+  };
 
   const getStatusBadgeStyles = (status: string) => {
     const s = (status || "").toLowerCase();
@@ -199,6 +357,109 @@ export default function CustomerTable({
             <Sparkles size={15} />
             <span>AI Predictor</span>
           </button>
+
+          {/* Export Dropdown Menu */}
+          <div className="customer-export-dropdown-container" ref={exportMenuRef}>
+            <button
+              type="button"
+              className="btn-customer-export"
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              title="Export customers to Excel or CSV"
+            >
+              <Download size={15} />
+              <span>Export {selectedCustomerIds.size > 0 ? `(${selectedCustomerIds.size})` : ''}</span>
+              <ChevronDown size={14} style={{ transform: isExportMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="customer-export-dropdown-menu">
+                <div className="customer-export-dropdown-header">
+                  <span>{selectedCustomerIds.size > 0 ? `Export Selected (${selectedCustomerIds.size})` : `Export All (${filteredCustomers.length})`}</span>
+                </div>
+                <button
+                  type="button"
+                  className="customer-export-dropdown-item"
+                  onClick={() => handleExport('xlsx')}
+                >
+                  <FileSpreadsheet size={15} style={{ color: '#10b981' }} />
+                  <div className="customer-export-item-text">
+                    <span className="title">Excel Spreadsheet</span>
+                    <span className="sub">.xlsx format</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="customer-export-dropdown-item"
+                  onClick={() => handleExport('csv')}
+                >
+                  <Download size={15} style={{ color: '#3b82f6' }} />
+                  <div className="customer-export-item-text">
+                    <span className="title">CSV File</span>
+                    <span className="sub">Standard comma-separated</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Selection Action Buttons (Matched with Theme) */}
+          {selectedCustomerIds.size > 0 && (
+            <>
+              <div className="btn-selection-count" title={`${selectedCustomerIds.size} customers selected`}>
+                <span className="selection-count-pill">{selectedCustomerIds.size}</span>
+                <span>Selected</span>
+              </div>
+
+              <button
+                type="button"
+                className="btn-select-all"
+                onClick={handleToggleSelectAllPage}
+                title={isAllPageSelected ? "Deselect page" : `Select all on page (${paginatedCustomers.length})`}
+              >
+                <span>{isAllPageSelected ? "Deselect Page" : `Select Page (${paginatedCustomers.length})`}</span>
+              </button>
+
+              {filteredCustomers.length > paginatedCustomers.length && selectedCustomerIds.size < filteredCustomers.length && (
+                <button
+                  type="button"
+                  className="btn-select-all"
+                  onClick={handleSelectAllFiltered}
+                  title={`Select all ${filteredCustomers.length} filtered customers`}
+                >
+                  <span>Select All ({filteredCustomers.length})</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn-delete-selected"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                title="Delete selected customers"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={15} />
+                    <span>Delete ({selectedCustomerIds.size})</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="btn-clear-selection"
+                onClick={() => setSelectedCustomerIds(new Set())}
+                title="Clear selection"
+              >
+                <X size={15} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Horizontal Status Chips Bar */}
@@ -251,17 +512,34 @@ export default function CustomerTable({
 
       {/* ─── 1. MOBILE CUSTOMER CARDS FEED (Visible on mobile <= 768px) ─── */}
       <div className="customer-mobile-feed">
-        {filteredCustomers.map(customer => {
+        {paginatedCustomers.map(customer => {
           const statusStyles = getStatusBadgeStyles(customer.status);
           const displayName = customer.businessName || customer.contactPerson || "Customer";
           const contactName = customer.contactPerson && customer.businessName ? customer.contactPerson : "";
           const initials = (displayName || "C").slice(0, 2).toUpperCase();
+          const isSelected = selectedCustomerIds.has(customer.id);
 
           return (
-            <div key={customer.id} className="customer-mobile-card">
-              {/* Card Header: Avatar, Name & Status Pill */}
+            <div 
+              key={customer.id} 
+              className="customer-mobile-card"
+              style={{
+                borderColor: isSelected ? '#818cf8' : undefined,
+                background: isSelected ? '#f8faff' : undefined
+              }}
+            >
+              {/* Card Header: Checkbox, Avatar, Name & Status Pill */}
               <div className="customer-card-header">
                 <div className="customer-card-identity">
+                  <div className="customer-card-select-wrap">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelect(customer.id)}
+                      style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: '#4f46e5' }}
+                      title="Select customer"
+                    />
+                  </div>
                   <div className="customer-avatar-badge">
                     {initials}
                   </div>
@@ -383,6 +661,19 @@ export default function CustomerTable({
             <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem' }}>Try adjusting your search query or status filter.</p>
           </div>
         )}
+
+        {filteredCustomers.length > 0 && (
+          <div style={{ marginTop: '10px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredCustomers.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              itemName="customers"
+            />
+          </div>
+        )}
       </div>
 
       {/* ─── 2. DESKTOP DATA TABLE (Visible on desktop > 768px) ─── */}
@@ -391,7 +682,16 @@ export default function CustomerTable({
           <table className="data-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
               <tr>
-                <th style={{ width: '40px', padding: '16px' }}><input type="checkbox" disabled /></th>
+                <th style={{ width: '40px', padding: '16px' }}>
+                  <input 
+                    type="checkbox" 
+                    ref={headerCheckboxRef}
+                    checked={isAllPageSelected}
+                    onChange={handleToggleSelectAllPage}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4f46e5' }}
+                    title={isAllPageSelected ? "Deselect page" : "Select all on page"}
+                  />
+                </th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Name</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Phone</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Shop Name</th>
@@ -402,13 +702,29 @@ export default function CustomerTable({
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.map(customer => {
+              {paginatedCustomers.map(customer => {
                 const statusStyles = getStatusBadgeStyles(customer.status);
                 const displayName = customer.businessName || customer.contactPerson || "Customer";
+                const isSelected = selectedCustomerIds.has(customer.id);
 
                 return (
-                  <tr key={customer.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '16px' }}><input type="checkbox" /></td>
+                  <tr 
+                    key={customer.id} 
+                    style={{ 
+                      borderBottom: '1px solid #f1f5f9',
+                      backgroundColor: isSelected ? '#f0f7ff' : 'transparent',
+                      transition: 'background-color 0.15s ease'
+                    }}
+                  >
+                    <td style={{ padding: '16px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(customer.id)}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4f46e5' }}
+                        title="Select customer"
+                      />
+                    </td>
                     <td style={{ padding: '16px' }}>
                       <Link href={`/customers/${customer.id}`} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
                         {customer.contactPerson || customer.businessName}
@@ -470,6 +786,15 @@ export default function CustomerTable({
             </tbody>
           </table>
         </div>
+
+        <TablePagination
+          currentPage={currentPage}
+          totalItems={filteredCustomers.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="customers"
+        />
       </div>
 
       {/* Edit Customer Modal */}
@@ -477,7 +802,12 @@ export default function CustomerTable({
         <EditCustomerModal 
           customer={editingCustomer} 
           employees={allEmployees}
-          onClose={() => setEditingCustomer(null)} 
+          onClose={(saved) => {
+            if (saved) {
+              router.refresh();
+            }
+            setEditingCustomer(null);
+          }} 
         />
       )}
 
@@ -487,7 +817,18 @@ export default function CustomerTable({
           customerId={reassigningCustomer.id}
           currentAgent={reassigningCustomer.assignedSalesperson?.user?.name || null}
           employees={allEmployees}
-          onClose={() => setReassigningCustomer(null)}
+          onClose={(newAgentId) => {
+            if (newAgentId) {
+              const matchedEmp = allEmployees.find(e => e.id === newAgentId);
+              setCustomersList(prev => prev.map(c => c.id === reassigningCustomer.id ? {
+                ...c,
+                assignedSalespersonId: newAgentId,
+                assignedSalesperson: matchedEmp ? { id: matchedEmp.id, user: { name: matchedEmp.name } } : null
+              } : c));
+              router.refresh();
+            }
+            setReassigningCustomer(null);
+          }}
         />
       )}
 

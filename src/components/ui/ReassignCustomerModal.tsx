@@ -9,7 +9,7 @@ interface ReassignCustomerModalProps {
   customerId: string;
   currentAgent: string | null;
   employees: { id: string; name: string }[];
-  onClose: () => void;
+  onClose: (assignedAgentId?: string) => void;
 }
 
 export default function ReassignCustomerModal({ customerId, currentAgent, employees, onClose }: ReassignCustomerModalProps) {
@@ -34,7 +34,7 @@ export default function ReassignCustomerModal({ customerId, currentAgent, employ
       setError(result.error);
       setLoading(false);
     } else {
-      onClose();
+      onClose(selectedAgent);
     }
   };
 
@@ -46,7 +46,7 @@ export default function ReassignCustomerModal({ customerId, currentAgent, employ
             <RefreshCw size={20} className="text-warning" />
             Reassign Customer
           </h2>
-          <button className="close-btn" onClick={onClose}>×</button>
+          <button className="close-btn" onClick={() => onClose()}>×</button>
         </div>
         
         <form onSubmit={handleSubmit} className="modal-body">
@@ -72,7 +72,7 @@ export default function ReassignCustomerModal({ customerId, currentAgent, employ
           </div>
 
           <div className="modal-footer" style={{ marginTop: '24px' }}>
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="btn-secondary" onClick={() => onClose()}>Cancel</button>
             <button type="submit" className="primary-btn" disabled={loading} style={{ background: '#f59e0b', borderColor: '#f59e0b' }}>
               {loading ? "Reassigning..." : "Reassign Agent"}
             </button>

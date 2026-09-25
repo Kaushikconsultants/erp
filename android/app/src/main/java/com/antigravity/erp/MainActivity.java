@@ -25,6 +25,8 @@ import java.util.List;
 
 import android.os.PowerManager;
 import android.os.Environment;
+import android.provider.CallLog;
+import android.provider.ContactsContract;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyCallback;
 import android.telephony.TelephonyManager;
@@ -51,11 +53,25 @@ public class MainActivity extends BridgeActivity {
     public String launchNotificationUrl = null;
     private boolean isBridgeConfigured = false;
 
+    // Android Native TextToSpeech Engine for Heart Voice AI Copilot
+    private android.speech.tts.TextToSpeech textToSpeech;
+    private boolean isTtsInitialized = false;
+
+    // Call direction & incoming caller tracking for Missed and Inbound calls
+    private int lastCallState = TelephonyManager.CALL_STATE_IDLE;
+    private boolean isIncomingCall = false;
+    private String incomingCallerNumber = null;
+
     public String findRecentCallAudioDataUrl(String phoneNumber) {
         return findRecentCallAudioDataUrl(phoneNumber, lastContactName, lastCallDurationSec);
     }
 
     public String findRecentCallAudioDataUrl(String phoneNumber, String contactName, int callDurationSec) {
+        // Do not search for or attach recordings if the call was not connected (0s duration)
+        if (callDurationSec <= 0 && lastCallDurationSec <= 0) {
+            return null;
+        }
+
         String cleanPhone = (phoneNumber != null) ? phoneNumber.replaceAll("[^0-9]", "") : "";
         if (cleanPhone.isEmpty() && lastDialedNumber != null) {
             cleanPhone = lastDialedNumber.replaceAll("[^0-9]", "");
@@ -265,6 +281,10 @@ public class MainActivity extends BridgeActivity {
     }
 
     public java.io.File findRecentCallAudioFile(String cleanPhone, String cleanName, String firstWordName, int callDurationSec) {
+        if (callDurationSec <= 0 && lastCallDurationSec <= 0) {
+            return null;
+        }
+
         long nowMs = System.currentTimeMillis();
         long minAllowedTime = (callStartTime > 0)
                 ? (callStartTime - 60_000L) // strictly during this call
@@ -426,6 +446,9 @@ public class MainActivity extends BridgeActivity {
         // 6. Register Telephony Call State Listener
         registerTelephonyListener();
         registerTelecomReceiver();
+
+        // 7. Initialize Native TextToSpeech Engine for Heart Voice AI Copilot
+        initTextToSpeech();
     }
 
     @Override
@@ -534,6 +557,13 @@ public class MainActivity extends BridgeActivity {
                 isTelecomReceiverRegistered = false;
             }
         } catch (Exception e) {}
+        try {
+            if (textToSpeech != null) {
+                textToSpeech.stop();
+                textToSpeech.shutdown();
+                textToSpeech = null;
+            }
+        } catch (Exception ignored) {}
         super.onDestroy();
     }
 
@@ -555,13 +585,30 @@ public class MainActivity extends BridgeActivity {
 
             boolean contactsGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED;
             boolean phoneStateGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
-            if (contactsGranted || callPhoneGranted || phoneStateGranted) {
+            boolean callLogGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED;
+            boolean micGranted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+
+            if (micGranted) {
+                runOnUiThread(() -> {
+                    try {
+                        WebView webView = getBridge().getWebView();
+                        if (webView != null) {
+                            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-microphone-permission-granted'));", null);
+                        }
+                    } catch (Exception e) {}
+                });
+            }
+
+            if (contactsGranted || callPhoneGranted || phoneStateGranted || callLogGranted) {
                 runOnUiThread(() -> {
                     try {
                         WebView webView = getBridge().getWebView();
                         if (webView != null) {
                             if (contactsGranted) {
                                 webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-contacts-permission-granted'));", null);
+                            }
+                            if (callLogGranted) {
+                                webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-call-log-permission-granted'));", null);
                             }
                             webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-telephony-permission-granted'));", null);
                         }
@@ -702,7 +749,7 @@ public class MainActivity extends BridgeActivity {
                     phoneStateListener = new PhoneStateListener() {
                         @Override
                         public void onCallStateChanged(int state, String phoneNumber) {
-                            handleCallStateChange(state);
+                            handleCallStateChange(state, phoneNumber);
                         }
                     };
                     telephonyManager.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
@@ -717,11 +764,102 @@ public class MainActivity extends BridgeActivity {
     private class CustomTelephonyCallback extends TelephonyCallback implements TelephonyCallback.CallStateListener {
         @Override
         public void onCallStateChanged(int state) {
-            handleCallStateChange(state);
+            handleCallStateChange(state, null);
         }
     }
 
+    public String getContactNameFromNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.trim().isEmpty()) return "";
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+            return "";
+        }
+        android.database.Cursor cursor = null;
+        try {
+            android.net.Uri uri = android.net.Uri.withAppendedPath(
+                android.provider.ContactsContract.PhoneLookup.CONTENT_FILTER_URI,
+                android.net.Uri.encode(phoneNumber.trim())
+            );
+            cursor = getContentResolver().query(uri, new String[]{android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int nameIdx = cursor.getColumnIndex(android.provider.ContactsContract.PhoneLookup.DISPLAY_NAME);
+                if (nameIdx >= 0) {
+                    String name = cursor.getString(nameIdx);
+                    if (name != null && !name.trim().isEmpty()) {
+                        return name.trim();
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            // Ignored
+        } finally {
+            if (cursor != null) {
+                try { cursor.close(); } catch (Throwable ignored) {}
+            }
+        }
+        return "";
+    }
+
+    public org.json.JSONObject getLatestCallLogEntry() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+            return null;
+        }
+        android.database.Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(
+                android.provider.CallLog.Calls.CONTENT_URI,
+                new String[]{
+                    android.provider.CallLog.Calls._ID,
+                    android.provider.CallLog.Calls.NUMBER,
+                    android.provider.CallLog.Calls.CACHED_NAME,
+                    android.provider.CallLog.Calls.TYPE,
+                    android.provider.CallLog.Calls.DATE,
+                    android.provider.CallLog.Calls.DURATION
+                },
+                null,
+                null,
+                android.provider.CallLog.Calls.DATE + " DESC"
+            );
+            if (cursor != null && cursor.moveToFirst()) {
+                int dateCol = cursor.getColumnIndex(android.provider.CallLog.Calls.DATE);
+                long date = (dateCol >= 0) ? cursor.getLong(dateCol) : 0;
+                // Only consider if within last 3 minutes
+                if (date > 0 && (System.currentTimeMillis() - date) < 180000) {
+                    int numCol = cursor.getColumnIndex(android.provider.CallLog.Calls.NUMBER);
+                    int nameCol = cursor.getColumnIndex(android.provider.CallLog.Calls.CACHED_NAME);
+                    int typeCol = cursor.getColumnIndex(android.provider.CallLog.Calls.TYPE);
+                    int durCol = cursor.getColumnIndex(android.provider.CallLog.Calls.DURATION);
+
+                    String number = (numCol >= 0) ? cursor.getString(numCol) : "";
+                    String cachedName = (nameCol >= 0) ? cursor.getString(nameCol) : "";
+                    int type = (typeCol >= 0) ? cursor.getInt(typeCol) : 0;
+                    long dur = (durCol >= 0) ? cursor.getLong(durCol) : 0;
+
+                    String resolvedName = (cachedName != null && !cachedName.trim().isEmpty()) ? cachedName.trim() : getContactNameFromNumber(number);
+
+                    org.json.JSONObject obj = new org.json.JSONObject();
+                    obj.put("number", number);
+                    obj.put("name", resolvedName);
+                    obj.put("type", type);
+                    obj.put("duration", dur);
+                    obj.put("date", date);
+                    return obj;
+                }
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("MainActivity", "getLatestCallLogEntry error: " + t.getMessage());
+        } finally {
+            if (cursor != null) {
+                try { cursor.close(); } catch (Throwable ignored) {}
+            }
+        }
+        return null;
+    }
+
     private int getExactDurationFromCallLog(String phoneNumber) {
+        return getExactDurationFromCallLog(phoneNumber, callStartTime);
+    }
+
+    private int getExactDurationFromCallLog(String phoneNumber, long minCallStartTime) {
         try {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED) {
                 String cleanTarget = (phoneNumber != null) ? phoneNumber.replaceAll("[^0-9]", "") : "";
@@ -743,17 +881,18 @@ public class MainActivity extends BridgeActivity {
                 if (cursor != null) {
                     try {
                         long now = System.currentTimeMillis();
+                        long earliestValidTime = (minCallStartTime > 0) ? (minCallStartTime - 8000) : (now - 45000);
                         int checked = 0;
                         int numberCol = cursor.getColumnIndex(android.provider.CallLog.Calls.NUMBER);
                         int durationCol = cursor.getColumnIndex(android.provider.CallLog.Calls.DURATION);
                         int typeCol = cursor.getColumnIndex(android.provider.CallLog.Calls.TYPE);
                         int dateCol = cursor.getColumnIndex(android.provider.CallLog.Calls.DATE);
 
-                        while (cursor.moveToNext() && checked < 10) {
+                        while (cursor.moveToNext() && checked < 12) {
                             checked++;
                             long callDate = (dateCol >= 0) ? cursor.getLong(dateCol) : 0;
-                            // Only check calls within the last 5 minutes
-                            if (callDate > 0 && (now - callDate) > 300000) {
+                            // Strictly ONLY match calls that occurred in this specific attempt!
+                            if (callDate > 0 && callDate < earliestValidTime) {
                                 break;
                             }
 
@@ -762,14 +901,18 @@ public class MainActivity extends BridgeActivity {
                             int type = (typeCol >= 0) ? cursor.getInt(typeCol) : 0;
 
                             String cleanNum = (num != null) ? num.replaceAll("[^0-9]", "") : "";
-                            boolean matchesPhone = last10Target.isEmpty() || cleanNum.endsWith(last10Target) || (last10Target.length() >= 7 && cleanNum.contains(last10Target));
+                            boolean matchesPhone = last10Target.isEmpty() ||
+                                                   cleanNum.endsWith(last10Target) ||
+                                                   (last10Target.length() >= 7 && cleanNum.contains(last10Target)) ||
+                                                   (last10Target.length() < 7 && cleanNum.equals(last10Target));
 
                             if (matchesPhone) {
                                 android.util.Log.d("MainActivity", "CallLog match: dur=" + dur + " type=" + type);
+                                // Unanswered outgoing calls, canceled, busy, or missed/rejected calls MUST return 0s!
                                 if (type == android.provider.CallLog.Calls.MISSED_TYPE ||
                                     type == android.provider.CallLog.Calls.REJECTED_TYPE ||
                                     type == android.provider.CallLog.Calls.BLOCKED_TYPE ||
-                                    dur == 0) {
+                                    dur <= 0) {
                                     return 0;
                                 }
                                 return (int) dur;
@@ -787,72 +930,149 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void handleCallStateChange(int state) {
-        if (state == TelephonyManager.CALL_STATE_OFFHOOK) {
-            // Call answered or active
+        handleCallStateChange(state, null);
+    }
+
+    private void handleCallStateChange(int state, String incomingNumber) {
+        if (incomingNumber != null && !incomingNumber.trim().isEmpty()) {
+            incomingCallerNumber = incomingNumber.trim();
+        }
+
+        if (state == TelephonyManager.CALL_STATE_RINGING) {
+            isIncomingCall = true;
+            lastCallState = TelephonyManager.CALL_STATE_RINGING;
+            sendNativeCallEvent("RINGING", 0, null, incomingCallerNumber, null);
+        } else if (state == TelephonyManager.CALL_STATE_OFFHOOK) {
+            if (lastCallState == TelephonyManager.CALL_STATE_RINGING) {
+                isIncomingCall = true;
+                // Incoming call answered by user
+                sendNativeCallEvent("CONNECTED", 0, activeRecordingCallId, incomingCallerNumber, null);
+            } else {
+                isIncomingCall = false;
+                // Outgoing call started dialing — NOT connected yet! Send DIALING so stopwatch does not fake count.
+                String dialingPhone = (pendingCallNumber != null ? pendingCallNumber : lastDialedNumber);
+                sendNativeCallEvent("DIALING", 0, activeRecordingCallId, dialingPhone, null);
+            }
+            lastCallState = TelephonyManager.CALL_STATE_OFFHOOK;
             if (callStartTime == 0) {
                 callStartTime = System.currentTimeMillis();
             }
             isCallInProgress = true;
-            sendNativeCallEvent("CONNECTED", 0);
         } else if (state == TelephonyManager.CALL_STATE_IDLE) {
-            // Call ended / hung up
+            // Did phone ring and then stop without answering? -> MISSED CALL!
+            if (lastCallState == TelephonyManager.CALL_STATE_RINGING) {
+                lastCallState = TelephonyManager.CALL_STATE_IDLE;
+                isCallInProgress = false;
+                callStartTime = 0;
+                isIncomingCall = false;
+
+                new Thread(() -> {
+                    try { Thread.sleep(600); } catch (Exception ignored) {}
+                    String missedPhone = incomingCallerNumber;
+                    String missedName = "";
+                    org.json.JSONObject latest = getLatestCallLogEntry();
+                    if (latest != null) {
+                        String num = latest.optString("number");
+                        if (num != null && !num.isEmpty()) missedPhone = num;
+                        missedName = latest.optString("name", "");
+                    }
+                    if (missedName.isEmpty() && missedPhone != null && !missedPhone.isEmpty()) {
+                        missedName = getContactNameFromNumber(missedPhone);
+                    }
+                    final String finalMissedPhone = (missedPhone != null && !missedPhone.isEmpty()) ? missedPhone : "Unknown";
+                    sendNativeCallEvent("MISSED", 0, null, finalMissedPhone, null);
+                    incomingCallerNumber = null;
+                    bringAppToForeground();
+                }).start();
+                return;
+            }
+
+            // Normal Call ended / hung up
             if (isCallInProgress || callStartTime > 0) {
-                long elapsedMs = callStartTime > 0 ? (System.currentTimeMillis() - callStartTime) : 0;
-                int durationSec = (int) Math.max(0, elapsedMs / 1000);
+                lastCallState = TelephonyManager.CALL_STATE_IDLE;
+                final boolean wasIncoming = isIncomingCall;
+                isIncomingCall = false;
+
+                final long actualCallStart = callStartTime;
+                callStartTime = 0;
+                isCallInProgress = false;
+
+                // For outgoing calls, default duration is strictly 0s until carrier CallLog verifies otherwise!
+                lastCallDurationSec = 0;
 
                 final String callIdForTranscription = activeRecordingCallId;
                 activeRecordingCallId = null;
-                final String phoneForTranscription = (pendingCallNumber != null && !pendingCallNumber.isEmpty()) 
-                        ? pendingCallNumber 
-                        : (lastDialedNumber != null ? lastDialedNumber : "Unknown");
-                final String contactNameForTranscription = lastContactName;
 
-                // Query Android CallLog for actual carrier talk duration (which is strictly 0 for unconnected/missed/rejected calls)
-                int exactCallLogDur = getExactDurationFromCallLog(phoneForTranscription);
-                if (exactCallLogDur >= 0) {
-                    durationSec = exactCallLogDur;
+                String targetPhone = wasIncoming
+                        ? incomingCallerNumber
+                        : ((pendingCallNumber != null && !pendingCallNumber.isEmpty()) ? pendingCallNumber : (lastDialedNumber != null ? lastDialedNumber : null));
+
+                if ((targetPhone == null || targetPhone.isEmpty()) && wasIncoming) {
+                    org.json.JSONObject latest = getLatestCallLogEntry();
+                    if (latest != null) {
+                        targetPhone = latest.optString("number", null);
+                    }
                 }
-
-                final long actualCallStart = (callStartTime > 0) ? callStartTime : (System.currentTimeMillis() - (durationSec * 1000L));
-                lastCallDurationSec = durationSec;
-                isCallInProgress = false;
-                callStartTime = actualCallStart;
-                final int finalDurationSec = durationSec;
+                final String phoneForTranscription = (targetPhone != null && !targetPhone.isEmpty()) ? targetPhone : "Unknown";
+                String resolvedName = lastContactName;
+                if ((resolvedName == null || resolvedName.isEmpty()) && !phoneForTranscription.equals("Unknown")) {
+                    resolvedName = getContactNameFromNumber(phoneForTranscription);
+                }
+                final String contactNameForTranscription = resolvedName;
+                incomingCallerNumber = null;
 
                 // Scan device storage for native Xiaomi / Android call recording
                 new Thread(() -> {
                     try {
-                        // Scan device storage & MediaStore for native call recording (Xiaomi writes file on call tear-down)
-                        String foundAudioUrl = null;
-                        for (int retry = 0; retry < 5; retry++) {
-                            try { Thread.sleep(700); } catch (Exception e) {}
-                            foundAudioUrl = findRecentCallAudioDataUrl(phoneForTranscription, contactNameForTranscription, finalDurationSec);
-                            if (foundAudioUrl != null && !foundAudioUrl.isEmpty()) {
+                        // Poll CallLog across 1.8 seconds (CallLog rows take 300ms-1500ms to be inserted on Xiaomi/Samsung)
+                        int confirmedDur = -1;
+                        for (int attempt = 0; attempt < 5; attempt++) {
+                            try { Thread.sleep(350); } catch (Exception ignored) {}
+                            confirmedDur = getExactDurationFromCallLog(phoneForTranscription, actualCallStart);
+                            if (confirmedDur >= 0) {
                                 break;
                             }
                         }
 
+                        // If CallLog confirmed a positive duration, set it. Otherwise it is 0s (unanswered / busy / not connected)!
+                        lastCallDurationSec = (confirmedDur > 0) ? confirmedDur : 0;
+
+                        String foundAudioUrl = null;
+                        if (lastCallDurationSec > 0) {
+                            for (int retry = 0; retry < 4; retry++) {
+                                try { Thread.sleep(600); } catch (Exception e) {}
+                                foundAudioUrl = findRecentCallAudioDataUrl(phoneForTranscription, contactNameForTranscription, lastCallDurationSec);
+                                if (foundAudioUrl != null && !foundAudioUrl.isEmpty()) {
+                                    break;
+                                }
+                            }
+                        }
+
+                        int finalReportedDur = lastCallDurationSec;
                         if (foundAudioUrl != null && !foundAudioUrl.isEmpty()) {
                             lastRecordedAudioDataUrl = foundAudioUrl;
                             final String finalCallId = callIdForTranscription != null ? callIdForTranscription : ("call_" + System.currentTimeMillis());
-                            int finalReportedDur = (lastCallDurationSec > 0) ? lastCallDurationSec : finalDurationSec;
                             sendNativeCallEvent("ENDED", finalReportedDur, finalCallId, phoneForTranscription, foundAudioUrl);
                         } else {
                             lastRecordedAudioDataUrl = null;
-                            sendNativeCallEvent("ENDED", finalDurationSec, callIdForTranscription, phoneForTranscription, null);
+                            // Short offhook duration (<= 25s) without any recording is an unanswered ring, busy signal, or carrier IVR.
+                            // Duration must strictly be 0s for not connected calls.
+                            if (finalReportedDur <= 25) {
+                                finalReportedDur = 0;
+                                lastCallDurationSec = 0;
+                            }
+                            sendNativeCallEvent("ENDED", finalReportedDur, callIdForTranscription, phoneForTranscription, null);
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
-                        sendNativeCallEvent("ENDED", finalDurationSec, callIdForTranscription, phoneForTranscription, null);
-                    } finally {
-                        callStartTime = 0;
+                        sendNativeCallEvent("ENDED", 0, callIdForTranscription, phoneForTranscription, null);
                     }
 
                     bringAppToForeground();
                 }).start();
+            } else {
+                lastCallState = TelephonyManager.CALL_STATE_IDLE;
             }
-        } else if (state == TelephonyManager.CALL_STATE_RINGING) {
-            sendNativeCallEvent("RINGING", 0);
         }
     }
 
@@ -970,6 +1190,109 @@ public class MainActivity extends BridgeActivity {
     }
 
     /**
+     * Initializes Android Native TextToSpeech engine
+     */
+    private void initTextToSpeech() {
+        try {
+            textToSpeech = new android.speech.tts.TextToSpeech(getApplicationContext(), status -> {
+                if (status == android.speech.tts.TextToSpeech.SUCCESS && textToSpeech != null) {
+                    isTtsInitialized = true;
+                    try {
+                        textToSpeech.setLanguage(new java.util.Locale("hi", "IN"));
+                    } catch (Exception ignored) {}
+
+                    try {
+                        textToSpeech.setOnUtteranceProgressListener(new android.speech.tts.UtteranceProgressListener() {
+                            @Override
+                            public void onStart(String utteranceId) {
+                                runOnUiThread(() -> {
+                                    try {
+                                        WebView webView = getBridge().getWebView();
+                                        if (webView != null) {
+                                            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-tts-start'));", null);
+                                        }
+                                    } catch (Exception ignored) {}
+                                });
+                            }
+
+                            @Override
+                            public void onDone(String utteranceId) {
+                                runOnUiThread(() -> {
+                                    try {
+                                        WebView webView = getBridge().getWebView();
+                                        if (webView != null) {
+                                            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-tts-end'));", null);
+                                        }
+                                    } catch (Exception ignored) {}
+                                });
+                            }
+
+                            @Override
+                            public void onError(String utteranceId) {
+                                runOnUiThread(() -> {
+                                    try {
+                                        WebView webView = getBridge().getWebView();
+                                        if (webView != null) {
+                                            webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('native-tts-end'));", null);
+                                        }
+                                    } catch (Exception ignored) {}
+                                });
+                            }
+                        });
+                    } catch (Exception ignored) {}
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void speakTts(String text, String lang) {
+        if (text == null || text.trim().isEmpty()) return;
+        runOnUiThread(() -> {
+            try {
+                if (textToSpeech == null) {
+                    initTextToSpeech();
+                }
+                if (textToSpeech != null) {
+                    java.util.Locale targetLocale;
+                    if (lang != null && (lang.equalsIgnoreCase("hi") || lang.toLowerCase().startsWith("hi"))) {
+                        targetLocale = new java.util.Locale("hi", "IN");
+                    } else if (text.matches(".*[\\u0900-\\u097F]+.*")) {
+                        targetLocale = new java.util.Locale("hi", "IN");
+                    } else {
+                        targetLocale = new java.util.Locale("en", "IN");
+                    }
+                    try {
+                        textToSpeech.setLanguage(targetLocale);
+                        textToSpeech.setPitch(1.0f);
+                        textToSpeech.setSpeechRate(1.0f);
+                    } catch (Exception ignored) {}
+
+                    String utteranceId = "HeartTTS_" + System.currentTimeMillis();
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        textToSpeech.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+                    } else {
+                        textToSpeech.speak(text, android.speech.tts.TextToSpeech.QUEUE_FLUSH, null);
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.e("MainActivity", "speakTts error", e);
+            }
+        });
+    }
+
+    public void stopSpeakingTts() {
+        runOnUiThread(() -> {
+            try {
+                if (textToSpeech != null) {
+                    textToSpeech.stop();
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    /**
      * Injects AndroidNative JavaScript Bridge into WebView without overriding Capacitor's BridgeWebChromeClient
      */
     private void configureWebView() {
@@ -997,6 +1320,21 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean isNativeApp() {
             return true;
+        }
+
+        @JavascriptInterface
+        public void speak(String text, String lang) {
+            activity.speakTts(text, lang);
+        }
+
+        @JavascriptInterface
+        public void stopSpeaking() {
+            activity.stopSpeakingTts();
+        }
+
+        @JavascriptInterface
+        public boolean isTtsAvailable() {
+            return activity.isTtsInitialized;
         }
 
         @JavascriptInterface
@@ -1064,7 +1402,16 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
-        public void requestMicrophonePermission() {
+        public boolean hasMicrophonePermission() {
+            return ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public boolean requestMicrophonePermission() {
+            boolean has = ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+            if (has) {
+                return true;
+            }
             activity.runOnUiThread(() -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     ActivityCompat.requestPermissions(
@@ -1074,6 +1421,7 @@ public class MainActivity extends BridgeActivity {
                     );
                 }
             });
+            return false;
         }
 
         @JavascriptInterface
@@ -1102,6 +1450,131 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public boolean hasPhoneStatePermission() {
             return ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public boolean hasCallLogPermission() {
+            return ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public void requestCallLogPermission() {
+            activity.runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    ActivityCompat.requestPermissions(
+                            activity,
+                            new String[]{Manifest.permission.READ_CALL_LOG},
+                            PERMISSION_REQUEST_CODE
+                    );
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String getDeviceCallLogs(int limit, String typeFilter) {
+            org.json.JSONArray list = new org.json.JSONArray();
+            try {
+                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) {
+                    requestCallLogPermission();
+                    return "[]";
+                }
+                android.content.ContentResolver cr = activity.getContentResolver();
+                android.net.Uri uri = android.provider.CallLog.Calls.CONTENT_URI;
+                String[] projection = {
+                    android.provider.CallLog.Calls._ID,
+                    android.provider.CallLog.Calls.NUMBER,
+                    android.provider.CallLog.Calls.CACHED_NAME,
+                    android.provider.CallLog.Calls.TYPE,
+                    android.provider.CallLog.Calls.DATE,
+                    android.provider.CallLog.Calls.DURATION
+                };
+
+                String selection = null;
+                String[] selectionArgs = null;
+                String filterUpper = (typeFilter != null) ? typeFilter.trim().toUpperCase() : "ALL";
+
+                if ("MISSED".equals(filterUpper)) {
+                    selection = android.provider.CallLog.Calls.TYPE + " = ? OR " + android.provider.CallLog.Calls.TYPE + " = ?";
+                    selectionArgs = new String[]{
+                        String.valueOf(android.provider.CallLog.Calls.MISSED_TYPE),
+                        String.valueOf(android.provider.CallLog.Calls.REJECTED_TYPE)
+                    };
+                } else if ("INCOMING".equals(filterUpper) || "INBOUND".equals(filterUpper)) {
+                    selection = android.provider.CallLog.Calls.TYPE + " = ?";
+                    selectionArgs = new String[]{String.valueOf(android.provider.CallLog.Calls.INCOMING_TYPE)};
+                } else if ("OUTGOING".equals(filterUpper) || "OUTBOUND".equals(filterUpper)) {
+                    selection = android.provider.CallLog.Calls.TYPE + " = ?";
+                    selectionArgs = new String[]{String.valueOf(android.provider.CallLog.Calls.OUTGOING_TYPE)};
+                }
+
+                int maxLimit = limit > 0 ? Math.min(limit, 200) : 50;
+                String sortOrder = android.provider.CallLog.Calls.DATE + " DESC LIMIT " + maxLimit;
+
+                android.database.Cursor cursor = null;
+                try {
+                    cursor = cr.query(uri, projection, selection, selectionArgs, sortOrder);
+                } catch (Throwable t) {
+                    // Fallback without LIMIT clause (some OEM SQLite implementations don't allow LIMIT in sortOrder)
+                    try {
+                        cursor = cr.query(uri, projection, selection, selectionArgs, android.provider.CallLog.Calls.DATE + " DESC");
+                    } catch (Throwable t2) {
+                        android.util.Log.e("MainActivity", "cr.query CallLog fallback failed", t2);
+                    }
+                }
+
+                if (cursor != null) {
+                    try {
+                        int idIdx = cursor.getColumnIndex(android.provider.CallLog.Calls._ID);
+                        int numIdx = cursor.getColumnIndex(android.provider.CallLog.Calls.NUMBER);
+                        int nameIdx = cursor.getColumnIndex(android.provider.CallLog.Calls.CACHED_NAME);
+                        int typeIdx = cursor.getColumnIndex(android.provider.CallLog.Calls.TYPE);
+                        int dateIdx = cursor.getColumnIndex(android.provider.CallLog.Calls.DATE);
+                        int durIdx = cursor.getColumnIndex(android.provider.CallLog.Calls.DURATION);
+
+                        while (cursor.moveToNext() && list.length() < maxLimit) {
+                            String callId = (idIdx >= 0) ? cursor.getString(idIdx) : String.valueOf(list.length());
+                            String number = (numIdx >= 0) ? cursor.getString(numIdx) : "";
+                            if (number == null || number.trim().isEmpty()) continue;
+
+                            String cachedName = (nameIdx >= 0) ? cursor.getString(nameIdx) : "";
+                            int rawType = (typeIdx >= 0) ? cursor.getInt(typeIdx) : 0;
+                            long date = (dateIdx >= 0) ? cursor.getLong(dateIdx) : 0;
+                            long dur = (durIdx >= 0) ? cursor.getLong(durIdx) : 0;
+
+                            String typeStr = "INCOMING";
+                            if (rawType == android.provider.CallLog.Calls.OUTGOING_TYPE) {
+                                typeStr = "OUTGOING";
+                            } else if (rawType == android.provider.CallLog.Calls.MISSED_TYPE) {
+                                typeStr = "MISSED";
+                            } else if (rawType == android.provider.CallLog.Calls.REJECTED_TYPE) {
+                                typeStr = "REJECTED";
+                            } else if (rawType == android.provider.CallLog.Calls.BLOCKED_TYPE) {
+                                typeStr = "BLOCKED";
+                            } else if (rawType == android.provider.CallLog.Calls.VOICEMAIL_TYPE) {
+                                typeStr = "VOICEMAIL";
+                            }
+
+                            String resolvedName = (cachedName != null && !cachedName.trim().isEmpty()) ? cachedName.trim() : activity.getContactNameFromNumber(number);
+                            if (resolvedName.isEmpty()) resolvedName = number;
+
+                            org.json.JSONObject obj = new org.json.JSONObject();
+                            obj.put("id", callId);
+                            obj.put("number", number);
+                            obj.put("name", resolvedName);
+                            obj.put("type", typeStr);
+                            obj.put("timestamp", date);
+                            obj.put("duration", dur);
+                            list.put(obj);
+                        }
+                    } finally {
+                        cursor.close();
+                    }
+                }
+                android.util.Log.d("MainActivity", "getDeviceCallLogs loaded " + list.length() + " records (filter=" + filterUpper + ")");
+            } catch (Exception e) {
+                android.util.Log.e("MainActivity", "getDeviceCallLogs error", e);
+            }
+            return list.toString();
         }
 
         @JavascriptInterface
@@ -1493,6 +1966,12 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public String getLastCallRecording(String phoneNumber, String contactName, int durationSec) {
             try {
+                // If duration is explicitly 0 or <= 0 and lastCallDurationSec <= 0, do not return any recording
+                if (durationSec <= 0 && activity.lastCallDurationSec <= 0) {
+                    activity.lastRecordedAudioDataUrl = null;
+                    return "";
+                }
+
                 String phone = (phoneNumber != null && !phoneNumber.trim().isEmpty()) 
                         ? phoneNumber 
                         : ((activity.pendingCallNumber != null && !activity.pendingCallNumber.isEmpty()) ? activity.pendingCallNumber : activity.lastDialedNumber);
@@ -1515,6 +1994,8 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void clearLastCallRecording() {
             activity.lastRecordedAudioDataUrl = null;
+            activity.lastCallDurationSec = 0;
+            activity.callStartTime = 0;
         }
 
         @JavascriptInterface

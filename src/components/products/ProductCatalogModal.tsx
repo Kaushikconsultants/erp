@@ -14,7 +14,8 @@ import {
   ExternalLink,
   Sparkles,
   QrCode,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 
 interface Product {
@@ -60,6 +61,9 @@ export default function ProductCatalogModal({
     products.slice(0, 12).map(p => p.id)
   );
 
+  // Layout density: 4 (2x2) or 6 (3x2) items per page (defaults to 4 per page)
+  const [itemsPerPage, setItemsPerPage] = useState<'4' | '6'>('4');
+
   // Display Settings
   const [showPrices, setShowPrices] = useState(true);
   const [showStock, setShowStock] = useState(false);
@@ -95,6 +99,24 @@ export default function ProductCatalogModal({
   const selectedProducts = useMemo(() => {
     return products.filter(p => selectedProductIds.includes(p.id));
   }, [products, selectedProductIds]);
+
+  // Clean up any background print frame on unmount
+  React.useEffect(() => {
+    return () => {
+      const existingFrame = document.getElementById('catalog-print-frame');
+      if (existingFrame) existingFrame.remove();
+    };
+  }, []);
+
+  // Chunk selected products into exact pages so every page has at least 4 items (2x2 or 3x2)
+  const pages = useMemo(() => {
+    const size = itemsPerPage === '6' ? 6 : 4;
+    const chunks: Product[][] = [];
+    for (let i = 0; i < selectedProducts.length; i += size) {
+      chunks.push(selectedProducts.slice(i, i + size));
+    }
+    return chunks;
+  }, [selectedProducts, itemsPerPage]);
 
   const handleToggleProduct = (id: string) => {
     if (selectedProductIds.includes(id)) {
@@ -137,68 +159,208 @@ export default function ProductCatalogModal({
     }
   };
 
-  // High-performance Isolated Print without browser freeze
+  // High-performance Isolated Print with Direct DOM Injection (Zero UI Freeze, Fast Preview)
   const handlePrint = () => {
+    if (isPrinting) return;
     setIsPrinting(true);
-    
-    // Create an isolated printable HTML document in a hidden iframe for instant <50ms print preview
-    const catalogElement = document.getElementById('printable-catalog');
-    if (!catalogElement) {
-      window.print();
-      setIsPrinting(false);
-      return;
-    }
 
-    const printFrame = document.createElement('iframe');
-    printFrame.style.position = 'fixed';
-    printFrame.style.right = '0';
-    printFrame.style.bottom = '0';
-    printFrame.style.width = '0';
-    printFrame.style.height = '0';
-    printFrame.style.border = '0';
-    document.body.appendChild(printFrame);
+    // Yield execution to next tick so React paints the "Preparing Print..." button state immediately
+    setTimeout(async () => {
+      try {
+        const catalogElement = document.getElementById('printable-catalog');
+        if (!catalogElement) {
+          window.print();
+          setIsPrinting(false);
+          return;
+        }
 
-    const doc = printFrame.contentWindow?.document;
-    if (!doc) {
-      window.print();
-      setIsPrinting(false);
-      return;
-    }
+        // 1. Create/re-create an isolated iframe with standard A4 dimensions (prevents Chromium 0x0 layout stall)
+        let printFrame = document.getElementById('catalog-print-frame') as HTMLIFrameElement;
+        if (printFrame) {
+          printFrame.remove();
+        }
+        printFrame = document.createElement('iframe');
+        printFrame.id = 'catalog-print-frame';
+        printFrame.style.position = 'fixed';
+        printFrame.style.top = '0';
+        printFrame.style.left = '0';
+        printFrame.style.width = '210mm';
+        printFrame.style.height = '297mm';
+        printFrame.style.border = 'none';
+        printFrame.style.opacity = '0';
+        printFrame.style.pointerEvents = 'none';
+        printFrame.style.zIndex = '-99999';
+        printFrame.style.visibility = 'hidden';
+        document.body.appendChild(printFrame);
 
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${catalogTitle} - ${company.companyName}</title>
-          <style>
-            @page { size: A4 portrait; margin: 10mm; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; color: #0f172a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            #printable-catalog { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
-            .catalog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-            .catalog-item-card { break-inside: avoid !important; page-break-inside: avoid !important; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #ffffff; display: flex; flex-direction: column; }
-            .image-box { width: 100%; aspect-ratio: 4 / 5; background-color: #f1f5f9; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-            .image-box img { width: 100%; height: 100%; object-fit: cover; }
-            .art-badge { position: absolute; top: 6px; left: 6px; background: rgba(15, 23, 42, 0.85); color: #ffffff; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
-            .details { padding: 10px; font-size: 11px; flex: 1; display: flex; flex-direction: column; gap: 4px; }
-            .price-tag { font-size: 14px; font-weight: 700; color: #059669; }
-          </style>
-        </head>
-        <body>
-          ${catalogElement.outerHTML}
-        </body>
-      </html>
-    `);
-    doc.close();
+        const doc = printFrame.contentWindow?.document;
+        if (!doc) {
+          window.print();
+          setIsPrinting(false);
+          return;
+        }
 
-    setTimeout(() => {
-      printFrame.contentWindow?.focus();
-      printFrame.contentWindow?.print();
-      setTimeout(() => {
-        document.body.removeChild(printFrame);
+        // 2. Write minimal HTML shell with print styles (fast string with ZERO large Base64 images!)
+        doc.open();
+        doc.write(`<!DOCTYPE html>
+<html>
+  <head>
+    <title>${catalogTitle} - ${company.companyName}</title>
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 8mm;
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        color: #0f172a;
+        background: #ffffff;
+      }
+      #printable-catalog {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        background: transparent !important;
+      }
+      .catalog-page-container {
+        width: 100%;
+        page-break-after: always !important;
+        break-after: page !important;
+        display: flex;
+        flex-direction: column;
+        min-height: calc(297mm - 18mm);
+        justify-content: space-between;
+        padding: 4px 0 !important;
+        margin-bottom: 0 !important;
+        border-bottom: none !important;
+      }
+      .catalog-page-container:last-child {
+        page-break-after: auto !important;
+        break-after: auto !important;
+      }
+      .catalog-grid-2x2 {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+        margin-bottom: 10px !important;
+      }
+      .catalog-grid-3x2 {
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 10px !important;
+        margin-bottom: 8px !important;
+      }
+      .catalog-item-card {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+      }
+      .image-box {
+        width: 100%;
+        aspect-ratio: 4 / 5 !important;
+        background-color: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .catalog-grid-2x2 .image-box {
+        max-height: 310px !important;
+      }
+      .catalog-grid-3x2 .image-box {
+        max-height: 270px !important;
+      }
+      .image-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover !important;
+        display: block !important;
+      }
+      .art-badge {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        background: rgba(15, 23, 42, 0.88);
+        color: #ffffff;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: 700;
+      }
+      .details {
+        padding: 8px 10px;
+        font-size: 11px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .price-tag {
+        font-size: 13px;
+        font-weight: 700;
+        color: #059669;
+      }
+      .no-print {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body></body>
+</html>`);
+        doc.close();
+
+        // 3. Clone catalog element directly into iframe body (instant native DOM pointer clone, ZERO string serialization!)
+        const clonedCatalog = catalogElement.cloneNode(true) as HTMLElement;
+        clonedCatalog.querySelectorAll('img').forEach(img => {
+          img.setAttribute('loading', 'eager');
+          img.setAttribute('decoding', 'async');
+        });
+        doc.body.appendChild(clonedCatalog);
+
+        // 4. Quick non-blocking decode check (if images already rendered, takes 0ms)
+        const iframeImgs = Array.from(doc.images);
+        const unreadyImgs = iframeImgs.filter(img => !img.complete || img.naturalWidth === 0);
+        if (unreadyImgs.length > 0) {
+          await Promise.race([
+            Promise.all(unreadyImgs.map(img => img.decode().catch(() => {}))),
+            new Promise(resolve => setTimeout(resolve, 300))
+          ]);
+        }
+
+        // 5. Trigger print preview smoothly without UI thread freeze
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            try {
+              printFrame.contentWindow?.focus();
+              printFrame.contentWindow?.print();
+            } catch (err) {
+              console.error('Print trigger failed:', err);
+              window.print();
+            } finally {
+              setIsPrinting(false);
+            }
+          }, 50);
+        });
+      } catch (err) {
+        console.error('Failed to prepare print preview:', err);
         setIsPrinting(false);
-      }, 1000);
-    }, 250);
+      }
+    }, 40);
   };
 
   const handleWhatsAppShare = () => {
@@ -245,7 +407,7 @@ export default function ProductCatalogModal({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '16px',
-        fontFamily: 'var(--font-family, "Inter", -apple-system, sans-serif)'
+        fontFamily: 'var(--font-family, "Outfit", -apple-system, sans-serif)'
       }}
       onClick={onClose}
     >
@@ -356,17 +518,27 @@ export default function ProductCatalogModal({
                 padding: '7px 15px',
                 borderRadius: '7px',
                 border: 'none',
-                backgroundColor: '#0f172a',
+                backgroundColor: isPrinting ? '#334155' : '#0f172a',
                 color: '#ffffff',
                 fontSize: '0.78rem',
                 fontWeight: 600,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                cursor: isPrinting ? 'wait' : 'pointer'
+                cursor: isPrinting ? 'wait' : 'pointer',
+                opacity: isPrinting ? 0.85 : 1,
+                transition: 'all 0.15s ease'
               }}
             >
-              <Printer size={14} /> {isPrinting ? 'Preparing Print...' : 'Print / Save PDF'}
+              {isPrinting ? (
+                <>
+                  <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Preparing Print...
+                </>
+              ) : (
+                <>
+                  <Printer size={14} /> Print / Save PDF
+                </>
+              )}
             </button>
 
             <button
@@ -421,6 +593,46 @@ export default function ProductCatalogModal({
             </div>
 
             <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', paddingTop: '16px' }}>
+              {/* Page Density Toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                  Layout:
+                </span>
+                <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    onClick={() => setItemsPerPage('4')}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      backgroundColor: itemsPerPage === '4' ? '#0f172a' : '#f8fafc',
+                      color: itemsPerPage === '4' ? '#ffffff' : '#475569',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    4 / Page (2×2)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setItemsPerPage('6')}
+                    style={{
+                      padding: '3px 8px',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      border: 'none',
+                      borderLeft: '1px solid #cbd5e1',
+                      backgroundColor: itemsPerPage === '6' ? '#0f172a' : '#f8fafc',
+                      color: itemsPerPage === '6' ? '#ffffff' : '#475569',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    6 / Page (3×2)
+                  </button>
+                </div>
+              </div>
+
               <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.76rem', color: '#334155', cursor: 'pointer', fontWeight: 500 }}>
                 <input type="checkbox" checked={showPrices} onChange={e => setShowPrices(e.target.checked)} />
                 Wholesale Price
@@ -495,204 +707,269 @@ export default function ProductCatalogModal({
               boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
             }}
           >
-            {/* Catalog Letterhead Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #0f172a', paddingBottom: '14px', marginBottom: '20px' }}>
-              <div>
-                <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
-                  {company.companyName}
-                </h1>
-                <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: '#64748b' }}>
-                  {company.address} • Phone/WhatsApp: <strong>{company.mobile}</strong>
-                </p>
-              </div>
+            {pages.length > 0 ? (
+              pages.map((pageProducts, pageIdx) => {
+                const isFirstPage = pageIdx === 0;
+                const isLastPage = pageIdx === pages.length - 1;
 
-              <div style={{ textAlign: 'right' }}>
-                <div
-                  style={{
-                    display: 'inline-block',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                    backgroundColor: '#f1f5f9',
-                    border: '1px solid #e2e8f0',
-                    color: '#334155',
-                    fontWeight: 600,
-                    fontSize: '0.78rem',
-                    textTransform: 'uppercase'
-                  }}
-                >
-                  Wholesale Lookbook
-                </div>
-                <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
-                  Updated: {new Date().toLocaleDateString('en-IN')}
-                </div>
-              </div>
-            </div>
+                return (
+                  <div
+                    key={pageIdx}
+                    className="catalog-page-container"
+                    style={{
+                      pageBreakAfter: isLastPage ? 'auto' : 'always',
+                      breakAfter: isLastPage ? 'auto' : 'page',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      minHeight: '850px',
+                      marginBottom: isLastPage ? '0' : '36px',
+                      paddingBottom: isLastPage ? '0' : '28px',
+                      borderBottom: isLastPage ? 'none' : '2px dashed #cbd5e1'
+                    }}
+                  >
+                    {/* Top Header */}
+                    {isFirstPage ? (
+                      <div>
+                        {/* Catalog Letterhead Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #0f172a', paddingBottom: '12px', marginBottom: '16px' }}>
+                          <div>
+                            <h1 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                              {company.companyName}
+                            </h1>
+                            <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: '#64748b' }}>
+                              {company.address} • Phone/WhatsApp: <strong>{company.mobile}</strong>
+                            </p>
+                          </div>
 
-            {/* Catalog Big Title */}
-            <div style={{ textAlign: 'center', marginBottom: '22px' }}>
-              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', letterSpacing: '0.5px' }}>
-                {catalogTitle}
-              </h2>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                Exclusively for Authorized Retailers & Wholesale Buyers
-              </span>
-            </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div
+                              style={{
+                                display: 'inline-block',
+                                padding: '3px 9px',
+                                borderRadius: '6px',
+                                backgroundColor: '#f1f5f9',
+                                border: '1px solid #e2e8f0',
+                                color: '#334155',
+                                fontWeight: 600,
+                                fontSize: '0.75rem',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              Wholesale Lookbook
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '3px' }}>
+                              Updated: {new Date().toLocaleDateString('en-IN')}
+                            </div>
+                          </div>
+                        </div>
 
-            {/* Products Grid (4:5 Ratio Fashion Lookbook) */}
-            {selectedProducts.length > 0 ? (
-              <div
-                className="catalog-grid"
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                  gap: '18px',
-                  marginBottom: '26px'
-                }}
-              >
-                {selectedProducts.map(product => {
-                  const imageSrc = (product.images && product.images.length > 0) ? product.images[0] : null;
+                        {/* Catalog Big Title */}
+                        <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+                          <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: '#0f172a', letterSpacing: '0.5px' }}>
+                            {catalogTitle}
+                          </h2>
+                          <span style={{ fontSize: '0.73rem', color: '#64748b' }}>
+                            Exclusively for Authorized Retailers & Wholesale Buyers
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Running Header for Page 2+ */
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #cbd5e1', paddingBottom: '8px', marginBottom: '16px' }}>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0f172a' }}>
+                          {company.companyName} <span style={{ fontWeight: 400, color: '#64748b' }}>• {catalogTitle}</span>
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 500 }}>
+                          Page {pageIdx + 1} of {pages.length}
+                        </div>
+                      </div>
+                    )}
 
-                  return (
+                    {/* Products Grid (4:5 Ratio Fashion Lookbook) */}
                     <div
-                      key={product.id}
-                      className="catalog-item-card"
+                      className={itemsPerPage === '6' ? 'catalog-grid-3x2' : 'catalog-grid-2x2'}
                       style={{
-                        backgroundColor: '#ffffff',
-                        borderRadius: '10px',
-                        border: '1px solid #e2e8f0',
-                        overflow: 'hidden',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                        display: 'grid',
+                        gridTemplateColumns: itemsPerPage === '6' ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                        gap: itemsPerPage === '6' ? '12px' : '16px',
+                        marginBottom: '16px',
+                        flex: 1
                       }}
                     >
-                      {/* 4:5 ASPECT RATIO IMAGE CONTAINER */}
+                      {pageProducts.map(product => {
+                        const imageSrc = (product.images && product.images.length > 0) ? product.images[0] : null;
+
+                        return (
+                          <div
+                            key={product.id}
+                            className="catalog-item-card"
+                            style={{
+                              backgroundColor: '#ffffff',
+                              borderRadius: '10px',
+                              border: '1px solid #e2e8f0',
+                              overflow: 'hidden',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                              maxWidth: itemsPerPage === '6' ? '240px' : '310px',
+                              margin: '0 auto',
+                              width: '100%'
+                            }}
+                          >
+                            {/* 4:5 ASPECT RATIO IMAGE CONTAINER */}
+                            <div
+                              className="image-box"
+                              style={{
+                                width: '100%',
+                                aspectRatio: '4 / 5',
+                                maxHeight: itemsPerPage === '6' ? '250px' : '295px',
+                                backgroundColor: '#f1f5f9',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                position: 'relative',
+                                overflow: 'hidden'
+                              }}
+                            >
+                              {imageSrc ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={imageSrc}
+                                  alt={product.name}
+                                  loading="eager"
+                                  decoding="async"
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                    display: 'block'
+                                  }}
+                                />
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#94a3b8' }}>
+                                  <ImageIcon size={30} />
+                                  <span style={{ fontSize: '0.7rem', marginTop: '4px', fontWeight: 500 }}>4:5 Garment Photo</span>
+                                </div>
+                              )}
+
+                              {/* Article Number Badge */}
+                              <div
+                                className="art-badge"
+                                style={{
+                                  position: 'absolute',
+                                  top: '8px',
+                                  left: '8px',
+                                  backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                                  color: '#ffffff',
+                                  padding: '3px 8px',
+                                  borderRadius: '5px',
+                                  fontSize: '0.7rem',
+                                  fontWeight: 700,
+                                  letterSpacing: '0.3px',
+                                  backdropFilter: 'blur(3px)'
+                                }}
+                              >
+                                Art #{product.articleNumber || product.sku || 'N/A'}
+                              </div>
+                            </div>
+
+                            {/* Product Details */}
+                            <div className="details" style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                              <div style={{ fontSize: '0.84rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {product.name}
+                              </div>
+
+                              <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                                Category: <span style={{ color: '#334155', fontWeight: 500 }}>{product.category || 'Apparel'}</span>
+                              </div>
+
+                              {showSpecs && (
+                                <div style={{ fontSize: '0.68rem', color: '#64748b', lineHeight: 1.3, backgroundColor: '#f8fafc', padding: '4px 6px', borderRadius: '5px' }}>
+                                  {product.fabric && <div>Fabric: <strong style={{ color: '#334155' }}>{product.fabric}</strong></div>}
+                                  <div>Sizes: <strong style={{ color: '#334155' }}>S, M, L, XL, XXL (Set Ratio)</strong></div>
+                                </div>
+                              )}
+
+                              {/* Price & MOQ Footer */}
+                              <div style={{ marginTop: 'auto', paddingTop: '6px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                {showPrices ? (
+                                  <div>
+                                    <span style={{ fontSize: '0.62rem', color: '#64748b', display: 'block' }}>Wholesale Rate</span>
+                                    <span className="price-tag" style={{ fontSize: '0.98rem', fontWeight: 700, color: '#059669' }}>
+                                      ₹{product.sellingPrice.toLocaleString('en-IN')}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 500 }}>Inquire for Rates</span>
+                                )}
+
+                                {showMoq && (
+                                  <span style={{ fontSize: '0.65rem', color: '#64748b', backgroundColor: '#f8fafc', padding: '2px 5px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                                    MOQ: 12 pcs
+                                  </span>
+                                )}
+                              </div>
+
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Page Footer */}
+                    {isLastPage ? (
+                      /* Catalog Footer: Ordering CTA */
                       <div
-                        className="image-box"
                         style={{
-                          width: '100%',
-                          aspectRatio: '4 / 5',
-                          backgroundColor: '#f1f5f9',
+                          backgroundColor: '#f8fafc',
+                          padding: '10px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
                           display: 'flex',
+                          justifyContent: 'space-between',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          position: 'relative',
-                          overflow: 'hidden'
+                          flexWrap: 'wrap',
+                          gap: '8px',
+                          fontSize: '0.75rem',
+                          marginTop: 'auto'
                         }}
                       >
-                        {imageSrc ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={imageSrc}
-                            alt={product.name}
-                            loading="lazy"
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
-                              display: 'block'
-                            }}
-                          />
-                        ) : (
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#94a3b8' }}>
-                            <ImageIcon size={34} />
-                            <span style={{ fontSize: '0.72rem', marginTop: '4px', fontWeight: 500 }}>4:5 Garment Photo</span>
-                          </div>
-                        )}
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#0f172a' }}>How to Place an Order:</div>
+                          <div style={{ color: '#64748b' }}>Send Article Numbers & quantities via WhatsApp to <strong>{company.mobile}</strong></div>
+                        </div>
 
-                        {/* Article Number Badge */}
-                        <div
-                          className="art-badge"
-                          style={{
-                            position: 'absolute',
-                            top: '8px',
-                            left: '8px',
-                            backgroundColor: 'rgba(15, 23, 42, 0.85)',
-                            color: '#ffffff',
-                            padding: '3px 8px',
-                            borderRadius: '5px',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            letterSpacing: '0.3px',
-                            backdropFilter: 'blur(3px)'
-                          }}
-                        >
-                          Art #{product.articleNumber || product.sku || 'N/A'}
+                        <div style={{ textAlign: 'right', color: '#64748b', fontSize: '0.7rem' }}>
+                          Page {pageIdx + 1} of {pages.length} • Delivery across India via Transport
                         </div>
                       </div>
-
-                      {/* Product Details */}
-                      <div className="details" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a' }}>
-                          {product.name}
-                        </div>
-
-                        <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                          Category: <span style={{ color: '#334155', fontWeight: 500 }}>{product.category || 'Apparel'}</span>
-                        </div>
-
-                        {showSpecs && (
-                          <div style={{ fontSize: '0.7rem', color: '#64748b', lineHeight: 1.35, backgroundColor: '#f8fafc', padding: '6px 8px', borderRadius: '6px' }}>
-                            {product.fabric && <div>Fabric: <strong style={{ color: '#334155' }}>{product.fabric}</strong></div>}
-                            <div>Sizes: <strong style={{ color: '#334155' }}>S, M, L, XL, XXL (Set Ratio)</strong></div>
-                          </div>
-                        )}
-
-                        {/* Price & MOQ Footer */}
-                        <div style={{ marginTop: 'auto', paddingTop: '8px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                          {showPrices ? (
-                            <div>
-                              <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Wholesale Rate</span>
-                              <span className="price-tag" style={{ fontSize: '1.05rem', fontWeight: 700, color: '#059669' }}>
-                                ₹{product.sellingPrice.toLocaleString('en-IN')}
-                              </span>
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 500 }}>Inquire for Rates</span>
-                          )}
-
-                          {showMoq && (
-                            <span style={{ fontSize: '0.68rem', color: '#64748b', backgroundColor: '#f8fafc', padding: '2px 6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                              MOQ: 12 pcs
-                            </span>
-                          )}
-                        </div>
-
+                    ) : (
+                      /* Intermediate Page Footer */
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          borderTop: '1px solid #e2e8f0',
+                          paddingTop: '6px',
+                          marginTop: 'auto',
+                          fontSize: '0.7rem',
+                          color: '#94a3b8'
+                        }}
+                      >
+                        <span>For wholesale orders & samples: {company.mobile}</span>
+                        <span>Page {pageIdx + 1} of {pages.length}</span>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    )}
+                  </div>
+                );
+              })
             ) : (
               <div style={{ padding: '36px', textAlign: 'center', color: '#94a3b8' }}>
                 No products selected for the catalog. Please select products from the options bar above.
               </div>
             )}
-
-            {/* Catalog Footer: Ordering CTA */}
-            <div
-              style={{
-                backgroundColor: '#f8fafc',
-                padding: '14px 18px',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '8px',
-                fontSize: '0.78rem'
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: 600, color: '#0f172a' }}>How to Place an Order:</div>
-                <div style={{ color: '#64748b' }}>Send Article Numbers & quantities via WhatsApp to <strong>{company.mobile}</strong></div>
-              </div>
-
-              <div style={{ textAlign: 'right', color: '#64748b', fontSize: '0.72rem' }}>
-                Delivery across India via Transport • Fast Dispatch
-              </div>
-            </div>
 
           </div>
 
@@ -873,18 +1150,86 @@ export default function ProductCatalogModal({
           .no-print {
             display: none !important;
           }
-          .catalog-grid {
+          .catalog-page-container {
+            width: 100% !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            min-height: 98vh !important;
+            max-height: 100vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            padding: 2px 0 !important;
+            border-bottom: none !important;
+            margin-bottom: 0 !important;
+          }
+          .catalog-page-container:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+          .catalog-grid-2x2 {
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+            margin-bottom: 10px !important;
+          }
+          .catalog-grid-3x2 {
             display: grid !important;
             grid-template-columns: repeat(3, 1fr) !important;
-            gap: 12px !important;
+            gap: 10px !important;
+            margin-bottom: 8px !important;
           }
           .catalog-item-card {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
             border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+            background: #ffffff !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
           .image-box {
+            width: 100% !important;
             aspect-ratio: 4 / 5 !important;
+            background-color: #f1f5f9 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            overflow: hidden !important;
+          }
+          .catalog-grid-2x2 .image-box {
+            max-height: 295px !important;
+          }
+          .catalog-grid-3x2 .image-box {
+            max-height: 250px !important;
+          }
+          .image-box img {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover !important;
+            display: block !important;
+          }
+          .art-badge {
+            position: absolute !important;
+            top: 6px !important;
+            left: 6px !important;
+            background: rgba(15, 23, 42, 0.88) !important;
+            color: #ffffff !important;
+            padding: 2px 6px !important;
+            border-radius: 4px !important;
+            font-size: 10px !important;
+            font-weight: 700 !important;
+          }
+          .details {
+            padding: 8px 10px !important;
+            font-size: 11px !important;
+          }
+          .price-tag {
+            font-size: 13px !important;
+            font-weight: 700 !important;
+            color: #059669 !important;
           }
         }
       `}} />

@@ -19,9 +19,9 @@ const PRESET_COLORS = [
 ];
 
 const PRESET_FONTS = [
+  'Outfit', 
   'Inter', 
   'Roboto', 
-  'Outfit', 
   'Poppins', 
   'Open Sans', 
   'Montserrat', 
@@ -44,19 +44,36 @@ export default function ThemeSettingsModal({ onClose }: ThemeSettingsModalProps)
   const [error, setError] = useState<string | null>(null);
 
   const [themeColor, setThemeColor] = useState('#4f46e5');
-  const [fontFamily, setFontFamily] = useState('Inter');
+  const [customHexInput, setCustomHexInput] = useState('#4f46e5');
+  const [fontFamily, setFontFamily] = useState('Outfit');
   const [fontSize, setFontSize] = useState('16px');
   const [buttonRadius, setButtonRadius] = useState('8px');
   const [useBoldText, setUseBoldText] = useState(false);
+  const colorPickerInputRef = React.useRef<HTMLInputElement>(null);
   
   const [existingData, setExistingData] = useState<any>({});
+
+  const openColorPicker = () => {
+    if (colorPickerInputRef.current) {
+      if ('showPicker' in HTMLInputElement.prototype) {
+        try {
+          colorPickerInputRef.current.showPicker();
+          return;
+        } catch {}
+      }
+      colorPickerInputRef.current.click();
+    }
+  };
 
   useEffect(() => {
     async function load() {
       const res = await getCompanySettings();
       if (res.success && res.settings) {
         setExistingData(res.settings);
-        if (res.settings.themeColor) setThemeColor(res.settings.themeColor);
+        if (res.settings.themeColor) {
+          setThemeColor(res.settings.themeColor);
+          setCustomHexInput(res.settings.themeColor);
+        }
         if (res.settings.fontFamily) setFontFamily(res.settings.fontFamily);
         if (res.settings.fontSize) setFontSize(res.settings.fontSize);
         if (res.settings.buttonRadius) setButtonRadius(res.settings.buttonRadius);
@@ -245,7 +262,10 @@ export default function ThemeSettingsModal({ onClose }: ThemeSettingsModalProps)
                   <button
                     key={c.value}
                     type="button"
-                    onClick={() => setThemeColor(c.value)}
+                    onClick={() => {
+                      setThemeColor(c.value);
+                      setCustomHexInput(c.value);
+                    }}
                     style={{
                       padding: '7px 8px',
                       borderRadius: '8px',
@@ -266,22 +286,180 @@ export default function ThemeSettingsModal({ onClose }: ThemeSettingsModalProps)
                 );
               })}
 
-              {/* Custom Color Input */}
-              <div style={{ padding: '7px 8px', borderRadius: '8px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input 
-                  type="color" 
-                  value={themeColor}
-                  onChange={(e) => setThemeColor(e.target.value)}
-                  style={{ width: '20px', height: '20px', padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
-                />
-                <span style={{ fontSize: '0.76rem', fontWeight: 500, color: '#64748b' }}>
-                  Custom
-                </span>
-              </div>
+              {/* Custom Color Selector Button & Native Input */}
+              {(() => {
+                const isCustomSelected = !PRESET_COLORS.some(
+                  c => c.value.toLowerCase() === themeColor.toLowerCase()
+                );
+                return (
+                  <button
+                    type="button"
+                    onClick={openColorPicker}
+                    title="Click to open custom color picker"
+                    style={{
+                      padding: '7px 8px',
+                      borderRadius: '8px',
+                      border: isCustomSelected ? `2px solid ${themeColor}` : '1px solid #cbd5e1',
+                      backgroundColor: isCustomSelected ? `${themeColor}15` : '#ffffff',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      position: 'relative',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <span 
+                      style={{ 
+                        width: '16px', 
+                        height: '16px', 
+                        borderRadius: '50%', 
+                        backgroundColor: themeColor, 
+                        display: 'inline-block', 
+                        flexShrink: 0,
+                        border: isCustomSelected ? '2px solid #ffffff' : '1px solid #cbd5e1',
+                        boxShadow: isCustomSelected ? `0 0 0 1px ${themeColor}` : 'none'
+                      }} 
+                    />
+                    <span style={{ fontSize: '0.76rem', fontWeight: isCustomSelected ? 700 : 500, color: isCustomSelected ? themeColor : '#334155' }}>
+                      Custom
+                    </span>
+                    <input 
+                      ref={colorPickerInputRef}
+                      type="color" 
+                      value={themeColor.startsWith('#') && themeColor.length === 7 ? themeColor : '#10b981'}
+                      onChange={(e) => {
+                        setThemeColor(e.target.value);
+                        setCustomHexInput(e.target.value);
+                      }}
+                      style={{ 
+                        position: 'absolute',
+                        opacity: 0,
+                        pointerEvents: 'none',
+                        width: '1px',
+                        height: '1px',
+                        top: 0,
+                        left: 0
+                      }}
+                    />
+                  </button>
+                );
+              })()}
             </div>
-            <p style={{ margin: 0, fontSize: '0.73rem', color: '#64748b' }}>
-              Current Hex Code: <strong style={{ color: themeColor, fontFamily: 'monospace' }}>{themeColor}</strong>
-            </p>
+
+            {/* Hex Code & Quick Palette */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 600 }}>Hex Code:</span>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  backgroundColor: '#f8fafc', 
+                  border: '1px solid #cbd5e1', 
+                  borderRadius: '6px', 
+                  padding: '3px 8px' 
+                }}>
+                  <span 
+                    onClick={openColorPicker}
+                    title="Click to open color picker"
+                    style={{ 
+                      width: '14px', 
+                      height: '14px', 
+                      borderRadius: '3px', 
+                      backgroundColor: themeColor, 
+                      display: 'inline-block', 
+                      border: '1px solid rgba(0,0,0,0.15)',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }} 
+                  />
+                  <input
+                    type="text"
+                    value={customHexInput}
+                    maxLength={7}
+                    placeholder="#10b981"
+                    onChange={(e) => {
+                      let val = e.target.value.trim();
+                      if (val && !val.startsWith('#')) val = '#' + val;
+                      setCustomHexInput(val);
+                      if (/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(val)) {
+                        setThemeColor(val);
+                      }
+                    }}
+                    style={{
+                      border: 'none',
+                      backgroundColor: 'transparent',
+                      fontFamily: 'monospace',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      color: themeColor,
+                      width: '74px',
+                      outline: 'none',
+                      padding: 0
+                    }}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={openColorPicker}
+                style={{
+                  background: '#f8fafc',
+                  border: `1px solid ${themeColor}60`,
+                  borderRadius: '6px',
+                  padding: '4px 10px',
+                  fontSize: '0.74rem',
+                  fontWeight: 600,
+                  color: themeColor,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Palette size={13} color={themeColor} />
+                Pick Any Color...
+              </button>
+            </div>
+
+            {/* Quick Popular Modern Shades */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px' }}>
+              <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 500 }}>Popular:</span>
+              {[
+                { name: 'Teal', color: '#0d9488' },
+                { name: 'Sky Blue', color: '#0284c7' },
+                { name: 'Rose', color: '#e11d48' },
+                { name: 'Orange', color: '#ea580c' },
+                { name: 'Forest Green', color: '#15803d' },
+                { name: 'Dark Navy', color: '#1e293b' },
+                { name: 'Pink', color: '#db2777' },
+              ].map(item => (
+                <button
+                  key={item.color}
+                  type="button"
+                  title={`${item.name} (${item.color})`}
+                  onClick={() => {
+                    setThemeColor(item.color);
+                    setCustomHexInput(item.color);
+                  }}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    backgroundColor: item.color,
+                    border: themeColor.toLowerCase() === item.color.toLowerCase() ? '2px solid #ffffff' : '1px solid rgba(0,0,0,0.1)',
+                    boxShadow: themeColor.toLowerCase() === item.color.toLowerCase() ? `0 0 0 2px ${item.color}` : 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    transition: 'transform 0.1s ease',
+                    flexShrink: 0
+                  }}
+                />
+              ))}
+            </div>
           </div>
 
           {/* 2. FONT FAMILY SELECTOR */}

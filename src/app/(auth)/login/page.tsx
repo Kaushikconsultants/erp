@@ -127,9 +127,6 @@ function LoginForm() {
         <div className="form-group">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <label htmlFor="password">Password</label>
-            <span style={{ fontSize: '0.75rem', color: 'var(--accent-primary, #4f46e5)', cursor: 'pointer' }} onClick={() => alert("Please contact your organization administrator or platform support to reset your password.")}>
-              Forgot password?
-            </span>
           </div>
           <div className="input-icon-wrapper">
             <Lock size={16} className="input-icon" />
@@ -203,8 +200,8 @@ function LoginForm() {
         </Link>
       </div>
 
-      {/* Pricing link */}
-      <div style={{ textAlign: 'center', marginTop: '4px' }}>
+      {/* Pricing & Overview links */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
         <Link 
           href="/pricing" 
           onClick={(e) => {
@@ -214,6 +211,12 @@ function LoginForm() {
           style={{ fontSize: '0.8rem', color: '#64748b', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
         >
           View all plans & pricing options <ArrowRight size={12} />
+        </Link>
+        <Link 
+          href="/landing" 
+          style={{ fontSize: '0.8rem', color: '#6366f1', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
+        >
+          ← Back to Product Overview
         </Link>
       </div>
 

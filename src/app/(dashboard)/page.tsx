@@ -132,7 +132,16 @@ export default async function Home() {
           ...(orgId ? { organizationId: orgId } : {}), 
           status: { in: ['Confirmed', 'Converted'] } 
         },
-        include: { salesperson: { include: { user: true } }, customer: true }
+        include: { 
+          salesperson: { include: { user: true } }, 
+          customer: true,
+          activities: {
+            where: { action: { in: ['Quotation Confirmed', 'Converted to Order'] } },
+            select: { action: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 2
+          }
+        }
       }).catch(() => []),
       prisma.call.count({
         where: { 
@@ -207,19 +216,60 @@ export default async function Home() {
       }).catch(() => [])
     ]);
 
+    // Build lookup map for org confirmed/converted quotes to trace original deal closing date
+    const orgQuoteByNumber = new Map<string, any>();
+    allConfirmedQuotesInOrg.forEach((q: any) => {
+      if (q.quotationNumber) {
+        orgQuoteByNumber.set(q.quotationNumber.trim().toUpperCase(), q);
+      }
+    });
+
     // Quotation numbers already represented as Orders
     const convertedQuoteNumbers = new Set<string>();
     allOrdersInOrg.forEach((o: any) => {
-      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9-]+)/i);
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
       if (match && match[1]) {
-        convertedQuoteNumbers.add(match[1].trim());
+        convertedQuoteNumbers.add(match[1].trim().toUpperCase());
       }
     });
 
     // Standalone confirmed quotations (not yet an Order in prisma.order)
-    const standaloneConfirmedQuotes = allConfirmedQuotesInOrg.filter((q: any) => 
-      q.status === 'Confirmed' && !convertedQuoteNumbers.has((q.quotationNumber || '').trim())
-    );
+    const standaloneConfirmedQuotes = allConfirmedQuotesInOrg.filter((q: any) => {
+      if (q.status !== 'Confirmed') return false;
+      const qNum = (q.quotationNumber || '').trim().toUpperCase();
+      if (!qNum) return false;
+      if (convertedQuoteNumbers.has(qNum)) return false;
+      if (allOrdersInOrg.some((o: any) => (o.notes || '').toUpperCase().includes(qNum))) return false;
+      return true;
+    });
+
+    // Helper: determine the true deal confirmation date (when quote was confirmed/won)
+    const getQuotationDealDate = (q: any): Date => {
+      if (q.acceptedDate) return new Date(q.acceptedDate);
+      if (q.activities && q.activities.length > 0) {
+        const confirmAct = q.activities.find((a: any) => a.action === 'Quotation Confirmed');
+        if (confirmAct?.createdAt) return new Date(confirmAct.createdAt);
+        const convertAct = q.activities.find((a: any) => a.action === 'Converted to Order');
+        if (convertAct?.createdAt) return new Date(convertAct.createdAt);
+      }
+      if ((q.status === 'Confirmed' || q.status === 'Converted') && q.updatedAt) {
+        return new Date(q.updatedAt);
+      }
+      return q.date ? new Date(q.date) : (q.createdAt ? new Date(q.createdAt) : new Date());
+    };
+
+    // Helper: determine the true deal closing date for an order (if converted from a quotation, use quotation's confirmation deal date)
+    const getEffectiveOrderDate = (o: any): Date => {
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
+      if (match && match[1]) {
+        const qNum = match[1].trim().toUpperCase();
+        const linkedQuote = orgQuoteByNumber.get(qNum);
+        if (linkedQuote) {
+          return getQuotationDealDate(linkedQuote);
+        }
+      }
+      return o.orderDate ? new Date(o.orderDate) : (o.createdAt ? new Date(o.createdAt) : new Date());
+    };
 
     // Total Revenue & Combined Total Orders
     const ordersRevenue = allOrdersInOrg.reduce((sum: number, o: any) => sum + Number(o.totalValue || 0), 0);
@@ -440,7 +490,10 @@ export default async function Home() {
     let todayOrdersCount = 0;
 
     allOrdersInOrg
-      .filter((o: any) => o.orderDate && new Date(o.orderDate) >= todayStartOfDay)
+      .filter((o: any) => {
+        const effDate = getEffectiveOrderDate(o);
+        return effDate >= todayStartOfDay && effDate <= todayEndOfDay;
+      })
       .forEach((o: any) => {
         todayOrdersCount += 1;
         const spId = o.salespersonId || 'unassigned';
@@ -452,7 +505,10 @@ export default async function Home() {
       });
 
     standaloneConfirmedQuotes
-      .filter((q: any) => (q.date && new Date(q.date) >= todayStartOfDay) || (q.createdAt && new Date(q.createdAt) >= todayStartOfDay))
+      .filter((q: any) => {
+        const qDate = getQuotationDealDate(q);
+        return qDate >= todayStartOfDay && qDate <= todayEndOfDay;
+      })
       .forEach((q: any) => {
         todayOrdersCount += 1;
         const spId = q.salespersonId || 'unassigned';
@@ -467,16 +523,144 @@ export default async function Home() {
 
     const liveLeaderboard = Object.values(salesMap).sort((a, b) => b.total - a.total);
 
-    // Mock Sales Data for Chart
-    const salesData = [
-      { name: 'Mon', sales: 4000 },
-      { name: 'Tue', sales: 3000 },
-      { name: 'Wed', sales: 2000 },
-      { name: 'Thu', sales: 2780 },
-      { name: 'Fri', sales: 1890 },
-      { name: 'Sat', sales: 2390 },
-      { name: 'Sun', sales: totalRevenue > 0 ? totalRevenue : 3490 },
-    ];
+    // ---------------------------------------------------------
+    // REAL DAILY SALES DATA ACCORDING TO ACTUAL ORDER DATES
+    // ---------------------------------------------------------
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const dayOfWeek = istNow.getUTCDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+
+    // 1. Current Week (Monday to Sunday in IST)
+    const thisWeekData = dayNames.map((name, i) => {
+      const dayStartIST = new Date(Date.UTC(istYear, istMonth, istDate + mondayOffset + i, 0, 0, 0, 0));
+      const dayEndIST = new Date(Date.UTC(istYear, istMonth, istDate + mondayOffset + i, 23, 59, 59, 999));
+      const dayStartUTC = new Date(dayStartIST.getTime() - istOffset);
+      const dayEndUTC = new Date(dayEndIST.getTime() - istOffset);
+
+      const ordersSum = allOrdersInOrg
+        .filter((o: any) => {
+          const d = getEffectiveOrderDate(o);
+          return d >= dayStartUTC && d <= dayEndUTC;
+        })
+        .reduce((sum: number, o: any) => sum + Number(o.totalValue || 0), 0);
+
+      const quotesSum = standaloneConfirmedQuotes
+        .filter((q: any) => {
+          const d = getQuotationDealDate(q);
+          return d >= dayStartUTC && d <= dayEndUTC;
+        })
+        .reduce((sum: number, q: any) => sum + Number(q.totalValue || 0), 0);
+
+      const monthShort = dayStartIST.toLocaleString('en-IN', { month: 'short', timeZone: 'UTC' });
+      return {
+        name,
+        sales: Math.round(ordersSum + quotesSum),
+        dateStr: `${dayStartIST.getUTCDate()} ${monthShort}`
+      };
+    });
+
+    // 2. Rolling Last 7 Days (ending today)
+    const last7DaysData = Array.from({ length: 7 }, (_, idx) => {
+      const dayIndex = 6 - idx; // 6 days ago ... today
+      const targetIST = new Date(Date.UTC(istYear, istMonth, istDate - dayIndex, 0, 0, 0, 0));
+      const targetEndIST = new Date(Date.UTC(istYear, istMonth, istDate - dayIndex, 23, 59, 59, 999));
+      const startUTC = new Date(targetIST.getTime() - istOffset);
+      const endUTC = new Date(targetEndIST.getTime() - istOffset);
+
+      const dayOfWeekIdx = targetIST.getUTCDay();
+      const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeekIdx];
+
+      const ordersSum = allOrdersInOrg
+        .filter((o: any) => {
+          const d = getEffectiveOrderDate(o);
+          return d >= startUTC && d <= endUTC;
+        })
+        .reduce((sum: number, o: any) => sum + Number(o.totalValue || 0), 0);
+
+      const quotesSum = standaloneConfirmedQuotes
+        .filter((q: any) => {
+          const d = getQuotationDealDate(q);
+          return d >= startUTC && d <= endUTC;
+        })
+        .reduce((sum: number, q: any) => sum + Number(q.totalValue || 0), 0);
+
+      const monthShort = targetIST.toLocaleString('en-IN', { month: 'short', timeZone: 'UTC' });
+      return {
+        name: dayIndex === 0 ? 'Today' : dayName,
+        sales: Math.round(ordersSum + quotesSum),
+        dateStr: `${targetIST.getUTCDate()} ${monthShort}`
+      };
+    });
+
+    // 3. Day of Week distribution across all orders (All Time)
+    const dayOfWeekMap: Record<string, number> = {
+      Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0
+    };
+
+    allOrdersInOrg.forEach((o: any) => {
+      const d = getEffectiveOrderDate(o);
+      const istD = new Date(d.getTime() + istOffset);
+      const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][istD.getUTCDay()];
+      if (dayOfWeekMap[day] !== undefined) {
+        dayOfWeekMap[day] += Number(o.totalValue || 0);
+      }
+    });
+
+    standaloneConfirmedQuotes.forEach((q: any) => {
+      const d = getQuotationDealDate(q);
+      const istD = new Date(d.getTime() + istOffset);
+      const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][istD.getUTCDay()];
+      if (dayOfWeekMap[day] !== undefined) {
+        dayOfWeekMap[day] += Number(q.totalValue || 0);
+      }
+    });
+
+    const allDaysData = dayNames.map(name => ({
+      name,
+      sales: Math.round(dayOfWeekMap[name] || 0)
+    }));
+
+    // 4. Current Month Daily Breakdown
+    const daysInMonth = new Date(istYear, istMonth + 1, 0).getDate();
+    const thisMonthData = Array.from({ length: daysInMonth }, (_, idx) => {
+      const dayNum = idx + 1;
+      const startIST = new Date(Date.UTC(istYear, istMonth, dayNum, 0, 0, 0, 0));
+      const endIST = new Date(Date.UTC(istYear, istMonth, dayNum, 23, 59, 59, 999));
+      const startUTC = new Date(startIST.getTime() - istOffset);
+      const endUTC = new Date(endIST.getTime() - istOffset);
+
+      const ordersSum = allOrdersInOrg
+        .filter((o: any) => {
+          const d = getEffectiveOrderDate(o);
+          return d >= startUTC && d <= endUTC;
+        })
+        .reduce((sum: number, o: any) => sum + Number(o.totalValue || 0), 0);
+
+      const quotesSum = standaloneConfirmedQuotes
+        .filter((q: any) => {
+          const d = getQuotationDealDate(q);
+          return d >= startUTC && d <= endUTC;
+        })
+        .reduce((sum: number, q: any) => sum + Number(q.totalValue || 0), 0);
+
+      return {
+        name: `${dayNum}`,
+        sales: Math.round(ordersSum + quotesSum),
+        dateStr: `${dayNum} ${startIST.toLocaleString('en-IN', { month: 'short', timeZone: 'UTC' })}`
+      };
+    });
+
+    const thisWeekTotal = thisWeekData.reduce((sum, d) => sum + d.sales, 0);
+    const last7DaysTotal = last7DaysData.reduce((sum, d) => sum + d.sales, 0);
+    const allDaysTotal = allDaysData.reduce((sum, d) => sum + d.sales, 0);
+
+    const salesData = {
+      thisWeek: thisWeekData,
+      last7Days: last7DaysData,
+      thisMonth: thisMonthData,
+      allDays: allDaysData,
+      defaultView: thisWeekTotal > 0 ? 'THIS_WEEK' : (last7DaysTotal > 0 ? 'LAST_7_DAYS' : (allDaysTotal > 0 ? 'ALL_DAYS' : 'THIS_WEEK'))
+    };
 
     // Calculate Top Categories from real DB order items if available
     const categoryMap: Record<string, number> = {};
@@ -499,11 +683,11 @@ export default async function Home() {
     const teamPerformance = (employees || []).map((emp: any) => {
       const empOrdersMTD = (allOrdersInOrg || []).filter((o: any) => 
         (o.salespersonId === emp.id || (o as any).customer?.assignedSalespersonId === emp.id) &&
-        o.orderDate && new Date(o.orderDate) >= startOfMonth
+        getEffectiveOrderDate(o) >= startOfMonth
       );
       const empStandaloneQuotesMTD = (standaloneConfirmedQuotes || []).filter((q: any) => 
         (q.salespersonId === emp.id || (q as any).customer?.assignedSalespersonId === emp.id) &&
-        ((q.date && new Date(q.date) >= startOfMonth) || (q.createdAt && new Date(q.createdAt) >= startOfMonth))
+        getQuotationDealDate(q) >= startOfMonth
       );
 
       const salesMTD = empOrdersMTD.reduce((sum: number, o: any) => sum + Number(o.totalValue || 0), 0) +
@@ -806,10 +990,20 @@ export default async function Home() {
           status: { in: ['Confirmed', 'Converted'] },
           OR: [
             { date: { gte: startOfMonth } },
-            { createdAt: { gte: startOfMonth } }
+            { createdAt: { gte: startOfMonth } },
+            { acceptedDate: { gte: startOfMonth } },
+            { updatedAt: { gte: startOfMonth } }
           ]
         },
-        include: { salesperson: { include: { user: true } } }
+        include: { 
+          salesperson: { include: { user: true } },
+          activities: {
+            where: { action: { in: ['Quotation Confirmed', 'Converted to Order'] } },
+            select: { action: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 2
+          }
+        }
       }).catch(() => []),
       prisma.employee.findMany({
         where: orgId ? { organizationId: orgId } : {},
@@ -820,21 +1014,28 @@ export default async function Home() {
     const isCheckedIn = !!attendanceRecord;
     const isCheckedOut = !!attendanceRecord?.checkOut;
 
+    const empQuoteByNumber = new Map<string, any>();
+    allConfirmedQuotations.forEach((q: any) => {
+      if (q.quotationNumber) {
+        empQuoteByNumber.set(q.quotationNumber.trim().toUpperCase(), q);
+      }
+    });
+
     // Deduplicate confirmed quotations already converted to orders
     const convertedQuoteNumbersForEmp = new Set<string>();
     allEmployeeOrders.forEach((o: any) => {
-      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9-]+)/i);
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
       if (match && match[1]) {
-        convertedQuoteNumbersForEmp.add(match[1].trim());
+        convertedQuoteNumbersForEmp.add(match[1].trim().toUpperCase());
       }
     });
 
     const standaloneConfirmedQuotAsOrders = allConfirmedQuotations
       .filter((q: any) => {
         if (q.status !== 'Confirmed') return false;
-        const qNum = (q.quotationNumber || '').trim();
+        const qNum = (q.quotationNumber || '').trim().toUpperCase();
         if (qNum && convertedQuoteNumbersForEmp.has(qNum)) return false;
-        if (qNum && allEmployeeOrders.some((o: any) => (o.notes || '').includes(qNum))) return false;
+        if (qNum && allEmployeeOrders.some((o: any) => (o.notes || '').toUpperCase().includes(qNum))) return false;
         return true;
       })
       .map((q: any) => ({
@@ -848,14 +1049,25 @@ export default async function Home() {
         customer: q.customer
       }));
 
-    // Combined list: real orders + standalone confirmed quotations
+    // Combined list: real orders (with effective date if converted from quote) + standalone confirmed quotations
     const allCombinedSales = [
-      ...allEmployeeOrders.map((o: any) => ({
-        ...o,
-        orderDate: o.orderDate ? (typeof o.orderDate === 'string' ? o.orderDate : o.orderDate.toISOString()) : null,
-        totalValue: Number(o.totalValue ?? o.subtotal ?? 0),
-        subtotal: Number(o.subtotal ?? o.totalValue ?? 0)
-      })),
+      ...allEmployeeOrders.map((o: any) => {
+        let effDateStr: string | null = o.orderDate ? (typeof o.orderDate === 'string' ? o.orderDate : o.orderDate.toISOString()) : null;
+        const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
+        if (match && match[1]) {
+          const lq = empQuoteByNumber.get(match[1].trim().toUpperCase());
+          if (lq && (lq.date || lq.createdAt)) {
+            const d = new Date(lq.date || lq.createdAt);
+            effDateStr = d.toISOString();
+          }
+        }
+        return {
+          ...o,
+          orderDate: effDateStr,
+          totalValue: Number(o.totalValue ?? o.subtotal ?? 0),
+          subtotal: Number(o.subtotal ?? o.totalValue ?? 0)
+        };
+      }),
       ...standaloneConfirmedQuotAsOrders
     ];
 
@@ -890,9 +1102,16 @@ export default async function Home() {
       return hasCustomer || hasLead || Boolean(c.customerId || c.leadId);
     });
 
+    const padZero = (n: number) => String(n).padStart(2, '0');
+    const istTodayDateStr = `${istYear}-${padZero(istMonth + 1)}-${padZero(istDate)}`;
+
     const todayFollowUps = validFollowUps.filter((c: any) => {
+      if (!c.followUpDate) return false;
       const d = new Date(c.followUpDate);
-      return d < new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
+      if (isNaN(d.getTime())) return false;
+      if (d >= todayStart && d <= todayEnd) return true;
+      if (typeof c.followUpDate === 'string' && c.followUpDate.substring(0, 10) === istTodayDateStr) return true;
+      return false;
     });
 
     // Serialize cleanly for client component props - include confirmed quotations
@@ -922,30 +1141,66 @@ export default async function Home() {
     // ---------------------------------------------------------
     // ORG-WIDE LEADERBOARDS: DAILY & MONTHLY
     // ---------------------------------------------------------
+    const orgQuoteByNumberMTD = new Map<string, any>();
+    allOrgQuotesMTD.forEach((q: any) => {
+      if (q.quotationNumber) {
+        orgQuoteByNumberMTD.set(q.quotationNumber.trim().toUpperCase(), q);
+      }
+    });
+
     // Find all quotation numbers that already have an order created
     const allConvertedQuoteNumbers = new Set<string>();
     allOrgOrdersMTD.forEach((o: any) => {
-      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9-]+)/i);
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
       if (match && match[1]) {
-        allConvertedQuoteNumbers.add(match[1].trim());
+        allConvertedQuoteNumbers.add(match[1].trim().toUpperCase());
       }
     });
 
     // Standalone confirmed quotations (ONLY 'Confirmed' that are NOT yet converted and NOT represented in orders)
     const standaloneOrgConfirmedQuotes = allOrgQuotesMTD.filter((q: any) => {
       if (q.status !== 'Confirmed') return false;
-      const qNum = (q.quotationNumber || '').trim();
+      const qNum = (q.quotationNumber || '').trim().toUpperCase();
       if (qNum && allConvertedQuoteNumbers.has(qNum)) return false;
-      if (qNum && allOrgOrdersMTD.some((o: any) => (o.notes || '').includes(qNum))) return false;
+      if (qNum && allOrgOrdersMTD.some((o: any) => (o.notes || '').toUpperCase().includes(qNum))) return false;
       return true;
     });
+
+    const getOrgQuotationDealDate = (q: any): Date => {
+      if (q.acceptedDate) return new Date(q.acceptedDate);
+      if (q.activities && q.activities.length > 0) {
+        const confirmAct = q.activities.find((a: any) => a.action === 'Quotation Confirmed');
+        if (confirmAct?.createdAt) return new Date(confirmAct.createdAt);
+        const convertAct = q.activities.find((a: any) => a.action === 'Converted to Order');
+        if (convertAct?.createdAt) return new Date(convertAct.createdAt);
+      }
+      if ((q.status === 'Confirmed' || q.status === 'Converted') && q.updatedAt) {
+        return new Date(q.updatedAt);
+      }
+      return q.date ? new Date(q.date) : (q.createdAt ? new Date(q.createdAt) : new Date());
+    };
+
+    const getEffectiveOrgOrderDate = (o: any): Date => {
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
+      if (match && match[1]) {
+        const qNum = match[1].trim().toUpperCase();
+        const linkedQuote = orgQuoteByNumberMTD.get(qNum);
+        if (linkedQuote) {
+          return getOrgQuotationDealDate(linkedQuote);
+        }
+      }
+      return o.orderDate ? new Date(o.orderDate) : (o.createdAt ? new Date(o.createdAt) : new Date());
+    };
 
     // 1. Daily Leaderboard (Today)
     const dailyMap: Record<string, { id: string, name: string, orders: number, total: number, isCurrentEmployee: boolean }> = {};
     let todayOrgOrdersCount = 0;
 
     allOrgOrdersMTD
-      .filter((o: any) => o.orderDate && new Date(o.orderDate) >= todayStart)
+      .filter((o: any) => {
+        const effDate = getEffectiveOrgOrderDate(o);
+        return effDate >= todayStart && effDate <= todayEnd;
+      })
       .forEach((o: any) => {
         todayOrgOrdersCount += 1;
         const spId = o.salespersonId || 'unassigned';
@@ -958,7 +1213,10 @@ export default async function Home() {
       });
 
     standaloneOrgConfirmedQuotes
-      .filter((q: any) => (q.date && new Date(q.date) >= todayStart) || (q.createdAt && new Date(q.createdAt) >= todayStart))
+      .filter((q: any) => {
+        const qDate = getOrgQuotationDealDate(q);
+        return qDate >= todayStart && qDate <= todayEnd;
+      })
       .forEach((q: any) => {
         todayOrgOrdersCount += 1;
         const spId = q.salespersonId || 'unassigned';
@@ -989,21 +1247,28 @@ export default async function Home() {
       };
     });
 
-    allOrgOrdersMTD.forEach((o: any) => {
-      const spId = o.salespersonId;
-      if (spId && monthlyMap[spId]) {
-        monthlyMap[spId].orders += 1;
-        monthlyMap[spId].total += Number(o.totalValue ?? o.subtotal ?? 0);
-      }
-    });
+    allOrgOrdersMTD
+      .filter((o: any) => getEffectiveOrgOrderDate(o) >= startOfMonth)
+      .forEach((o: any) => {
+        const spId = o.salespersonId;
+        if (spId && monthlyMap[spId]) {
+          monthlyMap[spId].orders += 1;
+          monthlyMap[spId].total += Number(o.totalValue ?? o.subtotal ?? 0);
+        }
+      });
 
-    standaloneOrgConfirmedQuotes.forEach((q: any) => {
-      const spId = q.salespersonId;
-      if (spId && monthlyMap[spId]) {
-        monthlyMap[spId].orders += 1;
-        monthlyMap[spId].total += Number(q.totalValue ?? q.subtotal ?? 0);
-      }
-    });
+    standaloneOrgConfirmedQuotes
+      .filter((q: any) => {
+        const qDate = getOrgQuotationDealDate(q);
+        return qDate >= startOfMonth;
+      })
+      .forEach((q: any) => {
+        const spId = q.salespersonId;
+        if (spId && monthlyMap[spId]) {
+          monthlyMap[spId].orders += 1;
+          monthlyMap[spId].total += Number(q.totalValue ?? q.subtotal ?? 0);
+        }
+      });
 
     Object.values(monthlyMap).forEach(m => {
       m.targetPercent = m.target > 0 ? Math.min(100, Math.round((m.total / m.target) * 100)) : 0;
@@ -1013,7 +1278,7 @@ export default async function Home() {
 
     return (
       <>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '16px 20px 0 20px' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '4px 0 12px 0' }}>
           <BroadcastBanner userId={userId || ''} userRole={userRole} />
         </div>
         <EmployeeDashboard 

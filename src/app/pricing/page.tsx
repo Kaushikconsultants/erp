@@ -32,9 +32,45 @@ export default function PricingPage() {
 
   const getPrice = (planKey: 'STARTER' | 'GROWTH' | 'ENTERPRISE') => {
     const plan = plans[planKey] || PLAN_PRICING[planKey];
-    if (billingCycle === 'MONTHLY') return { amount: plan.monthlyPrice, period: '/ month', note: 'Billed monthly' };
-    if (billingCycle === 'QUARTERLY') return { amount: Math.round(plan.quarterlyPrice / 3), period: '/ month', note: `Billed quarterly (₹${plan.quarterlyPrice.toLocaleString('en-IN')}) • 10% Off` };
-    return { amount: Math.round(plan.annualPrice / 12), period: '/ month', note: `Billed annually (₹${plan.annualPrice.toLocaleString('en-IN')}) • 20% Off` };
+    if (billingCycle === 'MONTHLY') return { amount: plan.monthlyPrice, period: '/ month', note: 'Billed monthly • Cancel anytime' };
+    if (billingCycle === 'QUARTERLY') {
+      const perMonth = planKey === 'STARTER' ? 899 : planKey === 'GROWTH' ? 2249 : 5399;
+      const regularQuarterly = plan.monthlyPrice * 3;
+      const savings = Math.max(0, regularQuarterly - plan.quarterlyPrice);
+      return { amount: perMonth, period: '/ month', note: `Billed quarterly (₹${plan.quarterlyPrice.toLocaleString('en-IN')}) • Save ₹${savings.toLocaleString('en-IN')} (10% Off)` };
+    }
+    const perMonth = planKey === 'STARTER' ? 799 : planKey === 'GROWTH' ? 1999 : 4799;
+    const regularAnnual = plan.monthlyPrice * 12;
+    const savings = Math.max(0, regularAnnual - plan.annualPrice);
+    return { amount: perMonth, period: '/ month', note: `Billed annually (₹${plan.annualPrice.toLocaleString('en-IN')}) • Save ₹${savings.toLocaleString('en-IN')} (20% Off)` };
+  };
+
+  const getQuotaDetails = (planKey: 'STARTER' | 'GROWTH' | 'ENTERPRISE') => {
+    if (planKey === 'STARTER') {
+      return {
+        seats: "Up to 3 Users",
+        branches: "1 Branch / 1 Warehouse",
+        orders: billingCycle === "ANNUALLY" ? "6,000 / yr (500/mo)" : billingCycle === "QUARTERLY" ? "1,500 / qtr (500/mo)" : "500 Orders / mo",
+        credits: billingCycle === "ANNUALLY" ? "6,000 Credits / yr" : billingCycle === "QUARTERLY" ? "1,500 Credits / qtr" : "500 Credits / mo",
+        perk: billingCycle === "ANNUALLY" ? "🎉 Save ₹2,489 (~2.5 Mo Free)" : billingCycle === "QUARTERLY" ? "⚡ Save ₹298 (10% Off)" : null,
+      };
+    }
+    if (planKey === 'GROWTH') {
+      return {
+        seats: "Up to 10 Users",
+        branches: "3 Branches / 2 Warehouses",
+        orders: billingCycle === "ANNUALLY" ? "24,000 / yr (2,000/mo)" : billingCycle === "QUARTERLY" ? "6,000 / qtr (2,000/mo)" : "2,000 Orders / mo",
+        credits: billingCycle === "ANNUALLY" ? "30,000 Credits + AI Bot" : billingCycle === "QUARTERLY" ? "7,500 Credits + AI Bot" : "2,500 Credits + AI Bot",
+        perk: billingCycle === "ANNUALLY" ? "🎉 Save ₹6,000 (~2.5 Mo Free)" : billingCycle === "QUARTERLY" ? "⚡ Save ₹748 (10% Off)" : null,
+      };
+    }
+    return {
+      seats: "Unlimited Users",
+      branches: "Unlimited Multi-Warehouse",
+      orders: "Unlimited Orders",
+      credits: billingCycle === "ANNUALLY" ? "120,000 AI Credits / yr" : billingCycle === "QUARTERLY" ? "30,000 AI Credits / qtr" : "10,000 AI Credits / mo",
+      perk: billingCycle === "ANNUALLY" ? "🎉 Save ₹14,489 (~2.5 Mo Free)" : billingCycle === "QUARTERLY" ? "⚡ Save ₹1,798 (10% Off)" : null,
+    };
   };
 
   const faqs = [
@@ -66,7 +102,7 @@ export default function PricingPage() {
             E
           </div>
           <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-            Espon ERP
+            Heart of Business
           </span>
         </Link>
 
@@ -143,7 +179,7 @@ export default function PricingPage() {
               boxShadow: billingCycle === 'ANNUALLY' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none'
             }}
           >
-            Yearly <span style={{ color: '#2563eb', fontSize: '0.72rem', fontWeight: 700 }}>20% OFF</span>
+            Yearly <span style={{ background: billingCycle === 'ANNUALLY' ? '#ede9fe' : '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '8px', fontSize: '0.74rem', fontWeight: 800 }}>20% OFF • 2.5 Mo Free</span>
           </button>
         </div>
       </section>
@@ -154,15 +190,61 @@ export default function PricingPage() {
         {/* Plan 1: Starter */}
         <div style={{ backgroundColor: '#ffffff', borderRadius: '18px', border: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
           <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>Starter</div>
-          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '6px 0 18px 0' }}>Perfect for boutique brands and small trading setups.</p>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '6px 0 18px 0', minHeight: '38px' }}>Perfect for boutique brands and small trading setups.</p>
           
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a' }}>₹{getPrice('STARTER').amount.toLocaleString('en-IN')}</span>
             <span style={{ color: '#64748b', fontSize: '0.875rem' }}>{getPrice('STARTER').period}</span>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600, marginTop: '2px', marginBottom: '24px' }}>
+          <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600, marginTop: '2px', marginBottom: '16px', minHeight: '18px' }}>
             {getPrice('STARTER').note}
           </div>
+
+          {/* Quota Highlights */}
+          {(() => {
+            const q = getQuotaDetails('STARTER');
+            return (
+              <div
+                style={{
+                  background: '#f8fafc',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  marginBottom: '20px',
+                  border: '1px solid #e2e8f0',
+                  fontSize: '0.78rem',
+                  color: '#475569',
+                  fontWeight: 600,
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '7px',
+                  minHeight: billingCycle === 'MONTHLY' ? '128px' : '166px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>User Seats:</span>
+                  <strong style={{ color: '#0f172a', whiteSpace: 'nowrap' }}>{q.seats}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>Branches:</span>
+                  <strong style={{ color: '#0f172a', whiteSpace: 'nowrap' }}>{q.branches}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>Orders:</span>
+                  <strong style={{ color: '#0f172a', whiteSpace: 'nowrap' }}>{q.orders}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>WhatsApp:</span>
+                  <strong style={{ color: '#0f172a', whiteSpace: 'nowrap' }}>{q.credits}</strong>
+                </div>
+                {q.perk && (
+                  <div style={{ marginTop: 'auto', padding: '5px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', color: '#065f46', fontSize: '0.72rem', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    {q.perk}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <Link href={`/register?plan=STARTER&cycle=${billingCycle}`} style={{ display: 'block', textAlign: 'center', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', marginBottom: '24px' }}>
             Start 14-Day Free Trial
@@ -185,15 +267,61 @@ export default function PricingPage() {
           </div>
 
           <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>Growth</div>
-          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '6px 0 18px 0' }}>For growing manufacturers, apparel brands & distributors.</p>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '6px 0 18px 0', minHeight: '38px' }}>For growing manufacturers, apparel brands & distributors.</p>
           
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a' }}>₹{getPrice('GROWTH').amount.toLocaleString('en-IN')}</span>
             <span style={{ color: '#64748b', fontSize: '0.875rem' }}>{getPrice('GROWTH').period}</span>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600, marginTop: '2px', marginBottom: '24px' }}>
+          <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600, marginTop: '2px', marginBottom: '16px', minHeight: '18px' }}>
             {getPrice('GROWTH').note}
           </div>
+
+          {/* Quota Highlights */}
+          {(() => {
+            const q = getQuotaDetails('GROWTH');
+            return (
+              <div
+                style={{
+                  background: '#f5f3ff',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  marginBottom: '20px',
+                  border: '1px solid #ddd6fe',
+                  fontSize: '0.78rem',
+                  color: '#4f46e5',
+                  fontWeight: 600,
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '7px',
+                  minHeight: billingCycle === 'MONTHLY' ? '128px' : '166px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>User Seats:</span>
+                  <strong style={{ color: '#1e1b4b', whiteSpace: 'nowrap' }}>{q.seats}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>Branches:</span>
+                  <strong style={{ color: '#1e1b4b', whiteSpace: 'nowrap' }}>{q.branches}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>Orders:</span>
+                  <strong style={{ color: '#1e1b4b', whiteSpace: 'nowrap' }}>{q.orders}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>WhatsApp:</span>
+                  <strong style={{ color: '#1e1b4b', whiteSpace: 'nowrap' }}>{q.credits}</strong>
+                </div>
+                {q.perk && (
+                  <div style={{ marginTop: 'auto', padding: '5px 8px', background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: '6px', color: '#4338ca', fontSize: '0.72rem', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    {q.perk}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <Link href={`/register?plan=GROWTH&cycle=${billingCycle}`} style={{ display: 'block', textAlign: 'center', padding: '12px', borderRadius: '10px', backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', marginBottom: '24px', boxShadow: '0 4px 14px rgba(79, 70, 229, 0.35)' }}>
             Start 14-Day Free Trial
@@ -212,15 +340,61 @@ export default function PricingPage() {
         {/* Plan 3: Enterprise */}
         <div style={{ backgroundColor: '#ffffff', borderRadius: '18px', border: '1px solid #e2e8f0', padding: '32px 24px', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
           <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0f172a' }}>Enterprise</div>
-          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '6px 0 18px 0' }}>For high-volume multi-branch manufacturing enterprises.</p>
+          <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '6px 0 18px 0', minHeight: '38px' }}>For high-volume multi-branch manufacturing enterprises.</p>
           
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             <span style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a' }}>₹{getPrice('ENTERPRISE').amount.toLocaleString('en-IN')}</span>
             <span style={{ color: '#64748b', fontSize: '0.875rem' }}>{getPrice('ENTERPRISE').period}</span>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600, marginTop: '2px', marginBottom: '24px' }}>
+          <div style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600, marginTop: '2px', marginBottom: '16px', minHeight: '18px' }}>
             {getPrice('ENTERPRISE').note}
           </div>
+
+          {/* Quota Highlights */}
+          {(() => {
+            const q = getQuotaDetails('ENTERPRISE');
+            return (
+              <div
+                style={{
+                  background: '#f8fafc',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  marginBottom: '20px',
+                  border: '1px solid #e2e8f0',
+                  fontSize: '0.78rem',
+                  color: '#475569',
+                  fontWeight: 600,
+                  textAlign: 'left',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '7px',
+                  minHeight: billingCycle === 'MONTHLY' ? '128px' : '166px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>User Seats:</span>
+                  <strong style={{ color: '#0f172a', whiteSpace: 'nowrap' }}>{q.seats}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>Branches:</span>
+                  <strong style={{ color: '#0f172a', whiteSpace: 'nowrap' }}>{q.branches}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>Orders:</span>
+                  <strong style={{ color: '#0f172a', whiteSpace: 'nowrap' }}>{q.orders}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '22px' }}>
+                  <span style={{ whiteSpace: 'nowrap' }}>WhatsApp:</span>
+                  <strong style={{ color: '#0f172a', whiteSpace: 'nowrap' }}>{q.credits}</strong>
+                </div>
+                {q.perk && (
+                  <div style={{ marginTop: 'auto', padding: '5px 8px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', color: '#065f46', fontSize: '0.72rem', fontWeight: 700, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    {q.perk}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <Link href={`/register?plan=ENTERPRISE&cycle=${billingCycle}`} style={{ display: 'block', textAlign: 'center', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', color: '#0f172a', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none', marginBottom: '24px' }}>
             Start 14-Day Free Trial

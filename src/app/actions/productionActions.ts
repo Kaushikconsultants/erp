@@ -6,10 +6,16 @@ import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
 import { canUserAccessSection } from "@/lib/authPermissions";
+import { assertTenantModuleAccess } from "@/lib/entitlements";
 
 async function canManageProduction() {
   const session = await getServerSession(authOptions);
   if (!session?.user) return false;
+  try {
+    await assertTenantModuleAccess('PRODUCTION_MANUFACTURING');
+  } catch {
+    return false;
+  }
   return await canUserAccessSection(session.user, "production");
 }
 
@@ -21,6 +27,12 @@ export async function getWorkOrders(filters?: {
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
+
+  try {
+    await assertTenantModuleAccess('PRODUCTION_MANUFACTURING');
+  } catch (err: any) {
+    return { error: err.message || "Unauthorized" };
+  }
 
   const hasAccess = await canUserAccessSection(session.user, "production");
   if (!hasAccess) return { error: "Unauthorized" };

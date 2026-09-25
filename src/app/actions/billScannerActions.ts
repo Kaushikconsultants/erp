@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/prisma";
 import { getTenantAIClient } from "@/lib/gemini";
 import { getTenantOrgId } from "@/lib/tenant";
+import { getGeminiApiKey } from "@/lib/aiClient";
+
 
 export interface ExtractedBillItem {
   matchedProductId?: string;

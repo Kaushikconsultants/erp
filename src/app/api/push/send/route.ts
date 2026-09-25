@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import webpush from "web-push";
 
-// Initialize web-push with VAPID keys
-webpush.setVapidDetails(
-  "mailto:admin@11fit.com",
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BIqLUY30-N9qSJrCz4tF1C65XgCRVyr-1TmiCTG2MNFL2_8_EAC4o626ehSdKSM5uUpNPJvpcNCjwOen8evAjRU",
-  process.env.VAPID_PRIVATE_KEY || "MJiZ0ppPI4Jx1RM43ryneCtprRbgnsaSGnBmCooFqN0"
-);
+// Initialize web-push with VAPID keys if configured
+if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT || "mailto:admin@example.com",
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
 
 export async function POST(req: NextRequest) {
   try {
+    const internalSecret = process.env.INTERNAL_API_SECRET;
     const secret = req.headers.get("x-internal-secret");
-    if (secret !== (process.env.INTERNAL_API_SECRET || 'crm_internal_2026')) {
+    if (!internalSecret || secret !== internalSecret) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

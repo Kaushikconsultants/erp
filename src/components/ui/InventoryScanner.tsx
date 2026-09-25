@@ -317,7 +317,7 @@ export default function InventoryScanner() {
 
       {/* Input controls */}
       <div className="scanner-controls-row">
-        <div style={{ flex: "1 1 240px", width: "100%" }}>
+        <div style={{ flex: "2 1 240px", minWidth: "200px" }}>
           <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "5px" }}>
             Scan Barcode / Enter SKU or Article Number
           </label>
@@ -351,7 +351,7 @@ export default function InventoryScanner() {
           />
         </div>
 
-        <div className="scanner-qty-buttons-row">
+        <div className="scanner-qty-buttons-row" style={{ display: "flex", gap: "8px", alignItems: "flex-end", flex: "1 1 auto" }}>
           <div style={{ width: "70px", flexShrink: 0 }}>
             <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "5px" }}>
               Qty
@@ -381,7 +381,7 @@ export default function InventoryScanner() {
             />
           </div>
 
-          <div style={{ display: "flex", gap: "8px", flex: 1, alignItems: "flex-end" }}>
+          <div style={{ display: "flex", gap: "8px", flex: 1, alignItems: "center" }}>
             <button
               type="button"
               onClick={() => handleScan("IN")}
@@ -389,6 +389,7 @@ export default function InventoryScanner() {
               style={{
                 height: "38px",
                 flex: 1,
+                minWidth: "100px",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -396,17 +397,20 @@ export default function InventoryScanner() {
                 padding: "0 14px",
                 backgroundColor: "#10b981",
                 color: "#ffffff",
-                border: "none",
+                border: "1px solid #10b981",
                 borderRadius: "8px",
                 fontSize: "0.82rem",
                 fontWeight: 600,
+                lineHeight: 1,
+                whiteSpace: "nowrap",
+                boxSizing: "border-box",
                 cursor: loading || !sku.trim() ? "not-allowed" : "pointer",
                 opacity: loading || !sku.trim() ? 0.6 : 1,
                 boxShadow: "0 1px 2px rgba(16, 185, 129, 0.2)",
                 transition: "all 0.15s ease"
               }}
-              onMouseEnter={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#059669"; }}
-              onMouseLeave={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#10b981"; }}
+              onMouseEnter={e => { if (!loading && sku.trim()) { e.currentTarget.style.backgroundColor = "#059669"; e.currentTarget.style.borderColor = "#059669"; } }}
+              onMouseLeave={e => { if (!loading && sku.trim()) { e.currentTarget.style.backgroundColor = "#10b981"; e.currentTarget.style.borderColor = "#10b981"; } }}
             >
               <Plus size={15} /> Stock In
             </button>
@@ -418,6 +422,7 @@ export default function InventoryScanner() {
               style={{
                 height: "38px",
                 flex: 1,
+                minWidth: "100px",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -429,12 +434,15 @@ export default function InventoryScanner() {
                 borderRadius: "8px",
                 fontSize: "0.82rem",
                 fontWeight: 600,
+                lineHeight: 1,
+                whiteSpace: "nowrap",
+                boxSizing: "border-box",
                 cursor: loading || !sku.trim() ? "not-allowed" : "pointer",
                 opacity: loading || !sku.trim() ? 0.6 : 1,
                 transition: "all 0.15s ease"
               }}
-              onMouseEnter={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#fef2f2"; }}
-              onMouseLeave={e => { if (!loading && sku.trim()) e.currentTarget.style.backgroundColor = "#ffffff"; }}
+              onMouseEnter={e => { if (!loading && sku.trim()) { e.currentTarget.style.backgroundColor = "#fef2f2"; e.currentTarget.style.borderColor = "#f87171"; } }}
+              onMouseLeave={e => { if (!loading && sku.trim()) { e.currentTarget.style.backgroundColor = "#ffffff"; e.currentTarget.style.borderColor = "#fca5a5"; } }}
             >
               <Minus size={15} /> Stock Out
             </button>

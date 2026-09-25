@@ -3,9 +3,11 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { getTenantOrgId } from "@/lib/tenant";
+import { authOptions, parseUserAgent } from "@/lib/auth";
+import { getTenantOrgId, checkTenantQuota } from "@/lib/tenant";
+import { generateUniqueEmployeeId } from "@/lib/employeeHelper";
 
 export async function getHiredCandidates() {
   try {
@@ -73,8 +75,30 @@ export async function createUser(formData: FormData) {
     return { error: "Name, email, password, and role are required" };
   }
 
+  if (password.trim().length < 8) {
+    return { error: "Password must be at least 8 characters long." };
+  }
+
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { error: "Unauthorized" };
+
+    const callerRole = (session.user as any).role;
+    const callerCanManage = (session.user as any).canManageSettings;
+    if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN" && !callerCanManage) {
+      return { error: "Permission denied. Only administrators can create users." };
+    }
+
+    if (role === "SUPER_ADMIN" && callerRole !== "SUPER_ADMIN") {
+      return { error: "Only Super Admins can create another Super Admin account." };
+    }
+
     const organizationId = await getTenantOrgId();
+
+    const quotaCheck = await checkTenantQuota(organizationId, 'USERS');
+    if (!quotaCheck.allowed) {
+      return { error: quotaCheck.error };
+    }
 
     const existingUser = await prisma.user.findUnique({
       where: { email: email.trim() },
@@ -139,7 +163,7 @@ export async function createUser(formData: FormData) {
       },
     });
 
-    const empCode = employeeCode?.trim() || `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
+    const empCode = employeeCode?.trim() || await generateUniqueEmployeeId(prisma);
     const joiningDate = joiningDateStr ? new Date(joiningDateStr) : new Date();
 
     await prisma.employee.create({
@@ -184,6 +208,15 @@ export async function createUser(formData: FormData) {
 }
 
 export async function updateUser(id: string, formData: FormData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const callerRole = (session.user as any).role;
+  const callerCanManage = (session.user as any).canManageSettings;
+  if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN" && !callerCanManage) {
+    return { error: "Permission denied. Only administrators can update users." };
+  }
+
   const role = formData.get("role") as string;
   const canManageSettings = formData.get("canManageSettings") === "true";
   const isActive = formData.get("isActive") === "true";
@@ -195,6 +228,20 @@ export async function updateUser(id: string, formData: FormData) {
   }
 
   try {
+    const callerOrgId = await getTenantOrgId();
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      select: { organizationId: true, role: true }
+    });
+
+    if (!targetUser || targetUser.organizationId !== callerOrgId) {
+      return { error: "User not found or access denied." };
+    }
+
+    if (role === "SUPER_ADMIN" && callerRole !== "SUPER_ADMIN") {
+      return { error: "Only Super Admins can promote an account to Super Admin." };
+    }
+
     const updateData: any = {
       role,
       canManageSettings,
@@ -202,7 +249,10 @@ export async function updateUser(id: string, formData: FormData) {
       allowedSections: allowedSections || null
     };
 
-    if (newPassword && newPassword.trim().length >= 4) {
+    if (newPassword && newPassword.trim().length > 0) {
+      if (newPassword.trim().length < 8) {
+        return { error: "Password must be at least 8 characters long." };
+      }
       updateData.password = await bcrypt.hash(newPassword.trim(), 10);
     }
 
@@ -232,24 +282,341 @@ export async function updateUser(id: string, formData: FormData) {
   }
 }
 
-export async function updateUserPassword(userId: string, newPassword: string) {
-  if (!userId || !newPassword || newPassword.trim().length < 4) {
-    return { error: "Password must be at least 4 characters long" };
+export async function updateUserPassword(
+  userId: string, 
+  newPassword: string, 
+  signOutAllDevices: boolean = false
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  if (!userId || !newPassword || newPassword.trim().length < 8) {
+    return { error: "Password must be at least 8 characters long." };
   }
 
   try {
+    const currentUserId = (session.user as any).id;
+    const callerRole = (session.user as any).role;
+    const callerCanManage = (session.user as any).canManageSettings;
+    const callerOrgId = await getTenantOrgId();
+
+    const isSelf = currentUserId === userId;
+    const isAdmin = callerRole === "ADMIN" || callerRole === "SUPER_ADMIN" || callerCanManage;
+
+    if (!isSelf && !isAdmin) {
+      return { error: "Permission denied." };
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { organizationId: true }
+    });
+
+    if (!targetUser || (!isSelf && targetUser.organizationId !== callerOrgId)) {
+      return { error: "User not found or access denied." };
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
+    const updateData: any = { 
+      password: hashedPassword
+    };
+
+    if (signOutAllDevices) {
+      updateData.presenceStatus = "OFFLINE";
+      updateData.updatedAt = new Date();
+      try {
+        await prisma.auditLog.updateMany({
+          where: {
+            userId,
+            module: "AUTH_SESSION",
+            action: "DEVICE_LOGIN"
+          },
+          data: {
+            newValue: "REVOKED"
+          }
+        });
+      } catch {}
+    }
+
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword }
+      data: updateData
     });
 
     revalidatePath("/settings");
     revalidatePath("/settings/roles");
-    return { success: true, message: "User password updated successfully!" };
+    return { 
+      success: true, 
+      message: signOutAllDevices 
+        ? "Password updated and signed out of all devices successfully!" 
+        : "User password updated successfully!" 
+    };
   } catch (error: any) {
     console.error("Failed to update password:", error);
     return { error: error?.message || "Failed to update password. Please try again." };
+  }
+}
+
+/**
+ * Get active devices currently logged in for a user
+ */
+export async function getUserActiveDevices(userId: string): Promise<{
+  success: boolean;
+  count: number;
+  devices: {
+    id: string;
+    deviceType: string;
+    browser: string;
+    os: string;
+    ipAddress?: string | null;
+    lastActiveAt: string;
+    isCurrent?: boolean;
+  }[];
+  error?: string;
+}> {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, count: 0, devices: [], error: "Unauthorized" };
+
+    const currentUserId = (session.user as any).id;
+    const currentRole = (session.user as any).role;
+    const canManage = (session.user as any).canManageSettings;
+
+    // Must be admin or self
+    if (currentUserId !== userId && currentRole !== "ADMIN" && currentRole !== "SUPER_ADMIN" && !canManage) {
+      return { success: false, count: 0, devices: [], error: "Permission denied." };
+    }
+
+    const callerOrgId = await getTenantOrgId();
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        organizationId: true,
+        lastActiveAt: true,
+        presenceStatus: true,
+        updatedAt: true
+      }
+    });
+
+    if (!user || user.organizationId !== callerOrgId) {
+      return { success: false, count: 0, devices: [], error: "User not found or access denied." };
+    }
+
+    // Fetch device sessions from AuditLog (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    let sessionLogs: any[] = [];
+    try {
+      sessionLogs = await prisma.auditLog.findMany({
+        where: {
+          userId,
+          module: "AUTH_SESSION",
+          action: "DEVICE_LOGIN",
+          newValue: "ACTIVE",
+          createdAt: { gte: thirtyDaysAgo }
+        },
+        orderBy: { createdAt: "desc" },
+        take: 50
+      });
+    } catch (logErr) {
+      console.warn("Could not query session logs:", logErr);
+    }
+
+    const deviceMap = new Map<string, any>();
+    for (const log of sessionLogs) {
+      if (!deviceMap.has(log.recordId)) {
+        try {
+          const parsed = JSON.parse(log.previousValue || "{}");
+          deviceMap.set(log.recordId, {
+            id: log.id,
+            deviceType: parsed.deviceType || "Desktop",
+            browser: parsed.browser || "Web Browser",
+            os: parsed.os || "Unknown OS",
+            ipAddress: parsed.ipAddress || null,
+            lastActiveAt: log.createdAt.toISOString()
+          });
+        } catch {
+          deviceMap.set(log.recordId, {
+            id: log.id,
+            deviceType: "Desktop",
+            browser: "Web Browser",
+            os: "Unknown OS",
+            ipAddress: null,
+            lastActiveAt: log.createdAt.toISOString()
+          });
+        }
+      }
+    }
+
+    // Auto-detect and register current caller's device session if not already tracked
+    try {
+      const hdrs = await headers();
+      const currentUa = hdrs.get("user-agent") || "";
+      const forwarded = hdrs.get("x-forwarded-for") || hdrs.get("x-real-ip") || "";
+      const currentIp = forwarded ? forwarded.split(",")[0].trim() : null;
+      if (currentUa) {
+        const uaInfo = parseUserAgent(currentUa);
+        const currentFingerprint = `${uaInfo.deviceType}-${uaInfo.browser}-${uaInfo.os}-${currentIp || 'local'}`;
+        if (!deviceMap.has(currentFingerprint)) {
+          await prisma.auditLog.create({
+            data: {
+              userId,
+              action: "DEVICE_LOGIN",
+              module: "AUTH_SESSION",
+              recordId: currentFingerprint,
+              previousValue: JSON.stringify({
+                deviceType: uaInfo.deviceType,
+                browser: uaInfo.browser,
+                os: uaInfo.os,
+                ipAddress: currentIp,
+                lastActiveAt: new Date().toISOString()
+              }),
+              newValue: "ACTIVE"
+            }
+          }).catch(() => {});
+
+          deviceMap.set(currentFingerprint, {
+            id: "current-" + Date.now(),
+            deviceType: uaInfo.deviceType,
+            browser: uaInfo.browser,
+            os: uaInfo.os,
+            ipAddress: currentIp,
+            lastActiveAt: new Date().toISOString(),
+            isCurrent: true
+          });
+        }
+      }
+    } catch (hdrErr) {
+      console.warn("Could not inspect current headers in getUserActiveDevices:", hdrErr);
+    }
+
+    const devices = Array.from(deviceMap.values());
+    if (devices.length > 0) {
+      return {
+        success: true,
+        count: devices.length,
+        devices
+      };
+    }
+
+    const lastActive = user.lastActiveAt ? new Date(user.lastActiveAt) : new Date(user.updatedAt);
+    return {
+      success: true,
+      count: 1,
+      devices: [
+        {
+          id: "primary-device",
+          deviceType: "Desktop",
+          browser: "Chrome / Web Browser",
+          os: "Primary Device",
+          ipAddress: null,
+          lastActiveAt: lastActive.toISOString(),
+          isCurrent: true
+        }
+      ]
+    };
+  } catch (error: any) {
+    console.error("getUserActiveDevices error:", error);
+    return { success: false, count: 1, devices: [], error: error?.message };
+  }
+}
+
+/**
+ * Sign out of all active devices immediately for a user
+ */
+export async function signOutAllUserDevices(userId: string): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { success: false, error: "Unauthorized" };
+
+    const currentUserId = (session.user as any).id;
+    const currentRole = (session.user as any).role;
+    const canManage = (session.user as any).canManageSettings;
+
+    if (currentUserId !== userId && currentRole !== "ADMIN" && currentRole !== "SUPER_ADMIN" && !canManage) {
+      return { success: false, error: "Permission denied." };
+    }
+
+    const callerOrgId = await getTenantOrgId();
+    const targetUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { organizationId: true }
+    });
+
+    if (!targetUser || targetUser.organizationId !== callerOrgId) {
+      return { success: false, error: "User not found or access denied." };
+    }
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        presenceStatus: "OFFLINE",
+        updatedAt: new Date()
+      }
+    });
+
+    try {
+      await prisma.auditLog.updateMany({
+        where: {
+          userId,
+          module: "AUTH_SESSION",
+          action: "DEVICE_LOGIN"
+        },
+        data: {
+          newValue: "REVOKED"
+        }
+      });
+    } catch {}
+
+    revalidatePath("/settings");
+    revalidatePath("/settings/roles");
+    return { success: true, message: "Successfully signed out of all devices!" };
+  } catch (error: any) {
+    console.error("signOutAllUserDevices error:", error);
+    return { success: false, error: error?.message || "Failed to sign out all devices." };
+  }
+}
+
+export async function getUserCurrentPassword(userId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return { error: "Unauthorized" };
+
+  const currentRole = (session.user as any).role;
+  const canManage = (session.user as any).canManageSettings;
+  if (currentRole !== "ADMIN" && currentRole !== "SUPER_ADMIN" && !canManage) {
+    return { error: "Permission denied. Only administrators can view user credentials." };
+  }
+
+  try {
+    const callerOrgId = await getTenantOrgId();
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        organizationId: true,
+        name: true,
+        email: true,
+        password: true,
+        updatedAt: true
+      }
+    });
+
+    if (!user || user.organizationId !== callerOrgId) return { error: "User not found" };
+
+    return { 
+      success: true, 
+      hasPassword: Boolean(user.password),
+      updatedAt: user.updatedAt
+    };
+  } catch (error: any) {
+    console.error("Failed to fetch user credentials:", error);
+    return { error: error?.message || "Failed to retrieve credential status" };
   }
 }
 
@@ -257,18 +624,25 @@ export async function toggleUserStatus(userId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
 
+  const callerRole = (session.user as any).role;
+  const callerCanManage = (session.user as any).canManageSettings;
+  if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN" && !callerCanManage) {
+    return { error: "Permission denied. Only administrators can update user status." };
+  }
+
   const currentUserId = (session.user as any).id;
   if (currentUserId === userId) {
     return { error: "You cannot deactivate your own account." };
   }
 
   try {
+    const callerOrgId = await getTenantOrgId();
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { employee: true }
     });
 
-    if (!user) return { error: "User not found." };
+    if (!user || user.organizationId !== callerOrgId) return { error: "User not found." };
 
     const newStatus = !user.isActive;
 
@@ -324,18 +698,24 @@ export async function deleteUser(userId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user) return { error: "Unauthorized" };
 
+  const callerRole = (session.user as any).role;
+  if (callerRole !== "ADMIN" && callerRole !== "SUPER_ADMIN") {
+    return { error: "Permission denied. Only administrators can delete user accounts." };
+  }
+
   const currentUserId = (session.user as any).id;
   if (currentUserId === userId) {
     return { error: "You cannot delete your own account." };
   }
 
   try {
+    const callerOrgId = await getTenantOrgId();
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { employee: true }
     });
 
-    if (!user) return { error: "User not found." };
+    if (!user || user.organizationId !== callerOrgId) return { error: "User not found." };
 
     // Prevent deleting the last Super Admin
     if (user.role === 'SUPER_ADMIN') {

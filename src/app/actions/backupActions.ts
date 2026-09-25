@@ -9,6 +9,10 @@ export async function exportFullCompanyData() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { success: false, error: "Unauthorized" };
+    const role = (session.user as any).role;
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
+      return { success: false, error: "Permission denied. Only administrators can export company data." };
+    }
     const organizationId = await getTenantOrgId();
 
     const [

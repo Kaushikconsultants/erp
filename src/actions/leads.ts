@@ -99,10 +99,19 @@ export async function createLead(data: {
       }
     }
 
+    const cleanDigits = (data.whatsappNumber || "").replace(/\D/g, "");
+    const last10 = cleanDigits.length >= 10 ? cleanDigits.slice(-10) : cleanDigits;
+
     const existingLead = await prisma.lead.findFirst({
       where: {
-        whatsappNumber: data.whatsappNumber,
-        organizationId: orgId || null
+        ...(orgId ? {
+          OR: [
+            { organizationId: orgId },
+            { organizationId: null },
+            { organizationId: "default-org" }
+          ]
+        } : {}),
+        whatsappNumber: { contains: last10 }
       },
       include: {
         assignedSalesperson: { include: { user: true } }
@@ -111,7 +120,7 @@ export async function createLead(data: {
 
     if (existingLead) {
       const agentName = existingLead.assignedSalesperson?.user?.name || "an agent";
-      return { success: false, error: `Lead with this mobile number already exists and is assigned to ${agentName}.` };
+      return { success: false, error: `Lead with mobile number ending in ${last10} already exists (assigned to ${agentName}).` };
     }
 
     const lead = await prisma.lead.create({
@@ -271,6 +280,46 @@ export async function deleteLead(id: string) {
     return { success: false, error: "Failed to delete lead" };
   }
 }
+
+export async function deleteMultipleLeads(ids: string[]) {
+  try {
+    const orgId = await getTenantOrgId();
+    if (!orgId) return { success: false, error: "Unauthorized" };
+    if (!ids || ids.length === 0) return { success: false, error: "No leads selected to delete." };
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete all calls associated with these leads
+      await tx.call.deleteMany({
+        where: { leadId: { in: ids } }
+      });
+
+      // 2. Delete all follow-ups associated with these leads
+      await tx.followUp.deleteMany({
+        where: { leadId: { in: ids } }
+      });
+
+      // 3. Delete all tasks associated with these leads
+      await tx.task.deleteMany({
+        where: { leadId: { in: ids } }
+      });
+
+      // 4. Delete the leads
+      await tx.lead.deleteMany({
+        where: { id: { in: ids }, organizationId: orgId }
+      });
+    });
+
+    revalidatePath("/leads");
+    revalidatePath("/calls");
+    revalidatePath("/follow-ups");
+    revalidatePath("/");
+    return { success: true, count: ids.length };
+  } catch (error: any) {
+    console.error("Error bulk deleting leads:", error);
+    return { success: false, error: "Failed to delete selected leads: " + (error?.message || "") };
+  }
+}
+
 
 export async function getWebhookLogs() {
   try {

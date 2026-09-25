@@ -1,0 +1,257 @@
+/* =========================================================
+   PROFORMA INVOICES - RESPONSIVE & MOBILE STYLES
+   Pre-Invoice Quotation & Advance Billing Suite
+   ========================================================= */
+
+.proforma-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── Compact KPI Metric Grid ─── */
+.proforma-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.proforma-kpi-card {
+  background-color: #ffffff;
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  border-left-width: 4px;
+}
+
+.proforma-kpi-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.proforma-kpi-card.total {
+  border-left-color: #0284c7;
+}
+
+.proforma-kpi-card.converted {
+  border-left-color: #10b981;
+}
+
+.proforma-kpi-card.pending {
+  border-left-color: #f59e0b;
+}
+
+.proforma-kpi-card.rate {
+  border-left-color: #8b5cf6;
+}
+
+.proforma-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.proforma-kpi-value {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.proforma-kpi-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* ─── Toolbar & Filter Controls ─── */
+.proforma-toolbar {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  padding: 14px 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.proforma-toolbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.proforma-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.proforma-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.proforma-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 8px 12px 8px 36px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #cbd5e1 !important;
+  font-size: 0.84rem !important;
+  outline: none !important;
+  background-color: #f8fafc !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+}
+
+.proforma-search-input:focus {
+  border-color: #0284c7 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12) !important;
+}
+
+.proforma-select {
+  height: 40px;
+  padding: 0 28px 0 12px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background-color: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  outline: none;
+}
+
+.proforma-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Horizontal Status Chips Bar */
+.proforma-status-chips-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 4px 0;
+  scrollbar-width: none;
+}
+
+.proforma-status-chips-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.proforma-status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.proforma-status-chip:hover {
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+.proforma-status-chip.active {
+  background-color: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+}
+
+.proforma-status-chip.active .pi-chip-count {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.pi-chip-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background-color: #f1f5f9;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ─── Desktop Table View ─── */
+.proforma-desktop-table {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+/* ─── Mobile Proforma Cards Feed (<= 768px) ─── */
+.proforma-mobile-feed {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.proforma-mobile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.proforma-mobile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+
+@media (max-width: 1024px) {
+  .proforma-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .proforma-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .proforma-desktop-table {
+    display: none;
+  }
+  .proforma-mobile-feed {
+    display: flex;
+  }
+}

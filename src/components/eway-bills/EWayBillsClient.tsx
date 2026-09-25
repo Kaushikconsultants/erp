@@ -945,80 +945,140 @@ export default function EWayBillsClient({
                 </div>
 
                 {/* Section 4: Part B (Transporter & Vehicle Details) */}
-                <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '14px', borderRadius: '8px' }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9rem', fontWeight: 800, color: '#1e40af' }}>
+                <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', padding: '16px', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.9rem', fontWeight: 800, color: '#1e40af' }}>
                     4. Part B: Transportation & Vehicle Details
                   </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '2px' }}>
-                        Transport Mode
-                      </label>
-                      <select
-                        value={transportMode}
-                        onChange={(e) => setTransportMode(e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
-                      >
-                        <option value="Road">Road</option>
-                        <option value="Rail">Rail</option>
-                        <option value="Air">Air</option>
-                        <option value="Ship">Ship</option>
-                      </select>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Row 1: Vehicle & Transport Specifications (3 Columns) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '4px', minHeight: '18px', lineHeight: '18px' }}>
+                          Transport Mode
+                        </label>
+                        <select
+                          value={transportMode}
+                          onChange={(e) => setTransportMode(e.target.value)}
+                          style={{
+                            width: '100%',
+                            height: '36px',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.85rem',
+                            backgroundColor: '#ffffff',
+                            boxSizing: 'border-box',
+                            outline: 'none'
+                          }}
+                        >
+                          <option value="Road">Road</option>
+                          <option value="Rail">Rail</option>
+                          <option value="Air">Air</option>
+                          <option value="Ship">Ship</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', minHeight: '18px', lineHeight: '18px' }}>
+                          <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e40af' }}>
+                            Approx Distance (KM) *
+                          </label>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#1e40af', backgroundColor: '#dbeafe', padding: '1px 6px', borderRadius: '4px' }}>
+                            Validity: {Math.max(1, Math.ceil((parseInt(approxDistanceKm, 10) || 100) / 200))} {Math.max(1, Math.ceil((parseInt(approxDistanceKm, 10) || 100) / 200)) === 1 ? 'day' : 'days'}
+                          </span>
+                        </div>
+                        <input
+                          type="number"
+                          value={approxDistanceKm}
+                          onChange={(e) => setApproxDistanceKm(e.target.value)}
+                          required
+                          style={{
+                            width: '100%',
+                            height: '36px',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.85rem',
+                            backgroundColor: '#ffffff',
+                            boxSizing: 'border-box',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '4px', minHeight: '18px', lineHeight: '18px' }}>
+                          Vehicle Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. HR-12-AB-1234"
+                          value={vehicleNumber}
+                          onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
+                          style={{
+                            width: '100%',
+                            height: '36px',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.85rem',
+                            backgroundColor: '#ffffff',
+                            fontWeight: 700,
+                            boxSizing: 'border-box',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
                     </div>
 
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '2px' }}>
-                        Approx Distance (KM) *
-                      </label>
-                      <input
-                        type="number"
-                        value={approxDistanceKm}
-                        onChange={(e) => setApproxDistanceKm(e.target.value)}
-                        required
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
-                      />
-                      <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                        Validity: {Math.max(1, Math.ceil((parseInt(approxDistanceKm, 10) || 100) / 200))} days
-                      </span>
-                    </div>
+                    {/* Row 2: Transporter & Consignment Tracking (2 Columns) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '4px', minHeight: '18px', lineHeight: '18px' }}>
+                          Transporter Name / Courier
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. VRL Logistics / Delhivery"
+                          value={transporterName}
+                          onChange={(e) => setTransporterName(e.target.value)}
+                          style={{
+                            width: '100%',
+                            height: '36px',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.85rem',
+                            backgroundColor: '#ffffff',
+                            boxSizing: 'border-box',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
 
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '2px' }}>
-                        Vehicle Number (e.g. DL-01-AB-1234)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="HR-12-AB-1234"
-                        value={vehicleNumber}
-                        onChange={(e) => setVehicleNumber(e.target.value.toUpperCase())}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 700 }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '2px' }}>
-                        Transporter Name / Courier
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. VRL Logistics / Delhivery"
-                        value={transporterName}
-                        onChange={(e) => setTransporterName(e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '2px' }}>
-                        LR / GR / Docket Number
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Docket / Tracking #"
-                        value={docNoOrLorryReceipt}
-                        onChange={(e) => setDocNoOrLorryReceipt(e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
-                      />
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', marginBottom: '4px', minHeight: '18px', lineHeight: '18px' }}>
+                          LR / GR / Docket Number
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Docket / Tracking #"
+                          value={docNoOrLorryReceipt}
+                          onChange={(e) => setDocNoOrLorryReceipt(e.target.value)}
+                          style={{
+                            width: '100%',
+                            height: '36px',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '0.85rem',
+                            backgroundColor: '#ffffff',
+                            boxSizing: 'border-box',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

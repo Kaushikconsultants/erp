@@ -22,7 +22,7 @@ const FALLBACK_SETTINGS = {
   website: "www.tinkal.in",
   logoUrl: null as string | null,
   signatoryUrl: null as string | null,
-  signatoryName: "Authorized Signatory",
+  signatoryName: null as string | null,
   signatoryDesignation: "Authorized Signatory",
   bankAccountName: "ESPON CLOTHING PRIVATE LIMITED.",
   accountNumber: "016805006415",
@@ -73,7 +73,7 @@ const fetchSettingsInternal = cache(async (orgId?: string) => {
             email: org.email || "",
             website: org.website || "",
             themeColor: "#4f46e5",
-            signatoryName: org.name,
+            signatoryName: null,
             signatoryDesignation: "Authorized Signatory"
           }
         }).catch(async () => {
@@ -106,7 +106,7 @@ export async function invalidateCompanySettingsCache(orgId?: string) {
   }
 }
 
-export const getCompanySettings = cache(async function getCompanySettings() {
+const cachedGetCompanySettings = cache(async function getCompanySettingsInternal() {
   const now = Date.now();
   let orgId = "default";
   try {
@@ -131,6 +131,10 @@ export const getCompanySettings = cache(async function getCompanySettings() {
     };
   }
 });
+
+export async function getCompanySettings() {
+  return cachedGetCompanySettings();
+}
 
 export async function updateMonthlyTarget(target: number) {
   try {
@@ -269,7 +273,7 @@ export async function updateCompanySettings(formData: FormData) {
         organizationId: orgId,
         companyName, gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl, 
         signatoryUrl: signatoryUrl || null,
-        signatoryName: signatoryName || "Authorized Signatory",
+        signatoryName: signatoryName ? signatoryName.trim() : null,
         signatoryDesignation: signatoryDesignation || "Authorized Signatory",
         bankAccountName, accountNumber, ifscCode, branch, upiId,
         ...(nextQuotationNumber ? { nextQuotationNumber } : {}),
@@ -288,7 +292,7 @@ export async function updateCompanySettings(formData: FormData) {
         companyName: companyName || "My Business",
         gstin, pan, address, city, state, pincode, country, email, mobile, website, logoUrl,
         signatoryUrl: signatoryUrl || null,
-        signatoryName: signatoryName || "Authorized Signatory",
+        signatoryName: signatoryName ? signatoryName.trim() : null,
         signatoryDesignation: signatoryDesignation || "Authorized Signatory",
         bankAccountName, accountNumber, ifscCode, branch, upiId,
         nextQuotationNumber: nextQuotationNumber || "QT-1001",

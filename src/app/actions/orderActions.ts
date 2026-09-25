@@ -285,25 +285,200 @@ export async function updateDispatchDetails(orderId: string, awbNumber: string, 
 
 export async function trackOrder(orderId: string) {
   try {
-    const organizationId = await getTenantOrgId();
-    const order = await prisma.order.findFirst({ where: { id: orderId, organizationId } });
-    if (!order) return { error: "Order not found" };
-    if (!order.awbNumber) return { error: "No AWB Number found for this order" };
+    let organizationId: string | null = null;
+    try {
+      organizationId = await getTenantOrgId();
+    } catch {
+      organizationId = null;
+    }
 
-    const trackingData = await fetchRealTimeTracking(order.awbNumber, order.courierName || "Unknown");
-    
-    // Optionally update the DB with latest status
-    if (trackingData.success && trackingData.currentStatus !== order.shippingStatus) {
-      await prisma.order.updateMany({
-        where: { id: orderId, organizationId },
-        data: { shippingStatus: trackingData.currentStatus }
+    let order = null;
+    if (organizationId) {
+      order = await prisma.order.findFirst({
+        where: {
+          organizationId,
+          OR: [
+            { id: orderId },
+            { orderNumber: orderId },
+            { awbNumber: orderId }
+          ]
+        }
       });
-      revalidatePath("/dispatches");
+    }
+
+    if (!order) {
+      order = await prisma.order.findFirst({
+        where: {
+          OR: [
+            { id: orderId },
+            { orderNumber: orderId },
+            { awbNumber: orderId }
+          ]
+        }
+      });
+    }
+
+    const awbToTrack = order?.awbNumber || (orderId.match(/^\d{8,20}$/) ? orderId : null);
+    if (!awbToTrack) {
+      if (!order) return { error: "Order not found" };
+      return { error: "No AWB Number found for this order" };
+    }
+
+    const effectiveOrgId = order?.organizationId || organizationId || undefined;
+    const trackingData = await fetchRealTimeTracking(awbToTrack, order?.courierName || "Unknown", effectiveOrgId);
+    
+    // Update the DB with latest status and courier name if successful
+    if (trackingData.success && order) {
+      const updateData: any = {};
+      if (trackingData.currentStatus && trackingData.currentStatus !== order.shippingStatus) {
+        updateData.shippingStatus = trackingData.currentStatus;
+      }
+      if (
+        trackingData.courier && 
+        trackingData.courier !== "Shipmozo Express" && 
+        trackingData.courier !== "Unknown" && 
+        (!order.courierName || order.courierName === "Unknown" || order.courierName === "Standard Courier" || order.courierName === "Logistics")
+      ) {
+        updateData.courierName = trackingData.courier;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await prisma.order.update({
+          where: { id: order.id },
+          data: updateData
+        });
+        revalidatePath("/dispatches");
+        revalidatePath("/orders");
+      }
     }
 
     return trackingData;
-  } catch (error) {
-    return { error: "Tracking failed" };
+  } catch (error: any) {
+    console.error("[trackOrder Error]:", error);
+    return { error: error?.message || "Tracking failed" };
+  }
+}
+
+/**
+ * Periodically auto-syncs live AWB tracking statuses across active orders (every 30 minutes).
+ */
+export async function syncActiveOrdersTracking() {
+  try {
+    let organizationId: string | null = null;
+    try {
+      organizationId = await getTenantOrgId();
+    } catch {
+      organizationId = null;
+    }
+
+    const whereClause: any = {
+      awbNumber: { not: null },
+      NOT: [
+        { awbNumber: "" },
+        { shippingStatus: { in: ["Delivered", "delivered", "Returned", "Cancelled", "cancelled", "RTO Delivered"] } },
+        { orderStatus: { in: ["Delivered", "Cancelled", "Returned"] } }
+      ]
+    };
+
+    if (organizationId) {
+      whereClause.organizationId = organizationId;
+    }
+
+    const activeOrders = await prisma.order.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        orderNumber: true,
+        awbNumber: true,
+        courierName: true,
+        shippingStatus: true,
+        orderStatus: true,
+        organizationId: true
+      },
+      take: 50
+    });
+
+    if (!activeOrders || activeOrders.length === 0) {
+      return { success: true, updatedCount: 0, updatedOrders: [] };
+    }
+
+    const getStatusColors = (status: string) => {
+      const s = (status || '').toLowerCase();
+      if (s.includes('printed') || s.includes('processing')) return { bg: '#fef3c7', color: '#854d0e' };
+      if (s.includes('transit') || s.includes('ofd') || s.includes('out for delivery')) return { bg: '#cffafe', color: '#0369a1' };
+      if (s.includes('delivered') || s.includes('converted') || s.includes('accepted')) return { bg: '#dcfce7', color: '#166534' };
+      if (s.includes('confirmed')) return { bg: '#ecfdf5', color: '#047857' };
+      if (s.includes('pending') || s.includes('draft')) return { bg: '#f1f5f9', color: '#475569' };
+      if (s.includes('cancelled') || s.includes('declined') || s.includes('rejected')) return { bg: '#fee2e2', color: '#991b1b' };
+      return { bg: '#f1f5f9', color: '#475569' };
+    };
+
+    const updatedOrders: { id: string; shippingStatus: string; statusBg: string; statusColor: string }[] = [];
+
+    for (const order of activeOrders) {
+      if (!order.awbNumber) continue;
+      try {
+        const effectiveOrgId = order.organizationId || organizationId || undefined;
+        const trackingData = await fetchRealTimeTracking(
+          order.awbNumber,
+          order.courierName || "Unknown",
+          effectiveOrgId
+        );
+
+        if (trackingData && trackingData.success && trackingData.currentStatus) {
+          const updateData: any = {};
+          if (trackingData.currentStatus !== order.shippingStatus) {
+            updateData.shippingStatus = trackingData.currentStatus;
+          }
+
+          const isDelivered = trackingData.currentStatus.toLowerCase().includes("delivered");
+          if (isDelivered && order.orderStatus !== "Delivered") {
+            updateData.orderStatus = "Delivered";
+          }
+
+          if (
+            trackingData.courier &&
+            trackingData.courier !== "Shipmozo Express" &&
+            trackingData.courier !== "Unknown" &&
+            (!order.courierName || order.courierName === "Unknown" || order.courierName === "Standard Courier" || order.courierName === "Logistics")
+          ) {
+            updateData.courierName = trackingData.courier;
+          }
+
+          if (Object.keys(updateData).length > 0) {
+            await prisma.order.update({
+              where: { id: order.id },
+              data: updateData
+            });
+
+            const colors = getStatusColors(trackingData.currentStatus);
+            updatedOrders.push({
+              id: order.id,
+              shippingStatus: trackingData.currentStatus,
+              statusBg: colors.bg,
+              statusColor: colors.color
+            });
+          }
+        }
+      } catch (err) {
+        console.warn(`[syncActiveOrdersTracking] Failed tracking order ${order.orderNumber}:`, err);
+      }
+    }
+
+    if (updatedOrders.length > 0) {
+      revalidatePath("/orders");
+      revalidatePath("/dispatches");
+    }
+
+    return {
+      success: true,
+      totalChecked: activeOrders.length,
+      updatedCount: updatedOrders.length,
+      updatedOrders
+    };
+  } catch (error: any) {
+    console.error("[syncActiveOrdersTracking Error]:", error);
+    return { success: false, error: error?.message || "Tracking sync failed" };
   }
 }
 
@@ -382,12 +557,27 @@ export async function deleteOrder(orderId: string) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { error: "Unauthorized" };
 
+    const role = (session.user as any).role;
+    let canManage = role === "ADMIN" || role === "SUPER_ADMIN";
+    if (!canManage && role) {
+      const roleDef = await prisma.role.findUnique({ where: { name: role } });
+      if (roleDef) {
+        try {
+          const perms = JSON.parse(roleDef.permissions) as string[];
+          if (perms.includes("Manage Orders")) canManage = true;
+        } catch {}
+      }
+    }
+    if (!canManage) {
+      return { error: "Permission denied. Only administrators or managers can delete orders." };
+    }
+
     const organizationId = await getTenantOrgId();
 
     const order = await prisma.order.findFirst({
       where: {
         id: orderId,
-        ...(organizationId ? { OR: [{ organizationId }, { organizationId: null }] } : {})
+        organizationId
       },
       include: {
         items: true,
@@ -507,6 +697,123 @@ export async function deleteOrder(orderId: string) {
   }
 }
 
+export async function deleteMultipleOrders(orderIds: string[]) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return { error: "Unauthorized" };
+
+    const role = (session.user as any).role;
+    let canManage = role === "ADMIN" || role === "SUPER_ADMIN";
+    if (!canManage && role) {
+      const roleDef = await prisma.role.findUnique({ where: { name: role } });
+      if (roleDef) {
+        try {
+          const perms = JSON.parse(roleDef.permissions) as string[];
+          if (perms.includes("Manage Orders")) canManage = true;
+        } catch {}
+      }
+    }
+    if (!canManage) {
+      return { error: "Permission denied. Only administrators or managers can delete orders." };
+    }
+
+    if (!orderIds || orderIds.length === 0) {
+      return { error: "No orders selected for deletion." };
+    }
+
+    const organizationId = await getTenantOrgId();
+
+    const orders = await prisma.order.findMany({
+      where: {
+        id: { in: orderIds },
+        ...(organizationId ? { organizationId } : {})
+      },
+      include: {
+        items: true,
+        invoices: true
+      }
+    });
+
+    if (orders.length === 0) {
+      return { error: "No valid orders found to delete." };
+    }
+
+    const validOrderIds = orders.map(o => o.id);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete associated Invoices & update payments
+      for (const order of orders) {
+        for (const inv of order.invoices) {
+          await tx.payment.updateMany({
+            where: { invoiceId: inv.id },
+            data: { invoiceId: null }
+          });
+          await tx.invoice.delete({ where: { id: inv.id } });
+        }
+      }
+
+      // 2. Delete associated EWayBills
+      await tx.eWayBill.deleteMany({ where: { orderId: { in: validOrderIds } } });
+
+      // 3. Delete CreditNotes
+      await tx.creditNote.deleteMany({ where: { orderId: { in: validOrderIds } } });
+
+      // 4. Restore inventory for order items
+      for (const order of orders) {
+        for (const item of order.items) {
+          if (item.productId && item.quantity > 0) {
+            await tx.product.update({
+              where: { id: item.productId },
+              data: { stockQuantity: { increment: item.quantity } }
+            });
+
+            await tx.inventoryTransaction.create({
+              data: {
+                productId: item.productId,
+                quantity: item.quantity,
+                type: 'IN',
+                reference: order.orderNumber,
+                notes: `Restocked due to deletion of Order #${order.orderNumber}`
+              }
+            });
+          }
+        }
+      }
+
+      // 5. Delete Order Items
+      await tx.orderItem.deleteMany({ where: { orderId: { in: validOrderIds } } });
+
+      // 6. Delete Orders
+      await tx.order.deleteMany({ where: { id: { in: validOrderIds } } });
+
+      // 7. Adjust customer purchase values
+      for (const order of orders) {
+        if (order.customerId && order.paymentReceived > 0) {
+          await tx.customer.update({
+            where: { id: order.customerId },
+            data: {
+              totalPurchaseValue: { decrement: order.paymentReceived }
+            }
+          });
+        }
+      }
+    });
+
+    revalidatePath("/orders");
+    revalidatePath("/invoices");
+    revalidatePath("/quotations");
+    revalidatePath("/dispatches");
+    revalidatePath("/customers");
+    revalidatePath("/", "layout");
+
+    return { success: true, count: validOrderIds.length };
+  } catch (error: any) {
+    console.error("Error deleting multiple orders:", error);
+    return { error: error?.message || "Failed to delete orders" };
+  }
+}
+
+
 export async function updateOrder(orderId: string, data: {
   orderStatus?: string;
   paymentStatus?: string;
@@ -598,5 +905,6 @@ export async function updateOrder(orderId: string, data: {
     return { error: error?.message || "Failed to update order" };
   }
 }
+
 
 

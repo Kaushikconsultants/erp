@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   updateLeadStage, 
   updateLeadValue, 
@@ -25,6 +25,9 @@ import {
   Award, 
   Layers, 
   ArrowRight, 
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
   FileText, 
   Search, 
   Edit2, 
@@ -55,7 +58,9 @@ import {
   Palette,
   Radio,
   Share2,
-  Globe
+  Globe,
+  BookOpen,
+  Flame
 } from 'lucide-react';
 import SalesTargetTracker from './SalesTargetTracker';
 import { openPhoneDialer } from '@/lib/dialer';
@@ -108,7 +113,7 @@ export const STAGES = [
     title: 'New Lead', 
     stepNumber: 1,
     color: '#2563eb', 
-    accentGradient: 'linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)',
+    accentGradient: 'linear-gradient(90deg, #1d4ed8 0%, #2563eb 50%, #38bdf8 100%)',
     headerBg: 'linear-gradient(180deg, #eff6ff 0%, #f8faff 100%)',
     bg: '#f8faff', 
     border: '#bfdbfe', 
@@ -122,14 +127,14 @@ export const STAGES = [
     id: 'Contacted', 
     title: 'Contacted', 
     stepNumber: 2,
-    color: '#4f46e5', 
-    accentGradient: 'linear-gradient(90deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%)',
-    headerBg: 'linear-gradient(180deg, #eef2ff 0%, #f9f9ff 100%)',
-    bg: '#f9f9ff', 
-    border: '#c7d2fe', 
-    badgeBg: '#e0e7ff',
-    badgeColor: '#4338ca',
-    glow: 'rgba(79, 70, 229, 0.28)',
+    color: '#0891b2', 
+    accentGradient: 'linear-gradient(90deg, #0e7490 0%, #0891b2 50%, #06b6d4 100%)',
+    headerBg: 'linear-gradient(180deg, #ecfeff 0%, #f0fdfa 100%)',
+    bg: '#f6fefe', 
+    border: '#a5f3fc', 
+    badgeBg: '#cffafe',
+    badgeColor: '#0e7490',
+    glow: 'rgba(8, 145, 178, 0.30)',
     nextStep: 'Qualified', 
     nextActionLabel: 'Qualify Lead' 
   },
@@ -138,13 +143,13 @@ export const STAGES = [
     title: 'Qualified', 
     stepNumber: 3,
     color: '#7c3aed', 
-    accentGradient: 'linear-gradient(90deg, #7c3aed 0%, #8b5cf6 50%, #a78bfa 100%)',
-    headerBg: 'linear-gradient(180deg, #f5f3ff 0%, #faf8ff 100%)',
-    bg: '#faf8ff', 
+    accentGradient: 'linear-gradient(90deg, #6d28d9 0%, #7c3aed 50%, #a855f7 100%)',
+    headerBg: 'linear-gradient(180deg, #faf5ff 0%, #fdfaff 100%)',
+    bg: '#fdfaff', 
     border: '#ddd6fe', 
     badgeBg: '#ede9fe',
     badgeColor: '#6d28d9',
-    glow: 'rgba(124, 58, 237, 0.28)',
+    glow: 'rgba(124, 58, 237, 0.30)',
     nextStep: 'Opportunity', 
     nextActionLabel: 'Move to Opportunity' 
   },
@@ -200,9 +205,9 @@ export const getStageIcon = (stageId: string, size = 12) => {
     case 'New Lead':
       return <Sparkles size={size} />;
     case 'Contacted':
-      return <MessageSquare size={size} />;
+      return <BookOpen size={size} />;
     case 'Qualified':
-      return <Target size={size} />;
+      return <Flame size={size} />;
     case 'Opportunity':
       return <TrendingUp size={size} />;
     case 'Won':
@@ -265,6 +270,121 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
   // Delete Junk Lead State
   const [leadToDelete, setLeadToDelete] = useState<any | null>(null);
   const [deletingLeadId, setDeletingLeadId] = useState<string | null>(null);
+
+  // Mobile Unique Scroll & Navigation State
+  const kanbanTrackRef = useRef<HTMLDivElement | null>(null);
+  const [showMobileScrollTop, setShowMobileScrollTop] = useState(false);
+  const [activeMobileStageIdx, setActiveMobileStageIdx] = useState(0);
+
+  // Smooth Scroll-to-Top Handler (scrolls outer page container + inner column cards to 0)
+  const handleScrollToTop = () => {
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+      mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (typeof document !== 'undefined') {
+      document.querySelectorAll('.kanban-col-cards').forEach(col => {
+        col.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+  };
+
+  // Jump to stage with single tap, tap active stage scrolls everything to top
+  const handleJumpToStage = (idx: number) => {
+    if (activeMobileStageIdx === idx) {
+      handleScrollToTop();
+      return;
+    }
+    setActiveMobileStageIdx(idx);
+    if (kanbanTrackRef.current) {
+      const cols = kanbanTrackRef.current.querySelectorAll('.kanban-col');
+      if (cols[idx]) {
+        (cols[idx] as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  };
+
+  // Track active column during horizontal touch swiping on mobile (throttled to avoid layout thrashing)
+  const trackScrollTimerRef = useRef<any>(null);
+  const handleKanbanTrackScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const scrollLeft = e.currentTarget.scrollLeft;
+    if (trackScrollTimerRef.current) return;
+    trackScrollTimerRef.current = setTimeout(() => {
+      trackScrollTimerRef.current = null;
+      const colWidth = typeof window !== 'undefined' ? window.innerWidth * 0.86 : 300;
+      const newIdx = Math.round(scrollLeft / (colWidth + 12));
+      if (newIdx >= 0 && newIdx < stages.length && newIdx !== activeMobileStageIdx) {
+        setActiveMobileStageIdx(newIdx);
+      }
+    }, 80);
+  };
+
+  // Mobile Touch Chaining with Horizontal Swipe Preservation:
+  // When sliding horizontally (diffX > diffY), let native track slide freely and smoothly!
+  const handleColCardsTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    (e.currentTarget as any)._touchStartX = e.touches[0].clientX;
+    (e.currentTarget as any)._touchStartY = e.touches[0].clientY;
+    (e.currentTarget as any)._lastTouchY = e.touches[0].clientY;
+    (e.currentTarget as any)._isSwipingHorizontal = undefined;
+  };
+
+  const handleColCardsTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    const startX = (e.currentTarget as any)._touchStartX ?? touch.clientX;
+    const startY = (e.currentTarget as any)._touchStartY ?? touch.clientY;
+    const diffX = Math.abs(touch.clientX - startX);
+    const diffY = Math.abs(touch.clientY - startY);
+
+    // If horizontal motion is dominant or initiated, exit and allow native smooth horizontal track sliding
+    if ((e.currentTarget as any)._isSwipingHorizontal === undefined && (diffX > 4 || diffY > 4)) {
+      (e.currentTarget as any)._isSwipingHorizontal = diffX >= diffY;
+    }
+
+    if ((e.currentTarget as any)._isSwipingHorizontal) {
+      return;
+    }
+
+    const currentY = touch.clientY;
+    const lastY = (e.currentTarget as any)._lastTouchY ?? currentY;
+    const deltaY = currentY - lastY;
+    (e.currentTarget as any)._lastTouchY = currentY;
+
+    // Only chain vertical scroll when movement is predominantly vertical and at the top edge
+    if (diffY > diffX * 1.5 && e.currentTarget.scrollTop <= 0 && deltaY > 0) {
+      const mainContent = document.querySelector('.main-content');
+      if (mainContent && mainContent.scrollTop > 0) {
+        mainContent.scrollTop = Math.max(0, mainContent.scrollTop - deltaY);
+      }
+    }
+  };
+
+  // Listen to scroll to display floating "Top" pill on mobile
+  useEffect(() => {
+    const mainContent = document.querySelector('.main-content');
+    const checkScrollOffset = () => {
+      const mainY = mainContent ? mainContent.scrollTop : (typeof window !== 'undefined' ? window.scrollY : 0);
+      let anyColScrolled = false;
+      if (typeof document !== 'undefined') {
+        document.querySelectorAll('.kanban-col-cards').forEach(el => {
+          if (el.scrollTop > 80) anyColScrolled = true;
+        });
+      }
+      setShowMobileScrollTop(mainY > 100 || anyColScrolled);
+    };
+
+    if (mainContent) {
+      mainContent.addEventListener('scroll', checkScrollOffset, { passive: true });
+    }
+    window.addEventListener('scroll', checkScrollOffset, { passive: true });
+
+    return () => {
+      if (mainContent) mainContent.removeEventListener('scroll', checkScrollOffset);
+      window.removeEventListener('scroll', checkScrollOffset);
+    };
+  }, []);
 
   // Close floating popovers on click outside
   useEffect(() => {
@@ -912,6 +1032,53 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
     }
   };
 
+  // Official WhatsApp SVG Logo Icon
+  const WhatsAppLogo = ({ size = 12, className, style }: { size?: number; className?: string; style?: React.CSSProperties }) => (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      style={style}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.888 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+    </svg>
+  );
+
+  // Format phone number with country code (+91)
+  const formatPhoneWithCountryCode = (phone: string | null | undefined): string => {
+    if (!phone) return '';
+    const trimmed = String(phone).trim();
+    if (!trimmed) return '';
+
+    const cleanDigits = trimmed.replace(/\D/g, '');
+
+    // 10 digits standard mobile (e.g. 8891478865 -> +91 8891478865)
+    if (cleanDigits.length === 10) {
+      return `+91 ${cleanDigits}`;
+    }
+
+    // 12 digits starting with 91 (e.g. 918891478865 -> +91 8891478865)
+    if (cleanDigits.length === 12 && cleanDigits.startsWith('91')) {
+      return `+91 ${cleanDigits.slice(2)}`;
+    }
+
+    // 11 digits starting with 0 (e.g. 08891478865 -> +91 8891478865)
+    if (cleanDigits.length === 11 && cleanDigits.startsWith('0')) {
+      return `+91 ${cleanDigits.slice(1)}`;
+    }
+
+    // If already has '+' prefix (international number), preserve it
+    if (trimmed.startsWith('+')) {
+      return trimmed;
+    }
+
+    return `+91 ${trimmed}`;
+  };
+
   // Render a Single Enterprise Deal Card
   const renderLeadCard = (lead: any, isCompact: boolean = false) => {
     const rawPhone = lead.mobile || lead.whatsappNumber || '';
@@ -1004,7 +1171,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
           )}
           {rawPhone && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', color: '#94a3b8' }}>
-              • {rawPhone}
+              • {formatPhoneWithCountryCode(rawPhone)}
             </span>
           )}
         </div>
@@ -1327,49 +1494,94 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
           );
         })()}
 
-        {/* Row 3: Sales Rep & Stage Selector */}
-        <div className="deal-rep-stage-row">
-          <div className="deal-rep-group">
-            <div className="deal-rep-circ" title={repName || 'Unassigned'}>
+        {/* Row 3: 2x2 Enterprise Control Matrix */}
+        <div className="deal-control-grid">
+          {/* Top-Left: Sales Rep Dropdown Chip */}
+          <div className="deal-rep-chip" title={`Assigned Rep: ${repName || 'Unassigned'}`}>
+            <div className="deal-rep-avatar">
               {getRepInitials(repName)}
             </div>
             <select
               value={lead.assignedSalespersonId || ''}
               onChange={(e) => handleRepAssign(lead.id, e.target.value)}
-              className="deal-rep-select"
+              className="deal-rep-chip-select"
+              title={`Assigned Rep: ${repName || 'Unassigned'}`}
             >
               <option value="">Unassigned</option>
               {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>{emp.user?.name || emp.employeeId}</option>
               ))}
             </select>
+            <ChevronDown size={10} className="deal-chip-chevron" />
           </div>
 
-          <select
-            value={lead.leadStage || 'New Lead'}
-            onChange={(e) => handleStageChange(lead.id, e.target.value)}
-            className="deal-stage-select"
+          {/* Top-Right: Stage Dropdown Chip */}
+          <div 
+            className="deal-stage-chip" 
+            style={{ 
+              borderColor: stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.border || '#cbd5e1',
+              backgroundColor: stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.badgeBg || '#ffffff'
+            }}
+            title={`Current Stage: ${stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.title || lead.leadStage || 'New Lead'}`}
           >
-            {stages.map(s => (
-              <option key={s.id} value={s.id}>{s.title}</option>
-            ))}
-          </select>
-        </div>
+            <span 
+              className="deal-stage-dot" 
+              style={{ 
+                backgroundColor: stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.color || '#2563eb',
+                boxShadow: `0 0 5px ${stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.color || '#2563eb'}70`
+              }} 
+            />
+            <select
+              value={lead.leadStage || 'New Lead'}
+              onChange={(e) => handleStageChange(lead.id, e.target.value)}
+              className="deal-stage-chip-select"
+              style={{ color: stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.badgeColor || stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.color || '#1e293b' }}
+              title={`Current Stage: ${stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.title || lead.leadStage || 'New Lead'}`}
+            >
+              {stages.map(s => (
+                <option key={s.id} value={s.id}>{s.title}</option>
+              ))}
+            </select>
+            <ChevronDown size={10} className="deal-chip-chevron" style={{ color: stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.color || '#94a3b8' }} />
+          </div>
 
-        {/* Row 4: Action Buttons Bar */}
-        <div className="deal-btn-row">
-          {/* Primary Advance Button */}
-          {lead.leadStage !== 'Won' && lead.leadStage !== 'Lost' && (
+          {/* Bottom-Left: Primary Advance Button (Below Rep) */}
+          {lead.leadStage !== 'Won' && lead.leadStage !== 'Lost' ? (
             <button
               type="button"
               onClick={() => handleOpenAdvanceModal(lead, stages.find(s => s.id === (lead.leadStage || 'New Lead'))?.nextStep || 'Qualified')}
               className="btn-step-adv"
               title="Advance to next pipeline stage"
             >
-              <ArrowRight size={10} /> Advance
+              <ArrowRight size={11} /> Advance
             </button>
+          ) : (
+            <div className="deal-action-empty" />
           )}
 
+          {/* Bottom-Right: Convert or +Quote Shortcut (Directly Below New Lead / Stage) */}
+          {lead.isLeadRecord ? (
+            <button
+              type="button"
+              onClick={() => setConvertingLead(lead)}
+              className="action-pill-text convert"
+              title="Convert Lead into Client"
+            >
+              <UserPlus size={11} /> Convert
+            </button>
+          ) : (
+            <Link
+              href={`/quotations/new?customerId=${lead.id}`}
+              className="action-pill-text quote"
+              title="Generate New Quotation"
+            >
+              <FileText size={11} /> + Quote
+            </Link>
+          )}
+        </div>
+
+        {/* Row 4: Action Tools Bar */}
+        <div className="deal-btn-tools-row">
           {/* Quick Schedule / Manage Follow-up */}
           <button
             type="button"
@@ -1377,7 +1589,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
             className="action-icon-pill fu"
             title="Schedule or manage follow-up"
           >
-            <CalendarClock size={11} />
+            <CalendarClock size={12} />
           </button>
 
           {/* Quick Call */}
@@ -1392,43 +1604,22 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
               })}
               className="action-icon-pill call"
               title={`Call ${lead.businessName || 'Lead'}`}
-              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
             >
-              <PhoneCall size={11} />
+              <PhoneCall size={12} />
             </button>
           )}
 
-          {/* Quick WhatsApp */}
+          {/* Quick WhatsApp with Official WhatsApp Logo */}
           {cleanPhone && (
             <a
-              href={`https://wa.me/91${cleanPhone}`}
+              href={`https://wa.me/${cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone}`}
               target="_blank"
               rel="noreferrer"
               className="action-icon-pill wa"
               title="Chat on WhatsApp"
             >
-              <MessageSquare size={11} />
+              <WhatsAppLogo size={13} />
             </a>
-          )}
-
-          {/* Convert or +Quote Shortcut */}
-          {lead.isLeadRecord ? (
-            <button
-              type="button"
-              onClick={() => setConvertingLead(lead)}
-              className="action-pill-text convert"
-              title="Convert Lead into Client"
-            >
-              <UserPlus size={10} /> Convert
-            </button>
-          ) : (
-            <Link
-              href={`/quotations/new?customerId=${lead.id}`}
-              className="action-pill-text quote"
-              title="Generate New Quotation"
-            >
-              <FileText size={10} /> + Quote
-            </Link>
           )}
 
           {/* Delete Junk Lead Button (ONLY in New Lead section) */}
@@ -1444,21 +1635,21 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
               title="Delete junk lead"
             >
               {deletingLeadId === lead.id ? (
-                <Loader2 size={11} className="animate-spin" />
+                <Loader2 size={12} className="animate-spin" />
               ) : (
-                <Trash2 size={11} />
+                <Trash2 size={12} />
               )}
             </button>
           )}
 
-          {/* Card Details Link */}
+          {/* Card Details Link - Perfectly Aligned on the Right */}
           <Link
             href={detailsUrl}
-            className="action-icon-pill"
+            className="action-icon-pill details"
             style={{ marginLeft: 'auto' }}
             title="View Full Details"
           >
-            <ChevronRight size={12} />
+            <ChevronRight size={13} />
           </Link>
         </div>
       </div>
@@ -1606,257 +1797,330 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="search-field-input"
               />
+              {searchQuery && (
+                <button 
+                  type="button" 
+                  onClick={() => setSearchQuery('')}
+                  className="search-clear-btn"
+                  title="Clear search"
+                >
+                  <X size={11} />
+                </button>
+              )}
             </div>
 
-            {/* Sales Rep Selector */}
-            {employees.length > 0 && (
-              <select
-                value={selectedRepFilter}
-                onChange={(e) => setSelectedRepFilter(e.target.value)}
-                className="filter-select-input"
-              >
-                <option value="ALL">All Sales Representatives ({employees.length})</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.user?.name || emp.employeeId}</option>
-                ))}
-              </select>
-            )}
-
-            {/* Follow-up Status Filter */}
-            <select
-              value={followUpFilter}
-              onChange={(e) => setFollowUpFilter(e.target.value as any)}
-              className="filter-select-input"
-            >
-              <option value="ALL">All Follow-ups</option>
-              <option value="OVERDUE">🔴 Overdue Follow-ups ({fuCounts.overdue})</option>
-              <option value="TODAY">🟢 Due Today ({fuCounts.today})</option>
-              <option value="UPCOMING">🔵 Upcoming ({fuCounts.upcoming})</option>
-              <option value="NONE">⚪ No Follow-up Set ({fuCounts.none})</option>
-            </select>
-
-            {/* Category / Customer Intent Filter */}
-            <select
-              value={selectedCategoryFilter}
-              onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-              className="filter-select-input"
-              style={selectedCategoryFilter !== 'ALL' ? {
-                borderColor: '#7c3aed',
-                backgroundColor: '#f5f3ff',
-                color: '#6d28d9',
-                fontWeight: 700
-              } : {}}
-            >
-              <option value="ALL">All Categories ({leads.length} Deals)</option>
-              {categoryCounts.TAGGED > 0 && (
-                <option value="TAGGED">✨ Any Tagged Intent ({categoryCounts.TAGGED})</option>
+            {/* Filter Pills Scroll Row */}
+            <div className="pipeline-filters-scroll-row">
+              {/* Sales Rep Selector */}
+              {employees.length > 0 && (
+                <div className={`filter-select-wrapper ${selectedRepFilter !== 'ALL' ? 'active-filter' : ''}`}>
+                  <select
+                    value={selectedRepFilter}
+                    onChange={(e) => setSelectedRepFilter(e.target.value)}
+                    className="filter-select-input"
+                    title="Filter by sales representative"
+                  >
+                    <option value="ALL">👤 All Reps ({employees.length})</option>
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>{emp.user?.name || emp.employeeId}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="filter-chevron" />
+                </div>
               )}
-              {categories.map(cat => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.icon || '🏷️'} {cat.label} ({categoryCounts[cat.id] || 0})
-                </option>
-              ))}
-              <option value="UNCATEGORIZED">⚪ Uncategorized ({categoryCounts.UNCATEGORIZED || 0})</option>
-            </select>
 
-            {/* Lead Source Filter */}
-            <select
-              value={selectedSourceFilter}
-              onChange={(e) => setSelectedSourceFilter(e.target.value)}
-              className="filter-select-input"
-              style={selectedSourceFilter !== 'ALL' ? {
-                borderColor: '#2563eb',
-                backgroundColor: '#eff6ff',
-                color: '#1d4ed8',
-                fontWeight: 700
-              } : {}}
-            >
-              <option value="ALL">All Lead Sources ({leads.length})</option>
-              {sourceCounts.SET > 0 && (
-                <option value="SET">📡 Any Tagged Source ({sourceCounts.SET})</option>
-              )}
-              {DEFAULT_LEAD_SOURCES.map(src => (
-                <option key={src.id} value={src.id}>
-                  {src.icon} {src.label} ({sourceCounts[src.id] || 0})
-                </option>
-              ))}
-              <option value="NONE">⚪ No Source Specified ({sourceCounts.NONE || 0})</option>
-            </select>
+              {/* Follow-up Status Filter */}
+              <div className={`filter-select-wrapper ${followUpFilter !== 'ALL' ? 'active-filter' : ''}`}>
+                <select
+                  value={followUpFilter}
+                  onChange={(e) => setFollowUpFilter(e.target.value as any)}
+                  className="filter-select-input"
+                  title="Filter by follow-up status"
+                >
+                  <option value="ALL">⏰ All Follow-ups</option>
+                  <option value="OVERDUE">🔴 Overdue ({fuCounts.overdue})</option>
+                  <option value="TODAY">🟢 Due Today ({fuCounts.today})</option>
+                  <option value="UPCOMING">🔵 Upcoming ({fuCounts.upcoming})</option>
+                  <option value="NONE">⚪ No Follow-up ({fuCounts.none})</option>
+                </select>
+                <ChevronDown size={12} className="filter-chevron" />
+              </div>
 
-            {/* Sort Dropdown */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="filter-select-input"
-            >
-              <option value="VALUE_HIGH">Sort: Highest Deal Value</option>
-              <option value="VALUE_LOW">Sort: Lowest Deal Value</option>
-              <option value="NEWEST">Sort: Newest First</option>
-              <option value="NAME">Sort: Customer Name (A-Z)</option>
-            </select>
+              {/* Category / Customer Intent Filter */}
+              <div className={`filter-select-wrapper ${selectedCategoryFilter !== 'ALL' ? 'active-filter intent' : ''}`}>
+                <select
+                  value={selectedCategoryFilter}
+                  onChange={(e) => setSelectedCategoryFilter(e.target.value)}
+                  className="filter-select-input"
+                  title="Filter by customer intent"
+                >
+                  <option value="ALL">🏷️ All Categories ({leads.length})</option>
+                  {categoryCounts.TAGGED > 0 && (
+                    <option value="TAGGED">✨ Any Tagged Intent ({categoryCounts.TAGGED})</option>
+                  )}
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.icon || '🏷️'} {cat.label} ({categoryCounts[cat.id] || 0})
+                    </option>
+                  ))}
+                  <option value="UNCATEGORIZED">⚪ Uncategorized ({categoryCounts.UNCATEGORIZED || 0})</option>
+                </select>
+                <ChevronDown size={12} className="filter-chevron" />
+              </div>
 
-            {/* Rename / Customize Stages Button */}
-            <button
-              type="button"
-              onClick={handleOpenCustomizeModal}
-              className="stage-customize-btn"
-              title="Customize pipeline stage names and customer intent categories"
-            >
-              <SlidersHorizontal size={13} />
-              <span>Customize Pipeline</span>
-            </button>
+              {/* Lead Source Filter */}
+              <div className={`filter-select-wrapper ${selectedSourceFilter !== 'ALL' ? 'active-filter source' : ''}`}>
+                <select
+                  value={selectedSourceFilter}
+                  onChange={(e) => setSelectedSourceFilter(e.target.value)}
+                  className="filter-select-input"
+                  title="Filter by lead acquisition source"
+                >
+                  <option value="ALL">📡 All Sources ({leads.length})</option>
+                  {sourceCounts.SET > 0 && (
+                    <option value="SET">📡 Any Tagged Source ({sourceCounts.SET})</option>
+                  )}
+                  {DEFAULT_LEAD_SOURCES.map(src => (
+                    <option key={src.id} value={src.id}>
+                      {src.icon} {src.label} ({sourceCounts[src.id] || 0})
+                    </option>
+                  ))}
+                  <option value="NONE">⚪ No Source ({sourceCounts.NONE || 0})</option>
+                </select>
+                <ChevronDown size={12} className="filter-chevron" />
+              </div>
 
-            {searchQuery && (
-              <button 
-                type="button" 
-                onClick={() => setSearchQuery('')}
-                style={{ padding: '6px 12px', fontSize: '0.78rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', color: '#64748b', cursor: 'pointer', fontWeight: 600 }}
+              {/* Sort Dropdown */}
+              <div className={`filter-select-wrapper ${sortBy !== 'VALUE_HIGH' ? 'active-filter' : ''}`}>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="filter-select-input"
+                  title="Sort deals"
+                >
+                  <option value="VALUE_HIGH">↕️ Highest Value</option>
+                  <option value="VALUE_LOW">↕️ Lowest Value</option>
+                  <option value="NEWEST">↕️ Newest First</option>
+                  <option value="NAME">↕️ Customer Name (A-Z)</option>
+                </select>
+                <ChevronDown size={12} className="filter-chevron" />
+              </div>
+
+              {/* Rename / Customize Stages Button */}
+              <button
+                type="button"
+                onClick={handleOpenCustomizeModal}
+                className="stage-customize-btn"
+                title="Customize pipeline stage names and customer intent categories"
               >
-                Clear
+                <SlidersHorizontal size={13} />
+                <span>Customize Pipeline</span>
               </button>
-            )}
+            </div>
           </div>
 
           {/* ─── 3. VIEW MODE RENDERING ─── */}
           {currentView === 'BOARD' ? (
-            /* MULTI-COLUMN KANBAN BOARD */
-            <div className="kanban-track">
-              {stages.map((stage, idx) => {
-                const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
-                const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
+            <>
+              {/* Mobile Stage Quick-Jump Pill Bar */}
+              <div className="mobile-stage-nav-bar">
+                <div className="mobile-stage-nav-track">
+                  {stages.map((stage, idx) => {
+                    const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
+                    const isSelected = activeMobileStageIdx === idx;
+                    return (
+                      <button
+                        key={stage.id}
+                        type="button"
+                        className={`mobile-stage-pill ${isSelected ? 'active' : ''}`}
+                        style={isSelected ? {
+                          backgroundColor: stage.badgeBg || '#eef2ff',
+                          color: stage.color,
+                          borderColor: stage.color
+                        } : undefined}
+                        onClick={() => handleJumpToStage(idx)}
+                        title={`Jump to ${stage.title} (tap again to scroll top)`}
+                      >
+                        <span className="stage-pill-dot" style={{ backgroundColor: stage.color }} />
+                        <span>{stage.title}</span>
+                        <span className="stage-pill-count">{stageLeads.length}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button 
+                  type="button" 
+                  className="mobile-stage-top-quick-btn" 
+                  onClick={handleScrollToTop}
+                  title="Scroll page to top"
+                >
+                  <ArrowUp size={12} />
+                  <span>Top</span>
+                </button>
+              </div>
 
-                return (
-                  <div 
-                    key={stage.id}
-                    className="kanban-col"
-                    style={{
-                      borderColor: stage.border,
-                      backgroundColor: stage.bg
-                    }}
-                  >
-                    {/* Top Accent Gradient Ribbon */}
-                    <div 
-                      className="col-top-accent-bar" 
-                      style={{ background: stage.accentGradient || stage.color }}
-                    />
+              {/* MULTI-COLUMN KANBAN BOARD */}
+              <div 
+                className="kanban-track"
+                ref={kanbanTrackRef}
+                onScroll={handleKanbanTrackScroll}
+              >
+                {stages.map((stage, idx) => {
+                  const stageLeads = filteredLeads.filter(l => (l.leadStage || 'New Lead') === stage.id);
+                  const stageVal = stageLeads.reduce((sum, l) => sum + (l.computedDealValue || l.expectedValue || 0), 0);
 
-                    {/* Column Header */}
+                  return (
                     <div 
-                      className="kanban-col-header"
+                      key={stage.id}
+                      className="kanban-col"
                       style={{
-                        background: stage.headerBg || '#ffffff',
-                        borderBottom: `1.5px solid ${stage.border || '#e2e8f0'}`
+                        borderColor: stage.border,
+                        backgroundColor: stage.bg
                       }}
                     >
-                      <div className="col-header-left">
-                        {/* Creative Illuminated Stage Icon Chip */}
+                      {/* Top Accent Gradient Ribbon */}
+                      <div 
+                        className="col-top-accent-bar" 
+                        style={{ background: stage.accentGradient || stage.color }}
+                      />
+
+                      {/* Column Header */}
+                      <div 
+                        className="kanban-col-header"
+                        style={{
+                          background: stage.headerBg || '#ffffff',
+                          borderBottom: `1.5px solid ${stage.border || '#e2e8f0'}`
+                        }}
+                      >
+                        <div className="col-header-left">
+                          {/* Creative Illuminated Stage Icon Chip */}
+                          <div 
+                            className="col-stage-icon-chip"
+                            style={{
+                              backgroundColor: stage.badgeBg,
+                              borderColor: stage.border,
+                              color: stage.badgeColor || stage.color,
+                              boxShadow: `0 2px 6px ${stage.glow || 'rgba(0,0,0,0.06)'}`,
+                              cursor: 'pointer'
+                            }}
+                            onClick={handleScrollToTop}
+                            title={`Stage ${idx + 1}: ${stage.title} - Tap to scroll to top`}
+                          >
+                            {getStageIcon(stage.id, 12)}
+                          </div>
+                          
+                          {editingStageId === stage.id ? (
+                            <div className="col-title-inline-edit" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                autoFocus
+                                value={editingStageName}
+                                onChange={(e) => setEditingStageName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveStageName(stage.id);
+                                  if (e.key === 'Escape') setEditingStageId(null);
+                                }}
+                                onBlur={() => handleSaveStageName(stage.id)}
+                                className="col-title-input"
+                                style={{ borderColor: stage.color }}
+                                maxLength={30}
+                              />
+                              <button
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); handleSaveStageName(stage.id); }}
+                                className="col-title-action-btn save"
+                                title="Save name"
+                              >
+                                <Check size={11} />
+                              </button>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => { e.preventDefault(); setEditingStageId(null); }}
+                                className="col-title-action-btn cancel"
+                                title="Cancel"
+                              >
+                                <X size={11} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div 
+                              className="col-title-wrap"
+                              onClick={() => {
+                                setEditingStageId(stage.id);
+                                setEditingStageName(stage.title);
+                              }}
+                              title="Click to rename this stage column"
+                            >
+                              <span className="col-title">
+                                {stage.title}
+                              </span>
+                              <span className="col-edit-icon" title="Rename column">
+                                <Edit2 size={11} />
+                              </span>
+                            </div>
+                          )}
+
+                          <span 
+                            className="col-badge" 
+                            style={{ 
+                              backgroundColor: stage.badgeBg, 
+                              color: stage.badgeColor || stage.color, 
+                              borderColor: stage.border,
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                            }}
+                          >
+                            {stageLeads.length}
+                          </span>
+                        </div>
+
+                        {/* Stage Total Revenue Pill */}
                         <div 
-                          className="col-stage-icon-chip"
-                          style={{
+                          className={`col-sum-pill ${stageVal > 0 ? 'has-value' : 'is-zero'}`}
+                          style={stageVal > 0 ? {
+                            color: stage.color,
                             backgroundColor: stage.badgeBg,
                             borderColor: stage.border,
-                            color: stage.badgeColor || stage.color,
                             boxShadow: `0 2px 6px ${stage.glow || 'rgba(0,0,0,0.06)'}`
-                          }}
-                          title={`Stage ${idx + 1}: ${stage.title}`}
+                          } : undefined}
+                          title={`Total ${stage.title} value: ${formatCurrency(stageVal)}`}
                         >
-                          {getStageIcon(stage.id, 12)}
+                          <span>{formatCurrency(stageVal)}</span>
                         </div>
-                        
-                        {editingStageId === stage.id ? (
-                          <div className="col-title-inline-edit" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="text"
-                              autoFocus
-                              value={editingStageName}
-                              onChange={(e) => setEditingStageName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleSaveStageName(stage.id);
-                                if (e.key === 'Escape') setEditingStageId(null);
-                              }}
-                              onBlur={() => handleSaveStageName(stage.id)}
-                              className="col-title-input"
-                              style={{ borderColor: stage.color }}
-                              maxLength={30}
-                            />
-                            <button
-                              type="button"
-                              onMouseDown={(e) => { e.preventDefault(); handleSaveStageName(stage.id); }}
-                              className="col-title-action-btn save"
-                              title="Save name"
-                            >
-                              <Check size={11} />
-                            </button>
-                            <button
-                              type="button"
-                              onMouseDown={(e) => { e.preventDefault(); setEditingStageId(null); }}
-                              className="col-title-action-btn cancel"
-                              title="Cancel"
-                            >
-                              <X size={11} />
-                            </button>
-                          </div>
+
+                        {/* Mobile Tap-to-Top Button */}
+                        <button
+                          type="button"
+                          className="mobile-col-top-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleScrollToTop();
+                          }}
+                          title="Scroll to top of page and stage"
+                        >
+                          <ArrowUp size={12} />
+                        </button>
+                      </div>
+
+                      {/* Column Cards Container with Touch Propagation */}
+                      <div 
+                        className="kanban-col-cards"
+                        onTouchStart={handleColCardsTouchStart}
+                        onTouchMove={handleColCardsTouchMove}
+                      >
+                        {stageLeads.length > 0 ? (
+                          stageLeads.map(lead => renderLeadCard(lead, true))
                         ) : (
-                          <div 
-                            className="col-title-wrap"
-                            onClick={() => {
-                              setEditingStageId(stage.id);
-                              setEditingStageName(stage.title);
-                            }}
-                            title="Click to rename this stage column"
-                          >
-                            <span className="col-title">
-                              {stage.title}
-                            </span>
-                            <span className="col-edit-icon" title="Rename column">
-                              <Edit2 size={11} />
-                            </span>
+                          <div className="empty-col-state">
+                            <Inbox size={22} style={{ color: stage.color, opacity: 0.35 }} />
+                            <span>No deals in {stage.title}</span>
                           </div>
                         )}
-
-                        <span 
-                          className="col-badge" 
-                          style={{ 
-                            backgroundColor: stage.badgeBg, 
-                            color: stage.badgeColor || stage.color, 
-                            borderColor: stage.border,
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
-                          }}
-                        >
-                          {stageLeads.length}
-                        </span>
-                      </div>
-
-                      {/* Stage Total Revenue Pill */}
-                      <div 
-                        className={`col-sum-pill ${stageVal > 0 ? 'has-value' : 'is-zero'}`}
-                        style={stageVal > 0 ? {
-                          color: stage.color,
-                          backgroundColor: stage.badgeBg,
-                          borderColor: stage.border,
-                          boxShadow: `0 2px 6px ${stage.glow || 'rgba(0,0,0,0.06)'}`
-                        } : undefined}
-                        title={`Total ${stage.title} value: ${formatCurrency(stageVal)}`}
-                      >
-                        <span>{formatCurrency(stageVal)}</span>
                       </div>
                     </div>
-
-                    {/* Column Cards Container */}
-                    <div className="kanban-col-cards">
-                      {stageLeads.length > 0 ? (
-                        stageLeads.map(lead => renderLeadCard(lead, true))
-                      ) : (
-                        <div className="empty-col-state">
-                          <Inbox size={22} style={{ color: stage.color, opacity: 0.35 }} />
-                          <span>No deals in {stage.title}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             /* STAGE FLOW FOCUSED VIEW */
             <div style={{ 
@@ -2027,6 +2291,19 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
             </div>
           )}
         </>
+      )}
+
+      {/* Floating Mobile Scroll-to-Top Smart Pill */}
+      {showMobileScrollTop && (
+        <button
+          type="button"
+          className="mobile-kanban-floating-top-pill"
+          onClick={handleScrollToTop}
+          title="Scroll back to top of pipeline"
+        >
+          <ArrowUp size={14} />
+          <span>Top</span>
+        </button>
       )}
 
       {/* ─── 4. ADVANCE PIPELINE STEP MODAL ─── */}

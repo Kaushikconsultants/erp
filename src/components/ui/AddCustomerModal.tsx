@@ -240,7 +240,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     formData.set("contactPerson", contactPerson);
     formData.set("email", email);
     formData.set("phone", phone);
-    formData.set("gstNumber", gstNumber);
+    formData.set("gstNumber", gstNumber.trim().toUpperCase());
     formData.set("address", finalAddress);
     formData.set("pincode", addressData.pincode);
     formData.set("city", addressData.city);
@@ -303,7 +303,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
               <UserPlus size={20} color="#2563eb" /> {leadToConvert ? 'Convert Lead to Customer' : 'Add New Customer'}
             </h2>
             <p style={{ margin: '4px 0 0 28px', fontSize: '0.8rem', color: '#64748b' }}>
-              {leadToConvert ? `Converting ${leadToConvert.name}` : 'Enter company details or auto-fetch by entering GSTIN'}
+              {leadToConvert ? `Converting ${leadToConvert.name || leadToConvert.shopName || leadToConvert.businessName || 'Lead'}` : 'Enter company details or auto-fetch by entering GSTIN'}
             </p>
           </div>
           <button type="button" onClick={() => onClose()} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}>
@@ -592,8 +592,8 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
                   onChange={e => setOpeningBalanceType(e.target.value)} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600 }}
                 >
-                  <option value="DEBIT">Debit / To Receive (Dr) - Customer owes you</option>
-                  <option value="CREDIT">Credit / To Pay (Cr) - Advance received</option>
+                  <option value="DEBIT">Debit (Dr) - To Receive</option>
+                  <option value="CREDIT">Credit (Cr) - Advance / To Pay</option>
                 </select>
                 <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px', display: 'block' }}>
                   Debit = Receivable, Credit = Advance
@@ -608,10 +608,14 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
               Preferences & Assignment
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: employees.length > 0 ? '1fr 1fr 1fr' : '1fr 1fr', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Payment Method</label>
-                <select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }}>
+                <select 
+                  value={paymentMethod} 
+                  onChange={(e) => setPaymentMethod(e.target.value)} 
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }}
+                >
                   <option value="None">None</option>
                   <option value="COD">COD</option>
                   <option value="UPI">UPI</option>
@@ -620,6 +624,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
                   <option value="Cheque">Cheque</option>
                 </select>
               </div>
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Discount Notes</label>
                 <input 
@@ -631,13 +636,14 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
                 />
               </div>
+
               {employees.length > 0 && (
-                <div>
+                <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Assigned Agent</label>
                   <select 
                     name="salespersonId" 
                     value={salespersonId}
-                    onChange={e => setSalespersonId(e.target.value)}
+                    onChange={e => setSalespersonId(e.target.value)} 
                     required 
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }}
                   >

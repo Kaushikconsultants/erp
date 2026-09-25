@@ -310,6 +310,10 @@
     display: flex !important;
   }
 
+  .bills-mobile-pagination {
+    display: block !important;
+  }
+
   /* Compact 2x2 Grid on Mobile */
   .bills-kpi-grid {
     grid-template-columns: 1fr 1fr !important;

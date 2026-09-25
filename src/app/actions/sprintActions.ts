@@ -132,14 +132,43 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
       }),
       prisma.quotation.findMany({
         where: {
-          OR: [
-            { salespersonId: employee.id },
-            { customer: { assignedSalespersonId: employee.id } }
-          ],
-          date: { gte: startOfMonth, lte: endOfMonth },
-          status: { in: ["Confirmed", "Converted"] }
+          AND: [
+            {
+              OR: [
+                { salespersonId: employee.id },
+                { customer: { assignedSalespersonId: employee.id } }
+              ]
+            },
+            {
+              status: { in: ["Confirmed", "Converted"] }
+            },
+            {
+              OR: [
+                { date: { gte: startOfMonth, lte: endOfMonth } },
+                { createdAt: { gte: startOfMonth, lte: endOfMonth } },
+                { acceptedDate: { gte: startOfMonth, lte: endOfMonth } },
+                { updatedAt: { gte: startOfMonth, lte: endOfMonth } }
+              ]
+            }
+          ]
         },
-        select: { date: true, totalValue: true, subtotal: true, status: true, quotationNumber: true, createdAt: true }
+        select: { 
+          id: true,
+          date: true, 
+          totalValue: true, 
+          subtotal: true, 
+          status: true, 
+          quotationNumber: true, 
+          createdAt: true,
+          acceptedDate: true,
+          updatedAt: true,
+          activities: {
+            where: { action: { in: ['Quotation Confirmed', 'Converted to Order'] } },
+            select: { action: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 2
+          }
+        }
       }),
       prisma.call.count({
         where: {
@@ -177,21 +206,53 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
       })
     ]);
 
+    const quoteMap = new Map<string, any>();
+    monthQuotations.forEach(q => {
+      if (q.quotationNumber) quoteMap.set(q.quotationNumber.trim().toUpperCase(), q);
+    });
+
+    // Helper: determine the true deal confirmation date (when quote was confirmed/won)
+    const getQuotationDealDate = (q: any): Date => {
+      if (q.acceptedDate) return new Date(q.acceptedDate);
+      if (q.activities && q.activities.length > 0) {
+        const confirmAct = q.activities.find((a: any) => a.action === 'Quotation Confirmed');
+        if (confirmAct?.createdAt) return new Date(confirmAct.createdAt);
+        const convertAct = q.activities.find((a: any) => a.action === 'Converted to Order');
+        if (convertAct?.createdAt) return new Date(convertAct.createdAt);
+      }
+      if ((q.status === 'Confirmed' || q.status === 'Converted') && q.updatedAt) {
+        return new Date(q.updatedAt);
+      }
+      return q.date ? new Date(q.date) : (q.createdAt ? new Date(q.createdAt) : new Date());
+    };
+
     // Collect quotation numbers that already exist in orders to prevent duplicate counting
     const convertedQuoteNumbers = new Set<string>();
     monthOrders.forEach(o => {
-      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9-]+)/i);
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
       if (match && match[1]) {
-        convertedQuoteNumbers.add(match[1].trim());
+        convertedQuoteNumbers.add(match[1].trim().toUpperCase());
       }
     });
+
+    const getEffectiveOrderDate = (o: any): Date => {
+      const match = (o.notes || '').match(/Quotation\s*#?\s*([A-Za-z0-9\-_/.]+)/i);
+      if (match && match[1]) {
+        const lq = quoteMap.get(match[1].trim().toUpperCase());
+        if (lq) {
+          return getQuotationDealDate(lq);
+        }
+      }
+      return o.orderDate ? new Date(o.orderDate) : (o.createdAt ? new Date(o.createdAt) : new Date());
+    };
 
     // Calculate revenue per sprint and MTD using totalValue as true order value
     const sprintActuals = [0, 0, 0, 0];
 
     monthOrders.forEach(o => {
-      if (!o.orderDate) return;
-      const d = new Date(o.orderDate).getDate();
+      const dDate = getEffectiveOrderDate(o);
+      if (dDate < startOfMonth || dDate > endOfMonth) return;
+      const d = dDate.getDate();
       const val = Number(o.totalValue ?? o.subtotal ?? 0);
       if (d <= 7) sprintActuals[0] += val;
       else if (d <= 14) sprintActuals[1] += val;
@@ -200,12 +261,13 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
     });
 
     monthQuotations.forEach(q => {
-      const qNum = (q.quotationNumber || '').trim();
+      const qNum = (q.quotationNumber || '').trim().toUpperCase();
       // If already converted/represented as an order in monthOrders, skip to avoid double counting
-      if (q.status !== "Confirmed" || (qNum && convertedQuoteNumbers.has(qNum)) || (qNum && monthOrders.some(o => (o.notes || '').includes(qNum)))) {
+      if (q.status !== "Confirmed" || (qNum && convertedQuoteNumbers.has(qNum)) || (qNum && monthOrders.some(o => (o.notes || '').toUpperCase().includes(qNum)))) {
         return;
       }
-      const qDate = q.date ? new Date(q.date) : new Date(q.createdAt);
+      const qDate = getQuotationDealDate(q);
+      if (qDate < startOfMonth || qDate > endOfMonth) return;
       const d = qDate.getDate();
       const val = Number(q.totalValue ?? q.subtotal ?? 0);
       if (d <= 7) sprintActuals[0] += val;
@@ -233,18 +295,19 @@ export async function getSprintData(employeeId: string): Promise<SprintData | nu
     const todayFollowUpsTarget = employee.dailyFollowUpsTarget ?? 5;
 
     const todayQuotesSent = todayQuotations.length;
-    const todayQuotesSentTarget = employee.dailyQuotesTarget ?? 2;
+    const todayQuotesSentTarget = employee.dailyQuotesTarget ?? 3;
 
     const todayOrdersCount = monthOrders.filter(o => {
-      if (!o.orderDate) return false;
-      const d = new Date(o.orderDate);
+      const d = getEffectiveOrderDate(o);
       return d >= todayStart && d <= todayEnd;
     }).length;
 
-    const todayStandaloneConfirmedQuotes = todayQuotations.filter(q => {
+    const todayStandaloneConfirmedQuotes = monthQuotations.filter(q => {
       if (q.status !== 'Confirmed') return false;
-      const qNum = (q as any).quotationNumber || '';
-      return !convertedQuoteNumbers.has(qNum.trim());
+      const qNum = ((q as any).quotationNumber || '').trim().toUpperCase();
+      if (convertedQuoteNumbers.has(qNum) || monthOrders.some(o => (o.notes || '').toUpperCase().includes(qNum))) return false;
+      const d = getQuotationDealDate(q);
+      return d >= todayStart && d <= todayEnd;
     }).length;
 
     const todayQuotesConfirmed = todayOrdersCount + todayStandaloneConfirmedQuotes;

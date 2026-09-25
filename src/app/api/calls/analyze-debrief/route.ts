@@ -1,23 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getTenantAIClient } from "@/lib/gemini";
+import { GoogleGenAI } from "@google/genai";
+import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-
-const CRM_OUTCOMES = [
-  "Interested / Follow-up Needed",
-  "Order Placed / Deal Closed",
-  "Quotation Requested",
-  "Price Negotiation / Discount Discussion",
-  "No Answer / Busy",
-  "Voicemail / Switched Off",
-  "Callback Scheduled",
-  "Not Interested / Lost",
-  "Wrong / Invalid Number",
-  "Support / General Inquiry",
-];
-
+import { formatTranscriptWithNames } from "@/lib/transcriptUtils";
+import { getTenantAIClient } from "@/lib/gemini";
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({
+        success: false,
+        error: "Unauthorized. Please log in to analyze call recordings.",
+      }, { status: 401 });
+    }
+
+    const orgId = (session.user as any).organizationId;
+
     const body = await req.json();
     const { audioBase64, mimeType = "audio/mp4", spokenText, callContext } = body;
 
@@ -35,18 +33,100 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Do not transcribe or hallucinate on unconnected calls (0s duration) without explicit spoken text
+    if (!rawText && durationSec <= 0) {
+      return NextResponse.json({
+        success: true,
+        analysis: {
+          transcript: "",
+          summary: "",
+          keyPoints: [],
+          detectedOutcome: "No Answer / Busy",
+          dealSentiment: "COLD",
+          sentimentReason: "Call was not connected.",
+          suggestedFollowUp: {
+            hasFollowUp: false,
+            date: null,
+            hour12: "11",
+            minute: "00",
+            period: "AM",
+            actionTitle: "Follow-up Call",
+            reason: "Call not connected"
+          }
+        }
+      });
+    }
+
+    // 1. Resolve Rep Name (Caller)
+    let repName = (callContext?.repName || callContext?.salespersonName || callContext?.employeeName || "").trim();
+    if (!repName) {
+      try {
+        const userId = (session.user as any)?.id;
+        if (userId) {
+          const userRec = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true }
+          });
+          repName = userRec?.name || session.user?.name || "";
+        } else if (session.user?.name) {
+          repName = session.user.name;
+        }
+      } catch {}
+    }
+    if (!repName) repName = "Sales Rep";
+
+    // 2. Resolve Customer Name and whether they are an Old / Existing Customer (Tenant Scoped)
+    let isOldCustomer = Boolean(callContext?.customerId || callContext?.isOldCustomer);
+    let resolvedCustomerName = (contactName && contactName !== "Contact" && contactName !== "Direct Contact" && contactName !== "Phone Inquiry") ? contactName.trim() : "";
+
+    const cleanPhone = String(contactPhone || "").replace(/\D/g, "");
+    if (cleanPhone.length >= 7) {
+      try {
+        const cust = await prisma.customer.findFirst({
+          where: {
+            ...(orgId ? { organizationId: orgId } : {}),
+            OR: [
+              { mobile: { contains: cleanPhone.slice(-10) } },
+              { whatsappNumber: { contains: cleanPhone.slice(-10) } }
+            ]
+          },
+          select: { id: true, businessName: true, contactPerson: true }
+        });
+        if (cust) {
+          isOldCustomer = true;
+          if (!resolvedCustomerName) {
+            resolvedCustomerName = cust.businessName || cust.contactPerson || "";
+          }
+        }
+      } catch {}
+    }
+
+    const customerSpeakerLabel = resolvedCustomerName
+      ? `${resolvedCustomerName} (${isOldCustomer ? "Old Customer" : "Customer"})`
+      : (isOldCustomer ? "Old Customer" : "Customer");
+
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
     const dayOfWeek = today.toLocaleDateString("en-US", { weekday: "long" });
 
     // Resolve tenant organization
-    const session = await getServerSession(authOptions).catch(() => null);
     const orgId = (session?.user as any)?.organizationId || callContext?.organizationId || body.organizationId || null;
     const { ai, isConfigured, model: preferredModel } = await getTenantAIClient(orgId);
 
     if (!isConfigured) {
       const fallback = generateFallback(rawText, contactName, contactPhone, durationSec, today);
       return NextResponse.json({ success: true, analysis: fallback, note: "Offline heuristic applied (Configure Gemini in Integrations)" });
+    }
+
+    let companyName = "Espon Clothing Private Limited";
+    if (orgId) {
+      try {
+        const cSettings = await prisma.companySettings.findFirst({
+          where: { OR: [{ organizationId: orgId }, { id: `settings-${orgId}` }] },
+          select: { companyName: true }
+        });
+        if (cSettings?.companyName) companyName = cSettings.companyName;
+      } catch {}
     }
 
     const systemPrompt = `
@@ -58,25 +138,34 @@ Current Reference Date & Time:
 - Today's Date: ${todayStr} (${dayOfWeek})
 - Current Time: ${today.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
 
-Call Context:
-- Contact Name: ${contactName}
+Call Participants Context:
+- Selling Company: "${companyName}"
+- Sales Representative: "${repName}" (Represents ${companyName})
+- Customer / Buyer: "${customerSpeakerLabel}" (Status: ${isOldCustomer ? "Existing / Old Customer of the company" : "New Contact / Lead"})
 - Phone: ${contactPhone}
 - Call Duration: ${durationSec} seconds
 
 Standard CRM Outcome Categories:
 ${CRM_OUTCOMES.map((o) => `- "${o}"`).join("\n")}
 
-CRITICAL INSTRUCTIONS FOR AUDIO TRANSCRIPTION:
-1. Listen carefully to the entire audio recording. Transcribe EVERY spoken word accurately in the "transcript" field.
-2. If the audio is in Hindi, English, or Hinglish, transcribe it phonetically or in English/Hinglish as spoken.
-3. If both caller and receiver speak, format as dialogue where possible (e.g., "Rep: Hello... Customer: Haan boliye...").
+CRITICAL SPEAKER IDENTIFICATION & SPEAKER LABELING RULES:
+1. In outbound cellular phone calls:
+   - When the call connects, the person who answers first and says "Hello", "Haanji", or "Yes" is almost always the CUSTOMER ("${customerSpeakerLabel}").
+   - The person who introduces themselves with the company name (e.g. "${repName} this side from ${companyName}", asking about orders, sharing catalogs, discussing fabrics or prices) is the SALES REPRESENTATIVE ("${repName}").
+   - The person who responds, asks who is calling ("Aap kaun bol rahe ho?", "You are from, sorry?"), responds with order plans ("Haan madam/sir next week order bolunga"), or negotiates is the CUSTOMER ("${customerSpeakerLabel}").
+2. DO NOT assume the first person to speak is the sales representative. Listen carefully to WHO introduces themselves as ${repName} and who represents ${companyName}.
+3. In the "transcript" field:
+   - Transcribe EVERY spoken word accurately as a clean line-by-line dialogue separated by newlines.
+   - ALWAYS label the sales representative's speech using their exact name: "${repName}: <utterance>"
+   - ALWAYS label the customer's speech using their exact name: "${customerSpeakerLabel}: <utterance>"
+   - NEVER reverse or swap these roles! If a speaker introduces herself as "${repName} this side from [Company]", that speaker MUST be labeled "${repName}:", NEVER "${customerSpeakerLabel}:".
 4. If there is background noise, telephone artifacts, or low volume, do your absolute best to decipher any audible speech, words, greetings, or sounds.
 5. ONLY if the audio contains 100% pure silence with zero vocalization, set "transcript" to "[Call connected - silence/hold tone]". Do NOT say "No discernible speech detected" if any words or voice can be heard.
-6. Provide a concise executive summary, key points, outcome, deal sentiment, and next follow-up.
+6. In the "summary", explicitly mention "${repName}" as the sales representative and "${resolvedCustomerName || "the customer"}${isOldCustomer ? " (Old Customer)" : ""}" as the customer.
 
 Output a single valid JSON object strictly matching this schema:
 {
-  "transcript": string (Clean, verbatim, punctuated transcript of what was spoken),
+  "transcript": string (Clean, verbatim, punctuated transcript with exact speaker names "${repName}:" and "${customerSpeakerLabel}:"),
   "summary": string (Crisp 2-3 sentence executive summary of conversation, agreed terms, customer intent, next action),
   "keyPoints": string[] (Array of 2 to 4 bullet points highlighting essential requirements, quantities, prices, terms),
   "detectedOutcome": string (Must be EXACTLY ONE of the standard CRM Outcome Categories listed above),
@@ -185,8 +274,11 @@ Output a single valid JSON object strictly matching this schema:
       ? parsed.dealSentiment.toUpperCase()
       : "WARM";
 
+    const rawTranscript = parsed.transcript || rawText || `Call discussion with ${contactName} (${contactPhone}).`;
+    const formattedTranscript = formatTranscriptWithNames(rawTranscript, repName, resolvedCustomerName, isOldCustomer);
+
     const analysis = {
-      transcript: parsed.transcript || rawText || `Call discussion with ${contactName} (${contactPhone}).`,
+      transcript: formattedTranscript,
       summary: parsed.summary || `Call completed with ${contactName}. Duration: ${durationSec}s.`,
       keyPoints: Array.isArray(parsed.keyPoints) && parsed.keyPoints.length > 0
         ? parsed.keyPoints

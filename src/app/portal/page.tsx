@@ -84,8 +84,8 @@ function PortalDashboardContent() {
                   {customer.customerType || 'B2B Client Account'}
                 </span>
                 {customer.gstNumber && (
-                  <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '4px 12px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '6px' }}>
-                    GSTIN: {customer.gstNumber}
+                  <span style={{ fontSize: '0.72rem', fontWeight: '700', padding: '4px 12px', backgroundColor: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', borderRadius: '6px', textTransform: 'uppercase' }}>
+                    GSTIN: {customer.gstNumber.toUpperCase()}
                   </span>
                 )}
               </div>

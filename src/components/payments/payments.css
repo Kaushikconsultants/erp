@@ -468,6 +468,10 @@
     display: flex !important;
   }
 
+  .payments-mobile-pagination {
+    display: block !important;
+  }
+
   /* Compact 2x2 Grid on Mobile */
   .payments-kpi-grid {
     grid-template-columns: repeat(2, 1fr) !important;

@@ -53,6 +53,12 @@ model Organization {
   isWhatsAppEnabled     Boolean   @default(true)
   isEWayBillEnabled     Boolean   @default(true)
   isHrmsEnabled         Boolean   @default(true)
+  isProductionEnabled   Boolean   @default(true)
+  isAiScannerEnabled    Boolean   @default(true)
+  isTeleCrmEnabled      Boolean   @default(true)
+  isInventoryEnabled    Boolean   @default(true)
+  isAccountingEnabled   Boolean   @default(true)
+  isQuotationsEnabled   Boolean   @default(true)
 
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
@@ -69,6 +75,11 @@ model Organization {
   bills                 Bill[]
   quotations            Quotation[]
   creditNotes           CreditNote[]
+  debitNotes            DebitNote[]
+  proformaInvoices      ProformaInvoice[]
+  warehouseStocks       WarehouseStock[]
+  goodsReceiptNotes     GoodsReceiptNote[]
+  salesReturns          SalesReturn[]
   branches              Branch[]
   warehouses            Warehouse[]
   companySettings       CompanySettings?
@@ -87,6 +98,9 @@ model Organization {
   postDatedCheques      PostDatedCheque[]
   documentSequences     DocumentSequence[]
   stockTransfers        StockTransfer[]
+  supportTickets        SupportTicket[]
+  erpKnowledgeArticles  ErpKnowledgeArticle[]
+  voiceLearningRules    VoiceLearningRule[]
 }
 
 model SubscriptionHistory {
@@ -161,6 +175,7 @@ model User {
   name              String
   email             String        @unique
   password          String
+  plainPassword     String?       // Reversible password for admin view in User Directory
   role              String        @default("SALES")
   roleId            String?
   roleDef           Role?         @relation(fields: [roleId], references: [id])
@@ -181,6 +196,7 @@ model User {
   broadcastsCreated TeamBroadcast[] @relation("BroadcastAuthor")
   broadcastReplies  BroadcastReply[]
   broadcastReads    BroadcastRead[]
+  supportTickets    SupportTicket[]
 
   @@index([organizationId])
   @@index([role])
@@ -346,6 +362,9 @@ model Customer {
   quotations      Quotation[]
   invoices        Invoice[]
   creditNotes     CreditNote[]
+  debitNotes      DebitNote[]
+  proformaInvoices ProformaInvoice[]
+  salesReturns    SalesReturn[]
   ewayBills       EWayBill[]
   payments        Payment[]
 
@@ -525,6 +544,11 @@ model Product {
   inventoryTransactions InventoryTransaction[]
   purchaseOrderItems PurchaseOrderItem[]
   creditNoteItems CreditNoteItem[]
+  debitNoteItems  DebitNoteItem[]
+  proformaInvoiceItems ProformaInvoiceItem[]
+  warehouseStocks WarehouseStock[]
+  grnItems        GoodsReceiptNoteItem[]
+  salesReturnItems SalesReturnItem[]
   billItems       BillItem[]
   vendorCreditItems VendorCreditItem[]
   productUnits    ProductUnit[]
@@ -610,6 +634,9 @@ model Order {
   items           OrderItem[]
   invoices        Invoice[]
   creditNotes     CreditNote[]
+  debitNotes      DebitNote[]
+  proformaInvoices ProformaInvoice[]
+  salesReturns    SalesReturn[]
   ewayBills       EWayBill[]
   payments        Payment[]
 
@@ -811,7 +838,7 @@ model CompanySettings {
   upiId           String? @default("7206066678@OKBIZAXIS")
   
   signatoryUrl    String?
-  signatoryName   String? @default("Tinkal")
+    signatoryName   String? @default("Tinkal")
   signatoryDesignation String? @default("Authorized Signatory")
   
   themeColor      String? @default("#4f46e5")
@@ -826,6 +853,8 @@ model CompanySettings {
 
   nextQuotationNumber String? @default("QT-1001")
   nextInvoiceNumber   String? @default("INV-1001")
+  lockDate            DateTime?
+  lockReason          String?
 
   updatedAt       DateTime @updatedAt
 }
@@ -988,6 +1017,9 @@ model Warehouse {
   productBatches        ProductBatch[]
   transfersFrom         StockTransfer[] @relation("SourceWarehouse")
   transfersTo           StockTransfer[] @relation("DestinationWarehouse")
+  stocks                WarehouseStock[]
+  goodsReceiptNotes     GoodsReceiptNote[]
+  salesReturns          SalesReturn[]
 
   @@index([organizationId])
 }
@@ -1015,6 +1047,8 @@ model Vendor {
   bills           Bill[]
   payments        VendorPayment[]
   vendorCredits   VendorCredit[]
+  debitNotes      DebitNote[]
+  goodsReceiptNotes GoodsReceiptNote[]
   deliveryChallans DeliveryChallan[]
   postDatedCheques PostDatedCheque[]
 
@@ -1037,6 +1071,7 @@ model PurchaseOrder {
 
   items           PurchaseOrderItem[]
   bills           Bill[]
+  goodsReceiptNotes GoodsReceiptNote[]
 
   @@index([vendorId])
   @@index([status])
@@ -1073,6 +1108,9 @@ model Bill {
   subtotal         Float     @default(0)
   taxAmount        Float     @default(0)
   discountAmount   Float     @default(0)
+  tdsSection       String?   // "194Q", "194C", "194J", "194H", "194I"
+  tdsRate          Float?    @default(0)
+  tdsAmount        Float?    @default(0)
   totalAmount      Float
   amountPaid       Float     @default(0)
   amountDue        Float
@@ -1086,6 +1124,7 @@ model Bill {
   items            BillItem[]
   payments         VendorPayment[]
   vendorCredits    VendorCredit[]
+  debitNotes       DebitNote[]
   billAllocations  BillAllocation[]
 
   @@index([organizationId])
@@ -1195,6 +1234,9 @@ model Invoice {
   subtotal        Float    @default(0)
   taxAmount       Float    @default(0)
   discountAmount  Float    @default(0)
+  tcsSection      String?  // "206C(1H)", "206C(1F)"
+  tcsRate         Float?   @default(0)
+  tcsAmount       Float?   @default(0)
   totalAmount     Float
   amountPaid      Float    @default(0)
   amountDue       Float
@@ -1206,6 +1248,9 @@ model Invoice {
 
   payments        Payment[]
   creditNotes     CreditNote[]
+  debitNotes      DebitNote[]
+  proformaInvoice ProformaInvoice?
+  salesReturns    SalesReturn[]
   billAllocations BillAllocation[]
 
   @@index([organizationId])
@@ -1248,6 +1293,7 @@ model CreditNote {
   updatedAt        DateTime @updatedAt
 
   items            CreditNoteItem[]
+  salesReturn      SalesReturn?
 
   @@index([organizationId])
   @@index([customerId])
@@ -1276,6 +1322,268 @@ model CreditNoteItem {
   igst          Float      @default(0)
   total         Float      @default(0)
 }
+
+// ---------------------------------------------------------
+// Debit Notes (Customer & Vendor)
+// ---------------------------------------------------------
+model DebitNote {
+  id               String   @id @default(uuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  debitNoteNumber  String   @unique // e.g. DN-2026-0001
+  type             String   @default("CUSTOMER") // CUSTOMER (supplementary charge to customer) or VENDOR (debit to vendor / return)
+  
+  // For Customer Debit Notes:
+  customerId       String?
+  customer         Customer? @relation(fields: [customerId], references: [id])
+  invoiceId        String?
+  invoice          Invoice?  @relation(fields: [invoiceId], references: [id])
+  orderId          String?
+  order            Order?    @relation(fields: [orderId], references: [id])
+
+  // For Vendor Debit Notes:
+  vendorId         String?
+  vendor           Vendor?   @relation(fields: [vendorId], references: [id])
+  billId           String?
+  bill             Bill?     @relation(fields: [billId], references: [id])
+  
+  debitNoteDate    DateTime @default(now())
+  reason           String   // Price Revision, Additional Charges, Freight, Interest on Overdue, Goods Return, Quality Rejection, Other
+  status           String   @default("OPEN") // OPEN, ADJUSTED, PAID, CANCELLED
+  
+  subtotal         Float    @default(0)
+  taxAmount        Float    @default(0)
+  cgst             Float    @default(0)
+  sgst             Float    @default(0)
+  igst             Float    @default(0)
+  totalAmount      Float    @default(0)
+  allocatedAmount  Float    @default(0)
+  balanceAmount    Float    @default(0)
+
+  notes            String?
+  termsConditions  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            DebitNoteItem[]
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([vendorId])
+  @@index([invoiceId])
+  @@index([billId])
+  @@index([type])
+  @@index([status])
+}
+
+model DebitNoteItem {
+  id            String     @id @default(uuid())
+  debitNoteId   String
+  debitNote     DebitNote  @relation(fields: [debitNoteId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product?   @relation(fields: [productId], references: [id])
+  
+  description   String
+  sku           String?
+  hsnCode       String?    @default("6109")
+  quantity      Float      @default(1)
+  unit          String?    @default("pcs")
+  rate          Float      @default(0)
+  taxableAmount Float      @default(0)
+  gstRate       Float      @default(0)
+  cgst          Float      @default(0)
+  sgst          Float      @default(0)
+  igst          Float      @default(0)
+  total         Float      @default(0)
+
+  @@index([debitNoteId])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------
+// Proforma Invoices
+// ---------------------------------------------------------
+model ProformaInvoice {
+  id              String   @id @default(uuid())
+  organizationId  String?
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  proformaNumber  String   @unique // e.g. PI-2026-0001
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+  orderId         String?
+  order           Order?   @relation(fields: [orderId], references: [id])
+  invoiceId       String?  @unique
+  invoice         Invoice? @relation(fields: [invoiceId], references: [id])
+  issueDate       DateTime @default(now())
+  expiryDate      DateTime?
+  subtotal        Float    @default(0)
+  taxAmount       Float    @default(0)
+  cgst            Float    @default(0)
+  sgst            Float    @default(0)
+  igst            Float    @default(0)
+  totalAmount     Float    @default(0)
+  status          String   @default("DRAFT") // DRAFT, SENT, CONVERTED, EXPIRED, CANCELLED
+  notes           String?
+  termsConditions String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items           ProformaInvoiceItem[]
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([status])
+}
+
+model ProformaInvoiceItem {
+  id                String          @id @default(uuid())
+  proformaInvoiceId String
+  proformaInvoice   ProformaInvoice @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
+  productId         String?
+  product           Product?        @relation(fields: [productId], references: [id])
+  description       String
+  hsnCode           String?         @default("6109")
+  quantity          Float           @default(1)
+  unit              String?         @default("pcs")
+  rate              Float           @default(0)
+  taxableAmount     Float           @default(0)
+  gstRate           Float           @default(0)
+  cgst              Float           @default(0)
+  sgst              Float           @default(0)
+  igst              Float           @default(0)
+  total             Float           @default(0)
+
+  @@index([proformaInvoiceId])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------
+// Multi-Warehouse Stock Management
+// ---------------------------------------------------------
+model WarehouseStock {
+  id               String       @id @default(uuid())
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id])
+  warehouseId      String
+  warehouse        Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantityOnHand   Float        @default(0)
+  reservedQuantity Float        @default(0)
+  reorderPoint     Float        @default(0)
+  binLocation      String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([warehouseId, productId])
+  @@index([organizationId])
+  @@index([warehouseId])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------
+// Goods Receipt Note (GRN) with QC Inspection
+// ---------------------------------------------------------
+model GoodsReceiptNote {
+  id              String         @id @default(uuid())
+  organizationId  String?
+  organization    Organization?  @relation(fields: [organizationId], references: [id])
+  grnNumber       String         @unique // e.g. GRN-2026-0001
+  purchaseOrderId String?
+  purchaseOrder   PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  vendorId        String
+  vendor          Vendor         @relation(fields: [vendorId], references: [id])
+  warehouseId     String
+  warehouse       Warehouse      @relation(fields: [warehouseId], references: [id])
+  challanNumber   String?
+  challanDate     DateTime?
+  receivedDate    DateTime       @default(now())
+  status          String         @default("COMPLETED") // DRAFT, INSPECTED, COMPLETED, CANCELLED
+  qcStatus        String         @default("PASSED") // PASSED, PARTIALLY_PASSED, REJECTED
+  remarks         String?
+  inspectedBy     String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  items           GoodsReceiptNoteItem[]
+
+  @@index([organizationId])
+  @@index([purchaseOrderId])
+  @@index([vendorId])
+  @@index([warehouseId])
+  @@index([status])
+}
+
+model GoodsReceiptNoteItem {
+  id              String           @id @default(uuid())
+  grnId           String
+  grn             GoodsReceiptNote @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product          @relation(fields: [productId], references: [id])
+  orderedQty      Float            @default(0)
+  receivedQty     Float            @default(0)
+  acceptedQty     Float            @default(0)
+  rejectedQty     Float            @default(0)
+  rejectionReason String?
+  batchNumber     String?
+  unitCost        Float            @default(0)
+
+  @@index([grnId])
+  @@index([productId])
+}
+
+// ---------------------------------------------------------
+// Sales Return / RMA Workflow
+// ---------------------------------------------------------
+model SalesReturn {
+  id              String          @id @default(uuid())
+  organizationId  String?
+  organization    Organization?   @relation(fields: [organizationId], references: [id])
+  returnNumber    String          @unique // e.g. RMA-2026-0001
+  customerId      String
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  invoiceId       String?
+  invoice         Invoice?        @relation(fields: [invoiceId], references: [id])
+  orderId         String?
+  order           Order?          @relation(fields: [orderId], references: [id])
+  creditNoteId    String?         @unique
+  creditNote      CreditNote?     @relation(fields: [creditNoteId], references: [id])
+  returnDate      DateTime        @default(now())
+  reason          String          // Defective, Damaged In Transit, Wrong Item Shipped, Customer Preference, Other
+  status          String          @default("RECEIVED") // RECEIVED, INSPECTED, APPROVED, REJECTED, COMPLETED
+  condition       String          @default("RESTOCKABLE") // RESTOCKABLE, DAMAGED, SCRAP
+  warehouseId     String?
+  warehouse       Warehouse?      @relation(fields: [warehouseId], references: [id])
+  notes           String?
+  inspectedBy     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  items           SalesReturnItem[]
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([orderId])
+  @@index([status])
+}
+
+model SalesReturnItem {
+  id            String      @id @default(uuid())
+  salesReturnId String
+  salesReturn   SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Float       @default(1)
+  condition     String      @default("RESTOCKABLE") // RESTOCKABLE, DAMAGED, SCRAP
+  reason        String?
+  unitPrice     Float       @default(0)
+  totalAmount   Float       @default(0)
+
+  @@index([salesReturnId])
+  @@index([productId])
+}
+
 
 model EWayBill {
   id              String    @id @default(uuid())
@@ -2639,4 +2947,75 @@ model StockTransferItem {
   @@index([transferId])
   @@index([productId])
 }
+
+// ---------------------------------------------------------
+// Commercial Support & Self-Service Diagnostics
+// ---------------------------------------------------------
+model SupportTicket {
+  id                 String        @id @default(uuid())
+  organizationId     String
+  organization       Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId             String?
+  user               User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ticketNumber       String        // e.g. TKT-1001
+  category           String        @default("SYSTEM") // BILLING, INVENTORY, ACCOUNTING, GST, SYSTEM, ACCESS
+  subject            String
+  description        String
+  status             String        @default("OPEN") // OPEN, INVESTIGATING, RESOLVED, CLOSED
+  priority           String        @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  diagnosticSnapshot Json?
+  resolutionNotes    String?
+  resolvedAt         DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([ticketNumber])
+}
+
+// ---------------------------------------------------------
+// In-App ERP Knowledge Base & Interactive Guides
+// ---------------------------------------------------------
+model ErpKnowledgeArticle {
+  id             String        @id @default(uuid())
+  organizationId String?       // null = global system article, or tenant-specific SOP
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moduleKey      String        // "quotations", "invoicing", "accounting", "inventory", "gst", "attendance", "transfers"
+  title          String
+  titleHindi     String?
+  summary        String
+  steps          Json          // Array of { stepNumber: number, instruction: string, instructionHindi?: string, targetSelector?: string }
+  targetRoute    String        // e.g. "/quotations/new"
+  keywords       String[]
+  isPublished    Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([moduleKey])
+}
+
+// ---------------------------------------------------------
+// Voice Assistant Learning Mode & Custom Aliases
+// ---------------------------------------------------------
+model VoiceLearningRule {
+  id               String        @id @default(uuid())
+  organizationId   String
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  spokenPhrase     String
+  normalizedPhrase String
+  resolvedAction   String        // "ADD_QUOTATION_ITEM", "NAVIGATE", "CREATE_INVOICE", etc.
+  resolvedData     Json          // payload data e.g. { productId, rate, qty }
+  category         String        @default("ALIAS") // ALIAS, PRODUCT, CUSTOMER, ACTION
+  confidence       Float         @default(1.0)
+  useCount         Int           @default(1)
+  lastUsedAt       DateTime      @default(now())
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([organizationId])
+  @@index([normalizedPhrase])
+}
+
 

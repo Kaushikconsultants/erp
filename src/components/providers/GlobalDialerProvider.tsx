@@ -20,13 +20,25 @@ export const useAppDialer = () => useContext(DialerContext);
 
 export default function GlobalDialerProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [hasRendered, setHasRendered] = useState<boolean>(false);
   const [dialerPhone, setDialerPhone] = useState<string>("");
   const [dialerName, setDialerName] = useState<string>("");
   const [dialerCustomerId, setDialerCustomerId] = useState<string | undefined>(undefined);
   const [dialerLeadId, setDialerLeadId] = useState<string | undefined>(undefined);
   const [dialerTab, setDialerTab] = useState<"DIALPAD" | "CALL_LOGS" | "CONTACTS" | "POST_CALL" | "WHATSAPP" | "SCRIPTS">("DIALPAD");
 
+  // Pre-warm dialer in background after initial page hydration when CPU is idle
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const timer = setTimeout(() => {
+        setHasRendered(true);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   const openDialer = useCallback((options?: OpenDialerOptions) => {
+    setHasRendered(true);
     setDialerPhone(options?.phone || "");
     setDialerName(options?.name || "");
     setDialerCustomerId(options?.customerId || undefined);
@@ -97,7 +109,7 @@ export default function GlobalDialerProvider({ children }: { children: React.Rea
   return (
     <DialerContext.Provider value={{ openDialer, closeDialer, isOpen }}>
       {children}
-      {isOpen && (
+      {hasRendered && (
         <PhoneDialerModal
           isOpen={isOpen}
           onClose={closeDialer}

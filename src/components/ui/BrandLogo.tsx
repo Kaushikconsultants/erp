@@ -61,6 +61,7 @@ export default function BrandLogo({
       >
         {!imgFailed ? (
           <img
+            key={imgSrc}
             src={imgSrc}
             alt="ERP Tinkal"
             onError={handleImageError}
@@ -133,6 +134,7 @@ export default function BrandLogo({
       >
         {!imgFailed ? (
           <img
+            key={imgSrc}
             src={imgSrc}
             alt="ERP Tinkal"
             className="brand-logo-img"

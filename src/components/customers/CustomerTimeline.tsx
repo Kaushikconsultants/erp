@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { getCustomerTimeline } from "@/app/actions/customerActions";
 import { Phone, CheckSquare, ShoppingCart, CheckCircle2, FileText, Receipt, IndianRupee, Clock, Mail, Sparkles, Volume2 } from "lucide-react";
+import CallTranscriptViewer from "@/components/telecalling/CallTranscriptViewer";
 
 export default function CustomerTimeline({ customerId }: { customerId: string }) {
   const [timeline, setTimeline] = useState<any[]>([]);
@@ -159,20 +160,17 @@ export default function CustomerTimeline({ customerId }: { customerId: string })
                   <audio controls src={callRecordingUrl} style={{ width: '100%', height: '30px' }} />
                 )}
 
-                {callSummary && (
-                  <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#faf5ff', border: '1px solid #f3e8ff', fontSize: '0.8rem', color: '#581c87' }}>
-                    <strong style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', color: '#7e22ce' }}>
-                      <Sparkles size={12} /> AI Summary:
-                    </strong>
-                    {callSummary}
-                  </div>
-                )}
-
-                {callTranscript && (
-                  <div style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', fontSize: '0.78rem', color: '#334155', maxHeight: '120px', overflowY: 'auto' }}>
-                    <strong style={{ display: 'block', marginBottom: '4px', color: '#2563eb' }}>📜 Auto-Transcript:</strong>
-                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.4 }}>{callTranscript}</div>
-                  </div>
+                {(item.data.notes || item.data.summary) && (
+                  <CallTranscriptViewer
+                    notes={item.data.notes}
+                    summary={item.data.summary}
+                    repName={item.data.employee?.user?.name}
+                    compact={true}
+                    callId={item.data.id}
+                    durationSec={item.data.durationSec}
+                    outcome={item.data.outcome}
+                    status={item.data.status}
+                  />
                 )}
 
                 {desc && (

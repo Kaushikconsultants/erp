@@ -71,6 +71,7 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setSubmitError(null);
     setIsSubmitting(true);
     

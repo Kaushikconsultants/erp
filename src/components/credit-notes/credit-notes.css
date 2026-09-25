@@ -433,6 +433,10 @@
     display: flex !important;
   }
 
+  .credit-notes-mobile-pagination {
+    display: block !important;
+  }
+
   /* Compact 2+1 Grid on Mobile */
   .credit-notes-kpi-grid {
     grid-template-columns: 1fr 1fr !important;

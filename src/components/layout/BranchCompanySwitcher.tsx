@@ -14,9 +14,7 @@ import {
   getBranches, 
   setActiveBranch, 
   createBranch, 
-  BranchData, 
-  getUserOrganizations, 
-  switchUserOrganization 
+  BranchData 
 } from '@/app/actions/branchActions';
 import Link from 'next/link';
 
@@ -28,7 +26,6 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
   const [branches, setBranches] = useState<BranchData[]>([]);
   const [activeBranchId, setActiveBranchIdState] = useState<string>('ALL');
   const [companyName, setCompanyName] = useState<string>('Company');
-  const [organizations, setOrganizations] = useState<{ id: string; name: string; isCurrent: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Quick Add Branch Modal state
@@ -41,19 +38,12 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
 
   const loadData = async () => {
     setLoading(true);
-    const [branchRes, orgRes] = await Promise.all([
-      getBranches(),
-      getUserOrganizations()
-    ]);
+    const branchRes = await getBranches();
 
     if (branchRes.success) {
       setBranches(branchRes.branches || []);
       setActiveBranchIdState(branchRes.activeBranchId || 'ALL');
       setCompanyName(branchRes.companyName || 'Company');
-    }
-
-    if (orgRes.success) {
-      setOrganizations(orgRes.organizations || []);
     }
     setLoading(false);
   };
@@ -66,12 +56,6 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
     setActiveBranchIdState(branchId);
     if (onCloseDropdown) onCloseDropdown();
     await setActiveBranch(branchId);
-    window.location.reload();
-  };
-
-  const handleSwitchOrg = async (orgId: string) => {
-    if (onCloseDropdown) onCloseDropdown();
-    await switchUserOrganization(orgId);
     window.location.reload();
   };
 
@@ -108,7 +92,7 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
 
   return (
     <div className="profile-branch-company-section">
-      {/* 1. ACTIVE ORGANIZATION / COMPANY */}
+      {/* 1. CURRENT COMPANY */}
       <div style={{
         padding: '10px 16px',
         backgroundColor: '#f8fafc',
@@ -122,56 +106,24 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
           marginBottom: '6px'
         }}>
           <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Active Organization
+            Company
           </span>
-          {organizations.length > 1 && (
-            <span style={{ fontSize: '0.68rem', color: '#4f46e5', fontWeight: 600 }}>
-              {organizations.length} Companies
-            </span>
-          )}
         </div>
 
-        {organizations.length > 1 ? (
-          <div style={{ position: 'relative' }}>
-            <select
-              value={organizations.find(o => o.isCurrent)?.id}
-              onChange={e => handleSwitchOrg(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '7px 10px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                color: '#0f172a',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                outline: 'none'
-              }}
-            >
-              {organizations.map(org => (
-                <option key={org.id} value={org.id}>
-                  {org.name} {org.isCurrent ? '(Active)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '6px 10px',
-            backgroundColor: '#ffffff',
-            borderRadius: '8px',
-            border: '1px solid #e2e8f0'
-          }}>
-            <Building2 size={16} style={{ color: '#4f46e5', flexShrink: 0 }} />
-            <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {companyName}
-            </span>
-          </div>
-        )}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '6px 10px',
+          backgroundColor: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <Building2 size={16} style={{ color: '#4f46e5', flexShrink: 0 }} />
+          <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {companyName}
+          </span>
+        </div>
       </div>
 
       {/* 2. SELECT BRANCH / LOCATION SECTION */}

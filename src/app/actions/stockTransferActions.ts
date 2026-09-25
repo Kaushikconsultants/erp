@@ -103,46 +103,50 @@ export async function createStockTransfer(input: CreateStockTransferInput) {
       };
     });
 
-    // 1. Create Transfer Record
-    const transfer = await prisma.stockTransfer.create({
-      data: {
-        organizationId,
-        transferNumber,
-        fromWarehouseId: input.fromWarehouseId,
-        toWarehouseId: input.toWarehouseId,
-        transporterName: input.transporterName?.trim() || null,
-        vehicleNumber: input.vehicleNumber?.trim() || null,
-        lrNumber: input.lrNumber?.trim() || null,
-        notes: input.notes?.trim() || null,
-        status: "IN_TRANSIT",
-        dispatchedDate: new Date(),
-        totalQuantity,
-        totalValue,
-        items: {
-          create: transferItemsData
-        }
-      }
-    });
-
-    // 2. Record Inventory Out Transactions from Source Warehouse
-    for (const it of input.items) {
-      await prisma.inventoryTransaction.create({
+    // Atomic Transaction: Create transfer, log inventory out, and deduct product stock
+    const transfer = await prisma.$transaction(async (tx) => {
+      // 1. Create Transfer Record
+      const createdTransfer = await tx.stockTransfer.create({
         data: {
-          productId: it.productId,
-          type: "OUT",
-          quantity: it.quantitySent,
-          reference: `Stock Transfer Out (${transferNumber})`,
-          warehouseId: input.fromWarehouseId,
-          notes: `Transferred to warehouse ${input.toWarehouseId}`
+          organizationId,
+          transferNumber,
+          fromWarehouseId: input.fromWarehouseId,
+          toWarehouseId: input.toWarehouseId,
+          transporterName: input.transporterName?.trim() || null,
+          vehicleNumber: input.vehicleNumber?.trim() || null,
+          lrNumber: input.lrNumber?.trim() || null,
+          notes: input.notes?.trim() || null,
+          status: "IN_TRANSIT",
+          dispatchedDate: new Date(),
+          totalQuantity,
+          totalValue,
+          items: {
+            create: transferItemsData
+          }
         }
       });
 
-      // Deduct from product global stock count
-      await prisma.product.update({
-        where: { id: it.productId },
-        data: { stockQuantity: { decrement: it.quantitySent } }
-      });
-    }
+      // 2. Record Inventory Out Transactions and Deduct Stock
+      for (const it of input.items) {
+        await tx.inventoryTransaction.create({
+          data: {
+            productId: it.productId,
+            type: "OUT",
+            quantity: it.quantitySent,
+            reference: `Stock Transfer Out (${transferNumber})`,
+            warehouseId: input.fromWarehouseId,
+            notes: `Transferred to warehouse ${input.toWarehouseId}`
+          }
+        });
+
+        await tx.product.update({
+          where: { id: it.productId },
+          data: { stockQuantity: { decrement: it.quantitySent } }
+        });
+      }
+
+      return createdTransfer;
+    });
 
     revalidatePath("/warehouses/transfers");
     revalidatePath("/warehouses");
@@ -172,38 +176,41 @@ export async function receiveStockTransfer(transferId: string) {
 
     const now = new Date();
 
-    // 1. Update transfer status
-    await prisma.stockTransfer.update({
-      where: { id: transferId },
-      data: {
-        status: "RECEIVED",
-        receivedDate: now
-      }
-    });
-
-    // 2. Add inventory transactions & restore stock at destination warehouse
-    for (const it of transfer.items) {
-      await prisma.stockTransferItem.update({
-        where: { id: it.id },
-        data: { quantityReceived: it.quantitySent }
-      });
-
-      await prisma.inventoryTransaction.create({
+    // Atomic Transaction: Update status, log received items, create IN transactions, increment stock
+    await prisma.$transaction(async (tx) => {
+      // 1. Update transfer status
+      await tx.stockTransfer.update({
+        where: { id: transferId },
         data: {
-          productId: it.productId,
-          type: "IN",
-          quantity: it.quantitySent,
-          reference: `Stock Transfer In (${transfer.transferNumber})`,
-          warehouseId: transfer.toWarehouseId,
-          notes: `Received at ${transfer.toWarehouse?.name || 'warehouse'}`
+          status: "RECEIVED",
+          receivedDate: now
         }
       });
 
-      await prisma.product.update({
-        where: { id: it.productId },
-        data: { stockQuantity: { increment: it.quantitySent } }
-      });
-    }
+      // 2. Add inventory transactions & restore stock at destination warehouse
+      for (const it of transfer.items) {
+        await tx.stockTransferItem.update({
+          where: { id: it.id },
+          data: { quantityReceived: it.quantitySent }
+        });
+
+        await tx.inventoryTransaction.create({
+          data: {
+            productId: it.productId,
+            type: "IN",
+            quantity: it.quantitySent,
+            reference: `Stock Transfer In (${transfer.transferNumber})`,
+            warehouseId: transfer.toWarehouseId,
+            notes: `Received at ${transfer.toWarehouse?.name || 'warehouse'}`
+          }
+        });
+
+        await tx.product.update({
+          where: { id: it.productId },
+          data: { stockQuantity: { increment: it.quantitySent } }
+        });
+      }
+    });
 
     revalidatePath("/warehouses/transfers");
     revalidatePath("/warehouses");

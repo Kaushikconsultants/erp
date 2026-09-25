@@ -493,8 +493,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 600, textTransform: 'uppercase' }}>
                   GSTIN Number
                 </span>
-                <span style={{ fontFamily: 'monospace', fontWeight: 700, backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', color: '#0f172a', display: 'inline-block', marginTop: '2px' }}>
-                  {order.customer.gstNumber || 'Unregistered'}
+                <span style={{ fontFamily: 'monospace', fontWeight: 700, backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', color: '#0f172a', display: 'inline-block', marginTop: '2px', textTransform: 'uppercase' }}>
+                  {order.customer.gstNumber ? order.customer.gstNumber.toUpperCase() : 'Unregistered'}
                 </span>
               </div>
 

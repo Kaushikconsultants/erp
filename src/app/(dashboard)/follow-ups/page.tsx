@@ -4,8 +4,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { getOrCreateEmployee } from '@/lib/employeeHelper';
-import { getTenantOrgId } from '@/lib/tenant';
+import { getTenantScope } from '@/lib/tenant';
 import FollowUpDashboardClient from '@/components/follow-ups/FollowUpDashboardClient';
 
 export const dynamic = 'force-dynamic';
@@ -17,43 +16,71 @@ export default async function FollowUpsDashboard() {
     redirect('/login');
   }
 
-  const rawOrgId = await getTenantOrgId().catch(() => null);
-  const orgId = (rawOrgId && rawOrgId !== "default-org") ? rawOrgId : undefined;
-  const userRole = (session.user as any).role || 'SALES';
-  const userId = (session.user as any).id;
-  const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+  const { organizationId, isAdmin, employeeId } = await getTenantScope();
+  const orgId = (organizationId && organizationId !== "default-org" && organizationId !== "UNAUTHENTICATED") ? organizationId : undefined;
+  const empId = employeeId || "no-match";
 
   let whereClause: any = {
     followUpDate: { not: null },
-    ...(orgId ? {
-      OR: [
-        { customer: { organizationId: orgId } },
-        { lead: { organizationId: orgId } },
-        { employee: { organizationId: orgId } }
-      ]
-    } : {})
+    AND: [
+      ...(orgId ? [{
+        OR: [
+          { customer: { organizationId: orgId } },
+          { lead: { organizationId: orgId } },
+          { employee: { organizationId: orgId } }
+        ]
+      }] : []),
+      ...(!isAdmin ? [{
+        OR: [
+          { employeeId: empId },
+          { customer: { assignedSalespersonId: empId } },
+          { lead: { assignedSalespersonId: empId } }
+        ]
+      }] : [])
+    ]
   };
 
-  let customerWhereClause: any = orgId ? { organizationId: orgId } : {};
-  let leadWhereClause: any = orgId ? { organizationId: orgId } : {};
+  let customerWhereClause: any = {
+    ...(orgId ? { organizationId: orgId } : {}),
+    ...(!isAdmin ? { assignedSalespersonId: empId } : {})
+  };
 
-  if (!isAdmin) {
-    const employee = await getOrCreateEmployee(userId, session.user).catch(() => null);
-    if (employee) {
-      whereClause.employeeId = employee.id;
-      customerWhereClause = { assignedSalespersonId: employee.id, ...(orgId ? { organizationId: orgId } : {}) };
-      leadWhereClause = { assignedSalespersonId: employee.id, ...(orgId ? { organizationId: orgId } : {}) };
-    }
-  }
+  let leadWhereClause: any = {
+    ...(orgId ? { organizationId: orgId } : {}),
+    ...(!isAdmin ? { assignedSalespersonId: empId } : {})
+  };
 
   const [calls, customers, leads] = await Promise.all([
     prisma.call.findMany({
       where: whereClause,
+      take: 100,
       orderBy: { followUpDate: 'asc' },
       include: {
-        customer: true,
-        lead: true,
-        employee: { include: { user: true } }
+        customer: {
+          select: {
+            id: true,
+            businessName: true,
+            contactPerson: true,
+            mobile: true,
+            whatsappNumber: true,
+            city: true,
+            state: true
+          }
+        },
+        lead: {
+          select: {
+            id: true,
+            name: true,
+            shopName: true,
+            whatsappNumber: true
+          }
+        },
+        employee: {
+          select: {
+            id: true,
+            user: { select: { id: true, name: true } }
+          }
+        }
       }
     }).catch(err => {
       console.warn("FollowUpsPage call.findMany error:", err);
@@ -62,6 +89,7 @@ export default async function FollowUpsDashboard() {
     prisma.customer.findMany({
       where: customerWhereClause,
       select: { id: true, businessName: true, contactPerson: true, mobile: true, whatsappNumber: true, city: true },
+      take: 100,
       orderBy: { businessName: 'asc' }
     }).catch(err => {
       console.warn("FollowUpsPage customer.findMany error:", err);
@@ -70,6 +98,7 @@ export default async function FollowUpsDashboard() {
     prisma.lead.findMany({
       where: leadWhereClause,
       select: { id: true, name: true, shopName: true, whatsappNumber: true },
+      take: 100,
       orderBy: { name: 'asc' }
     }).catch(err => {
       console.warn("FollowUpsPage lead.findMany error:", err);

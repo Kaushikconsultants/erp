@@ -31,21 +31,27 @@ export default async function LeadsPage() {
     const [leadsRes, empRes] = await Promise.allSettled([
       prisma.lead.findMany({
         where: whereClause,
+        take: 100,
+        orderBy: { createdAt: 'desc' },
         include: {
           assignedSalesperson: {
-            include: {
-              user: true
+            select: {
+              id: true,
+              user: {
+                select: { id: true, name: true, email: true }
+              }
             }
-          },
-          _count: {
-            select: { calls: true, followUps: true, tasks: true }
           }
-        },
-        orderBy: { createdAt: 'desc' }
+        }
       }),
       isAdmin ? prisma.employee.findMany({
         where: { organizationId },
-        include: { user: true },
+        select: {
+          id: true,
+          user: {
+            select: { id: true, name: true }
+          }
+        },
         orderBy: { user: { name: 'asc' } }
       }) : Promise.resolve([])
     ]);
@@ -54,7 +60,7 @@ export default async function LeadsPage() {
       leads = leadsRes.value || [];
     }
     if (empRes.status === 'fulfilled' && empRes.value) {
-      allEmployees = empRes.value.map((e: any) => ({
+      allEmployees = (empRes.value as any[]).map((e: any) => ({
         id: e.id,
         name: e.user?.name || 'Unknown'
       }));

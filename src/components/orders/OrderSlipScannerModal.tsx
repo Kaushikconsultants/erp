@@ -209,7 +209,7 @@ export default function OrderSlipScannerModal({
         alignItems: "center",
         justifyContent: "center",
         padding: "16px",
-        fontFamily: "var(--font-family, -apple-system, BlinkMacSystemFont, 'Inter', sans-serif)"
+        fontFamily: "var(--font-family, 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif)"
       }}
       onClick={onClose}
     >

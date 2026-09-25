@@ -436,7 +436,7 @@ export default function GarmentMatrixModal({
       alignItems: 'center',
       justifyContent: 'center',
       padding: '16px',
-      fontFamily: 'var(--font-family, "Inter", -apple-system, sans-serif)'
+      fontFamily: 'var(--font-family, "Outfit", -apple-system, sans-serif)'
     }} onClick={onClose}>
       
       <div style={{

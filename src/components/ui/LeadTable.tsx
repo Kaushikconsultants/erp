@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -18,11 +18,18 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  Layers
+  Layers,
+  Check,
+  Users,
+  X,
+  RotateCcw,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
-import { updateLead, deleteLead } from '@/actions/leads';
+import { updateLead, deleteLead, deleteMultipleLeads } from '@/actions/leads';
 import AddCustomerModal from './AddCustomerModal';
 import { openPhoneDialer } from '@/lib/dialer';
+import * as XLSX from 'xlsx';
 import './leadTable.css';
 
 export default function LeadTable({
@@ -38,7 +45,46 @@ export default function LeadTable({
 
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [agentFilter, setAgentFilter] = useState("All Agents");
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false);
+  const agentMenuRef = useRef<HTMLDivElement>(null);
+
+  // Selection & Bulk State
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const headerCheckboxRef = useRef<HTMLInputElement>(null);
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (agentMenuRef.current && !agentMenuRef.current.contains(event.target as Node)) {
+        setIsAgentMenuOpen(false);
+      }
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    if (isAgentMenuOpen || isExportMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isAgentMenuOpen, isExportMenuOpen]);
+
+  // Deduplicate and sort employees list
+  const uniqueEmployees = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { id: string; name: string }[] = [];
+    (allEmployees || []).forEach(emp => {
+      const name = (emp.name || '').trim();
+      if (!name || seen.has(name.toLowerCase())) return;
+      seen.add(name.toLowerCase());
+      result.push({ id: emp.id, name });
+    });
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  }, [allEmployees]);
 
   const openDialerWithContact = (phone: string, name: string, leadId?: string) => {
     openPhoneDialer({ phone, name, leadId });
@@ -58,7 +104,8 @@ export default function LeadTable({
       (lead.shopName && lead.shopName.toLowerCase().includes(searchTerm.toLowerCase()));
       
     const matchesStatus = statusFilter === "All Statuses" || lead.status === statusFilter;
-    const matchesAgent = agentFilter === "All Agents" || (lead.assignedSalesperson?.user?.name === agentFilter);
+    const matchesAgent = agentFilter === "All Agents" || 
+      ((lead.assignedSalesperson?.user?.name || '').trim().toLowerCase() === agentFilter.trim().toLowerCase());
     
     return matchesSearch && matchesStatus && matchesAgent;
   });
@@ -80,8 +127,110 @@ export default function LeadTable({
     if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
     setIsDeleting(id);
     await deleteLead(id);
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
     setIsDeleting(null);
     router.refresh();
+  };
+
+  // Selection helpers
+  const isAllSelected = filteredLeads.length > 0 && filteredLeads.every(lead => selectedLeadIds.has(lead.id));
+  const isSomeSelected = filteredLeads.some(lead => selectedLeadIds.has(lead.id));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected && !isAllSelected;
+    }
+  }, [isSomeSelected, isAllSelected]);
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedLeadIds(prev => {
+        const next = new Set(prev);
+        filteredLeads.forEach(l => next.delete(l.id));
+        return next;
+      });
+    } else {
+      setSelectedLeadIds(prev => {
+        const next = new Set(prev);
+        filteredLeads.forEach(l => next.add(l.id));
+        return next;
+      });
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedLeadIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedLeadIds.size;
+    if (count === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${count} selected lead${count > 1 ? 's' : ''}? This action cannot be undone and will remove associated calls and tasks.`)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      const res = await deleteMultipleLeads(Array.from(selectedLeadIds));
+      if (res?.success) {
+        setSelectedLeadIds(new Set());
+        router.refresh();
+      } else {
+        alert(res?.error || "Failed to delete selected leads.");
+      }
+    } catch (err: any) {
+      alert("An unexpected error occurred: " + (err.message || ""));
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleExport = (format: 'xlsx' | 'csv', onlySelected = false) => {
+    const targetLeads = onlySelected || selectedLeadIds.size > 0 
+      ? filteredLeads.filter(l => selectedLeadIds.has(l.id))
+      : filteredLeads;
+
+    if (targetLeads.length === 0) {
+      alert("No leads available to export.");
+      return;
+    }
+
+    const exportRows = targetLeads.map(l => ({
+      "Lead Name": l.name || "",
+      "WhatsApp / Phone": l.whatsappNumber || "",
+      "Shop Name": l.shopName || "",
+      "Assigned Agent": l.assignedSalesperson?.user?.name || "Unassigned",
+      "Status": l.status || "New",
+      "Created Date": l.createdAt ? new Date(l.createdAt).toLocaleDateString('en-IN') : ""
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Leads");
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (format === 'xlsx') {
+      XLSX.writeFile(wb, `Leads_Export_${dateStr}.xlsx`);
+    } else {
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `Leads_Export_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsExportMenuOpen(false);
   };
 
   const getStatusBadgeStyles = (status: string) => {
@@ -124,20 +273,90 @@ export default function LeadTable({
             />
           </div>
 
-          {/* Filter Toggle Button */}
-          <button
-            type="button"
-            className={`btn-lead-filter-toggle ${showAdvancedFilters || agentFilter !== "All Agents" ? 'active' : ''}`}
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            title="Filter by Sales Agent"
-          >
-            <SlidersHorizontal size={15} />
-            <span>Agent Filter</span>
-            {agentFilter !== "All Agents" && (
-              <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#4f46e5' }} />
+          {/* Agent Filter Direct Popover Dropdown */}
+          <div className="lead-agent-filter-container" ref={agentMenuRef}>
+            <button
+              type="button"
+              className={`btn-lead-filter-toggle ${agentFilter !== "All Agents" ? 'active' : ''}`}
+              onClick={() => setIsAgentMenuOpen(!isAgentMenuOpen)}
+              title="Filter by Sales Agent"
+            >
+              <SlidersHorizontal size={15} />
+              <span>{agentFilter === "All Agents" ? "Agent Filter" : agentFilter}</span>
+              {agentFilter !== "All Agents" ? (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAgentFilter("All Agents");
+                  }}
+                  title="Clear agent filter"
+                  style={{ display: 'inline-flex', alignItems: 'center', marginLeft: '4px', color: '#ef4444' }}
+                >
+                  <X size={13} />
+                </span>
+              ) : (
+                <ChevronDown size={14} style={{ transform: isAgentMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+              )}
+            </button>
+
+            {isAgentMenuOpen && (
+              <div className="lead-agent-dropdown-menu">
+                <div className="lead-agent-dropdown-header">
+                  <span>Sales Agents</span>
+                  {agentFilter !== "All Agents" && (
+                    <button
+                      type="button"
+                      className="lead-agent-dropdown-clear"
+                      onClick={() => {
+                        setAgentFilter("All Agents");
+                        setIsAgentMenuOpen(false);
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="lead-agent-dropdown-list">
+                  <button
+                    type="button"
+                    className={`lead-agent-dropdown-item ${agentFilter === "All Agents" ? "selected" : ""}`}
+                    onClick={() => {
+                      setAgentFilter("All Agents");
+                      setIsAgentMenuOpen(false);
+                    }}
+                  >
+                    <div className="lead-agent-dropdown-item-info">
+                      <span className="lead-agent-avatar-circle all">
+                        <Users size={12} />
+                      </span>
+                      <span>All Agents</span>
+                    </div>
+                    {agentFilter === "All Agents" && <Check size={14} className="lead-agent-check-icon" />}
+                  </button>
+
+                  {uniqueEmployees.map(emp => (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      className={`lead-agent-dropdown-item ${agentFilter === emp.name ? "selected" : ""}`}
+                      onClick={() => {
+                        setAgentFilter(emp.name);
+                        setIsAgentMenuOpen(false);
+                      }}
+                    >
+                      <div className="lead-agent-dropdown-item-info">
+                        <span className="lead-agent-avatar-circle">
+                          {emp.name.charAt(0).toUpperCase()}
+                        </span>
+                        <span>{emp.name}</span>
+                      </div>
+                      {agentFilter === emp.name && <Check size={14} className="lead-agent-check-icon" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-            {showAdvancedFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+          </div>
 
           {/* Kanban Link */}
           <Link 
@@ -148,6 +367,98 @@ export default function LeadTable({
             <Layers size={15} />
             <span>Sales Kanban</span>
           </Link>
+
+          {/* Export Dropdown Menu */}
+          <div className="lead-export-dropdown-container" ref={exportMenuRef}>
+            <button
+              type="button"
+              className="btn-lead-export"
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              title="Export leads to Excel or CSV"
+            >
+              <Download size={15} />
+              <span>Export {selectedLeadIds.size > 0 ? `(${selectedLeadIds.size})` : ''}</span>
+              <ChevronDown size={14} style={{ transform: isExportMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="lead-export-dropdown-menu">
+                <div className="lead-export-dropdown-header">
+                  <span>{selectedLeadIds.size > 0 ? `Export Selected (${selectedLeadIds.size})` : `Export All (${filteredLeads.length})`}</span>
+                </div>
+                <button
+                  type="button"
+                  className="lead-export-dropdown-item"
+                  onClick={() => handleExport('xlsx')}
+                >
+                  <FileSpreadsheet size={15} style={{ color: '#10b981' }} />
+                  <div className="lead-export-item-text">
+                    <span className="title">Excel Spreadsheet</span>
+                    <span className="sub">.xlsx format</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="lead-export-dropdown-item"
+                  onClick={() => handleExport('csv')}
+                >
+                  <Download size={15} style={{ color: '#3b82f6' }} />
+                  <div className="lead-export-item-text">
+                    <span className="title">CSV File</span>
+                    <span className="sub">Standard comma-separated</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Selection Action Buttons (Matched with Theme) */}
+          {selectedLeadIds.size > 0 && (
+            <>
+              <div className="btn-selection-count" title={`${selectedLeadIds.size} leads selected`}>
+                <span className="selection-count-pill">{selectedLeadIds.size}</span>
+                <span>Selected</span>
+              </div>
+
+              <button
+                type="button"
+                className="btn-select-all"
+                onClick={handleToggleSelectAll}
+                title={isAllSelected ? "Deselect all" : `Select all ${filteredLeads.length} leads`}
+              >
+                <span>{isAllSelected ? "Deselect All" : `Select All (${filteredLeads.length})`}</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-delete-selected"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                title="Delete selected leads"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={15} />
+                    <span>Delete ({selectedLeadIds.size})</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="btn-clear-selection"
+                onClick={() => setSelectedLeadIds(new Set())}
+                title="Clear selection"
+              >
+                <X size={15} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Horizontal Status Filter Chips Bar */}
@@ -162,33 +473,19 @@ export default function LeadTable({
               {opt.label}
             </button>
           ))}
-        </div>
 
-        {/* Collapsible Advanced Filters Drawer */}
-        {showAdvancedFilters && (
-          <div className="lead-advanced-filters">
-            <select 
-              value={agentFilter} 
-              onChange={(e) => setAgentFilter(e.target.value)}
-              className="lead-filter-select"
+          {(agentFilter !== "All Agents" || statusFilter !== "All Statuses" || searchTerm) && (
+            <button 
+              type="button"
+              onClick={handleReset}
+              className="lead-status-chip reset"
+              title="Reset all search and status filters"
             >
-              <option value="All Agents">All Agents</option>
-              {allEmployees && allEmployees.map(emp => (
-                <option key={emp.id} value={emp.name}>{emp.name}</option>
-              ))}
-            </select>
-
-            {(agentFilter !== "All Agents" || statusFilter !== "All Statuses" || searchTerm) && (
-              <button 
-                type="button"
-                onClick={handleReset}
-                className="btn-lead-reset"
-              >
-                Reset All Filters
-              </button>
-            )}
-          </div>
-        )}
+              <RotateCcw size={11} />
+              <span>Reset Filters</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ─── 1. MOBILE LEADS CARDS FEED (Visible on mobile <= 768px) ─── */}
@@ -196,12 +493,29 @@ export default function LeadTable({
         {filteredLeads.map(lead => {
           const statusStyles = getStatusBadgeStyles(lead.status);
           const initials = (lead.name || "L").slice(0, 2).toUpperCase();
+          const isSelected = selectedLeadIds.has(lead.id);
 
           return (
-            <div key={lead.id} className="lead-mobile-card">
-              {/* Card Header: Avatar, Name & Interactive Status Select */}
+            <div 
+              key={lead.id} 
+              className="lead-mobile-card"
+              style={{
+                borderColor: isSelected ? '#818cf8' : undefined,
+                background: isSelected ? '#f8faff' : undefined
+              }}
+            >
+              {/* Card Header: Checkbox, Avatar, Name & Interactive Status Select */}
               <div className="lead-card-header">
                 <div className="lead-card-identity">
+                  <div className="lead-card-select-wrap">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelect(lead.id)}
+                      style={{ cursor: 'pointer', width: '18px', height: '18px', accentColor: '#4f46e5' }}
+                      title="Select lead"
+                    />
+                  </div>
                   <div className="lead-avatar-badge">
                     {initials}
                   </div>
@@ -336,7 +650,16 @@ export default function LeadTable({
           <table className="data-table" style={{ borderCollapse: 'collapse', width: '100%' }}>
             <thead>
               <tr>
-                <th style={{ width: '40px', padding: '16px' }}><input type="checkbox" disabled /></th>
+                <th style={{ width: '40px', padding: '16px' }}>
+                  <input 
+                    type="checkbox" 
+                    ref={headerCheckboxRef}
+                    checked={isAllSelected}
+                    onChange={handleToggleSelectAll}
+                    style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4f46e5' }}
+                    title={isAllSelected ? "Deselect all" : "Select all on page"}
+                  />
+                </th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Name</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Phone</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Shop Name</th>
@@ -349,9 +672,25 @@ export default function LeadTable({
             <tbody>
               {filteredLeads.map(lead => {
                 const statusStyles = getStatusBadgeStyles(lead.status);
+                const isSelected = selectedLeadIds.has(lead.id);
                 return (
-                  <tr key={lead.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '16px' }}><input type="checkbox" /></td>
+                  <tr 
+                    key={lead.id} 
+                    style={{ 
+                      borderBottom: '1px solid #f1f5f9',
+                      backgroundColor: isSelected ? '#f0f7ff' : 'transparent',
+                      transition: 'background-color 0.15s ease'
+                    }}
+                  >
+                    <td style={{ padding: '16px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(lead.id)}
+                        style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#4f46e5' }}
+                        title="Select lead"
+                      />
+                    </td>
                     <td style={{ padding: '16px' }}>
                       <Link href={`/leads/${lead.id}`} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
                         {lead.name}

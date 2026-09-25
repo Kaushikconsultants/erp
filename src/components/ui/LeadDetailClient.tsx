@@ -7,6 +7,7 @@ import LogCallModal from './LogCallModal';
 import { openPhoneDialer } from '@/lib/dialer';
 import { updateLead } from '@/actions/leads';
 import { deleteCall } from '@/app/actions/callActions';
+import CallTranscriptViewer from '@/components/telecalling/CallTranscriptViewer';
 import { 
   Phone, 
   PhoneCall, 
@@ -435,10 +436,17 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
                       )}
 
                       {/* Notes / Auto Transcript / AI Summary */}
-                      {call.notes && (
-                        <div className="lead-call-transcript-box">
-                          {call.notes}
-                        </div>
+                      {(call.notes || call.summary) && (
+                        <CallTranscriptViewer
+                          notes={call.notes}
+                          summary={call.summary}
+                          repName={call.employee?.user?.name || lead.assignedSalesperson?.user?.name || "Ikra"}
+                          customerName={lead.name || lead.contactPerson || lead.shopName || "Customer"}
+                          callId={call.id}
+                          durationSec={call.durationSec}
+                          outcome={call.outcome}
+                          status={call.status}
+                        />
                       )}
                     </div>
                   );

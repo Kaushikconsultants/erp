@@ -9,6 +9,7 @@ import {
   ArrowUpRight, 
   Calendar, 
   Users, 
+  UserPlus,
   ShoppingCart, 
   MessageSquare, 
   Download, 
@@ -16,10 +17,12 @@ import {
   Clock, 
   Building2,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import { changeSubscriptionPlan } from '@/app/actions/tenantActions';
-import { PLAN_PRICING } from '@/lib/planConfig';
+import { PLAN_PRICING, getAddonSeatPrice } from '@/lib/planConfig';
+import BuySeatsModal from './BuySeatsModal';
 
 interface BillingClientProps {
   initialData: any;
@@ -28,6 +31,7 @@ interface BillingClientProps {
 export default function BillingClient({ initialData }: BillingClientProps) {
   const [data, setData] = useState(initialData);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isBuySeatsModalOpen, setIsBuySeatsModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'STARTER' | 'GROWTH' | 'ENTERPRISE'>((data.org?.subscriptionPlan as any) || 'GROWTH');
   const [selectedCycle, setSelectedCycle] = useState<'MONTHLY' | 'QUARTERLY' | 'ANNUALLY'>((data.org?.billingCycle as any) || 'ANNUALLY');
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -55,9 +59,17 @@ export default function BillingClient({ initialData }: BillingClientProps) {
 
   const getPrice = (planKey: 'STARTER' | 'GROWTH' | 'ENTERPRISE') => {
     const plan = PLAN_PRICING[planKey];
-    if (selectedCycle === 'MONTHLY') return { amount: plan.monthlyPrice, period: '/ month', note: 'Billed monthly' };
-    if (selectedCycle === 'QUARTERLY') return { amount: Math.round(plan.quarterlyPrice / 3), period: '/ month', note: `Billed quarterly (₹${plan.quarterlyPrice.toLocaleString('en-IN')})` };
-    return { amount: Math.round(plan.annualPrice / 12), period: '/ month', note: `Billed annually (₹${plan.annualPrice.toLocaleString('en-IN')})` };
+    if (selectedCycle === 'MONTHLY') return { amount: plan.monthlyPrice, period: '/ month', note: 'Billed monthly • Cancel anytime' };
+    if (selectedCycle === 'QUARTERLY') {
+      const perMonth = planKey === 'STARTER' ? 899 : planKey === 'GROWTH' ? 2249 : 5399;
+      const regularQuarterly = plan.monthlyPrice * 3;
+      const savings = Math.max(0, regularQuarterly - plan.quarterlyPrice);
+      return { amount: perMonth, period: '/ month', note: `Billed quarterly (₹${plan.quarterlyPrice.toLocaleString('en-IN')}) • Save ₹${savings.toLocaleString('en-IN')} (10% Off)` };
+    }
+    const perMonth = planKey === 'STARTER' ? 799 : planKey === 'GROWTH' ? 1999 : 4799;
+    const regularAnnual = plan.monthlyPrice * 12;
+    const savings = Math.max(0, regularAnnual - plan.annualPrice);
+    return { amount: perMonth, period: '/ month', note: `Billed annually (₹${plan.annualPrice.toLocaleString('en-IN')}) • Save ₹${savings.toLocaleString('en-IN')} (20% Off)` };
   };
 
   return (
@@ -114,7 +126,7 @@ export default function BillingClient({ initialData }: BillingClientProps) {
                     boxShadow: selectedCycle === cycle ? '0 2px 4px rgba(0,0,0,0.06)' : 'none'
                   }}
                 >
-                  {cycle === 'MONTHLY' ? 'Monthly' : cycle === 'QUARTERLY' ? 'Quarterly (10% Off)' : 'Yearly (20% Off)'}
+                  {cycle === 'MONTHLY' ? 'Monthly' : cycle === 'QUARTERLY' ? 'Quarterly (10% Off)' : 'Yearly (20% Off • 2.5 Mo Free)'}
                 </button>
               ))}
             </div>
@@ -192,6 +204,23 @@ export default function BillingClient({ initialData }: BillingClientProps) {
         </div>
       )}
 
+      {/* Buy Seats Modal */}
+      <BuySeatsModal
+        isOpen={isBuySeatsModalOpen}
+        onClose={() => setIsBuySeatsModalOpen(false)}
+        onSuccess={(newMaxUsers, invoiceNumber) => {
+          showToast(`Capacity increased to ${newMaxUsers} users! (Invoice: ${invoiceNumber})`);
+          setTimeout(() => {
+            window.location.reload();
+          }, 800);
+        }}
+        orgPlan={org.subscriptionPlan}
+        billingCycle={org.billingCycle}
+        currentMaxUsers={org.maxUsers}
+        currentUserCount={usage.userCount}
+        onOpenUpgradePlan={() => setIsUpgradeModalOpen(true)}
+      />
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
@@ -203,13 +232,23 @@ export default function BillingClient({ initialData }: BillingClientProps) {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsUpgradeModalOpen(true)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '10px', backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700, fontSize: '0.85rem', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)' }}
-        >
-          <Sparkles size={16} /> Upgrade Plan
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={() => setIsBuySeatsModalOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '10px', backgroundColor: '#eef2ff', color: '#4338ca', fontWeight: 700, fontSize: '0.85rem', border: '1px solid #c7d2fe', cursor: 'pointer', transition: 'all 0.15s ease' }}
+          >
+            <UserPlus size={16} /> Add User Seats
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsUpgradeModalOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '10px', backgroundColor: '#4f46e5', color: '#ffffff', fontWeight: 700, fontSize: '0.85rem', border: 'none', cursor: 'pointer', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)' }}
+          >
+            <Sparkles size={16} /> Upgrade Plan
+          </button>
+        </div>
       </div>
 
       {/* Active Subscription Summary Card */}
@@ -261,16 +300,50 @@ export default function BillingClient({ initialData }: BillingClientProps) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
           
           {/* Users */}
-          <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Users size={16} style={{ color: '#4f46e5' }} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>User Seats</span>
+          <div style={{ padding: '16px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={16} style={{ color: '#4f46e5' }} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155' }}>User Seats</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {usage.userCount >= org.maxUsers && (
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#e11d48', backgroundColor: '#ffe4e6', padding: '1px 6px', borderRadius: '6px' }}>
+                      Limit Reached
+                    </span>
+                  )}
+                  <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>{usage.userCount} / {org.maxUsers}</strong>
+                </div>
               </div>
-              <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>{usage.userCount} / {org.maxUsers}</strong>
+              <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(100, (usage.userCount / org.maxUsers) * 100)}%`, height: '100%', backgroundColor: usage.userCount >= org.maxUsers ? '#e11d48' : '#4f46e5' }} />
+              </div>
             </div>
-            <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
-              <div style={{ width: `${Math.min(100, (usage.userCount / org.maxUsers) * 100)}%`, height: '100%', backgroundColor: '#4f46e5' }} />
+
+            <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                ₹{getAddonSeatPrice(org.subscriptionPlan, org.billingCycle).unitPrice.toLocaleString('en-IN')}{getAddonSeatPrice(org.subscriptionPlan, org.billingCycle).period}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsBuySeatsModalOpen(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #c7d2fe',
+                  backgroundColor: '#ffffff',
+                  color: '#4338ca',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                <UserPlus size={12} /> + Add Seats
+              </button>
             </div>
           </div>
 

@@ -26,7 +26,9 @@ import {
   Zap,
   SlidersHorizontal,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  FileSpreadsheet,
+  Loader2
 } from 'lucide-react';
 import AddProductButton from '@/components/ui/AddProductButton';
 import ManageCategoriesModal from '@/components/products/ManageCategoriesModal';
@@ -38,7 +40,10 @@ import ArticleHistoryModal from '@/components/products/ArticleHistoryModal';
 import ProductCatalogModal from '@/components/products/ProductCatalogModal';
 import ProductMatrixModal from '@/components/inventory/ProductMatrixModal';
 import DeadStockInsightsModal from '@/components/products/DeadStockInsightsModal';
-import { deleteProduct, quickAdjustStock } from '@/app/actions/productActions';
+import WarehouseStockModal from '@/components/products/WarehouseStockModal';
+import { deleteProduct, deleteMultipleProducts, quickAdjustStock } from '@/app/actions/productActions';
+import TablePagination, { paginate } from '@/components/ui/TablePagination';
+import * as XLSX from 'xlsx';
 import './products.css';
 
 export interface Product {
@@ -79,6 +84,8 @@ export default function ProductListClient({ products, categories, categoriesData
   const [selectedHistoryArticle, setSelectedHistoryArticle] = useState<string | null>(initialArticle);
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedStatus, setSelectedStatus] = useState('All Statuses');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showCatalogModal, setShowCatalogModal] = useState(false);
   const [showMatrixModal, setShowMatrixModal] = useState(false);
@@ -87,8 +94,30 @@ export default function ProductListClient({ products, categories, categoriesData
   const [showBatchBarcodeModal, setShowBatchBarcodeModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [printLabelProduct, setPrintLabelProduct] = useState<Product | null>(null);
+  const [warehouseModalProduct, setWarehouseModalProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Multi-select & Export State
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+  const headerCheckboxRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    if (isExportMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isExportMenuOpen]);
 
   // Quick Stock Adjustment Modal State
   const [quickAdjustProduct, setQuickAdjustProduct] = useState<Product | null>(null);
@@ -258,11 +287,138 @@ export default function ProductListClient({ products, categories, categoriesData
     });
   }, [products, searchQuery, selectedCategory, selectedStatus]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedStatus, pageSize]);
+
+  const paginatedProducts = useMemo(() => {
+    return paginate(filteredProducts, currentPage, pageSize);
+  }, [filteredProducts, currentPage, pageSize]);
+
+  const isAllSelected = paginatedProducts.length > 0 && paginatedProducts.every((p) => selectedProductIds.has(p.id));
+  const isSomeSelected = paginatedProducts.some((p) => selectedProductIds.has(p.id));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected && !isAllSelected;
+    }
+  }, [isSomeSelected, isAllSelected]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedProductIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedProductIds((prev) => {
+        const next = new Set(prev);
+        paginatedProducts.forEach((p) => next.delete(p.id));
+        return next;
+      });
+    } else {
+      setSelectedProductIds((prev) => {
+        const next = new Set(prev);
+        paginatedProducts.forEach((p) => next.add(p.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProductIds.size === 0) return;
+    const count = selectedProductIds.size;
+    if (!confirm(`Are you sure you want to delete ${count} selected product(s)? Products linked to active transactions (Orders, POs, Bills) will be safely skipped.`)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedProductIds);
+      const res = await deleteMultipleProducts(ids);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        setSelectedProductIds(new Set());
+        if (res?.message) {
+          alert(res.message);
+        }
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to bulk delete products");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleExport = (format: "xlsx" | "csv") => {
+    const targetProducts = selectedProductIds.size > 0
+      ? products.filter((p) => selectedProductIds.has(p.id))
+      : filteredProducts;
+
+    if (targetProducts.length === 0) {
+      alert("No products available to export.");
+      return;
+    }
+
+    const rows = targetProducts.map((p) => {
+      const cost = p.purchasePrice !== undefined && p.purchasePrice !== null ? p.purchasePrice : (p.sellingPrice * 0.7);
+      const sell = p.sellingPrice || 0;
+      const mrp = p.mrp || (sell * 1.2);
+      const profit = sell - cost;
+      const margin = sell > 0 ? ((profit / sell) * 100).toFixed(1) : "0.0";
+      const min = p.minimumStock || 10;
+      const status = p.stockQuantity <= 0 ? "Out of Stock" : (p.stockQuantity <= min ? "Low Stock (Reorder)" : "In Stock");
+
+      return {
+        "SKU": p.sku || "",
+        "Article Number": p.articleNumber || "",
+        "Product Name": p.name || "",
+        "Category": p.category || "",
+        "HSN Code": p.hsnCode || "",
+        "Stock Qty (Units)": p.stockQuantity,
+        "Min Stock Buffer": min,
+        "Purchase Cost (INR)": cost,
+        "Selling Price (INR)": sell,
+        "MRP (INR)": mrp,
+        "Unit Gross Profit (INR)": profit,
+        "Gross Margin (%)": margin,
+        "Total Stock Cost Value (INR)": p.stockQuantity * cost,
+        "Total Stock Retail Value (INR)": p.stockQuantity * sell,
+        "Stock Status": status
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Products");
+    const dateStr = new Date().toISOString().split("T")[0];
+
+    if (format === "xlsx") {
+      XLSX.writeFile(wb, `Products_Export_${dateStr}.xlsx`);
+    } else {
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", `Products_Export_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsExportMenuOpen(false);
+  };
+
   const handleReset = () => {
     setSearchQuery('');
     setSelectedCategory('All Categories');
     setSelectedStatus('All Statuses');
   };
+
 
   const hasActiveFilters = searchQuery !== '' || selectedCategory !== 'All Categories' || selectedStatus !== 'All Statuses';
 
@@ -439,31 +595,98 @@ export default function ProductListClient({ products, categories, categoriesData
 
             {/* Action Buttons Group */}
             <div className="products-actions-bar">
-              {/* CSV Export Button */}
-              <button
-                onClick={exportInventoryCSV}
-                style={{
-                  height: '32px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  padding: '0 11px',
-                  borderRadius: '7px',
-                  border: '1px solid #cbd5e1',
-                  backgroundColor: '#ffffff',
-                  color: '#334155',
-                  fontSize: '0.76rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
-                title="Export complete Inventory & Valuation Register to CSV"
-              >
-                <Download size={13} color="#475569" />
-                Export CSV
-              </button>
+              {/* Export Dropdown Menu */}
+              <div className="erp-export-dropdown-container" ref={exportMenuRef}>
+                <button
+                  type="button"
+                  className="btn-erp-export"
+                  onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                  title="Export products to Excel or CSV"
+                >
+                  <Download size={14} />
+                  <span>Export {selectedProductIds.size > 0 ? `(${selectedProductIds.size})` : ''}</span>
+                  <ChevronDown size={13} style={{ transform: isExportMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+                </button>
+
+                {isExportMenuOpen && (
+                  <div className="erp-export-dropdown-menu">
+                    <div className="erp-export-dropdown-header">
+                      <span>{selectedProductIds.size > 0 ? `Export Selected (${selectedProductIds.size})` : `Export All (${filteredProducts.length})`}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="erp-export-dropdown-item"
+                      onClick={() => handleExport('xlsx')}
+                    >
+                      <FileSpreadsheet size={15} style={{ color: '#10b981' }} />
+                      <div className="erp-export-item-text">
+                        <span className="title">Excel Spreadsheet</span>
+                        <span className="sub">.xlsx format</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className="erp-export-dropdown-item"
+                      onClick={() => handleExport('csv')}
+                    >
+                      <Download size={15} style={{ color: '#3b82f6' }} />
+                      <div className="erp-export-item-text">
+                        <span className="title">CSV File</span>
+                        <span className="sub">Standard comma-separated</span>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Selection Action Buttons (Matched with Theme) */}
+              {selectedProductIds.size > 0 && (
+                <>
+                  <div className="btn-selection-count" title={`${selectedProductIds.size} products selected`}>
+                    <span className="selection-count-pill">{selectedProductIds.size}</span>
+                    <span>Selected</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn-select-all"
+                    onClick={handleToggleSelectAll}
+                    title={isAllSelected ? "Deselect page" : `Select all ${paginatedProducts.length} on page`}
+                  >
+                    <span>{isAllSelected ? "Deselect Page" : `Select Page (${paginatedProducts.length})`}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-delete-selected"
+                    onClick={handleBulkDelete}
+                    disabled={isBulkDeleting}
+                    title="Delete selected products"
+                  >
+                    {isBulkDeleting ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={14} />
+                        <span>Delete ({selectedProductIds.size})</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-clear-selection"
+                    onClick={() => setSelectedProductIds(new Set())}
+                    title="Clear selection"
+                  >
+                    <X size={14} />
+                  </button>
+                </>
+              )}
+
 
               {/* AI Dead Stock & Liquidation Insights Button */}
               <button
@@ -783,6 +1006,15 @@ export default function ProductListClient({ products, categories, categoriesData
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '1080px' }}>
             <thead>
               <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                <th className="table-checkbox-cell">
+                  <input
+                    type="checkbox"
+                    ref={headerCheckboxRef}
+                    checked={isAllSelected}
+                    onChange={handleToggleSelectAll}
+                    className="table-checkbox"
+                  />
+                </th>
                 <th style={{ padding: '10px 12px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', width: '50px' }}>Image</th>
                 <th style={{ padding: '10px 12px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Product Details</th>
                 <th style={{ padding: '10px 12px', fontSize: '0.72rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>SKU / Article</th>
@@ -796,7 +1028,7 @@ export default function ProductListClient({ products, categories, categoriesData
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map((product) => {
+              {paginatedProducts.map((product) => {
                 const primaryImg = product.images && product.images.length > 0 ? product.images[0] : null;
                 const imageCount = product.images?.length || 0;
                 const articleIdentifier = product.articleNumber || product.sku || product.id;
@@ -814,10 +1046,26 @@ export default function ProductListClient({ products, categories, categoriesData
                 return (
                   <tr
                     key={product.id}
-                    style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s ease' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    style={{
+                      borderBottom: '1px solid #f1f5f9',
+                      backgroundColor: selectedProductIds.has(product.id) ? '#f5f3ff' : undefined,
+                      transition: 'background-color 0.15s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!selectedProductIds.has(product.id)) e.currentTarget.style.backgroundColor = '#f8fafc';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!selectedProductIds.has(product.id)) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
+                    <td className="table-checkbox-cell">
+                      <input
+                        type="checkbox"
+                        checked={selectedProductIds.has(product.id)}
+                        onChange={() => handleToggleSelect(product.id)}
+                        className="table-checkbox"
+                      />
+                    </td>
                     {/* Product Image Thumbnail */}
                     <td style={{ padding: '8px 12px', verticalAlign: 'middle' }}>
                       <div
@@ -980,8 +1228,33 @@ export default function ProductListClient({ products, categories, categoriesData
                     
                     {/* Stock on Hand & Cost Valuation */}
                     <td style={{ padding: '8px 12px', verticalAlign: 'middle', textAlign: 'right' }}>
-                      <div style={{ fontWeight: 700, color: isOutOfStock ? '#dc2626' : (isLowStock ? '#d97706' : '#0f172a'), fontSize: '0.84rem' }}>
-                        {product.stockQuantity} <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748b' }}>pcs</span>
+                      <div 
+                        onClick={() => setWarehouseModalProduct(product)}
+                        style={{ 
+                          fontWeight: 700, 
+                          color: isOutOfStock ? '#dc2626' : (isLowStock ? '#d97706' : '#0f172a'), 
+                          fontSize: '0.84rem',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}
+                        title="Click to view warehouse-wise stock breakdown & adjustments"
+                      >
+                        <span>{product.stockQuantity} <span style={{ fontSize: '0.7rem', fontWeight: 400, color: '#64748b' }}>pcs</span></span>
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          padding: '1px 5px', 
+                          borderRadius: '4px', 
+                          backgroundColor: '#ede9fe', 
+                          color: '#6d28d9', 
+                          fontSize: '0.65rem', 
+                          fontWeight: 700 
+                        }}>
+                          WH
+                        </span>
                       </div>
                       <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
                         Asset: ₹{totalStockCostValuation.toLocaleString('en-IN')}
@@ -1151,6 +1424,15 @@ export default function ProductListClient({ products, categories, categoriesData
               )}
             </tbody>
           </table>
+
+          <TablePagination
+            currentPage={currentPage}
+            totalItems={filteredProducts.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemName="products"
+          />
         </div>
 
         {/* ─── 4. MOBILE PRODUCTS FEED (Visible <= 768px) ─── */}
@@ -1164,7 +1446,7 @@ export default function ProductListClient({ products, categories, categoriesData
               </div>
             </div>
           ) : (
-            filteredProducts.map((product) => {
+            paginatedProducts.map((product) => {
               const primaryImg = product.images && product.images.length > 0 ? product.images[0] : null;
               const imageCount = product.images?.length || 0;
               const articleIdentifier = product.articleNumber || product.sku || product.id;
@@ -1373,6 +1655,19 @@ export default function ProductListClient({ products, categories, categoriesData
                 </div>
               );
             })
+          )}
+
+          {filteredProducts.length > 0 && (
+            <div style={{ marginTop: '10px', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={filteredProducts.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+                itemName="products"
+              />
+            </div>
           )}
         </div>
       </div>
@@ -1746,6 +2041,17 @@ export default function ProductListClient({ products, categories, categoriesData
             color: p.color,
             printQty: 1
           }))}
+        />
+      )}
+
+      {/* Warehouse-Wise Stock Breakdown & Adjustment Modal */}
+      {warehouseModalProduct && (
+        <WarehouseStockModal
+          productId={warehouseModalProduct.id}
+          onClose={() => setWarehouseModalProduct(null)}
+          onStockUpdated={() => {
+            window.location.reload();
+          }}
         />
       )}
     </div>

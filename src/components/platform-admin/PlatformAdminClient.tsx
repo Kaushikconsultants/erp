@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { updatePlatformPricingSettings, updateTenantSubscriptionAndServices, createTenantByAdmin, deleteTenantByAdmin } from '@/app/actions/tenantActions';
+import { switchUserOrganization } from '@/app/actions/branchActions';
 
 interface PlatformAdminClientProps {
   initialData: any;
@@ -79,21 +80,21 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
   const [pricingForm, setPricingForm] = useState({
     starterMonthlyPrice: pricingSettings.STARTER?.monthlyPrice || 999,
     starterQuarterlyPrice: pricingSettings.STARTER?.quarterlyPrice || 2699,
-    starterAnnualPrice: pricingSettings.STARTER?.annualPrice || 9599,
+    starterAnnualPrice: pricingSettings.STARTER?.annualPrice || 9499,
     starterMaxUsers: pricingSettings.STARTER?.maxUsers || 3,
     starterMaxOrders: pricingSettings.STARTER?.monthlyOrderLimit || 500,
     starterWhatsAppCredits: pricingSettings.STARTER?.whatsAppCredits || 500,
 
     growthMonthlyPrice: pricingSettings.GROWTH?.monthlyPrice || 2499,
     growthQuarterlyPrice: pricingSettings.GROWTH?.quarterlyPrice || 6749,
-    growthAnnualPrice: pricingSettings.GROWTH?.annualPrice || 23999,
+    growthAnnualPrice: pricingSettings.GROWTH?.annualPrice || 23988,
     growthMaxUsers: pricingSettings.GROWTH?.maxUsers || 10,
     growthMaxOrders: pricingSettings.GROWTH?.monthlyOrderLimit || 2000,
     growthWhatsAppCredits: pricingSettings.GROWTH?.whatsAppCredits || 2500,
 
     enterpriseMonthlyPrice: pricingSettings.ENTERPRISE?.monthlyPrice || 5999,
     enterpriseQuarterlyPrice: pricingSettings.ENTERPRISE?.quarterlyPrice || 16199,
-    enterpriseAnnualPrice: pricingSettings.ENTERPRISE?.annualPrice || 57599,
+    enterpriseAnnualPrice: pricingSettings.ENTERPRISE?.annualPrice || 57499,
     enterpriseMaxUsers: pricingSettings.ENTERPRISE?.maxUsers || 999,
     enterpriseMaxOrders: pricingSettings.ENTERPRISE?.monthlyOrderLimit || 999999,
     enterpriseWhatsAppCredits: pricingSettings.ENTERPRISE?.whatsAppCredits || 10000,
@@ -121,8 +122,65 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
       isWhatsAppEnabled: org.isWhatsAppEnabled ?? true,
       isEWayBillEnabled: org.isEWayBillEnabled ?? true,
       isHrmsEnabled: org.isHrmsEnabled ?? true,
+      isProductionEnabled: org.isProductionEnabled ?? true,
+      isAiScannerEnabled: org.isAiScannerEnabled ?? true,
+      isTeleCrmEnabled: org.isTeleCrmEnabled ?? true,
+      isInventoryEnabled: org.isInventoryEnabled ?? true,
+      isAccountingEnabled: org.isAccountingEnabled ?? true,
+      isQuotationsEnabled: org.isQuotationsEnabled ?? true,
+      trialEndsAt: org.trialEndsAt ? new Date(org.trialEndsAt).toISOString().split('T')[0] : '',
     });
     setIsEditTenantModalOpen(true);
+  };
+
+  const applyPlanDefaultsToTenantForm = (plan: string) => {
+    if (!tenantForm) return;
+    if (plan === 'STARTER') {
+      setTenantForm((prev: any) => ({
+        ...prev,
+        subscriptionPlan: plan,
+        isTeleCrmEnabled: true,
+        isQuotationsEnabled: true,
+        isWhatsAppEnabled: true,
+        isInventoryEnabled: false,
+        isAccountingEnabled: false,
+        isProductionEnabled: false,
+        isHrmsEnabled: false,
+        isGstEnabled: false,
+        isEWayBillEnabled: false,
+        isAiScannerEnabled: false,
+      }));
+    } else if (plan === 'GROWTH') {
+      setTenantForm((prev: any) => ({
+        ...prev,
+        subscriptionPlan: plan,
+        isTeleCrmEnabled: true,
+        isQuotationsEnabled: true,
+        isInventoryEnabled: true,
+        isAccountingEnabled: true,
+        isGstEnabled: true,
+        isEWayBillEnabled: true,
+        isWhatsAppEnabled: true,
+        isProductionEnabled: false,
+        isHrmsEnabled: false,
+        isAiScannerEnabled: false,
+      }));
+    } else if (plan === 'ENTERPRISE' || plan === 'CUSTOM') {
+      setTenantForm((prev: any) => ({
+        ...prev,
+        subscriptionPlan: plan,
+        isTeleCrmEnabled: true,
+        isQuotationsEnabled: true,
+        isInventoryEnabled: true,
+        isAccountingEnabled: true,
+        isProductionEnabled: true,
+        isHrmsEnabled: true,
+        isGstEnabled: true,
+        isEWayBillEnabled: true,
+        isWhatsAppEnabled: true,
+        isAiScannerEnabled: true,
+      }));
+    }
   };
 
   // Handle Save Public Pricing
@@ -539,7 +597,7 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
                   <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Subscription Plan</label>
                   <select
                     value={tenantForm.subscriptionPlan}
-                    onChange={e => setTenantForm({ ...tenantForm, subscriptionPlan: e.target.value })}
+                    onChange={e => applyPlanDefaultsToTenantForm(e.target.value)}
                     style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#fff', boxSizing: 'border-box' }}
                   >
                     <option value="STARTER">STARTER</option>
@@ -573,6 +631,7 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
                     <option value="TRIAL">TRIAL</option>
                     <option value="PAST_DUE">PAST DUE</option>
                     <option value="EXPIRED">EXPIRED</option>
+                    <option value="SUSPENDED">SUSPENDED</option>
                     <option value="CANCELLED">CANCELLED</option>
                   </select>
                 </div>
@@ -615,6 +674,44 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
                 </div>
               </div>
 
+              {/* Trial End Date (Only if TRIAL status) */}
+              {tenantForm.subscriptionStatus === 'TRIAL' && (
+                <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#1e40af', marginBottom: '4px' }}>
+                    ⚡ 14-Day Free Trial Expiration Date
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <DatePicker
+                      value={tenantForm.trialEndsAt}
+                      onChange={e => setTenantForm({ ...tenantForm, trialEndsAt: e.target.value })}
+                      style={{ flex: 1, padding: '8px 10px', borderRadius: '8px', border: '1px solid #93c5fd', fontSize: '0.85rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 7);
+                        setTenantForm({ ...tenantForm, trialEndsAt: d.toISOString().split('T')[0] });
+                      }}
+                      style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #bfdbfe', backgroundColor: '#ffffff', color: '#1e40af', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      +7 Days
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date();
+                        d.setDate(d.getDate() + 14);
+                        setTenantForm({ ...tenantForm, trialEndsAt: d.toISOString().split('T')[0] });
+                      }}
+                      style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #bfdbfe', backgroundColor: '#ffffff', color: '#1e40af', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      +14 Days
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Resource Quotas Overrides */}
               <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <strong style={{ fontSize: '0.82rem', color: '#0f172a' }}>Resource Quota Limits Override</strong>
@@ -651,43 +748,218 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
 
               {/* Feature Modules Toggles */}
               <div style={{ padding: '14px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <strong style={{ fontSize: '0.82rem', color: '#0f172a' }}>Enabled Modules & Features</strong>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div>
+                    <strong style={{ fontSize: '0.84rem', color: '#0f172a' }}>Enabled Modules & Features</strong>
+                    <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Configure individual module entitlements and add-on access for this tenant.</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => applyPlanDefaultsToTenantForm(tenantForm.subscriptionPlan)}
+                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
+                      title="Reset toggles to standard defaults for current plan tier"
+                    >
+                      ↺ Reset to Plan Defaults
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTenantForm((prev: any) => ({
+                          ...prev,
+                          isTeleCrmEnabled: true,
+                          isQuotationsEnabled: true,
+                          isInventoryEnabled: true,
+                          isAccountingEnabled: true,
+                          isProductionEnabled: true,
+                          isHrmsEnabled: true,
+                          isGstEnabled: true,
+                          isEWayBillEnabled: true,
+                          isWhatsAppEnabled: true,
+                          isAiScannerEnabled: true,
+                        }));
+                      }}
+                      style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#334155', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      ✓ Select All
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginTop: '10px' }}>
+                  {/* TeleCRM */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isTeleCrmEnabled ? '#f5f3ff' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
                     <input
                       type="checkbox"
+                      style={{ marginTop: '3px' }}
+                      checked={tenantForm.isTeleCrmEnabled}
+                      onChange={e => setTenantForm({ ...tenantForm, isTeleCrmEnabled: e.target.checked })}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>📞 TeleCRM & Leads Pipeline</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#ede9fe', color: '#6d28d9', fontWeight: 700 }}>STARTER+</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Leads, Calls, Tasks, Follow-ups, and Kanban Sales Pipeline</div>
+                    </div>
+                  </label>
+
+                  {/* Quotations & Invoicing */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isQuotationsEnabled ? '#eff6ff' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: '3px' }}
+                      checked={tenantForm.isQuotationsEnabled}
+                      onChange={e => setTenantForm({ ...tenantForm, isQuotationsEnabled: e.target.checked })}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>📄 Quotations & Invoicing</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>STARTER+</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Quotations, Proforma, Tax Invoices, Challans & Notes</div>
+                    </div>
+                  </label>
+
+                  {/* Purchases & Inventory */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isInventoryEnabled ? '#ecfdf5' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: '3px' }}
+                      checked={tenantForm.isInventoryEnabled}
+                      onChange={e => setTenantForm({ ...tenantForm, isInventoryEnabled: e.target.checked })}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>📦 Purchases & Inventory</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#d1fae5', color: '#047857', fontWeight: 700 }}>GROWTH+</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Vendors, Purchase Orders, GRN, Bills & Warehouses</div>
+                    </div>
+                  </label>
+
+                  {/* Accounting & Ledgers */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isAccountingEnabled ? '#fffbeb' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: '3px' }}
+                      checked={tenantForm.isAccountingEnabled}
+                      onChange={e => setTenantForm({ ...tenantForm, isAccountingEnabled: e.target.checked })}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>📊 Accounting & Ledgers</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: 700 }}>GROWTH+</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Chart of Accounts, JVs, Ageing, BRS & PDC</div>
+                    </div>
+                  </label>
+
+                  {/* GST Portal Filing */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isGstEnabled ? '#eff6ff' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: '3px' }}
                       checked={tenantForm.isGstEnabled}
                       onChange={e => setTenantForm({ ...tenantForm, isGstEnabled: e.target.checked })}
                     />
-                    <span>🏛️ GST Portal Direct Filing</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>🏛️ GST Portal Direct Filing</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: 700 }}>GROWTH+</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Direct GSTN filing (GSTR-1, 3B, 2B Reconciliation)</div>
+                    </div>
                   </label>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  {/* E-Way Bill */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isEWayBillEnabled ? '#fffbeb' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
                     <input
                       type="checkbox"
-                      checked={tenantForm.isWhatsAppEnabled}
-                      onChange={e => setTenantForm({ ...tenantForm, isWhatsAppEnabled: e.target.checked })}
-                    />
-                    <span>💬 WhatsApp AI & Automation</span>
-                  </label>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
+                      style={{ marginTop: '3px' }}
                       checked={tenantForm.isEWayBillEnabled}
                       onChange={e => setTenantForm({ ...tenantForm, isEWayBillEnabled: e.target.checked })}
                     />
-                    <span>🚚 E-Way Bill Auto-Generation</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>🚚 E-Way Bill Auto-Generation</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: 700 }}>GROWTH+</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>1-Click E-Way Bill creation & Part-B dispatch tracking</div>
+                    </div>
                   </label>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  {/* WhatsApp Automation */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isWhatsAppEnabled ? '#ecfdf5' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
                     <input
                       type="checkbox"
+                      style={{ marginTop: '3px' }}
+                      checked={tenantForm.isWhatsAppEnabled}
+                      onChange={e => setTenantForm({ ...tenantForm, isWhatsAppEnabled: e.target.checked })}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>💬 WhatsApp AI & Automation</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', fontWeight: 700 }}>STARTER+</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Automated invoice PDFs, payment alerts & reminders</div>
+                    </div>
+                  </label>
+
+                  {/* Production & Manufacturing */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isProductionEnabled ? '#faf5ff' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: '3px' }}
+                      checked={tenantForm.isProductionEnabled}
+                      onChange={e => setTenantForm({ ...tenantForm, isProductionEnabled: e.target.checked })}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>🏭 Production & Workshop (MFG)</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#f3e8ff', color: '#7c3aed', fontWeight: 700 }}>ENTERPRISE</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>BOM, Work Orders, Workshop runs & progress</div>
+                    </div>
+                  </label>
+
+                  {/* HRMS & Payroll */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isHrmsEnabled ? '#fdf2f8' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: '3px' }}
                       checked={tenantForm.isHrmsEnabled}
                       onChange={e => setTenantForm({ ...tenantForm, isHrmsEnabled: e.target.checked })}
                     />
-                    <span>👥 HRMS & Payroll Suite</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>👥 HRMS & Payroll Suite</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fce7f3', color: '#db2777', fontWeight: 700 }}>ENTERPRISE</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Biometric Attendance, Leaves, Salary Slips & Hiring</div>
+                    </div>
                   </label>
+
+                  {/* AI Copilot & Scanner */}
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '9px 10px', borderRadius: '8px', border: '1px solid #e2e8f0', backgroundColor: tenantForm.isAiScannerEnabled ? '#eef2ff' : '#ffffff', cursor: 'pointer', transition: 'all 0.15s' }}>
+                    <input
+                      type="checkbox"
+                      style={{ marginTop: '3px' }}
+                      checked={tenantForm.isAiScannerEnabled}
+                      onChange={e => setTenantForm({ ...tenantForm, isAiScannerEnabled: e.target.checked })}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#1e293b' }}>🤖 AI Copilot & Invoice OCR</span>
+                        <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#e0e7ff', color: '#4338ca', fontWeight: 700 }}>ENTERPRISE</span>
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#64748b', marginTop: '2px' }}>Voice assistant, OCR slip scanner & reorder advice</div>
+                    </div>
+                  </label>
+                </div>
+
+                <div style={{ marginTop: '10px', padding: '8px 10px', backgroundColor: '#eff6ff', borderRadius: '8px', fontSize: '0.74rem', color: '#1e40af' }}>
+                  💡 Changes saved here immediately update the customer's navigation sidebar, feature entitlements, and module permissions.
                 </div>
               </div>
 
@@ -910,10 +1182,16 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
 
                   <td style={{ padding: '12px' }}>
                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {org.isTeleCrmEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#ede9fe', color: '#6d28d9', fontWeight: 600 }}>CRM</span>}
+                      {org.isQuotationsEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 600 }}>Sales</span>}
+                      {org.isInventoryEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#d1fae5', color: '#047857', fontWeight: 600 }}>Inventory</span>}
+                      {org.isAccountingEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: 600 }}>Accounts</span>}
+                      {org.isProductionEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#f3e8ff', color: '#7c3aed', fontWeight: 600 }}>MFG</span>}
+                      {org.isHrmsEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fce7f3', color: '#db2777', fontWeight: 600 }}>HRMS</span>}
                       {org.isGstEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: 600 }}>GST</span>}
+                      {org.isEWayBillEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fffbeb', color: '#b45309', fontWeight: 600 }}>EWB</span>}
                       {org.isWhatsAppEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#ecfdf5', color: '#059669', fontWeight: 600 }}>WA</span>}
-                      {org.isEWayBillEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#fef3c7', color: '#d97706', fontWeight: 600 }}>EWB</span>}
-                      {org.isHrmsEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#f5f3ff', color: '#7c3aed', fontWeight: 600 }}>HRMS</span>}
+                      {org.isAiScannerEnabled && <span style={{ fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#e0e7ff', color: '#4338ca', fontWeight: 600 }}>AI</span>}
                     </div>
                   </td>
 
@@ -932,10 +1210,20 @@ export default function PlatformAdminClient({ initialData, isOwner = false }: Pl
                       </button>
                       <button
                         type="button"
-                        onClick={() => alert(`Support impersonation mode for ${org.name} enabled.`)}
-                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '0.74rem', fontWeight: 600, color: '#334155', cursor: 'pointer' }}
+                        onClick={async () => {
+                          if (confirm(`Switch your active workspace to "${org.name}"?`)) {
+                            const res = await switchUserOrganization(org.id);
+                            if (res.success) {
+                              window.location.href = '/';
+                            } else {
+                              alert(res.error || "Failed to switch organization");
+                            }
+                          }
+                        }}
+                        style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '0.74rem', fontWeight: 600, color: '#334155', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        title="Switch active organization to this tenant"
                       >
-                        Inspect
+                        <ExternalLink size={12} /> Switch to Tenant
                       </button>
                       {isOwner && (
                         <button

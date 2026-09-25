@@ -37,6 +37,7 @@ export async function getBankReconciliationOverview(ledgerAccountId: string) {
   if (!session?.user) return { success: false, error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
     const ledger = await prisma.ledgerAccount.findUnique({
       where: { id: ledgerAccountId },
       include: {
@@ -44,7 +45,7 @@ export async function getBankReconciliationOverview(ledgerAccountId: string) {
       }
     });
 
-    if (!ledger) {
+    if (!ledger || (ledger.organizationId && ledger.organizationId !== organizationId)) {
       return { success: false, error: "Bank account ledger not found" };
     }
 
@@ -115,6 +116,16 @@ export async function reconcileTransaction(journalLineItemId: string, clearingDa
   if (!session?.user) return { success: false, error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.journalLineItem.findUnique({
+      where: { id: journalLineItemId },
+      include: { journalEntry: true }
+    });
+
+    if (!existing || (existing.journalEntry.organizationId && existing.journalEntry.organizationId !== organizationId)) {
+      return { success: false, error: "Unauthorized or transaction not found" };
+    }
+
     const clearingDate = clearingDateStr ? new Date(clearingDateStr) : new Date();
 
     const line = await prisma.journalLineItem.update({
@@ -137,6 +148,16 @@ export async function unreconcileTransaction(journalLineItemId: string) {
   if (!session?.user) return { success: false, error: "Unauthorized" };
 
   try {
+    const organizationId = await getTenantOrgId();
+    const existing = await prisma.journalLineItem.findUnique({
+      where: { id: journalLineItemId },
+      include: { journalEntry: true }
+    });
+
+    if (!existing || (existing.journalEntry.organizationId && existing.journalEntry.organizationId !== organizationId)) {
+      return { success: false, error: "Unauthorized or transaction not found" };
+    }
+
     const line = await prisma.journalLineItem.update({
       where: { id: journalLineItemId },
       data: {
@@ -163,6 +184,13 @@ export async function saveBankStatementCheckpoint(data: {
 
   try {
     const organizationId = await getTenantOrgId();
+
+    const ledger = await prisma.ledgerAccount.findUnique({
+      where: { id: data.ledgerAccountId }
+    });
+    if (!ledger || (ledger.organizationId && ledger.organizationId !== organizationId)) {
+      return { success: false, error: "Bank account ledger not found" };
+    }
 
     const record = await prisma.bankReconciliation.create({
       data: {

@@ -13,10 +13,9 @@ import {
   ExternalLink 
 } from 'lucide-react';
 import { 
-  sendCustomerEmail, 
-  DEFAULT_EMAIL_TEMPLATES, 
-  EmailTemplate 
+  sendCustomerEmail 
 } from '@/app/actions/emailActions';
+import { DEFAULT_EMAIL_TEMPLATES, type EmailTemplate } from '@/lib/emailTemplates';
 
 interface SendEmailModalProps {
   isOpen: boolean;

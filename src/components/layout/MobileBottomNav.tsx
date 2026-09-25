@@ -10,6 +10,7 @@ import {
   ShoppingCart,
   Plus,
   X,
+  Phone,
   PhoneCall,
   FileSpreadsheet,
   Settings,
@@ -93,13 +94,20 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
           <span className="bottom-nav-label">Home</span>
         </Link>
 
-        {/* 2. Sales / Orders Tab */}
-        <Link href="/orders" className={`bottom-nav-item ${isActive("/orders") || isActive("/quotations") ? "active" : ""}`}>
+        {/* 2. Phone Dialer Tab */}
+        <button
+          type="button"
+          onClick={() => openPhoneDialer()}
+          className="bottom-nav-item"
+          style={{ background: "none", border: "none", cursor: "pointer" }}
+          title="Phone Dialer"
+          aria-label="Phone Dialer"
+        >
           <div className="bottom-nav-icon">
-            <ShoppingCart size={20} />
+            <Phone size={20} />
           </div>
-          <span className="bottom-nav-label">Sales</span>
-        </Link>
+          <span className="bottom-nav-label">Dialer</span>
+        </button>
 
         {/* 3. Central Elevated App Launcher FAB Button */}
         <div className="bottom-nav-fab-wrapper">
@@ -114,12 +122,12 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
           </button>
         </div>
 
-        {/* 4. CRM Customers Tab */}
-        <Link href="/customers" className={`bottom-nav-item ${isActive("/customers") || isActive("/leads") ? "active" : ""}`}>
+        {/* 4. Calls Tab (2nd option in CRM & Clients menu: /calls) */}
+        <Link href="/calls" className={`bottom-nav-item ${isActive("/calls") ? "active" : ""}`}>
           <div className="bottom-nav-icon">
-            <Users size={20} />
+            <PhoneCall size={20} />
           </div>
-          <span className="bottom-nav-label">CRM</span>
+          <span className="bottom-nav-label">Calls</span>
         </Link>
 
         {/* 5. Menu / More Drawer Tab */}
@@ -176,7 +184,7 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
                 className="action-sheet-tile"
                 onClick={() => {
                   setShowActionSheet(false);
-                  openAssistant();
+                  openAssistant('', true);
                 }}
                 style={{ background: "none", border: "none", cursor: "pointer", textAlign: "center" }}
               >

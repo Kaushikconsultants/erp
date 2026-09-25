@@ -3,8 +3,10 @@
 import DatePicker from '@/components/ui/DatePicker';
 import React, { useState } from 'react';
 import { Pencil, Trash2, Calendar, CheckCircle, Clock, Phone, MessageSquare, PhoneCall, FileText, Sparkles, X } from 'lucide-react';
-import { updateCall, deleteCall } from '@/app/actions/callActions';
+import { updateCall, deleteCall, deleteCallRecording } from '@/app/actions/callActions';
 import { openPhoneDialer } from '@/lib/dialer';
+import { formatTranscriptWithNames } from '@/lib/transcriptUtils';
+import CallTranscriptViewer from '@/components/telecalling/CallTranscriptViewer';
 
 interface CallsTableClientProps {
   calls: any[];
@@ -520,38 +522,54 @@ export default function CallsTableClient({
               {/* Audio recording */}
               {viewingTranscriptCall.recordingUrl && (
                 <div style={{ padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#15803d', display: 'block', marginBottom: '6px' }}>
-                    Call Audio Recording
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#15803d' }}>
+                      Call Audio Recording
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!confirm("Are you sure you want to delete this audio recording?")) return;
+                        const res = await deleteCallRecording(viewingTranscriptCall.id);
+                        if (res?.error) {
+                          alert(res.error);
+                        } else {
+                          setViewingTranscriptCall((prev: any) => prev ? { ...prev, recordingUrl: null } : null);
+                        }
+                      }}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #fca5a5',
+                        color: '#dc2626',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                      title="Delete audio recording only"
+                    >
+                      Delete Audio
+                    </button>
+                  </div>
                   <audio controls src={viewingTranscriptCall.recordingUrl} style={{ width: '100%', height: '32px' }} />
                 </div>
               )}
 
-              {/* AI Summary */}
-              {viewingTranscriptCall.summary && (
-                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                    <Sparkles size={14} color="#9333ea" />
-                    <strong style={{ fontSize: '0.78rem', color: '#7e22ce', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      AI Summary
-                    </strong>
-                  </div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#3b0764', lineHeight: 1.5 }}>
-                    {viewingTranscriptCall.summary}
-                  </p>
-                </div>
-              )}
-
-              {/* Full Notes / Transcript */}
-              {viewingTranscriptCall.notes && (
-                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                  <strong style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: '#334155' }}>
-                    Notes & Dialogue Transcript:
-                  </strong>
-                  <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.82rem', color: '#1e293b', lineHeight: 1.5, maxHeight: '250px', overflowY: 'auto' }}>
-                    {viewingTranscriptCall.notes}
-                  </div>
-                </div>
+              {/* Call Transcript & AI Summary */}
+              {(viewingTranscriptCall.notes || viewingTranscriptCall.summary) && (
+                <CallTranscriptViewer
+                  notes={viewingTranscriptCall.notes}
+                  summary={viewingTranscriptCall.summary}
+                  repName={viewingTranscriptCall.employee?.user?.name || viewingTranscriptCall.employeeName}
+                  customerName={viewingTranscriptCall.customer?.businessName || viewingTranscriptCall.lead?.name || viewingTranscriptCall.customerName}
+                  isOldCustomer={Boolean(viewingTranscriptCall.customerId || viewingTranscriptCall.isCustomer || viewingTranscriptCall.isOldCustomer)}
+                  callId={viewingTranscriptCall.id}
+                  initialExpanded={true}
+                  durationSec={viewingTranscriptCall.durationSec}
+                  outcome={viewingTranscriptCall.outcome}
+                  status={viewingTranscriptCall.status}
+                />
               )}
             </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from "react";
 import {
   Phone,
   PhoneCall,
@@ -51,12 +51,13 @@ import {
   Wifi,
   Battery,
   Signal,
-  ChevronLeft
+  ChevronLeft,
+  ChevronDown,
+  Pencil
 } from "lucide-react";
-import { logCall, getCustomersForCallModal, getDialerRecentCalls, deleteCall } from "@/app/actions/callActions";
+import { logCall, getCustomersForCallModal, getDialerRecentCalls, deleteCall, deleteCallRecording, syncDeviceCallLogs, saveOrUpdateCallFollowUp } from "@/app/actions/callActions";
 import { createQuickLead } from "@/app/actions/leadActions";
 import { analyzeCallVoiceDebrief } from "@/app/actions/callAiActions";
-import CallVoiceDebriefWidget from "@/components/telecalling/CallVoiceDebriefWidget";
 import {
   getNativeSims,
   makeDirectCellularCall,
@@ -67,9 +68,30 @@ import {
   startNativeCallRecording,
   stopNativeCallRecording,
   NativeSimInfo,
-  RecordingCapabilityInfo
+  RecordingCapabilityInfo,
+  hasCallLogPermission,
+  requestCallLogPermission,
+  getDeviceCallLogs,
+  DeviceCallLogItem
 } from "@/lib/capacitor";
 import "./phone-dialer.css";
+
+export function WhatsAppLogo({ size = 24, className, style }: { size?: number; className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      style={style}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.888 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+    </svg>
+  );
+}
 
 interface PhoneDialerModalProps {
   isOpen: boolean;
@@ -108,6 +130,29 @@ const DEFAULT_OUTCOMES = [
   "Wrong / Invalid Number",
   "Support / General Inquiry"
 ];
+
+function getOutcomeMeta(val: string) {
+  const lower = (val || "").toLowerCase();
+  if (lower.includes("order") || lower.includes("deal") || lower.includes("won") || lower.includes("placed")) {
+    return { color: "#10b981", bg: "#dcfce7", border: "#86efac", label: "Order / Closed" };
+  }
+  if (lower.includes("quotation") || lower.includes("quote") || lower.includes("negotiation") || lower.includes("price")) {
+    return { color: "#f59e0b", bg: "#fef3c7", border: "#fde68a", label: "Quotation / Price" };
+  }
+  if (lower.includes("callback") || lower.includes("call back") || lower.includes("schedule")) {
+    return { color: "#8b5cf6", bg: "#f3e8ff", border: "#d8b4fe", label: "Callback" };
+  }
+  if (lower.includes("interested") || lower.includes("follow-up") || lower.includes("follow up")) {
+    return { color: "#4f46e5", bg: "#e0e7ff", border: "#a5b4fc", label: "Interested" };
+  }
+  if (lower.includes("busy") || lower.includes("no answer") || lower.includes("missed") || lower.includes("voicemail") || lower.includes("switched off")) {
+    return { color: "#ef4444", bg: "#fee2e2", border: "#fca5a5", label: "Unanswered" };
+  }
+  if (lower.includes("not interested") || lower.includes("lost") || lower.includes("wrong") || lower.includes("invalid")) {
+    return { color: "#64748b", bg: "#f1f5f9", border: "#cbd5e1", label: "Lost / Invalid" };
+  }
+  return { color: "#0ea5e9", bg: "#e0f2fe", border: "#7dd3fc", label: "General" };
+}
 
 const CALL_STATUSES = [
   { label: "Call Completed", value: "Completed", color: "#10b981", bg: "#f0fdf4", border: "#bbf7d0" },
@@ -202,9 +247,7 @@ class DialerErrorBoundary extends React.Component<
   }
 
   render() {
-    // If closed or if an error occurred, render nothing.
-    // NEVER show a disruptive "Dialer Ready" popup or error sheet to the user.
-    if (!this.props.isOpen || this.state.hasError) {
+    if (this.state.hasError) {
       return null;
     }
     return this.props.children;
@@ -322,12 +365,14 @@ function PhoneDialerModalContent({
 }: PhoneDialerModalProps) {
   const [activeTab, setActiveTab] = useState<"DIALPAD" | "CALL_LOGS" | "CONTACTS" | "POST_CALL" | "WHATSAPP" | "SCRIPTS">(initialTab);
   const [phoneDigits, setPhoneDigits] = useState<string>(initialPhone);
+  const deferredPhoneDigits = useDeferredValue(phoneDigits);
   const [contacts, setContacts] = useState<any[]>([]);
   const [recentCalls, setRecentCalls] = useState<any[]>([]);
   const [isLoadingCalls, setIsLoadingCalls] = useState<boolean>(false);
   const [isLoadingContacts, setIsLoadingContacts] = useState<boolean>(false);
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const isSavingRecordRef = useRef<boolean>(false);
   const [showNewLeadForm, setShowNewLeadForm] = useState<boolean>(false);
   const [showOverflowMenu, setShowOverflowMenu] = useState<boolean>(false);
   const [currentTimeStr, setCurrentTimeStr] = useState<string>("12:45");
@@ -352,15 +397,25 @@ function PhoneDialerModalContent({
   const [contactFilter, setContactFilter] = useState<"ALL" | "DEVICE" | "CUSTOMER" | "LEAD">("ALL");
 
   // Device Phone Contacts state (synced from Android native phonebook or Web Contact Picker)
-  const [deviceContacts, setDeviceContacts] = useState<any[]>(() => {
-    try {
-      const cached = typeof window !== "undefined" ? localStorage.getItem("crm_device_contacts_cache") : null;
-      return cached ? JSON.parse(cached) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [deviceContacts, setDeviceContacts] = useState<any[]>([]);
   const [isScanningContacts, setIsScanningContacts] = useState<boolean>(false);
+
+  // Defer loading cached contacts to background idle time (0ms initial render lag)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const timer = setTimeout(() => {
+      try {
+        const cached = localStorage.getItem("crm_device_contacts_cache");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setDeviceContacts(parsed);
+          }
+        }
+      } catch {}
+    }, 200);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Call Duration & Auto Debrief Engine State
   const [callDurationSec, setCallDurationSec] = useState<number>(0);
@@ -369,6 +424,7 @@ function PhoneDialerModalContent({
   const callStartTimeRef = useRef<number | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isCallInitiatedRef = useRef<boolean>(false);
+  const isUserExplicitStatusRef = useRef<boolean>(false);
   const phoneDigitsRef = useRef<string>(initialPhone);
   phoneDigitsRef.current = phoneDigits;
   const selectedContactRef = useRef<any>(null);
@@ -376,7 +432,33 @@ function PhoneDialerModalContent({
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isLongPressRef = useRef<boolean>(false);
   const isLeadNameManuallyEditedRef = useRef<boolean>(false);
+  const isContactDismissedRef = useRef<boolean>(false);
+  const prevPhoneDigitsRef = useRef<string>(initialPhone || "");
   const [allFilesGranted, setAllFilesGranted] = useState<boolean>(true);
+
+  // Caret & Cursor position tracking for middle-digit editing and selection
+  const digitsInputRef = useRef<HTMLInputElement>(null);
+  const cursorPositionRef = useRef<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  const updateCursorFromInput = useCallback(() => {
+    if (digitsInputRef.current) {
+      cursorPositionRef.current = {
+        start: digitsInputRef.current.selectionStart ?? phoneDigits.length,
+        end: digitsInputRef.current.selectionEnd ?? phoneDigits.length
+      };
+    }
+  }, [phoneDigits.length]);
+
+  const setDigitsAndCursor = useCallback((nextDigits: string, newCursorPos: number) => {
+    setPhoneDigits(nextDigits);
+    cursorPositionRef.current = { start: newCursorPos, end: newCursorPos };
+    requestAnimationFrame(() => {
+      if (digitsInputRef.current) {
+        digitsInputRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        digitsInputRef.current.focus({ preventScroll: true });
+      }
+    });
+  }, []);
 
   const checkStoragePermission = useCallback(() => {
     if (isAndroidNativeApp() && typeof window !== "undefined") {
@@ -438,6 +520,181 @@ function PhoneDialerModalContent({
     return localDate.toISOString();
   }, [followUpDate, followUpHour, followUpMinute, followUpPeriod]);
 
+  // Recent Calls In-place Edit & Follow-up State
+  const [editingCallId, setEditingCallId] = useState<string | null>(null);
+  const [editFollowUpDate, setEditFollowUpDate] = useState<string>("");
+  const [editFollowUpHour, setEditFollowUpHour] = useState<string>("11");
+  const [editFollowUpMinute, setEditFollowUpMinute] = useState<string>("00");
+  const [editFollowUpPeriod, setEditFollowUpPeriod] = useState<"AM" | "PM">("AM");
+  const [editOutcome, setEditOutcome] = useState<string>("");
+  const [editNotes, setEditNotes] = useState<string>("");
+  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
+
+  const handleToggleEditCall = useCallback((c: any) => {
+    if (editingCallId === c.id) {
+      setEditingCallId(null);
+      return;
+    }
+
+    setEditingCallId(c.id);
+    setEditOutcome(c.outcome || "Completed");
+    setEditNotes(c.notes || c.summary || "");
+
+    if (c.followUpDate) {
+      const d = new Date(c.followUpDate);
+      if (!isNaN(d.getTime())) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        setEditFollowUpDate(`${yyyy}-${mm}-${dd}`);
+
+        let h = d.getHours();
+        const period = h >= 12 ? "PM" : "AM";
+        h = h % 12;
+        if (h === 0) h = 12;
+        setEditFollowUpHour(String(h).padStart(2, '0'));
+        setEditFollowUpMinute(String(d.getMinutes()).padStart(2, '0'));
+        setEditFollowUpPeriod(period);
+        return;
+      }
+    }
+
+    // Default to tomorrow 11:00 AM
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const yyyy = tomorrow.getFullYear();
+    const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const dd = String(tomorrow.getDate()).padStart(2, '0');
+    setEditFollowUpDate(`${yyyy}-${mm}-${dd}`);
+    setEditFollowUpHour("11");
+    setEditFollowUpMinute("00");
+    setEditFollowUpPeriod("AM");
+  }, [editingCallId]);
+
+  const setQuickEditFollowUp = useCallback((days: number, hour12: number, min: number, period: "AM" | "PM") => {
+    if (days < 0) {
+      setEditFollowUpDate("");
+      return;
+    }
+    const target = new Date();
+    target.setDate(target.getDate() + days);
+    const yyyy = target.getFullYear();
+    const mm = String(target.getMonth() + 1).padStart(2, '0');
+    const dd = String(target.getDate()).padStart(2, '0');
+    setEditFollowUpDate(`${yyyy}-${mm}-${dd}`);
+    setEditFollowUpHour(String(hour12).padStart(2, '0'));
+    setEditFollowUpMinute(String(min).padStart(2, '0'));
+    setEditFollowUpPeriod(period);
+  }, []);
+
+  const getCompiledEditFollowUpDate = useCallback(() => {
+    if (!editFollowUpDate) return null;
+    let h = parseInt(editFollowUpHour || "11", 10);
+    if (editFollowUpPeriod === "PM" && h < 12) h += 12;
+    if (editFollowUpPeriod === "AM" && h === 12) h = 0;
+    const [year, month, day] = editFollowUpDate.split('-');
+    const m = parseInt(editFollowUpMinute || "00", 10);
+    const dateObj = new Date(parseInt(year, 10), parseInt(month, 10) - 1, parseInt(day, 10), h, m, 0);
+    return isNaN(dateObj.getTime()) ? null : dateObj.toISOString();
+  }, [editFollowUpDate, editFollowUpHour, editFollowUpMinute, editFollowUpPeriod]);
+
+  const handleSaveCallEdit = useCallback(async (callItem: any) => {
+    setIsSavingEdit(true);
+    try {
+      const compiledFollowUp = getCompiledEditFollowUpDate();
+      let res: any;
+      try {
+        res = await saveOrUpdateCallFollowUp({
+          callId: callItem.id,
+          phoneNumber: callItem.phoneNumber || callItem.phone,
+          contactName: callItem.contactName || callItem.contactPerson,
+          outcome: editOutcome,
+          notes: editNotes,
+          followUpDate: compiledFollowUp
+        });
+      } catch (callErr: any) {
+        const errMsg = String(callErr?.message || "");
+        if (errMsg.includes("Server Action") || errMsg.includes("not found on the server") || errMsg.includes("failed-to-find-server-action")) {
+          console.warn("Server action hash mismatch in follow-up edit. Attempting /api/calls/follow-up fallback:", callErr);
+          const apiRes = await fetch("/api/calls/follow-up", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              callId: callItem.id,
+              phoneNumber: callItem.phoneNumber || callItem.phone,
+              contactName: callItem.contactName || callItem.contactPerson,
+              outcome: editOutcome,
+              notes: editNotes,
+              followUpDate: compiledFollowUp
+            })
+          }).then(r => r.json()).catch(() => null);
+          if (apiRes) {
+            res = apiRes;
+          } else {
+            throw callErr;
+          }
+        } else {
+          throw callErr;
+        }
+      }
+
+      if (res?.error) {
+        alert(res.error);
+        return;
+      }
+
+      const savedCall = res?.call;
+      setRecentCalls((prev) =>
+        prev.map((c) => {
+          if (c.id === callItem.id) {
+            return {
+              ...c,
+              id: savedCall?.id || c.id,
+              outcome: editOutcome,
+              notes: editNotes,
+              summary: editNotes,
+              followUpDate: compiledFollowUp
+            };
+          }
+          return c;
+        })
+      );
+
+      setEditingCallId(null);
+      setFeedbackMsg(compiledFollowUp ? "📅 Follow-up scheduled & call updated!" : "✅ Call details updated!");
+      setTimeout(() => setFeedbackMsg(""), 2500);
+    } catch (err: any) {
+      console.error("Failed to update call:", err);
+      const errMsg = String(err?.message || "");
+      if (errMsg.includes("Server Action") || errMsg.includes("not found on the server") || errMsg.includes("failed-to-find-server-action")) {
+        setFeedbackMsg("🔄 App updated. Reloading now...");
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        alert(err?.message || "Failed to update call record");
+      }
+    } finally {
+      setIsSavingEdit(false);
+    }
+  }, [editOutcome, editNotes, getCompiledEditFollowUpDate]);
+
+  const formatFollowUpDisplay = useCallback((isoStr: string) => {
+    if (!isoStr) return "";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "";
+
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const isTomorrow = d.toDateString() === tomorrow.toDateString();
+
+    const timeStr = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+    if (isToday) return `Today, ${timeStr}`;
+    if (isTomorrow) return `Tomorrow, ${timeStr}`;
+    return `${d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}, ${timeStr}`;
+  }, []);
+
   // Telecom Multi-SIM & Recording Capability State
   const [availableSims, setAvailableSims] = useState<NativeSimInfo[]>(() => [
     { subscriptionId: 1, slotIndex: 0, slotLabel: "SIM 1", displayName: "SIM 1", carrierName: "SIM 1", isDefault: true },
@@ -490,6 +747,21 @@ function PhoneDialerModalContent({
   // Helper: Automatically analyze and transcribe recorded audio via Gemini AI
   const handleTranscribeAudio = useCallback(async (audioDataUrl: string, explicitDuration?: number) => {
     if (!audioDataUrl || audioDataUrl.length < 50) return;
+    const dur = explicitDuration !== undefined && explicitDuration > 0 ? explicitDuration : (callDurationSec || 0);
+
+    // Never transcribe audio for unconnected calls (0s duration, No Answer, Busy, Voicemail, Switched Off)
+    if (
+      dur <= 0 ||
+      callStatus === "No Answer" ||
+      callStatus === "Busy" ||
+      callStatus === "Missed" ||
+      outcome === "No Answer / Busy" ||
+      outcome === "Voicemail / Switched Off" ||
+      outcome === "Wrong Number"
+    ) {
+      return;
+    }
+
     setIsTranscribingAudio(true);
     setFeedbackMsg("🎙️ Transcribing call conversation with Gemini AI...");
 
@@ -508,11 +780,20 @@ function PhoneDialerModalContent({
       if (mime === "audio/mp3") mime = "audio/mpeg";
       if (mime === "audio/m4a" || mime === "audio/x-m4a") mime = "audio/mp4";
 
-      const dur = explicitDuration !== undefined && explicitDuration > 0 ? explicitDuration : (callDurationSec || 0);
       const contactName = selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact";
       const contactPhone = phoneDigits || selectedContact?.phone || "";
 
       let analysisResult: any = null;
+
+      const callContextPayload = {
+        contactName,
+        contactPhone,
+        callType: callType || "OUTBOUND",
+        durationSec: dur,
+        customerId: selectedContact?.type === "customer" ? selectedContact.id : (initialCustomerId || undefined),
+        leadId: selectedContact?.type === "lead" ? selectedContact.id : (initialLeadId || undefined),
+        isOldCustomer: selectedContact?.type === "customer" || Boolean(initialCustomerId),
+      };
 
       // 1. Primary: REST API route
       try {
@@ -522,11 +803,7 @@ function PhoneDialerModalContent({
           body: JSON.stringify({
             audioBase64: rawB64,
             mimeType: mime,
-            callContext: {
-              contactName,
-              contactPhone,
-              durationSec: dur
-            }
+            callContext: callContextPayload
           })
         });
 
@@ -546,11 +823,7 @@ function PhoneDialerModalContent({
           const actionRes = await analyzeCallVoiceDebrief({
             audioBase64: rawB64,
             mimeType: mime,
-            callContext: {
-              contactName,
-              contactPhone,
-              durationSec: dur
-            }
+            callContext: callContextPayload
           });
           if (actionRes?.success && actionRes?.analysis) {
             analysisResult = actionRes.analysis;
@@ -598,18 +871,23 @@ function PhoneDialerModalContent({
     } finally {
       setIsTranscribingAudio(false);
     }
-  }, [callDurationSec, selectedContact, newLeadName, phoneDigits]);
+  }, [callDurationSec, selectedContact, newLeadName, phoneDigits, callStatus, outcome]);
 
   useEffect(() => {
     handleTranscribeAudioRef.current = handleTranscribeAudio;
   }, [handleTranscribeAudio]);
 
-  // Load Recent Calls safely
-  const loadRecentCalls = async () => {
+  const [isSyncingDeviceCalls, setIsSyncingDeviceCalls] = useState(false);
+  const loadRecentCallsRef = useRef<((shouldPromptPermission?: boolean) => Promise<void>) | null>(null);
+
+  // Load Recent Calls safely and sync with native Android call logs (missed & incoming calls)
+  const loadRecentCalls = useCallback(async (shouldPromptPermission: boolean = false) => {
     setIsLoadingCalls(true);
+    let serverCalls: any[] = [];
     try {
       const res = await getDialerRecentCalls(50);
       if (res && res.success && Array.isArray(res.calls)) {
+        serverCalls = res.calls;
         setRecentCalls(res.calls);
       }
     } catch (err) {
@@ -617,7 +895,97 @@ function PhoneDialerModalContent({
     } finally {
       setIsLoadingCalls(false);
     }
-  };
+
+    // On Android Native, query real device call logs (missed calls, incoming calls, outbound calls)
+    if (isAndroidNativeApp()) {
+      try {
+        const hasPerm = hasCallLogPermission();
+        if (!hasPerm) {
+          if (shouldPromptPermission) {
+            requestCallLogPermission();
+            setFeedbackMsg("📱 Grant Call Log permission in prompt to load missed and incoming calls.");
+          }
+        } else {
+          setIsSyncingDeviceCalls(true);
+          const devLogs = await getDeviceCallLogs(60, "ALL");
+          if (devLogs && Array.isArray(devLogs) && devLogs.length > 0) {
+            const formattedDevCalls = devLogs.map((d: DeviceCallLogItem) => {
+              const isMissed = d.type === "MISSED" || d.type === "REJECTED" || d.type === "BLOCKED";
+              const isIncoming = d.type === "INCOMING";
+              const callType = (isIncoming || isMissed) ? "INBOUND" : "OUTBOUND";
+              const status = isMissed ? "No Answer" : (d.duration > 0 ? "Connected" : "No Answer");
+              const outcome = isMissed
+                ? "Missed Call"
+                : isIncoming
+                  ? (d.duration > 0 ? "Incoming Call Connected" : "Missed Call")
+                  : (d.duration > 0 ? "Outbound Call Connected" : "No Answer / Busy");
+
+              const contactName = d.name && d.name !== d.number ? d.name : (d.number || "Direct Contact");
+
+              return {
+                id: `dev_${d.id || d.timestamp}`,
+                createdAt: new Date(d.timestamp).toISOString(),
+                callType,
+                durationSec: isMissed ? 0 : Math.max(0, d.duration || 0),
+                status,
+                outcome,
+                notes: `[Phone: ${d.number}]${d.name ? ` [Name: ${d.name}]` : ""} Device ${d.type.toLowerCase()} call`,
+                followUpDate: null,
+                contactName,
+                contactPerson: d.name || "",
+                phone: d.number,
+                phoneNumber: d.number,
+                contactType: "DeviceCall",
+                customerId: null,
+                leadId: null,
+                employeeName: "Device",
+                recordingUrl: null,
+                summary: null,
+                _isDeviceLog: true
+              };
+            });
+
+            // Merge with server calls: deduplicate based on phone (last 10 digits) and timestamp within 45s
+            setRecentCalls((prev) => {
+              const base = prev && prev.length > 0 ? [...prev] : [...serverCalls];
+              const merged = [...base];
+
+              for (const dev of formattedDevCalls) {
+                const devPhone = String(dev.phone || "").replace(/\D/g, "").slice(-10);
+                const devTime = new Date(dev.createdAt).getTime();
+
+                const isAlreadyPresent = base.some((existing) => {
+                  const existPhone = String(existing.phone || existing.phoneNumber || "").replace(/\D/g, "").slice(-10);
+                  const existTime = new Date(existing.createdAt).getTime();
+                  return existPhone && devPhone && existPhone === devPhone && Math.abs(existTime - devTime) < 45000;
+                });
+
+                if (!isAlreadyPresent) {
+                  merged.push(dev);
+                }
+              }
+
+              merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              return merged;
+            });
+
+            // Sync to server in background
+            syncDeviceCallLogs(devLogs).catch((syncErr) => {
+              console.warn("Background syncDeviceCallLogs notice:", syncErr);
+            });
+          }
+        }
+      } catch (devErr) {
+        console.warn("Error fetching device call logs:", devErr);
+      } finally {
+        setIsSyncingDeviceCalls(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRecentCallsRef.current = loadRecentCalls;
+  }, [loadRecentCalls]);
 
   // Delete Call Log and attached recording
   const handleDeleteCallLog = async (callId: string, contactName?: string) => {
@@ -751,13 +1119,11 @@ function PhoneDialerModalContent({
       }
       if (found.length > 0) {
         setDeviceContacts(found);
-        try {
-          localStorage.setItem("crm_device_contacts_cache", JSON.stringify(found.slice(0, 5000)));
-        } catch {
+        setTimeout(() => {
           try {
-            localStorage.setItem("crm_device_contacts_cache", JSON.stringify(found.slice(0, 1500)));
+            localStorage.setItem("crm_device_contacts_cache", JSON.stringify(found.slice(0, 800)));
           } catch {}
-        }
+        }, 200);
       } else if (isAndroidNativeApp()) {
         if (deviceContacts.length === 0) {
           setFeedbackMsg("📱 No device contacts found. Ensure contacts permission is allowed.");
@@ -778,6 +1144,16 @@ function PhoneDialerModalContent({
     window.addEventListener("native-contacts-permission-granted", handlePermGranted);
     return () => window.removeEventListener("native-contacts-permission-granted", handlePermGranted);
   }, [loadDeviceContacts]);
+
+  // Load contacts whenever user navigates to Contacts tab
+  useEffect(() => {
+    if (activeTab === "CONTACTS") {
+      if (contacts.length === 0) loadContacts();
+      if (isAndroidNativeApp() && deviceContacts.length === 0) {
+        loadDeviceContacts();
+      }
+    }
+  }, [activeTab, contacts.length, deviceContacts.length, loadDeviceContacts]);
 
   // Global listener for open-phone-dialer event
   useEffect(() => {
@@ -897,7 +1273,19 @@ function PhoneDialerModalContent({
       const state = detail.state; // "CONNECTED" | "ENDED" | "RINGING"
       const dur = detail.durationSec || 0;
 
-      if (state === "CONNECTED") {
+      if (state === "MISSED") {
+        const caller = detail.phoneNumber || "Unknown Caller";
+        setFeedbackMsg(`🔴 Missed call from ${caller}`);
+        handleVibrate(40);
+        loadRecentCallsRef.current?.(false);
+      } else if (state === "RINGING" || state === "DIALING") {
+        setCallStatus("No Answer");
+        setIsTimerRunning(false);
+        const caller = detail.phoneNumber;
+        if (caller && caller !== "Unknown") {
+          setFeedbackMsg(state === "DIALING" ? `📞 Calling: ${caller}...` : `📞 Incoming call ringing: ${caller}`);
+        }
+      } else if (state === "CONNECTED") {
         if (!callStartTimeRef.current) {
           callStartTimeRef.current = Date.now();
         }
@@ -906,10 +1294,34 @@ function PhoneDialerModalContent({
         setFeedbackMsg("🟢 Call connected! Live talk timer started.");
       } else if (state === "ENDED") {
         setIsTimerRunning(false);
-        const finalDur = dur > 0 ? dur : (callStartTimeRef.current ? Math.max(0, Math.round((Date.now() - callStartTimeRef.current) / 1000)) : 0);
+        const finalDur = (typeof dur === "number" && dur > 0) ? dur : 0;
         callStartTimeRef.current = null;
         isCallInitiatedRef.current = false;
-        setCallDurationSec(finalDur);
+        loadRecentCallsRef.current?.(false);
+
+        // If the call was not connected (duration is 0s)
+        if (finalDur <= 0) {
+          if (!isUserExplicitStatusRef.current) {
+            setCallStatus("No Answer");
+            setOutcome("No Answer / Busy");
+            setCallDurationSec(0);
+            setQuickFollowUp(1, 11, 0, "AM");
+          }
+          setRecordingUrl("");
+          setAutoRecordTranscript("");
+          setCallSummary("");
+          setNotes((prev) => prev ? prev.replace(/\[Auto-Transcript\][\s\S]*?(?=\n\n|$)/g, "").replace(/\[AI Summary\][\s\S]*?(?=\n\n|$)/g, "").trim() : "");
+          try {
+            (window as any).AndroidNative?.clearLastCallRecording?.();
+          } catch (e) {}
+          if (!isAndroidNativeApp() && isAutoRecording) {
+            stopAutoRecording(0);
+          } else if (isAndroidNativeApp()) {
+            setIsAutoRecording(false);
+          }
+          setFeedbackMsg("ℹ️ Call not connected (0s talk time). Follow-up scheduled.");
+          return;
+        }
 
         // Stop auto-recording if running (only on desktop web)
         if (!isAndroidNativeApp() && isAutoRecording) {
@@ -918,9 +1330,11 @@ function PhoneDialerModalContent({
           setIsAutoRecording(false);
         }
 
-        // On Native Android, retrieve the actual recording from device / MediaStore
+        // On Native Android, retrieve the actual recording from device / MediaStore (only when finalDur > 0)
         const nativeCandidate = detail?.recordingUrl;
-        if (nativeCandidate && typeof nativeCandidate === "string" && nativeCandidate.startsWith("data:audio") && nativeCandidate.length > 500) {
+        const hasValidRecording = Boolean(nativeCandidate && typeof nativeCandidate === "string" && nativeCandidate.startsWith("data:audio") && nativeCandidate.length > 500);
+
+        if (hasValidRecording) {
           setRecordingUrl(nativeCandidate);
           setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(finalDur)}) attached! Transcribing with Gemini AI...`);
           handleTranscribeAudioRef.current?.(nativeCandidate, finalDur);
@@ -937,7 +1351,10 @@ function PhoneDialerModalContent({
               if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
                 clearInterval(pollTimer);
                 const exactDur = (window as any).AndroidNative?.getLastCallDuration?.() || finalDur;
-                if (exactDur > 0) setCallDurationSec(exactDur);
+                if (!isUserExplicitStatusRef.current || callStatus === "Completed" || callStatus === "Connected") {
+                  if (exactDur > 0) setCallDurationSec(exactDur);
+                  setCallStatus("Completed");
+                }
                 setRecordingUrl(rec);
                 setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(exactDur)}) attached! Transcribing with Gemini AI...`);
                 handleTranscribeAudioRef.current?.(rec, exactDur);
@@ -948,29 +1365,53 @@ function PhoneDialerModalContent({
             if (attempts >= 5) {
               clearInterval(pollTimer);
               setRecordingUrl("");
-              setFeedbackMsg("ℹ️ Call completed. Ensure auto-recording is ON in Phone Settings, or tap 'Scan Phone'.");
+              if (isUserExplicitStatusRef.current && (callStatus === "Busy" || callStatus === "No Answer" || callStatus === "Callback")) {
+                setFeedbackMsg("ℹ️ Call not connected (0s talk time). Follow-up scheduled.");
+              } else if (callStatus === "Completed" || callStatus === "Connected") {
+                setFeedbackMsg("ℹ️ Call completed. Ensure auto-recording is ON in Phone Settings, or tap 'Scan Phone'.");
+              } else {
+                setFeedbackMsg("ℹ️ Call not connected (0s talk time). Follow-up scheduled.");
+              }
             }
           }, 700);
         }
 
-        if (finalDur > 0) {
-          setCallStatus("Completed");
-          if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
-            setOutcome("Interested / Follow-up Needed");
+        // Respect explicit user status selection if user already interacted
+        if (isUserExplicitStatusRef.current) {
+          if (callStatus !== "Completed" && callStatus !== "Connected") {
+            setCallDurationSec(0);
           }
-          setFeedbackMsg(`⏹ Call completed (${formatDuration(finalDur)}). Review or tap Debrief below.`);
-          setAutoDebriefTrigger(Date.now());
         } else {
-          setCallStatus("Busy");
-          setOutcome("No Answer / Busy");
-          setQuickFollowUp(1, 11, 0, "AM");
-          setFeedbackMsg("❌ Call ended without answer (0s). Scheduled follow-up for tomorrow 11 AM.");
+          // Outgoing calls <= 25s without native recording are unanswered ring, busy signal, or IVR
+          const isConnectedCall = (finalDur > 25) || hasValidRecording;
+          if (isConnectedCall) {
+            setCallDurationSec(finalDur);
+            setCallStatus("Completed");
+            if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
+              setOutcome("Interested / Follow-up Needed");
+            }
+            setFeedbackMsg(`⏹ Call completed (${formatDuration(finalDur)}). Review and save call details below.`);
+          } else {
+            setCallStatus("No Answer");
+            setOutcome("No Answer / Busy");
+            setCallDurationSec(0);
+            setQuickFollowUp(1, 11, 0, "AM");
+            setFeedbackMsg("❌ Call not connected (0s). Scheduled follow-up for tomorrow 11 AM.");
+          }
         }
       }
     };
 
     window.addEventListener("native-call-state", handleNativeCallState);
-    return () => window.removeEventListener("native-call-state", handleNativeCallState);
+    const onCallLogPermGranted = () => {
+      loadRecentCallsRef.current?.(false);
+      setFeedbackMsg("✓ Call Log permission granted! Device calls loaded.");
+    };
+    window.addEventListener("native-call-log-permission-granted", onCallLogPermGranted);
+    return () => {
+      window.removeEventListener("native-call-state", handleNativeCallState);
+      window.removeEventListener("native-call-log-permission-granted", onCallLogPermGranted);
+    };
   }, [outcome]);
 
   // Initialize on open
@@ -980,6 +1421,8 @@ function PhoneDialerModalContent({
       setNewLeadName(initialName || "");
       setNewLeadShop("");
       isLeadNameManuallyEditedRef.current = false;
+      isContactDismissedRef.current = false;
+      prevPhoneDigitsRef.current = initialPhone || "";
       setSelectedContact(null);
       setCallDurationSec(0);
       setIsTimerRunning(false);
@@ -1000,13 +1443,32 @@ function PhoneDialerModalContent({
         } catch (e) {}
       }
 
-      loadContacts();
-      loadRecentCalls();
-      if (isAndroidNativeApp()) {
-        loadDeviceContacts();
+      // Non-blocking deferred loading: let the dialer open and paint first!
+      if (contacts.length === 0) {
+        setTimeout(() => {
+          loadContacts();
+        }, 80);
       }
+
+      if (recentCalls.length === 0) {
+        setTimeout(() => {
+          loadRecentCalls();
+        }, 200);
+      }
+    } else {
+      // Clear phone digits and transient state when exiting dialer
+      setPhoneDigits("");
+      cursorPositionRef.current = { start: 0, end: 0 };
+      setSelectedContact(null);
+      isLeadNameManuallyEditedRef.current = false;
+      isContactDismissedRef.current = false;
+      prevPhoneDigitsRef.current = "";
+      setNewLeadName("");
+      setNewLeadShop("");
+      setShowNewLeadForm(false);
+      setShowOverflowMenu(false);
     }
-  }, [isOpen, initialPhone, initialName, initialCustomerId, initialLeadId, initialTab, loadDeviceContacts]);
+  }, [isOpen, initialPhone, initialName, initialCustomerId, initialLeadId, initialTab]);
 
   // Lock background body scroll when dialer modal is open
   useEffect(() => {
@@ -1055,63 +1517,82 @@ function PhoneDialerModalContent({
             if (nativeDur > 0) duration = nativeDur;
           }
 
-          // On Android Native, do NOT fallback to elapsed wall-clock time!
-          // An unanswered, busy, rejected or dropped call has duration 0s.
-          if (!isAndroidNativeApp() && duration === 0 && callStartTimeRef.current) {
-            const elapsed = Math.floor((Date.now() - callStartTimeRef.current) / 1000);
-            if (elapsed > 0) duration = elapsed;
-          }
-
+          // NEVER fallback to elapsed wall-clock / ringing time!
+          // Outgoing calls that ring and are not answered, busy, rejected or dropped have 0s talk duration.
+          // Talk duration must only be set when verified by carrier call log, native recording, or user confirmation.
           callStartTimeRef.current = null;
-          setCallDurationSec(duration);
 
-          // Stop auto-recording and trigger transcription when app returns from call
-          if (isAndroidNativeApp()) {
-            setIsAutoRecording(false);
-            const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
-            const nameParam = selectedContactRef.current?.companyName || selectedContactRef.current?.contactPerson || newLeadName || "";
-            let attempts = 0;
-            const scanNativeRec = () => {
-              attempts++;
-              try {
-                const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, duration)
-                  || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
-                if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
-                  const exactDur = (window as any).AndroidNative?.getLastCallDuration?.() || duration;
-                  if (exactDur > 0) {
-                    setCallDurationSec(exactDur);
-                    setCallStatus("Completed");
-                  }
-                  setRecordingUrl(rec);
-                  setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(exactDur)}) attached! Transcribing with Gemini AI...`);
-                  handleTranscribeAudioRef.current?.(rec, exactDur);
-                  return true;
-                }
-              } catch (e) {}
-              return false;
-            };
+          const isConnected = isUserExplicitStatusRef.current
+            ? (callStatus === "Completed" || callStatus === "Connected")
+            : (duration > 25);
 
-            if (!scanNativeRec()) {
-              const poll = setInterval(() => {
-                if (scanNativeRec() || attempts >= 5) {
-                  clearInterval(poll);
-                }
-              }, 700);
+          if (!isConnected) {
+            // Unconnected call (0s talk time, unanswered or busy)
+            if (!isUserExplicitStatusRef.current) {
+              setCallStatus("No Answer");
+              setOutcome("No Answer / Busy");
+              setCallDurationSec(0);
+              setQuickFollowUp(1, 11, 0, "AM");
+              setFeedbackMsg("ℹ️ Call not connected (0s talk time). Follow-up scheduled.");
+            } else {
+              setCallDurationSec(0);
             }
-          } else if (isAutoRecording) {
-            stopAutoRecording(duration);
-          }
-
-          if (duration > 0) {
-            setCallStatus("Completed");
-            setFeedbackMsg(`⏹ Returned from call (${formatDuration(duration)}). AI Voice Debrief starting... 🎙️`);
-            setAutoDebriefTrigger(Date.now());
+            setRecordingUrl("");
+            setAutoRecordTranscript("");
+            setCallSummary("");
+            setNotes((prev) => prev ? prev.replace(/\[Auto-Transcript\][\s\S]*?(?=\n\n|$)/g, "").replace(/\[AI Summary\][\s\S]*?(?=\n\n|$)/g, "").trim() : "");
+            try {
+              (window as any).AndroidNative?.clearLastCallRecording?.();
+            } catch (e) {}
+            if (isAndroidNativeApp()) {
+              setIsAutoRecording(false);
+            } else if (isAutoRecording) {
+              stopAutoRecording(0);
+            }
           } else {
-            setCallStatus("No Answer");
-            setOutcome("No Answer / Busy");
-            setCallDurationSec(0);
-            setQuickFollowUp(1, 11, 0, "AM");
-            setFeedbackMsg("❌ Call not connected (0s). Scheduled follow-up for tomorrow 11 AM.");
+            // Connected call with verified talk duration
+            setCallDurationSec(duration);
+            setCallStatus("Completed");
+            if (outcome === "No Answer / Busy" || outcome === "Voicemail / Switched Off") {
+              setOutcome("Interested / Follow-up Needed");
+            }
+            setFeedbackMsg(`⏹ Returned from call (${formatDuration(duration)}).`);
+
+            if (isAndroidNativeApp()) {
+              setIsAutoRecording(false);
+              const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
+              const nameParam = selectedContactRef.current?.companyName || selectedContactRef.current?.contactPerson || newLeadName || "";
+              let attempts = 0;
+              const scanNativeRec = () => {
+                attempts++;
+                try {
+                  const rec = (window as any).AndroidNative?.getLastCallRecording?.(phoneParam, nameParam, duration)
+                    || (window as any).AndroidNative?.getLastCallRecording?.(phoneParam);
+                  if (rec && typeof rec === "string" && rec.startsWith("data:audio") && rec.length > 500) {
+                    const exactDur = (window as any).AndroidNative?.getLastCallDuration?.() || duration;
+                    if (!isUserExplicitStatusRef.current || callStatus === "Completed" || callStatus === "Connected") {
+                      if (exactDur > 0) setCallDurationSec(exactDur);
+                      setCallStatus("Completed");
+                    }
+                    setRecordingUrl(rec);
+                    setFeedbackMsg(`🎙️ Cellular call recording (${formatDuration(exactDur)}) attached! Transcribing with Gemini AI...`);
+                    handleTranscribeAudioRef.current?.(rec, exactDur);
+                    return true;
+                  }
+                } catch (e) {}
+                return false;
+              };
+
+              if (!scanNativeRec()) {
+                const poll = setInterval(() => {
+                  if (scanNativeRec() || attempts >= 5) {
+                    clearInterval(poll);
+                  }
+                }, 700);
+              }
+            } else if (isAutoRecording) {
+              stopAutoRecording(duration);
+            }
           }
         }
       }
@@ -1161,24 +1642,58 @@ function PhoneDialerModalContent({
     return list;
   }, [contacts, deviceContacts]);
 
-  // Auto match contact as user types across BOTH CRM and phonebook contacts
+  // Pre-index contacts with normalized strings & T9 mappings once on load for 0ms lag during typing
+  const indexedContacts = useMemo(() => {
+    if (!Array.isArray(allCombinedContacts) || allCombinedContacts.length === 0) return [];
+    const slice = allCombinedContacts.length > 500 ? allCombinedContacts.slice(0, 500) : allCombinedContacts;
+    return slice.map(c => {
+      const rawName = c?.contactPerson || c?.companyName || c?.name || "";
+      const rawComp = c?.shopName || c?.companyName || "";
+      const lowerName = rawName.toLowerCase();
+      const lowerComp = rawComp.toLowerCase();
+      const rawPhone = String(c?.phone || c?.mobile || "");
+      const cleanPhone = rawPhone.replace(/\D/g, "");
+      return {
+        ...c,
+        _cleanPhone: cleanPhone,
+        _cleanPhoneSuffix: cleanPhone.slice(-10),
+        _lowerName: lowerName,
+        _lowerComp: lowerComp,
+        _t9Name: stringToT9Digits(lowerName),
+        _t9Comp: stringToT9Digits(lowerComp),
+      };
+    });
+  }, [allCombinedContacts]);
+
+  // Auto-manage selectedContact as phoneDigits changes:
+  // 1. If phoneDigits is empty, clear selectedContact and unedited lead fields.
+  // 2. If a contact is already selected, verify it still matches the dialed digits.
+  // 3. If no contact is selected, only auto-link when the dialed number is a full exact phone match (7+ digits).
+  // Partial matches (T9 / name / prefix) are shown in the suggestions dropdown (filteredKeypadContacts),
+  // preventing rapid oscillation, infinite re-render loops, and UI blinking.
   useEffect(() => {
-    if (!phoneDigits) {
-      setSelectedContact(null);
+    if (prevPhoneDigitsRef.current !== phoneDigits) {
+      prevPhoneDigitsRef.current = phoneDigits;
+      isContactDismissedRef.current = false;
+    }
+
+    if (!phoneDigits || phoneDigits.trim() === "") {
+      if (selectedContact) setSelectedContact(null);
       if (!isLeadNameManuallyEditedRef.current) {
         setNewLeadName("");
         setNewLeadShop("");
       }
       return;
     }
+
     const cleanNum = phoneDigits.replace(/\D/g, '');
 
-    // Check if the currently selected contact still matches cleanNum
+    // Check if the currently selected contact still matches dialed number
     if (selectedContact) {
       const cPhone = String(selectedContact.phone || selectedContact.mobile || '').replace(/\D/g, '');
       const stillMatches = cPhone && (
         cPhone === cleanNum || 
-        (cleanNum.length >= 3 && cPhone.startsWith(cleanNum)) || 
+        (cleanNum.length >= 1 && (cPhone.startsWith(cleanNum) || (cleanNum.length <= 10 && cPhone.slice(-10).startsWith(cleanNum)))) || 
         (cleanNum.length >= 7 && (cPhone.endsWith(cleanNum) || cPhone.slice(-10) === cleanNum.slice(-10)))
       );
       if (!stillMatches) {
@@ -1188,66 +1703,85 @@ function PhoneDialerModalContent({
           setNewLeadShop("");
         }
       }
+      return;
     }
 
-    if (cleanNum.length >= 2 && Array.isArray(allCombinedContacts)) {
-      const match = allCombinedContacts.find(c => {
-        const cPhone = String(c?.phone || c?.mobile || '').replace(/\D/g, '');
-        const cName = String(c?.contactPerson || c?.companyName || c?.name || '').toLowerCase();
-        const cComp = String(c?.shopName || c?.companyName || '').toLowerCase();
+    // Only auto-link if there is an EXACT full phone number match (7+ digits)
+    // and user has not manually dismissed the contact with [X]
+    if (!selectedContact && !isContactDismissedRef.current && cleanNum.length >= 7 && indexedContacts.length > 0) {
+      const exactMatch = indexedContacts.find((c: any) =>
+        (c._cleanPhone && c._cleanPhone === cleanNum) ||
+        (cleanNum.length >= 10 && c._cleanPhoneSuffix && c._cleanPhoneSuffix === cleanNum.slice(-10))
+      );
 
-        // Realistic phone matching: Short numbers (< 5 digits, e.g. 198) must NOT match random middle substrings
-        const exactMatch = cPhone && cPhone === cleanNum;
-        const prefixMatch = cPhone && cleanNum.length >= 3 && cPhone.startsWith(cleanNum);
-        const suffixMatch = cPhone && cleanNum.length >= 7 && (cPhone.endsWith(cleanNum) || cPhone.slice(-10) === cleanNum.slice(-10));
-        const phoneMatch = exactMatch || prefixMatch || suffixMatch;
-
-        const nameMatch = cName.includes(phoneDigits.toLowerCase()) || cComp.includes(phoneDigits.toLowerCase());
-        const t9Match = cleanNum.length >= 2 && (matchesT9(cName, cleanNum) || matchesT9(cComp, cleanNum));
-        return phoneMatch || nameMatch || t9Match;
-      });
-      if (match) {
-        setSelectedContact(match);
-        const cName = match.contactPerson || match.companyName || match.name || "";
-        const sName = match.shopName || match.companyName || "";
+      if (exactMatch) {
+        setSelectedContact(exactMatch);
+        const cName = exactMatch.contactPerson || exactMatch.companyName || exactMatch.name || "";
+        const sName = exactMatch.shopName || exactMatch.companyName || "";
         if (!isLeadNameManuallyEditedRef.current) {
           setNewLeadName(cName);
           setNewLeadShop(sName);
         }
-      } else {
-        setSelectedContact(null);
-        if (!isLeadNameManuallyEditedRef.current) {
-          setNewLeadName("");
-          setNewLeadShop("");
-        }
-      }
-    } else if (cleanNum.length < 2) {
-      setSelectedContact(null);
-      if (!isLeadNameManuallyEditedRef.current) {
-        setNewLeadName("");
-        setNewLeadShop("");
       }
     }
-  }, [phoneDigits, allCombinedContacts]);
+  }, [phoneDigits, indexedContacts, selectedContact]);
 
-  if (!isOpen) return null;
-
-  const handleVibrate = (duration = 20) => {
+  const handleVibrate = (duration = 15) => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
       try {
-        navigator.vibrate(duration);
+        window.requestAnimationFrame(() => {
+          try { navigator.vibrate(duration); } catch {}
+        });
       } catch {}
     }
   };
 
-  const handleDigitClick = (digit: string) => {
-    if (digit === "0" && isLongPressRef.current) {
-      // Long-press already typed '+', skip entering '0'
-      isLongPressRef.current = false;
-      return;
-    }
+  const lastKeyPointerTimeRef = useRef<number>(0);
+
+  const handleDigitPressStart = (digit: string, e: React.PointerEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    lastKeyPointerTimeRef.current = Date.now();
     handleVibrate(15);
-    setPhoneDigits(prev => prev + digit);
+
+    const input = digitsInputRef.current;
+    let start = input && typeof input.selectionStart === "number" ? input.selectionStart : (cursorPositionRef.current.start || phoneDigits.length);
+    let end = input && typeof input.selectionEnd === "number" ? input.selectionEnd : (cursorPositionRef.current.end || phoneDigits.length);
+
+    if (start > phoneDigits.length) start = phoneDigits.length;
+    if (end > phoneDigits.length) end = phoneDigits.length;
+
+    const before = phoneDigits.slice(0, Math.min(start, end));
+    const after = phoneDigits.slice(Math.max(start, end));
+
+    if (digit === "0") {
+      isLongPressRef.current = false;
+      const nextDigits = before + "0" + after;
+      const nextPos = Math.min(start, end) + 1;
+      setDigitsAndCursor(nextDigits, nextPos);
+
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = setTimeout(() => {
+        isLongPressRef.current = true;
+        handleVibrate(35);
+        setDigitsAndCursor(before + "+" + after, nextPos);
+      }, 450);
+    } else {
+      const nextDigits = before + digit + after;
+      const nextPos = Math.min(start, end) + 1;
+      setDigitsAndCursor(nextDigits, nextPos);
+    }
+  };
+
+  const handleDigitPressEnd = (digit: string) => {
+    if (digit === "0" && longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleDigitClick = (e: React.MouseEvent) => {
+    e.preventDefault();
   };
 
   const handleZeroPressStart = () => {
@@ -1256,7 +1790,11 @@ function PhoneDialerModalContent({
     longPressTimerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
       handleVibrate(40);
-      setPhoneDigits(prev => prev + "+");
+      const input = digitsInputRef.current;
+      const start = input && typeof input.selectionStart === "number" ? input.selectionStart : phoneDigits.length;
+      const before = phoneDigits.slice(0, start);
+      const after = phoneDigits.slice(start);
+      setDigitsAndCursor(before + "+" + after, start + 1);
     }, 450);
   };
 
@@ -1269,33 +1807,72 @@ function PhoneDialerModalContent({
 
   const handleBackspace = () => {
     handleVibrate(20);
-    setPhoneDigits(prev => {
-      const next = prev.slice(0, -1);
-      if (!next) {
+    const input = digitsInputRef.current;
+    let start = input && typeof input.selectionStart === "number" ? input.selectionStart : (cursorPositionRef.current.start || phoneDigits.length);
+    let end = input && typeof input.selectionEnd === "number" ? input.selectionEnd : (cursorPositionRef.current.end || phoneDigits.length);
+
+    if (start > phoneDigits.length) start = phoneDigits.length;
+    if (end > phoneDigits.length) end = phoneDigits.length;
+
+    // 1. If range of digits is selected (start !== end), delete the selected range
+    if (start !== end) {
+      const selStart = Math.min(start, end);
+      const selEnd = Math.max(start, end);
+      const before = phoneDigits.slice(0, selStart);
+      const after = phoneDigits.slice(selEnd);
+      const nextDigits = before + after;
+      setDigitsAndCursor(nextDigits, selStart);
+      if (!nextDigits) {
         setSelectedContact(null);
         if (!isLeadNameManuallyEditedRef.current) {
           setNewLeadName("");
           setNewLeadShop("");
         }
       }
-      return next;
-    });
+      return;
+    }
+
+    // 2. If cursor is at position 0, nothing before it to delete
+    if (start === 0) return;
+
+    // 3. Delete single character before the cursor
+    const before = phoneDigits.slice(0, start - 1);
+    const after = phoneDigits.slice(start);
+    const nextDigits = before + after;
+    const newPos = start - 1;
+    setDigitsAndCursor(nextDigits, newPos);
+
+    if (!nextDigits) {
+      setSelectedContact(null);
+      if (!isLeadNameManuallyEditedRef.current) {
+        setNewLeadName("");
+        setNewLeadShop("");
+      }
+    }
   };
 
   const handleClear = () => {
     handleVibrate(25);
-    setPhoneDigits("");
+    setDigitsAndCursor("", 0);
     setSelectedContact(null);
     isLeadNameManuallyEditedRef.current = false;
+    isContactDismissedRef.current = false;
+    prevPhoneDigitsRef.current = "";
     setNewLeadName("");
     setNewLeadShop("");
   };
 
   const eraseHoldTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isEraseHeldRef = useRef<boolean>(false);
+  const lastErasePointerTimeRef = useRef<number>(0);
 
-  const handleErasePressStart = () => {
+  const handleErasePressStart = (e?: React.PointerEvent) => {
+    if (e && e.button !== 0) return;
+    if (e) e.preventDefault();
+    lastErasePointerTimeRef.current = Date.now();
     isEraseHeldRef.current = false;
+    handleBackspace();
+
     if (eraseHoldTimerRef.current) clearTimeout(eraseHoldTimerRef.current);
     eraseHoldTimerRef.current = setTimeout(() => {
       isEraseHeldRef.current = true;
@@ -1311,12 +1888,8 @@ function PhoneDialerModalContent({
     }
   };
 
-  const handleEraseClick = () => {
-    if (isEraseHeldRef.current) {
-      isEraseHeldRef.current = false;
-      return;
-    }
-    handleBackspace();
+  const handleEraseClick = (e: React.MouseEvent) => {
+    e.preventDefault();
   };
 
   const handleCopyNumber = (num: string) => {
@@ -1348,37 +1921,60 @@ function PhoneDialerModalContent({
   };
 
   const handleCreateQuickLeadInline = async () => {
-    if (!phoneDigits) return;
+    const cleanNumber = phoneDigits.replace(/[^\d+]/g, "").trim();
+    if (!cleanNumber) {
+      setFeedbackMsg("⚠️ Please enter a phone number first.");
+      setTimeout(() => setFeedbackMsg(""), 2500);
+      return;
+    }
     setIsSaving(true);
     try {
-      const res = await createQuickLead({
-        name: newLeadName || `Lead ${phoneDigits.slice(-4)}`,
-        shopName: newLeadShop || "Phone Lead",
-        whatsappNumber: phoneDigits,
-        notes: "Created from Smart Dialer"
-      });
+      const timeoutPromise = new Promise<{ success: boolean; error?: string; lead?: any }>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timed out. Please check network.")), 10000)
+      );
+      const leadName = newLeadName.trim() || newLeadShop.trim() || `Lead ${cleanNumber.slice(-4) || cleanNumber}`;
+      const res = await Promise.race([
+        createQuickLead({
+          name: leadName,
+          shopName: newLeadShop.trim() || undefined,
+          whatsappNumber: cleanNumber,
+          notes: "Created from Smart Dialer"
+        }),
+        timeoutPromise
+      ]);
       if (res && res.success && res.lead) {
         setSelectedContact({
           id: res.lead.id,
           companyName: res.lead.shopName,
           contactPerson: res.lead.name,
           phone: res.lead.whatsappNumber,
-          type: "Lead"
+          type: res.lead.isCustomer ? "Customer" : "Lead"
         });
+        setNewLeadName("");
+        setNewLeadShop("");
+        isLeadNameManuallyEditedRef.current = false;
         setShowNewLeadForm(false);
         setFeedbackMsg("✓ Lead created and linked!");
+        loadContacts();
         setTimeout(() => setFeedbackMsg(""), 2500);
       } else {
-        setFeedbackMsg("❌ Could not save lead.");
+        setFeedbackMsg(`❌ ${res?.error || "Could not save lead."}`);
       }
-    } catch (e) {
-      setFeedbackMsg("❌ Error saving lead.");
+    } catch (e: any) {
+      const errMsg = String(e?.message || "");
+      if (errMsg.includes("Server Action") || errMsg.includes("not found on the server") || errMsg.includes("failed-to-find-server-action")) {
+        setFeedbackMsg("🔄 App updated. Reloading now...");
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        setFeedbackMsg(`❌ ${e?.message || "Error saving lead."}`);
+      }
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSelectMatchedContact = (contact: any) => {
+    isContactDismissedRef.current = false;
     setSelectedContact(contact);
     if (contact?.phone) {
       const p = String(contact.phone).trim();
@@ -1386,6 +1982,7 @@ function PhoneDialerModalContent({
       const cleanDigits = p.replace(/[^\d]/g, "");
       const formatted = hasPlus ? `+${cleanDigits}` : (cleanDigits.length === 12 && cleanDigits.startsWith("91") ? `+${cleanDigits}` : cleanDigits);
       setPhoneDigits(formatted || p);
+      prevPhoneDigitsRef.current = formatted || p;
     }
     const cName = contact?.companyName || contact?.contactPerson || contact?.name || "";
     setNewLeadName(cName);
@@ -1533,16 +2130,19 @@ function PhoneDialerModalContent({
     handleVibrate(30);
 
     const now = Date.now();
-    callStartTimeRef.current = now;
+    callStartTimeRef.current = null;
     setCallDurationSec(0);
-    setIsTimerRunning(true);
+    setIsTimerRunning(false);
     isCallInitiatedRef.current = true;
-    setCallStatus("Connected");
+    isUserExplicitStatusRef.current = false;
+    setCallStatus("No Answer");
+    setOutcome("No Answer / Busy");
     setCallType("OUTBOUND");
 
     setRecordingUrl("");
     setAutoRecordTranscript("");
     setCallSummary("");
+    setNotes("");
 
     // Start auto-recording if enabled
     if (autoRecordEnabled) {
@@ -1564,18 +2164,33 @@ function PhoneDialerModalContent({
     // Switch to post-call maintenance view
     const recMsg = autoRecordEnabled ? " ⏺ Auto-recording your voice notes." : "";
     setActiveTab("POST_CALL");
-    setFeedbackMsg(`📞 Outbound call dialed. Live stopwatch active.${recMsg}`);
+    setFeedbackMsg(`📞 Outbound call dialed. Awaiting answer...${recMsg}`);
   };
 
   // Handle connection status toggle — immediately reset duration to 0 if not connected
   const handleCallStatusChange = (newStatus: string) => {
+    isUserExplicitStatusRef.current = true;
     setCallStatus(newStatus);
     if (newStatus !== "Connected" && newStatus !== "Completed") {
       setCallDurationSec(0);
       setIsTimerRunning(false);
       callStartTimeRef.current = null;
+      setRecordingUrl("");
+      setAutoRecordTranscript("");
+      setCallSummary("");
+      setNotes((prev) => prev ? prev.replace(/\[Auto-Transcript\][\s\S]*?(?=\n\n|$)/g, "").replace(/\[AI Summary\][\s\S]*?(?=\n\n|$)/g, "").trim() : "");
+      try {
+        (window as any).AndroidNative?.clearLastCallRecording?.();
+      } catch (e) {}
       if (newStatus === "Busy" || newStatus === "No Answer") {
         setOutcome("No Answer / Busy");
+      } else if (newStatus === "Callback") {
+        setOutcome("Call Back Later");
+      }
+    } else {
+      if (callDurationSec === 0) setCallDurationSec(30);
+      if (outcome === "No Answer / Busy" || outcome === "Call Back Later") {
+        setOutcome("Interested / Follow-up Needed");
       }
     }
   };
@@ -1673,6 +2288,8 @@ function PhoneDialerModalContent({
 
   // Save Call Record & Maintain CRM Lead
   const handleSaveCallRecord = async () => {
+    if (isSavingRecordRef.current || isSaving) return;
+    isSavingRecordRef.current = true;
     setIsSaving(true);
     setFeedbackMsg("");
     handleVibrate(25);
@@ -1687,8 +2304,9 @@ function PhoneDialerModalContent({
         const cPhone = String(selectedContact.phone || selectedContact.mobile || "").replace(/\D/g, "");
         const isMatch = !cleanPhone || !cPhone || cPhone.includes(cleanPhone) || cleanPhone.includes(cPhone) || (cleanPhone.length >= 7 && cPhone.slice(-10) === cleanPhone.slice(-10));
         if (isMatch) {
-          if (selectedContact.type === "Customer") activeCustomerId = selectedContact.id;
-          else if (selectedContact.type === "Lead") activeLeadId = selectedContact.id;
+          const typeLower = String(selectedContact.type || "").toLowerCase();
+          if (typeLower === "customer") activeCustomerId = selectedContact.id;
+          else if (typeLower === "lead") activeLeadId = selectedContact.id;
         }
       } 
       // 2. Only fall back to initial IDs if the dialed digits actually match the initial phone
@@ -1702,14 +2320,23 @@ function PhoneDialerModalContent({
       }
 
       if (!activeCustomerId && !activeLeadId && (newLeadName.trim() || newLeadShop.trim()) && cleanPhone.length >= 7) {
-        const leadRes = await createQuickLead({
-          name: newLeadName.trim() || "New Phone Lead",
-          shopName: newLeadShop.trim() || "Phone Inquiry",
-          whatsappNumber: phoneDigits,
-          notes: `Created from Phone Dialer call (${outcome}) - Duration: ${callDurationSec}s`
-        });
-        if (leadRes && leadRes.success && leadRes.lead) {
-          activeLeadId = leadRes.lead.id;
+        try {
+          const timeoutLead = new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Lead creation timeout")), 8000));
+          const leadRes = await Promise.race([
+            createQuickLead({
+              name: newLeadName.trim() || "New Phone Lead",
+              shopName: newLeadShop.trim() || "Phone Inquiry",
+              whatsappNumber: phoneDigits,
+              notes: `Created from Phone Dialer call (${outcome}) - Duration: ${callDurationSec}s`
+            }),
+            timeoutLead
+          ]);
+          if (leadRes && leadRes.success && leadRes.lead) {
+            activeLeadId = leadRes.lead.id;
+            loadContacts();
+          }
+        } catch (leadErr) {
+          console.warn("Could not quick-create lead in save:", leadErr);
         }
       }
 
@@ -1719,9 +2346,16 @@ function PhoneDialerModalContent({
         try {
           const audioBlob = new Blob(lastRecordedChunksRef.current, { type: "audio/webm" });
           finalRecordingUrl = await new Promise<string>((resolve) => {
+            const timeout = setTimeout(() => resolve(""), 3000);
             const reader = new FileReader();
-            reader.onloadend = () => resolve((reader.result as string) || "");
-            reader.onerror = () => resolve("");
+            reader.onloadend = () => {
+              clearTimeout(timeout);
+              resolve((reader.result as string) || "");
+            };
+            reader.onerror = () => {
+              clearTimeout(timeout);
+              resolve("");
+            };
             reader.readAsDataURL(audioBlob);
           });
         } catch (e) {
@@ -1735,13 +2369,27 @@ function PhoneDialerModalContent({
       formData.append("phone", phoneDigits);
       formData.append("newLeadName", newLeadName);
       formData.append("newLeadShop", newLeadShop);
+      const isConnected = (callStatus === "Completed" || callStatus === "Connected") &&
+        callDurationSec > 0 &&
+        outcome !== "No Answer / Busy" &&
+        outcome !== "Voicemail / Switched Off" &&
+        outcome !== "Wrong Number";
+      const finalDurationSec = isConnected ? callDurationSec : 0;
       formData.append("type", callType);
-      formData.append("status", callStatus);
+      formData.append("status", isConnected ? callStatus : "No Answer");
       formData.append("outcome", outcome);
-      formData.append("durationSec", String(callDurationSec));
-      formData.append("notes", notes);
-      if (finalRecordingUrl) formData.append("recordingUrl", finalRecordingUrl);
-      const effectiveSummary = callSummary || autoRecordTranscriptRef.current || autoRecordTranscript;
+      formData.append("durationSec", String(finalDurationSec));
+
+      let cleanNotes = (notes || "").trim();
+      if (!isConnected) {
+        cleanNotes = cleanNotes
+          .replace(/\[Auto-Transcript\][\s\S]*?(?=\n\n|$)/g, "")
+          .replace(/\[AI Summary\][\s\S]*?(?=\n\n|$)/g, "")
+          .trim();
+      }
+      formData.append("notes", cleanNotes);
+      if (isConnected && finalRecordingUrl) formData.append("recordingUrl", finalRecordingUrl);
+      const effectiveSummary = isConnected ? (callSummary || autoRecordTranscriptRef.current || autoRecordTranscript) : "";
       if (effectiveSummary) formData.append("summary", effectiveSummary);
 
       const compiledFollowUp = getCompiledFollowUpDate();
@@ -1749,8 +2397,30 @@ function PhoneDialerModalContent({
         formData.append("followUpDate", compiledFollowUp);
       }
 
-      const res = await logCall(formData);
-      setIsSaving(false);
+      const timeoutCall = new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Call logging timeout")), 15000));
+      let res: any;
+      try {
+        res = await Promise.race([
+          logCall(formData),
+          timeoutCall
+        ]);
+      } catch (callErr: any) {
+        const errMsg = String(callErr?.message || "");
+        if (errMsg.includes("Server Action") || errMsg.includes("not found on the server") || errMsg.includes("failed-to-find-server-action")) {
+          console.warn("Server action hash mismatch detected. Attempting /api/calls/log fallback:", callErr);
+          const apiRes = await fetch("/api/calls/log", {
+            method: "POST",
+            body: formData
+          }).then(r => r.json()).catch(() => null);
+          if (apiRes && apiRes.success) {
+            res = apiRes;
+          } else {
+            throw callErr;
+          }
+        } else {
+          throw callErr;
+        }
+      }
 
       if (res && res.success) {
         setIsTimerRunning(false);
@@ -1766,26 +2436,42 @@ function PhoneDialerModalContent({
       }
     } catch (err: any) {
       console.warn("Dialer save error:", err);
+      const errMsg = String(err?.message || "");
+      if (errMsg.includes("Server Action") || errMsg.includes("not found on the server") || errMsg.includes("failed-to-find-server-action")) {
+        setFeedbackMsg("🔄 App updated. Reloading now...");
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        setFeedbackMsg(`❌ ${err?.message || "Error saving call record. Check connection and retry."}`);
+      }
+    } finally {
+      isSavingRecordRef.current = false;
       setIsSaving(false);
-      setFeedbackMsg("❌ Error saving call record. Check connection and retry.");
     }
   };
 
-  // Filter contacts dropdown in keypad — matches across BOTH CRM and Phone contacts with T9 name search!
+  // Filter contacts dropdown in keypad — matches across BOTH CRM and Phone contacts with pre-indexed T9 search!
   const filteredKeypadContacts = useMemo(() => {
-    if (!phoneDigits || !Array.isArray(allCombinedContacts)) return [];
-    const q = phoneDigits.trim().toLowerCase();
+    if (!deferredPhoneDigits || deferredPhoneDigits.trim().length < 2 || indexedContacts.length === 0) return [];
+    const q = deferredPhoneDigits.trim().toLowerCase();
     const cleanQ = q.replace(/\D/g, '');
-    return allCombinedContacts.filter(c => {
-      const cPhone = (c?.phone || c?.mobile || '').replace(/\D/g, '');
-      const cName = (c?.contactPerson || c?.companyName || c?.name || '').toLowerCase();
-      const cComp = (c?.companyName || c?.shopName || '').toLowerCase();
-      const phoneMatch = cleanQ.length > 0 && cPhone.includes(cleanQ);
-      const nameMatch = q.length > 0 && (cName.includes(q) || cComp.includes(q));
-      const t9Match = cleanQ.length >= 2 && (matchesT9(cName, cleanQ) || matchesT9(cComp, cleanQ));
-      return phoneMatch || nameMatch || t9Match;
-    }).slice(0, 5);
-  }, [allCombinedContacts, phoneDigits]);
+    const cleanLen = cleanQ.length;
+    if (cleanLen < 2) return [];
+
+    const results: any[] = [];
+    for (let i = 0; i < indexedContacts.length; i++) {
+      const c = indexedContacts[i];
+      const phoneMatch = c._cleanPhone.includes(cleanQ) || 
+        c._cleanPhoneSuffix.startsWith(cleanQ) || 
+        (cleanLen >= 7 && c._cleanPhoneSuffix === cleanQ.slice(-10));
+      const t9Match = c._t9Name.includes(cleanQ) || c._t9Comp.includes(cleanQ);
+
+      if (phoneMatch || t9Match) {
+        results.push(c);
+        if (results.length >= 4) break;
+      }
+    }
+    return results;
+  }, [indexedContacts, deferredPhoneDigits]);
 
   // Filtered Call Logs list
   const filteredCallLogs = useMemo(() => {
@@ -1800,8 +2486,8 @@ function PhoneDialerModalContent({
         const matchPhone = cleanQ.length > 0 ? (c.phoneNumber || "").replace(/\D/g, '').includes(cleanQ) : false;
         if (!matchName && !matchPerson && !matchPhone) return false;
       }
-      if (callLogFilter === "CONNECTED") return c.status === "Connected" || (c.durationSec || 0) > 0;
-      if (callLogFilter === "MISSED") return c.status !== "Connected" && (c.durationSec || 0) === 0;
+      if (callLogFilter === "CONNECTED") return (c.status === "Connected" || c.status === "Completed") && (c.durationSec || 0) > 0;
+      if (callLogFilter === "MISSED") return c.status !== "Connected" && c.status !== "Completed";
       if (callLogFilter === "OUTBOUND") return c.type === "OUTBOUND";
       if (callLogFilter === "INBOUND") return c.type === "INBOUND";
       return true;
@@ -1842,8 +2528,20 @@ function PhoneDialerModalContent({
     return { all: allCombinedContacts.length, customers, leads, phoneContacts };
   }, [allCombinedContacts]);
 
+  if (!isOpen) {
+    return null;
+  }
+
   return (
-    <div className="dialer-backdrop" onClick={onClose}>
+    <div
+      className={`dialer-backdrop ${isOpen ? "dialer-open" : "dialer-closed"}`}
+      style={{
+        display: isOpen ? "flex" : "none",
+        visibility: isOpen ? "visible" : "hidden",
+        pointerEvents: isOpen ? "auto" : "none"
+      }}
+      onClick={onClose}
+    >
       <div className="dialer-sheet" onClick={(e) => e.stopPropagation()}>
         {/* S26 TOP ACTION BAR */}
         <div className="s26-top-bar">
@@ -1869,7 +2567,7 @@ function PhoneDialerModalContent({
               ) : activeTab === "CONTACTS" ? (
                 "Contacts Directory"
               ) : activeTab === "POST_CALL" ? (
-                "Log Call & Follow-up"
+                "Log Call"
               ) : activeTab === "WHATSAPP" ? (
                 "WhatsApp Templates"
               ) : (
@@ -1879,18 +2577,37 @@ function PhoneDialerModalContent({
           </div>
 
           <div className="s26-top-right">
-            {/* Search Button (Switches to Contacts Search) */}
-            <button
-              type="button"
-              className="s26-icon-btn"
-              onClick={() => {
-                setActiveTab("CONTACTS");
-                setShowOverflowMenu(false);
-              }}
-              title="Search Contacts"
-            >
-              <Search size={20} />
-            </button>
+            {activeTab === "POST_CALL" && (
+              <button
+                type="button"
+                onClick={handleSaveCallRecord}
+                disabled={isSaving}
+                className="s26-header-save-btn"
+                title="Save Call & Lead to CRM"
+              >
+                {isSaving ? (
+                  <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+                ) : (
+                  <Check size={13} />
+                )}
+                <span>{isSaving ? "Saving..." : "Save"}</span>
+              </button>
+            )}
+
+            {/* Search Button (Switches to Contacts Search - hidden on Log Call tab to prevent header congestion) */}
+            {activeTab !== "POST_CALL" && (
+              <button
+                type="button"
+                className="s26-icon-btn"
+                onClick={() => {
+                  setActiveTab("CONTACTS");
+                  setShowOverflowMenu(false);
+                }}
+                title="Search Contacts"
+              >
+                <Search size={20} />
+              </button>
+            )}
 
             {/* 3-Dots More Options with Signature Orange Badge Dot */}
             <button
@@ -1943,7 +2660,7 @@ function PhoneDialerModalContent({
                   }}
                 >
                   <div className="s26-menu-item-left">
-                    <MessageSquare size={16} style={{ color: "#25d366" }} />
+                    <WhatsAppLogo size={16} style={{ color: "#25d366" }} />
                     <span>WhatsApp Templates</span>
                   </div>
                 </button>
@@ -2023,6 +2740,24 @@ function PhoneDialerModalContent({
                   </div>
                 </button>
 
+                {/* Sync Missed & Incoming Calls */}
+                {isAndroidNativeApp() && (
+                  <button
+                    type="button"
+                    className="s26-menu-item"
+                    onClick={() => {
+                      loadRecentCalls(true);
+                      setShowOverflowMenu(false);
+                      setActiveTab("CALL_LOGS");
+                    }}
+                  >
+                    <div className="s26-menu-item-left">
+                      <History size={16} style={{ color: "#10b981" }} />
+                      <span>Sync Missed & Inbound Calls</span>
+                    </div>
+                  </button>
+                )}
+
                 {/* Create Quick Lead */}
                 <button
                   type="button"
@@ -2062,15 +2797,40 @@ function PhoneDialerModalContent({
         {/* FEEDBACK MSG TOAST */}
         {feedbackMsg && (
           <div className="dialer-feedback-toast">
-            <span>{feedbackMsg}</span>
-            <button type="button" onClick={() => setFeedbackMsg("")} className="dialer-toast-close">
-              <X size={14} />
-            </button>
+            {feedbackMsg.includes("Server Action") || feedbackMsg.includes("not found on the server") || feedbackMsg.includes("failed-to-find-server-action") ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", gap: "8px" }}>
+                <span>🔄 App updated to new version. Please reload to apply changes.</span>
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: "6px",
+                    backgroundColor: "#059669",
+                    color: "#ffffff",
+                    border: "none",
+                    fontWeight: 700,
+                    fontSize: "0.72rem",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  Reload Now
+                </button>
+              </div>
+            ) : (
+              <>
+                <span className="dialer-feedback-toast-text">{feedbackMsg}</span>
+                <button type="button" onClick={() => setFeedbackMsg("")} className="dialer-toast-close" title="Dismiss">
+                  <X size={14} />
+                </button>
+              </>
+            )}
           </div>
         )}
 
         {/* BODY SCROLL CONTENT */}
-        <div className={`dialer-body-scroll ${activeTab === "DIALPAD" ? "dialpad-tab-active" : ""}`}>
+        <div className={`dialer-body-scroll ${activeTab === "DIALPAD" ? (showNewLeadForm ? "dialpad-lead-form-active" : "dialpad-tab-active") : ""}`}>
           {/* =========================================================
               TAB 1: NUMERIC KEYPAD & DIALER
               ========================================================= */}
@@ -2078,292 +2838,367 @@ function PhoneDialerModalContent({
               TAB 1: NUMERIC KEYPAD & DIALER (MODERN REDESIGN)
               ========================================================= */}
           {activeTab === "DIALPAD" && (
-            <div className="s26-dialpad-screen">
-              {/* S26 DISPLAY ZONE: Clean, spacious typography */}
-              <div className="s26-display-zone">
-                <div className="s26-digits-wrapper">
-                  <input
-                    type="text"
-                    inputMode="none"
-                    className="s26-digits-text"
-                    placeholder=""
-                    value={phoneDigits}
-                    onChange={() => {/* controlled via keypad buttons only */}}
-                    readOnly
-                    tabIndex={-1}
-                  />
-                </div>
-
-                {/* S26 CONTEXT CANVAS */}
-                <div className="s26-context-canvas">
-                  {selectedContact ? (
-                    <div className="s26-matched-contact-pill">
-                      <div className="s26-matched-contact-left">
-                        <div className="s26-matched-avatar">
-                          {(selectedContact.companyName || selectedContact.contactPerson || "C").charAt(0).toUpperCase()}
+            <div className={`s26-dialpad-screen ${showNewLeadForm ? "lead-form-open" : ""}`}>
+              {showNewLeadForm ? (
+                <div className="s26-lead-form-container">
+                  <div className="s26-lead-form-view">
+                    <div className="s26-lead-form-header">
+                      <div className="s26-lead-form-header-title">
+                        <div className="s26-lead-form-icon-circle">
+                          <UserPlus size={18} color="#2563eb" />
                         </div>
-                        <div className="s26-matched-info">
-                          <span className="s26-matched-name">{selectedContact.companyName || selectedContact.contactPerson}</span>
-                          <span className="s26-matched-meta">
-                            <span className={`dialer-pill-badge ${selectedContact.type === "Customer" ? "customer" : "lead"}`}>
-                              {selectedContact.type || "Contact"}
-                            </span>
-                            <span>{selectedContact.phone}</span>
-                          </span>
+                        <div>
+                          <div className="s26-lead-form-title-text">Add New CRM Lead</div>
+                          <div className="s26-lead-form-subtitle-text">
+                            {phoneDigits ? `Saving for: ${phoneDigits}` : "Enter lead details below"}
+                          </div>
                         </div>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setSelectedContact(null)}
-                        style={{ background: "none", border: "none", color: "var(--s26-text-sub)", cursor: "pointer", padding: "4px" }}
-                        title="Clear Contact"
+                        className="s26-lead-form-header-close"
+                        onClick={() => setShowNewLeadForm(false)}
+                        title="Cancel & Back to Keypad"
                       >
                         <X size={16} />
                       </button>
                     </div>
-                  ) : phoneDigits.length >= 3 && filteredKeypadContacts.length > 0 ? (
-                    <div className="s26-suggestions-box">
-                      <div className="s26-suggestions-header">
-                        <span>Matching Contacts ({filteredKeypadContacts.length})</span>
-                      </div>
-                      <div className="s26-suggestions-list">
-                        {filteredKeypadContacts.slice(0, 3).map((c: any) => (
-                          <div
-                            key={c.id}
-                            onClick={() => handleSelectMatchedContact(c)}
-                            className="s26-suggestion-row"
+
+                    {/* Phone Number Field */}
+                    <div className="s26-lead-input-group">
+                      <label className="s26-lead-input-label">
+                        <Phone size={12} /> Phone Number <span style={{ color: "#ef4444" }}>*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="10-digit mobile number"
+                        value={phoneDigits}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/[^\d+*#\s-]/g, "");
+                          setDigitsAndCursor(clean, clean.length);
+                        }}
+                        className="s26-lead-input-box"
+                      />
+                    </div>
+
+                    {/* Contact / Person Name Field */}
+                    <div className="s26-lead-input-group">
+                      <label className="s26-lead-input-label">
+                        <User size={12} /> Contact / Person Name <span style={{ color: "#ef4444" }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Rahul Sharma"
+                        value={newLeadName}
+                        onChange={(e) => {
+                          isLeadNameManuallyEditedRef.current = true;
+                          setNewLeadName(e.target.value);
+                        }}
+                        className="s26-lead-input-box"
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* Shop / Business Name Field */}
+                    <div className="s26-lead-input-group">
+                      <label className="s26-lead-input-label">
+                        <Store size={12} /> Shop / Business Name (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Sharma Traders"
+                        value={newLeadShop}
+                        onChange={(e) => {
+                          isLeadNameManuallyEditedRef.current = true;
+                          setNewLeadShop(e.target.value);
+                        }}
+                        className="s26-lead-input-box"
+                      />
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="s26-lead-form-actions">
+                      <button
+                        type="button"
+                        onClick={handleCreateQuickLeadInline}
+                        disabled={isSaving || !phoneDigits.trim()}
+                        className="s26-lead-save-primary-btn"
+                      >
+                        <Check size={16} />
+                        <span>{isSaving ? "Saving Lead..." : "Save to CRM"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowNewLeadForm(false)}
+                        className="s26-lead-cancel-btn"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* S26 DISPLAY ZONE: Clean, spacious typography */}
+                  <div className="s26-display-zone">
+                    <div className="s26-digits-wrapper">
+                      <input
+                        ref={digitsInputRef}
+                        type="text"
+                        inputMode="none"
+                        autoComplete="off"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        className="s26-digits-input"
+                        value={phoneDigits}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/[^\d+*#\s-]/g, "");
+                          const pos = e.target.selectionStart ?? clean.length;
+                          setDigitsAndCursor(clean, pos);
+                        }}
+                        onSelect={updateCursorFromInput}
+                        onClick={updateCursorFromInput}
+                        onKeyUp={updateCursorFromInput}
+                        onTouchEnd={() => {
+                          setTimeout(updateCursorFromInput, 60);
+                        }}
+                        style={{
+                          fontSize: phoneDigits.length <= 7 
+                            ? '38px' 
+                            : phoneDigits.length <= 11 
+                              ? '34px' 
+                              : phoneDigits.length <= 14 
+                                ? '28px' 
+                                : '22px',
+                          ['--dialed-font-size' as string]: phoneDigits.length <= 7 
+                            ? '38px' 
+                            : phoneDigits.length <= 11 
+                              ? '34px' 
+                              : phoneDigits.length <= 14 
+                                ? '28px' 
+                                : '22px',
+                          fontWeight: 400,
+                          letterSpacing: '0.8px',
+                          color: 'var(--s26-text-main, #0f172a)',
+                          lineHeight: 1.15,
+                          minHeight: '48px',
+                          display: 'block',
+                          textAlign: 'center',
+                          width: '100%',
+                          border: 'none',
+                          outline: 'none',
+                          background: 'transparent',
+                          padding: '0 8px',
+                          caretColor: '#2563eb',
+                          cursor: 'text'
+                        }}
+                        placeholder=""
+                      />
+                    </div>
+
+                    {/* S26 CONTEXT CANVAS */}
+                    <div className="s26-context-canvas">
+                      {selectedContact ? (
+                        <div className="s26-matched-contact-pill">
+                          <div className="s26-matched-contact-left">
+                            <div className="s26-matched-avatar">
+                              {(selectedContact.companyName || selectedContact.contactPerson || "C").charAt(0).toUpperCase()}
+                            </div>
+                            <div className="s26-matched-info">
+                              <span className="s26-matched-name">{selectedContact.companyName || selectedContact.contactPerson}</span>
+                              <span className="s26-matched-meta">
+                                <span className={`dialer-pill-badge ${selectedContact.type === "Customer" ? "customer" : "lead"}`}>
+                                  {selectedContact.type || "Contact"}
+                                </span>
+                                <span>{selectedContact.phone}</span>
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              isContactDismissedRef.current = true;
+                              setSelectedContact(null);
+                            }}
+                            style={{ background: "none", border: "none", color: "var(--s26-text-sub)", cursor: "pointer", padding: "4px" }}
+                            title="Clear Contact"
                           >
-                            <div className="s26-suggestion-avatar">
-                              {(c.companyName || c.contactPerson || "C").charAt(0).toUpperCase()}
-                            </div>
-                            <div className="s26-suggestion-info">
-                              <span className="s26-suggestion-name">{c.companyName || c.contactPerson}</span>
-                              <span className="s26-suggestion-phone">{c.phone}</span>
-                            </div>
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : phoneDigits.trim().length >= 2 && filteredKeypadContacts.length > 0 ? (
+                        <div className="s26-suggestions-box">
+                          <div className="s26-suggestions-header">
+                            <span>Matching Contacts ({filteredKeypadContacts.length})</span>
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleInitiateCall(c.phone, c);
+                              onClick={() => {
+                                if (!newLeadName && filteredKeypadContacts.length > 0) {
+                                  setNewLeadName(filteredKeypadContacts[0].contactPerson || filteredKeypadContacts[0].companyName || "");
+                                  setNewLeadShop(filteredKeypadContacts[0].companyName || "");
+                                }
+                                setShowNewLeadForm(true);
                               }}
-                              className="s26-suggestion-call-btn"
-                              title="Call"
+                              style={{
+                                background: "rgba(37, 99, 235, 0.08)",
+                                color: "#2563eb",
+                                border: "1px solid rgba(37, 99, 235, 0.2)",
+                                borderRadius: "10px",
+                                padding: "2px 7px",
+                                fontSize: "0.68rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "3px"
+                              }}
                             >
-                              <PhoneCall size={13} />
+                              <UserPlus size={10} /> + New Lead
                             </button>
                           </div>
-                        ))}
+                          <div className="s26-suggestions-list">
+                            {filteredKeypadContacts.slice(0, 3).map((c: any) => (
+                              <div
+                                key={c.id}
+                                onClick={() => handleSelectMatchedContact(c)}
+                                className="s26-suggestion-row"
+                              >
+                                <div className="s26-suggestion-avatar">
+                                  {(c.companyName || c.contactPerson || "C").charAt(0).toUpperCase()}
+                                </div>
+                                <div className="s26-suggestion-info">
+                                  <span className="s26-suggestion-name">{c.companyName || c.contactPerson}</span>
+                                  <span className="s26-suggestion-phone">{c.phone}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleInitiateCall(c.phone, c);
+                                  }}
+                                  className="s26-suggestion-call-btn"
+                                  title="Call"
+                                >
+                                  <PhoneCall size={13} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* S26 DUAL-SIM INDICATOR BAR */}
+                  <div className="s26-sim-bar">
+                    {availableSims.length > 1 ? (
+                      availableSims.map((sim, idx) => {
+                        const isSelected = (selectedSim?.subscriptionId != null && selectedSim.subscriptionId === sim?.subscriptionId)
+                          || (selectedSim?.slotIndex != null && selectedSim.slotIndex === sim?.slotIndex);
+                        return (
+                          <button
+                            key={sim?.subscriptionId ?? idx}
+                            type="button"
+                            onClick={() => {
+                              handleVibrate(20);
+                              setSelectedSim(sim);
+                              if (typeof window !== "undefined") {
+                                try {
+                                  if (sim?.subscriptionId != null) localStorage.setItem("crm_preferred_sim_id", String(sim.subscriptionId));
+                                  if (sim?.slotIndex != null) localStorage.setItem("crm_preferred_sim_slot", String(sim.slotIndex));
+                                } catch {}
+                              }
+                            }}
+                            className={`s26-sim-pill ${isSelected ? "active" : ""}`}
+                          >
+                            <Radio size={11} />
+                            <span>{sim?.slotLabel || `SIM ${idx + 1}`}: {sim?.carrierName || sim?.displayName || "Carrier"}</span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="s26-sim-pill active">
+                        <Radio size={11} />
+                        <span>{availableSims[0]?.carrierName || availableSims[0]?.displayName || "Cellular"} ({availableSims[0]?.slotLabel || "SIM 1"})</span>
                       </div>
-                    </div>
-                  ) : phoneDigits.length >= 3 ? (
-                    <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                      {!showNewLeadForm ? (
-                        <div className="s26-action-pills-row">
-                          <button
-                            type="button"
-                            onClick={() => setShowNewLeadForm(true)}
-                            className="s26-pill-action add-lead"
-                          >
-                            <UserPlus size={13} /> Add Lead
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleInitiateWhatsApp()}
-                            className="s26-pill-action wa"
-                          >
-                            <MessageSquare size={13} /> WhatsApp
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyNumber(phoneDigits)}
-                            className="s26-pill-action"
-                          >
-                            <Copy size={13} /> Copy
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setActiveTab("POST_CALL")}
-                            className="s26-pill-action"
-                          >
-                            <Clock size={13} /> Log Note
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="s26-inline-lead-card">
-                          <div className="s26-inline-lead-header">
-                            <span>⚡ Quick Save New Lead</span>
-                            <button type="button" onClick={() => setShowNewLeadForm(false)} style={{ background: "none", border: "none", color: "var(--s26-text-sub)", cursor: "pointer" }}>
-                              <X size={14} />
-                            </button>
-                          </div>
-                          <div className="s26-inline-lead-inputs">
-                            <input
-                              type="text"
-                              placeholder="Name (e.g. Ramesh)"
-                              value={newLeadName}
-                              onChange={(e) => setNewLeadName(e.target.value)}
-                              className="s26-inline-input"
-                            />
-                            <input
-                              type="text"
-                              placeholder="Shop / Business Name"
-                              value={newLeadShop}
-                              onChange={(e) => setNewLeadShop(e.target.value)}
-                              className="s26-inline-input"
-                            />
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleCreateQuickLeadInline}
-                            disabled={isSaving}
-                            className="s26-inline-save-btn"
-                          >
-                            <Check size={13} /> {isSaving ? "Saving..." : "Save to CRM"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* When empty: subtle recent chip or paste button */
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <button
-                        type="button"
-                        onClick={handlePasteNumber}
-                        className="s26-pill-action"
-                        title="Paste number from clipboard"
-                      >
-                        <Clipboard size={12} /> Paste Number
-                      </button>
-                      {recentCalls[0] && (
+                    )}
+                  </div>
+
+                  {/* S26 KEYPAD & CALL CONTROLS */}
+                  <div className="s26-keypad-container">
+                    <div className="s26-keypad-grid">
+                      {DIALPAD_KEYS.map((k) => (
                         <button
+                          key={k.digit}
                           type="button"
-                          onClick={() => {
-                            const num = recentCalls[0]?.phoneNumber || recentCalls[0]?.phone || "";
-                            if (num) {
-                              setPhoneDigits(num);
-                              handleVibrate(15);
+                          className="s26-key-btn"
+                          onPointerDown={(e) => handleDigitPressStart(k.digit, e)}
+                          onPointerUp={() => handleDigitPressEnd(k.digit)}
+                          onPointerCancel={() => handleDigitPressEnd(k.digit)}
+                          onClick={(e) => handleDigitClick(e)}
+                          onContextMenu={(e) => {
+                            if (k.digit === "0") {
+                              e.preventDefault();
+                              handleVibrate(30);
+                              setPhoneDigits(prev => prev + "+");
                             }
                           }}
-                          className="s26-pill-action"
                         >
-                          <RotateCcw size={12} /> Redial: {recentCalls[0]?.contactName || recentCalls[0]?.phoneNumber || "Last Call"}
+                          <span className="s26-key-digit">{k.digit}</span>
+                          {k.sub && <span className="s26-key-sub">{k.sub}</span>}
                         </button>
-                      )}
+                      ))}
                     </div>
-                  )}
-                </div>
-              </div>
 
-              {/* S26 DUAL-SIM INDICATOR BAR */}
-              <div className="s26-sim-bar">
-                {availableSims.length > 1 ? (
-                  availableSims.map((sim, idx) => {
-                    const isSelected = (selectedSim?.subscriptionId != null && selectedSim.subscriptionId === sim?.subscriptionId)
-                      || (selectedSim?.slotIndex != null && selectedSim.slotIndex === sim?.slotIndex);
-                    return (
+                    {/* S26 CALL BUTTON ROW - 3 COLUMNS MATCHING KEYPAD (*, 0, #) */}
+                    <div className="s26-actions-row">
+                      {/* Column 1: WhatsApp Button aligned directly below * button */}
                       <button
-                        key={sim?.subscriptionId ?? idx}
                         type="button"
-                        onClick={() => {
-                          handleVibrate(20);
-                          setSelectedSim(sim);
-                          if (typeof window !== "undefined") {
-                            try {
-                              if (sim?.subscriptionId != null) localStorage.setItem("crm_preferred_sim_id", String(sim.subscriptionId));
-                              if (sim?.slotIndex != null) localStorage.setItem("crm_preferred_sim_slot", String(sim.slotIndex));
-                            } catch {}
+                        className="s26-aux-btn wa"
+                        onClick={() => handleInitiateWhatsApp()}
+                        title="Open WhatsApp Chat"
+                      >
+                        <WhatsAppLogo size={24} />
+                      </button>
+
+                      {/* Column 2: Call Button aligned directly below 0 button */}
+                      <button
+                        type="button"
+                        className="s26-call-btn"
+                        onClick={() => handleInitiateCall()}
+                        title="Call Now"
+                      >
+                        <PhoneCall size={28} />
+                      </button>
+
+                      {/* Column 3: Erase / Backspace Button aligned directly below # button */}
+                      <button
+                        type="button"
+                        className={`s26-aux-btn erase ${phoneDigits ? "active" : "muted"}`}
+                        onPointerDown={phoneDigits ? (e) => handleErasePressStart(e) : undefined}
+                        onPointerUp={phoneDigits ? handleErasePressEnd : undefined}
+                        onPointerCancel={phoneDigits ? handleErasePressEnd : undefined}
+                        onClick={phoneDigits ? (e) => handleEraseClick(e) : undefined}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          if (phoneDigits) {
+                            handleClear();
+                            setShowNewLeadForm(false);
                           }
                         }}
-                        className={`s26-sim-pill ${isSelected ? "active" : ""}`}
+                        disabled={!phoneDigits}
+                        title={phoneDigits ? "Tap to erase digit, hold to clear all" : "Backspace"}
+                        aria-label="Erase"
                       >
-                        <Radio size={11} />
-                        <span>{sim?.slotLabel || `SIM ${idx + 1}`}: {sim?.carrierName || sim?.displayName || "Carrier"}</span>
+                        <Delete size={26} strokeWidth={2.2} />
                       </button>
-                    );
-                  })
-                ) : (
-                  <div className="s26-sim-pill active">
-                    <Radio size={11} />
-                    <span>{availableSims[0]?.carrierName || availableSims[0]?.displayName || "Cellular"} ({availableSims[0]?.slotLabel || "SIM 1"})</span>
+                    </div>
                   </div>
-                )}
-              </div>
-
-              {/* S26 KEYPAD & CALL CONTROLS */}
-              <div className="s26-keypad-container">
-                <div className="s26-keypad-grid">
-                  {DIALPAD_KEYS.map((k) => (
-                    <button
-                      key={k.digit}
-                      type="button"
-                      className="s26-key-btn"
-                      onClick={() => handleDigitClick(k.digit)}
-                      onTouchStart={k.digit === "0" ? handleZeroPressStart : undefined}
-                      onTouchEnd={k.digit === "0" ? handleZeroPressEnd : undefined}
-                      onTouchCancel={k.digit === "0" ? handleZeroPressEnd : undefined}
-                      onMouseDown={k.digit === "0" ? handleZeroPressStart : undefined}
-                      onMouseUp={k.digit === "0" ? handleZeroPressEnd : undefined}
-                      onMouseLeave={k.digit === "0" ? handleZeroPressEnd : undefined}
-                      onContextMenu={(e) => {
-                        if (k.digit === "0") {
-                          e.preventDefault();
-                          handleVibrate(30);
-                          setPhoneDigits(prev => prev + "+");
-                        }
-                      }}
-                    >
-                      <span className="s26-key-digit">{k.digit}</span>
-                      {k.sub && <span className="s26-key-sub">{k.sub}</span>}
-                    </button>
-                  ))}
-                </div>
-
-                {/* S26 CALL BUTTON ROW */}
-                <div className="s26-actions-row">
-                  <button
-                    type="button"
-                    className="s26-aux-btn wa"
-                    onClick={() => handleInitiateWhatsApp()}
-                    title="Open WhatsApp Chat"
-                  >
-                    <MessageSquare size={22} />
-                  </button>
-
-                  <button
-                    type="button"
-                    className="s26-call-btn"
-                    onClick={() => handleInitiateCall()}
-                    title="Call Now"
-                  >
-                    <PhoneCall size={28} />
-                  </button>
-
-                  {/* S26 / iPhone 17 Erase / Backspace Button below # button */}
-                  <button
-                    type="button"
-                    className={`s26-aux-btn erase ${phoneDigits ? "active" : "muted"}`}
-                    onClick={phoneDigits ? handleEraseClick : undefined}
-                    onTouchStart={phoneDigits ? handleErasePressStart : undefined}
-                    onTouchEnd={phoneDigits ? handleErasePressEnd : undefined}
-                    onTouchCancel={phoneDigits ? handleErasePressEnd : undefined}
-                    onMouseDown={phoneDigits ? handleErasePressStart : undefined}
-                    onMouseUp={phoneDigits ? handleErasePressEnd : undefined}
-                    onMouseLeave={phoneDigits ? handleErasePressEnd : undefined}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      if (phoneDigits) {
-                        handleClear();
-                        setShowNewLeadForm(false);
-                      }
-                    }}
-                    disabled={!phoneDigits}
-                    title={phoneDigits ? "Tap to erase digit, hold to clear all" : "Backspace"}
-                    aria-label="Erase"
-                  >
-                    <Delete size={26} strokeWidth={2.2} />
-                  </button>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           )}
 
@@ -2418,7 +3253,7 @@ function PhoneDialerModalContent({
                           className="dialer-mini-action-btn wa"
                           title="WhatsApp"
                         >
-                          <MessageSquare size={14} />
+                          <WhatsAppLogo size={15} />
                         </button>
                         <button
                           type="button"
@@ -2475,36 +3310,43 @@ function PhoneDialerModalContent({
                     <span className="dialer-followup-title">
                       <Calendar size={13} style={{ color: "#4f46e5" }} /> Next Follow-up & Reminder
                     </span>
-                    <div className="dialer-quick-preset-chips">
-                      <button
-                        type="button"
-                        onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
-                        className="dialer-preset-chip"
-                      >
-                        Tomorrow 11 AM
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickFollowUp(2, 11, 0, "AM")}
-                        className="dialer-preset-chip"
-                      >
-                        In 2 Days
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickFollowUp(7, 11, 0, "AM")}
-                        className="dialer-preset-chip"
-                      >
-                        In 1 Week
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQuickFollowUp(-1, 0, 0, "AM")}
-                        className="dialer-preset-chip clear"
-                      >
-                        None
-                      </button>
-                    </div>
+                  </div>
+                  <div className="dialer-quick-preset-chips">
+                    <button
+                      type="button"
+                      onClick={() => setQuickFollowUp(0, 16, 0, "PM")}
+                      className="dialer-preset-chip"
+                    >
+                      Today 4 PM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickFollowUp(1, 11, 0, "AM")}
+                      className="dialer-preset-chip"
+                    >
+                      Tomorrow 11 AM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickFollowUp(2, 11, 0, "AM")}
+                      className="dialer-preset-chip"
+                    >
+                      In 2 Days
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickFollowUp(7, 11, 0, "AM")}
+                      className="dialer-preset-chip"
+                    >
+                      Next Week
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setQuickFollowUp(-1, 0, 0, "AM")}
+                      className="dialer-preset-chip clear"
+                    >
+                      ✕ None
+                    </button>
                   </div>
 
                   <div className="dialer-datetime-row">
@@ -2532,7 +3374,7 @@ function PhoneDialerModalContent({
                         onChange={(e) => setFollowUpMinute(e.target.value)}
                         aria-label="Minute"
                       >
-                        {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map(m => (
+                        {["00", "15", "30", "45"].map(m => (
                           <option key={m} value={m}>{m}</option>
                         ))}
                       </select>
@@ -2579,12 +3421,12 @@ function PhoneDialerModalContent({
               <div className="dialer-postcall-card">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
                   <label className="dialer-field-label" style={{ margin: 0 }}>Call Connection Status</label>
-                  <div className="dialer-segment-group" style={{ height: "28px" }}>
+                  <div className="dialer-segment-group" style={{ height: "26px" }}>
                     <button
                       type="button"
                       className={`dialer-segment-btn ${callType === "OUTBOUND" ? "active" : ""}`}
                       onClick={() => setCallType("OUTBOUND")}
-                      style={{ padding: "0 8px", fontSize: "0.72rem" }}
+                      style={{ padding: "0 8px", fontSize: "0.7rem" }}
                     >
                       <PhoneOutgoing size={11} /> Out
                     </button>
@@ -2592,7 +3434,7 @@ function PhoneDialerModalContent({
                       type="button"
                       className={`dialer-segment-btn ${callType === "INBOUND" ? "active" : ""}`}
                       onClick={() => setCallType("INBOUND")}
-                      style={{ padding: "0 8px", fontSize: "0.72rem" }}
+                      style={{ padding: "0 8px", fontSize: "0.7rem" }}
                     >
                       <PhoneIncoming size={11} /> In
                     </button>
@@ -2604,13 +3446,13 @@ function PhoneDialerModalContent({
                   <button
                     type="button"
                     className={`dialer-status-chip ${callStatus === "Completed" || callStatus === "Connected" ? "active-completed" : ""}`}
-                    onClick={() => {
-                      setCallStatus("Completed");
-                      if (callDurationSec === 0) setCallDurationSec(30);
-                    }}
+                    onClick={() => handleCallStatusChange("Completed")}
                   >
-                    <span>🟢 Talked</span>
-                    <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>Connected</span>
+                    <div className="dialer-status-chip-label">
+                      <PhoneCall size={13} />
+                      <span>Talked</span>
+                    </div>
+                    <span className="dialer-status-chip-sub">Connected</span>
                   </button>
 
                   <button
@@ -2618,8 +3460,11 @@ function PhoneDialerModalContent({
                     className={`dialer-status-chip ${callStatus === "Busy" ? "active-busy" : ""}`}
                     onClick={() => handleCallStatusChange("Busy")}
                   >
-                    <span>🔴 Busy</span>
-                    <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>Engaged</span>
+                    <div className="dialer-status-chip-label">
+                      <PhoneOff size={13} />
+                      <span>Busy</span>
+                    </div>
+                    <span className="dialer-status-chip-sub">Engaged</span>
                   </button>
 
                   <button
@@ -2627,8 +3472,11 @@ function PhoneDialerModalContent({
                     className={`dialer-status-chip ${callStatus === "No Answer" ? "active-noanswer" : ""}`}
                     onClick={() => handleCallStatusChange("No Answer")}
                   >
-                    <span>🟡 No Answer</span>
-                    <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>Missed</span>
+                    <div className="dialer-status-chip-label">
+                      <PhoneMissed size={13} />
+                      <span>No Answer</span>
+                    </div>
+                    <span className="dialer-status-chip-sub">Missed</span>
                   </button>
 
                   <button
@@ -2636,34 +3484,37 @@ function PhoneDialerModalContent({
                     className={`dialer-status-chip ${callStatus === "Callback" ? "active-callback" : ""}`}
                     onClick={() => handleCallStatusChange("Callback")}
                   >
-                    <span>🟣 Callback</span>
-                    <span style={{ fontSize: "0.65rem", opacity: 0.8 }}>Call later</span>
+                    <div className="dialer-status-chip-label">
+                      <Clock size={13} />
+                      <span>Callback</span>
+                    </div>
+                    <span className="dialer-status-chip-sub">Call later</span>
                   </button>
                 </div>
 
                 {/* Talk Duration - Only if status is Connected or Completed */}
                 {(callStatus === "Completed" || callStatus === "Connected") ? (
                   <div className="dialer-stopwatch-box">
-                    <div>
-                      <span style={{ fontSize: "0.68rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0, flexShrink: 0 }}>
+                      <span style={{ fontSize: "0.64rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", whiteSpace: "nowrap" }}>
                         Talk Duration
                       </span>
                       <div className="dialer-stopwatch-digits">
                         {isTimerRunning && <span className="dialer-pulse-dot" />}
                         <span>{formatDuration(callDurationSec)}</span>
                         {isTimerRunning && (
-                          <span style={{ fontSize: "0.68rem", color: "#10b981", fontWeight: 700, background: "#dcfce7", padding: "1px 6px", borderRadius: "4px" }}>
+                          <span style={{ fontSize: "0.62rem", color: "#10b981", fontWeight: 800, background: "#dcfce7", padding: "1px 5px", borderRadius: "4px" }}>
                             LIVE
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                    <div style={{ display: "flex", gap: "4px", alignItems: "center", flexShrink: 0 }}>
                       <button
                         type="button"
                         onClick={() => setCallDurationSec(prev => Math.max(0, prev - 15))}
-                        style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                        className="dialer-timer-adj-btn"
                         title="Minus 15s"
                       >
                         -15s
@@ -2671,7 +3522,7 @@ function PhoneDialerModalContent({
                       <button
                         type="button"
                         onClick={() => setCallDurationSec(prev => prev + 15)}
-                        style={{ padding: "4px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", backgroundColor: "#ffffff", color: "#475569", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer" }}
+                        className="dialer-timer-adj-btn"
                         title="Plus 15s"
                       >
                         +15s
@@ -2687,21 +3538,9 @@ function PhoneDialerModalContent({
                             if (isAutoRecording) stopAutoRecording(cur);
                             setAutoDebriefTrigger(Date.now());
                           }}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: "8px",
-                            backgroundColor: "#fee2e2",
-                            color: "#dc2626",
-                            border: "1px solid #fca5a5",
-                            fontSize: "0.74rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px"
-                          }}
+                          className="dialer-timer-action-btn end"
                         >
-                          <PhoneOff size={12} /> End Talk
+                          <PhoneOff size={11} /> End
                         </button>
                       ) : (
                         <button
@@ -2711,37 +3550,25 @@ function PhoneDialerModalContent({
                             setIsTimerRunning(true);
                             setCallStatus("Connected");
                           }}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: "8px",
-                            backgroundColor: "#f0fdf4",
-                            color: "#16a34a",
-                            border: "1px solid #bbf7d0",
-                            fontSize: "0.74rem",
-                            fontWeight: 700,
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px"
-                          }}
+                          className="dialer-timer-action-btn resume"
                         >
-                          <Play size={12} /> Resume
+                          <Play size={11} /> Resume
                         </button>
                       )}
                     </div>
                   </div>
                 ) : (
                   <div style={{
-                    marginTop: "10px",
-                    padding: "8px 12px",
-                    borderRadius: "10px",
+                    marginTop: "8px",
+                    padding: "6px 10px",
+                    borderRadius: "8px",
                     backgroundColor: "var(--dialer-bg-subtle, #f8fafc)",
                     border: "1px dashed var(--dialer-border, #cbd5e1)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between"
                   }}>
-                    <span style={{ fontSize: "0.76rem", color: "var(--dialer-text-sub, #64748b)", fontWeight: 600 }}>
+                    <span style={{ fontSize: "0.72rem", color: "var(--dialer-text-sub, #64748b)", fontWeight: 600 }}>
                       Talk Duration: <strong style={{ color: "#ef4444" }}>00:00 (Not Connected)</strong>
                     </span>
                     <button
@@ -2761,24 +3588,61 @@ function PhoneDialerModalContent({
                         cursor: "pointer"
                       }}
                     >
-                      + Add Talk Time
+                      + Add Time
                     </button>
                   </div>
                 )}
 
                 {/* Call Outcome / Disposition */}
-                <div style={{ marginTop: "10px" }}>
-                  <label className="dialer-field-label">Call Outcome / Disposition</label>
-                  <select
-                    className="dialer-select-input"
-                    value={outcome}
-                    onChange={(e) => setOutcome(e.target.value)}
-                    style={{ height: "38px", fontSize: "0.82rem", fontWeight: 600 }}
-                  >
-                    {DEFAULT_OUTCOMES.map((o) => (
-                      <option key={o} value={o}>{o}</option>
-                    ))}
-                  </select>
+                <div style={{ marginTop: "12px" }}>
+                  <label className="dialer-field-label" style={{ marginBottom: "6px" }}>Call Outcome / Disposition</label>
+                  <div className="dialer-stylish-outcome-container">
+                    <div className="dialer-stylish-outcome-btn">
+                      <div className="dialer-stylish-outcome-left">
+                        <span
+                          className="dialer-stylish-outcome-indicator"
+                          style={{
+                            backgroundColor: getOutcomeMeta(outcome).color,
+                            boxShadow: `0 0 0 3px ${getOutcomeMeta(outcome).bg}`
+                          }}
+                        />
+                        <span className="dialer-stylish-outcome-text">
+                          {outcome || "Select Call Outcome..."}
+                        </span>
+                      </div>
+                      <div className="dialer-stylish-outcome-chevron">
+                        <ChevronDown size={15} />
+                      </div>
+                    </div>
+                    <select
+                      className="dialer-stylish-outcome-select"
+                      value={outcome}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setOutcome(val);
+                        const isUnconnectedOutcome = val === "No Answer / Busy" || val === "Voicemail / Switched Off" || val === "Wrong Number";
+                        if (isUnconnectedOutcome) {
+                          setCallStatus("No Answer");
+                          setCallDurationSec(0);
+                          setRecordingUrl("");
+                          setAutoRecordTranscript("");
+                          setCallSummary("");
+                          setNotes((prev) => prev ? prev.replace(/\[Auto-Transcript\][\s\S]*?(?=\n\n|$)/g, "").replace(/\[AI Summary\][\s\S]*?(?=\n\n|$)/g, "").trim() : "");
+                          try {
+                            (window as any).AndroidNative?.clearLastCallRecording?.();
+                          } catch (err) {}
+                        }
+                      }}
+                      aria-label="Call Outcome / Disposition"
+                    >
+                      {DEFAULT_OUTCOMES.map((o) => (
+                        <option key={o} value={o}>{o}</option>
+                      ))}
+                      {outcome && !DEFAULT_OUTCOMES.includes(outcome) && (
+                        <option value={outcome}>{outcome}</option>
+                      )}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -2810,25 +3674,12 @@ function PhoneDialerModalContent({
                 </div>
                 <textarea
                   className="dialer-textarea-input"
-                  rows={2}
-                  placeholder="Key discussion points, customer requirements, pricing quotes..."
+                  rows={5}
+                  placeholder="Key discussion points, customer requirements, pricing quotes, call transcript..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  style={{ minHeight: "100px", fontSize: "0.86rem", lineHeight: 1.5, resize: "vertical" }}
                 />
-
-                {/* Tag chips */}
-                <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "6px" }}>
-                  {DISCUSSION_TAGS.map((tag) => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => handleAddTag(tag)}
-                      className="dialer-tag-chip"
-                    >
-                      + {tag}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {/* CARD 5: 🎙️ RECORDING ATTACHMENT & PREVIEW */}
@@ -2844,6 +3695,10 @@ function PhoneDialerModalContent({
                     <button
                       type="button"
                       onClick={() => {
+                        if (callDurationSec <= 0 && callStatus !== "Connected" && callStatus !== "Completed") {
+                          setFeedbackMsg("ℹ️ Call was not connected (0s). Unanswered calls have no audio recording.");
+                          return;
+                        }
                         try {
                           const phoneParam = phoneDigitsRef.current || selectedContactRef.current?.phone || "";
                           const nameParam = selectedContactRef.current?.companyName || selectedContactRef.current?.contactPerson || newLeadName || "";
@@ -2964,38 +3819,6 @@ function PhoneDialerModalContent({
                 )}
               </div>
 
-              {/* CARD 6: 🎙️ 1-TAP AI VOICE DEBRIEF WIDGET */}
-              <AIDebriefSafeWrapper>
-                <CallVoiceDebriefWidget
-                  contactName={selectedContact?.companyName || selectedContact?.contactPerson || newLeadName || "Direct Contact"}
-                  contactPhone={phoneDigits || selectedContact?.phone || ""}
-                  customerId={selectedContact?.type === "Customer" ? selectedContact?.id : initialCustomerId}
-                  leadId={selectedContact?.type === "Lead" ? selectedContact?.id : initialLeadId}
-                  callDurationSec={callDurationSec}
-                  callType={callType}
-                  autoStartTrigger={autoDebriefTrigger}
-                  autoStartRecording={false}
-                  initialTranscript={autoRecordTranscript}
-                  onApplyToForm={(data) => {
-                    if (data.outcome) setOutcome(data.outcome);
-                    if (data.notes) setNotes(data.notes);
-                    if (data.summary) setCallSummary(data.summary);
-                    if (data.recordingUrl && !recordingUrl) setRecordingUrl(data.recordingUrl);
-                    if (data.followUpDate) setFollowUpDate(data.followUpDate);
-                    if (data.followUpHour) setFollowUpHour(normalizeFollowUpHour(data.followUpHour));
-                    if (data.followUpMinute) setFollowUpMinute(normalizeFollowUpMinute(data.followUpMinute));
-                    if (data.followUpPeriod) setFollowUpPeriod(data.followUpPeriod === "PM" ? "PM" : "AM");
-                    setFeedbackMsg("✨ AI Debrief intelligence applied!");
-                  }}
-                  onCallSaved={() => {
-                    setFeedbackMsg("✅ Call logged with AI Debrief & Follow-up scheduled!");
-                    loadRecentCalls();
-                    setTimeout(() => {
-                      onClose();
-                    }, 800);
-                  }}
-                />
-              </AIDebriefSafeWrapper>
 
               {/* SINGLE UNIFIED PRIMARY CTA ACTION BUTTON */}
               <button
@@ -3012,7 +3835,7 @@ function PhoneDialerModalContent({
                 ) : (
                   <>
                     <CheckCircle2 size={18} />
-                    <span>Save Call & Lead to CRM</span>
+                    <span>Save Call & Follow-up</span>
                   </>
                 )}
               </button>
@@ -3049,6 +3872,36 @@ function PhoneDialerModalContent({
                   <option value="OUTBOUND">Outbound</option>
                   <option value="INBOUND">Inbound</option>
                 </select>
+                {isAndroidNativeApp() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleVibrate(20);
+                      loadRecentCalls(true);
+                      setFeedbackMsg("🔄 Syncing device missed & incoming calls...");
+                    }}
+                    disabled={isSyncingDeviceCalls || isLoadingCalls}
+                    style={{
+                      height: "36px",
+                      padding: "0 10px",
+                      borderRadius: "8px",
+                      backgroundColor: isSyncingDeviceCalls ? "#e0e7ff" : "#f1f5f9",
+                      border: "1px solid #cbd5e1",
+                      color: isSyncingDeviceCalls ? "#4338ca" : "#475569",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      cursor: "pointer",
+                      fontSize: "0.74rem",
+                      fontWeight: 700,
+                      flexShrink: 0
+                    }}
+                    title="Sync device missed & incoming calls"
+                  >
+                    <RefreshCw size={13} style={{ animation: isSyncingDeviceCalls ? "spin 1s linear infinite" : undefined }} />
+                    <span>Sync</span>
+                  </button>
+                )}
               </div>
 
               {isLoadingCalls ? (
@@ -3065,7 +3918,7 @@ function PhoneDialerModalContent({
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
                   {filteredCallLogs.map((c) => {
                     const isOutbound = c.type === "OUTBOUND";
-                    const isConnected = c.status === "Connected" || (c.durationSec || 0) > 0;
+                    const isConnected = (c.status === "Connected" || c.status === "Completed") && (c.durationSec || 0) > 0;
                     const callPhone = c.phoneNumber || c.phone || "";
                     const hasAudio = Boolean(c.recordingUrl && String(c.recordingUrl).length > 20);
 
@@ -3083,8 +3936,8 @@ function PhoneDialerModalContent({
                         }}
                       >
                         {/* Top row: Icon, Name/Phone, Actions */}
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", overflow: "hidden", minWidth: 0, flex: 1 }}>
                             <div
                               style={{
                                 width: "32px",
@@ -3104,21 +3957,24 @@ function PhoneDialerModalContent({
                                 <PhoneMissed size={15} />
                               )}
                             </div>
-                            <div style={{ overflow: "hidden" }}>
+                            <div style={{ overflow: "hidden", minWidth: 0 }}>
                               <div style={{ fontSize: "0.84rem", fontWeight: 700, color: "#0f172a", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                 {c.contactName || c.contactPerson || "Direct Contact"}
                               </div>
-                              <div style={{ fontSize: "0.72rem", color: "#64748b", display: "flex", gap: "6px", alignItems: "center" }}>
-                                <span>{callPhone || "No Phone"}</span>
-                                <span>•</span>
-                                <span>{isConnected && (c.durationSec || 0) > 0 ? formatDuration(c.durationSec || 0) : "00:00 (Not Connected)"}</span>
-                                <span>•</span>
-                                <span>{formatRelativeTime(c.createdAt)}</span>
+                              <div style={{ fontSize: "0.72rem", color: "#64748b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {callPhone || "No Phone"}
+                              </div>
+                              <div style={{ fontSize: "0.72rem", color: "#64748b", display: "flex", gap: "4px", alignItems: "center", marginTop: "1px" }}>
+                                <span style={{ color: !isConnected ? "#dc2626" : undefined, fontWeight: !isConnected ? 700 : undefined, whiteSpace: "nowrap" }}>
+                                  {isConnected ? formatDuration(c.durationSec || 0) : (c.outcome?.includes("Missed") ? "Missed Call" : (c.status === "Busy" || c.outcome?.includes("Busy")) ? "Busy" : (c.status === "Callback" || c.outcome?.includes("Callback") || c.outcome?.includes("Call Back")) ? "Callback" : "00:00 (NC)")}
+                                </span>
+                                <span style={{ opacity: 0.5 }}>•</span>
+                                <span style={{ whiteSpace: "nowrap" }}>{formatRelativeTime(c.createdAt)}</span>
                               </div>
                             </div>
                           </div>
 
-                          <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                          <div style={{ display: "flex", gap: "4px", flexShrink: 0, alignItems: "center" }}>
                             {callPhone && (
                               <button
                                 type="button"
@@ -3126,7 +3982,7 @@ function PhoneDialerModalContent({
                                 style={{ width: "28px", height: "28px", borderRadius: "6px", backgroundColor: "#25d366", color: "#fff", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                                 title="WhatsApp"
                               >
-                                <MessageSquare size={13} />
+                                <WhatsAppLogo size={14} />
                               </button>
                             )}
                             {callPhone && (
@@ -3139,6 +3995,26 @@ function PhoneDialerModalContent({
                                 <PhoneCall size={13} />
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleEditCall(c)}
+                              style={{
+                                width: "28px",
+                                height: "28px",
+                                borderRadius: "6px",
+                                backgroundColor: editingCallId === c.id ? "#4f46e5" : "#e0e7ff",
+                                color: editingCallId === c.id ? "#ffffff" : "#4338ca",
+                                border: "none",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                transition: "all 0.15s ease"
+                              }}
+                              title={editingCallId === c.id ? "Close edit" : "Edit Follow-up & Details"}
+                            >
+                              <Pencil size={13} />
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteCallLog(c.id, c.contactName)}
@@ -3161,9 +4037,9 @@ function PhoneDialerModalContent({
                           </div>
                         </div>
 
-                        {/* Middle row: Outcome badge */}
-                        {c.outcome && (
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {/* Middle row: Outcome badge + Follow-up badge */}
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                          {c.outcome && (
                             <span
                               style={{
                                 fontSize: "0.68rem",
@@ -3177,30 +4053,82 @@ function PhoneDialerModalContent({
                             >
                               {c.outcome}
                             </span>
-                            {hasAudio && (
-                              <span
-                                style={{
-                                  fontSize: "0.66rem",
-                                  fontWeight: 700,
-                                  color: "#059669",
-                                  backgroundColor: "#ecfdf5",
-                                  border: "1px solid #a7f3d0",
-                                  padding: "1px 6px",
-                                  borderRadius: "4px",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "3px"
-                                }}
-                              >
-                                <Volume2 size={10} /> Recording
-                              </span>
-                            )}
-                          </div>
-                        )}
+                          )}
+
+                          {/* Follow-up Badge / Button */}
+                          {c.followUpDate ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleEditCall(c)}
+                              style={{
+                                fontSize: "0.68rem",
+                                fontWeight: 700,
+                                padding: "2px 8px",
+                                borderRadius: "6px",
+                                backgroundColor: "#fef3c7",
+                                color: "#b45309",
+                                border: "1px solid #fde68a",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                cursor: "pointer",
+                                transition: "all 0.15s ease"
+                              }}
+                              title="Click to edit or reschedule follow-up"
+                            >
+                              <Calendar size={11} color="#b45309" />
+                              <span>Follow-up: {formatFollowUpDisplay(c.followUpDate)}</span>
+                              <Pencil size={9} style={{ opacity: 0.7 }} />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleEditCall(c)}
+                              style={{
+                                fontSize: "0.68rem",
+                                fontWeight: 600,
+                                padding: "2px 8px",
+                                borderRadius: "6px",
+                                backgroundColor: "#f1f5f9",
+                                color: "#475569",
+                                border: "1px dashed #cbd5e1",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                cursor: "pointer",
+                                transition: "all 0.15s ease"
+                              }}
+                              title="Schedule a follow-up for this contact"
+                            >
+                              <Calendar size={11} color="#64748b" />
+                              <span>+ Set Follow-up</span>
+                            </button>
+                          )}
+
+                          {hasAudio && (
+                            <span
+                              style={{
+                                fontSize: "0.66rem",
+                                fontWeight: 700,
+                                color: "#059669",
+                                backgroundColor: "#ecfdf5",
+                                border: "1px solid #a7f3d0",
+                                padding: "1px 6px",
+                                borderRadius: "4px",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "3px"
+                              }}
+                            >
+                              <Volume2 size={10} /> Recording
+                            </span>
+                          )}
+                        </div>
 
                         {/* AI Summary / Notes snippet */}
-                        {(c.summary || c.notes) && (
+                        {(c.summary || c.notes) && editingCallId !== c.id && (
                           <div
+                            onClick={() => handleToggleEditCall(c)}
                             style={{
                               fontSize: "0.72rem",
                               color: "#334155",
@@ -3208,8 +4136,10 @@ function PhoneDialerModalContent({
                               border: "1px solid #e2e8f0",
                               borderRadius: "8px",
                               padding: "6px 8px",
-                              lineHeight: 1.4
+                              lineHeight: 1.4,
+                              cursor: "pointer"
                             }}
+                            title="Click to edit notes"
                           >
                             <span style={{ fontWeight: 700, color: "#4f46e5" }}>AI Notes: </span>
                             {(c.summary || c.notes).slice(0, 160)}
@@ -3217,14 +4147,324 @@ function PhoneDialerModalContent({
                           </div>
                         )}
 
+                        {/* INLINE EDIT FOLLOW-UP & NOTES SECTION */}
+                        {editingCallId === c.id && (
+                          <div
+                            style={{
+                              marginTop: "4px",
+                              padding: "12px",
+                              borderRadius: "10px",
+                              backgroundColor: "#ffffff",
+                              border: "1.5px solid #818cf8",
+                              boxShadow: "0 4px 14px rgba(99, 102, 241, 0.08)",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "10px"
+                            }}
+                          >
+                            {/* Header */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e1b4b", display: "flex", alignItems: "center", gap: "5px" }}>
+                                <Calendar size={13} color="#4f46e5" />
+                                Schedule / Update Follow-up
+                              </span>
+                              {editFollowUpDate && (
+                                <button
+                                  type="button"
+                                  onClick={() => setQuickEditFollowUp(-1, 0, 0, "AM")}
+                                  style={{
+                                    fontSize: "0.68rem",
+                                    color: "#dc2626",
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                    padding: 0
+                                  }}
+                                  title="Remove scheduled follow-up"
+                                >
+                                  Remove Follow-up
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Quick Presets */}
+                            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                              {[
+                                { label: "Today 4 PM", days: 0, h: 4, m: 0, p: "PM" },
+                                { label: "Tomorrow 11 AM", days: 1, h: 11, m: 0, p: "AM" },
+                                { label: "In 2 Days", days: 2, h: 11, m: 0, p: "AM" },
+                                { label: "Next Week", days: 7, h: 11, m: 0, p: "AM" }
+                              ].map((qp) => (
+                                <button
+                                  key={qp.label}
+                                  type="button"
+                                  onClick={() => setQuickEditFollowUp(qp.days, qp.h, qp.m, qp.p as "AM" | "PM")}
+                                  style={{
+                                    fontSize: "0.68rem",
+                                    fontWeight: 600,
+                                    padding: "3px 8px",
+                                    borderRadius: "6px",
+                                    backgroundColor: "#f1f5f9",
+                                    color: "#334155",
+                                    border: "1px solid #e2e8f0",
+                                    cursor: "pointer",
+                                    transition: "all 0.15s ease"
+                                  }}
+                                >
+                                  {qp.label}
+                                </button>
+                              ))}
+                            </div>
+
+                            {/* Custom Date & Time Picker */}
+                            <div style={{ display: "flex", gap: "4px", alignItems: "center", width: "100%", boxSizing: "border-box" }}>
+                              <input
+                                type="date"
+                                value={editFollowUpDate}
+                                onChange={(e) => setEditFollowUpDate(e.target.value)}
+                                style={{
+                                  flex: "1 1 0",
+                                  minWidth: 0,
+                                  width: 0,
+                                  height: "32px",
+                                  padding: "0 6px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #cbd5e1",
+                                  fontSize: "0.75rem",
+                                  color: "#0f172a",
+                                  backgroundColor: "#f8fafc",
+                                  boxSizing: "border-box"
+                                }}
+                              />
+                              <select
+                                value={editFollowUpHour}
+                                onChange={(e) => setEditFollowUpHour(e.target.value)}
+                                style={{
+                                  width: "36px",
+                                  minWidth: "34px",
+                                  flex: "0 0 auto",
+                                  height: "32px",
+                                  padding: 0,
+                                  textAlign: "center",
+                                  textAlignLast: "center",
+                                  borderRadius: "6px",
+                                  border: "1px solid #cbd5e1",
+                                  fontSize: "0.75rem",
+                                  color: "#0f172a",
+                                  backgroundColor: "#f8fafc",
+                                  appearance: "none",
+                                  WebkitAppearance: "none",
+                                  boxSizing: "border-box"
+                                }}
+                              >
+                                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')).map(h => (
+                                  <option key={h} value={h}>{h}</option>
+                                ))}
+                              </select>
+                              <span style={{ fontSize: "0.75rem", color: "#64748b", fontWeight: 700, padding: "0 1px" }}>:</span>
+                              <select
+                                value={editFollowUpMinute}
+                                onChange={(e) => setEditFollowUpMinute(e.target.value)}
+                                style={{
+                                  width: "36px",
+                                  minWidth: "34px",
+                                  flex: "0 0 auto",
+                                  height: "32px",
+                                  padding: 0,
+                                  textAlign: "center",
+                                  textAlignLast: "center",
+                                  borderRadius: "6px",
+                                  border: "1px solid #cbd5e1",
+                                  fontSize: "0.75rem",
+                                  color: "#0f172a",
+                                  backgroundColor: "#f8fafc",
+                                  appearance: "none",
+                                  WebkitAppearance: "none",
+                                  boxSizing: "border-box"
+                                }}
+                              >
+                                {["00", "15", "30", "45"].map(m => (
+                                  <option key={m} value={m}>{m}</option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => setEditFollowUpPeriod(prev => prev === "AM" ? "PM" : "AM")}
+                                style={{
+                                  height: "32px",
+                                  width: "36px",
+                                  minWidth: "36px",
+                                  flex: "0 0 auto",
+                                  padding: 0,
+                                  borderRadius: "6px",
+                                  border: "1px solid #818cf8",
+                                  backgroundColor: "#eff6ff",
+                                  color: "#2563eb",
+                                  fontSize: "0.72rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  textAlign: "center",
+                                  boxSizing: "border-box"
+                                }}
+                              >
+                                {editFollowUpPeriod}
+                              </button>
+                            </div>
+
+                            {/* Outcome Selection */}
+                            <div>
+                              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
+                                Call Outcome / Status:
+                              </span>
+                              <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                                {[
+                                  "Interested / Follow-up Needed",
+                                  "Order Placed / Deal Closed",
+                                  "Quotation Requested",
+                                  "No Answer / Busy",
+                                  "Callback Scheduled",
+                                  "Not Interested / Lost"
+                                ].map(out => {
+                                  const isSel = editOutcome === out || (editOutcome.toLowerCase().includes("busy") && out.includes("Busy")) || (editOutcome.toLowerCase().includes("interested") && out.includes("Interested"));
+                                  return (
+                                    <button
+                                      key={out}
+                                      type="button"
+                                      onClick={() => setEditOutcome(out)}
+                                      style={{
+                                        fontSize: "0.68rem",
+                                        fontWeight: 600,
+                                        padding: "3px 8px",
+                                        borderRadius: "6px",
+                                        border: isSel ? "1.5px solid #4f46e5" : "1px solid #e2e8f0",
+                                        backgroundColor: isSel ? "#e0e7ff" : "#f8fafc",
+                                        color: isSel ? "#3730a3" : "#475569",
+                                        cursor: "pointer"
+                                      }}
+                                    >
+                                      {out.split(" / ")[0]}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Notes textarea */}
+                            <div>
+                              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "4px" }}>
+                                Notes / Discussion:
+                              </span>
+                              <textarea
+                                value={editNotes}
+                                onChange={(e) => setEditNotes(e.target.value)}
+                                placeholder="Type discussion notes or reason for follow-up..."
+                                rows={2}
+                                style={{
+                                  width: "100%",
+                                  padding: "6px 8px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #cbd5e1",
+                                  fontSize: "0.75rem",
+                                  color: "#0f172a",
+                                  backgroundColor: "#f8fafc",
+                                  resize: "vertical",
+                                  fontFamily: "inherit",
+                                  lineHeight: 1.35
+                                }}
+                              />
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px", marginTop: "2px" }}>
+                              <button
+                                type="button"
+                                onClick={() => setEditingCallId(null)}
+                                disabled={isSavingEdit}
+                                style={{
+                                  padding: "5px 12px",
+                                  borderRadius: "6px",
+                                  border: "1px solid #cbd5e1",
+                                  backgroundColor: "#ffffff",
+                                  color: "#475569",
+                                  fontSize: "0.72rem",
+                                  fontWeight: 600,
+                                  cursor: "pointer"
+                                }}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveCallEdit(c)}
+                                disabled={isSavingEdit}
+                                style={{
+                                  padding: "5px 14px",
+                                  borderRadius: "6px",
+                                  border: "none",
+                                  backgroundColor: "#4f46e5",
+                                  color: "#ffffff",
+                                  fontSize: "0.72rem",
+                                  fontWeight: 700,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  boxShadow: "0 1px 3px rgba(79, 70, 229, 0.3)"
+                                }}
+                              >
+                                {isSavingEdit ? (
+                                  <>
+                                    <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} />
+                                    <span>Saving...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Check size={12} />
+                                    <span>Save Changes</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
                         {/* Call Recording Audio Player */}
                         {hasAudio && (
-                          <div style={{ width: "100%", marginTop: "2px" }}>
+                          <div style={{ width: "100%", marginTop: "4px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                             <audio
                               controls
                               src={c.recordingUrl}
-                              style={{ width: "100%", height: "30px", borderRadius: "6px" }}
+                              style={{ flex: 1, minWidth: "160px", height: "30px", borderRadius: "6px" }}
                             />
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!confirm(`Delete audio recording for this call with ${c.contactName || "this contact"}?`)) return;
+                                const res = await deleteCallRecording(c.id);
+                                if (res?.error) {
+                                  alert(res.error);
+                                } else {
+                                  setFeedbackMsg("Audio recording deleted.");
+                                  setTimeout(() => setFeedbackMsg(""), 2000);
+                                  loadRecentCalls();
+                                }
+                              }}
+                              style={{
+                                padding: "3px 8px",
+                                borderRadius: "6px",
+                                backgroundColor: "#fee2e2",
+                                border: "1px solid #fca5a5",
+                                color: "#dc2626",
+                                fontSize: "0.68rem",
+                                fontWeight: 700,
+                                cursor: "pointer",
+                                whiteSpace: "nowrap"
+                              }}
+                              title="Delete Audio Recording"
+                            >
+                              Delete Audio
+                            </button>
                           </div>
                         )}
                       </div>
@@ -3422,7 +4662,7 @@ function PhoneDialerModalContent({
                             style={{ width: "30px", height: "30px" }}
                             title="WhatsApp"
                           >
-                            <MessageSquare size={13} />
+                            <WhatsAppLogo size={14} />
                           </button>
                           <button
                             type="button"
@@ -3527,6 +4767,29 @@ function PhoneDialerModalContent({
         <div className="s26-crm-quick-bar">
           <button
             type="button"
+            className={`s26-crm-tab-chip ${showNewLeadForm ? "active" : ""}`}
+            onClick={() => {
+              if (activeTab !== "DIALPAD") setActiveTab("DIALPAD");
+              setShowNewLeadForm(prev => {
+                const next = !prev;
+                if (next && !newLeadName) {
+                  if (selectedContact) {
+                    setNewLeadName(selectedContact.contactPerson || selectedContact.companyName || "");
+                    setNewLeadShop(selectedContact.companyName || "");
+                  } else if (filteredKeypadContacts.length > 0) {
+                    setNewLeadName(filteredKeypadContacts[0].contactPerson || filteredKeypadContacts[0].companyName || "");
+                    setNewLeadShop(filteredKeypadContacts[0].companyName || "");
+                  }
+                }
+                return next;
+              });
+            }}
+            title="Save as CRM Lead"
+          >
+            <UserPlus size={12} /> Add Lead
+          </button>
+          <button
+            type="button"
             className={`s26-crm-tab-chip ${activeTab === "POST_CALL" ? "active" : ""}`}
             onClick={() => setActiveTab("POST_CALL")}
           >
@@ -3537,7 +4800,7 @@ function PhoneDialerModalContent({
             className={`s26-crm-tab-chip ${activeTab === "WHATSAPP" ? "active" : ""}`}
             onClick={() => setActiveTab("WHATSAPP")}
           >
-            <MessageSquare size={12} /> WhatsApp
+            <WhatsAppLogo size={12} style={{ marginRight: "2px" }} /> WhatsApp
           </button>
           <button
             type="button"
@@ -3632,69 +4895,8 @@ function PhoneDialerModalContent({
   );
 }
 
-/** Lightweight error boundary scoped to the AI Debrief widget only */
-class AIDebriefSafeWrapper extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean }
-> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error: any) {
-    console.warn("AI Debrief widget error (isolated):", error);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div
-          style={{
-            padding: "12px 14px",
-            backgroundColor: "#f8fafc",
-            border: "1px solid #e2e8f0",
-            borderRadius: "12px",
-            marginBottom: "14px",
-            textAlign: "center",
-            fontSize: "0.78rem",
-            color: "#64748b"
-          }}
-        >
-          <Sparkles size={18} style={{ color: "#6366f1", marginBottom: "6px" }} />
-          <div style={{ fontWeight: 700, color: "#0f172a", marginBottom: "4px" }}>AI Debrief unavailable</div>
-          <div>Use quick presets or type notes manually below.</div>
-          <button
-            type="button"
-            onClick={() => this.setState({ hasError: false })}
-            style={{
-              marginTop: "8px",
-              padding: "4px 12px",
-              borderRadius: "6px",
-              border: "1px solid #c7d2fe",
-              backgroundColor: "#eef2ff",
-              color: "#4f46e5",
-              fontSize: "0.74rem",
-              fontWeight: 700,
-              cursor: "pointer"
-            }}
-          >
-            Retry AI Debrief
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 export default function PhoneDialerModal(props: PhoneDialerModalProps) {
-  if (!props.isOpen) return null;
-
   return (
     <DialerErrorBoundary onClose={props.onClose} isOpen={props.isOpen}>
       <PhoneDialerModalContent {...props} />

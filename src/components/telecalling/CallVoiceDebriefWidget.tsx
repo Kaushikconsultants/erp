@@ -20,7 +20,8 @@ import {
   Volume2,
   AlertCircle,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Trash2
 } from "lucide-react";
 import {
   analyzeCallVoiceDebrief,
@@ -42,7 +43,7 @@ interface CallVoiceDebriefWidgetProps {
   /** Pre-seeded transcript from parallel dialer-level background recording */
   initialTranscript?: string;
   /** Callback when AI debrief analysis completes and updates parent form state */
-  onApplyToForm?: (data: {
+  onApplyToForm?: (data: Partial<{
     outcome: string;
     notes: string;
     summary: string;
@@ -54,7 +55,7 @@ interface CallVoiceDebriefWidgetProps {
     keyPoints?: string[];
     recordingUrl?: string | null;
     transcript?: string;
-  }) => void;
+  }>) => void;
   /** Callback when call is saved directly via 1-tap in this widget */
   onCallSaved?: (result: any) => void;
   /** Optional initial compact state */
@@ -386,7 +387,8 @@ export default function CallVoiceDebriefWidget({
         contactPhone,
         durationSec: callDurationSec,
         customerId: customerId || undefined,
-        leadId: leadId || undefined
+        leadId: leadId || undefined,
+        isOldCustomer: Boolean(customerId),
       }
     };
 
@@ -723,15 +725,19 @@ export default function CallVoiceDebriefWidget({
                   {liveTranscript ? (
                     <div
                       style={{
-                        padding: "8px 10px",
-                        backgroundColor: "#f8fafc",
-                        borderRadius: "8px",
-                        border: "1px dashed #cbd5e1",
-                        fontSize: "0.78rem",
+                        padding: "12px 14px",
+                        backgroundColor: "#ffffff",
+                        borderRadius: "10px",
+                        border: "1.5px solid #cbd5e1",
+                        fontSize: "0.92rem",
+                        lineHeight: 1.55,
                         color: "#0f172a",
-                        minHeight: "44px",
+                        minHeight: "70px",
+                        maxHeight: "180px",
+                        overflowY: "auto",
                         marginBottom: "10px",
-                        fontStyle: "italic"
+                        fontStyle: "italic",
+                        boxShadow: "inset 0 1px 3px rgba(0,0,0,0.04)"
                       }}
                     >
                       "{liveTranscript}"
@@ -739,19 +745,20 @@ export default function CallVoiceDebriefWidget({
                   ) : (
                     <div
                       style={{
-                        padding: "8px 10px",
+                        padding: "12px 14px",
                         backgroundColor: "#f8fafc",
-                        borderRadius: "8px",
-                        fontSize: "0.74rem",
-                        color: "#94a3b8",
-                        minHeight: "36px",
+                        borderRadius: "10px",
+                        fontSize: "0.84rem",
+                        color: "#64748b",
+                        minHeight: "50px",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        marginBottom: "10px"
+                        marginBottom: "10px",
+                        border: "1px dashed #cbd5e1"
                       }}
                     >
-                      Speak details: deal status, pricing, and next follow-up...
+                      Speak details: deal status, pricing, customer response, and next follow-up...
                     </div>
                   )}
 
@@ -878,17 +885,46 @@ export default function CallVoiceDebriefWidget({
               {/* Summary Text */}
               <div
                 style={{
-                  padding: "8px 10px",
+                  padding: "10px 14px",
                   backgroundColor: "#f8fafc",
-                  borderRadius: "8px",
-                  fontSize: "0.78rem",
-                  color: "#334155",
-                  lineHeight: 1.4,
-                  marginBottom: "8px"
+                  borderRadius: "10px",
+                  fontSize: "0.88rem",
+                  color: "#1e293b",
+                  lineHeight: 1.5,
+                  marginBottom: "8px",
+                  border: "1px solid #e2e8f0"
                 }}
               >
+                <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#6366f1", marginBottom: "4px" }}>
+                  AI Summary
+                </div>
                 {analysis.summary}
               </div>
+
+              {/* Full Voice Transcript if Available */}
+              {analysis.transcript && analysis.transcript !== analysis.summary && (
+                <div style={{ marginBottom: "8px" }}>
+                  <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#475569", marginBottom: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <FileText size={12} /> Full Voice Transcript:
+                  </div>
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      backgroundColor: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: "10px",
+                      fontSize: "0.9rem",
+                      lineHeight: 1.55,
+                      color: "#0f172a",
+                      maxHeight: "160px",
+                      overflowY: "auto",
+                      whiteSpace: "pre-wrap"
+                    }}
+                  >
+                    {analysis.transcript}
+                  </div>
+                </div>
+              )}
 
               {/* Key Discussion Points */}
               {Array.isArray(analysis.keyPoints) && analysis.keyPoints.length > 0 && (
@@ -916,25 +952,53 @@ export default function CallVoiceDebriefWidget({
                 <div
                   style={{
                     backgroundColor: "#f8fafc",
-                    borderRadius: "8px",
-                    padding: "8px 10px",
+                    borderRadius: "10px",
+                    padding: "10px 12px",
                     marginBottom: "8px",
                     border: "1px solid #e2e8f0"
                   }}
                 >
                   <div
                     style={{
-                      fontSize: "0.72rem",
+                      fontSize: "0.74rem",
                       fontWeight: 700,
                       color: "#334155",
-                      marginBottom: "4px",
+                      marginBottom: "6px",
                       display: "flex",
                       alignItems: "center",
+                      justifyContent: "space-between",
                       gap: "5px"
                     }}
                   >
-                    <Volume2 size={13} style={{ color: "#4f46e5" }} />
-                    <span>Debrief Audio Recording (Attached)</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                      <Volume2 size={14} style={{ color: "#4f46e5" }} />
+                      <span>Debrief Audio Recording (Attached)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRecordedAudioUrl("");
+                        if (onApplyToForm) {
+                          onApplyToForm({ recordingUrl: null });
+                        }
+                      }}
+                      style={{
+                        background: "#fff1f2",
+                        border: "1px solid #fecdd3",
+                        borderRadius: "4px",
+                        color: "#dc2626",
+                        fontSize: "0.7rem",
+                        fontWeight: 700,
+                        padding: "2px 6px",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "3px"
+                      }}
+                      title="Delete / remove audio recording"
+                    >
+                      <Trash2 size={11} /> Delete Recording
+                    </button>
                   </div>
                   <audio controls src={recordedAudioUrl} style={{ width: "100%", height: "32px", borderRadius: "6px" }} />
                 </div>

@@ -1,0 +1,302 @@
+/* =========================================================
+   SALES RETURNS / RMA WORKFLOW - RESPONSIVE & MOBILE STYLES
+   Quality Check, Inventory Restocking, and Auto Credit Notes
+   ========================================================= */
+
+.sales-returns-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ─── Compact KPI Metric Grid ─── */
+.sales-returns-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.sales-returns-kpi-card {
+  background-color: #ffffff;
+  padding: 16px 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.2s ease;
+  border-left-width: 4px;
+}
+
+.sales-returns-kpi-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+}
+
+.sales-returns-kpi-card.total {
+  border-left-color: #f97316;
+}
+
+.sales-returns-kpi-card.restockable {
+  border-left-color: #10b981;
+}
+
+.sales-returns-kpi-card.damaged {
+  border-left-color: #ef4444;
+}
+
+.sales-returns-kpi-card.credit {
+  border-left-color: #4f46e5;
+}
+
+.sales-returns-kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sales-returns-kpi-value {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.sales-returns-kpi-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* ─── Toolbar & Filter Controls ─── */
+.sales-returns-toolbar {
+  background-color: #ffffff;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  padding: 14px 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sales-returns-toolbar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sales-returns-search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 240px;
+}
+
+.sales-returns-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.sales-returns-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 8px 12px 8px 36px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid #cbd5e1 !important;
+  font-size: 0.84rem !important;
+  outline: none !important;
+  background-color: #f8fafc !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+}
+
+.sales-returns-search-input:focus {
+  border-color: #f97316 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.12) !important;
+}
+
+.sales-returns-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sales-returns-select {
+  height: 40px;
+  padding: 0 32px 0 12px;
+  border-radius: 10px;
+  border: 1.5px solid #cbd5e1;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #334155;
+  background-color: #f8fafc;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.sales-returns-select:focus {
+  border-color: #f97316;
+  background-color: #ffffff;
+}
+
+/* ─── Modern Actions Group ─── */
+.sales-returns-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sales-returns-btn {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sales-returns-btn-primary {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
+}
+
+.sales-returns-btn-primary:hover {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
+  transform: translateY(-1px);
+}
+
+.sales-returns-btn-secondary {
+  background-color: #f8fafc;
+  color: #475569;
+  border: 1.5px solid #cbd5e1;
+}
+
+.sales-returns-btn-secondary:hover {
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+/* ─── Condition & Status Tags ─── */
+.rma-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.rma-condition-restockable {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.rma-condition-damaged {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.rma-condition-scrap {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.rma-status-received {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+}
+
+.rma-status-inspected {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+  border: 1px solid #e9d5ff;
+}
+
+.rma-status-approved {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.rma-status-completed {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+/* ─── Mobile Responsive Breakpoints ─── */
+@media (max-width: 1024px) {
+  .sales-returns-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .sales-returns-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .sales-returns-toolbar-top {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sales-returns-search-wrap {
+    width: 100%;
+  }
+
+  .sales-returns-filter-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sales-returns-select {
+    flex: 1;
+  }
+
+  .sales-returns-actions-group {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .sales-returns-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

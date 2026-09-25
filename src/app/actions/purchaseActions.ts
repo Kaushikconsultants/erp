@@ -240,6 +240,87 @@ export async function deletePurchaseOrder(poId: string) {
   }
 }
 
+export async function deleteMultiplePurchaseOrders(poIds: string[]) {
+  if (!await canManagePurchases()) return { error: "Unauthorized" };
+
+  if (!poIds || poIds.length === 0) {
+    return { error: "No purchase orders selected for deletion." };
+  }
+
+  try {
+    const pos = await prisma.purchaseOrder.findMany({
+      where: { id: { in: poIds } },
+      include: {
+        items: true,
+        bills: { select: { id: true }, take: 1 }
+      }
+    });
+
+    if (pos.length === 0) {
+      return { error: "No valid purchase orders found to delete." };
+    }
+
+    const linkedPOs = pos.filter(po => po.bills.length > 0);
+    const deletablePOs = pos.filter(po => po.bills.length === 0);
+
+    if (deletablePOs.length === 0) {
+      return {
+        error: `Cannot delete selected purchase orders because they are linked to vendor bills (${linkedPOs.map(p => `#${p.poNumber}`).slice(0, 3).join(', ')}${linkedPOs.length > 3 ? '...' : ''}).`
+      };
+    }
+
+    const deletableIds = deletablePOs.map(p => p.id);
+
+    await prisma.$transaction(async (tx) => {
+      for (const po of deletablePOs) {
+        // Reverse inventory for received items
+        for (const it of po.items) {
+          if (it.receivedQty > 0) {
+            await tx.product.update({
+              where: { id: it.productId },
+              data: { stockQuantity: { decrement: it.receivedQty } }
+            }).catch(() => {});
+
+            await tx.inventoryTransaction.create({
+              data: {
+                productId: it.productId,
+                type: 'OUT',
+                quantity: it.receivedQty,
+                reference: `CANCEL-${po.poNumber}`,
+                notes: `Stock reversed due to cancellation/deletion of Purchase Order #${po.poNumber}`
+              }
+            }).catch(() => {});
+          }
+        }
+      }
+
+      // Delete items
+      await tx.purchaseOrderItem.deleteMany({ where: { purchaseOrderId: { in: deletableIds } } });
+
+      // Delete POs
+      await tx.purchaseOrder.deleteMany({ where: { id: { in: deletableIds } } });
+    });
+
+    revalidatePath("/purchases");
+    revalidatePath("/products");
+    revalidatePath("/vendors");
+
+    if (linkedPOs.length > 0) {
+      return {
+        success: true,
+        count: deletableIds.length,
+        message: `Deleted ${deletableIds.length} purchase order(s). Skipped ${linkedPOs.length} PO(s) linked to vendor bills.`
+      };
+    }
+
+    return { success: true, count: deletableIds.length };
+  } catch (error: any) {
+    console.error("Failed to delete multiple purchase orders:", error);
+    return { error: error.message || "Failed to delete purchase orders" };
+  }
+}
+
+
 export async function receiveGRN(poId: string, receivedItems: { itemId: string; receivedQty: number }[], warehouseId?: string) {
   if (!await canManagePurchases()) return { error: "Unauthorized" };
 
@@ -306,3 +387,4 @@ export async function receiveGRN(poId: string, receivedItems: { itemId: string; 
     return { error: "GRN processing failed: " + error.message };
   }
 }
+

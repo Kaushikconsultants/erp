@@ -2,7 +2,7 @@
 
 import DatePicker from '@/components/ui/DatePicker';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
   FileMinus, 
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { createCreditNote, cancelCreditNote } from '@/app/actions/creditNoteActions';
 import * as XLSX from 'xlsx';
+import TablePagination, { paginate } from '@/components/ui/TablePagination';
 import './credit-notes.css';
 
 interface CreditNotesClientProps {
@@ -42,6 +43,11 @@ export default function CreditNotesClient({
   const [search, setSearch] = useState('');
   const [filterReason, setFilterReason] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+
+  // Pagination state: default 25 per page (options: 25, 50, 100, 200)
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Create Modal State
   const [showModal, setShowModal] = useState(false);
@@ -91,6 +97,15 @@ export default function CreditNotesClient({
       return matchStatus && matchReason && matchSearch;
     });
   }, [creditNotes, search, filterReason, filterStatus]);
+
+  // Reset to first page when search, filter or pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterReason, filterStatus, pageSize]);
+
+  const paginatedCreditNotes = useMemo(() => {
+    return paginate(filtered, currentPage, pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   // Metrics
   const totalIssued = creditNotes.filter(cn => cn.status !== 'CANCELLED').reduce((acc, cn) => acc + (cn.totalAmount || 0), 0);
@@ -380,7 +395,7 @@ export default function CreditNotesClient({
       </div>
 
       {/* ─── 3. DESKTOP DATA TABLE (Visible > 768px) ─── */}
-      <div className="credit-notes-desktop-table">
+      <div className="credit-notes-desktop-table" ref={tableContainerRef}>
         <div className="table-responsive">
           <table className="data-table" style={{ width: '100%', fontSize: '0.85rem' }}>
             <thead>
@@ -407,7 +422,7 @@ export default function CreditNotesClient({
                   </td>
                 </tr>
               ) : (
-                filtered.map(cn => (
+                paginatedCreditNotes.map(cn => (
                   <tr key={cn.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '12px 16px', fontWeight: 700, color: '#e11d48' }}>
                       <Link href={`/credit-notes/${cn.id}`} style={{ color: '#e11d48', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
@@ -523,6 +538,17 @@ export default function CreditNotesClient({
             </tbody>
           </table>
         </div>
+
+        {/* ─── DESKTOP PAGINATION FOOTER ─── */}
+        <TablePagination
+          totalCount={filtered.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="credit notes"
+          containerRef={tableContainerRef}
+        />
       </div>
 
       {/* ─── 4. MOBILE CREDIT NOTE CARDS FEED (Visible <= 768px) ─── */}
@@ -536,7 +562,7 @@ export default function CreditNotesClient({
             </div>
           </div>
         ) : (
-          filtered.map(cn => {
+          paginatedCreditNotes.map(cn => {
             const statusBg = cn.status === 'OPEN' ? '#fef3c7' : (cn.status === 'ADJUSTED' ? '#dcfce7' : '#fee2e2');
             const statusColor = cn.status === 'OPEN' ? '#92400e' : (cn.status === 'ADJUSTED' ? '#166534' : '#991b1b');
             const reasonBg = cn.reason === 'Sales Return' ? '#fee2e2' : '#f1f5f9';
@@ -628,6 +654,19 @@ export default function CreditNotesClient({
             );
           })
         )}
+      </div>
+
+      {/* ─── MOBILE PAGINATION FOOTER ─── */}
+      <div className="credit-notes-mobile-pagination" style={{ display: 'none', marginTop: '12px' }}>
+        <TablePagination
+          totalCount={filtered.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="credit notes"
+          style={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
+        />
       </div>
 
       {/* ─── CREATE CREDIT NOTE MODAL ─── */}
@@ -797,11 +836,13 @@ export default function CreditNotesClient({
                       <thead>
                         <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                           <th style={{ padding: '8px 10px', textAlign: 'left' }}>Product / Description</th>
-                          <th style={{ padding: '8px 10px', width: '90px', textAlign: 'right' }}>Qty</th>
-                          <th style={{ padding: '8px 10px', width: '110px', textAlign: 'right' }}>Rate (₹)</th>
-                          <th style={{ padding: '8px 10px', width: '90px', textAlign: 'right' }}>GST %</th>
-                          <th style={{ padding: '8px 10px', width: '110px', textAlign: 'right' }}>Total (₹)</th>
-                          <th style={{ padding: '8px 10px', width: '40px' }}></th>
+                          <th style={{ padding: '8px 10px', width: '80px', textAlign: 'center' }}>HSN</th>
+                          <th style={{ padding: '8px 10px', width: '70px', textAlign: 'right' }}>Qty</th>
+                          <th style={{ padding: '8px 10px', width: '65px', textAlign: 'center' }}>Unit</th>
+                          <th style={{ padding: '8px 10px', width: '95px', textAlign: 'right' }}>Rate (₹)</th>
+                          <th style={{ padding: '8px 10px', width: '80px', textAlign: 'right' }}>GST %</th>
+                          <th style={{ padding: '8px 10px', width: '105px', textAlign: 'right' }}>Total (₹)</th>
+                          <th style={{ padding: '8px 10px', width: '36px' }}></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -809,7 +850,7 @@ export default function CreditNotesClient({
                           const itemTotal = (item.quantity * item.rate) + ((item.quantity * item.rate * item.gstRate) / 100);
                           return (
                             <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '8px 10px' }}>
+                              <td style={{ padding: '6px 8px' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                   <select
                                     value={item.productId}
@@ -833,11 +874,24 @@ export default function CreditNotesClient({
                                       setLineItems(updated);
                                     }}
                                     required
-                                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                                    style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none', boxSizing: 'border-box' }}
                                   />
                                 </div>
                               </td>
-                              <td style={{ padding: '8px 10px' }}>
+                              <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                                <input
+                                  type="text"
+                                  placeholder="HSN"
+                                  value={item.hsnCode || '6109'}
+                                  onChange={(e) => {
+                                    const updated = [...lineItems];
+                                    updated[idx].hsnCode = e.target.value;
+                                    setLineItems(updated);
+                                  }}
+                                  style={{ width: '100%', padding: '6px 4px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', textAlign: 'center', outline: 'none', boxSizing: 'border-box' }}
+                                />
+                              </td>
+                              <td style={{ padding: '6px 4px' }}>
                                 <input
                                   type="number"
                                   min="1"
@@ -847,10 +901,27 @@ export default function CreditNotesClient({
                                     updated[idx].quantity = parseFloat(e.target.value) || 1;
                                     setLineItems(updated);
                                   }}
-                                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', textAlign: 'right', outline: 'none' }}
+                                  style={{ width: '100%', padding: '6px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', textAlign: 'right', outline: 'none', boxSizing: 'border-box' }}
                                 />
                               </td>
-                              <td style={{ padding: '8px 10px' }}>
+                              <td style={{ padding: '6px 4px', textAlign: 'center' }}>
+                                <select
+                                  value={item.unit || 'pcs'}
+                                  onChange={(e) => {
+                                    const updated = [...lineItems];
+                                    updated[idx].unit = e.target.value;
+                                    setLineItems(updated);
+                                  }}
+                                  style={{ width: '100%', padding: '6px 4px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.78rem', outline: 'none' }}
+                                >
+                                  <option value="pcs">pcs</option>
+                                  <option value="sets">sets</option>
+                                  <option value="box">box</option>
+                                  <option value="mtr">mtr</option>
+                                  <option value="kg">kg</option>
+                                </select>
+                              </td>
+                              <td style={{ padding: '6px 4px' }}>
                                 <input
                                   type="number"
                                   min="0"
@@ -861,10 +932,10 @@ export default function CreditNotesClient({
                                     updated[idx].rate = parseFloat(e.target.value) || 0;
                                     setLineItems(updated);
                                   }}
-                                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', textAlign: 'right', outline: 'none' }}
+                                  style={{ width: '100%', padding: '6px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', textAlign: 'right', outline: 'none', boxSizing: 'border-box' }}
                                 />
                               </td>
-                              <td style={{ padding: '8px 10px' }}>
+                              <td style={{ padding: '6px 4px' }}>
                                 <select
                                   value={item.gstRate}
                                   onChange={(e) => {
@@ -872,7 +943,7 @@ export default function CreditNotesClient({
                                     updated[idx].gstRate = parseFloat(e.target.value) || 0;
                                     setLineItems(updated);
                                   }}
-                                  style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
+                                  style={{ width: '100%', padding: '6px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.8rem', outline: 'none' }}
                                 >
                                   <option value={12}>12%</option>
                                   <option value={5}>5%</option>
@@ -881,10 +952,10 @@ export default function CreditNotesClient({
                                   <option value={0}>0%</option>
                                 </select>
                               </td>
-                              <td style={{ padding: '8px 10px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                              <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
                                 ₹{itemTotal.toFixed(2)}
                               </td>
-                              <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                              <td style={{ padding: '6px 4px', textAlign: 'center' }}>
                                 {lineItems.length > 1 && (
                                   <button
                                     type="button"

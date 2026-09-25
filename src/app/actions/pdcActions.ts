@@ -166,13 +166,17 @@ export async function clearPostDatedCheque(input: {
       include: { customer: true, vendor: true }
     });
 
-    if (!cheque) return { success: false, error: "PDC not found" };
+    if (!cheque || (cheque.organizationId && cheque.organizationId !== organizationId)) {
+      return { success: false, error: "PDC not found" };
+    }
 
     const bankLedger = await prisma.ledgerAccount.findUnique({
       where: { id: input.clearingBankLedgerId }
     });
 
-    if (!bankLedger) return { success: false, error: "Target bank ledger not found" };
+    if (!bankLedger || (bankLedger.organizationId && bankLedger.organizationId !== organizationId)) {
+      return { success: false, error: "Target bank ledger not found" };
+    }
 
     const clearDate = input.clearanceDate ? new Date(input.clearanceDate) : new Date();
     const isReceived = cheque.type === 'RECEIVED';
@@ -285,6 +289,14 @@ export async function markPdcBounced(input: {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) return { success: false, error: "Unauthorized" };
+    const organizationId = await getTenantOrgId();
+
+    const existing = await prisma.postDatedCheque.findUnique({
+      where: { id: input.chequeId }
+    });
+    if (!existing || (existing.organizationId && existing.organizationId !== organizationId)) {
+      return { success: false, error: "PDC not found" };
+    }
 
     const cheque = await prisma.postDatedCheque.update({
       where: { id: input.chequeId },

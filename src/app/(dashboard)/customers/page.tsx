@@ -32,27 +32,52 @@ export default async function CustomersPage() {
     const [custRes, empRes] = await Promise.allSettled([
       prisma.customer.findMany({
         where: whereClause,
-        include: {
+        take: 100,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          businessName: true,
+          contactPerson: true,
+          email: true,
+          mobile: true,
+          whatsappNumber: true,
+          alternatePhone: true,
+          billingAddress: true,
+          city: true,
+          state: true,
+          pincode: true,
+          landmark: true,
+          gstNumber: true,
+          regularDiscount: true,
+          preferredPaymentMethod: true,
+          status: true,
+          createdAt: true,
+          assignedSalespersonId: true,
           assignedSalesperson: {
-            include: {
-              user: true
+            select: {
+              id: true,
+              user: {
+                select: { name: true }
+              }
             }
           }
-        },
-        orderBy: { createdAt: 'desc' }
+        }
       }),
       isAdmin ? prisma.employee.findMany({
         where: { organizationId },
-        include: { user: true },
+        select: {
+          id: true,
+          user: { select: { name: true } }
+        },
         orderBy: { user: { name: 'asc' } }
       }) : Promise.resolve([])
     ]);
 
     if (custRes.status === 'fulfilled') {
-      customers = custRes.value || [];
+      customers = (custRes.value as any[]) || [];
     }
     if (empRes.status === 'fulfilled' && empRes.value) {
-      allEmployees = empRes.value.map((e: any) => ({
+      allEmployees = (empRes.value as any[]).map((e: any) => ({
         id: e.id,
         name: e.user?.name || 'Unknown'
       }));

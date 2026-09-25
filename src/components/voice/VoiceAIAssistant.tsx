@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import { useVoiceStore, VoiceMessage } from "@/lib/stores/voiceStore";
 import { executeVoiceCommand } from "@/app/actions/voiceActions";
 import VoiceWaveform from "./VoiceWaveform";
+import StylishHeart from "./StylishHeart";
 import {
+  Heart,
   Mic,
   MicOff,
   Volume2,
@@ -220,19 +222,19 @@ export default function VoiceAIAssistant() {
             openAssistant();
             setTimeout(() => startListeningSession(), 200);
           }}
-          title="Voice AI Assistant (Ctrl + Space)"
+          title="Heart — Voice AI Copilot (Ctrl + Space)"
           className="hover-lift"
           style={{
             position: "fixed",
             bottom: "24px",
             right: "24px",
-            width: "52px",
-            height: "52px",
+            width: "56px",
+            height: "56px",
             borderRadius: "50%",
-            backgroundColor: "var(--accent-primary, #4f46e5)",
+            background: "linear-gradient(135deg, #ff1744 0%, #f43f5e 50%, #e11d48 100%)",
             color: "#ffffff",
             border: "none",
-            boxShadow: "0 8px 24px rgba(79, 70, 229, 0.35)",
+            boxShadow: "0 8px 24px rgba(244, 63, 94, 0.45)",
             cursor: "pointer",
             zIndex: 9999,
             display: "flex",
@@ -241,21 +243,7 @@ export default function VoiceAIAssistant() {
             transition: "all 0.2s ease"
           }}
         >
-          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Mic size={22} />
-            <span
-              style={{
-                position: "absolute",
-                top: "-2px",
-                right: "-2px",
-                width: "9px",
-                height: "9px",
-                borderRadius: "50%",
-                backgroundColor: "#10b981",
-                border: "2px solid #ffffff"
-              }}
-            />
-          </div>
+          <StylishHeart size={30} isBeating={true} variant="white" />
         </button>
       )}
 
@@ -308,25 +296,26 @@ export default function VoiceAIAssistant() {
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <div
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: "8px",
-                    background: "var(--accent-primary, #4f46e5)",
+                    width: 36,
+                    height: 36,
+                    borderRadius: "10px",
+                    background: "linear-gradient(135deg, #ff1744 0%, #f43f5e 50%, #e11d48 100%)",
                     color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    flexShrink: 0
+                    flexShrink: 0,
+                    boxShadow: "0 2px 8px rgba(244, 63, 94, 0.4)"
                   }}
                 >
-                  <Sparkles size={18} />
+                  <StylishHeart size={22} isBeating={true} variant="white" />
                 </div>
                 <div>
-                  <h2 style={{ fontSize: "1rem", fontWeight: 600, margin: 0, color: "#0f172a" }}>
-                    Antigravity Voice AI
+                  <h2 style={{ fontSize: "1.05rem", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                    Heart — Voice AI Copilot
                   </h2>
                   <p style={{ margin: "1px 0 0", fontSize: "0.74rem", color: "#64748b" }}>
-                    Software-Wide Copilot (English & Hindi)
+                    Hands-free Executive Intelligence (English & Hindi)
                   </p>
                 </div>
               </div>

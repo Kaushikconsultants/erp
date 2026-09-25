@@ -4,9 +4,11 @@ import DatePicker from '@/components/ui/DatePicker';
 
 import React, { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { createPurchaseOrder, updatePurchaseOrder, updatePOStatus, receiveGRN, deletePurchaseOrder } from "@/app/actions/purchaseActions";
+import { createPurchaseOrder, updatePurchaseOrder, updatePOStatus, receiveGRN, deletePurchaseOrder, deleteMultiplePurchaseOrders } from "@/app/actions/purchaseActions";
 import ModernSearchableSelect, { SelectOption } from "@/components/ui/ModernSearchableSelect";
 import QuickAddProductModal from "@/components/products/QuickAddProductModal";
+import TablePagination, { paginate } from "@/components/ui/TablePagination";
+import * as XLSX from "xlsx";
 import {
   ShoppingBag,
   Plus,
@@ -31,7 +33,9 @@ import {
   Percent,
   Receipt,
   FileSpreadsheet,
-  Pencil
+  Pencil,
+  Download,
+  Loader2
 } from "lucide-react";
 
 export interface VendorOption {
@@ -81,6 +85,33 @@ export default function PurchasesClient({
   const [voucherPO, setVoucherPO] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Pagination state: default 25 per page (options: 25, 50, 100, 200)
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Multi-select & Export State
+  const [selectedPOIds, setSelectedPOIds] = useState<Set<string>>(new Set());
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const exportMenuRef = React.useRef<HTMLDivElement>(null);
+  const headerCheckboxRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setIsExportMenuOpen(false);
+      }
+    };
+    if (isExportMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isExportMenuOpen]);
+
 
   // Quick Add Product State
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -195,6 +226,124 @@ export default function PurchasesClient({
       return true;
     });
   }, [orders, activeTab, searchTerm]);
+
+  // Reset to first page when search, tab, or pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeTab, pageSize]);
+
+  const paginatedOrders = useMemo(() => {
+    return paginate(filteredOrders, currentPage, pageSize);
+  }, [filteredOrders, currentPage, pageSize]);
+
+  const isAllSelected = paginatedOrders.length > 0 && paginatedOrders.every((po) => selectedPOIds.has(po.id));
+  const isSomeSelected = paginatedOrders.some((po) => selectedPOIds.has(po.id));
+
+  useEffect(() => {
+    if (headerCheckboxRef.current) {
+      headerCheckboxRef.current.indeterminate = isSomeSelected && !isAllSelected;
+    }
+  }, [isSomeSelected, isAllSelected]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedPOIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedPOIds((prev) => {
+        const next = new Set(prev);
+        paginatedOrders.forEach((po) => next.delete(po.id));
+        return next;
+      });
+    } else {
+      setSelectedPOIds((prev) => {
+        const next = new Set(prev);
+        paginatedOrders.forEach((po) => next.add(po.id));
+        return next;
+      });
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPOIds.size === 0) return;
+    const count = selectedPOIds.size;
+    if (!confirm(`Are you sure you want to delete ${count} selected purchase order(s)? This will reverse stock if received and delete items.`)) {
+      return;
+    }
+
+    setIsBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedPOIds);
+      const res = await deleteMultiplePurchaseOrders(ids);
+      if (res?.error) {
+        alert(res.error);
+      } else {
+        setOrders((prev) => prev.filter((po) => !selectedPOIds.has(po.id)));
+        setSelectedPOIds(new Set());
+        if (res?.message) {
+          alert(res.message);
+        }
+      }
+    } catch (err: any) {
+      alert(err?.message || "Failed to bulk delete purchase orders");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleExport = (format: "xlsx" | "csv") => {
+    const targetPOs = selectedPOIds.size > 0
+      ? orders.filter((po) => selectedPOIds.has(po.id))
+      : filteredOrders;
+
+    if (targetPOs.length === 0) {
+      alert("No purchase orders available to export.");
+      return;
+    }
+
+    const rows = targetPOs.map((po) => {
+      const totalQty = po.items?.reduce((s: number, i: any) => s + (i.quantity || 0), 0) || 0;
+      const receivedQty = po.items?.reduce((s: number, i: any) => s + (i.receivedQty || 0), 0) || 0;
+      return {
+        "PO Number": po.poNumber || "",
+        "Vendor": po.vendor?.companyName || "",
+        "Vendor Mobile": po.vendor?.mobile || "",
+        "Order Date": po.createdAt ? new Date(po.createdAt).toLocaleDateString("en-IN") : "",
+        "Expected Date": po.expectedDate ? new Date(po.expectedDate).toLocaleDateString("en-IN") : "",
+        "Payment Terms": po.notes?.includes("[Terms:") ? (po.notes.match(/\[Terms:\s*([^\]]+)\]/) || [])[1] : "Net 30 Days",
+        "Total Value (₹)": po.totalValue || 0,
+        "Total Qty": totalQty,
+        "Received Qty": receivedQty,
+        "Status": po.status || "Draft"
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "PurchaseOrders");
+    const dateStr = new Date().toISOString().split("T")[0];
+
+    if (format === "xlsx") {
+      XLSX.writeFile(wb, `PurchaseOrders_Export_${dateStr}.xlsx`);
+    } else {
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", `PurchaseOrders_Export_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+    setIsExportMenuOpen(false);
+  };
+
 
   function resetCreateForm() {
     setEditingPO(null);
@@ -750,59 +899,154 @@ export default function PurchasesClient({
           })}
         </div>
 
-        {/* Search Input */}
-        <div style={{ position: "relative", minWidth: "260px" }}>
-          <Search
-            size={14}
-            style={{
-              position: "absolute",
-              left: "12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "#94a3b8"
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search PO #, vendor, or product..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              height: "36px",
-              padding: "0 32px 0 34px",
-              borderRadius: "9999px",
-              border: "1px solid #cbd5e1",
-              fontSize: "0.82rem",
-              backgroundColor: "#f8fafc",
-              color: "#0f172a",
-              outline: "none"
-            }}
-          />
-          {searchTerm && (
+        {/* Search Input & Action Buttons */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+          {/* Export Dropdown Menu */}
+          <div className="erp-export-dropdown-container" ref={exportMenuRef}>
             <button
               type="button"
-              onClick={() => setSearchTerm("")}
+              className="btn-erp-export"
+              onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+              title="Export purchase orders to Excel or CSV"
+            >
+              <Download size={14} />
+              <span>Export {selectedPOIds.size > 0 ? `(${selectedPOIds.size})` : ''}</span>
+              <ChevronDown size={13} style={{ transform: isExportMenuOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s ease' }} />
+            </button>
+
+            {isExportMenuOpen && (
+              <div className="erp-export-dropdown-menu">
+                <div className="erp-export-dropdown-header">
+                  <span>{selectedPOIds.size > 0 ? `Export Selected (${selectedPOIds.size})` : `Export All (${filteredOrders.length})`}</span>
+                </div>
+                <button
+                  type="button"
+                  className="erp-export-dropdown-item"
+                  onClick={() => handleExport('xlsx')}
+                >
+                  <FileSpreadsheet size={15} style={{ color: '#10b981' }} />
+                  <div className="erp-export-item-text">
+                    <span className="title">Excel Spreadsheet</span>
+                    <span className="sub">.xlsx format</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="erp-export-dropdown-item"
+                  onClick={() => handleExport('csv')}
+                >
+                  <Download size={15} style={{ color: '#3b82f6' }} />
+                  <div className="erp-export-item-text">
+                    <span className="title">CSV File</span>
+                    <span className="sub">Standard comma-separated</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Selection Action Buttons (Matched with Theme) */}
+          {selectedPOIds.size > 0 && (
+            <>
+              <div className="btn-selection-count" title={`${selectedPOIds.size} purchase orders selected`}>
+                <span className="selection-count-pill">{selectedPOIds.size}</span>
+                <span>Selected</span>
+              </div>
+
+              <button
+                type="button"
+                className="btn-select-all"
+                onClick={handleToggleSelectAll}
+                title={isAllSelected ? "Deselect page" : `Select all ${paginatedOrders.length} on page`}
+              >
+                <span>{isAllSelected ? "Deselect Page" : `Select Page (${paginatedOrders.length})`}</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-delete-selected"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting}
+                title="Delete selected purchase orders"
+              >
+                {isBulkDeleting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Delete ({selectedPOIds.size})</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                className="btn-clear-selection"
+                onClick={() => setSelectedPOIds(new Set())}
+                title="Clear selection"
+              >
+                <X size={14} />
+              </button>
+            </>
+          )}
+
+          <div style={{ position: "relative", minWidth: "260px" }}>
+            <Search
+              size={14}
               style={{
                 position: "absolute",
-                right: "10px",
+                left: "12px",
                 top: "50%",
                 transform: "translateY(-50%)",
-                background: "none",
-                border: "none",
-                color: "#94a3b8",
-                cursor: "pointer",
-                padding: "2px"
+                color: "#94a3b8"
               }}
-            >
-              <X size={13} />
-            </button>
-          )}
+            />
+            <input
+              type="text"
+              placeholder="Search PO #, vendor, or product..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: "100%",
+                height: "36px",
+                padding: "0 32px 0 34px",
+                borderRadius: "9999px",
+                border: "1px solid #cbd5e1",
+                fontSize: "0.82rem",
+                backgroundColor: "#f8fafc",
+                color: "#0f172a",
+                outline: "none"
+              }}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                style={{
+                  position: "absolute",
+                  right: "10px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                  padding: "2px"
+                }}
+              >
+                <X size={13} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ─── 4. PURCHASE ORDERS TABLE ─── */}
       <div
+        ref={tableContainerRef}
         className="glass-panel"
         style={{
           padding: "20px",
@@ -816,6 +1060,15 @@ export default function PurchasesClient({
           <table className="data-table" style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                <th className="table-checkbox-cell">
+                  <input
+                    type="checkbox"
+                    ref={headerCheckboxRef}
+                    checked={isAllSelected}
+                    onChange={handleToggleSelectAll}
+                    className="table-checkbox"
+                  />
+                </th>
                 <th style={{ padding: "12px 14px", fontSize: "0.74rem", fontWeight: 600, color: "#475569", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   PO Number
                 </th>
@@ -843,7 +1096,7 @@ export default function PurchasesClient({
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((po) => {
+              {paginatedOrders.map((po) => {
                 const totalItemsCount = po.items?.reduce((s: number, i: any) => s + (i.quantity || 0), 0) || 0;
                 const receivedItemsCount = po.items?.reduce((s: number, i: any) => s + (i.receivedQty || 0), 0) || 0;
                 const isFullyReceived = po.status === "Received" || (totalItemsCount > 0 && receivedItemsCount >= totalItemsCount);
@@ -853,15 +1106,24 @@ export default function PurchasesClient({
                     key={po.id}
                     style={{
                       borderBottom: "1px solid #f1f5f9",
+                      backgroundColor: selectedPOIds.has(po.id) ? "#f5f3ff" : undefined,
                       transition: "background-color 0.15s ease"
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#fafafa";
+                      if (!selectedPOIds.has(po.id)) e.currentTarget.style.backgroundColor = "#fafafa";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = "transparent";
+                      if (!selectedPOIds.has(po.id)) e.currentTarget.style.backgroundColor = "transparent";
                     }}
                   >
+                    <td className="table-checkbox-cell">
+                      <input
+                        type="checkbox"
+                        checked={selectedPOIds.has(po.id)}
+                        onChange={() => handleToggleSelect(po.id)}
+                        className="table-checkbox"
+                      />
+                    </td>
                     {/* PO Number */}
                     <td style={{ padding: "14px" }}>
                       <span
@@ -1101,6 +1363,18 @@ export default function PurchasesClient({
             </tbody>
           </table>
         </div>
+
+        {/* ─── PAGINATION FOOTER ─── */}
+        <TablePagination
+          totalCount={filteredOrders.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="purchase orders"
+          containerRef={tableContainerRef}
+          style={{ margin: "16px -20px -20px -20px", borderBottomLeftRadius: "14px", borderBottomRightRadius: "14px" }}
+        />
       </div>
 
       {/* ─────────────────────────────────────────────────────────────

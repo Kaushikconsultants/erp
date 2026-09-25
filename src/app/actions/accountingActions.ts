@@ -280,7 +280,9 @@ export async function syncSystemLedgers() {
 
     // 4. Sync Vendors -> Sundry Creditors
     if (creditorsGroup) {
-      const vendors = await prisma.vendor.findMany({ where: { organizationId } });
+      const vendors = typeof (prisma as any)?.vendor?.findMany === "function"
+        ? await (prisma as any).vendor.findMany({ where: { organizationId } })
+        : [];
       for (const v of vendors) {
         if (!vendLedgerMap.has(v.id)) {
           const vendCode = `VEND_${v.id.slice(0, 8)}`;
@@ -326,8 +328,14 @@ export async function syncSystemLedgers() {
     const discountAllowedLedger = codeLedgerMap.get("SYS_DISCOUNT_ALLOWED") || generalExpLedger;
     const discountReceivedLedger = codeLedgerMap.get("SYS_DISCOUNT_RECEIVED");
     const openingEquityLedger = codeLedgerMap.get("SYS_OPENING_EQUITY");
+    const tdsPayableLedger = codeLedgerMap.get("SYS_TDS_PAYABLE");
+    const tcsReceivableLedger = codeLedgerMap.get("SYS_TCS_RECEIVABLE");
 
     // 4.5. PRUNE ORPHANED & CANCELLED JOURNAL ENTRIES
+    if (!prisma?.journalEntry || typeof prisma.journalEntry.findMany !== "function") {
+      return { success: true, count: 0 };
+    }
+
     const allSystemJVs = await prisma.journalEntry.findMany({
       where: {
         OR: [{ organizationId }, { organizationId: null }],
@@ -487,6 +495,17 @@ export async function syncSystemLedgers() {
             }
           }
 
+          // Cr TCS Collected if TCS exists
+          const tcsAmt = Number(inv.tcsAmount) || 0;
+          if (tcsAmt > 0 && tcsReceivableLedger) {
+            lines.push({
+              ledgerAccountId: tcsReceivableLedger.id,
+              debit: 0,
+              credit: tcsAmt,
+              particulars: `TCS u/s ${inv.tcsSection || '206C(1H)'} on Inv #${inv.invoiceNumber}`
+            });
+          }
+
           // Round Off adjustment if discrepancy exists
           const sumDr = Number(lines.reduce((acc, l) => acc + l.debit, 0).toFixed(2));
           const sumCr = Number(lines.reduce((acc, l) => acc + l.credit, 0).toFixed(2));
@@ -637,13 +656,25 @@ export async function syncSystemLedgers() {
             }
           }
 
-          // Cr Vendor (Total Amount)
+          // Cr Vendor & TDS Payable
+          const tdsAmt = Number(b.tdsAmount) || 0;
+          const netToVendor = Number((b.totalAmount - tdsAmt).toFixed(2));
+
           lines.push({
             ledgerAccountId: vendorLedger.id,
             debit: 0,
-            credit: b.totalAmount,
-            particulars: `By Purchase Bill #${b.billNumber}`
+            credit: netToVendor,
+            particulars: `By Purchase Bill #${b.billNumber} (Net Payable)`
           });
+
+          if (tdsAmt > 0 && tdsPayableLedger) {
+            lines.push({
+              ledgerAccountId: tdsPayableLedger.id,
+              debit: 0,
+              credit: tdsAmt,
+              particulars: `TDS u/s ${b.tdsSection || '194Q'} on Bill #${b.billNumber}`
+            });
+          }
 
           // Cr Discount Received if discount exists
           if (discount > 0 && discountReceivedLedger) {

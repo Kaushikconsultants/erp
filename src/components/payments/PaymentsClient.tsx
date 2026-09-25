@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { recordCustomerPayment, getCustomerUnpaidInvoices, cancelPayment, updatePayment, deletePayment } from '@/app/actions/paymentActions';
 import ModernSearchableSelect, { SelectOption } from '@/components/ui/ModernSearchableSelect';
+import TablePagination, { paginate } from '@/components/ui/TablePagination';
 import "./payments.css";
 
 interface CustomerOption {
@@ -142,6 +143,11 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
   const [datePreset, setDatePreset] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Pagination state: default 25 per page (options: 25, 50, 100, 200)
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
   // Record Payment Modal State
   const [showModal, setShowModal] = useState(false);
@@ -504,6 +510,15 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
     });
   }, [payments, search, selectedMode, selectedType, selectedStatus, selectedCustomer, startDate, endDate]);
 
+  // Reset to first page when search, filters, or pageSize change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedMode, selectedType, selectedStatus, selectedCustomer, startDate, endDate, pageSize]);
+
+  const paginatedPayments = useMemo(() => {
+    return paginate(filteredPayments, currentPage, pageSize);
+  }, [filteredPayments, currentPage, pageSize]);
+
   // Export to Excel
   const exportToExcel = () => {
     const data = filteredPayments.map(p => ({
@@ -848,7 +863,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
       </div>
 
       {/* DESKTOP TABLE VIEW (> 768px) */}
-      <div className="payments-desktop-table">
+      <div className="payments-desktop-table" ref={tableContainerRef}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Payment Transactions Ledger</h3>
@@ -873,7 +888,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.map(pay => (
+              {paginatedPayments.map(pay => (
                 <tr key={pay.id}>
                   <td style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>
                     {pay.paymentNumber}
@@ -1016,6 +1031,17 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             </tbody>
           </table>
         </div>
+
+        {/* ─── DESKTOP PAGINATION FOOTER ─── */}
+        <TablePagination
+          totalCount={filteredPayments.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="payments"
+          containerRef={tableContainerRef}
+        />
       </div>
 
       {/* MOBILE PAYMENT CARDS FEED (<= 768px) */}
@@ -1029,7 +1055,7 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             </p>
           </div>
         ) : (
-          filteredPayments.map(pay => {
+          paginatedPayments.map(pay => {
             const isCompleted = pay.status === 'Completed';
             const isCancelled = pay.status === 'Cancelled';
             const isAdvance = pay.paymentType === 'Advance Payment';
@@ -1178,6 +1204,19 @@ export default function PaymentsClient({ initialPayments, summary, customers }: 
             );
           })
         )}
+      </div>
+
+      {/* ─── MOBILE PAGINATION FOOTER ─── */}
+      <div className="payments-mobile-pagination" style={{ display: 'none', marginTop: '12px' }}>
+        <TablePagination
+          totalCount={filteredPayments.length}
+          pageSize={pageSize}
+          currentPage={currentPage}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          itemName="payments"
+          style={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
+        />
       </div>
 
       {/* 1. COMPACT, PERFECTLY ALIGNED & ZERO-SCROLL RECORD PAYMENT POPUP MODAL */}

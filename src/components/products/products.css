@@ -62,6 +62,13 @@
   flex-wrap: wrap;
 }
 
+.scanner-qty-buttons-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  flex: 1 1 auto;
+}
+
 /* ─── Top Inventory Valuation & KPI Summary ─── */
 .products-kpi-grid {
   display: grid;
@@ -455,7 +462,7 @@
   .scanner-qty-buttons-row {
     display: flex;
     gap: 8px;
-    align-items: center;
+    align-items: flex-end;
     width: 100%;
   }
 

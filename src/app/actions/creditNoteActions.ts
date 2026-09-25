@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getTenantOrgId } from "@/lib/tenant";
 import { syncSystemLedgers } from "./accountingActions";
+import { checkPeriodLock } from "./periodLockActions";
 
 export interface CreateCreditNoteInput {
   customerId: string;
@@ -140,6 +141,11 @@ export async function createCreditNote(input: CreateCreditNoteInput) {
     }
     if (!input.items || input.items.length === 0) {
       return { success: false, error: "At least one line item is required" };
+    }
+
+    const lockCheck = await checkPeriodLock(input.creditNoteDate || new Date());
+    if (lockCheck.isLocked) {
+      return { success: false, error: lockCheck.error };
     }
 
     const organizationId = await getTenantOrgId();
@@ -286,6 +292,11 @@ export async function cancelCreditNote(id: string, reason?: string) {
 
     if (!cn) return { success: false, error: "Credit note not found" };
     if (cn.status === 'CANCELLED') return { success: false, error: "Already cancelled" };
+
+    const lockCheck = await checkPeriodLock(cn.creditNoteDate);
+    if (lockCheck.isLocked) {
+      return { success: false, error: lockCheck.error };
+    }
 
     // Reverse restock if items were restocked
     if (cn.restockReturnedGoods) {

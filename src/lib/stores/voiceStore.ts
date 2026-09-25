@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from 'react';
+import { speakText as speakSpeech, stopSpeaking as stopSpeech } from "@/lib/speechService";
 
 export interface VoiceMessage {
   id: string;
@@ -9,8 +10,39 @@ export interface VoiceMessage {
   actionType?: string;
   route?: string;
   cardData?: any;
-  cardType?: 'BALANCE_SHEET' | 'CUSTOMER' | 'ORDER' | 'STOCK' | 'PAYROLL' | 'EXPENSE' | 'NAVIGATION' | 'GENERAL';
+  cardType?:
+    | 'BALANCE_SHEET'
+    | 'CUSTOMER'
+    | 'ORDER'
+    | 'STOCK'
+    | 'PAYROLL'
+    | 'EXPENSE'
+    | 'NAVIGATION'
+    | 'GENERAL'
+    | 'CONFIRMATION'
+    | 'REPORT'
+    | 'ATTENDANCE'
+    | 'CLIENT_ACTION'
+    | 'GUIDE';
+  clientAction?: {
+    type: string;
+    data: any;
+  };
   timestamp: string;
+}
+
+export interface ActiveVoiceFeedback {
+  query?: string;
+  text: string;
+  success?: boolean;
+  actionText?: string;
+  route?: string;
+  suggestedActions?: Array<{ label: string; href?: string; voiceCommand?: string }>;
+  cardType?: string;
+  cardData?: any;
+  keyMetrics?: Array<{ label: string; value: string; positive?: boolean }>;
+  requiresConfirmation?: boolean;
+  confirmationPayload?: any;
 }
 
 export interface VoiceState {
@@ -24,7 +56,11 @@ export interface VoiceState {
   messages: VoiceMessage[];
   voiceEnabled: boolean;
 
-  openAssistant: (initialQuery?: string) => void;
+  autoStartListening?: boolean;
+  activeFeedback?: ActiveVoiceFeedback | null;
+  activeQuery?: string;
+
+  openAssistant: (initialQuery?: string, autoListen?: boolean, feedback?: ActiveVoiceFeedback | null) => void;
   closeAssistant: () => void;
   toggleAssistant: () => void;
   setIsListening: (isListening: boolean) => void;
@@ -50,23 +86,41 @@ let state: VoiceState = {
   transcript: '',
   feedbackText: '',
   language: 'en-IN',
+  autoStartListening: false,
+  activeFeedback: null,
+  activeQuery: '',
   messages: [
     {
       id: 'welcome-1',
       role: 'assistant',
-      text: "Namaste! I'm your ERP & CRM Voice AI Assistant. You can ask me about Balance Sheet, Net Profit, Stock, Payroll, Customer receivables, or tell me to log an expense or add a customer.",
+      text: "Namaste! I'm Heart, your ERP Voice AI Copilot. You can ask me about Balance Sheet, Net Profit, Stock, Payroll, Customer receivables, or tell me to log an expense or add a customer.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()
     }
   ],
   voiceEnabled: true,
 
-  openAssistant: (initialQuery?: string) => {
-    updateState({ isOpen: true, transcript: initialQuery || '' });
+  openAssistant: (initialQuery?: string, autoListen?: boolean, feedback?: ActiveVoiceFeedback | null) => {
+    updateState({
+      isOpen: true,
+      transcript: initialQuery || '',
+      activeQuery: initialQuery || '',
+      activeFeedback: feedback || null,
+      autoStartListening: !!autoListen
+    });
   },
 
   closeAssistant: () => {
     state.stopSpeaking();
-    updateState({ isOpen: false, isListening: false, isProcessing: false, transcript: '', feedbackText: '' });
+    updateState({
+      isOpen: false,
+      isListening: false,
+      isProcessing: false,
+      transcript: '',
+      feedbackText: '',
+      activeQuery: '',
+      activeFeedback: null,
+      autoStartListening: false
+    });
   },
 
   toggleAssistant: () => {
@@ -103,37 +157,17 @@ let state: VoiceState = {
   clearMessages: () => updateState({ messages: [] }),
 
   speakText: (text: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-
-    window.speechSynthesis.cancel();
-
-    const cleanText = text
-      .replace(/[*#_`~[\]()]/g, '')
-      .replace(/₹/g, 'Rupees ')
-      .replace(/\+/g, 'plus ')
-      .slice(0, 350);
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = state.language;
-    utterance.rate = 1.0;
-    utterance.pitch = 1.0;
-
-    const voices = window.speechSynthesis.getVoices();
-    const indVoice = voices.find(v => v.lang.includes('IN') || v.name.includes('India') || v.name.includes('Natural'));
-    if (indVoice) utterance.voice = indVoice;
-
-    utterance.onstart = () => updateState({ isSpeaking: true });
-    utterance.onend = () => updateState({ isSpeaking: false });
-    utterance.onerror = () => updateState({ isSpeaking: false });
-
-    window.speechSynthesis.speak(utterance);
+    speakSpeech(text, {
+      lang: state.language as any,
+      onStart: () => updateState({ isSpeaking: true }),
+      onEnd: () => updateState({ isSpeaking: false }),
+      onError: () => updateState({ isSpeaking: false })
+    });
   },
 
   stopSpeaking: () => {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      updateState({ isSpeaking: false });
-    }
+    stopSpeech();
+    updateState({ isSpeaking: false });
   }
 };
 

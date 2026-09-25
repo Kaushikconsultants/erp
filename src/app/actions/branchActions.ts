@@ -278,7 +278,7 @@ export async function deleteBranch(id: string): Promise<{
 }
 
 /**
- * Fetch all companies / organizations available to the user for multi-company switching
+ * Fetch all companies / organizations available to the user for multi-company switching (Platform Admin only)
  */
 export async function getUserOrganizations(): Promise<{
   success: boolean;
@@ -290,9 +290,22 @@ export async function getUserOrganizations(): Promise<{
     if (!session?.user) return { success: false, organizations: [], error: "Unauthorized" };
 
     const ctx = await getTenantContext();
-    const currentOrgId = ctx?.organizationId;
+    if (!ctx) return { success: false, organizations: [], error: "No tenant context" };
 
-    // Fetch all active organizations
+    // Only platform super admins can view all tenant organizations
+    if (!ctx.isPlatformOwner) {
+      return {
+        success: true,
+        organizations: [{
+          id: ctx.organizationId,
+          name: ctx.organizationName,
+          slug: ctx.organizationSlug,
+          isCurrent: true
+        }]
+      };
+    }
+
+    // Fetch all active organizations for platform super admin
     const orgs = await prisma.organization.findMany({
       where: { subscriptionStatus: { not: 'DELETED' } },
       select: { id: true, name: true, slug: true },
@@ -303,7 +316,7 @@ export async function getUserOrganizations(): Promise<{
       success: true,
       organizations: orgs.map(o => ({
         ...o,
-        isCurrent: o.id === currentOrgId
+        isCurrent: o.id === ctx.organizationId
       }))
     };
   } catch (error: any) {
@@ -312,7 +325,7 @@ export async function getUserOrganizations(): Promise<{
 }
 
 /**
- * Switch the active company / organization for the current user
+ * Switch the active company / organization for the current user (Platform Admin only)
  */
 export async function switchUserOrganization(newOrgId: string): Promise<{
   success: boolean;
@@ -322,6 +335,11 @@ export async function switchUserOrganization(newOrgId: string): Promise<{
     const session = await getServerSession(authOptions);
     const userId = (session?.user as any)?.id;
     if (!userId) return { success: false, error: "Unauthorized" };
+
+    const ctx = await getTenantContext();
+    if (!ctx?.isPlatformOwner) {
+      return { success: false, error: "Access denied. Only SaaS Platform Super Admin can switch tenant organizations." };
+    }
 
     const targetOrg = await prisma.organization.findUnique({ where: { id: newOrgId } });
     if (!targetOrg) return { success: false, error: "Target company does not exist" };

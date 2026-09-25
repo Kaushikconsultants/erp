@@ -39,11 +39,52 @@ import {
   CheckCircle,
   BarChart3,
   Rocket,
-  Trophy
+  Trophy,
+  FileText,
+  ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { removeFollowUp, rescheduleFollowUp } from '@/app/actions/callActions';
 import "@/components/ui/modal.css";
+
+function isFollowUpForToday(dateInput: any): boolean {
+  if (!dateInput) return false;
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return false;
+
+  const now = new Date();
+  // 1. Local browser date check
+  if (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  ) {
+    return true;
+  }
+
+  // 2. IST date check (UTC + 5:30)
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istNow = new Date(now.getTime() + istOffset);
+  const istTarget = new Date(d.getTime() + istOffset);
+  if (
+    istTarget.getUTCFullYear() === istNow.getUTCFullYear() &&
+    istTarget.getUTCMonth() === istNow.getUTCMonth() &&
+    istTarget.getUTCDate() === istNow.getUTCDate()
+  ) {
+    return true;
+  }
+
+  // 3. String YYYY-MM-DD match
+  if (typeof dateInput === 'string' && dateInput.length >= 10) {
+    const raw = dateInput.substring(0, 10);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const localStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const istStr = `${istNow.getUTCFullYear()}-${pad(istNow.getUTCMonth() + 1)}-${pad(istNow.getUTCDate())}`;
+    if (raw === localStr || raw === istStr) return true;
+  }
+
+  return false;
+}
 
 function FollowUpCard({ call }: { call: any }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -85,187 +126,250 @@ function FollowUpCard({ call }: { call: any }) {
       display: 'flex', 
       flexDirection: 'column', 
       backgroundColor: '#ffffff', 
-      padding: '7px 10px', 
-      borderRadius: '8px', 
+      padding: '10px', 
+      borderRadius: '10px', 
       border: priority === 'HIGH' ? '1px solid #fecaca' : '1px solid #e2e8f0', 
-      borderLeft: priority === 'HIGH' ? '3px solid #ef4444' : '3px solid #cbd5e1',
+      borderLeft: priority === 'HIGH' ? '3.5px solid #ef4444' : '3.5px solid #3b82f6',
       opacity: isProcessing ? 0.6 : 1,
-      boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
       transition: 'all 0.15s ease'
     }}>
+      {/* CARD HEADER: NAME & BADGES */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
           <Link 
             href={detailsHref} 
             title={displayName}
             style={{ 
               margin: 0, 
-              fontSize: '0.82rem', 
-              fontWeight: 650, 
+              fontSize: '0.86rem', 
+              fontWeight: 700, 
               color: '#0f172a', 
               textDecoration: 'none',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              maxWidth: '220px'
+              maxWidth: '200px'
             }}
           >
             {displayName}
           </Link>
           {isLead && (
             <span style={{ 
-              fontSize: '9px', 
+              fontSize: '9.5px', 
               fontWeight: 700, 
               padding: '1px 5px', 
               borderRadius: '4px', 
-              backgroundColor: '#eef2ff', 
-              color: '#4f46e5',
-              lineHeight: '1.2'
+              backgroundColor: '#e0e7ff', 
+              color: '#4338ca',
+              lineHeight: '1.2',
+              flexShrink: 0
             }}>
               Lead
             </span>
           )}
           <span style={{ 
-            fontSize: '9px', 
+            fontSize: '9.5px', 
             fontWeight: 700, 
             padding: '1px 5px', 
-            borderRadius: '4px',
+            borderRadius: '4px', 
             backgroundColor: priority === 'HIGH' ? '#fee2e2' : '#fef3c7',
             color: priority === 'HIGH' ? '#dc2626' : '#d97706',
-            lineHeight: '1.2'
+            lineHeight: '1.2',
+            flexShrink: 0
           }}>
             {priority}
           </span>
         </div>
       </div>
       
+      {/* SUBTITLE: CONTACT PERSON & NOTES */}
       <p style={{ 
-        margin: '2px 0 0 0', 
-        fontSize: '0.72rem', 
+        margin: '3px 0 0 0', 
+        fontSize: '0.74rem', 
         color: '#64748b',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis'
+        lineHeight: 1.35,
+        wordBreak: 'break-word'
       }}>
-        {contactPerson && contactPerson !== displayName ? `${contactPerson} • ` : ''}{call.notes || 'Scheduled follow-up call'}
+        {contactPerson && contactPerson !== displayName ? <strong style={{ color: '#334155' }}>{contactPerson} • </strong> : ''}
+        {call.notes || 'Scheduled follow-up call'}
       </p>
       
       {isEditing ? (
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '6px', padding: '6px 8px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '8px', padding: '6px 8px', backgroundColor: '#f8fafc', borderRadius: '6px' }}>
           <DatePicker 
             value={newDate} 
             onChange={(e) => setNewDate(e.target.value)}
             className="zoho-input-field" 
-            style={{ padding: '3px 7px', fontSize: '11.5px', height: '26px' }}
+            style={{ padding: '3px 7px', fontSize: '11.5px', height: '28px', flex: 1, minWidth: 0 }}
           />
-          <button onClick={handleReschedule} disabled={!newDate} className="primary-btn" style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}>Save</button>
-          <button onClick={() => setIsEditing(false)} className="secondary-btn" style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}>Cancel</button>
+          <button onClick={handleReschedule} disabled={!newDate} className="primary-btn" style={{ padding: '3px 10px', fontSize: '11px', height: '28px', flexShrink: 0 }}>Save</button>
+          <button onClick={() => setIsEditing(false)} className="secondary-btn" style={{ padding: '3px 10px', fontSize: '11px', height: '28px', flexShrink: 0 }}>Cancel</button>
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center', marginTop: '5px', paddingTop: '5px', borderTop: '1px solid #f1f5f9' }}>
-          {cleanPhone && (
-            <>
-              <button 
-                type="button"
-                onClick={() => openPhoneDialer({
-                  phone: cleanPhone,
-                  name: customerName || contactPerson || 'Customer'
-                })}
+        <div style={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '5px', 
+          marginTop: '8px', 
+          paddingTop: '6px', 
+          borderTop: '1px solid #f1f5f9' 
+        }}>
+          {/* ROW 1: COMMUNICATION ACTIONS (3 EQUAL COLUMNS) */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: cleanPhone ? 'repeat(3, 1fr)' : '1fr', 
+            gap: '6px' 
+          }}>
+            {cleanPhone ? (
+              <>
+                <button 
+                  type="button"
+                  onClick={() => openPhoneDialer({
+                    phone: cleanPhone,
+                    name: customerName || contactPerson || 'Customer'
+                  })}
+                  style={{ 
+                    padding: '5px 4px', 
+                    fontSize: '11.5px', 
+                    fontWeight: 700, 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: '4px',
+                    borderRadius: '6px',
+                    backgroundColor: '#f0fdf4',
+                    color: '#15803d',
+                    border: '1px solid #bbf7d0',
+                    cursor: 'pointer',
+                    height: '30px',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title={`Call ${customerName || contactPerson || 'Customer'}`}
+                >
+                  <PhoneCall size={12} /> Call
+                </button>
+                <a 
+                  href={`https://wa.me/91${cleanPhone}`} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  style={{ 
+                    textDecoration: 'none', 
+                    padding: '5px 4px', 
+                    fontSize: '11.5px', 
+                    fontWeight: 700, 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: '4px', 
+                    borderRadius: '6px',
+                    backgroundColor: '#25D366', 
+                    color: '#ffffff',
+                    height: '30px',
+                    boxShadow: '0 1px 2px rgba(37,211,102,0.25)',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  <MessageSquare size={12} /> WhatsApp
+                </a>
+                <Link 
+                  href={logCallHref} 
+                  style={{ 
+                    textDecoration: 'none', 
+                    padding: '5px 4px', 
+                    fontSize: '11.5px', 
+                    fontWeight: 700, 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    gap: '4px',
+                    borderRadius: '6px',
+                    backgroundColor: '#eff6ff', 
+                    color: '#2563eb',
+                    border: '1px solid #bfdbfe',
+                    height: '30px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Log Call
+                </Link>
+              </>
+            ) : (
+              <Link 
+                href={logCallHref} 
                 style={{ 
                   textDecoration: 'none', 
-                  padding: '2px 7px', 
-                  fontSize: '11px', 
-                  fontWeight: 600, 
+                  padding: '5px 4px', 
+                  fontSize: '11.5px', 
+                  fontWeight: 700, 
                   display: 'inline-flex', 
                   alignItems: 'center', 
-                  gap: '3px',
-                  borderRadius: '4px',
-                  backgroundColor: '#f0fdf4',
-                  color: '#15803d',
-                  border: '1px solid #bbf7d0',
-                  cursor: 'pointer'
-                }}
-                title={`Call ${customerName || contactPerson || 'Customer'}`}
-              >
-                <PhoneCall size={11} /> Call
-              </button>
-              <a 
-                href={`https://wa.me/91${cleanPhone}`} 
-                target="_blank" 
-                rel="noreferrer" 
-                style={{ 
-                  textDecoration: 'none', 
-                  padding: '2px 7px', 
-                  fontSize: '11px', 
-                  fontWeight: 600, 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '3px', 
-                  borderRadius: '4px',
-                  backgroundColor: '#25D366', 
-                  color: '#ffffff'
+                  justifyContent: 'center',
+                  gap: '4px',
+                  borderRadius: '6px',
+                  backgroundColor: '#eff6ff', 
+                  color: '#2563eb',
+                  border: '1px solid #bfdbfe',
+                  height: '30px',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                <MessageSquare size={11} /> WhatsApp
-              </a>
-            </>
-          )}
-          <Link 
-            href={logCallHref} 
-            style={{ 
-              textDecoration: 'none', 
-              padding: '2px 7px', 
-              fontSize: '11px', 
-              fontWeight: 600, 
-              display: 'inline-flex', 
-              alignItems: 'center', 
-              gap: '3px',
-              borderRadius: '4px',
-              backgroundColor: '#eff6ff', 
-              color: '#2563eb',
-              border: '1px solid #bfdbfe'
-            }}
-          >
-            Log Call
-          </Link>
-          <button 
-            type="button"
-            onClick={() => setIsEditing(true)} 
-            style={{ 
-              padding: '2px 7px', 
-              fontSize: '11px', 
-              fontWeight: 600, 
-              cursor: 'pointer', 
-              borderRadius: '4px',
-              border: '1px solid #cbd5e1', 
-              color: '#475569', 
-              background: '#f8fafc',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3px'
-            }}
-          >
-            <Pencil size={11} /> Reschedule
-          </button>
-          <button 
-            type="button"
-            onClick={handleRemove} 
-            style={{ 
-              padding: '2px 7px', 
-              fontSize: '11px', 
-              fontWeight: 600, 
-              cursor: 'pointer', 
-              borderRadius: '4px',
-              border: '1px solid #fecdd3', 
-              color: '#e11d48', 
-              background: '#fff1f2',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '3px'
-            }}
-          >
-            <CheckCircle2 size={11} /> Done
-          </button>
+                Log Call / Add Notes
+              </Link>
+            )}
+          </div>
+
+          {/* ROW 2: WORKFLOW & STATUS ACTIONS (2 EQUAL COLUMNS) */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(2, 1fr)', 
+            gap: '6px' 
+          }}>
+            <button 
+              type="button"
+              onClick={() => setIsEditing(true)} 
+              style={{ 
+                padding: '5px 4px', 
+                fontSize: '11.5px', 
+                fontWeight: 700, 
+                cursor: 'pointer', 
+                borderRadius: '6px',
+                border: '1px solid #cbd5e1', 
+                color: '#475569', 
+                background: '#f8fafc',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                height: '30px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Pencil size={12} /> Reschedule
+            </button>
+            <button 
+              type="button"
+              onClick={handleRemove} 
+              style={{ 
+                padding: '5px 4px', 
+                fontSize: '11.5px', 
+                fontWeight: 700, 
+                cursor: 'pointer', 
+                borderRadius: '6px',
+                border: '1px solid #fecdd3', 
+                color: '#e11d48', 
+                background: '#fff1f2',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                height: '30px',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <CheckCircle2 size={12} /> Done
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -308,6 +412,7 @@ export default function EmployeeDashboard({
   const [timeFilter, setTimeFilter] = useState<TimeFilterType>("MONTHLY");
   const [activeModal, setActiveModal] = useState<"SALES" | "FOLLOWUPS" | "TARGET" | "PAYOUT" | null>(null);
   const [leaderboardTimeframe, setLeaderboardTimeframe] = useState<'DAILY' | 'MONTHLY'>('DAILY');
+  const [followUpTab, setFollowUpTab] = useState<'TODAY' | 'OVERDUE'>('TODAY');
 
   // Optimistic tracking for daily call counters
   const [callsOffset, setCallsOffset] = useState(0);
@@ -344,14 +449,20 @@ export default function EmployeeDashboard({
   }, [allFollowUps]);
 
   const validTodayFollowUps = useMemo(() => {
+    return validAllFollowUps.filter((c: any) => isFollowUpForToday(c.followUpDate));
+  }, [validAllFollowUps]);
+
+  const overdueFollowUps = useMemo(() => {
     const now = new Date();
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
     return validAllFollowUps.filter((c: any) => {
-      if (!c.followUpDate) return false;
+      if (!c.followUpDate || isFollowUpForToday(c.followUpDate)) return false;
       const d = new Date(c.followUpDate);
-      return d < todayEnd;
+      return !isNaN(d.getTime()) && d < todayStart;
     });
   }, [validAllFollowUps]);
+
+  const displayedFollowUps = followUpTab === 'TODAY' ? validTodayFollowUps : overdueFollowUps;
 
   // Dynamic Time-Period calculations based on selected filter
   const { filteredOrders, previousOrders, filteredFollowUps, periodLabel, targetPeriodGoal } = useMemo(() => {
@@ -392,11 +503,7 @@ export default function EmployeeDashboard({
         const d = new Date(o.orderDate);
         return d >= yesterdayStart && d < todayStart;
       });
-      followUps = validAllFollowUps.filter(f => {
-        if (!f.followUpDate) return false;
-        const d = new Date(f.followUpDate);
-        return d < todayEnd;
-      });
+      followUps = validAllFollowUps.filter(f => isFollowUpForToday(f.followUpDate));
     } else if (timeFilter === "WEEKLY") {
       label = "This Week";
       periodGoal = Math.round(targetMonthlyGoal / 4);
@@ -413,7 +520,7 @@ export default function EmployeeDashboard({
       followUps = validAllFollowUps.filter(f => {
         if (!f.followUpDate) return false;
         const d = new Date(f.followUpDate);
-        return d < weekEnd;
+        return d >= weekStart && d < weekEnd;
       });
     } else if (timeFilter === "MONTHLY") {
       label = "This Month";
@@ -431,7 +538,7 @@ export default function EmployeeDashboard({
       followUps = validAllFollowUps.filter(f => {
         if (!f.followUpDate) return false;
         const d = new Date(f.followUpDate);
-        return d <= monthEnd;
+        return d >= monthStart && d <= monthEnd;
       });
     } else {
       label = "All Time";
@@ -504,16 +611,41 @@ export default function EmployeeDashboard({
     <div className="dashboard-container employee-dashboard">
       
       {/* ─── MOBILE COMMAND CENTER HEADER ─── */}
-      <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <div>
-          <span suppressHydrationWarning style={{ fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+      <div className="employee-dashboard-header" style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        gap: '12px',
+        marginBottom: '16px',
+        flexWrap: 'nowrap'
+      }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div suppressHydrationWarning style={{ 
+            fontSize: '0.72rem', 
+            fontWeight: 700, 
+            color: '#ef4444', 
+            textTransform: 'uppercase', 
+            letterSpacing: '0.5px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
             {todayDateStr} • Today's Shift
-          </span>
-          <h1 className="page-title" style={{ fontSize: '1.25rem', marginTop: '2px' }}>
+          </div>
+          <h1 className="page-title" style={{ 
+            fontSize: '1.2rem', 
+            margin: '3px 0 0 0',
+            lineHeight: 1.25,
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}>
             Good Morning, {employee?.user?.name ? employee.user.name.split(' ')[0] : 'Team'}! 👋
           </h1>
         </div>
-        <div>
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
           <CheckInButton 
             isCheckedIn={isCheckedIn} 
             isCheckedOut={isCheckedOut} 
@@ -525,10 +657,15 @@ export default function EmployeeDashboard({
       </div>
 
       {/* ─── TOP DUAL WORKFLOW & PERFORMANCE HUB: TODAY'S FOLLOW-UPS + SALES LEADERBOARD ─── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+      <div className="dashboard-dual-grid" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', 
+        gap: '16px', 
+        marginBottom: '20px' 
+      }}>
         
         {/* LEFT: TODAY'S FOLLOW-UPS */}
-        <div className="zoho-card" style={{
+        <div className="zoho-card follow-ups-card" style={{
           borderLeft: validTodayFollowUps.length > 0 ? '3px solid #ef4444' : '1px solid #cbd5e1',
           display: 'flex',
           flexDirection: 'column',
@@ -536,42 +673,164 @@ export default function EmployeeDashboard({
           minHeight: '260px'
         }}>
           <div>
-            <div className="zoho-header" style={{ paddingBottom: '8px' }}>
-              <div className="zoho-title-group">
-                <div className="zoho-title-icon" style={{ backgroundColor: '#fee2e2', color: '#ef4444', width: '32px', height: '32px', borderRadius: '8px' }}>
-                  <PhoneForwarded size={16} />
+            {/* CARD HEADER */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+              paddingBottom: '10px',
+              borderBottom: '1px solid #f1f5f9',
+              marginBottom: '10px'
+            }}>
+              {/* ROW 1: ICON + TITLE + BADGE ON LEFT, VIEW ALL LINK ON RIGHT */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '10px',
+                    backgroundColor: '#fee2e2',
+                    color: '#ef4444',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <PhoneForwarded size={16} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                    <h2 style={{
+                      margin: 0,
+                      fontSize: '0.92rem',
+                      fontWeight: 700,
+                      color: '#0f172a',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      Today's Follow-ups
+                    </h2>
+                    <span style={{
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      backgroundColor: '#fee2e2',
+                      color: '#dc2626',
+                      padding: '1px 7px',
+                      borderRadius: '10px',
+                      flexShrink: 0
+                    }}>
+                      {validTodayFollowUps.length}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="zoho-title" style={{ fontSize: '0.92rem' }}>
-                    Today's Follow-ups ({validTodayFollowUps.length})
-                  </h2>
-                  <p className="zoho-subtitle" style={{ fontSize: '0.72rem' }}>Priority calls scheduled for today</p>
-                </div>
+
+                <Link 
+                  href="/calls" 
+                  style={{ 
+                    fontSize: '0.72rem', 
+                    fontWeight: 700, 
+                    color: '#ef4444', 
+                    textDecoration: 'none',
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    backgroundColor: '#fff1f2',
+                    border: '1px solid #fecdd3',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
+                  }}
+                >
+                  View All →
+                </Link>
               </div>
-              <Link href="/calls" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
-                View All →
-              </Link>
+
+              {/* ROW 2: SUBTITLE ON LEFT, TODAY / OVERDUE FILTER TABS ON RIGHT */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '8px',
+                flexWrap: 'wrap'
+              }}>
+                <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b' }}>
+                  Priority calls scheduled for today
+                </p>
+
+                {overdueFollowUps.length > 0 && (
+                  <div style={{
+                    display: 'inline-flex',
+                    backgroundColor: '#f1f5f9',
+                    padding: '2px',
+                    borderRadius: '6px',
+                    border: '1px solid #e2e8f0'
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setFollowUpTab('TODAY')}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        backgroundColor: followUpTab === 'TODAY' ? '#ffffff' : 'transparent',
+                        color: followUpTab === 'TODAY' ? '#dc2626' : '#64748b',
+                        boxShadow: followUpTab === 'TODAY' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                      }}
+                    >
+                      Today ({validTodayFollowUps.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFollowUpTab('OVERDUE')}
+                      style={{
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        backgroundColor: followUpTab === 'OVERDUE' ? '#ffffff' : 'transparent',
+                        color: followUpTab === 'OVERDUE' ? '#d97706' : '#64748b',
+                        boxShadow: followUpTab === 'OVERDUE' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none'
+                      }}
+                    >
+                      Overdue ({overdueFollowUps.length})
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
-            <div style={{ padding: '2px 4px', maxHeight: '220px', overflowY: 'auto' }}>
-              {validTodayFollowUps.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {validTodayFollowUps.map((call: any) => (
+            <div style={{ padding: '2px 2px', maxHeight: '340px', overflowY: 'auto' }}>
+              {displayedFollowUps.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {displayedFollowUps.map((call: any) => (
                     <FollowUpCard key={call.id} call={call} />
                   ))}
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '28px 10px', color: '#64748b' }}>
                   <CheckCircle2 size={28} style={{ color: '#10b981', margin: '0 auto 6px auto' }} />
-                  <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>No pending follow-ups today!</p>
-                  <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem' }}>You're all caught up. Schedule new leads or log fresh calls.</p>
+                  <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '0.85rem' }}>
+                    {followUpTab === 'TODAY' ? "No pending follow-ups today!" : "No overdue follow-ups!"}
+                  </p>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem' }}>
+                    {followUpTab === 'TODAY' ? "You're all caught up. Schedule new leads or log fresh calls." : "Great job keeping up with your calls!"}
+                  </p>
                 </div>
               )}
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '6px 12px', borderTop: '1px solid #f1f5f9' }}>
-            <Link href="/calls" style={{ fontSize: '0.72rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 4px 2px 4px', borderTop: '1px solid #f1f5f9', marginTop: '8px' }}>
+            <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+              {validTodayFollowUps.length} call{validTodayFollowUps.length === 1 ? '' : 's'} scheduled today
+            </span>
+            <Link href="/calls" style={{ fontSize: '0.74rem', fontWeight: 700, color: '#ef4444', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
               Open Call Center →
             </Link>
           </div>
@@ -587,7 +846,16 @@ export default function EmployeeDashboard({
         }}>
           <div>
             {/* Header with Title, Live Badge, and Timeframe Tabs */}
-            <div className="zoho-header" style={{ paddingBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingBottom: '10px',
+              borderBottom: '1px solid #f1f5f9',
+              marginBottom: '10px',
+              flexWrap: 'wrap',
+              gap: '8px'
+            }}>
               <div className="zoho-title-group">
                 <div className="zoho-title-icon" style={{ backgroundColor: '#f5f3ff', color: '#7c3aed', width: '32px', height: '32px', borderRadius: '8px' }}>
                   <Trophy size={16} />
@@ -1077,206 +1345,351 @@ export default function EmployeeDashboard({
           </div>
 
           {/* DAILY ACTION POWER COCKPIT */}
-          <div style={{
-            backgroundColor: '#ffffff',
-            borderRadius: '14px',
-            border: '1px solid #e2e8f0',
-            padding: '16px 18px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+          <div className="cockpit-container">
+            <div className="cockpit-header">
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Zap size={16} color="#d97706" />
-                  <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 600, color: '#0f172a' }}>
-                    Today's Action Targets (Lead Indicators)
+                <div className="cockpit-title-row">
+                  <div className="target-badge-icon" style={{ backgroundColor: '#fef3c7' }}>
+                    <Zap size={13} color="#d97706" />
+                  </div>
+                  <h3 className="cockpit-title">
+                    Today's Action Targets
                   </h3>
                 </div>
-                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}>
+                <p className="cockpit-subtitle">
                   Consistent daily actions directly drive weekly sprint conversions.
                 </p>
               </div>
-              <Link href="/quotations/new" style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '5px 11px',
-                backgroundColor: '#eff6ff',
-                color: '#2563eb',
-                border: '1px solid #bfdbfe',
-                borderRadius: '8px',
-                fontSize: '0.75rem',
-                fontWeight: 500,
-                textDecoration: 'none',
-                transition: 'all 0.15s ease'
-              }}>
-                <Plus size={13} /> Create Quote
+              <Link href="/quotations/new" className="create-quote-pill-btn">
+                <Plus size={13} />
+                <span className="perf-label-mobile">Quote</span>
+                <span className="perf-label-desktop">Create Quote</span>
               </Link>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+            {/* 4 ALIGNED DAILY TARGET CARDS */}
+            <div className="action-targets-grid">
               
               {/* TARGET 1: CALLS */}
-              <div style={{
-                padding: '10px 12px',
-                borderRadius: '10px',
-                backgroundColor: '#f8fafc',
-                border: currentTodayCalls >= sprintData.todayCallsTarget ? '1px solid #86efac' : '1px solid #e2e8f0',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 550, color: '#475569', textTransform: 'uppercase' }}>
-                      📞 Calls Logged
-                    </span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 500, color: currentTodayCalls >= sprintData.todayCallsTarget ? '#16a34a' : '#64748b' }}>
-                      Goal: {sprintData.todayCallsTarget}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px 0', fontVariantNumeric: 'tabular-nums' }}>
-                    {currentTodayCalls} <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400 }}>/ {sprintData.todayCallsTarget}</span>
-                  </div>
-                </div>
+              {(() => {
+                const callsPercent = sprintData.todayCallsTarget > 0 
+                  ? Math.min(100, Math.round((currentTodayCalls / sprintData.todayCallsTarget) * 100)) 
+                  : 0;
+                const callsMet = currentTodayCalls >= sprintData.todayCallsTarget;
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustCalls(-1)}
-                    disabled={currentTodayCalls === 0 || isSavingActivity}
-                    style={{
-                      flex: 1,
-                      padding: '4px 0',
-                      borderRadius: '6px',
-                      border: '1px solid #cbd5e1',
-                      backgroundColor: '#ffffff',
-                      color: '#475569',
-                      cursor: currentTodayCalls === 0 ? 'not-allowed' : 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '11px',
-                      fontWeight: 500
-                    }}
-                    title="Decrease call count"
-                  >
-                    <Minus size={11} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustCalls(1)}
-                    disabled={isSavingActivity}
-                    style={{
-                      flex: 1.5,
-                      padding: '4px 0',
-                      borderRadius: '6px',
-                      border: 'none',
-                      backgroundColor: '#2563eb',
-                      color: '#ffffff',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '3px',
-                      fontSize: '11px',
-                      fontWeight: 500
-                    }}
-                    title="Log 1 more call"
-                  >
-                    <Plus size={11} /> Call
-                  </button>
-                </div>
-              </div>
+                return (
+                  <div className={`action-target-card ${callsMet ? 'goal-met' : ''}`}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <div className="target-badge-icon" style={{ backgroundColor: '#eff6ff' }}>
+                            <PhoneCall size={11} color="#2563eb" />
+                          </div>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Calls
+                          </span>
+                        </div>
+                        <span style={{ 
+                          fontSize: '9.5px', 
+                          fontWeight: 600, 
+                          padding: '1px 5px', 
+                          borderRadius: '4px', 
+                          backgroundColor: callsMet ? '#ecfdf5' : '#f1f5f9', 
+                          color: callsMet ? '#059669' : '#64748b' 
+                        }}>
+                          Goal: {sprintData.todayCallsTarget}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '1.22rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 2px 0', fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>
+                        {currentTodayCalls} <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>/ {sprintData.todayCallsTarget}</span>
+                      </div>
+
+                      <div style={{ width: '100%', height: '3.5px', backgroundColor: '#f1f5f9', borderRadius: '2px', overflow: 'hidden', margin: '4px 0 6px 0' }}>
+                        <div style={{ 
+                          width: `${Math.max(3, callsPercent)}%`, 
+                          height: '100%', 
+                          background: callsMet ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #3b82f6, #2563eb)', 
+                          borderRadius: '2px', 
+                          transition: 'width 0.3s ease' 
+                        }} />
+                      </div>
+                    </div>
+
+                    <div className="target-card-btn-slot" style={{ gap: '5px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustCalls(-1)}
+                        disabled={currentTodayCalls === 0 || isSavingActivity}
+                        style={{
+                          width: '26px',
+                          height: '26px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          backgroundColor: '#f8fafc',
+                          color: '#475569',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: currentTodayCalls === 0 ? 'not-allowed' : 'pointer',
+                          padding: 0,
+                          flexShrink: 0,
+                          opacity: currentTodayCalls === 0 ? 0.4 : 1
+                        }}
+                        title="Decrease call count"
+                      >
+                        <Minus size={11} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleAdjustCalls(1)}
+                        disabled={isSavingActivity}
+                        style={{
+                          flex: 1,
+                          height: '26px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '3px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: '0 4px',
+                          boxShadow: '0 1px 2px rgba(37, 99, 235, 0.25)',
+                          transition: 'background-color 0.15s ease'
+                        }}
+                        title="Log 1 more call"
+                      >
+                        <Plus size={11} /> Call
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* TARGET 2: FOLLOW-UPS DONE */}
-              <div 
-                onClick={() => setActiveModal("FOLLOWUPS")}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: '10px',
-                  backgroundColor: '#f8fafc',
-                  border: sprintData.todayFollowUps >= sprintData.todayFollowUpsTarget ? '1px solid #86efac' : '1px solid #e2e8f0',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 550, color: '#475569', textTransform: 'uppercase' }}>
-                      🤝 Follow-ups
-                    </span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 500, color: sprintData.todayFollowUps >= sprintData.todayFollowUpsTarget ? '#16a34a' : '#64748b' }}>
-                      Goal: {sprintData.todayFollowUpsTarget}
-                    </span>
+              {(() => {
+                const followUpsPercent = sprintData.todayFollowUpsTarget > 0 
+                  ? Math.min(100, Math.round((sprintData.todayFollowUps / sprintData.todayFollowUpsTarget) * 100)) 
+                  : 0;
+                const followUpsMet = sprintData.todayFollowUps >= sprintData.todayFollowUpsTarget;
+
+                return (
+                  <div 
+                    onClick={() => setActiveModal("FOLLOWUPS")}
+                    className={`action-target-card ${followUpsMet ? 'goal-met' : ''}`}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <div className="target-badge-icon" style={{ backgroundColor: '#fef3c7' }}>
+                            <Clock size={11} color="#d97706" />
+                          </div>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Follow-ups
+                          </span>
+                        </div>
+                        <span style={{ 
+                          fontSize: '9.5px', 
+                          fontWeight: 600, 
+                          padding: '1px 5px', 
+                          borderRadius: '4px', 
+                          backgroundColor: followUpsMet ? '#ecfdf5' : '#f1f5f9', 
+                          color: followUpsMet ? '#059669' : '#64748b' 
+                        }}>
+                          Goal: {sprintData.todayFollowUpsTarget}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '1.22rem', fontWeight: 700, color: '#d97706', margin: '4px 0 2px 0', fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>
+                        {sprintData.todayFollowUps} <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>/ {sprintData.todayFollowUpsTarget}</span>
+                      </div>
+
+                      <div style={{ width: '100%', height: '3.5px', backgroundColor: '#f1f5f9', borderRadius: '2px', overflow: 'hidden', margin: '4px 0 6px 0' }}>
+                        <div style={{ 
+                          width: `${Math.max(3, followUpsPercent)}%`, 
+                          height: '100%', 
+                          background: followUpsMet ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #f59e0b, #d97706)', 
+                          borderRadius: '2px', 
+                          transition: 'width 0.3s ease' 
+                        }} />
+                      </div>
+                    </div>
+
+                    <div className="target-card-btn-slot">
+                      <div style={{
+                        width: '100%',
+                        height: '26px',
+                        borderRadius: '6px',
+                        backgroundColor: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        color: '#2563eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '3px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        transition: 'all 0.15s ease'
+                      }}>
+                        <span>View List</span>
+                        <ArrowRight size={11} />
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#d97706', margin: '4px 0 2px 0', fontVariantNumeric: 'tabular-nums' }}>
-                    {sprintData.todayFollowUps} <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400 }}>/ {sprintData.todayFollowUpsTarget}</span>
-                  </div>
-                </div>
-                <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 500, marginTop: '6px' }}>
-                  View Today's List →
-                </div>
-              </div>
+                );
+              })()}
 
               {/* TARGET 3: QUOTES SENT */}
-              <div style={{
-                padding: '10px 12px',
-                borderRadius: '10px',
-                backgroundColor: '#f8fafc',
-                border: sprintData.todayQuotesSent >= sprintData.todayQuotesSentTarget ? '1px solid #86efac' : '1px solid #e2e8f0',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 550, color: '#475569', textTransform: 'uppercase' }}>
-                      📄 Quotes Sent
-                    </span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 500, color: sprintData.todayQuotesSent >= sprintData.todayQuotesSentTarget ? '#16a34a' : '#64748b' }}>
-                      Goal: {sprintData.todayQuotesSentTarget}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#0f172a', margin: '4px 0 2px 0', fontVariantNumeric: 'tabular-nums' }}>
-                    {sprintData.todayQuotesSent} <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400 }}>/ {sprintData.todayQuotesSentTarget}</span>
-                  </div>
-                </div>
-                <Link href="/quotations" style={{ fontSize: '0.72rem', color: '#4f46e5', fontWeight: 500, textDecoration: 'none', marginTop: '6px' }}>
-                  Quotes Pipeline →
-                </Link>
-              </div>
+              {(() => {
+                const quotesPercent = sprintData.todayQuotesSentTarget > 0 
+                  ? Math.min(100, Math.round((sprintData.todayQuotesSent / sprintData.todayQuotesSentTarget) * 100)) 
+                  : 0;
+                const quotesMet = sprintData.todayQuotesSent >= sprintData.todayQuotesSentTarget;
 
-              {/* TARGET 4: QUOTES CONFIRMED (DEALS CLOSED) */}
-              <div style={{
-                padding: '10px 12px',
-                borderRadius: '10px',
-                backgroundColor: sprintData.todayQuotesConfirmed > 0 ? '#f0fdf4' : '#f8fafc',
-                border: sprintData.todayQuotesConfirmed >= sprintData.todayQuotesConfirmedTarget ? '1px solid #86efac' : '1px solid #e2e8f0',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between'
-              }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 550, color: '#475569', textTransform: 'uppercase' }}>
-                      🎯 Deals Confirmed
-                    </span>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 500, color: sprintData.todayQuotesConfirmed >= sprintData.todayQuotesConfirmedTarget ? '#16a34a' : '#64748b' }}>
-                      Goal: {sprintData.todayQuotesConfirmedTarget}
-                    </span>
+                return (
+                  <div className={`action-target-card ${quotesMet ? 'goal-met' : ''}`}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <div className="target-badge-icon" style={{ backgroundColor: '#f3e8ff' }}>
+                            <FileText size={11} color="#7c3aed" />
+                          </div>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Quotes
+                          </span>
+                        </div>
+                        <span style={{ 
+                          fontSize: '9.5px', 
+                          fontWeight: 600, 
+                          padding: '1px 5px', 
+                          borderRadius: '4px', 
+                          backgroundColor: quotesMet ? '#ecfdf5' : '#f1f5f9', 
+                          color: quotesMet ? '#059669' : '#64748b' 
+                        }}>
+                          Goal: {sprintData.todayQuotesSentTarget}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '1.22rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 2px 0', fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>
+                        {sprintData.todayQuotesSent} <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>/ {sprintData.todayQuotesSentTarget}</span>
+                      </div>
+
+                      <div style={{ width: '100%', height: '3.5px', backgroundColor: '#f1f5f9', borderRadius: '2px', overflow: 'hidden', margin: '4px 0 6px 0' }}>
+                        <div style={{ 
+                          width: `${Math.max(3, quotesPercent)}%`, 
+                          height: '100%', 
+                          background: quotesMet ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #8b5cf6, #7c3aed)', 
+                          borderRadius: '2px', 
+                          transition: 'width 0.3s ease' 
+                        }} />
+                      </div>
+                    </div>
+
+                    <div className="target-card-btn-slot">
+                      <Link href="/quotations" style={{
+                        width: '100%',
+                        height: '26px',
+                        borderRadius: '6px',
+                        backgroundColor: '#f5f3ff',
+                        border: '1px solid #ddd6fe',
+                        color: '#7c3aed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '3px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                        transition: 'all 0.15s ease'
+                      }}>
+                        <span>Pipeline</span>
+                        <ArrowRight size={11} />
+                      </Link>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 600, color: '#16a34a', margin: '4px 0 2px 0', fontVariantNumeric: 'tabular-nums' }}>
-                    {sprintData.todayQuotesConfirmed} <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400 }}>/ {sprintData.todayQuotesConfirmedTarget}</span>
+                );
+              })()}
+
+              {/* TARGET 4: DEALS CONFIRMED */}
+              {(() => {
+                const dealsPercent = sprintData.todayQuotesConfirmedTarget > 0 
+                  ? Math.min(100, Math.round((sprintData.todayQuotesConfirmed / sprintData.todayQuotesConfirmedTarget) * 100)) 
+                  : 0;
+                const dealsMet = sprintData.todayQuotesConfirmed >= sprintData.todayQuotesConfirmedTarget;
+
+                return (
+                  <div className={`action-target-card ${dealsMet ? 'goal-met' : ''}`}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <div className="target-badge-icon" style={{ backgroundColor: '#ecfdf5' }}>
+                            <Award size={11} color="#059669" />
+                          </div>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Deals
+                          </span>
+                        </div>
+                        <span style={{ 
+                          fontSize: '9.5px', 
+                          fontWeight: 600, 
+                          padding: '1px 5px', 
+                          borderRadius: '4px', 
+                          backgroundColor: dealsMet ? '#ecfdf5' : '#f1f5f9', 
+                          color: dealsMet ? '#059669' : '#64748b' 
+                        }}>
+                          Goal: {sprintData.todayQuotesConfirmedTarget}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '1.22rem', fontWeight: 700, color: '#059669', margin: '4px 0 2px 0', fontVariantNumeric: 'tabular-nums', lineHeight: 1.15 }}>
+                        {sprintData.todayQuotesConfirmed} <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>/ {sprintData.todayQuotesConfirmedTarget}</span>
+                      </div>
+
+                      <div style={{ width: '100%', height: '3.5px', backgroundColor: '#f1f5f9', borderRadius: '2px', overflow: 'hidden', margin: '4px 0 6px 0' }}>
+                        <div style={{ 
+                          width: `${Math.max(3, dealsPercent)}%`, 
+                          height: '100%', 
+                          background: 'linear-gradient(90deg, #10b981, #059669)', 
+                          borderRadius: '2px', 
+                          transition: 'width 0.3s ease' 
+                        }} />
+                      </div>
+                    </div>
+
+                    <div className="target-card-btn-slot">
+                      <div style={{
+                        width: '100%',
+                        height: '26px',
+                        borderRadius: '6px',
+                        backgroundColor: sprintData.todayQuotesConfirmed > 0 ? '#ecfdf5' : '#f8fafc',
+                        border: sprintData.todayQuotesConfirmed > 0 ? '1px solid #86efac' : '1px solid #e2e8f0',
+                        color: sprintData.todayQuotesConfirmed > 0 ? '#15803d' : '#64748b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '3px',
+                        fontSize: '11px',
+                        fontWeight: 600
+                      }}>
+                        {sprintData.todayQuotesConfirmed > 0 ? (
+                          <>
+                            <CheckCircle2 size={11} color="#16a34a" />
+                            <span>Sale Secured!</span>
+                          </>
+                        ) : (
+                          <span>Awaiting close</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 550, marginTop: '6px' }}>
-                  {sprintData.todayQuotesConfirmed > 0 ? "🎉 Sale Secured!" : "Awaiting close"}
-                </div>
-              </div>
+                );
+              })()}
 
             </div>
           </div>
@@ -1286,93 +1699,69 @@ export default function EmployeeDashboard({
 
       {/* ─── PERFORMANCE FILTER TABS ─── */}
       <div style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+        <div className="performance-section-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
               My Performance
             </span>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>({periodLabel})</span>
+            <span style={{ fontSize: '0.74rem', color: '#64748b', fontWeight: 500 }}>({periodLabel})</span>
           </div>
 
-          {/* Time Filter Pills */}
-          <div style={{ display: 'flex', gap: '4px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px' }}>
+          {/* Time Filter Pills - Segmented Control */}
+          <div className="performance-segmented-control">
             {[
-              { key: "TODAY", label: "Daily (Today)" },
-              { key: "WEEKLY", label: "This Week" },
-              { key: "MONTHLY", label: "This Month" },
-              { key: "ALL", label: "All Time" }
+              { key: "TODAY", short: "Today", full: "Daily (Today)" },
+              { key: "WEEKLY", short: "Week", full: "This Week" },
+              { key: "MONTHLY", short: "Month", full: "This Month" },
+              { key: "ALL", short: "All", full: "All Time" }
             ].map((tab) => (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => setTimeFilter(tab.key as TimeFilterType)}
-                style={{
-                  padding: '4px 10px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '0.75rem',
-                  fontWeight: timeFilter === tab.key ? 700 : 500,
-                  backgroundColor: timeFilter === tab.key ? '#4f46e5' : 'transparent',
-                  color: timeFilter === tab.key ? '#ffffff' : '#64748b',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
+                className={`perf-segment-btn ${timeFilter === tab.key ? 'active' : ''}`}
               >
-                {tab.label}
+                <span className="perf-label-mobile">{tab.short}</span>
+                <span className="perf-label-desktop">{tab.full}</span>
               </button>
             ))}
           </div>
         </div>
 
         {/* ─── 4 INTERACTIVE CLICKABLE KPI BLOCKS ─── */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+        <div className="kpi-cards-grid">
           
           {/* BLOCK 1: Sales Metric (Clickable) */}
           <div 
             onClick={() => setActiveModal("SALES")}
-            style={{ 
-              padding: '14px 16px', 
-              borderRadius: '14px', 
-              backgroundColor: '#ffffff', 
-              border: '1px solid #e2e8f0', 
-              boxShadow: '0 2px 8px -2px rgba(0,0,0,0.04)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              position: 'relative'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#818cf8';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(79, 70, 229, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e2e8f0';
-              e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.04)';
-            }}
+            className="kpi-metric-card"
             title="Click to view sales breakdown"
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 550 }}>{periodLabel} Sales</span>
-              <span style={{ fontSize: '0.68rem', color: '#4f46e5', fontWeight: 600 }}>View 🔍</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>
+                {periodLabel} Sales
+              </span>
+              <div className="kpi-corner-btn">
+                <ArrowUpRight size={12} />
+              </div>
             </div>
 
-            <div style={{ fontSize: '1.3rem', fontWeight: 650, color: '#0f172a', margin: '4px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#0f172a', margin: '4px 0 2px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
               ₹{(totalSales / 1000).toFixed(1)}k
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div className="kpi-footer-slot" style={{ justifyContent: 'space-between' }}>
               {totalSales === 0 ? (
                 <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 500 }}>
                   0 orders
                 </span>
               ) : (
-                <span style={{ fontSize: '0.7rem', color: growthIsPositive ? '#10b981' : '#ef4444', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                <span style={{ fontSize: '0.7rem', color: growthIsPositive ? '#059669' : '#dc2626', backgroundColor: growthIsPositive ? '#ecfdf5' : '#fef2f2', padding: '1px 6px', borderRadius: '4px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                   {growthIsPositive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                   {growthIsPositive ? `+${growthPercent}%` : `${growthPercent}%`}
                 </span>
               )}
-              <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 450 }}>
+              <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 500 }}>
                 {filteredOrders.length} sale{filteredOrders.length !== 1 ? 's' : ''}
               </span>
             </div>
@@ -1381,115 +1770,99 @@ export default function EmployeeDashboard({
           {/* BLOCK 2: Follow-ups Due (Clickable) */}
           <div 
             onClick={() => setActiveModal("FOLLOWUPS")}
-            style={{ 
-              padding: '14px 16px', 
-              borderRadius: '14px', 
-              backgroundColor: '#ffffff', 
-              border: '1px solid #e2e8f0', 
-              boxShadow: '0 2px 8px -2px rgba(0,0,0,0.04)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#f59e0b';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(245, 158, 11, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e2e8f0';
-              e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.04)';
-            }}
+            className="kpi-metric-card"
             title="Click to view follow-ups"
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 550 }}>Follow-ups Due</span>
-              <span style={{ fontSize: '0.68rem', color: '#d97706', fontWeight: 600 }}>View 🔍</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>
+                Follow-ups Due
+              </span>
+              <div className="kpi-corner-btn">
+                <ArrowUpRight size={12} />
+              </div>
             </div>
 
-            <div style={{ fontSize: '1.3rem', fontWeight: 650, color: '#d97706', margin: '4px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#d97706', margin: '4px 0 2px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
               {filteredFollowUps.length}
             </div>
 
-            <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>
-              {filteredFollowUps.length > 0 ? `${filteredFollowUps.length} Pending` : 'All Cleared 🎉'}
-            </span>
+            <div className="kpi-footer-slot">
+              <span style={{ fontSize: '0.7rem', color: filteredFollowUps.length > 0 ? '#b45309' : '#059669', backgroundColor: filteredFollowUps.length > 0 ? '#fef3c7' : '#ecfdf5', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                {filteredFollowUps.length > 0 ? `${filteredFollowUps.length} Pending` : 'All Cleared ✓'}
+              </span>
+            </div>
           </div>
 
           {/* BLOCK 3: Target Progress (Clickable) */}
           <div 
             onClick={() => setActiveModal("TARGET")}
-            style={{ 
-              padding: '14px 16px', 
-              borderRadius: '14px', 
-              backgroundColor: '#ffffff', 
-              border: '1px solid #e2e8f0', 
-              boxShadow: '0 2px 8px -2px rgba(0,0,0,0.04)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#818cf8';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(99, 102, 241, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e2e8f0';
-              e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.04)';
-            }}
+            className="kpi-metric-card"
             title="Click to view target progress details"
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 550 }}>Target Progress</span>
-              <span style={{ fontSize: '0.68rem', color: '#6366f1', fontWeight: 600 }}>View 🔍</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>
+                Target Progress
+              </span>
+              <div className="kpi-corner-btn">
+                <ArrowUpRight size={12} />
+              </div>
             </div>
 
-            <div style={{ fontSize: '1.3rem', fontWeight: 650, color: '#6366f1', margin: '4px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
-              {targetPercent}%
+            <div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#4f46e5', margin: '4px 0 2px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
+                {targetPercent}%
+              </div>
+              <div style={{ width: '100%', height: '3px', backgroundColor: '#e0e7ff', borderRadius: '2px', overflow: 'hidden', margin: '3px 0 2px 0' }}>
+                <div style={{ width: `${Math.min(100, targetPercent)}%`, height: '100%', backgroundColor: '#4f46e5', borderRadius: '2px', transition: 'width 0.3s ease' }} />
+              </div>
             </div>
 
-            <span style={{ fontSize: '0.7rem', color: '#6366f1', fontWeight: 600 }}>
-              Goal: ₹{(targetPeriodGoal / 100000).toFixed(1)}L
-            </span>
+            <div className="kpi-footer-slot">
+              <span style={{ fontSize: '0.7rem', color: '#4338ca', backgroundColor: '#eef2ff', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                Goal: ₹{(targetPeriodGoal / 100000).toFixed(1)}L
+              </span>
+            </div>
           </div>
 
           {/* BLOCK 4: Est. Total Payout (Clickable) */}
           <div 
             onClick={() => setActiveModal("PAYOUT")}
-            style={{ 
-              padding: '14px 16px', 
-              borderRadius: '14px', 
-              backgroundColor: '#ffffff', 
-              border: '1px solid #e2e8f0', 
-              boxShadow: '0 2px 8px -2px rgba(0,0,0,0.04)',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#34d399';
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.08)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#e2e8f0';
-              e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.04)';
-            }}
+            className="kpi-metric-card"
             title="Click to view earnings and slab breakdown"
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 550 }}>Est. Total Payout</span>
-              <span style={{ fontSize: '0.68rem', color: '#059669', fontWeight: 600 }}>View 🔍</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '6px' }}>
+              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px', lineHeight: 1.2 }}>
+                Est. Total Payout
+              </span>
+              <div className="kpi-corner-btn">
+                <ArrowUpRight size={12} />
+              </div>
             </div>
 
-            <div style={{ fontSize: '1.3rem', fontWeight: 650, color: '#059669', margin: '4px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: '1.3rem', fontWeight: 700, color: '#059669', margin: '4px 0 2px 0', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>
               ₹{(totalPayout / 1000).toFixed(1)}k
             </div>
 
-            <span style={{ fontSize: '0.7rem', color: '#059669', fontWeight: 600 }}>
-              Slab: {calculatedIncentive.currentSlab}
-            </span>
+            <div className="kpi-footer-slot">
+              <span 
+                style={{ 
+                  fontSize: '0.7rem', 
+                  color: '#047857', 
+                  backgroundColor: '#ecfdf5', 
+                  padding: '1px 6px', 
+                  borderRadius: '4px', 
+                  fontWeight: 600, 
+                  maxWidth: '100%', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap',
+                  display: 'inline-block'
+                }}
+                title={`Slab: ${calculatedIncentive.currentSlab}`}
+              >
+                Slab: {calculatedIncentive.currentSlab}
+              </span>
+            </div>
           </div>
 
         </div>
@@ -1775,6 +2148,11 @@ export default function EmployeeDashboard({
         </div>
       )}
 
+      {/* Mobile Bottom Clearance for Navigation Bar & Floating Heart */}
+      <div style={{ height: '76px', width: '100%', flexShrink: 0 }} />
+
     </div>
   );
 }
+
+

@@ -9,6 +9,7 @@ import { getCompanySettings } from "./companyActions";
 import { syncSystemLedgers } from "./accountingActions";
 import { getNextInvoiceNumber, getNextOrderNumber } from "./quotationActions";
 import { getOrCreateEmployee } from "@/lib/employeeHelper";
+import { checkPeriodLock } from "./periodLockActions";
 
 async function canManageInvoices() {
   const session = await getServerSession(authOptions);
@@ -88,6 +89,9 @@ export async function createInvoiceFromOrder(orderId: string, dueDate?: string, 
   const { allowed } = await canManageInvoices();
   if (!allowed) return { error: "Unauthorized" };
 
+  const lockCheck = await checkPeriodLock(new Date());
+  if (lockCheck.isLocked) return { error: lockCheck.error };
+
   try {
     const organizationId = await getTenantOrgId();
 
@@ -156,6 +160,9 @@ export async function createManualInvoice(data: {
   const { allowed } = await canManageInvoices();
   if (!allowed) return { error: "Unauthorized" };
 
+  const lockCheck = await checkPeriodLock(new Date());
+  if (lockCheck.isLocked) return { error: lockCheck.error };
+
   try {
     const organizationId = await getTenantOrgId();
     const invoiceNumber = await getNextInvoiceNumber(organizationId);
@@ -200,7 +207,7 @@ export async function getInvoiceById(id: string) {
       }
     });
     if (!invoice) return { error: "Invoice not found" };
-    if (invoice.organizationId && organizationId && invoice.organizationId !== organizationId) {
+    if (invoice.organizationId !== organizationId) {
       return { error: "Unauthorized access to invoice" };
     }
     return { success: true, invoice };
@@ -216,7 +223,7 @@ export async function cancelInvoice(id: string) {
     const organizationId = await getTenantOrgId();
     const existing = await prisma.invoice.findUnique({ where: { id } });
     if (!existing) return { error: "Invoice not found" };
-    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+    if (existing.organizationId !== organizationId) {
       return { error: "Unauthorized access to invoice" };
     }
 
@@ -242,7 +249,7 @@ export async function updateInvoice(id: string, data: {
     const organizationId = await getTenantOrgId();
     const existing = await prisma.invoice.findUnique({ where: { id } });
     if (!existing) return { error: "Invoice not found" };
-    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+    if (existing.organizationId !== organizationId) {
       return { error: "Unauthorized access to invoice" };
     }
 
@@ -293,7 +300,7 @@ export async function deleteInvoice(id: string) {
       include: { order: true }
     });
     if (!existing) return { error: "Invoice not found" };
-    if (existing.organizationId && organizationId && existing.organizationId !== organizationId) {
+    if (existing.organizationId !== organizationId) {
       return { error: "Unauthorized access to invoice" };
     }
 
@@ -390,6 +397,82 @@ export async function deleteInvoice(id: string) {
   }
 }
 
+export async function deleteMultipleInvoices(ids: string[]) {
+  const { allowed } = await canManageInvoices();
+  if (!allowed) return { error: "Unauthorized" };
+
+  if (!ids || ids.length === 0) {
+    return { error: "No invoices selected for deletion." };
+  }
+
+  try {
+    const organizationId = await getTenantOrgId();
+
+    const existingInvoices = await prisma.invoice.findMany({
+      where: {
+        id: { in: ids },
+        ...(organizationId ? { organizationId } : {})
+      },
+      include: { order: true }
+    });
+
+    if (existingInvoices.length === 0) {
+      return { error: "No valid invoices found to delete." };
+    }
+
+    const validIds = existingInvoices.map(i => i.id);
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Unlink any credit notes
+      await tx.creditNote.updateMany({
+        where: { invoiceId: { in: validIds } },
+        data: { invoiceId: null }
+      });
+
+      // 2. Unlink associated payments
+      await tx.payment.updateMany({
+        where: { invoiceId: { in: validIds } },
+        data: { invoiceId: null }
+      });
+
+      // 3. Delete associated JournalEntry & line items
+      for (const inv of existingInvoices) {
+        const jvs = await tx.journalEntry.findMany({
+          where: {
+            OR: [
+              { sourceDocId: inv.id, sourceDocType: "INVOICE" },
+              { voucherNumber: `SLS-${inv.invoiceNumber}` }
+            ]
+          }
+        });
+        for (const jv of jvs) {
+          await tx.journalLineItem.deleteMany({ where: { journalEntryId: jv.id } });
+          await tx.journalEntry.delete({ where: { id: jv.id } });
+        }
+      }
+
+      // 4. Delete invoices
+      await tx.invoice.deleteMany({
+        where: { id: { in: validIds } }
+      });
+    });
+
+    revalidatePath("/invoices");
+    revalidatePath("/orders");
+    revalidatePath("/quotations");
+    revalidatePath("/accounting");
+    revalidatePath("/accounting/vouchers");
+    revalidatePath("/accounting/financial-statements");
+    revalidatePath("/", "layout");
+
+    return { success: true, count: validIds.length };
+  } catch (error: any) {
+    console.error("Failed to delete multiple invoices:", error);
+    return { error: "Failed to delete invoices: " + error.message };
+  }
+}
+
+
 // Accounts receivable ageing
 export async function getReceivablesAgeing() {
   const session = await getServerSession(authOptions);
@@ -475,6 +558,9 @@ export async function getInvoiceForFullEdit(id: string) {
     });
 
     if (!invoice) return { error: "Invoice not found" };
+    if (invoice.organizationId && invoice.organizationId !== organizationId) {
+      return { error: "Unauthorized access to invoice" };
+    }
 
     // Fetch active products in this organization
     const products = await prisma.product.findMany({
@@ -619,7 +705,15 @@ export async function saveFullInvoiceDetails(payload: {
     });
     if (!existing) return { error: "Invoice not found" };
 
-    const organizationId = existing.organizationId || (await getTenantOrgId());
+    const currentOrgId = await getTenantOrgId();
+    if (existing.organizationId && existing.organizationId !== currentOrgId) {
+      return { error: "Unauthorized access to invoice" };
+    }
+
+    const lockCheck = await checkPeriodLock(payload.invoiceDate || existing.invoiceDate);
+    if (lockCheck.isLocked) return { error: lockCheck.error };
+
+    const organizationId = existing.organizationId || currentOrgId;
 
     // 1. Check for duplicate invoiceNumber if changed
     if (payload.invoiceNumber.trim() !== existing.invoiceNumber) {
@@ -795,3 +889,315 @@ export async function saveFullInvoiceDetails(payload: {
     return { error: "Failed to save invoice: " + error.message };
   }
 }
+
+/**
+ * Load initial dropdown data for Direct Invoice creation
+ */
+export async function getDirectInvoiceFormData() {
+  const { allowed } = await canManageInvoices();
+  if (!allowed) return { error: "Unauthorized" };
+
+  try {
+    const organizationId = await getTenantOrgId();
+
+    const [products, customers, companyRes, nextInvoiceNumber] = await Promise.all([
+      prisma.product.findMany({
+        where: {
+          organizationId,
+          status: "Active"
+        },
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          sellingPrice: true,
+          hsnCode: true,
+          stockQuantity: true,
+          category: true
+        },
+        orderBy: { name: "asc" },
+        take: 300
+      }),
+      prisma.customer.findMany({
+        where: { organizationId },
+        select: {
+          id: true,
+          businessName: true,
+          contactPerson: true,
+          mobile: true,
+          email: true,
+          billingAddress: true,
+          shippingAddress: true,
+          state: true,
+          gstNumber: true,
+          pan: true
+        },
+        orderBy: { businessName: "asc" },
+        take: 300
+      }),
+      getCompanySettings(),
+      getNextInvoiceNumber(organizationId)
+    ]);
+
+    const companyState = companyRes.settings?.state || "Haryana";
+
+    return {
+      success: true,
+      products,
+      customers,
+      companyState,
+      nextInvoiceNumber
+    };
+  } catch (error: any) {
+    return { error: "Failed to load invoice form data: " + error.message };
+  }
+}
+
+/**
+ * Create a new direct Invoice without requiring a preceding Quotation
+ */
+export async function createDirectInvoice(payload: {
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  dueDate?: string;
+  paymentTerms?: string;
+  notes?: string;
+
+  // Customer Details
+  customerId: string;
+
+  // Line items
+  items: Array<{
+    productId?: string;
+    productName: string;
+    hsnCode?: string;
+    quantity: number;
+    rate: number;
+    discount?: number;
+    gstRate: number;
+    cgst?: number;
+    sgst?: number;
+    igst?: number;
+    total: number;
+  }>;
+
+  // Totals
+  subtotal: number;
+  discountAmount?: number;
+  taxAmount: number;
+  shippingCharges?: number;
+  roundOff?: number;
+  tcsSection?: string;
+  tcsRate?: number;
+  tcsAmount?: number;
+  totalAmount: number;
+
+  // Initial Payment (optional)
+  amountPaid?: number;
+  paymentMode?: string;
+  paymentReference?: string;
+}) {
+  const { allowed, session } = await canManageInvoices();
+  if (!allowed) return { error: "Unauthorized: Insufficient permissions to create invoices." };
+
+  const lockCheck = await checkPeriodLock(new Date());
+  if (lockCheck.isLocked) return { error: lockCheck.error };
+
+  try {
+    const organizationId = await getTenantOrgId();
+    const userId = (session?.user as any)?.id;
+
+    if (!payload.customerId) {
+      return { error: "Customer is required to create an invoice." };
+    }
+
+    if (!payload.items || payload.items.length === 0) {
+      return { error: "At least one line item is required." };
+    }
+
+    // Verify Customer exists
+    const customer = await prisma.customer.findFirst({
+      where: { id: payload.customerId, organizationId }
+    });
+    if (!customer) {
+      return { error: "Selected customer does not exist." };
+    }
+
+    // Generate Invoice Number if not provided
+    const invNumber = payload.invoiceNumber?.trim() || await getNextInvoiceNumber(organizationId);
+
+    // Duplicate check
+    const existing = await prisma.invoice.findFirst({
+      where: { invoiceNumber: invNumber, organizationId }
+    });
+    if (existing) {
+      return { error: `Invoice number "${invNumber}" already exists. Please use a unique number.` };
+    }
+
+    // Resolve Salesperson
+    let employee = await prisma.employee.findFirst({ where: { userId, organizationId } });
+    if (!employee) {
+      employee = await prisma.employee.findFirst({ where: { organizationId } });
+    }
+    const salespersonId = employee?.id || customer.assignedSalespersonId || "";
+
+    const orderNumber = await getNextOrderNumber(organizationId);
+    const effectivePaid = Math.max(0, Number(payload.amountPaid) || 0);
+    const effectiveTotal = Math.max(0, Number(payload.totalAmount) || 0);
+    const effectiveDue = Math.max(0, effectiveTotal - effectivePaid);
+    const invoiceStatus = effectiveDue <= 0 ? "Paid" : effectivePaid > 0 ? "Partially Paid" : "Unpaid";
+
+    // Prepare line items
+    const orderItemsData = payload.items.map(it => ({
+      productId: it.productId || "",
+      quantity: Math.max(1, Math.round(Number(it.quantity) || 1)),
+      rate: Number(it.rate) || 0,
+      hsnCode: it.hsnCode || "6109",
+      gstRate: Number(it.gstRate) || 0,
+      cgst: Number(it.cgst) || 0,
+      sgst: Number(it.sgst) || 0,
+      igst: Number(it.igst) || 0,
+      total: Number(it.total) || 0
+    }));
+
+    // Ensure all items have a valid productId
+    let fallbackProduct = await prisma.product.findFirst({ where: { organizationId } });
+    if (!fallbackProduct) {
+      fallbackProduct = await prisma.product.create({
+        data: {
+          organizationId,
+          name: "Standard Merchandise",
+          category: "General",
+          sellingPrice: 100,
+          purchasePrice: 70,
+          mrp: 100,
+          hsnCode: "6109"
+        }
+      });
+    }
+
+    for (const it of orderItemsData) {
+      if (!it.productId) {
+        it.productId = fallbackProduct.id;
+      }
+    }
+
+    // Atomic Transaction: Create Direct Order, Items, Deduct Stock, Create Invoice, Record Payment, Update Customer
+    const createdInvoice = await prisma.$transaction(async (tx) => {
+      // 1. Direct Sales Order
+      const directOrder = await tx.order.create({
+        data: {
+          orderNumber,
+          organizationId,
+          customerId: customer.id,
+          salespersonId: salespersonId || fallbackProduct.id,
+          totalValue: effectiveTotal,
+          subtotal: Number(payload.subtotal) || 0,
+          discount: Number(payload.discountAmount) || 0,
+          tax: Number(payload.taxAmount) || 0,
+          cgst: payload.items.reduce((s, it) => s + (it.cgst || 0), 0),
+          sgst: payload.items.reduce((s, it) => s + (it.sgst || 0), 0),
+          igst: payload.items.reduce((s, it) => s + (it.igst || 0), 0),
+          placeOfSupply: customer.state || "Delhi",
+          paymentReceived: effectivePaid,
+          outstandingAmount: effectiveDue,
+          orderStatus: "Delivered",
+          paymentStatus: invoiceStatus,
+          notes: payload.notes || "Direct Over-the-Counter Invoice",
+          items: {
+            create: orderItemsData
+          }
+        }
+      });
+
+      // 2. Deduct Inventory Stock & Log Outbound Transaction
+      for (const it of orderItemsData) {
+        if (it.productId) {
+          await tx.product.update({
+            where: { id: it.productId },
+            data: { stockQuantity: { decrement: it.quantity } }
+          }).catch(() => {});
+
+          await tx.inventoryTransaction.create({
+            data: {
+              productId: it.productId,
+              quantity: it.quantity,
+              type: "OUT",
+              reference: invNumber,
+              notes: `Direct Invoice ${invNumber}`
+            }
+          }).catch(() => {});
+        }
+      }
+
+      // 3. Create Tax Invoice
+      const inv = await tx.invoice.create({
+        data: {
+          invoiceNumber: invNumber,
+          organizationId,
+          customerId: customer.id,
+          orderId: directOrder.id,
+          invoiceDate: payload.invoiceDate ? new Date(payload.invoiceDate) : new Date(),
+          dueDate: payload.dueDate ? new Date(payload.dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          subtotal: Number(payload.subtotal) || 0,
+          discountAmount: Number(payload.discountAmount) || 0,
+          taxAmount: Number(payload.taxAmount) || 0,
+          tcsSection: payload.tcsSection || null,
+          tcsRate: Number(payload.tcsRate) || 0,
+          tcsAmount: Number(payload.tcsAmount) || 0,
+          totalAmount: effectiveTotal,
+          amountPaid: effectivePaid,
+          amountDue: effectiveDue,
+          status: invoiceStatus,
+          paymentTerms: payload.paymentTerms || "Net 30",
+          notes: payload.notes || null
+        },
+        include: {
+          customer: { select: { businessName: true, mobile: true, state: true } },
+          order: { select: { orderNumber: true } },
+          payments: true
+        }
+      });
+
+      // 4. Record Initial Payment if any
+      if (effectivePaid > 0) {
+        const paymentNumber = `PAY-${Date.now().toString().slice(-6)}`;
+        await tx.payment.create({
+          data: {
+            paymentNumber,
+            invoiceId: inv.id,
+            customerId: customer.id,
+            orderId: directOrder.id,
+            amount: effectivePaid,
+            paymentDate: new Date(),
+            paymentMode: payload.paymentMode || "Cash",
+            referenceNumber: payload.paymentReference || invNumber,
+            status: "Completed",
+            notes: `Initial payment on Invoice ${invNumber}`
+          }
+        });
+      }
+
+      // 5. Update Customer Total Orders & Purchase Value
+      await tx.customer.update({
+        where: { id: customer.id },
+        data: {
+          totalOrders: { increment: 1 },
+          totalPurchaseValue: { increment: effectiveTotal }
+        }
+      });
+
+      return inv;
+    });
+
+    revalidatePath("/invoices");
+    revalidatePath("/orders");
+    revalidatePath("/customers");
+    revalidatePath("/accounting");
+    return { success: true, invoice: createdInvoice };
+  } catch (err: any) {
+    console.error("createDirectInvoice error:", err);
+    return { error: err?.message || "Failed to create invoice" };
+  }
+}
+

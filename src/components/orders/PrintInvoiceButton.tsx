@@ -4,9 +4,27 @@ import React from 'react';
 import { Printer } from 'lucide-react';
 
 export default function PrintInvoiceButton() {
+  const handlePrint = () => {
+    if (typeof window !== 'undefined') {
+      const originalTitle = document.title;
+      // Blank document title during print so browser print headers won't output the page title
+      document.title = "";
+
+      const restore = () => {
+        document.title = originalTitle;
+        window.removeEventListener('afterprint', restore);
+      };
+
+      window.addEventListener('afterprint', restore);
+      window.print();
+      // Safety timeout to guarantee title restoration
+      setTimeout(restore, 1500);
+    }
+  };
+
   return (
     <button
-      onClick={() => window.print()}
+      onClick={handlePrint}
       style={{
         padding: '8px 16px',
         backgroundColor: '#4f46e5',
