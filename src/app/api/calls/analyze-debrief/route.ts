@@ -110,8 +110,8 @@ export async function POST(req: NextRequest) {
     const dayOfWeek = today.toLocaleDateString("en-US", { weekday: "long" });
 
     // Resolve tenant organization
-    const orgId = (session?.user as any)?.organizationId || callContext?.organizationId || body.organizationId || null;
-    const { ai, isConfigured, model: preferredModel } = await getTenantAIClient(orgId);
+    const effectiveOrgId = orgId || callContext?.organizationId || body.organizationId || null;
+    const { ai, isConfigured, model: preferredModel } = await getTenantAIClient(effectiveOrgId);
 
     if (!isConfigured) {
       const fallback = generateFallback(rawText, contactName, contactPhone, durationSec, today);
@@ -119,10 +119,10 @@ export async function POST(req: NextRequest) {
     }
 
     let companyName = "Espon Clothing Private Limited";
-    if (orgId) {
+    if (effectiveOrgId) {
       try {
         const cSettings = await prisma.companySettings.findFirst({
-          where: { OR: [{ organizationId: orgId }, { id: `settings-${orgId}` }] },
+          where: { OR: [{ organizationId: effectiveOrgId }, { id: `settings-${effectiveOrgId}` }] },
           select: { companyName: true }
         });
         if (cSettings?.companyName) companyName = cSettings.companyName;

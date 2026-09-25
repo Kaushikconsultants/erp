@@ -189,12 +189,6 @@ Available routes for suggestedActions: /orders, /customers, /quotations, /accoun
         console.error("Gemini AI error in askERPAssistant, using algorithmic fallback:", geminiError);
       }
     }
-          }
-        };
-      }
-    } catch (aiError) {
-      console.error("AI Copilot error in askERPAssistant, using algorithmic fallback:", aiError);
-    }
 
     // High-quality Algorithmic Fallback
     const qLower = query.toLowerCase();
