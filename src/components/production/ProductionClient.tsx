@@ -6,7 +6,7 @@ import {
   Factory, Plus, Search, Filter, Layers, Cpu, Package2, Wrench, Leaf,
   ChevronRight, Clock, CheckCircle2, AlertCircle, PlayCircle, XCircle,
   BarChart3, TrendingUp, Boxes, Users, Receipt, Printer, Trash2,
-  Eye, ArrowRight, Sparkles, BookOpen, ClipboardList
+  Eye, ArrowRight, Sparkles, BookOpen, ClipboardList, Wine
 } from "lucide-react";
 import { createWorkOrder, completeWorkOrder, deleteWorkOrder } from "@/app/actions/productionActions";
 import CreateWorkOrderModal from "./CreateWorkOrderModal";
@@ -19,6 +19,7 @@ import "./production.css";
 // ─── Sector config ─────────────────────────────────────────────
 const SECTORS = [
   { key: "All", label: "All Sectors", icon: Factory, color: "#4f46e5" },
+  { key: "Glassware", label: "Glassware & Crystal Crafting", icon: Wine, color: "#e11d48" },
   { key: "Apparel", label: "Apparel & Textiles", icon: Layers, color: "#0284c7" },
   { key: "Electronics", label: "Electronics & Hardware", icon: Cpu, color: "#7c3aed" },
   { key: "FMCG", label: "FMCG & Packaging", icon: Package2, color: "#059669" },
@@ -193,7 +194,7 @@ ${wo.notes ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-rad
               Production & Workshop
             </h1>
             <p className="production-header-desc">
-              Universal Manufacturing Suite — Apparel, Electronics, FMCG, Fabrication & More
+              Glassware, Tableware, Crystal Crafting & Manufacturing Suite
             </p>
           </div>
         </div>

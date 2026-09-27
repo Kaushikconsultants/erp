@@ -5,7 +5,7 @@ import { X, BookOpen, Plus, Trash2, Edit2, Save, ChevronDown } from "lucide-reac
 import { saveBom, deleteBom } from "@/app/actions/productionActions";
 
 const UNITS = ["pcs","mtr","kg","ltr","roll","box","sheet","set","pair","bundle","gm","ml"];
-const SECTORS = ["Apparel","Electronics","FMCG","Fabrication","General"];
+const SECTORS = ["Glassware","Apparel","Electronics","FMCG","Fabrication","General"];
 
 interface Props {
   boms: any[];
@@ -24,7 +24,7 @@ export default function BomManagerModal({ boms: initialBoms, products, onClose, 
 
   // Form state
   const [name, setName] = useState("");
-  const [sector, setSector] = useState("General");
+  const [sector, setSector] = useState("Glassware");
   const [finishedGoodsName, setFinishedGoodsName] = useState("");
   const [productId, setProductId] = useState("");
   const [outputQty, setOutputQty] = useState("1");
@@ -35,7 +35,7 @@ export default function BomManagerModal({ boms: initialBoms, products, onClose, 
   const [items, setItems] = useState([{ productId: "", materialName: "", unit: "pcs", quantity: 1, wastagePercent: 0, unitCost: 0 }]);
 
   const resetForm = () => {
-    setName(""); setSector("General"); setFinishedGoodsName(""); setProductId("");
+    setName(""); setSector("Glassware"); setFinishedGoodsName(""); setProductId("");
     setOutputQty("1"); setOutputUnit("pcs"); setLaborCost("0"); setOverheadCost("0");
     setNotes(""); setItems([{ productId: "", materialName: "", unit: "pcs", quantity: 1, wastagePercent: 0, unitCost: 0 }]);
     setEditingBom(null);

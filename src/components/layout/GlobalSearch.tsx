@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Mic, MicOff, Bot, Sparkles, User, FileText, ShoppingBag, Package, PlusCircle, Settings, BarChart2, Phone, X, Heart } from 'lucide-react';
+import { Search, Mic, MicOff, Bot, Sparkles, User, FileText, ShoppingBag, Package, PlusCircle, Settings, BarChart2, Phone, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { parseVoiceIntent } from '@/app/actions/voiceActions';
 import { searchAllModules, SearchResultItem } from '@/app/actions/searchActions';
 import { useVoiceStore } from '@/lib/stores/voiceStore';
-import StylishHeart from '@/components/voice/StylishHeart';
 
 const QUICK_NAV = [
   { title: "Create New Quotation", subtitle: "Issue a new formal quote", url: "/quotations/new", icon: PlusCircle, color: "#4f46e5" },
@@ -215,7 +214,7 @@ export default function GlobalSearch() {
 
         <input 
           type="text" 
-          placeholder={isListening ? "Listening to Heart..." : "Ask Heart or search ERP..."}
+          placeholder={isListening ? "Listening..." : "Search ERP, orders, clients (Ctrl+K)..."}
           className="search-input"
           value={query}
           onFocus={() => setShowDropdown(true)}
@@ -277,7 +276,7 @@ export default function GlobalSearch() {
           ) : isListening ? (
             <MicOff size={15} color="#059669" />
           ) : (
-            <StylishHeart size={20} isBeating={true} showGlow={false} />
+            <Mic size={16} color="#4f46e5" />
           )}
         </button>
       </div>

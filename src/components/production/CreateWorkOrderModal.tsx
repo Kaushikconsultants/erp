@@ -7,6 +7,7 @@ import { X, Plus, Trash2, Factory, Calendar, Package2, Layers, Cpu, Wrench, Leaf
 import { createWorkOrder } from "@/app/actions/productionActions";
 
 const SECTOR_STAGES: Record<string, string[]> = {
+  Glassware:   ["Batch Mixing & Melting", "Moulding / Hand-Blowing", "Annealing Lehr Cooling", "Stem & Rim Laser Polishing", "Clarity & Drop QA Check", "Export Master Packing"],
   Apparel:     ["Fabric Inwarding", "Cutting", "Stitching/Assembly", "Washing & Ironing", "QA Checking", "Packing & Dispatch"],
   Electronics: ["Component Kitting", "PCB Assembly/Soldering", "Sub-Assembly", "Firmware/Testing", "QA Inspection", "Packaging & Labelling"],
   FMCG:        ["Raw Material Receipt", "Compounding/Mixing", "Filling & Sealing", "Labelling", "QA & Batch Check", "Carton Packing"],
@@ -25,7 +26,7 @@ interface Props {
 }
 
 export default function CreateWorkOrderModal({ products, boms, employees, onClose, onCreated }: Props) {
-  const [sector, setSector] = useState("General");
+  const [sector, setSector] = useState("Glassware");
   const [title, setTitle] = useState("");
   const [finishedGoodsName, setFinishedGoodsName] = useState("");
   const [productId, setProductId] = useState("");
@@ -155,8 +156,12 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
   };
 
   const sectorOptions = [
-    { key: "Apparel", icon: "🧵" }, { key: "Electronics", icon: "💡" },
-    { key: "FMCG", icon: "🧴" }, { key: "Fabrication", icon: "🔩" }, { key: "General", icon: "🏭" }
+    { key: "Glassware", icon: "🍷" },
+    { key: "Apparel", icon: "🧵" },
+    { key: "Electronics", icon: "💡" },
+    { key: "FMCG", icon: "🧴" },
+    { key: "Fabrication", icon: "🔩" },
+    { key: "General", icon: "🏭" }
   ];
 
   const inputStyle = {
@@ -177,7 +182,7 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 600, color: "var(--text-primary, #0f172a)" }}>New Work Order / Job Card</h3>
-              <p style={{ margin: 0, fontSize: "0.72rem", color: "#64748b" }}>Universal manufacturing — works for Apparel, Electronics, FMCG, Fabrication & General</p>
+              <p style={{ margin: 0, fontSize: "0.72rem", color: "#64748b" }}>Glassware, Tableware, Crystal Crafting & Manufacturing Suite</p>
             </div>
           </div>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8" }}><X size={20} /></button>

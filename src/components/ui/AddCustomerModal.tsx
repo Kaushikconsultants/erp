@@ -5,6 +5,7 @@ import { createCustomer, lookupGstin } from "@/app/actions/customerActions";
 import { convertLeadToCustomer } from "@/actions/leads";
 import { checkDuplicateEntity } from "@/app/actions/duplicateActions";
 import DuplicateWarningBanner, { DuplicateEntityInfo } from "@/components/ui/DuplicateWarningBanner";
+import { lookupPostalCode } from "@/lib/postalLookup";
 import { UserPlus, Sparkles, CheckCircle2, Loader2, Landmark, Globe, Building2, Anchor } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import "@/components/ui/modal.css"; 
@@ -246,28 +247,25 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     const pin = isInternational ? e.target.value : e.target.value.replace(/\D/g, '').slice(0, 6);
     setAddressData(prev => ({ ...prev, pincode: pin }));
 
-    if (!isInternational && pin.length === 6) {
+    const isDomesticValid = !isInternational && pin.length === 6;
+    const isInternationalValid = isInternational && pin.trim().length >= 3;
+
+    if (isDomesticValid || isInternationalValid) {
       setFetchingPin(true);
       try {
-        const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-        const data = await response.json();
-        if (data && data[0] && data[0].Status === "Success") {
-          const postOffices = data[0].PostOffice || [];
-          setAvailablePostOffices(postOffices);
-          
-          if (postOffices.length > 0) {
-            setAddressData(prev => ({
-              ...prev,
-              city: postOffices[0].District || prev.city,
-              state: postOffices[0].State || prev.state,
-              postOffice: postOffices.length === 1 ? postOffices[0].Name : ""
-            }));
+        const res = await lookupPostalCode(pin, country, isInternational);
+        if (res.success) {
+          setAddressData(prev => ({
+            ...prev,
+            city: res.city || prev.city,
+            state: res.state || prev.state
+          }));
+          if (res.postOffices && res.postOffices.length > 0) {
+            setAvailablePostOffices(res.postOffices.map((poName: string) => ({ Name: poName })));
           }
-        } else {
-          setAvailablePostOffices([]);
         }
       } catch (err) {
-        console.error("Failed to fetch pincode details:", err);
+        console.error("Failed to fetch postal code details:", err);
       } finally {
         setFetchingPin(false);
       }

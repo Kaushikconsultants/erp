@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { updateCustomer } from "@/app/actions/customerActions";
+import { lookupPostalCode } from "@/lib/postalLookup";
 import { UserCheck, Globe, Building2, Anchor } from "lucide-react";
 import "@/components/ui/modal.css"; 
 
@@ -104,21 +105,22 @@ export default function EditCustomerModal({ customer, employees = [], onClose }:
     const pin = isInternational ? e.target.value : e.target.value.replace(/\D/g, '').slice(0, 6);
     setAddressData(prev => ({ ...prev, pincode: pin }));
 
-    if (!isInternational && pin.length === 6) {
+    const isDomesticValid = !isInternational && pin.length === 6;
+    const isInternationalValid = isInternational && pin.trim().length >= 3;
+
+    if (isDomesticValid || isInternationalValid) {
       setFetchingPin(true);
       try {
-        const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
-        const data = await response.json();
-        if (data && data[0] && data[0].Status === "Success") {
-          const postOffice = data[0].PostOffice[0];
+        const res = await lookupPostalCode(pin, country, isInternational);
+        if (res.success) {
           setAddressData(prev => ({
             ...prev,
-            city: postOffice.District,
-            state: postOffice.State
+            city: res.city || prev.city,
+            state: res.state || prev.state
           }));
         }
       } catch (err) {
-        console.error("Failed to fetch pincode details:", err);
+        console.error("Failed to fetch postal code details:", err);
       } finally {
         setFetchingPin(false);
       }
