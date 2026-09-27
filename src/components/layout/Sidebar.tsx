@@ -659,7 +659,7 @@ const Sidebar = ({
 
       </nav>
 
-      {/* SETTINGS & BILLING FOOTER */}
+      {/* SETTINGS & INTEGRATIONS FOOTER */}
       {(showSettings || canAccess('settings') || canAccess('integrations')) && (
         <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           {canAccess('integrations') && (
@@ -669,20 +669,10 @@ const Sidebar = ({
               <span style={{ marginLeft: 'auto', background: '#f5f3ff', color: '#7c3aed', fontSize: '9px', fontWeight: 700, padding: '2px 6px', borderRadius: '8px', border: '1px solid #ddd6fe' }}>API</span>
             </Link>
           )}
-          <Link href="/settings" onClick={onClose} className={`nav-item ${isActive('/settings') && !isActive('/settings/billing') ? 'active' : ''}`}>
+          <Link href="/settings" onClick={onClose} className={`nav-item ${isActive('/settings') ? 'active' : ''}`}>
             <Settings size={18} />
             <span>Settings</span>
           </Link>
-          <Link href="/settings/billing" onClick={onClose} className={`nav-item ${isActive('/settings/billing') ? 'active' : ''}`}>
-            <Receipt size={18} style={{ color: '#059669' }} />
-            <span>Subscription & Billing</span>
-          </Link>
-          {isPlatformOwner && (
-            <Link href="/platform-admin" onClick={onClose} className={`nav-item ${isActive('/platform-admin') ? 'active' : ''}`}>
-              <Landmark size={18} style={{ color: '#4f46e5' }} />
-              <span>SaaS Platform Admin</span>
-            </Link>
-          )}
         </div>
       )}
     </aside>

@@ -93,7 +93,7 @@ let state: VoiceState = {
     {
       id: 'welcome-1',
       role: 'assistant',
-      text: "Namaste! I'm Heart, your ERP Voice AI Copilot. You can ask me about Balance Sheet, Net Profit, Stock, Payroll, Customer receivables, or tell me to log an expense or add a customer.",
+      text: "Namaste! I'm your R3 ERP Voice AI Copilot. You can ask me about Balance Sheet, Net Profit, Stock, Export Orders, Customer receivables, or tell me to log an expense or add a customer.",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toUpperCase()
     }
   ],

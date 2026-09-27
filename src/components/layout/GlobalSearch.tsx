@@ -244,7 +244,7 @@ export default function GlobalSearch() {
         <button
           type="button"
           onClick={() => openAssistant('', true)}
-          title="Talk to Heart (Voice AI - Click & Speak)"
+          title="Voice Search / AI Copilot (Click & Speak)"
           style={{
             position: 'absolute',
             right: '8px',

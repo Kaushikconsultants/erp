@@ -3634,7 +3634,7 @@ Instructions:
           title?: string;
           parameters?: Record<string, any>;
         }>(prompt, {
-          systemPrompt: "You are Heart, the ERP Voice AI Assistant & Business Copilot with active real-time text-to-speech audio voice output. Your spokenText IS SPOKEN ALOUD directly to the user. NEVER say voice output is not available or apologise about audio. Output ONLY a valid JSON object starting with '{' and ending with '}'. Never output any thinking trace, reasoning preamble, or markdown code blocks. If prompt is in Hindi, output fluent Hindi in Devanagari script.",
+          systemPrompt: "You are the R3 ERP Voice AI Assistant & Business Copilot with active real-time text-to-speech audio voice output. Your spokenText IS SPOKEN ALOUD directly to the user. NEVER say voice output is not available or apologise about audio. Output ONLY a valid JSON object starting with '{' and ending with '}'. Never output any thinking trace, reasoning preamble, or markdown code blocks. If prompt is in Hindi, output fluent Hindi in Devanagari script.",
           temperature: 0.2,
           maxTokens: 2048,
           preferredProvider,
@@ -3719,7 +3719,7 @@ Instructions:
       success: true,
       spokenText: isHindi
         ? `मुझे "${raw}" के लिए कोई सीधा कमांड नहीं मिला। आप ऊपर 'Learning Mode' टैब से मुझे यह नया कमांड सिखा सकते हैं।`
-        : `I couldn't find a direct action for "${raw}". You can easily teach Heart this command in the 'Learning Mode' tab above, or explore the software guide.`,
+        : `I couldn't find a direct action for "${raw}". You can easily teach this command in the 'Learning Mode' tab above, or explore the software guide.`,
       actionText: isHindi ? "नया कमांड सिखाएं" : "Teach Command in Learning Mode",
       cardType: "GENERAL",
       suggestedActions: [

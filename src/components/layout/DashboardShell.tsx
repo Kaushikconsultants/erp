@@ -13,7 +13,6 @@ import AppSplashScreen from '../ui/AppSplashScreen';
 import GlobalDialerProvider from '@/components/providers/GlobalDialerProvider';
 import OnboardingBanner from '@/components/onboarding/OnboardingBanner';
 import AskERPAssistantModal from '@/components/ai/AskERPAssistantModal';
-import FloatingVoiceWidget from '@/components/voice/FloatingVoiceWidget';
 import TenantLifecycleBanner from './TenantLifecycleBanner';
 
 interface DashboardShellProps {
@@ -161,9 +160,8 @@ export default function DashboardShell({
             onMenuClick={() => setIsSidebarOpen(true)}
           />
 
-          {/* Global Voice AI ERP Executive Copilot Modal & Floating Widget */}
+          {/* Global Voice AI ERP Executive Copilot Modal */}
           <AskERPAssistantModal />
-          <FloatingVoiceWidget />
 
           {/* Real-time Call Reminders & Notifications Engine */}
           <CallReminderNotifier />
