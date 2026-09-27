@@ -301,4 +301,11 @@
   }
 }
 
+/* Hide softphone dialer launcher button on mobile view */
+@media (max-width: 768px) {
+  .topbar-dialer-btn {
+    display: none !important;
+  }
+}
+
 

@@ -8,10 +8,19 @@ export interface OpenDialerOptions {
 }
 
 /**
- * Universally opens the CRM's inbuilt PhoneDialerModal with contact details pre-filled.
+ * Universally opens the CRM's inbuilt PhoneDialerModal or triggers native tel: link on mobile.
  */
 export function openPhoneDialer(options?: OpenDialerOptions) {
   if (typeof window !== "undefined") {
+    // On mobile devices (<= 768px), directly trigger native mobile phone call
+    if (window.innerWidth <= 768 && options?.phone) {
+      const cleanPhone = options.phone.replace(/[^\d+]/g, "");
+      if (cleanPhone) {
+        window.location.href = `tel:${cleanPhone}`;
+        return;
+      }
+    }
+
     if (typeof (window as any).openPhoneDialer === "function") {
       (window as any).openPhoneDialer(options);
     } else {

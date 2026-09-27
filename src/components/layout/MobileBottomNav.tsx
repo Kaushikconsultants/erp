@@ -94,20 +94,15 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
           <span className="bottom-nav-label">Home</span>
         </Link>
 
-        {/* 2. Phone Dialer Tab */}
-        <button
-          type="button"
-          onClick={() => openPhoneDialer()}
-          className="bottom-nav-item"
-          style={{ background: "none", border: "none", cursor: "pointer" }}
-          title="Phone Dialer"
-          aria-label="Phone Dialer"
-        >
-          <div className="bottom-nav-icon">
-            <Phone size={20} />
-          </div>
-          <span className="bottom-nav-label">Dialer</span>
-        </button>
+        {/* 2. Products / Inventory Tab */}
+        {canAccess("products") && (
+          <Link href="/products" className={`bottom-nav-item ${isActive("/products") ? "active" : ""}`}>
+            <div className="bottom-nav-icon">
+              <Package size={20} />
+            </div>
+            <span className="bottom-nav-label">Products</span>
+          </Link>
+        )}
 
         {/* 3. Central Elevated App Launcher FAB Button */}
         <div className="bottom-nav-fab-wrapper">
@@ -122,13 +117,22 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
           </button>
         </div>
 
-        {/* 4. Calls Tab (2nd option in CRM & Clients menu: /calls) */}
-        <Link href="/calls" className={`bottom-nav-item ${isActive("/calls") ? "active" : ""}`}>
-          <div className="bottom-nav-icon">
-            <PhoneCall size={20} />
-          </div>
-          <span className="bottom-nav-label">Calls</span>
-        </Link>
+        {/* 4. Quotations / Estimates Tab */}
+        {canAccess("quotations") ? (
+          <Link href="/quotations" className={`bottom-nav-item ${isActive("/quotations") ? "active" : ""}`}>
+            <div className="bottom-nav-icon">
+              <FileSpreadsheet size={20} />
+            </div>
+            <span className="bottom-nav-label">Quotes</span>
+          </Link>
+        ) : (
+          <Link href="/orders" className={`bottom-nav-item ${isActive("/orders") ? "active" : ""}`}>
+            <div className="bottom-nav-icon">
+              <ShoppingCart size={20} />
+            </div>
+            <span className="bottom-nav-label">Orders</span>
+          </Link>
+        )}
 
         {/* 5. Menu / More Drawer Tab */}
         <button
@@ -164,21 +168,6 @@ export default function MobileBottomNav({ userRole, allowedSections, onMenuClick
             </div>
 
             <div className="action-sheet-grid">
-              <button
-                type="button"
-                className="action-sheet-tile"
-                onClick={() => {
-                  setShowActionSheet(false);
-                  openPhoneDialer();
-                }}
-                style={{ background: "none", border: "none", cursor: "pointer", textAlign: "center" }}
-              >
-                <div className="tile-icon-box green" style={{ background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff" }}>
-                  <PhoneCall size={20} />
-                </div>
-                <span>Phone Dialer</span>
-              </button>
-
               <button
                 type="button"
                 className="action-sheet-tile"

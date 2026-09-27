@@ -52,6 +52,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
         {/* Phone Dialer Quick Action */}
         <button
           type="button"
+          className="topbar-dialer-btn"
           onClick={() => openPhoneDialer()}
           title="Open Phone Dialer & Lead Tracker"
           style={{
