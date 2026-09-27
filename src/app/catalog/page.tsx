@@ -5,8 +5,8 @@ import PublicCatalogClient from "@/components/catalog/PublicCatalogClient";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Wholesale Product Catalog & Lookbook",
-  description: "Browse wholesale collection, check article rates, and place bulk orders."
+  title: "R3 EXPORTS - Premium Glassware Wholesale Catalog & Lookbook",
+  description: "Browse premium glassware wholesale collection, live inventory stock, trade rates, and place direct bulk orders."
 };
 
 interface PageProps {
@@ -25,13 +25,16 @@ export default async function PublicCatalogPage({ searchParams }: PageProps) {
       initialProducts={catalogData.products}
       categories={catalogData.categories}
       company={catalogData.company || {
-        companyName: "ESPON CLOTHING PRIVATE LIMITED",
-        address: "Sco 71A, 2nd Floor, Ashoka Plaza, Delhi Road, Rohtak, Haryana",
-        city: "Rohtak",
-        state: "Haryana",
-        mobile: "+91 7206066678",
-        email: "clothingespon@gmail.com",
-        gstin: "06AAHCE7721Q1Z4"
+        companyName: "R3 EXPORTS",
+        tradeName: "R3 EXPORTS",
+        address: "F-12, Industrial Area, Phase 2, Mayapuri, New Delhi, Delhi 110064",
+        city: "New Delhi",
+        state: "Delhi",
+        mobile: "+91 9876543210",
+        email: "sales@r3exports.com",
+        gstin: "07AAACR3333E1Z9",
+        minOrderValueReadyStock: 15000,
+        minOrderValueMadeToOrder: 50000
       }}
       initialTitle={title}
     />
