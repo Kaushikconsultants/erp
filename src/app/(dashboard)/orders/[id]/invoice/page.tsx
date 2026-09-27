@@ -578,7 +578,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           color: '#9ca3af',
           letterSpacing: '0.04em'
         }} className="zoho-footer">
-          <div>POWERED BY HEART OF BUSINESS</div>
+          <div>POWERED BY R3 EXPORTS</div>
           <div>1</div>
         </div>
 

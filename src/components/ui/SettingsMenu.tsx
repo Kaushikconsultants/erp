@@ -193,12 +193,13 @@ export default function SettingsMenu({ isPlatformOwner = false }: SettingsMenuPr
       href: "/settings/import-export"
     },
     {
-      label: "Subscription & Cloud Billing",
-      desc: "Active subscription plan, user seat limits & billing invoices",
-      icon: <CreditCard size={18} />,
+      label: "Sister Companies & Entities",
+      desc: "Manage multi-entity companies, corporate structure & sister organizations",
+      icon: <Building2 size={18} />,
       iconBg: "#e0f2fe",
       iconColor: "#0284c7",
-      href: "/settings/billing"
+      href: "/settings/organization",
+      badge: "Multi-Entity"
     },
     {
       label: "Data Backup & Full Export",

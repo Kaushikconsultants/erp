@@ -1503,11 +1503,11 @@ function MiniDocumentPreview({ template }: { template: TemplateConfig }) {
         <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px" }}>
             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-              <div style={{ width: "20px", height: "20px", borderRadius: "3px", backgroundColor: theme, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: "9px" }}>
-                H
+              <div style={{ width: "22px", height: "20px", borderRadius: "3px", backgroundColor: theme, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 900, fontSize: "8px" }}>
+                R3
               </div>
               <div>
-                <div style={{ fontWeight: 800, fontSize: "8px", color: "#0f172a" }}>Heart of Business</div>
+                <div style={{ fontWeight: 800, fontSize: "8px", color: "#0f172a" }}>R3 EXPORTS</div>
                 <div style={{ fontSize: "6px", color: "#64748b" }}>GSTIN: 06AAHCE7721Q1Z4</div>
               </div>
             </div>
@@ -1665,10 +1665,10 @@ function MiniDocumentPreview({ template }: { template: TemplateConfig }) {
       {/* ── STYLE 7: ELEGANT CENTERED FORMAL ── */}
       {style === "centered" && (
         <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
-          <div style={{ width: "16px", height: "16px", borderRadius: "50%", backgroundColor: theme, color: "#fff", margin: "0 auto 2px auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "8px", fontWeight: 800 }}>
-            H
+          <div style={{ width: "20px", height: "16px", borderRadius: "4px", backgroundColor: theme, color: "#fff", margin: "0 auto 2px auto", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "7px", fontWeight: 900 }}>
+            R3
           </div>
-          <div style={{ fontWeight: 800, fontSize: "8px", color: "#0f172a" }}>Heart of Business</div>
+          <div style={{ fontWeight: 800, fontSize: "8px", color: "#0f172a" }}>R3 EXPORTS</div>
           <div style={{ fontSize: "7.5px", fontWeight: 900, color: theme, borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", padding: "2px 0", margin: "3px 0" }}>
             {d.title}
           </div>
@@ -1688,7 +1688,7 @@ function MiniDocumentPreview({ template }: { template: TemplateConfig }) {
         <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `2px solid ${theme}`, paddingBottom: "4px", marginBottom: "4px" }}>
             <div>
-              <div style={{ fontWeight: 800, fontSize: "8px", color: "#0f172a" }}>Heart of Business</div>
+              <div style={{ fontWeight: 800, fontSize: "8px", color: "#0f172a" }}>R3 EXPORTS</div>
               <div style={{ fontSize: "5.5px", color: "#64748b" }}>{d.meta1}</div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -1833,13 +1833,13 @@ function LiveTemplatePreview({ template }: { template: TemplateConfig }) {
                 alignItems: "center",
                 justifyContent: "center",
                 fontWeight: 900,
-                fontSize: "18px"
+                fontSize: "14px"
               }}>
-                H
+                R3
               </div>
             )}
             <div>
-              <div style={{ fontWeight: 800, fontSize: "16px" }}>Heart of Business ERP</div>
+              <div style={{ fontWeight: 800, fontSize: "16px" }}>R3 EXPORTS</div>
               <div style={{ fontSize: "11px", opacity: 0.85 }}>Sector 14, Rohtak, Haryana 124001 • GSTIN: 06AAHCE7721Q1Z4</div>
             </div>
           </div>
@@ -1882,12 +1882,12 @@ function LiveTemplatePreview({ template }: { template: TemplateConfig }) {
                   alignItems: "center",
                   justifyContent: "center",
                   fontWeight: 900,
-                  fontSize: template.logoSize === "large" ? "20px" : "16px"
+                  fontSize: template.logoSize === "large" ? "18px" : "13px"
                 }}>
-                  H
+                  R3
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: "15px", color: "#0f172a" }}>Heart of Business ERP</div>
+                  <div style={{ fontWeight: 800, fontSize: "15px", color: "#0f172a" }}>R3 EXPORTS</div>
                   <div style={{ fontSize: "11px", color: "#64748b" }}>Industrial Area, Sector 14, Rohtak, Haryana 124001</div>
                   <div style={{ fontSize: "11px", color: "#334155", fontWeight: 600 }}>GSTIN: 06AAHCE7721Q1Z4</div>
                 </div>
@@ -2078,7 +2078,7 @@ function LiveTemplatePreview({ template }: { template: TemplateConfig }) {
           {template.showSignatory && (
             <div style={{ textAlign: "center", borderTop: "1px solid #94a3b8", width: "140px", paddingTop: "6px", marginTop: "24px" }}>
               <div style={{ fontSize: "9.5px", fontWeight: 700, color: "#0f172a" }}>Authorized Signatory</div>
-              <div style={{ fontSize: "8.5px", color: "#64748b" }}>Heart of Business ERP</div>
+              <div style={{ fontSize: "8.5px", color: "#64748b" }}>R3 EXPORTS</div>
             </div>
           )}
         </div>

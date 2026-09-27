@@ -2,9 +2,9 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'ERP Tinkal - CRM & Sales ERP',
-    short_name: 'ERP Tinkal',
-    description: 'Comprehensive Enterprise B2B CRM and Sales ERP Software - Made by tinkal.in',
+    name: 'R3 EXPORTS - Enterprise ERP',
+    short_name: 'R3 EXPORTS',
+    description: 'Comprehensive Multi-Entity Enterprise ERP & CRM Software for R3 EXPORTS',
     start_url: '/',
     display: 'standalone',
     background_color: '#ffffff',

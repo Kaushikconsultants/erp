@@ -91,8 +91,8 @@ export default function AppSplashScreen() {
               }}
             />
           </div>
-          <span style={{ fontSize: "0.8rem", color: "#64748b", fontWeight: 600, letterSpacing: "0.3px" }}>
-            Connecting Enterprise Services...
+          <span style={{ fontSize: "0.82rem", color: "#64748b", fontWeight: 600, letterSpacing: "0.3px" }}>
+            Connecting R3 Enterprise ERP...
           </span>
         </div>
       </div>

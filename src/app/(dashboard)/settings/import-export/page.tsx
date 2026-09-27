@@ -360,7 +360,7 @@ export default function ImportExportHubPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Upload size={20} style={{ color: '#4f46e5' }} />
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-              Import Data into Heart of Business
+              Import Data into R3 EXPORTS
             </h2>
           </div>
           <p style={{ margin: '4px 0 0 0', fontSize: '0.84rem', color: '#64748b' }}>

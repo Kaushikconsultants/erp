@@ -93,7 +93,7 @@ function LoginForm() {
           <div>
             <strong>Workspace created successfully!</strong>
             <div style={{ fontSize: '0.78rem', color: '#047857', marginTop: '2px' }}>
-              Your 14-day free trial is active. Sign in below using your admin email and password.
+              Your enterprise workspace is active. Sign in below using your admin email and password.
             </div>
           </div>
         </div>
@@ -165,25 +165,25 @@ function LoginForm() {
 
       {/* Modern Separator */}
       <div className="login-divider">
-        <span>NEW TO THE PLATFORM?</span>
+        <span>NEW BUSINESS ENTITY?</span>
       </div>
 
-      {/* Primary Sign Up / Free Trial CTA Card */}
+      {/* Primary Sign Up CTA Card */}
       <div className="signup-cta-card">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span className="free-trial-badge">
-              <Sparkles size={12} /> 14-Day Free Trial
+              <Sparkles size={12} /> Permanent Workspace
             </span>
           </div>
-          <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>No card required</span>
+          <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Enterprise Access</span>
         </div>
 
         <h3 style={{ margin: '0 0 4px 0', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
           Register Your Business
         </h3>
         <p style={{ margin: '0 0 14px 0', fontSize: '0.78rem', color: '#64748b', lineHeight: 1.4 }}>
-          Set up a dedicated multi-tenant workspace with full ERP, CRM, Invoicing, and live GST tools.
+          Set up a dedicated workspace with full ERP, CRM, Invoicing, Inventory, Manufacturing, and GST tools.
         </p>
 
         <Link 
@@ -195,28 +195,18 @@ function LoginForm() {
           }}
           style={{ cursor: 'pointer' }}
         >
-          <span>Create Free Account</span>
+          <span>Create Workspace</span>
           <ArrowRight size={15} />
         </Link>
       </div>
 
-      {/* Pricing & Overview links */}
+      {/* Overview link */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-        <Link 
-          href="/pricing" 
-          onClick={(e) => {
-            e.preventDefault();
-            router.push("/pricing");
-          }}
-          style={{ fontSize: '0.8rem', color: '#64748b', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
-        >
-          View all plans & pricing options <ArrowRight size={12} />
-        </Link>
         <Link 
           href="/landing" 
           style={{ fontSize: '0.8rem', color: '#6366f1', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
         >
-          ← Back to Product Overview
+          ← Back to Overview
         </Link>
       </div>
 

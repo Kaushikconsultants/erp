@@ -15,23 +15,23 @@ export interface RegisterBusinessInput {
   // Business Profile
   companyName: string;
   tradeName?: string;
-  industry: string;
-  businessType: string;
+  industry?: string;
+  businessType?: string;
   gstin?: string;
   city: string;
   state: string;
   pincode?: string;
 
-  // Subscription
-  plan: 'STARTER' | 'GROWTH' | 'ENTERPRISE';
-  billingCycle: 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  // Optional plan fallback
+  plan?: string;
+  billingCycle?: string;
 }
 
 import { PLAN_PRICING, getAddonSeatPrice } from "@/lib/planConfig";
 import { generateUniqueEmployeeId } from "@/lib/employeeHelper";
 
 /**
- * Register a new Business Organization and provision its SaaS workspace
+ * Register a new Business Organization and provision its permanent workspace
  */
 export async function registerNewBusiness(input: RegisterBusinessInput) {
   try {
@@ -72,7 +72,7 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
       .replace(/-+/g, '-')
       .slice(0, 30);
     
-    if (!baseSlug || baseSlug === '-') baseSlug = 'tenant';
+    if (!baseSlug || baseSlug === '-') baseSlug = 'r3';
 
     const countSameSlug = await prisma.organization.count({
       where: { slug: { startsWith: baseSlug } }
@@ -83,18 +83,9 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
     // Hash admin password
     const hashedPassword = await bcrypt.hash(input.adminPassword, 10);
 
-    const planConfig = PLAN_PRICING[input.plan] || PLAN_PRICING.GROWTH;
-    const trialDays = 14;
-    const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
-    const periodEnd = trialEndsAt;
-
-    let planAmount = planConfig.monthlyPrice;
-    if (input.billingCycle === 'QUARTERLY') planAmount = planConfig.quarterlyPrice;
-    if (input.billingCycle === 'ANNUALLY') planAmount = planConfig.annualPrice;
-
     // Execute all registration steps within a single transaction for atomicity
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create Organization
+      // 1. Create Organization with lifetime unlimited full access
       const organization = await tx.organization.create({
         data: {
           name: input.companyName.trim(),
@@ -109,30 +100,26 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
           state: input.state || "Haryana",
           pincode: input.pincode || "124001",
           country: "India",
-          subscriptionPlan: input.plan,
-          billingCycle: input.billingCycle,
-          subscriptionStatus: "TRIAL",
-          trialEndsAt,
+          subscriptionPlan: "ENTERPRISE",
+          billingCycle: "ANNUALLY",
+          subscriptionStatus: "ACTIVE",
+          trialEndsAt: null,
           currentPeriodStart: new Date(),
-          currentPeriodEnd: periodEnd,
-          maxUsers: planConfig.maxUsers,
-          maxBranches: planConfig.maxBranches,
-          maxWarehouses: planConfig.maxWarehouses,
-          monthlyOrderLimit: planConfig.monthlyOrderLimit,
-          whatsAppCreditBalance: input.billingCycle === 'ANNUALLY'
-            ? planConfig.whatsAppCredits * 12
-            : input.billingCycle === 'QUARTERLY'
-              ? planConfig.whatsAppCredits * 3
-              : planConfig.whatsAppCredits,
-          isGstEnabled: input.plan === 'GROWTH' || input.plan === 'ENTERPRISE',
+          currentPeriodEnd: new Date("2099-12-31"),
+          maxUsers: 999999,
+          maxBranches: 999999,
+          maxWarehouses: 999999,
+          monthlyOrderLimit: 999999,
+          whatsAppCreditBalance: 999999,
+          isGstEnabled: true,
           isWhatsAppEnabled: true,
-          isEWayBillEnabled: input.plan === 'GROWTH' || input.plan === 'ENTERPRISE',
-          isHrmsEnabled: input.plan === 'ENTERPRISE',
-          isProductionEnabled: input.plan === 'ENTERPRISE',
-          isAiScannerEnabled: input.plan === 'ENTERPRISE',
+          isEWayBillEnabled: true,
+          isHrmsEnabled: true,
+          isProductionEnabled: true,
+          isAiScannerEnabled: true,
           isTeleCrmEnabled: true,
-          isInventoryEnabled: input.plan === 'GROWTH' || input.plan === 'ENTERPRISE',
-          isAccountingEnabled: input.plan === 'GROWTH' || input.plan === 'ENTERPRISE',
+          isInventoryEnabled: true,
+          isAccountingEnabled: true,
           isQuotationsEnabled: true,
         }
       });
@@ -144,6 +131,7 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
           name: input.adminName.trim(),
           email: adminEmail,
           password: hashedPassword,
+          plainPassword: input.adminPassword,
           role: "SUPER_ADMIN",
           canManageSettings: true,
           isActive: true,
@@ -194,22 +182,6 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
         }
       });
 
-      // 5. Create initial Subscription History record
-      await tx.subscriptionHistory.create({
-        data: {
-          organizationId: organization.id,
-          plan: input.plan,
-          billingCycle: input.billingCycle,
-          amount: planAmount,
-          taxAmount: Math.round(planAmount * 0.18),
-          totalAmount: Math.round(planAmount * 1.18),
-          status: "TRIAL_ACTIVE",
-          paymentMethod: "FREE_TRIAL_14_DAYS",
-          startDate: new Date(),
-          endDate: trialEndsAt,
-        }
-      });
-
       return {
         organization,
         adminUser,
@@ -218,7 +190,7 @@ export async function registerNewBusiness(input: RegisterBusinessInput) {
 
     return {
       success: true,
-      message: `Welcome to the platform! Your 14-day free trial for ${result.organization.name} is now active.`,
+      message: `Workspace created successfully! Full unrestricted enterprise access enabled for ${result.organization.name}.`,
       organizationSlug: result.organization.slug,
       adminEmail: result.adminUser.email,
     };
@@ -905,3 +877,187 @@ export async function deleteTenantByAdmin(organizationId: string) {
     return { success: false, error: error.message || "Failed to delete tenant. Some related records may need manual cleanup." };
   }
 }
+
+/**
+ * Fetch all organizations in the group for switcher and multi-entity administration
+ */
+export async function getAllOrganizations() {
+  try {
+    const ctx = await getTenantContext();
+    if (!ctx) return { success: false, error: "Not authenticated" };
+
+    const organizations = await prisma.organization.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        tradeName: true,
+        city: true,
+        state: true,
+        gstin: true,
+        email: true,
+        phone: true,
+        _count: {
+          select: {
+            users: true,
+            branches: true,
+            orders: true,
+            employees: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return {
+      success: true,
+      activeOrgId: ctx.organizationId,
+      organizations
+    };
+  } catch (error: any) {
+    console.error("Error loading organizations:", error);
+    return { success: false, error: error.message || "Failed to load organizations" };
+  }
+}
+
+/**
+ * Switch active organization for the currently logged-in user
+ */
+export async function switchUserOrganization(organizationId: string) {
+  try {
+    const ctx = await getTenantContext();
+    if (!ctx || !ctx.userId) return { success: false, error: "Not authenticated" };
+
+    const targetOrg = await prisma.organization.findUnique({
+      where: { id: organizationId }
+    });
+
+    if (!targetOrg) {
+      return { success: false, error: "Target organization not found." };
+    }
+
+    await prisma.user.update({
+      where: { id: ctx.userId },
+      data: { organizationId: targetOrg.id }
+    });
+
+    // If user has an employee profile, update its organizationId as well
+    await prisma.employee.updateMany({
+      where: { userId: ctx.userId },
+      data: { organizationId: targetOrg.id }
+    }).catch(() => {});
+
+    revalidatePath('/', 'layout');
+    return { success: true, organizationName: targetOrg.name };
+  } catch (error: any) {
+    console.error("Error switching organization:", error);
+    return { success: false, error: error.message || "Failed to switch organization" };
+  }
+}
+
+/**
+ * Create a new sister organization / company entity under R3
+ */
+export async function createSisterOrganization(input: {
+  companyName: string;
+  tradeName?: string;
+  industry?: string;
+  businessType?: string;
+  gstin?: string;
+  city: string;
+  state: string;
+  pincode?: string;
+  phone?: string;
+  email?: string;
+}) {
+  try {
+    const ctx = await getTenantContext();
+    if (!ctx || !ctx.userId) return { success: false, error: "Not authenticated" };
+
+    let baseSlug = input.companyName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 30);
+    
+    if (!baseSlug || baseSlug === '-') baseSlug = 'r3';
+
+    const countSameSlug = await prisma.organization.count({
+      where: { slug: { startsWith: baseSlug } }
+    });
+    const slug = countSameSlug > 0 ? `${baseSlug}-${countSameSlug + 1}` : baseSlug;
+
+    const org = await prisma.organization.create({
+      data: {
+        name: input.companyName.trim(),
+        slug,
+        tradeName: input.tradeName || input.companyName,
+        industry: input.industry || "Apparel & Garments",
+        businessType: input.businessType || "Private Limited",
+        gstin: input.gstin ? input.gstin.toUpperCase().trim() : null,
+        phone: input.phone || null,
+        email: input.email || ctx.userId,
+        city: input.city || "Rohtak",
+        state: input.state || "Haryana",
+        pincode: input.pincode || "124001",
+        country: "India",
+        subscriptionPlan: "ENTERPRISE",
+        billingCycle: "ANNUALLY",
+        subscriptionStatus: "ACTIVE",
+        trialEndsAt: null,
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: new Date("2099-12-31"),
+        maxUsers: 999999,
+        maxBranches: 999999,
+        maxWarehouses: 999999,
+        monthlyOrderLimit: 999999,
+        whatsAppCreditBalance: 999999,
+        isGstEnabled: true,
+        isWhatsAppEnabled: true,
+        isEWayBillEnabled: true,
+        isHrmsEnabled: true,
+        isProductionEnabled: true,
+        isAiScannerEnabled: true,
+        isTeleCrmEnabled: true,
+        isInventoryEnabled: true,
+        isAccountingEnabled: true,
+        isQuotationsEnabled: true,
+      }
+    });
+
+    // Create default company settings and gst setting
+    await prisma.companySettings.create({
+      data: {
+        id: `settings-${org.id}`,
+        organizationId: org.id,
+        companyName: org.name,
+        address: `${org.city}, ${org.state}`,
+        city: org.city || "Rohtak",
+        state: org.state || "Haryana",
+        country: "India",
+        gstin: org.gstin,
+        mobile: org.phone,
+        email: org.email,
+        themeColor: "#4f46e5",
+      }
+    }).catch(() => {});
+
+    await prisma.gstSetting.create({
+      data: {
+        id: `gst-${org.id}`,
+        organizationId: org.id,
+        gstin: org.gstin,
+        legalName: org.name,
+        tradeName: org.tradeName || org.name,
+        registeredState: org.state || "Haryana",
+      }
+    }).catch(() => {});
+
+    revalidatePath('/', 'layout');
+    return { success: true, organization: org };
+  } catch (error: any) {
+    console.error("Error creating sister organization:", error);
+    return { success: false, error: error.message || "Failed to create organization" };
+  }
+}
+

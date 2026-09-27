@@ -8,7 +8,7 @@ import IntegrationsHubClient from "@/components/integrations/IntegrationsHubClie
 export const dynamic = 'force-dynamic';
 
 export const metadata = {
-  title: "Integrations & APIs Hub | ERP Tinkal",
+  title: "Integrations & APIs Hub | R3 EXPORTS",
   description: "Connect multi-carrier shipping aggregators (Shiprocket, Shipmozo) and e-commerce platforms (Shopify, WooCommerce, Magento) directly via API."
 };
 

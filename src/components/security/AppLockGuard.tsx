@@ -19,6 +19,7 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { StatusBar, Style } from "@capacitor/status-bar";
 import { triggerHaptic } from "@/lib/capacitor";
+import BrandLogo from "@/components/ui/BrandLogo";
 
 interface AppLockGuardProps {
   children: React.ReactNode;
@@ -512,7 +513,7 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
         <div
           style={{
             backgroundColor: "#ffffff",
-            padding: "8px 20px",
+            padding: "10px 24px",
             borderRadius: "16px",
             boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(79, 70, 229, 0.2)",
             marginBottom: "16px",
@@ -521,16 +522,7 @@ export default function AppLockGuard({ children }: AppLockGuardProps) {
             justifyContent: "center"
           }}
         >
-          <img
-            src="/brand-logo.jpg"
-            alt="ERP Tinkal"
-            style={{
-              height: "38px",
-              width: "auto",
-              objectFit: "contain",
-              display: "block"
-            }}
-          />
+          <BrandLogo size="md" showSubtitle={true} />
         </div>
 
         <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: "0 0 6px 0", letterSpacing: "0.2px", color: "#f8fafc" }}>

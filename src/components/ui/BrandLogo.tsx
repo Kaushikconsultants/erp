@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import { Sparkles, Heart } from "lucide-react";
+import React from "react";
 
 interface BrandLogoProps {
   size?: "sm" | "md" | "lg" | "xl";
@@ -18,195 +17,154 @@ export default function BrandLogo({
   className = "",
   style = {}
 }: BrandLogoProps) {
-  const [imgSrc, setImgSrc] = useState<string>("/brand-logo.jpg");
-  const [imgFailed, setImgFailed] = useState<boolean>(false);
-
-  // Dimension scale based on size (Aspect ratio: 708 x 312 ≈ 2.27)
+  // Dimension scales
   const sizeConfig = {
-    sm: { height: 38, maxW: 130, iconSize: 20, fontSize: "0.95rem", subSize: "0.65rem" },
-    md: { height: 52, maxW: 185, iconSize: 26, fontSize: "1.18rem", subSize: "0.72rem" },
-    lg: { height: 68, maxW: 240, iconSize: 32, fontSize: "1.45rem", subSize: "0.78rem" },
-    xl: { height: 86, maxW: 310, iconSize: 40, fontSize: "1.8rem", subSize: "0.85rem" }
+    sm: { height: 34, iconSize: 28, titleSize: "1.05rem", subSize: "0.62rem", gap: "8px" },
+    md: { height: 44, iconSize: 36, titleSize: "1.25rem", subSize: "0.68rem", gap: "10px" },
+    lg: { height: 56, iconSize: 46, titleSize: "1.55rem", subSize: "0.76rem", gap: "12px" },
+    xl: { height: 72, iconSize: 58, titleSize: "1.95rem", subSize: "0.86rem", gap: "14px" }
   };
 
   const config = sizeConfig[size] || sizeConfig.md;
 
-  const handleImageError = () => {
-    if (imgSrc === "/brand-logo.jpg") {
-      setImgSrc("/logo.jpg");
-    } else {
-      setImgFailed(true);
-    }
-  };
-
   if (collapsed) {
     return (
       <div
-        className={`brand-identity-collapsed ${className}`}
+        className={`r3-brand-collapsed ${className}`}
         style={{
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
-          width: "44px",
-          height: "44px",
-          borderRadius: "12px",
-          overflow: "hidden",
-          backgroundColor: "#ffffff",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.06)",
-          border: "1px solid #f1f5f9",
+          width: "42px",
+          height: "42px",
+          borderRadius: "11px",
+          background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)",
+          boxShadow: "0 3px 10px rgba(67, 56, 202, 0.25)",
+          border: "1px solid rgba(255, 255, 255, 0.15)",
+          userSelect: "none",
           flexShrink: 0,
           ...style
         }}
-        title="ERP Tinkal"
+        title="R3 EXPORTS"
       >
-        {!imgFailed ? (
-          <img
-            key={imgSrc}
-            src={imgSrc}
-            alt="ERP Tinkal"
-            onError={handleImageError}
-            style={{
-              height: "36px",
-              width: "auto",
-              objectFit: "contain",
-              transform: "scale(1.2)"
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "8px",
-              background: "linear-gradient(135deg, #e11d48 0%, #be123c 100%)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#ffffff"
-            }}
-          >
-            <Heart size={18} fill="#ffffff" />
-          </div>
-        )}
+        <span
+          style={{
+            fontFamily: "var(--font-outfit), 'Plus Jakarta Sans', sans-serif",
+            fontWeight: 900,
+            fontSize: "1.1rem",
+            color: "#ffffff",
+            letterSpacing: "-0.5px",
+            background: "linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent"
+          }}
+        >
+          R3
+        </span>
       </div>
     );
   }
 
   return (
     <div
-      className={`brand-identity ${className}`}
+      className={`r3-brand-identity ${className}`}
       style={{
         display: "inline-flex",
-        flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
         textDecoration: "none",
         userSelect: "none",
-        position: "relative",
-        width: "100%",
+        gap: config.gap,
         ...style
       }}
     >
-      <style>
-        {`
-          .brand-identity {
-            transition: all 0.25s ease;
-          }
-          .brand-identity:hover .brand-logo-img {
-            transform: translateY(-1px) scale(1.02);
-            filter: drop-shadow(0 4px 12px rgba(225, 29, 72, 0.15));
-          }
-          .brand-logo-img {
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), filter 0.3s ease;
-          }
-        `}
-      </style>
-
-      {/* Main Brand Logo Display */}
+      {/* R3 Vector Hex Shield Emblem */}
       <div
         style={{
+          width: `${config.iconSize}px`,
+          height: `${config.iconSize}px`,
+          borderRadius: size === "sm" ? "9px" : "12px",
+          background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4f46e5 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          boxShadow: "0 4px 14px rgba(79, 70, 229, 0.28)",
+          border: "1px solid rgba(255, 255, 255, 0.2)",
+          flexShrink: 0,
           position: "relative",
-          width: "100%"
+          overflow: "hidden"
         }}
       >
-        {!imgFailed ? (
-          <img
-            key={imgSrc}
-            src={imgSrc}
-            alt="ERP Tinkal"
-            className="brand-logo-img"
-            onError={handleImageError}
+        {/* Subtle interior highlight */}
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "50%",
+            background: "linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%)",
+            borderRadius: "inherit"
+          }}
+        />
+
+        <span
+          style={{
+            fontFamily: "var(--font-outfit), 'Plus Jakarta Sans', sans-serif",
+            fontWeight: 900,
+            fontSize: size === "sm" ? "0.95rem" : size === "lg" ? "1.45rem" : size === "xl" ? "1.85rem" : "1.18rem",
+            letterSpacing: "-0.5px",
+            color: "#ffffff",
+            textShadow: "0 1px 3px rgba(0,0,0,0.3)"
+          }}
+        >
+          R3
+        </span>
+      </div>
+
+      {/* Typography */}
+      <div style={{ textAlign: "left", display: "flex", flexDirection: "column" }}>
+        <div
+          style={{
+            fontFamily: "var(--font-outfit), 'Plus Jakarta Sans', sans-serif",
+            fontSize: config.titleSize,
+            fontWeight: 900,
+            letterSpacing: "-0.02em",
+            lineHeight: 1.1,
+            color: "#0f172a",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px"
+          }}
+        >
+          <span style={{ color: "#0f172a" }}>R3</span>
+          <span
             style={{
-              height: `${config.height}px`,
-              width: "auto",
-              maxWidth: `${config.maxW}px`,
-              objectFit: "contain",
-              display: "block",
-              borderRadius: "4px"
-            }}
-          />
-        ) : (
-          /* High-Fidelity Vector Fallback if static image fails to load */
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              padding: "4px 8px"
+              background: "linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              fontWeight: 800
             }}
           >
-            <div
-              style={{
-                width: `${config.iconSize + 14}px`,
-                height: `${config.iconSize + 14}px`,
-                borderRadius: "12px",
-                background: "linear-gradient(135deg, #e11d48 0%, #be123c 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#ffffff",
-                boxShadow: "0 4px 12px rgba(225, 29, 72, 0.3)",
-                flexShrink: 0
-              }}
-            >
-              <Heart size={config.iconSize} fill="#ffffff" />
-            </div>
-            <div style={{ textAlign: "left" }}>
-              <div
-                style={{
-                  fontSize: config.fontSize,
-                  fontWeight: 900,
-                  color: "#0f172a",
-                  letterSpacing: "-0.03em",
-                  lineHeight: 1.1
-                }}
-              >
-                ERP <span style={{ color: "#2563eb" }}>Tinkal</span>
-              </div>
-              {showSubtitle && (
-                <div
-                  style={{
-                    fontSize: config.subSize,
-                    fontWeight: 700,
-                    color: "#64748b",
-                    letterSpacing: "0.5px",
-                    textTransform: "uppercase",
-                    marginTop: "2px"
-                  }}
-                >
-                  Made by tinkal.in
-                </div>
-              )}
-            </div>
+            EXPORTS
+          </span>
+        </div>
+
+        {showSubtitle && (
+          <div
+            style={{
+              fontSize: config.subSize,
+              fontWeight: 700,
+              color: "#64748b",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              marginTop: "2px"
+            }}
+          >
+            Enterprise ERP
           </div>
         )}
       </div>
     </div>
   );
 }
-
-
-

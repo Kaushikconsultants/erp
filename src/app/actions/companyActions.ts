@@ -9,7 +9,7 @@ import { getTenantOrgId } from "@/lib/tenant";
 
 const FALLBACK_SETTINGS = {
   id: "default",
-  companyName: "ERP Tinkal",
+  companyName: "R3 EXPORTS",
   gstin: "06AAHCE7721Q1Z4",
   pan: "AAHCE7721Q",
   address: "Sco 71A , 2nd Floor , Ashoka PlazaDelhi Road",

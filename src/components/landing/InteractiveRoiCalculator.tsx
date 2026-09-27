@@ -45,7 +45,7 @@ export default function InteractiveRoiCalculator() {
           <Sparkles size={14} /> Interactive ROI & Time-Saved Calculator
         </div>
         <h3 style={{ fontSize: "1.9rem", fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.025em" }}>
-          See How Much Time & Money You Save with Heart of Business
+          See How Much Time & Money You Save with R3 EXPORTS
         </h3>
         <p style={{ color: "#64748b", fontSize: "0.95rem", marginTop: "8px" }}>
           Adjust team size and order volume to calculate your organization&apos;s monthly productivity and bad debt recovery.

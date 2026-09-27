@@ -115,7 +115,7 @@ export default function InstallPwaPrompt() {
                   Get Mobile App
                 </h4>
                 <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
-                  ERP Tinkal - Made by tinkal.in
+                  R3 EXPORTS — Enterprise ERP
                 </span>
               </div>
             </div>

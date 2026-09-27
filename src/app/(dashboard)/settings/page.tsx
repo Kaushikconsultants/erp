@@ -282,43 +282,18 @@ export default async function SettingsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ 
               fontSize: '0.78rem', 
-              backgroundColor: isAtCapacity ? '#fff1f2' : '#eff6ff', 
-              color: isAtCapacity ? '#e11d48' : '#1d4ed8', 
+              backgroundColor: '#eff6ff', 
+              color: '#1d4ed8', 
               padding: '5px 12px', 
               borderRadius: '20px', 
               fontWeight: 700, 
-              border: isAtCapacity ? '1px solid #fecdd3' : '1px solid #bfdbfe',
+              border: '1px solid #bfdbfe',
               display: 'flex',
               alignItems: 'center',
               gap: '6px'
             }}>
-              <span>{totalUsers} / {maxUsers} Seats Used</span>
-              {isAtCapacity && (
-                <span style={{ fontSize: '0.65rem', backgroundColor: '#e11d48', color: '#ffffff', padding: '1px 5px', borderRadius: '4px' }}>
-                  FULL
-                </span>
-              )}
+              <span>{totalUsers} {totalUsers === 1 ? 'User' : 'Users'} (Unlimited Capacity)</span>
             </div>
-            {isAtCapacity && (
-              <a
-                href="/settings/billing"
-                style={{
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  color: '#4f46e5',
-                  backgroundColor: '#eef2ff',
-                  border: '1px solid #c7d2fe',
-                  padding: '5px 12px',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
-              >
-                + Buy Extra Seats
-              </a>
-            )}
             <AddUserButton />
           </div>
         </div>

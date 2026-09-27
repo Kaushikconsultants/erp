@@ -29,13 +29,13 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "ERP Tinkal",
-  description: "ERP Tinkal - Made by tinkal.in",
+  title: "R3 EXPORTS — Enterprise ERP",
+  description: "R3 EXPORTS — Multi-Company Enterprise Operations & ERP Platform",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "ERP Tinkal"
+    title: "R3 EXPORTS"
   }
 };
 

@@ -4,10 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateEmployee } from "./employeeHelper";
 
-export const PLATFORM_ROOT_ORG_SLUG = "tinkal-erp";
-export const PLATFORM_ROOT_ORG_SLUGS = ["tinkal-erp", "espon-global"];
-// Only this specific email is the true platform owner with add/delete tenant rights
-export const PLATFORM_ROOT_OWNER_EMAIL = "owner@tinkal.in";
+export const PLATFORM_ROOT_ORG_SLUG = "r3-exports";
+export const PLATFORM_ROOT_ORG_SLUGS = ["r3-exports", "tinkal-erp", "espon-global"];
+export const PLATFORM_ROOT_OWNER_EMAIL = "admin@r3.com";
 
 export function isPlatformRootOwner(
   userEmail?: string | null, 
@@ -15,33 +14,21 @@ export function isPlatformRootOwner(
   userRole?: string | null
 ): boolean {
   if (!userEmail) return false;
-  const email = userEmail.trim().toLowerCase();
-
-  // The platform super-owner (owner@tinkal.in) is always granted platform admin access
-  if (email === PLATFORM_ROOT_OWNER_EMAIL) {
-    return true;
-  }
-
-  // Root organization super admins / admins can view platform overview
-  const isRootOrg = !orgSlug || PLATFORM_ROOT_ORG_SLUGS.includes(orgSlug);
-  return Boolean(
-    isRootOrg &&
-    (email === "admin@tinkal.in" || email === PLATFORM_ROOT_OWNER_EMAIL) &&
-    (userRole === "SUPER_ADMIN" || userRole === "ADMIN")
-  );
+  const role = (userRole || "").toUpperCase();
+  return role === "SUPER_ADMIN" || role === "ADMIN";
 }
 
 import { resolveTenantEntitlements, AppModule } from "./entitlements";
 
-/** Stricter check — only the designated owner email (owner@tinkal.in) can add/delete tenants */
+/** Master admin check: All Super Admins & Admins can manage, add, and switch organizations */
 export function isPlatformSuperOwner(
   userEmail?: string | null,
   orgSlug?: string | null,
   userRole?: string | null
 ): boolean {
   if (!userEmail) return false;
-  const email = userEmail.trim().toLowerCase();
-  return email === PLATFORM_ROOT_OWNER_EMAIL;
+  const role = (userRole || "").toUpperCase();
+  return role === "SUPER_ADMIN" || role === "ADMIN";
 }
 
 export interface TenantContext {
@@ -225,31 +212,12 @@ export const getTenantScope = cache(async function getTenantScope() {
   };
 });
 
-export async function checkTenantQuota(orgId: string, quotaType: 'USERS' | 'ORDERS' | 'WHATSAPP') {
+export async function checkTenantQuota(orgId: string, quotaType?: 'USERS' | 'ORDERS' | 'WHATSAPP') {
   if (!orgId) return { allowed: true };
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId }
   });
-
-  if (!org) return { allowed: false, error: "Organization not found" };
-
-  if (org.subscriptionStatus === 'EXPIRED') {
-    return { allowed: false, error: "Subscription has expired. Please renew your plan." };
-  }
-
-  if (quotaType === 'USERS') {
-    const userCount = await prisma.user.count({ where: { organizationId: orgId } });
-    if (userCount >= org.maxUsers) {
-      return { allowed: false, error: `User limit (${org.maxUsers}) reached for ${org.subscriptionPlan} plan.` };
-    }
-  }
-
-  if (quotaType === 'WHATSAPP') {
-    if (org.whatsAppCreditBalance <= 0) {
-      return { allowed: false, error: "WhatsApp messaging credits exhausted. Please top up credits." };
-    }
-  }
 
   return { allowed: true, org };
 }

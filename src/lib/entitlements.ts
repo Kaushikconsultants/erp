@@ -182,7 +182,7 @@ export interface TenantEntitlements {
  * 2. Tenant lifecycle status (Active, Trial, Past Due, Expired)
  * 3. Tenant-specific granular toggle overrides
  */
-export function resolveTenantEntitlements(org: {
+export function resolveTenantEntitlements(org?: {
   subscriptionPlan?: string | null;
   subscriptionStatus?: string | null;
   trialEndsAt?: Date | string | null;
@@ -196,67 +196,25 @@ export function resolveTenantEntitlements(org: {
   isInventoryEnabled?: boolean | null;
   isAccountingEnabled?: boolean | null;
   isQuotationsEnabled?: boolean | null;
-}): TenantEntitlements {
-  const plan = (org.subscriptionPlan || 'GROWTH').toUpperCase();
-  const rawStatus = (org.subscriptionStatus || 'ACTIVE').toUpperCase();
-  const now = new Date();
-
-  let isTrialExpired = false;
-  let trialDaysRemaining: number | null = null;
-
-  if (rawStatus === 'TRIAL') {
-    if (org.trialEndsAt) {
-      const trialEnd = new Date(org.trialEndsAt);
-      const diffMs = trialEnd.getTime() - now.getTime();
-      trialDaysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-      if (diffMs <= 0) {
-        isTrialExpired = true;
-      }
-    } else {
-      trialDaysRemaining = 14;
-    }
-  }
-
-  const isHardLocked = 
-    rawStatus === 'EXPIRED' || 
-    rawStatus === 'SUSPENDED' || 
-    rawStatus === 'CANCELLED' || 
-    isTrialExpired;
-
-  const isSoftLocked = rawStatus === 'PAST_DUE';
-
-  // Base tier entitlements
-  const tierDefaults = new Set<AppModule>(TIER_DEFAULT_MODULES[plan] || TIER_DEFAULT_MODULES.GROWTH);
-
-  // Helper to resolve individual toggle: explicit DB boolean takes precedence over tier default
-  const resolveModule = (
-    moduleKey: AppModule, 
-    customFlag?: boolean | null
-  ): boolean => {
-    if (customFlag !== undefined && customFlag !== null) {
-      return customFlag;
-    }
-    return tierDefaults.has(moduleKey);
-  };
-
+} | null): TenantEntitlements {
   const modules: Record<AppModule, boolean> = {
-    TELECRM: resolveModule('TELECRM', org.isTeleCrmEnabled),
-    QUOTATIONS_INVOICING: resolveModule('QUOTATIONS_INVOICING', org.isQuotationsEnabled),
-    INVENTORY_PURCHASE: resolveModule('INVENTORY_PURCHASE', org.isInventoryEnabled),
-    ACCOUNTING_LEDGERS: resolveModule('ACCOUNTING_LEDGERS', org.isAccountingEnabled),
-    PRODUCTION_MANUFACTURING: resolveModule('PRODUCTION_MANUFACTURING', org.isProductionEnabled),
-    HRMS_PAYROLL: resolveModule('HRMS_PAYROLL', org.isHrmsEnabled),
-    GST_EWAYBILL: resolveModule('GST_EWAYBILL', (org.isGstEnabled !== undefined || org.isEWayBillEnabled !== undefined) ? (Boolean(org.isGstEnabled) || Boolean(org.isEWayBillEnabled)) : undefined),
-    WHATSAPP_AUTOMATION: resolveModule('WHATSAPP_AUTOMATION', org.isWhatsAppEnabled),
-    AI_COPILOT_SCANNER: resolveModule('AI_COPILOT_SCANNER', org.isAiScannerEnabled),
+    TELECRM: true,
+    QUOTATIONS_INVOICING: true,
+    INVENTORY_PURCHASE: true,
+    ACCOUNTING_LEDGERS: true,
+    PRODUCTION_MANUFACTURING: true,
+    HRMS_PAYROLL: true,
+    GST_EWAYBILL: true,
+    WHATSAPP_AUTOMATION: true,
+    AI_COPILOT_SCANNER: true,
   };
 
   return {
-    plan,
-    status: isTrialExpired ? 'EXPIRED' : rawStatus,
-    isHardLocked,
-    isSoftLocked,
-    trialDaysRemaining,
+    plan: 'ENTERPRISE',
+    status: 'ACTIVE',
+    isHardLocked: false,
+    isSoftLocked: false,
+    trialDaysRemaining: null,
     modules
   };
 }
@@ -265,31 +223,6 @@ export function resolveTenantEntitlements(org: {
  * Route protection: Maps application path prefix to required module
  */
 export function getRequiredModuleForPath(pathname: string): AppModule | null {
-  if (pathname.startsWith('/production')) return 'PRODUCTION_MANUFACTURING';
-  if (pathname.startsWith('/payroll') || pathname.startsWith('/attendance') || pathname.startsWith('/leaves') || pathname.startsWith('/hiring')) {
-    return 'HRMS_PAYROLL';
-  }
-  if (
-    pathname.startsWith('/purchases') || 
-    pathname.startsWith('/vendors') || 
-    pathname.startsWith('/bills') || 
-    pathname.startsWith('/payments-made') || 
-    pathname.startsWith('/vendor-credits') || 
-    pathname.startsWith('/warehouses')
-  ) {
-    return 'INVENTORY_PURCHASE';
-  }
-  if (pathname.startsWith('/accounting')) return 'ACCOUNTING_LEDGERS';
-  if (pathname.startsWith('/gst-filing') || pathname.startsWith('/eway-bills')) return 'GST_EWAYBILL';
-  if (
-    pathname.startsWith('/leads') || 
-    pathname.startsWith('/calls') || 
-    pathname.startsWith('/follow-ups') || 
-    pathname.startsWith('/pipeline') || 
-    pathname.startsWith('/tasks')
-  ) {
-    return 'TELECRM';
-  }
   return null;
 }
 
@@ -301,25 +234,6 @@ export async function assertTenantModuleAccess(moduleKey: AppModule): Promise<Te
   if (!ctx) {
     throw new Error("Authentication required to perform this action.");
   }
-
-  // Platform root super-admin bypasses plan limits
-  if (ctx.isPlatformOwner) {
-    return ctx;
-  }
-
-  // Check account hard lockout
-  if (ctx.isHardLocked) {
-    throw new Error("Your subscription has expired or is suspended. Please renew your plan in Settings > Billing.");
-  }
-
-  // Check module entitlement
-  const hasAccess = ctx.enabledModules?.[moduleKey] ?? true;
-  if (!hasAccess) {
-    const meta = MODULE_REGISTRY[moduleKey];
-    throw new Error(
-      `Access Denied: The "${meta.name}" module is not included in your organization's subscription plan. Please upgrade to ${meta.minTier} or contact support to enable this add-on.`
-    );
-  }
-
   return ctx;
 }
+

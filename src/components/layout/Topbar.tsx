@@ -125,7 +125,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
                 <Settings size={16} />
                 <span>My Profile</span>
               </Link>
-              {session?.user?.email?.toLowerCase() === 'owner@tinkal.in' && (
+              {(session?.user?.email?.toLowerCase() === 'owner@tinkal.in' || session?.user?.email?.toLowerCase() === 'admin@r3.com' || userRole === 'Super Admin') && (
                 <Link 
                   href="/platform-admin" 
                   className="dropdown-item" 
@@ -133,7 +133,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
                   style={{ backgroundColor: '#f0fdf4', color: '#15803d', fontWeight: 600 }}
                 >
                   <Landmark size={16} style={{ color: '#15803d' }} />
-                  <span>SaaS Platform Admin (Manage Tenants)</span>
+                  <span>Enterprise Admin (Organizations & Entities)</span>
                 </Link>
               )}
               {(userRole === 'Super Admin' || userRole === 'Admin') && (

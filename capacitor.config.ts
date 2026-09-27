@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.tinkal.erp',
-  appName: 'ERP Tinkal',
+  appId: 'com.r3exports.erp',
+  appName: 'R3 EXPORTS',
   webDir: 'public',
   server: {
     url: 'https://erp.esponsports.com',
