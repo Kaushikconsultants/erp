@@ -38,8 +38,8 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
   const [notes, setNotes] = useState("");
   const [estimatedCost, setEstimatedCost] = useState("");
 
-  const [stages, setStages] = useState<string[]>(SECTOR_STAGES["General"]);
-  const [stageAssignees, setStageAssignees] = useState<string[]>(Array(5).fill(""));
+  const [stages, setStages] = useState<string[]>(SECTOR_STAGES["Glassware"]);
+  const [stageAssignees, setStageAssignees] = useState<string[]>(Array(SECTOR_STAGES["Glassware"].length).fill(""));
   const [materials, setMaterials] = useState([
     { productId: "", materialName: "", unit: "pcs", requiredQty: 1, unitCost: 0 }
   ]);
@@ -213,20 +213,27 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
           </div>
 
           {/* Row 1 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: "14px", marginBottom: "14px" }}>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Finished Goods / Product Name *</label>
-              <input type="text" value={finishedGoodsName} onChange={e => setFinishedGoodsName(e.target.value)} placeholder="e.g. Men's Trackpants / PCB v2.1" required style={inputStyle} />
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Finished Goods / Product Name *</label>
+              <input 
+                type="text" 
+                value={finishedGoodsName} 
+                onChange={e => setFinishedGoodsName(e.target.value)} 
+                placeholder={sector === "Glassware" ? "e.g. 450ml Lead-Free Crystal Red Wine Glass" : "e.g. Finished Product Name"} 
+                required 
+                style={inputStyle} 
+              />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Link to Product Catalog (Optional)</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Link to Product Catalog (Optional)</label>
               <select value={productId} onChange={e => handleProductChange(e.target.value)} style={inputStyle}>
                 <option value="">— Select Product —</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name} {p.sku ? `(${p.sku})` : ""}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Use Bill of Materials (Optional)</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Use Bill of Materials (Optional)</label>
               <select value={bomId} onChange={e => handleBomChange(e.target.value)} style={inputStyle}>
                 <option value="">— Select BOM —</option>
                 {boms.map(b => <option key={b.id} value={b.id}>{b.bomCode}: {b.name}</option>)}
@@ -235,33 +242,37 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
           </div>
 
           {/* Row 2 */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.5fr 0.8fr 0.8fr 1fr 0.8fr", gap: "14px", marginBottom: "14px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.3fr 0.7fr 0.8fr 0.9fr 0.9fr 0.8fr", gap: "12px", marginBottom: "14px" }}>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Job Title (Optional)</label>
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Lot 081 — Sports Trackpants Q3" style={inputStyle} />
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Job Title (Optional)</label>
+              <input 
+                type="text" 
+                value={title} 
+                onChange={e => setTitle(e.target.value)} 
+                placeholder={sector === "Glassware" ? "e.g. Batch 104 — 450ml Bordeaux Goblet" : "e.g. Production Batch #01"} 
+                style={inputStyle} 
+              />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Target Qty *</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Target Qty *</label>
               <input type="number" value={targetQty} onChange={e => handleTargetQtyChange(e.target.value)} min="1" required style={{ ...inputStyle, textAlign: "center", fontVariantNumeric: "tabular-nums" }} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Priority</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Priority</label>
               <select value={priority} onChange={e => setPriority(e.target.value)} style={inputStyle}>
                 {["Low","Normal","High","Urgent"].map(p => <option key={p}>{p}</option>)}
               </select>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-              <div>
-                <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Start Date</label>
-                <DatePicker  value={plannedStart} onChange={e => setPlannedStart(e.target.value)} style={inputStyle} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "0.68rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Due Date</label>
-                <DatePicker  value={plannedEnd} onChange={e => setPlannedEnd(e.target.value)} style={inputStyle} />
-              </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Start Date</label>
+              <DatePicker value={plannedStart} onChange={e => setPlannedStart(e.target.value)} style={inputStyle} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 500, color: "var(--text-secondary, #64748b)", marginBottom: "4px" }}>Est. Cost (₹)</label>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Due Date</label>
+              <DatePicker value={plannedEnd} onChange={e => setPlannedEnd(e.target.value)} style={inputStyle} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "4px" }}>Est. Cost (₹)</label>
               <input type="number" value={estimatedCost} onChange={e => setEstimatedCost(e.target.value)} placeholder="0.00" style={{ ...inputStyle, textAlign: "right" }} />
             </div>
           </div>
@@ -354,7 +365,7 @@ export default function CreateWorkOrderModal({ products, boms, employees, onClos
                   {materials.map((m, i) => (
                     <tr key={i} style={{ borderBottom: "1px solid #f1f5f9" }}>
                       <td style={{ padding: "6px 8px" }}>
-                        <input type="text" value={m.materialName} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, materialName: e.target.value } : mat))} placeholder="e.g. Lycra Fabric / Resistor 10kΩ" style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", fontWeight: 400 }} />
+                        <input type="text" value={m.materialName} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, materialName: e.target.value } : mat))} placeholder="e.g. Crystal Batch / Silica / Master Carton" style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1px solid #e2e8f0", fontSize: "0.8rem", fontWeight: 400 }} />
                       </td>
                       <td style={{ padding: "6px 8px" }}>
                         <select value={m.productId} onChange={e => setMaterials(prev => prev.map((mat, idx) => idx === i ? { ...mat, productId: e.target.value } : mat))} style={{ width: "100%", height: "34px", padding: "0 8px", borderRadius: "6px", border: "1.5px solid #cbd5e1", fontSize: "0.76rem" }}>
