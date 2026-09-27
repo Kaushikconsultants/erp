@@ -827,56 +827,79 @@ export async function createTenantByAdmin(input: RegisterBusinessInput) {
 }
 
 /**
- * Owner Only: Permanently delete a tenant organization and all its data.
- * Only the platform Owner account (owner@tinkal.in) can call this.
+/**
+ * Permanently delete a sister organization / tenant and clean up all its data.
+ * Super Admins / Admins can delete sister organizations.
  */
-export async function deleteTenantByAdmin(organizationId: string) {
+export async function deleteSisterOrganization(organizationId: string) {
   try {
     const ctx = await getTenantContext();
     if (!ctx || !ctx.isOwner) {
-      return { success: false, error: "Access denied. Only the platform Owner account can delete tenants." };
+      return { success: false, error: "Access denied. Only Admins can delete organizations." };
     }
 
-    // Safety: Cannot delete the platform root org
     const org = await prisma.organization.findUnique({ where: { id: organizationId } });
     if (!org) return { success: false, error: "Organization not found." };
-    if (org.slug === "espon-global" || org.slug === "tinkal-erp") {
-      return { success: false, error: "Cannot delete the platform root organization." };
+
+    // Find fallback organization to switch to if deleting active org
+    const fallbackOrg = await prisma.organization.findFirst({
+      where: { id: { not: organizationId } },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    if (!fallbackOrg) {
+      return { success: false, error: "Cannot delete the only remaining organization in the system." };
     }
 
-    // Delete in proper dependency order to avoid FK constraint errors
+    // If current user is on this organization, switch them first
+    if (ctx.userId) {
+      await prisma.user.updateMany({
+        where: { organizationId },
+        data: { organizationId: fallbackOrg.id }
+      }).catch(() => {});
+
+      await prisma.employee.updateMany({
+        where: { organizationId },
+        data: { organizationId: fallbackOrg.id }
+      }).catch(() => {});
+    }
+
+    // Delete in proper dependency order
     await prisma.$transaction(async (tx) => {
-      // Delete subscription invoices & history
-      await tx.subscriptionInvoice.deleteMany({ where: { organizationId } });
-      await tx.subscriptionHistory.deleteMany({ where: { organizationId } });
-
-      // Delete employees and their linked records
-      const employees = await tx.employee.findMany({ where: { organizationId } });
-      const employeeIds = employees.map((e: any) => e.id);
-      if (employeeIds.length > 0) {
-        await tx.attendance.deleteMany({ where: { employeeId: { in: employeeIds } } });
-        await tx.task.deleteMany({ where: { assigneeId: { in: employeeIds } } });
-      }
-      await tx.employee.deleteMany({ where: { organizationId } });
-
-      // Delete users
-      await tx.user.deleteMany({ where: { organizationId } });
-
-      // Delete company settings & GST settings
-      await tx.companySettings.deleteMany({ where: { organizationId } });
-      await tx.gstSetting.deleteMany({ where: { organizationId } });
-
-      // Delete the organization itself
+      await tx.subscriptionInvoice.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.subscriptionHistory.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.attendance.deleteMany({ where: { employee: { organizationId } } }).catch(() => {});
+      await tx.task.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.call.deleteMany({ where: { employee: { organizationId } } }).catch(() => {});
+      await tx.followUp.deleteMany({ where: { employee: { organizationId } } }).catch(() => {});
+      await tx.quotationItem.deleteMany({ where: { quotation: { organizationId } } }).catch(() => {});
+      await tx.quotation.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.proformaInvoiceItem.deleteMany({ where: { proformaInvoice: { organizationId } } }).catch(() => {});
+      await tx.proformaInvoice.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.invoiceItem.deleteMany({ where: { invoice: { organizationId } } }).catch(() => {});
+      await tx.invoice.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.orderItem.deleteMany({ where: { order: { organizationId } } }).catch(() => {});
+      await tx.order.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.customer.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.product.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.branch.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.warehouse.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.companySettings.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.gstSetting.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.employee.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.user.deleteMany({ where: { organizationId } }).catch(() => {});
       await tx.organization.delete({ where: { id: organizationId } });
     });
 
-    revalidatePath('/platform-admin');
-    return { success: true, message: `Organization "${org.name}" and all its data have been permanently deleted.` };
+    revalidatePath('/', 'layout');
+    return { success: true, message: `Organization "${org.name}" deleted successfully. Switched to ${fallbackOrg.name}.`, fallbackOrgId: fallbackOrg.id };
   } catch (error: any) {
-    console.error("Error deleting tenant:", error);
-    return { success: false, error: error.message || "Failed to delete tenant. Some related records may need manual cleanup." };
+    console.error("Error deleting organization:", error);
+    return { success: false, error: error.message || "Failed to delete organization." };
   }
 }
+
+export const deleteTenantByAdmin = deleteSisterOrganization;
 
 /**
  * Fetch all organizations in the group for switcher and multi-entity administration

@@ -11,7 +11,8 @@ import {
   Loader2, 
   Layers, 
   ArrowRight,
-  ChevronRight
+  ChevronRight,
+  Trash2
 } from 'lucide-react';
 import { 
   getBranches, 
@@ -22,7 +23,8 @@ import {
 import { 
   getAllOrganizations, 
   switchUserOrganization, 
-  createSisterOrganization 
+  createSisterOrganization,
+  deleteSisterOrganization
 } from '@/app/actions/tenantActions';
 import Link from 'next/link';
 

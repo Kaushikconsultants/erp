@@ -11,12 +11,7 @@ import {
   Eye, 
   EyeOff, 
   ArrowRight, 
-  Sparkles, 
-  ShieldCheck, 
-  CheckCircle2, 
-  Building2, 
-  Layers,
-  Zap
+  CheckCircle2
 } from "lucide-react";
 import "./login.css";
 
@@ -162,69 +157,6 @@ function LoginForm() {
           )}
         </button>
       </form>
-
-      {/* Modern Separator */}
-      <div className="login-divider">
-        <span>NEW BUSINESS ENTITY?</span>
-      </div>
-
-      {/* Primary Sign Up CTA Card */}
-      <div className="signup-cta-card">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span className="free-trial-badge">
-              <Sparkles size={12} /> Permanent Workspace
-            </span>
-          </div>
-          <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>Enterprise Access</span>
-        </div>
-
-        <h3 style={{ margin: '0 0 4px 0', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
-          Register Your Business
-        </h3>
-        <p style={{ margin: '0 0 14px 0', fontSize: '0.78rem', color: '#64748b', lineHeight: 1.4 }}>
-          Set up a dedicated workspace with full ERP, CRM, Invoicing, Inventory, Manufacturing, and GST tools.
-        </p>
-
-        <Link 
-          href="/register" 
-          className="signup-btn hover-lift"
-          onClick={(e) => {
-            e.preventDefault();
-            router.push("/register");
-          }}
-          style={{ cursor: 'pointer' }}
-        >
-          <span>Create Workspace</span>
-          <ArrowRight size={15} />
-        </Link>
-      </div>
-
-      {/* Overview link */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-        <Link 
-          href="/landing" 
-          style={{ fontSize: '0.8rem', color: '#6366f1', textDecoration: 'none', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}
-        >
-          ← Back to Overview
-        </Link>
-      </div>
-
-      {/* Trust Badges */}
-      <div className="login-footer-badges">
-        <div className="trust-badge">
-          <ShieldCheck size={14} color="#10b981" />
-          <span>GST Compliant</span>
-        </div>
-        <div className="trust-badge">
-          <Zap size={14} color="#6366f1" />
-          <span>Instant Setup</span>
-        </div>
-        <div className="trust-badge">
-          <Layers size={14} color="#0284c7" />
-          <span>Cloud ERP</span>
-        </div>
-      </div>
     </div>
   );
 }
