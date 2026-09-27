@@ -139,46 +139,85 @@ export default function EditProductModal({ product, categories = [], onClose }: 
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Article No.</label>
+              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Article / Model No.</label>
               <input type="text" name="articleNumber" defaultValue={product.articleNumber || ''} style={{ borderRadius: '6px' }} />
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>HSN / SAC Code</label>
-              <input type="text" name="hsnCode" defaultValue={product.hsnCode || ''} style={{ borderRadius: '6px' }} />
+              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>HSN / Export Code</label>
+              <input type="text" name="hsnCode" defaultValue={product.hsnCode || '7013'} style={{ borderRadius: '6px' }} />
             </div>
           </div>
 
+          {/* Category & Glassware Specs */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
             <div className="form-group">
               <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Category *</label>
               <input 
                 type="text" 
                 name="category" 
-                defaultValue={product.category || ''}
+                defaultValue={product.category || 'Wine Glasses'}
                 list="category-options" 
                 placeholder="Select or type category..." 
                 required 
                 style={{ width: '100%', borderRadius: '6px' }}
               />
               <datalist id="category-options">
-                {categories.map((c, i) => (
+                {categories.length > 0 ? categories.map((c, i) => (
+                  <option key={i} value={c} />
+                )) : [
+                  "Wine Glasses",
+                  "Champagne Flutes",
+                  "Whiskey & Tumblers",
+                  "Cocktail & Martini Glasses",
+                  "Decanters & Carafes",
+                  "Beer Mugs & Pilsners",
+                  "Crystal Tableware",
+                  "Barware Sets",
+                  "Glass Bowls & Vases"
+                ].map((c, i) => (
                   <option key={i} value={c} />
                 ))}
               </datalist>
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Fabric / Material</label>
-              <input type="text" name="fabric" defaultValue={product.fabric || ''} placeholder="e.g. Cotton Twill" style={{ borderRadius: '6px' }} />
+              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Glass Material</label>
+              <select name="material" defaultValue={product.material || product.fabric || "Lead-Free Crystal Glass"} style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}>
+                <option value="Lead-Free Crystal Glass">Lead-Free Crystal Glass</option>
+                <option value="Borosilicate Glass">Borosilicate Glass (Heat Resistant)</option>
+                <option value="Soda-Lime Glass">Soda-Lime Glass (Commercial)</option>
+                <option value="Hand-Blown Artisan Crystal">Hand-Blown Artisan Crystal</option>
+                <option value="Tempered Glass">Tempered Toughened Glass</option>
+              </select>
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Color / Size</label>
+              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Capacity (ml / oz)</label>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <input type="text" name="color" defaultValue={product.color || ''} placeholder="Color" style={{ borderRadius: '6px', width: '55%' }} />
-                <input type="text" name="size" defaultValue={product.size || ''} placeholder="Size" style={{ borderRadius: '6px', width: '45%' }} />
+                <input type="number" name="capacityMl" defaultValue={product.capacityMl || ''} placeholder="450" style={{ borderRadius: '6px', width: '60%' }} />
+                <input type="text" name="size" defaultValue={product.size || ''} placeholder="ml" style={{ borderRadius: '6px', width: '40%' }} />
               </div>
+            </div>
+          </div>
+
+          {/* Glassware Dimensions & Export Carton Details */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '8px' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>Height (mm)</label>
+              <input type="number" name="heightMm" defaultValue={product.heightMm || ''} placeholder="e.g. 230" style={{ borderRadius: '5px', padding: '6px 8px', fontSize: '0.82rem' }} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>Diameter (mm)</label>
+              <input type="number" name="diameterMm" defaultValue={product.diameterMm || ''} placeholder="e.g. 85" style={{ borderRadius: '5px', padding: '6px 8px', fontSize: '0.82rem' }} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>Master Ctn Qty</label>
+              <input type="number" name="masterCartonQty" defaultValue={product.masterCartonQty || 24} placeholder="24 pcs" style={{ borderRadius: '5px', padding: '6px 8px', fontSize: '0.82rem' }} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>Carton CBM (m³)</label>
+              <input type="number" step="0.001" name="cbm" defaultValue={product.cbm || ''} placeholder="0.045" style={{ borderRadius: '5px', padding: '6px 8px', fontSize: '0.82rem' }} />
             </div>
           </div>
 
@@ -196,7 +235,7 @@ export default function EditProductModal({ product, categories = [], onClose }: 
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <DollarSign size={16} color="#059669" />
                 <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f172a' }}>
-                  Pricing, Purchase Cost & Profit Margin
+                  Domestic & International Export Pricing (USD / EUR / INR)
                 </span>
               </div>
               <span style={{
@@ -212,10 +251,10 @@ export default function EditProductModal({ product, categories = [], onClose }: 
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
               <div className="form-group">
-                <label style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155' }}>
-                  Purchase / Cost Price (₹) *
+                <label style={{ fontWeight: 600, fontSize: '0.78rem', color: '#334155' }}>
+                  Cost Price (₹) *
                 </label>
                 <input 
                   type="number" 
@@ -224,14 +263,14 @@ export default function EditProductModal({ product, categories = [], onClose }: 
                   required 
                   value={purchasePrice}
                   onChange={(e) => setPurchasePrice(e.target.value)}
-                  placeholder="450.00"
+                  placeholder="100.00"
                   style={{ borderColor: '#93c5fd', backgroundColor: '#ffffff', borderRadius: '6px' }}
                 />
               </div>
 
               <div className="form-group">
-                <label style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155' }}>
-                  Selling Price (₹) *
+                <label style={{ fontWeight: 600, fontSize: '0.78rem', color: '#334155' }}>
+                  India Price (₹) *
                 </label>
                 <input 
                   type="number" 
@@ -240,24 +279,49 @@ export default function EditProductModal({ product, categories = [], onClose }: 
                   required 
                   value={sellingPrice}
                   onChange={(e) => setSellingPrice(e.target.value)}
-                  placeholder="899.00"
+                  placeholder="150.00"
                   style={{ borderColor: '#86efac', backgroundColor: '#ffffff', borderRadius: '6px', fontWeight: 600 }}
                 />
               </div>
 
               <div className="form-group">
-                <label style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155' }}>
-                  MRP / Max Retail (₹)
+                <label style={{ fontWeight: 700, fontSize: '0.78rem', color: '#2563eb' }}>
+                  Export FOB (USD $)
                 </label>
                 <input 
                   type="number" 
-                  name="mrp" 
+                  name="exportPriceUsd" 
                   step="0.01" 
-                  value={mrp}
-                  onChange={(e) => setMrp(e.target.value)}
-                  placeholder="1299.00"
-                  style={{ borderRadius: '6px' }}
+                  defaultValue={product.exportPriceUsd !== undefined && product.exportPriceUsd !== null ? String(product.exportPriceUsd) : ''}
+                  placeholder="e.g. 2.50"
+                  style={{ borderColor: '#93c5fd', backgroundColor: '#eff6ff', borderRadius: '6px', fontWeight: 700, color: '#1e40af' }}
                 />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontWeight: 700, fontSize: '0.78rem', color: '#7c3aed' }}>
+                  Export FOB (EUR €)
+                </label>
+                <input 
+                  type="number" 
+                  name="exportPriceEur" 
+                  step="0.01" 
+                  defaultValue={product.exportPriceEur !== undefined && product.exportPriceEur !== null ? String(product.exportPriceEur) : ''}
+                  placeholder="e.g. 2.30"
+                  style={{ borderColor: '#ddd6fe', backgroundColor: '#f5f3ff', borderRadius: '6px', fontWeight: 700, color: '#6d28d9' }}
+                />
+              </div>
+            </div>
+
+            {/* Export MOQ & Customization */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Export MOQ (Units)</label>
+                <input type="number" name="moq" defaultValue={product.moq || 500} placeholder="500 pcs" style={{ borderRadius: '6px' }} />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Customization Options</label>
+                <input type="text" name="customizationOptions" defaultValue={product.customizationOptions || ''} placeholder="e.g. Laser Logo Etching, Gold Rim, Custom Gift Box Packing" style={{ borderRadius: '6px' }} />
               </div>
             </div>
 

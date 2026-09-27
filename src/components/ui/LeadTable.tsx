@@ -24,7 +24,8 @@ import {
   X,
   RotateCcw,
   Download,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Globe
 } from 'lucide-react';
 import { updateLead, deleteLead, deleteMultipleLeads } from '@/actions/leads';
 import AddCustomerModal from './AddCustomerModal';
@@ -43,6 +44,7 @@ export default function LeadTable({
   const [searchTerm, setSearchTerm] = useState('');
   const [leadToConvert, setLeadToConvert] = useState<any>(null);
 
+  const [leadTypeFilter, setLeadTypeFilter] = useState<"ALL" | "DOMESTIC" | "INTERNATIONAL">("ALL");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [agentFilter, setAgentFilter] = useState("All Agents");
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState(false);
@@ -99,19 +101,27 @@ export default function LeadTable({
 
   const filteredLeads = initialLeads.filter(lead => {
     const matchesSearch = 
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      lead.whatsappNumber.includes(searchTerm) ||
+      (lead.name || "").toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (lead.whatsappNumber || "").includes(searchTerm) ||
+      (lead.country || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.targetCapacity || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.shopName && lead.shopName.toLowerCase().includes(searchTerm.toLowerCase()));
       
+    const matchesLeadType = 
+      leadTypeFilter === "ALL" ||
+      (leadTypeFilter === "INTERNATIONAL" && Boolean(lead.isInternational)) ||
+      (leadTypeFilter === "DOMESTIC" && !lead.isInternational);
+
     const matchesStatus = statusFilter === "All Statuses" || lead.status === statusFilter;
     const matchesAgent = agentFilter === "All Agents" || 
       ((lead.assignedSalesperson?.user?.name || '').trim().toLowerCase() === agentFilter.trim().toLowerCase());
     
-    return matchesSearch && matchesStatus && matchesAgent;
+    return matchesSearch && matchesLeadType && matchesStatus && matchesAgent;
   });
 
   const handleReset = () => {
     setSearchTerm("");
+    setLeadTypeFilter("ALL");
     setStatusFilter("All Statuses");
     setAgentFilter("All Agents");
   };
@@ -165,27 +175,27 @@ export default function LeadTable({
   const handleToggleSelect = (id: string) => {
     setSelectedLeadIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
 
   const handleBulkDelete = async () => {
-    const count = selectedLeadIds.size;
-    if (count === 0) return;
-    if (!window.confirm(`Are you sure you want to delete ${count} selected lead${count > 1 ? 's' : ''}? This action cannot be undone and will remove associated calls and tasks.`)) {
-      return;
-    }
+    if (selectedLeadIds.size === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedLeadIds.size} selected leads?`)) return;
 
     setIsBulkDeleting(true);
     try {
       const res = await deleteMultipleLeads(Array.from(selectedLeadIds));
-      if (res?.success) {
+      if (res?.error) {
+        alert("Could not delete leads: " + res.error);
+      } else {
         setSelectedLeadIds(new Set());
         router.refresh();
-      } else {
-        alert(res?.error || "Failed to delete selected leads.");
       }
     } catch (err: any) {
       alert("An unexpected error occurred: " + (err.message || ""));
@@ -207,7 +217,14 @@ export default function LeadTable({
     const exportRows = targetLeads.map(l => ({
       "Lead Name": l.name || "",
       "WhatsApp / Phone": l.whatsappNumber || "",
-      "Shop Name": l.shopName || "",
+      "Shop / Importer Name": l.shopName || "",
+      "Type": l.isInternational ? "International Export" : "Domestic (India)",
+      "Country": l.country || (l.isInternational ? "United States" : "India"),
+      "Currency": l.currency || (l.isInternational ? "USD" : "INR"),
+      "Buyer Classification": l.buyerType || "",
+      "Destination Port": l.destinationPort || "",
+      "Target Products / Capacity": l.targetCapacity || "",
+      "Email": l.email || "",
       "Assigned Agent": l.assignedSalesperson?.user?.name || "Unassigned",
       "Status": l.status || "New",
       "Created Date": l.createdAt ? new Date(l.createdAt).toLocaleDateString('en-IN') : ""
@@ -265,8 +282,8 @@ export default function LeadTable({
           <div className="lead-search-input-wrap">
             <Search size={16} className="lead-search-icon" />
             <input 
-              type="text"
-              placeholder="Search leads by name, shop, phone..."
+              type="text" 
+              placeholder="Search leads by name, country, shop, capacity..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="lead-search-input"
@@ -300,73 +317,42 @@ export default function LeadTable({
             </button>
 
             {isAgentMenuOpen && (
-              <div className="lead-agent-dropdown-menu">
-                <div className="lead-agent-dropdown-header">
-                  <span>Sales Agents</span>
-                  {agentFilter !== "All Agents" && (
-                    <button
-                      type="button"
-                      className="lead-agent-dropdown-clear"
-                      onClick={() => {
-                        setAgentFilter("All Agents");
-                        setIsAgentMenuOpen(false);
-                      }}
-                    >
-                      Clear
-                    </button>
-                  )}
+              <div className="lead-agent-popover-menu">
+                <div className="lead-agent-popover-header">
+                  <Users size={14} />
+                  <span>Filter by Sales Representative</span>
                 </div>
-                <div className="lead-agent-dropdown-list">
+                <div className="lead-agent-popover-list">
                   <button
                     type="button"
-                    className={`lead-agent-dropdown-item ${agentFilter === "All Agents" ? "selected" : ""}`}
+                    className={`lead-agent-popover-item ${agentFilter === "All Agents" ? 'active' : ''}`}
                     onClick={() => {
                       setAgentFilter("All Agents");
                       setIsAgentMenuOpen(false);
                     }}
                   >
-                    <div className="lead-agent-dropdown-item-info">
-                      <span className="lead-agent-avatar-circle all">
-                        <Users size={12} />
-                      </span>
-                      <span>All Agents</span>
-                    </div>
-                    {agentFilter === "All Agents" && <Check size={14} className="lead-agent-check-icon" />}
+                    <span>All Sales Representatives</span>
+                    {agentFilter === "All Agents" && <Check size={14} />}
                   </button>
 
                   {uniqueEmployees.map(emp => (
                     <button
                       key={emp.id}
                       type="button"
-                      className={`lead-agent-dropdown-item ${agentFilter === emp.name ? "selected" : ""}`}
+                      className={`lead-agent-popover-item ${agentFilter === emp.name ? 'active' : ''}`}
                       onClick={() => {
                         setAgentFilter(emp.name);
                         setIsAgentMenuOpen(false);
                       }}
                     >
-                      <div className="lead-agent-dropdown-item-info">
-                        <span className="lead-agent-avatar-circle">
-                          {emp.name.charAt(0).toUpperCase()}
-                        </span>
-                        <span>{emp.name}</span>
-                      </div>
-                      {agentFilter === emp.name && <Check size={14} className="lead-agent-check-icon" />}
+                      <span>{emp.name}</span>
+                      {agentFilter === emp.name && <Check size={14} />}
                     </button>
                   ))}
                 </div>
               </div>
             )}
           </div>
-
-          {/* Kanban Link */}
-          <Link 
-            href="/pipeline"
-            className="btn-pipeline-kanban"
-            title="Open Interactive Pipeline Kanban Board"
-          >
-            <Layers size={15} />
-            <span>Sales Kanban</span>
-          </Link>
 
           {/* Export Dropdown Menu */}
           <div className="lead-export-dropdown-container" ref={exportMenuRef}>
@@ -412,7 +398,7 @@ export default function LeadTable({
             )}
           </div>
 
-          {/* Selection Action Buttons (Matched with Theme) */}
+          {/* Selection Action Buttons */}
           {selectedLeadIds.size > 0 && (
             <>
               <div className="btn-selection-count" title={`${selectedLeadIds.size} leads selected`}>
@@ -461,8 +447,63 @@ export default function LeadTable({
           )}
         </div>
 
-        {/* Horizontal Status Filter Chips Bar */}
-        <div className="lead-status-chips-bar">
+        {/* Horizontal Status & Lead Type Filter Chips Bar */}
+        <div className="lead-status-chips-bar" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Lead Type Toggle Pills */}
+          <div style={{ display: 'inline-flex', backgroundColor: '#e2e8f0', borderRadius: '20px', padding: '2px', marginRight: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setLeadTypeFilter("ALL")}
+              style={{
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: leadTypeFilter === "ALL" ? '#ffffff' : 'transparent',
+                color: leadTypeFilter === "ALL" ? '#0f172a' : '#64748b',
+                boxShadow: leadTypeFilter === "ALL" ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              All Leads
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeadTypeFilter("DOMESTIC")}
+              style={{
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: leadTypeFilter === "DOMESTIC" ? '#ffffff' : 'transparent',
+                color: leadTypeFilter === "DOMESTIC" ? '#0f172a' : '#64748b',
+                boxShadow: leadTypeFilter === "DOMESTIC" ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              🇮🇳 Domestic
+            </button>
+            <button
+              type="button"
+              onClick={() => setLeadTypeFilter("INTERNATIONAL")}
+              style={{
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: leadTypeFilter === "INTERNATIONAL" ? '#2563eb' : 'transparent',
+                color: leadTypeFilter === "INTERNATIONAL" ? '#ffffff' : '#64748b',
+                boxShadow: leadTypeFilter === "INTERNATIONAL" ? '0 1px 3px rgba(37,99,235,0.2)' : 'none'
+              }}
+            >
+              🌐 Export Leads
+            </button>
+          </div>
+
           {statusOptions.map(opt => (
             <button
               key={opt.value}
@@ -474,7 +515,7 @@ export default function LeadTable({
             </button>
           ))}
 
-          {(agentFilter !== "All Agents" || statusFilter !== "All Statuses" || searchTerm) && (
+          {(agentFilter !== "All Agents" || statusFilter !== "All Statuses" || leadTypeFilter !== "ALL" || searchTerm) && (
             <button 
               type="button"
               onClick={handleReset}
@@ -564,8 +605,20 @@ export default function LeadTable({
 
                 <div className="lead-meta-item">
                   <UserCheck size={13} className="lead-meta-icon" />
-                  <span>{lead.assignedSalesperson?.user?.name || "Unassigned"}</span>
+                  <span>Agent: {lead.assignedSalesperson?.user?.name || "Unassigned"}</span>
                 </div>
+
+                {lead.isInternational && (
+                  <div className="lead-meta-item" style={{ gridColumn: 'span 2', color: '#1d4ed8', fontWeight: 600 }}>
+                    <span>🌐 {lead.country || 'Export'} ({lead.currency || 'USD'}) • {lead.destinationPort ? `Port: ${lead.destinationPort}` : (lead.buyerType || 'Export Buyer')}</span>
+                  </div>
+                )}
+
+                {lead.targetCapacity && (
+                  <div className="lead-meta-item" style={{ gridColumn: 'span 2', color: '#047857', fontSize: '0.74rem' }}>
+                    <span>🍷 Req: {lead.targetCapacity}</span>
+                  </div>
+                )}
               </div>
 
               {/* Bottom Quick Action Toolbar */}
@@ -660,11 +713,12 @@ export default function LeadTable({
                     title={isAllSelected ? "Deselect all" : "Select all on page"}
                   />
                 </th>
-                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Name</th>
-                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Phone</th>
-                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Shop Name</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Lead / Contact</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Phone / WhatsApp</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Company / Buyer</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Product Requirements</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Country & Port</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Agent</th>
-                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>State</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Status</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Actions</th>
               </tr>
@@ -673,6 +727,8 @@ export default function LeadTable({
               {filteredLeads.map(lead => {
                 const statusStyles = getStatusBadgeStyles(lead.status);
                 const isSelected = selectedLeadIds.has(lead.id);
+                const isIntl = Boolean(lead.isInternational);
+
                 return (
                   <tr 
                     key={lead.id} 
@@ -692,14 +748,37 @@ export default function LeadTable({
                       />
                     </td>
                     <td style={{ padding: '16px' }}>
-                      <Link href={`/leads/${lead.id}`} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-                        {lead.name}
-                      </Link>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Link href={`/leads/${lead.id}`} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                          {lead.name}
+                        </Link>
+                        {isIntl && (
+                          <span style={{ fontSize: '0.68rem', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+                            🌐 {lead.currency || 'USD'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '16px', color: '#475569' }}>{lead.whatsappNumber}</td>
                     <td style={{ padding: '16px', color: '#475569' }}>{lead.shopName || '-'}</td>
+                    <td style={{ padding: '16px', color: '#334155', maxWidth: '200px' }}>
+                      <span style={{ fontSize: '0.78rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {lead.targetCapacity || '-'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px', color: '#475569' }}>
+                      {isIntl ? (
+                        <div>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{lead.country || 'Export'}</span>
+                          {lead.destinationPort && (
+                            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>⚓ {lead.destinationPort}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span>India</span>
+                      )}
+                    </td>
                     <td style={{ padding: '16px', color: '#475569' }}>{lead.assignedSalesperson?.user?.name || '-'}</td>
-                    <td style={{ padding: '16px', color: '#475569' }}>-</td>
                     <td style={{ padding: '16px' }}>
                       <select 
                         value={lead.status}
@@ -756,7 +835,7 @@ export default function LeadTable({
               })}
               {filteredLeads.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={9} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
                     No leads found.
                   </td>
                 </tr>

@@ -27,7 +27,12 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  Trash2
+  Trash2,
+  Globe,
+  Mail,
+  Ship,
+  Package,
+  FileText
 } from 'lucide-react';
 import './leadDetail.css';
 
@@ -294,21 +299,106 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
           <div className="lead-info-list">
             <div className="lead-info-row">
               <span className="lead-info-label">
-                <Phone size={13} /> Mobile / WhatsApp
+                <Globe size={13} /> Client Type
               </span>
               <span className="lead-info-value">
+                {lead.isInternational ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: '#f0fdf4', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 700, border: '1px solid #bbf7d0' }}>
+                    🌐 Export Buyer ({lead.country || 'International'})
+                  </span>
+                ) : (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: '#f8fafc', color: '#475569', padding: '2px 8px', borderRadius: '6px', fontSize: '0.74rem', fontWeight: 600, border: '1px solid #e2e8f0' }}>
+                    🇮🇳 Domestic (India)
+                  </span>
+                )}
+              </span>
+            </div>
+
+            <div className="lead-info-row">
+              <span className="lead-info-label">
+                <Phone size={13} /> Mobile / WhatsApp
+              </span>
+              <span className="lead-info-value" style={{ fontFamily: 'monospace', fontWeight: 600 }}>
                 {lead.whatsappNumber || "Not provided"}
               </span>
             </div>
+
+            {lead.email && (
+              <div className="lead-info-row">
+                <span className="lead-info-label">
+                  <Mail size={13} /> Email Address
+                </span>
+                <span className="lead-info-value">
+                  <a href={`mailto:${lead.email}`} style={{ color: '#4f46e5', textDecoration: 'none' }}>
+                    {lead.email}
+                  </a>
+                </span>
+              </div>
+            )}
 
             <div className="lead-info-row">
               <span className="lead-info-label">
                 <Store size={13} /> Business / Shop
               </span>
               <span className="lead-info-value">
-                {lead.shopName || "Phone Inquiry"}
+                {lead.shopName || "Inquiry"}
               </span>
             </div>
+
+            {lead.buyerType && (
+              <div className="lead-info-row">
+                <span className="lead-info-label">
+                  <User size={13} /> Buyer Classification
+                </span>
+                <span className="lead-info-value" style={{ color: '#0369a1', fontWeight: 600 }}>
+                  {lead.buyerType}
+                </span>
+              </div>
+            )}
+
+            {lead.currency && lead.currency !== 'INR' && (
+              <div className="lead-info-row">
+                <span className="lead-info-label">
+                  <Globe size={13} /> Target Currency
+                </span>
+                <span className="lead-info-value" style={{ color: '#059669', fontWeight: 700 }}>
+                  {lead.currency}
+                </span>
+              </div>
+            )}
+
+            {lead.destinationPort && (
+              <div className="lead-info-row">
+                <span className="lead-info-label">
+                  <Ship size={13} /> Destination Port
+                </span>
+                <span className="lead-info-value">
+                  {lead.destinationPort}
+                </span>
+              </div>
+            )}
+
+            {lead.targetCapacity && (
+              <div className="lead-info-row">
+                <span className="lead-info-label">
+                  <Package size={13} /> Glassware Requirement
+                </span>
+                <span className="lead-info-value" style={{ color: '#6d28d9', fontWeight: 600 }}>
+                  🍷 {lead.targetCapacity}
+                </span>
+              </div>
+            )}
+
+            {lead.notes && (
+              <div className="lead-info-row" style={{ alignItems: 'flex-start' }}>
+                <span className="lead-info-label">
+                  <FileText size={13} /> Sourcing Notes
+                </span>
+                <span className="lead-info-value" style={{ fontSize: '0.76rem', color: '#475569', whiteSpace: 'pre-wrap' }}>
+                  {lead.notes}
+                </span>
+              </div>
+            )}
 
             <div className="lead-info-row">
               <span className="lead-info-label">

@@ -109,26 +109,27 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
           {/* Section 1: Identification */}
           <div className="form-group">
             <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Product Title / Name *</label>
-            <input type="text" name="name" required placeholder="e.g. Classic Cotton Polo T-Shirt" style={{ borderRadius: '6px' }} />
+            <input type="text" name="name" required placeholder="e.g. R3 Royal 450ml Lead-Free Crystal Bordeaux Wine Glass" style={{ borderRadius: '6px' }} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             <div className="form-group">
               <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>SKU Code *</label>
-              <input type="text" name="sku" required placeholder="e.g. POLO-BLK-001" style={{ borderRadius: '6px' }} />
+              <input type="text" name="sku" required placeholder="e.g. R3-WG-450" style={{ borderRadius: '6px' }} />
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Article Number</label>
-              <input type="text" name="articleNumber" placeholder="e.g. ART-9021" style={{ borderRadius: '6px' }} />
+              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Article / Model Number</label>
+              <input type="text" name="articleNumber" placeholder="e.g. ART-7013-01" style={{ borderRadius: '6px' }} />
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>HSN / SAC Code</label>
-              <input type="text" name="hsnCode" placeholder="e.g. 610910" style={{ borderRadius: '6px' }} />
+              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>HSN / Export Code</label>
+              <input type="text" name="hsnCode" defaultValue="7013" placeholder="7013 (Glassware)" style={{ borderRadius: '6px' }} />
             </div>
           </div>
 
+          {/* Category & Glassware Specs */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '12px' }}>
             <div className="form-group">
               <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Category *</label>
@@ -136,32 +137,71 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
                 type="text" 
                 name="category" 
                 list="category-options" 
+                defaultValue="Wine Glasses"
                 placeholder="Select or type category..." 
                 required 
                 style={{ width: '100%', borderRadius: '6px' }}
               />
               <datalist id="category-options">
-                {categories.map((c, i) => (
+                {categories.length > 0 ? categories.map((c, i) => (
+                  <option key={i} value={c} />
+                )) : [
+                  "Wine Glasses",
+                  "Champagne Flutes",
+                  "Whiskey & Tumblers",
+                  "Cocktail & Martini Glasses",
+                  "Decanters & Carafes",
+                  "Beer Mugs & Pilsners",
+                  "Crystal Tableware",
+                  "Barware Sets",
+                  "Glass Bowls & Vases"
+                ].map((c, i) => (
                   <option key={i} value={c} />
                 ))}
               </datalist>
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Fabric / Material</label>
-              <input type="text" name="fabric" placeholder="e.g. 100% Bio-Wash Cotton" style={{ borderRadius: '6px' }} />
+              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Glass Material</label>
+              <select name="material" style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}>
+                <option value="Lead-Free Crystal Glass">Lead-Free Crystal Glass</option>
+                <option value="Borosilicate Glass">Borosilicate Glass (Heat Resistant)</option>
+                <option value="Soda-Lime Glass">Soda-Lime Glass (Commercial)</option>
+                <option value="Hand-Blown Artisan Crystal">Hand-Blown Artisan Crystal</option>
+                <option value="Tempered Glass">Tempered Toughened Glass</option>
+              </select>
             </div>
 
             <div className="form-group">
-              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Color / Size</label>
+              <label style={{ fontWeight: 600, fontSize: '0.82rem', color: '#334155' }}>Capacity (ml / oz)</label>
               <div style={{ display: 'flex', gap: '6px' }}>
-                <input type="text" name="color" placeholder="Color" style={{ borderRadius: '6px', width: '55%' }} />
-                <input type="text" name="size" placeholder="Size" style={{ borderRadius: '6px', width: '45%' }} />
+                <input type="number" name="capacityMl" placeholder="450" defaultValue="450" style={{ borderRadius: '6px', width: '60%' }} />
+                <input type="text" name="size" placeholder="ml" defaultValue="450ml" style={{ borderRadius: '6px', width: '40%' }} />
               </div>
             </div>
           </div>
 
-          {/* Section 2: Financials & Profit Calculator (CORE NEW FEATURE) */}
+          {/* Glassware Dimensions & Export Carton Details */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', backgroundColor: '#f1f5f9', padding: '12px', borderRadius: '8px' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>Height (mm)</label>
+              <input type="number" name="heightMm" placeholder="e.g. 230" style={{ borderRadius: '5px', padding: '6px 8px', fontSize: '0.82rem' }} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>Diameter (mm)</label>
+              <input type="number" name="diameterMm" placeholder="e.g. 85" style={{ borderRadius: '5px', padding: '6px 8px', fontSize: '0.82rem' }} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>Master Ctn Qty</label>
+              <input type="number" name="masterCartonQty" defaultValue="24" placeholder="24 pcs" style={{ borderRadius: '5px', padding: '6px 8px', fontSize: '0.82rem' }} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#475569' }}>Carton CBM (m³)</label>
+              <input type="number" step="0.001" name="cbm" placeholder="0.045" style={{ borderRadius: '5px', padding: '6px 8px', fontSize: '0.82rem' }} />
+            </div>
+          </div>
+
+          {/* Section 2: International Multi-Currency Pricing & Profit */}
           <div style={{
             backgroundColor: '#f8fafc',
             border: '1px solid #cbd5e1',
@@ -175,7 +215,7 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <DollarSign size={16} color="#059669" />
                 <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f172a' }}>
-                  Pricing, Purchase Cost & Profit Margin
+                  Domestic & International Export Pricing (USD / EUR / INR)
                 </span>
               </div>
               <span style={{
@@ -191,10 +231,11 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
               </span>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+            {/* Pricing Matrix */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
               <div className="form-group">
-                <label style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155' }}>
-                  Purchase / Cost Price (₹) *
+                <label style={{ fontWeight: 600, fontSize: '0.78rem', color: '#334155' }}>
+                  Mfg / Cost Price (₹) *
                 </label>
                 <input 
                   type="number" 
@@ -203,14 +244,14 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
                   required 
                   value={purchasePrice}
                   onChange={(e) => setPurchasePrice(e.target.value)}
-                  placeholder="e.g. 450.00"
+                  placeholder="e.g. 100.00"
                   style={{ borderColor: '#93c5fd', backgroundColor: '#ffffff', borderRadius: '6px' }}
                 />
               </div>
 
               <div className="form-group">
-                <label style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155' }}>
-                  Selling Price (₹) *
+                <label style={{ fontWeight: 600, fontSize: '0.78rem', color: '#334155' }}>
+                  India Price (₹) *
                 </label>
                 <input 
                   type="number" 
@@ -219,24 +260,49 @@ export default function AddProductModal({ onClose, categories = [] }: AddProduct
                   required 
                   value={sellingPrice}
                   onChange={(e) => setSellingPrice(e.target.value)}
-                  placeholder="e.g. 899.00"
+                  placeholder="e.g. 150.00"
                   style={{ borderColor: '#86efac', backgroundColor: '#ffffff', borderRadius: '6px', fontWeight: 600 }}
                 />
               </div>
 
               <div className="form-group">
-                <label style={{ fontWeight: 600, fontSize: '0.8rem', color: '#334155' }}>
-                  MRP / Max Retail (₹)
+                <label style={{ fontWeight: 700, fontSize: '0.78rem', color: '#2563eb' }}>
+                  Export FOB (USD $)
                 </label>
                 <input 
                   type="number" 
-                  name="mrp" 
+                  name="exportPriceUsd" 
                   step="0.01" 
-                  value={mrp}
-                  onChange={(e) => setMrp(e.target.value)}
-                  placeholder="e.g. 1299.00"
-                  style={{ borderRadius: '6px' }}
+                  defaultValue="2.50"
+                  placeholder="e.g. 2.50"
+                  style={{ borderColor: '#93c5fd', backgroundColor: '#eff6ff', borderRadius: '6px', fontWeight: 700, color: '#1e40af' }}
                 />
+              </div>
+
+              <div className="form-group">
+                <label style={{ fontWeight: 700, fontSize: '0.78rem', color: '#7c3aed' }}>
+                  Export FOB (EUR €)
+                </label>
+                <input 
+                  type="number" 
+                  name="exportPriceEur" 
+                  step="0.01" 
+                  defaultValue="2.30"
+                  placeholder="e.g. 2.30"
+                  style={{ borderColor: '#ddd6fe', backgroundColor: '#f5f3ff', borderRadius: '6px', fontWeight: 700, color: '#6d28d9' }}
+                />
+              </div>
+            </div>
+
+            {/* Export MOQ & Customization */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Export MOQ (Units)</label>
+                <input type="number" name="moq" defaultValue="500" placeholder="500 pcs" style={{ borderRadius: '6px' }} />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: '#475569' }}>Customization Options</label>
+                <input type="text" name="customizationOptions" placeholder="e.g. Laser Logo Etching, Gold Rim, Custom Gift Box Packing" style={{ borderRadius: '6px' }} />
               </div>
             </div>
 

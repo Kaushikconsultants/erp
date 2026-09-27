@@ -85,6 +85,29 @@ export async function createProduct(formData: FormData) {
     return { error: "Name, SKU, and a valid Selling Price are required" };
   }
 
+  const exportPriceUsdInput = formData.get("exportPriceUsd");
+  const exportPriceUsd = exportPriceUsdInput && !isNaN(parseFloat(exportPriceUsdInput as string)) ? parseFloat(exportPriceUsdInput as string) : null;
+  const exportPriceEurInput = formData.get("exportPriceEur");
+  const exportPriceEur = exportPriceEurInput && !isNaN(parseFloat(exportPriceEurInput as string)) ? parseFloat(exportPriceEurInput as string) : null;
+  const exportPriceGbpInput = formData.get("exportPriceGbp");
+  const exportPriceGbp = exportPriceGbpInput && !isNaN(parseFloat(exportPriceGbpInput as string)) ? parseFloat(exportPriceGbpInput as string) : null;
+  const currency = (formData.get("currency") as string) || "INR";
+
+  const capacityMlInput = formData.get("capacityMl");
+  const capacityMl = capacityMlInput && !isNaN(parseFloat(capacityMlInput as string)) ? parseFloat(capacityMlInput as string) : null;
+  const material = (formData.get("material") as string) || (formData.get("fabric") as string) || null;
+  const moqInput = formData.get("moq");
+  const moq = moqInput && !isNaN(parseInt(moqInput as string, 10)) ? parseInt(moqInput as string, 10) : 100;
+  const masterCartonQtyInput = formData.get("masterCartonQty");
+  const masterCartonQty = masterCartonQtyInput && !isNaN(parseInt(masterCartonQtyInput as string, 10)) ? parseInt(masterCartonQtyInput as string, 10) : 24;
+  const cbmInput = formData.get("cbm");
+  const cbm = cbmInput && !isNaN(parseFloat(cbmInput as string)) ? parseFloat(cbmInput as string) : null;
+  const diameterMmInput = formData.get("diameterMm");
+  const diameterMm = diameterMmInput && !isNaN(parseFloat(diameterMmInput as string)) ? parseFloat(diameterMmInput as string) : null;
+  const heightMmInput = formData.get("heightMm");
+  const heightMm = heightMmInput && !isNaN(parseFloat(heightMmInput as string)) ? parseFloat(heightMmInput as string) : null;
+  const customizationOptions = (formData.get("customizationOptions") as string) || null;
+
   try {
     const organizationId = await getTenantOrgId();
 
@@ -115,18 +138,30 @@ export async function createProduct(formData: FormData) {
         name,
         sku: sku,
         articleNumber: articleNumber,
-        hsnCode: hsnCode || null,
-        category: category || "General",
+        hsnCode: hsnCode || "7013", // Default to Glassware HSN 7013
+        category: category || "Wine Glasses",
         description: description || null,
         weight: isNaN(weight) ? 0 : weight,
         images: images,
         sellingPrice: price,
         purchasePrice: purchasePrice,
         mrp: mrp,
+        exportPriceUsd: exportPriceUsd,
+        exportPriceEur: exportPriceEur,
+        exportPriceGbp: exportPriceGbp,
+        currency: currency,
+        capacityMl: capacityMl,
+        material: material,
+        moq: moq,
+        masterCartonQty: masterCartonQty,
+        cbm: cbm,
+        diameterMm: diameterMm,
+        heightMm: heightMm,
+        customizationOptions: customizationOptions,
         minimumStock: minimumStock,
-        fabric: fabric,
+        fabric: material || fabric,
         color: color,
-        size: size,
+        size: size || (capacityMl ? `${capacityMl} ml` : null),
         stockQuantity: isNaN(stock) ? 0 : stock,
         inventoryTransactions: {
           create: {
@@ -236,6 +271,53 @@ export async function updateProduct(id: string, formData: FormData) {
     if (fabric !== undefined) updateData.fabric = fabric;
     if (color !== undefined) updateData.color = color;
     if (size !== undefined) updateData.size = size;
+
+    if (formData.has("exportPriceUsd")) {
+      const val = formData.get("exportPriceUsd");
+      updateData.exportPriceUsd = val && !isNaN(parseFloat(val as string)) ? parseFloat(val as string) : null;
+    }
+    if (formData.has("exportPriceEur")) {
+      const val = formData.get("exportPriceEur");
+      updateData.exportPriceEur = val && !isNaN(parseFloat(val as string)) ? parseFloat(val as string) : null;
+    }
+    if (formData.has("exportPriceGbp")) {
+      const val = formData.get("exportPriceGbp");
+      updateData.exportPriceGbp = val && !isNaN(parseFloat(val as string)) ? parseFloat(val as string) : null;
+    }
+    if (formData.has("currency")) {
+      updateData.currency = (formData.get("currency") as string) || "INR";
+    }
+    if (formData.has("capacityMl")) {
+      const val = formData.get("capacityMl");
+      updateData.capacityMl = val && !isNaN(parseFloat(val as string)) ? parseFloat(val as string) : null;
+    }
+    if (formData.has("material")) {
+      updateData.material = (formData.get("material") as string) || null;
+      if (updateData.material) updateData.fabric = updateData.material;
+    }
+    if (formData.has("moq")) {
+      const val = formData.get("moq");
+      updateData.moq = val && !isNaN(parseInt(val as string, 10)) ? parseInt(val as string, 10) : 100;
+    }
+    if (formData.has("masterCartonQty")) {
+      const val = formData.get("masterCartonQty");
+      updateData.masterCartonQty = val && !isNaN(parseInt(val as string, 10)) ? parseInt(val as string, 10) : 24;
+    }
+    if (formData.has("cbm")) {
+      const val = formData.get("cbm");
+      updateData.cbm = val && !isNaN(parseFloat(val as string)) ? parseFloat(val as string) : null;
+    }
+    if (formData.has("diameterMm")) {
+      const val = formData.get("diameterMm");
+      updateData.diameterMm = val && !isNaN(parseFloat(val as string)) ? parseFloat(val as string) : null;
+    }
+    if (formData.has("heightMm")) {
+      const val = formData.get("heightMm");
+      updateData.heightMm = val && !isNaN(parseFloat(val as string)) ? parseFloat(val as string) : null;
+    }
+    if (formData.has("customizationOptions")) {
+      updateData.customizationOptions = (formData.get("customizationOptions") as string) || null;
+    }
 
     if (formData.has("images")) {
       updateData.images = images;

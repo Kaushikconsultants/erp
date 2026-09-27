@@ -46,6 +46,12 @@ interface Customer {
   pincode?: string | null;
   landmark?: string | null;
   gstNumber?: string | null;
+  isInternational?: boolean;
+  country?: string | null;
+  currency?: string | null;
+  taxId?: string | null;
+  portOfDischarge?: string | null;
+  incoterms?: string | null;
   regularDiscount?: string | null;
   preferredPaymentMethod?: string | null;
   status: string;
@@ -83,6 +89,7 @@ export default function CustomerTable({
     }
   }, [searchParams]);
 
+  const [clientTypeFilter, setClientTypeFilter] = useState<"ALL" | "DOMESTIC" | "INTERNATIONAL">("ALL");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
   const [stateFilter, setStateFilter] = useState("All States");
   const [agentFilter, setAgentFilter] = useState("All Agents");
@@ -159,18 +166,25 @@ export default function CustomerTable({
     const matchesSearch = 
       (customer.businessName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (customer.contactPerson || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.country || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.city || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (customer.mobile || "").includes(searchTerm);
     
+    const matchesClientType = 
+      clientTypeFilter === "ALL" ||
+      (clientTypeFilter === "INTERNATIONAL" && Boolean(customer.isInternational)) ||
+      (clientTypeFilter === "DOMESTIC" && !customer.isInternational);
+
     const matchesStatus = statusFilter === "All Statuses" || customer.status === statusFilter;
     const matchesState = stateFilter === "All States" || (customer.state && customer.state.toLowerCase() === stateFilter.toLowerCase());
     const matchesAgent = agentFilter === "All Agents" || (customer.assignedSalesperson?.user?.name === agentFilter);
 
-    return matchesSearch && matchesStatus && matchesState && matchesAgent;
+    return matchesSearch && matchesClientType && matchesStatus && matchesState && matchesAgent;
   });
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, stateFilter, agentFilter, pageSize]);
+  }, [searchTerm, clientTypeFilter, statusFilter, stateFilter, agentFilter, pageSize]);
 
   const paginatedCustomers = useMemo(() => {
     return paginate(filteredCustomers, currentPage, pageSize);
@@ -252,9 +266,16 @@ export default function CustomerTable({
     const exportRows = targetCustomers.map(c => ({
       "Business Name": c.businessName || "",
       "Contact Person": c.contactPerson || "",
+      "Client Type": c.isInternational ? "International Export" : "Domestic (India)",
+      "Country": c.country || (c.isInternational ? "United States" : "India"),
+      "Currency": c.currency || (c.isInternational ? "USD" : "INR"),
+      "Tax / VAT / GST": c.taxId || c.gstNumber || "",
+      "Port of Discharge": c.portOfDischarge || "",
+      "Incoterms": c.incoterms || "",
       "Mobile": c.mobile || "",
       "Email": c.email || "",
-      "State": c.state || "",
+      "City": c.city || "",
+      "State / Province": c.state || "",
       "Assigned Agent": c.assignedSalesperson?.user?.name || "Unassigned",
       "Status": c.status || "Active",
       "Created Date": c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-IN') : ""
@@ -296,6 +317,7 @@ export default function CustomerTable({
 
   const handleReset = () => {
     setSearchTerm("");
+    setClientTypeFilter("ALL");
     setStatusFilter("All Statuses");
     setStateFilter("All States");
     setAgentFilter("All Agents");
@@ -462,8 +484,63 @@ export default function CustomerTable({
           )}
         </div>
 
-        {/* Horizontal Status Chips Bar */}
-        <div className="customer-status-chips-bar">
+        {/* Horizontal Status & Client Type Chips Bar */}
+        <div className="customer-status-chips-bar" style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Client Type Toggle Pills */}
+          <div style={{ display: 'inline-flex', backgroundColor: '#e2e8f0', borderRadius: '20px', padding: '2px', marginRight: '6px' }}>
+            <button
+              type="button"
+              onClick={() => setClientTypeFilter("ALL")}
+              style={{
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: clientTypeFilter === "ALL" ? '#ffffff' : 'transparent',
+                color: clientTypeFilter === "ALL" ? '#0f172a' : '#64748b',
+                boxShadow: clientTypeFilter === "ALL" ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              All Clients
+            </button>
+            <button
+              type="button"
+              onClick={() => setClientTypeFilter("DOMESTIC")}
+              style={{
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: clientTypeFilter === "DOMESTIC" ? '#ffffff' : 'transparent',
+                color: clientTypeFilter === "DOMESTIC" ? '#0f172a' : '#64748b',
+                boxShadow: clientTypeFilter === "DOMESTIC" ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+              }}
+            >
+              🇮🇳 Domestic
+            </button>
+            <button
+              type="button"
+              onClick={() => setClientTypeFilter("INTERNATIONAL")}
+              style={{
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '16px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                backgroundColor: clientTypeFilter === "INTERNATIONAL" ? '#2563eb' : 'transparent',
+                color: clientTypeFilter === "INTERNATIONAL" ? '#ffffff' : '#64748b',
+                boxShadow: clientTypeFilter === "INTERNATIONAL" ? '0 1px 3px rgba(37,99,235,0.2)' : 'none'
+              }}
+            >
+              🌐 Export Buyers
+            </button>
+          </div>
+
           {statusOptions.map(opt => (
             <button
               key={opt.value}
@@ -579,8 +656,14 @@ export default function CustomerTable({
 
                 <div className="customer-meta-item">
                   <MapPin size={13} className="customer-meta-icon" />
-                  <span>{customer.state || "State N/A"}</span>
+                  <span>{customer.isInternational ? (customer.country || "Export") : (customer.state || customer.city || "India")}</span>
                 </div>
+
+                {customer.isInternational && (
+                  <div className="customer-meta-item" style={{ gridColumn: 'span 2', color: '#1d4ed8', fontWeight: 600 }}>
+                    <span>🌐 {customer.currency || 'USD'} • {customer.portOfDischarge ? `Port: ${customer.portOfDischarge}` : 'Export Buyer'}</span>
+                  </div>
+                )}
 
                 <div className="customer-meta-item" style={{ gridColumn: 'span 2' }}>
                   <UserCheck size={13} className="customer-meta-icon" />
@@ -692,11 +775,11 @@ export default function CustomerTable({
                     title={isAllPageSelected ? "Deselect page" : "Select all on page"}
                   />
                 </th>
-                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Name</th>
-                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Phone</th>
-                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Shop Name</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Client / Contact</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Phone / WhatsApp</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Company / Importer</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Agent</th>
-                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>State</th>
+                <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Country & Region</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Status</th>
                 <th style={{ fontWeight: 600, color: '#1e293b', textTransform: 'none', fontSize: '0.875rem' }}>Actions</th>
               </tr>
@@ -706,6 +789,7 @@ export default function CustomerTable({
                 const statusStyles = getStatusBadgeStyles(customer.status);
                 const displayName = customer.businessName || customer.contactPerson || "Customer";
                 const isSelected = selectedCustomerIds.has(customer.id);
+                const isIntl = Boolean(customer.isInternational);
 
                 return (
                   <tr 
@@ -726,14 +810,32 @@ export default function CustomerTable({
                       />
                     </td>
                     <td style={{ padding: '16px' }}>
-                      <Link href={`/customers/${customer.id}`} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
-                        {customer.contactPerson || customer.businessName}
-                      </Link>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Link href={`/customers/${customer.id}`} style={{ color: '#3b82f6', fontWeight: 600, textDecoration: 'none' }}>
+                          {customer.contactPerson || customer.businessName}
+                        </Link>
+                        {isIntl && (
+                          <span style={{ fontSize: '0.68rem', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>
+                            🌐 {customer.currency || 'USD'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '16px', color: '#475569' }}>{customer.mobile}</td>
                     <td style={{ padding: '16px', color: '#475569' }}>{customer.businessName || '-'}</td>
                     <td style={{ padding: '16px', color: '#475569' }}>{customer.assignedSalesperson?.user?.name || '-'}</td>
-                    <td style={{ padding: '16px', color: '#475569' }}>{customer.state || '-'}</td>
+                    <td style={{ padding: '16px', color: '#475569' }}>
+                      {isIntl ? (
+                        <div>
+                          <span style={{ fontWeight: 600, color: '#0f172a' }}>{customer.country || 'Export'}</span>
+                          {customer.portOfDischarge && (
+                            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>⚓ {customer.portOfDischarge}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span>{customer.state || customer.city || 'India'}</span>
+                      )}
+                    </td>
                     <td style={{ padding: '16px' }}>
                       <span style={{ 
                         backgroundColor: statusStyles.bg, 

@@ -2,11 +2,40 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Code, FileSpreadsheet, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Code, FileSpreadsheet, Plus, AlertCircle, CheckCircle2, Globe, Building2, Anchor, GlassWater } from 'lucide-react';
 import { createLead, getWebhookLogs } from '@/actions/leads';
 import DataImportWizardModal from '@/components/common/DataImportWizardModal';
 import DuplicateWarningBanner, { DuplicateEntityInfo } from '@/components/ui/DuplicateWarningBanner';
 import { checkDuplicateEntity } from '@/app/actions/duplicateActions';
+
+const EXPORT_COUNTRIES = [
+  "United States", "United Kingdom", "Germany", "United Arab Emirates", 
+  "France", "Italy", "Australia", "Canada", "Japan", "Singapore", 
+  "Saudi Arabia", "Netherlands", "Spain", "Switzerland", "Qatar", 
+  "Kuwait", "Oman", "South Africa", "Brazil", "India", "Other"
+];
+
+const CURRENCIES = [
+  { code: "USD", symbol: "$", label: "USD ($) - US Dollar" },
+  { code: "EUR", symbol: "€", label: "EUR (€) - Euro" },
+  { code: "GBP", symbol: "£", label: "GBP (£) - British Pound" },
+  { code: "AED", symbol: "AED", label: "AED (د.إ) - UAE Dirham" },
+  { code: "CAD", symbol: "$", label: "CAD ($) - Canadian Dollar" },
+  { code: "AUD", symbol: "$", label: "AUD ($) - Australian Dollar" },
+  { code: "JPY", symbol: "¥", label: "JPY (¥) - Japanese Yen" },
+  { code: "INR", symbol: "₹", label: "INR (₹) - Indian Rupee" }
+];
+
+const BUYER_TYPES = [
+  "Direct Importer",
+  "Hotel & Hospitality Chain",
+  "Barware & Restaurant Group",
+  "Wholesale Distributor",
+  "Retail Store / Chain",
+  "Brand OEM / Private Label",
+  "Corporate Gifting & Events",
+  "Other"
+];
 
 export default function AddLeadButton({ employees, organizationId, isAdmin }: { employees?: {id: string, name: string}[], organizationId?: string, isAdmin?: boolean }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -19,10 +48,18 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const router = useRouter();
 
+  const [isInternational, setIsInternational] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     whatsappNumber: '',
     shopName: '',
+    email: '',
+    country: 'United States',
+    currency: 'USD',
+    buyerType: 'Direct Importer',
+    destinationPort: '',
+    targetCapacity: '',
+    notes: '',
     assignedSalespersonId: ''
   });
 
@@ -39,7 +76,7 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
     if (duplicateTimerRef.current) clearTimeout(duplicateTimerRef.current);
 
     const cleanPhone = formData.whatsappNumber.replace(/[^0-9]/g, '');
-    const hasPhone = cleanPhone.length >= 10;
+    const hasPhone = cleanPhone.length >= 7;
     const hasName = formData.name.trim().length >= 3;
 
     if (hasPhone || hasName) {
@@ -81,12 +118,37 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
       return;
     }
     
-    const res = await createLead(formData);
+    const res = await createLead({
+      name: formData.name.trim(),
+      whatsappNumber: formData.whatsappNumber.trim(),
+      shopName: formData.shopName.trim() || undefined,
+      email: formData.email.trim() || undefined,
+      isInternational: isInternational,
+      country: isInternational ? formData.country : "India",
+      currency: isInternational ? formData.currency : "INR",
+      buyerType: isInternational ? formData.buyerType : undefined,
+      destinationPort: isInternational ? formData.destinationPort.trim() : undefined,
+      targetCapacity: formData.targetCapacity.trim() || undefined,
+      notes: formData.notes.trim() || undefined,
+      assignedSalespersonId: formData.assignedSalespersonId || undefined
+    });
     
     setIsSubmitting(false);
     if (res.success) {
       setIsModalOpen(false);
-      setFormData({ name: '', whatsappNumber: '', shopName: '', assignedSalespersonId: '' });
+      setFormData({
+        name: '',
+        whatsappNumber: '',
+        shopName: '',
+        email: '',
+        country: 'United States',
+        currency: 'USD',
+        buyerType: 'Direct Importer',
+        destinationPort: '',
+        targetCapacity: '',
+        notes: '',
+        assignedSalespersonId: ''
+      });
       setDuplicateInfo(null);
       router.refresh();
     } else {
@@ -144,15 +206,16 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
       </div>
 
       {isModalOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-content glass-panel" style={{maxWidth: '520px', width: '100%'}}>
-            <div className="modal-header">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
-                Add New Lead
+        <div className="modal-backdrop" style={{ zIndex: 100050 }}>
+          <div className="modal-content glass-panel animate-in" style={{ maxWidth: '600px', width: '100%', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <div className="modal-header" style={{ padding: '16px 22px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderRadius: '14px 14px 0 0' }}>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '1.15rem', fontWeight: 700, color: '#0f172a' }}>
+                <Plus size={18} color="#2563eb" /> Add New Lead / Buyer Inquiry
               </h2>
               <button className="modal-close" onClick={() => setIsModalOpen(false)}>×</button>
             </div>
-            <form onSubmit={handleSubmit} className="modal-body" style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+            
+            <form onSubmit={handleSubmit} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '20px 24px', maxHeight: '78vh', overflowY: 'auto' }}>
               
               {submitError && (
                 <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -171,44 +234,177 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
                 />
               )}
 
-              <div className="form-group">
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Name *</label>
-                <input 
-                  type="text" 
-                  required 
-                  className="form-input" 
-                  value={formData.name}
-                  onChange={e => setFormData({...formData, name: e.target.value})}
-                  placeholder="Lead Contact Name"
-                />
+              {/* Domestic vs International Toggle */}
+              <div style={{ backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px' }}>
+                <button
+                  type="button"
+                  onClick={() => setIsInternational(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: !isInternational ? '1px solid #cbd5e1' : 'none',
+                    backgroundColor: !isInternational ? '#ffffff' : 'transparent',
+                    color: !isInternational ? '#0f172a' : '#64748b',
+                    fontWeight: !isInternational ? 700 : 500,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Building2 size={14} color={!isInternational ? "#2563eb" : "#64748b"} />
+                  <span>🇮🇳 Domestic Lead (India)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsInternational(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    padding: '8px',
+                    borderRadius: '6px',
+                    border: isInternational ? '1px solid #93c5fd' : 'none',
+                    backgroundColor: isInternational ? '#eff6ff' : 'transparent',
+                    color: isInternational ? '#1d4ed8' : '#64748b',
+                    fontWeight: isInternational ? 700 : 500,
+                    fontSize: '0.82rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Globe size={14} color={isInternational ? "#2563eb" : "#64748b"} />
+                  <span>🌐 International Export Buyer</span>
+                </button>
               </div>
 
-              <div className="form-group">
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>WhatsApp Number *</label>
-                <input 
-                  type="text" 
-                  required 
-                  className="form-input" 
-                  value={formData.whatsappNumber}
-                  onChange={e => setFormData({...formData, whatsappNumber: e.target.value})}
-                  placeholder="e.g. 9876543210"
-                />
+              {/* International Specific Fields */}
+              {isInternational && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '3px' }}>Country *</label>
+                    <select
+                      className="form-input"
+                      value={formData.country}
+                      onChange={e => setFormData({...formData, country: e.target.value})}
+                      style={{ padding: '7px 10px', fontSize: '0.82rem', fontWeight: 600 }}
+                    >
+                      {EXPORT_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '3px' }}>Target Currency</label>
+                    <select
+                      className="form-input"
+                      value={formData.currency}
+                      onChange={e => setFormData({...formData, currency: e.target.value})}
+                      style={{ padding: '7px 10px', fontSize: '0.82rem', fontWeight: 600 }}
+                    >
+                      {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '3px' }}>Buyer Classification</label>
+                    <select
+                      className="form-input"
+                      value={formData.buyerType}
+                      onChange={e => setFormData({...formData, buyerType: e.target.value})}
+                      style={{ padding: '7px 10px', fontSize: '0.82rem' }}
+                    >
+                      {BUYER_TYPES.map(bt => <option key={bt} value={bt}>{bt}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#334155', marginBottom: '3px' }}>Destination Port</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={formData.destinationPort}
+                      onChange={e => setFormData({...formData, destinationPort: e.target.value})}
+                      placeholder="e.g. Los Angeles, Hamburg"
+                      style={{ padding: '7px 10px', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                    Contact Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="form-input" 
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                    placeholder="e.g. Michael Scott"
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                    {isInternational ? 'Company / Importer Name' : 'Shop / Business Name'}
+                  </label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={formData.shopName}
+                    onChange={e => setFormData({...formData, shopName: e.target.value})}
+                    placeholder={isInternational ? "e.g. Dunder Mifflin Barware LLC" : "e.g. Royal Glassware Store"}
+                  />
+                </div>
               </div>
 
-              <div className="form-group">
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Shop Name (Optional)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                    Phone / WhatsApp <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="form-input" 
+                    value={formData.whatsappNumber}
+                    onChange={e => setFormData({...formData, whatsappNumber: e.target.value})}
+                    placeholder={isInternational ? "+1 555-019-2834" : "9876543210"}
+                  />
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Email Address</label>
+                  <input 
+                    type="email" 
+                    className="form-input" 
+                    value={formData.email}
+                    onChange={e => setFormData({...formData, email: e.target.value})}
+                    placeholder="buyer@domain.com"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>
+                  Target Products / Glassware Requirements
+                </label>
                 <input 
                   type="text" 
                   className="form-input" 
-                  value={formData.shopName}
-                  onChange={e => setFormData({...formData, shopName: e.target.value})}
-                  placeholder="e.g. Acme Stores"
+                  value={formData.targetCapacity}
+                  onChange={e => setFormData({...formData, targetCapacity: e.target.value})}
+                  placeholder="e.g. 450ml Lead-free Red Wine Glasses, 5000 pcs MOQ, Custom Logo Engraving"
                 />
               </div>
 
               {employees && employees.length > 0 && (
-                <div className="form-group">
-                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Assign To</label>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Assign To Sales Rep</label>
                   <select 
                     className="form-input"
                     value={formData.assignedSalespersonId}
@@ -222,7 +418,19 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
                 </div>
               )}
 
-              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Notes / Context</label>
+                <textarea 
+                  className="form-input" 
+                  rows={2}
+                  value={formData.notes}
+                  onChange={e => setFormData({...formData, notes: e.target.value})}
+                  placeholder="Initial quotation discussion, container requirements, trade show lead notes..."
+                  style={{ resize: 'vertical' }}
+                />
+              </div>
+
+              <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)} 
@@ -233,9 +441,9 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
                 <button 
                   type="submit" 
                   disabled={isSubmitting} 
-                  style={{ padding: '9px 20px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.85rem', opacity: isSubmitting ? 0.7 : 1 }}
+                  style={{ padding: '9px 22px', borderRadius: '8px', border: 'none', background: '#2563eb', color: '#fff', cursor: isSubmitting ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.85rem', opacity: isSubmitting ? 0.7 : 1 }}
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Lead'}
+                  {isSubmitting ? 'Creating...' : isInternational ? 'Create Export Lead' : 'Create Lead'}
                 </button>
               </div>
 
@@ -249,130 +457,12 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
         <DataImportWizardModal
           isOpen={isImportOpen}
           onClose={() => setIsImportOpen(false)}
-          defaultEntityType="LEADS"
-          onSuccess={() => {
+          entityType="leads"
+          onImportComplete={() => {
             setIsImportOpen(false);
             router.refresh();
           }}
         />
-      )}
-
-      {/* Webhooks Guide Modal */}
-      {isApiGuideOpen && (
-        <div className="modal-backdrop">
-          <div className="modal-content" style={{maxWidth: '650px', width: '90%', maxHeight: '90vh', overflowY: 'auto'}}>
-            <div className="modal-header">
-              <h3 style={{display: 'flex', alignItems: 'center', gap: '8px'}}><Code size={20} color="var(--accent-primary)"/> WhatsApp API & Webhooks</h3>
-              <button className="modal-close" onClick={() => setIsApiGuideOpen(false)}>×</button>
-            </div>
-            <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
-              <button 
-                onClick={() => setApiActiveTab('guide')}
-                style={{ flex: 1, padding: '12px', background: 'none', border: 'none', borderBottom: apiActiveTab === 'guide' ? '2px solid var(--accent-primary)' : '2px solid transparent', color: apiActiveTab === 'guide' ? 'var(--accent-primary)' : '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem' }}
-              >
-                Setup Guide
-              </button>
-              <button 
-                onClick={() => {
-                  setApiActiveTab('logs');
-                  loadLogs();
-                }}
-                style={{ flex: 1, padding: '12px', background: 'none', border: 'none', borderBottom: apiActiveTab === 'logs' ? '2px solid var(--accent-primary)' : '2px solid transparent', color: apiActiveTab === 'logs' ? 'var(--accent-primary)' : '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '0.95rem' }}
-              >
-                Webhook Logs
-              </button>
-            </div>
-
-            <div className="modal-body" style={{display: 'flex', flexDirection: 'column', gap: '20px', paddingTop: 0}}>
-              {apiActiveTab === 'guide' ? (
-                <>
-                  <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', margin: 0}}>
-                    Use this API to push new leads from your WhatsApp Chatbot directly into the CRM.
-                  </p>
-                  
-                  <div>
-                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Endpoint URL (POST)</label>
-                    <div suppressHydrationWarning style={{background: '#f8fafc', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#0f172a'}}>
-                      {typeof window !== 'undefined' ? window.location.origin : 'https://your-crm-url.com'}/api/webhooks/whatsapp/leads
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>Headers</label>
-                    <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
-{`Authorization: Bearer ${organizationId || 'YOUR_ORG_ID'}
-Content-Type: application/json`}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px'}}>JSON Payload</label>
-                    <div style={{background: '#1e293b', border: '1px solid #e2e8f0', padding: '10px', borderRadius: '6px', fontFamily: 'monospace', fontSize: '0.85rem', color: '#f8fafc', whiteSpace: 'pre-wrap'}}>
-{`{
-  "name": "Customer Name",
-  "whatsappNumber": "+91 9999999999",
-  "shopName": "Optional Shop Name",
-  "agentEmail": "agent@yourcompany.com"
-}`}
-                    </div>
-                  </div>
-
-                  <div style={{background: '#eff6ff', border: '1px solid #bfdbfe', padding: '12px', borderRadius: '8px'}}>
-                    <h4 style={{fontSize: '0.85rem', fontWeight: 600, color: '#1e40af', margin: '0 0 6px 0'}}>Note on Duplicates</h4>
-                    <p style={{fontSize: '0.8rem', color: '#1e3a8a', margin: 0}}>
-                      If the mobile number already exists in the system as a Customer or Lead, the API will return a <code>409 Conflict</code> error, and you can redirect the user to a live agent in your chatbot.
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h4 style={{fontSize: '0.9rem', fontWeight: 600, color: '#1e293b', margin: 0}}>Recent Webhook Events</h4>
-                    <button onClick={loadLogs} style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '4px', background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer' }}>
-                      Refresh
-                    </button>
-                  </div>
-                  {isLoadingLogs ? (
-                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>Loading logs...</div>
-                  ) : logs.length === 0 ? (
-                    <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>No webhook logs found.</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
-                      {logs.map((log: any) => (
-                        <div key={log.id} style={{ padding: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{new Date(log.createdAt).toLocaleString()}</span>
-                            <span style={{ 
-                              fontSize: '0.75rem', 
-                              fontWeight: 600,
-                              padding: '2px 8px',
-                              borderRadius: '12px',
-                              background: log.responseStatus >= 200 && log.responseStatus < 300 ? '#dcfce7' : log.responseStatus === 409 ? '#fef3c7' : '#fee2e2',
-                              color: log.responseStatus >= 200 && log.responseStatus < 300 ? '#166534' : log.responseStatus === 409 ? '#92400e' : '#991b1b'
-                            }}>
-                              {log.responseStatus}
-                            </span>
-                          </div>
-                          <div style={{ fontSize: '0.8rem', color: '#334155', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                            <strong>Payload:</strong><br/>
-                            {log.payload || 'No payload'}
-                          </div>
-                          <div style={{ fontSize: '0.8rem', color: '#334155', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginTop: '8px' }}>
-                            <strong>Response:</strong><br/>
-                            {log.responseBody || 'No response body'}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="action-btn" onClick={() => setIsApiGuideOpen(false)}>Close Guide</button>
-            </div>
-          </div>
-        </div>
       )}
     </>
   );

@@ -60,6 +60,18 @@ export interface Product {
   purchasePrice: number;
   sellingPrice: number;
   mrp?: number | null;
+  exportPriceUsd?: number | null;
+  exportPriceEur?: number | null;
+  exportPriceGbp?: number | null;
+  currency?: string | null;
+  capacityMl?: number | null;
+  material?: string | null;
+  moq?: number | null;
+  masterCartonQty?: number | null;
+  cbm?: number | null;
+  diameterMm?: number | null;
+  heightMm?: number | null;
+  customizationOptions?: string | null;
   stockQuantity: number;
   minimumStock?: number | null;
   weight?: number | null;
@@ -257,6 +269,7 @@ export default function ProductListClient({ products, categories, categoriesData
             !(product.sku || '').toLowerCase().includes(q) &&
             !(product.articleNumber || '').toLowerCase().includes(q) &&
             !(product.category || '').toLowerCase().includes(q) &&
+            !(product.material || '').toLowerCase().includes(q) &&
             !(product.fabric || '').toLowerCase().includes(q) &&
             !(product.color || '').toLowerCase().includes(q)) {
           return false;
@@ -379,11 +392,19 @@ export default function ProductListClient({ products, categories, categoriesData
         "Article Number": p.articleNumber || "",
         "Product Name": p.name || "",
         "Category": p.category || "",
+        "Material": p.material || "",
+        "Capacity (ml)": p.capacityMl || "",
         "HSN Code": p.hsnCode || "",
         "Stock Qty (Units)": p.stockQuantity,
+        "MOQ (pcs)": p.moq || "",
+        "Master Carton": p.masterCartonQty || "",
+        "CBM (m³)": p.cbm || "",
         "Min Stock Buffer": min,
         "Purchase Cost (INR)": cost,
         "Selling Price (INR)": sell,
+        "Export FOB Price (USD $)": p.exportPriceUsd || "",
+        "Export FOB Price (EUR €)": p.exportPriceEur || "",
+        "Export FOB Price (GBP £)": p.exportPriceGbp || "",
         "MRP (INR)": mrp,
         "Unit Gross Profit (INR)": profit,
         "Gross Margin (%)": margin,
@@ -433,11 +454,18 @@ export default function ProductListClient({ products, categories, categoriesData
       "Article Number",
       "Product Name",
       "Category",
+      "Material",
+      "Capacity (ml)",
       "HSN Code",
       "Stock Qty (Units)",
+      "MOQ (pcs)",
+      "Master Carton",
+      "CBM (m³)",
       "Min Stock Buffer",
       "Purchase Cost (INR)",
       "Selling Price (INR)",
+      "Export FOB (USD $)",
+      "Export FOB (EUR €)",
       "MRP (INR)",
       "Unit Gross Profit (INR)",
       "Gross Margin (%)",
@@ -460,11 +488,18 @@ export default function ProductListClient({ products, categories, categoriesData
         `"${p.articleNumber || ''}"`,
         `"${p.name.replace(/"/g, '""')}"`,
         `"${p.category || ''}"`,
+        `"${p.material || ''}"`,
+        p.capacityMl || '',
         `"${p.hsnCode || ''}"`,
         p.stockQuantity,
+        p.moq || '',
+        p.masterCartonQty || '',
+        p.cbm || '',
         min,
         cost.toFixed(2),
         sell.toFixed(2),
+        p.exportPriceUsd ? p.exportPriceUsd.toFixed(2) : '',
+        p.exportPriceEur ? p.exportPriceEur.toFixed(2) : '',
         mrp.toFixed(2),
         profit.toFixed(2),
         margin,
@@ -1124,6 +1159,26 @@ export default function ProductListClient({ products, categories, categoriesData
                     <td style={{ padding: '8px 12px', verticalAlign: 'middle' }}>
                       <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f172a' }}>{product.name}</div>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '2px' }}>
+                        {product.material && (
+                          <span style={{ fontSize: '0.68rem', backgroundColor: '#f5f3ff', color: '#6d28d9', padding: '1px 5px', borderRadius: '4px', border: '1px solid #ddd6fe', fontWeight: 500 }}>
+                            ✨ {product.material}
+                          </span>
+                        )}
+                        {product.capacityMl && (
+                          <span style={{ fontSize: '0.68rem', backgroundColor: '#eff6ff', color: '#1e40af', padding: '1px 5px', borderRadius: '4px', border: '1px solid #bfdbfe', fontWeight: 500 }}>
+                            🍷 {product.capacityMl} ml
+                          </span>
+                        )}
+                        {product.moq && (
+                          <span style={{ fontSize: '0.68rem', backgroundColor: '#ecfdf5', color: '#065f46', padding: '1px 5px', borderRadius: '4px', border: '1px solid #a7f3d0' }}>
+                            MOQ: {product.moq}
+                          </span>
+                        )}
+                        {product.cbm && (
+                          <span style={{ fontSize: '0.68rem', backgroundColor: '#f8fafc', color: '#475569', padding: '1px 5px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                            📦 {product.cbm} m³
+                          </span>
+                        )}
                         {product.fabric && (
                           <span style={{ fontSize: '0.68rem', backgroundColor: '#f1f5f9', color: '#475569', padding: '1px 5px', borderRadius: '4px' }}>
                             {product.fabric}
@@ -1198,10 +1253,17 @@ export default function ProductListClient({ products, categories, categoriesData
                       <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.84rem' }}>
                         ₹{sell.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                       </div>
-                      {product.mrp && product.mrp > sell && (
-                        <div style={{ fontSize: '0.68rem', color: '#94a3b8', textDecoration: 'line-through' }}>
-                          MRP: ₹{product.mrp.toLocaleString('en-IN')}
+                      {(product.exportPriceUsd || product.exportPriceEur) ? (
+                        <div style={{ fontSize: '0.68rem', color: '#0284c7', fontWeight: 600, marginTop: '2px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
+                          {product.exportPriceUsd ? <span>🌐 FOB ${Number(product.exportPriceUsd).toFixed(2)}</span> : null}
+                          {product.exportPriceEur ? <span>🌐 €{Number(product.exportPriceEur).toFixed(2)}</span> : null}
                         </div>
+                      ) : (
+                        product.mrp && product.mrp > sell ? (
+                          <div style={{ fontSize: '0.68rem', color: '#94a3b8', textDecoration: 'line-through' }}>
+                            MRP: ₹{product.mrp.toLocaleString('en-IN')}
+                          </div>
+                        ) : null
                       )}
                     </td>
 
@@ -1494,6 +1556,21 @@ export default function ProductListClient({ products, categories, categoriesData
                     <div className="product-card-title-group">
                       <div className="product-card-name">{product.name}</div>
                       <div className="product-variants-row">
+                        {product.material && (
+                          <span className="product-variant-chip" style={{ backgroundColor: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' }}>
+                            ✨ {product.material}
+                          </span>
+                        )}
+                        {product.capacityMl && (
+                          <span className="product-variant-chip" style={{ backgroundColor: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}>
+                            🍷 {product.capacityMl} ml
+                          </span>
+                        )}
+                        {product.moq && (
+                          <span className="product-variant-chip" style={{ backgroundColor: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0' }}>
+                            MOQ: {product.moq}
+                          </span>
+                        )}
                         {product.category && (
                           <span className="product-variant-chip" style={{ backgroundColor: '#f1f5f9', color: '#334155' }}>
                             {product.category}
@@ -1547,6 +1624,11 @@ export default function ProductListClient({ products, categories, categoriesData
                       <span className="price-item-val" style={{ color: '#0f172a' }}>
                         ₹{sell.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                       </span>
+                      {product.exportPriceUsd ? (
+                        <span style={{ fontSize: '0.65rem', color: '#0284c7', fontWeight: 700, display: 'block' }}>
+                          FOB ${Number(product.exportPriceUsd).toFixed(2)}
+                        </span>
+                      ) : null}
                     </div>
                     <div className="price-item">
                       <span className="price-item-label">Margin</span>

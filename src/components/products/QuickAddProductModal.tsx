@@ -21,14 +21,15 @@ interface QuickAddProductModalProps {
 }
 
 const DEFAULT_CATEGORIES = [
-  "Garments",
-  "Fabrics",
-  "Raw Materials",
-  "Trims & Accessories",
-  "Packaging",
-  "Hardware",
-  "Finished Goods",
-  "General"
+  "Wine Glasses",
+  "Champagne Flutes",
+  "Whiskey Tumblers",
+  "Cocktail & Martini Glasses",
+  "Decanters & Carafes",
+  "Beer Mugs & Pilsners",
+  "Crystal Tableware",
+  "Barware Sets",
+  "Glassware & Accessories"
 ];
 
 export default function QuickAddProductModal({
@@ -42,13 +43,16 @@ export default function QuickAddProductModal({
 
   const [name, setName] = useState(initialName);
   const [sku, setSku] = useState("");
-  const [category, setCategory] = useState("Garments");
+  const [category, setCategory] = useState("Wine Glasses");
   const [purchasePrice, setPurchasePrice] = useState<string>("100");
   const [sellingPrice, setSellingPrice] = useState<string>("150");
+  const [exportPriceUsd, setExportPriceUsd] = useState<string>("2.50");
+  const [capacityMl, setCapacityMl] = useState<string>("450");
+  const [material, setMaterial] = useState<string>("Lead-Free Crystal Glass");
   const [gstRate, setGstRate] = useState<number>(18);
-  const [hsnCode, setHsnCode] = useState("");
+  const [hsnCode, setHsnCode] = useState("7013");
   const [stock, setStock] = useState<string>("0");
-  const [minStock, setMinStock] = useState<string>("10");
+  const [minStock, setMinStock] = useState<string>("100");
   const [uom, setUom] = useState("Pcs");
 
   // Auto-generate a clean SKU whenever name changes or modal opens
@@ -111,10 +115,13 @@ export default function QuickAddProductModal({
     fd.set("category", category);
     fd.set("price", sellingPrice || purchasePrice || "100");
     fd.set("purchasePrice", purchasePrice || "100");
-    fd.set("hsnCode", hsnCode.trim());
+    fd.set("exportPriceUsd", exportPriceUsd || "");
+    fd.set("capacityMl", capacityMl || "");
+    fd.set("material", material || "");
+    fd.set("hsnCode", hsnCode.trim() || "7013");
     fd.set("stock", stock || "0");
-    fd.set("minimumStock", minStock || "10");
-    fd.set("description", `UOM: ${uom}`);
+    fd.set("minimumStock", minStock || "100");
+    fd.set("description", `UOM: ${uom} • ${capacityMl ? `${capacityMl}ml ` : ''}${material}`);
 
     try {
       const res = await createProduct(fd);
@@ -283,11 +290,11 @@ export default function QuickAddProductModal({
               </div>
             </div>
 
-            {/* Pricing Grid: Cost Price (Purchase), Selling Price, GST % */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
+            {/* Pricing Grid: Cost Price (Purchase), Selling Price (INR), Export Price (USD $) */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1.1fr", gap: "12px" }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>
-                  Purchase Rate (₹) <span style={{ color: "#ef4444" }}>*</span>
+                  Cost Rate (₹) <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <div style={{ position: "relative" }}>
                   <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 600, fontSize: "0.8rem", pointerEvents: "none" }}>₹</span>
@@ -306,7 +313,7 @@ export default function QuickAddProductModal({
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>
-                  Selling Price (₹)
+                  India Price (₹)
                 </label>
                 <div style={{ position: "relative" }}>
                   <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#64748b", fontWeight: 600, fontSize: "0.8rem", pointerEvents: "none" }}>₹</span>
@@ -323,19 +330,54 @@ export default function QuickAddProductModal({
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "#2563eb" }}>
+                  Export Price (USD $)
+                </label>
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#2563eb", fontWeight: 700, fontSize: "0.85rem", pointerEvents: "none" }}>$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={exportPriceUsd}
+                    onChange={(e) => setExportPriceUsd(e.target.value)}
+                    placeholder="2.50"
+                    className="form-input"
+                    style={{ paddingLeft: "24px", borderColor: "#93c5fd", fontWeight: 700, color: "#1e40af", backgroundColor: "#eff6ff" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Glassware Specs: Capacity (ml) & Material */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: "12px" }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
                 <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>
-                  GST %
+                  Capacity (ml / oz)
+                </label>
+                <input
+                  type="number"
+                  value={capacityMl}
+                  onChange={(e) => setCapacityMl(e.target.value)}
+                  placeholder="e.g. 450"
+                  className="form-input"
+                />
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 600, color: "#334155" }}>
+                  Glass Material
                 </label>
                 <select
-                  value={gstRate}
-                  onChange={(e) => setGstRate(parseInt(e.target.value, 10))}
+                  value={material}
+                  onChange={(e) => setMaterial(e.target.value)}
                   className="form-input"
                 >
-                  <option value={0}>0% (Exempt)</option>
-                  <option value={5}>5%</option>
-                  <option value={12}>12%</option>
-                  <option value={18}>18% (Standard)</option>
-                  <option value={28}>28%</option>
+                  <option value="Lead-Free Crystal Glass">Lead-Free Crystal Glass</option>
+                  <option value="Borosilicate Glass">Borosilicate Glass (Heat Resistant)</option>
+                  <option value="Soda-Lime Glass">Soda-Lime Glass (Standard)</option>
+                  <option value="Hand-Blown Crystal">Hand-Blown Artisan Crystal</option>
+                  <option value="Tempered Glass">Tempered Toughened Glass</option>
                 </select>
               </div>
             </div>

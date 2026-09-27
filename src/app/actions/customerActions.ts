@@ -306,14 +306,19 @@ export async function createCustomer(formData: FormData) {
   const openingBalance = isNaN(openingBalanceRaw) ? 0 : openingBalanceRaw;
   const openingBalanceType = (formData.get("openingBalanceType") as string) || "DEBIT";
 
-  const pan = (formData.get("pan") as string)?.trim()?.toUpperCase() || (gstNumber && gstNumber.length >= 12 ? gstNumber.slice(2, 12).toUpperCase() : null);
+  const isInternational = formData.get("isInternational") === "true" || formData.get("isInternational") === "on";
+  const country = (formData.get("country") as string)?.trim() || (isInternational ? "United States" : "India");
+  const currency = (formData.get("currency") as string)?.trim() || (isInternational ? "USD" : "INR");
+  const taxId = (formData.get("taxId") as string)?.trim() || null;
+  const portOfDischarge = (formData.get("portOfDischarge") as string)?.trim() || null;
+  const incoterms = (formData.get("incoterms") as string)?.trim() || null;
 
-  if (!companyName || !phone || phone === "+91" || phone === "+91 ") {
+  if (!companyName || !phone || (!isInternational && (phone === "+91" || phone === "+91 "))) {
     return { error: "Company Name and Phone Number are required" };
   }
 
-  // Format phone to have +91 prefix if not present
-  if (phone && !phone.startsWith("+")) {
+  // Format phone to have +91 prefix if domestic and not present
+  if (!isInternational && phone && !phone.startsWith("+")) {
     const cleanDigits = phone.replace(/\D/g, "");
     if (cleanDigits.startsWith("91") && cleanDigits.length === 12) {
       phone = "+" + cleanDigits;
@@ -362,7 +367,6 @@ export async function createCustomer(formData: FormData) {
     const creditDaysRaw = parseInt(formData.get("creditDays") as string, 10);
     const creditDays = isNaN(creditDaysRaw) ? 30 : creditDaysRaw;
     const creditHold = formData.get("creditHold") === "true" || formData.get("creditHold") === "on";
-    const creditHoldReason = (formData.get("creditHoldReason") as string)?.trim() || null;
 
     const customer = await prisma.customer.create({
       data: {
@@ -378,6 +382,12 @@ export async function createCustomer(formData: FormData) {
         landmark: landmark || null,
         gstNumber: gstNumber || null,
         pan: pan || null,
+        isInternational,
+        country,
+        currency,
+        taxId,
+        portOfDischarge,
+        incoterms,
         openingBalance,
         openingBalanceType,
         creditLimit,
@@ -727,12 +737,14 @@ export async function updateCustomer(id: string, formData: FormData) {
   const creditHold = creditHoldRaw !== null ? (creditHoldRaw === "true" || creditHoldRaw === "on") : undefined;
   const creditHoldReason = (formData.get("creditHoldReason") as string)?.trim();
 
-  if (!companyName || !phone || phone === "+91" || phone === "+91 ") {
+  const isInternational = formData.has("isInternational") ? (formData.get("isInternational") === "true" || formData.get("isInternational") === "on") : undefined;
+
+  if (!companyName || !phone || (isInternational === false && (phone === "+91" || phone === "+91 "))) {
     return { error: "Company Name and Phone Number are required" };
   }
 
-  // Format phone to have +91 prefix if not present
-  if (phone && !phone.startsWith("+")) {
+  // Format phone to have +91 prefix if not international and not present
+  if (isInternational === false && phone && !phone.startsWith("+")) {
     const cleanDigits = phone.replace(/\D/g, "");
     if (cleanDigits.startsWith("91") && cleanDigits.length === 12) {
       phone = "+" + cleanDigits;
@@ -786,7 +798,12 @@ export async function updateCustomer(id: string, formData: FormData) {
         whatsappNumber: whatsappNumber || undefined,
         alternatePhone: alternatePhone || undefined,
         regularDiscount: regularDiscount || null,
-        preferredPaymentMethod: preferredPaymentMethod || null,
+        ...(formData.has("isInternational") ? { isInternational: formData.get("isInternational") === "true" || formData.get("isInternational") === "on" } : {}),
+        ...(formData.has("country") ? { country: (formData.get("country") as string)?.trim() || null } : {}),
+        ...(formData.has("currency") ? { currency: (formData.get("currency") as string)?.trim() || "INR" } : {}),
+        ...(formData.has("taxId") ? { taxId: (formData.get("taxId") as string)?.trim() || null } : {}),
+        ...(formData.has("portOfDischarge") ? { portOfDischarge: (formData.get("portOfDischarge") as string)?.trim() || null } : {}),
+        ...(formData.has("incoterms") ? { incoterms: (formData.get("incoterms") as string)?.trim() || null } : {}),
         ...(creditLimitRaw !== undefined && !isNaN(creditLimitRaw) ? { creditLimit: creditLimitRaw } : {}),
         ...(creditDaysRaw !== undefined && !isNaN(creditDaysRaw) ? { creditDays: creditDaysRaw } : {}),
         ...(creditHold !== undefined ? { creditHold } : {}),

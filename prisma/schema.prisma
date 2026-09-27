@@ -345,6 +345,14 @@ model Customer {
   creditHold           Boolean  @default(false) // Hard lock on billing if set to true
   creditHoldReason     String?  // Reason for credit freeze/lock
 
+  // International & Export Fields
+  isInternational      Boolean  @default(false)
+  country              String?  @default("India")
+  currency             String?  @default("INR") // INR, USD, EUR, GBP, AED, AUD, CAD, JPY
+  taxId                String?  // VAT, EORI, EIN, Customs Tax ID
+  portOfDischarge      String?  // Port of destination (e.g. Hamburg, Los Angeles, Dubai)
+  incoterms            String?  // FOB, CIF, EXW, DDP, CFR, DAP
+
   totalPurchaseValue Float @default(0)
   totalOrders        Int   @default(0)
   retentionStatus    String @default("Active")
@@ -395,6 +403,16 @@ model Lead {
   shopName        String?
   
   status          String   @default("New") // New, Contacted, Converted, Lost
+
+  // International Export Lead Fields
+  isInternational Boolean  @default(false)
+  country         String?  @default("India")
+  currency        String?  @default("USD")
+  buyerType       String?  // Importer, Wholesaler, Hospitality / Hotel Chain, Retailer, Brand
+  destinationPort String?  // e.g. Port of Los Angeles, Hamburg, Jebel Ali, Rotterdam
+  targetCapacity  String?  // e.g. 450ml Wine Glass, 350ml Flute, 750ml Decanter
+  email           String?
+  notes           String?
   
   assignedSalespersonId String?
   assignedSalesperson   Employee? @relation("AssignedLeads", fields: [assignedSalespersonId], references: [id])
@@ -529,6 +547,23 @@ model Product {
   purchasePrice   Float
   sellingPrice    Float
   mrp             Float
+  
+  // International Multi-Currency Pricing
+  exportPriceUsd  Float?   // FOB Export Price in USD ($)
+  exportPriceEur  Float?   // Export Price in EUR (€)
+  exportPriceGbp  Float?   // Export Price in GBP (£)
+  currency        String?  @default("INR") // Base currency (INR, USD, EUR)
+
+  // Glassware & Export Product Specifications
+  capacityMl      Float?   // Volume/Capacity in ml (e.g., 450ml Wine Glass, 750ml Decanter)
+  material        String?  // e.g. Lead-Free Crystal Glass, Borosilicate Glass, Soda-Lime Glass
+  moq             Int?     @default(100) // Minimum Order Quantity for export shipments
+  masterCartonQty Int?     @default(24)  // Pieces per outer export carton
+  cbm             Float?   // Cubic Meters per carton for container loading
+  diameterMm      Float?   // Rim / Max diameter in mm
+  heightMm        Float?   // Height in mm
+  customizationOptions String? // Logo Etching, Gold Rim, Custom Gift Box, Decal
+
   stockQuantity   Int      @default(0)
   minimumStock    Int      @default(10)
   status          String   @default("Active")

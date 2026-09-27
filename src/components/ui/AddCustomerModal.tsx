@@ -5,7 +5,7 @@ import { createCustomer, lookupGstin } from "@/app/actions/customerActions";
 import { convertLeadToCustomer } from "@/actions/leads";
 import { checkDuplicateEntity } from "@/app/actions/duplicateActions";
 import DuplicateWarningBanner, { DuplicateEntityInfo } from "@/components/ui/DuplicateWarningBanner";
-import { UserPlus, Sparkles, CheckCircle2, Loader2, Landmark } from "lucide-react";
+import { UserPlus, Sparkles, CheckCircle2, Loader2, Landmark, Globe, Building2, Anchor } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import "@/components/ui/modal.css"; 
 
@@ -15,6 +15,35 @@ interface AddCustomerModalProps {
   zIndex?: number;
   leadToConvert?: any;
 }
+
+const EXPORT_COUNTRIES = [
+  "United States", "United Kingdom", "Germany", "United Arab Emirates", 
+  "France", "Italy", "Australia", "Canada", "Japan", "Singapore", 
+  "Saudi Arabia", "Netherlands", "Spain", "Switzerland", "Qatar", 
+  "Kuwait", "Oman", "South Africa", "Brazil", "India", "Other"
+];
+
+const CURRENCIES = [
+  { code: "USD", symbol: "$", label: "USD ($) - US Dollar" },
+  { code: "EUR", symbol: "€", label: "EUR (€) - Euro" },
+  { code: "GBP", symbol: "£", label: "GBP (£) - British Pound" },
+  { code: "AED", symbol: "AED", label: "AED (د.إ) - UAE Dirham" },
+  { code: "CAD", symbol: "$", label: "CAD ($) - Canadian Dollar" },
+  { code: "AUD", symbol: "$", label: "AUD ($) - Australian Dollar" },
+  { code: "JPY", symbol: "¥", label: "JPY (¥) - Japanese Yen" },
+  { code: "SAR", symbol: "SAR", label: "SAR (﷼) - Saudi Riyal" },
+  { code: "INR", symbol: "₹", label: "INR (₹) - Indian Rupee" }
+];
+
+const INCOTERMS_OPTIONS = [
+  { code: "FOB", label: "FOB (Free On Board) - Standard Glassware Export" },
+  { code: "CIF", label: "CIF (Cost, Insurance and Freight)" },
+  { code: "CFR", label: "CFR (Cost and Freight)" },
+  { code: "EXW", label: "EXW (Ex Works / Factory Gate)" },
+  { code: "DDP", label: "DDP (Delivered Duty Paid)" },
+  { code: "DAP", label: "DAP (Delivered At Place)" },
+  { code: "FCA", label: "FCA (Free Carrier)" }
+];
 
 export default function AddCustomerModal({ onClose, employees = [], zIndex = 100050, leadToConvert }: AddCustomerModalProps) {
   const searchParams = useSearchParams();
@@ -28,11 +57,19 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
   const [gstSuccessMsg, setGstSuccessMsg] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("None");
   
+  // International vs Domestic Toggle
+  const [isInternational, setIsInternational] = useState(leadToConvert?.isInternational || false);
+  const [country, setCountry] = useState(leadToConvert?.country || "India");
+  const [currency, setCurrency] = useState(leadToConvert?.currency || "INR");
+  const [taxId, setTaxId] = useState(leadToConvert?.taxId || "");
+  const [portOfDischarge, setPortOfDischarge] = useState(leadToConvert?.destinationPort || "");
+  const [incoterms, setIncoterms] = useState("FOB");
+
   // Form fields state for real-time auto-fill from GST
-  const [companyName, setCompanyName] = useState(leadToConvert?.shopName || initialName);
+  const [companyName, setCompanyName] = useState(leadToConvert?.shopName || leadToConvert?.name || initialName);
   const [contactPerson, setContactPerson] = useState(leadToConvert?.name || "");
-  const [phone, setPhone] = useState(leadToConvert?.whatsappNumber || "+91 ");
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState(leadToConvert?.whatsappNumber || (isInternational ? "" : "+91 "));
+  const [email, setEmail] = useState(leadToConvert?.email || "");
   const [gstNumber, setGstNumber] = useState("");
   const [streetAddress, setStreetAddress] = useState("");
   const [addressData, setAddressData] = useState({
@@ -53,11 +90,24 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
   } | null>(null);
   const duplicateTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const handleToggleInternational = (intl: boolean) => {
+    setIsInternational(intl);
+    if (intl) {
+      if (country === "India") setCountry("United States");
+      if (currency === "INR") setCurrency("USD");
+      if (phone.startsWith("+91 ") && phone.trim() === "+91") setPhone("");
+    } else {
+      setCountry("India");
+      setCurrency("INR");
+      if (!phone.startsWith("+91")) setPhone("+91 " + phone.replace(/^\+?91\s*/, ''));
+    }
+  };
+
   useEffect(() => {
     if (duplicateTimerRef.current) clearTimeout(duplicateTimerRef.current);
 
     const cleanPhone = phone.replace(/[^0-9]/g, '');
-    const hasPhone = cleanPhone.length >= 10;
+    const hasPhone = cleanPhone.length >= 7;
     const hasEmail = email && email.includes('@');
     const hasName = companyName && companyName.trim().length >= 3;
 
@@ -91,8 +141,10 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
-    if (!val.startsWith("+91")) {
-      val = "+91 " + val.replace(/^\+?91\s*/, '');
+    if (!isInternational) {
+      if (!val.startsWith("+91")) {
+        val = "+91 " + val.replace(/^\+?91\s*/, '');
+      }
     }
     setPhone(val);
   };
@@ -126,7 +178,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     if (g.length >= 10) {
       const pan = g.slice(2, 12);
       const entityChar = pan.charAt(3);
-      let suffix = "Trading Co";
+      let suffix = "Glassware Trading Co";
       if (entityChar === 'C') suffix = "Pvt Ltd";
       else if (entityChar === 'F') suffix = "& Associates";
       else if (entityChar === 'H') suffix = "Enterprises";
@@ -135,7 +187,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
       const derivedName = `M/S ${pan} (${state || 'India'} ${suffix})`;
       setCompanyName((prev: string) => (!prev || prev.startsWith("M/S") ? derivedName : prev));
       setContactPerson((prev: string) => (!prev ? `Authorized Signatory (${pan})` : prev));
-      setStreetAddress((prev: string) => (!prev ? `Commercial Business Complex, ${state || 'India'}` : prev));
+      setStreetAddress((prev: string) => (!prev ? `Commercial Complex, ${state || 'India'}` : prev));
       setGstSuccessMsg(`✓ Auto-filled GSTIN: State: ${state || stCode} • PAN: ${pan}`);
     }
   };
@@ -145,14 +197,11 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     const raw = (inputGstin !== undefined ? inputGstin : gstNumber).trim().toUpperCase();
     if (!raw || raw.length < 2) return;
 
-    // 1. Instant client-side population
     applyInstantGstinDerivation(raw);
-
     setFetchingGst(true);
     setError("");
 
     try {
-      // 2. Server lookup (database, live verified APIs, Cashfree)
       const res = await lookupGstin(raw);
       if (res && res.success) {
         if (res.companyName) {
@@ -194,10 +243,10 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
   };
 
   const handlePincodeChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const pin = e.target.value.replace(/\D/g, '').slice(0, 6);
+    const pin = isInternational ? e.target.value : e.target.value.replace(/\D/g, '').slice(0, 6);
     setAddressData(prev => ({ ...prev, pincode: pin }));
 
-    if (pin.length === 6) {
+    if (!isInternational && pin.length === 6) {
       setFetchingPin(true);
       try {
         const response = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
@@ -240,7 +289,13 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     formData.set("contactPerson", contactPerson);
     formData.set("email", email);
     formData.set("phone", phone);
-    formData.set("gstNumber", gstNumber.trim().toUpperCase());
+    formData.set("isInternational", isInternational ? "true" : "false");
+    formData.set("country", country);
+    formData.set("currency", currency);
+    formData.set("taxId", isInternational ? taxId : "");
+    formData.set("portOfDischarge", isInternational ? portOfDischarge : "");
+    formData.set("incoterms", isInternational ? incoterms : "");
+    formData.set("gstNumber", isInternational ? "" : gstNumber.trim().toUpperCase());
     formData.set("address", finalAddress);
     formData.set("pincode", addressData.pincode);
     formData.set("city", addressData.city);
@@ -256,13 +311,18 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     let result: any;
     
     if (leadToConvert) {
-      // Create JSON payload for conversion
       const customerData = {
         businessName: companyName,
         contactPerson: contactPerson,
         email: email,
         mobile: phone,
-        gstNumber: gstNumber,
+        isInternational: isInternational,
+        country: country,
+        currency: currency,
+        taxId: isInternational ? taxId : undefined,
+        portOfDischarge: isInternational ? portOfDischarge : undefined,
+        incoterms: isInternational ? incoterms : undefined,
+        gstNumber: isInternational ? undefined : gstNumber,
         billingAddress: finalAddress,
         pincode: addressData.pincode,
         city: addressData.city,
@@ -276,7 +336,6 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
       };
       result = await convertLeadToCustomer(leadToConvert.id, customerData);
       
-      // Map return format back to what modal expects
       if (result.success) {
         result = { customer: result.data };
       }
@@ -292,9 +351,11 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     }
   };
 
+  const currSymbol = CURRENCIES.find(c => c.code === currency)?.symbol || (isInternational ? "$" : "₹");
+
   return (
     <div className="modal-backdrop" style={{ zIndex }}>
-      <div className="modal-content animate-in" style={{ maxWidth: '780px', backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', zIndex: zIndex + 1 }}>
+      <div className="modal-content animate-in" style={{ maxWidth: '800px', backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)', zIndex: zIndex + 1 }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 24px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', borderRadius: '14px 14px 0 0' }}>
@@ -303,7 +364,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
               <UserPlus size={20} color="#2563eb" /> {leadToConvert ? 'Convert Lead to Customer' : 'Add New Customer'}
             </h2>
             <p style={{ margin: '4px 0 0 28px', fontSize: '0.8rem', color: '#64748b' }}>
-              {leadToConvert ? `Converting ${leadToConvert.name || leadToConvert.shopName || leadToConvert.businessName || 'Lead'}` : 'Enter company details or auto-fetch by entering GSTIN'}
+              {leadToConvert ? `Converting ${leadToConvert.name || leadToConvert.shopName || leadToConvert.businessName || 'Lead'}` : 'Add domestic buyers or international export clients'}
             </p>
           </div>
           <button type="button" onClick={() => onClose()} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}>
@@ -318,7 +379,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
             </div>
           )}
 
-          {gstSuccessMsg && (
+          {gstSuccessMsg && !isInternational && (
             <div style={{ backgroundColor: '#ecfdf5', color: '#065f46', padding: '10px 14px', borderRadius: '8px', fontSize: '0.82rem', marginBottom: '16px', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
               <CheckCircle2 size={16} color="#059669" />
               <span>{gstSuccessMsg}</span>
@@ -338,14 +399,65 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
               />
             </div>
           )}
+
+          {/* Client Classification Tabs: Domestic vs International */}
+          <div style={{ marginBottom: '22px', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+            <button
+              type="button"
+              onClick={() => handleToggleInternational(false)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: !isInternational ? '1px solid #cbd5e1' : 'none',
+                backgroundColor: !isInternational ? '#ffffff' : 'transparent',
+                color: !isInternational ? '#0f172a' : '#64748b',
+                fontWeight: !isInternational ? 700 : 500,
+                fontSize: '0.86rem',
+                boxShadow: !isInternational ? '0 2px 4px rgba(0,0,0,0.06)' : 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Building2 size={16} color={!isInternational ? "#2563eb" : "#64748b"} />
+              <span>🇮🇳 Domestic Client (India / GST)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleToggleInternational(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: isInternational ? '1px solid #93c5fd' : 'none',
+                backgroundColor: isInternational ? '#eff6ff' : 'transparent',
+                color: isInternational ? '#1d4ed8' : '#64748b',
+                fontWeight: isInternational ? 700 : 500,
+                fontSize: '0.86rem',
+                boxShadow: isInternational ? '0 2px 4px rgba(37,99,235,0.1)' : 'none',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <Globe size={16} color={isInternational ? "#2563eb" : "#64748b"} />
+              <span>🌐 International Client (Export Buyer)</span>
+            </button>
+          </div>
           
-          {/* Section 1: Basic Info & GST */}
+          {/* Section 1: Basic Info & Company / Export Details */}
           <div style={{ marginBottom: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
-                Company & GST Details
+                {isInternational ? 'International Export Client Information' : 'Company & GST Details'}
               </h3>
-              {gstNumber.length >= 2 && (
+              {!isInternational && gstNumber.length >= 2 && (
                 <button
                   type="button"
                   onClick={() => handleGstLookup()}
@@ -370,74 +482,159 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
               )}
             </div>
 
-            {/* GST Number row with prominent placement */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
-                  GST Number (15-digit GSTIN)
-                </label>
-                {gstNumber.length >= 2 && (
-                  <button
-                    type="button"
-                    onClick={() => handleGstLookup(gstNumber)}
-                    disabled={fetchingGst}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '2px 8px',
-                      borderRadius: '5px',
-                      backgroundColor: '#eff6ff',
-                      color: '#2563eb',
-                      border: '1px solid #bfdbfe',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
+            {/* If International: Country, Currency, Tax/VAT ID, Port */}
+            {isInternational ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px', backgroundColor: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Country <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600 }}
                   >
-                    {fetchingGst ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-                    {fetchingGst ? "Fetching..." : "⚡ Auto-Fill Name & Address"}
-                  </button>
-                )}
-              </div>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <input 
-                  type="text" 
-                  name="gstNumber" 
-                  value={gstNumber} 
-                  onChange={handleGstChange} 
-                  onBlur={() => { if (gstNumber.length >= 2) handleGstLookup(); }}
-                  placeholder="e.g. 21DTSPS0817P1Z1" 
-                  maxLength={15}
-                  style={{ width: '100%', padding: '9px 12px', paddingRight: fetchingGst ? '36px' : '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontFamily: 'monospace', backgroundColor: '#f8fafc', fontWeight: 600, color: '#0f172a', textTransform: 'uppercase' }} 
-                />
-                {fetchingGst && (
-                  <div style={{ position: 'absolute', right: '12px', color: '#2563eb' }}>
-                    <Loader2 size={16} className="animate-spin" />
+                    {EXPORT_COUNTRIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Billing Currency <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <select
+                    value={currency}
+                    onChange={(e) => setCurrency(e.target.value)}
+                    required
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600 }}
+                  >
+                    {CURRENCIES.map((cur) => (
+                      <option key={cur.code} value={cur.code}>{cur.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    VAT / Tax ID / EORI / EIN <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={taxId}
+                    onChange={(e) => setTaxId(e.target.value)}
+                    placeholder="e.g. US123456789, GB987654321"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Incoterms
+                  </label>
+                  <select
+                    value={incoterms}
+                    onChange={(e) => setIncoterms(e.target.value)}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600 }}
+                  >
+                    {INCOTERMS_OPTIONS.map((inc) => (
+                      <option key={inc.code} value={inc.code}>{inc.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                    Destination Port of Discharge
+                  </label>
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <Anchor size={15} style={{ position: 'absolute', left: '12px', color: '#64748b' }} />
+                    <input
+                      type="text"
+                      value={portOfDischarge}
+                      onChange={(e) => setPortOfDischarge(e.target.value)}
+                      placeholder="e.g. Port of Los Angeles (USLAX), Hamburg Port, Jebel Ali (AEJEA)"
+                      style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff' }}
+                    />
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* GST Number row with prominent placement for Domestic */
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>
+                    GST Number (15-digit GSTIN)
+                  </label>
+                  {gstNumber.length >= 2 && (
+                    <button
+                      type="button"
+                      onClick={() => handleGstLookup(gstNumber)}
+                      disabled={fetchingGst}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '2px 8px',
+                        borderRadius: '5px',
+                        backgroundColor: '#eff6ff',
+                        color: '#2563eb',
+                        border: '1px solid #bfdbfe',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {fetchingGst ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+                      {fetchingGst ? "Fetching..." : "⚡ Auto-Fill Name & Address"}
+                    </button>
+                  )}
+                </div>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <input 
+                    type="text" 
+                    name="gstNumber" 
+                    value={gstNumber} 
+                    onChange={handleGstChange} 
+                    onBlur={() => { if (gstNumber.length >= 2) handleGstLookup(); }}
+                    placeholder="e.g. 21DTSPS0817P1Z1" 
+                    maxLength={15}
+                    style={{ width: '100%', padding: '9px 12px', paddingRight: fetchingGst ? '36px' : '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', fontFamily: 'monospace', backgroundColor: '#f8fafc', fontWeight: 600, color: '#0f172a', textTransform: 'uppercase' }} 
+                  />
+                  {fetchingGst && (
+                    <div style={{ position: 'absolute', right: '12px', color: '#2563eb' }}>
+                      <Loader2 size={16} className="animate-spin" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Company Legal / Trade Name <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  {isInternational ? 'Importer / Company Name' : 'Company Legal / Trade Name'} <span style={{ color: '#ef4444' }}>*</span>
+                </label>
                 <input 
                   type="text" 
                   name="companyName" 
                   required 
-                  placeholder="Acme Corp" 
+                  placeholder={isInternational ? "e.g. Royal Crystal Imports LLC" : "Acme Glassware Corp"} 
                   value={companyName} 
                   onChange={e => setCompanyName(e.target.value)} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Contact Person <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 400 }}>(Optional)</span></label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Contact Person / Procurement Manager
+                </label>
                 <input 
                   type="text" 
                   name="contactPerson" 
-                  placeholder="Jane Doe (Optional)" 
+                  placeholder="e.g. John Miller (Optional)" 
                   value={contactPerson} 
                   onChange={e => setContactPerson(e.target.value)} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
@@ -447,14 +644,16 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Phone / WhatsApp Number <span style={{ color: '#ef4444' }}>*</span>
+                </label>
                 <input 
                   type="tel" 
                   name="phone" 
                   required 
                   value={phone} 
                   onChange={handlePhoneChange} 
-                  placeholder="+91 98765 43210" 
+                  placeholder={isInternational ? "e.g. +1 555-019-2834 or +44 7911 123456" : "+91 98765 43210"} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
                 />
               </div>
@@ -463,7 +662,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
                 <input 
                   type="email" 
                   name="email" 
-                  placeholder="jane@acme.com" 
+                  placeholder={isInternational ? "buyer@crystalimports.com" : "contact@acme.com"} 
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
@@ -475,15 +674,17 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
           {/* Section 2: Address */}
           <div style={{ marginBottom: '24px' }}>
             <h3 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
-              Address Information
+              Address & Delivery Details
             </h3>
             
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Street / Building / Landmark</label>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                Street Address / Warehouse Location
+              </label>
               <input 
                 type="text" 
                 name="address" 
-                placeholder="Full address or street info..." 
+                placeholder={isInternational ? "e.g. 742 Evergreen Terrace, Suite 100" : "Full address or street info..."} 
                 value={streetAddress} 
                 onChange={e => setStreetAddress(e.target.value)} 
                 style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
@@ -493,21 +694,23 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                  Pincode {fetchingPin && <span style={{ fontSize: '0.7rem', color: '#2563eb' }}>(fetching...)</span>}
+                  {isInternational ? 'Postal / ZIP Code' : 'Pincode'} {!isInternational && fetchingPin && <span style={{ fontSize: '0.7rem', color: '#2563eb' }}>(fetching...)</span>}
                 </label>
                 <input 
                   type="text" 
                   name="pincode" 
                   value={addressData.pincode} 
                   onChange={handlePincodeChange} 
-                  placeholder="110001" 
-                  maxLength={6} 
+                  placeholder={isInternational ? "e.g. 90210 / W1A 1AA" : "110001"} 
+                  maxLength={isInternational ? 12 : 6} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Post Office / Area</label>
-                {availablePostOffices.length > 0 ? (
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  {isInternational ? 'District / Area / Suburb' : 'Post Office / Area'}
+                </label>
+                {!isInternational && availablePostOffices.length > 0 ? (
                   <select 
                     value={addressData.postOffice}
                     onChange={(e) => setAddressData(prev => ({...prev, postOffice: e.target.value}))}
@@ -523,7 +726,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
                     type="text" 
                     value={addressData.postOffice} 
                     onChange={(e) => setAddressData(prev => ({...prev, postOffice: e.target.value}))} 
-                    placeholder="Enter Area" 
+                    placeholder="Enter Area / District" 
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
                   />
                 )}
@@ -532,24 +735,24 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>City / District</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>City</label>
                 <input 
                   type="text" 
                   name="city" 
                   value={addressData.city} 
                   onChange={(e) => setAddressData(prev => ({...prev, city: e.target.value}))} 
-                  placeholder="City" 
+                  placeholder={isInternational ? "e.g. New York / London / Dubai" : "City"} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>State</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>State / Province</label>
                 <input 
                   type="text" 
                   name="state" 
                   value={addressData.state} 
                   onChange={(e) => setAddressData(prev => ({...prev, state: e.target.value}))} 
-                  placeholder="State" 
+                  placeholder={isInternational ? "e.g. California / Ontario / Bavaria" : "State"} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
                 />
               </div>
@@ -559,13 +762,13 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
           {/* Section 3: Financials & Opening Balance */}
           <div style={{ marginBottom: '24px' }}>
             <h3 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
-              <Landmark size={15} color="#4f46e5" /> Financials & Opening Balance
+              <Landmark size={15} color="#4f46e5" /> Financials & Opening Balance ({currSymbol})
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', backgroundColor: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-                  Opening Balance (₹)
+                  Opening Balance ({currSymbol})
                 </label>
                 <input 
                   type="number" 
@@ -578,7 +781,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem', backgroundColor: '#ffffff', fontWeight: 700 }} 
                 />
                 <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px', display: 'block' }}>
-                  Initial outstanding or advance balance
+                  Initial outstanding or advance balance in {currency}
                 </span>
               </div>
 
@@ -592,8 +795,8 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
                   onChange={e => setOpeningBalanceType(e.target.value)} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', fontWeight: 600 }}
                 >
-                  <option value="DEBIT">Debit (Dr) - To Receive</option>
-                  <option value="CREDIT">Credit (Cr) - Advance / To Pay</option>
+                  <option value="DEBIT">Debit (Dr) - To Receive / Outstanding</option>
+                  <option value="CREDIT">Credit (Cr) - Advance / Pre-paid</option>
                 </select>
                 <span style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px', display: 'block' }}>
                   Debit = Receivable, Credit = Advance
@@ -605,32 +808,34 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
           {/* Section 4: Preferences & Assignment */}
           <div style={{ marginBottom: '8px' }}>
             <h3 style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
-              Preferences & Assignment
+              Terms & Agent Assignment
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Payment Method</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Payment Terms / Method</label>
                 <select 
                   value={paymentMethod} 
                   onChange={(e) => setPaymentMethod(e.target.value)} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }}
                 >
                   <option value="None">None</option>
-                  <option value="COD">COD</option>
-                  <option value="UPI">UPI</option>
-                  <option value="Credit">Credit</option>
-                  <option value="Bank">Bank Transfer</option>
+                  <option value="Wire Transfer (T/T)">Wire Transfer (T/T) - International</option>
+                  <option value="Letter of Credit (L/C)">Letter of Credit (L/C) - Export</option>
+                  <option value="Bank">Bank Transfer / NEFT / RTGS</option>
+                  <option value="Credit">Credit Terms (Net 30 / 60)</option>
+                  <option value="UPI">UPI / Instant</option>
                   <option value="Cheque">Cheque</option>
+                  <option value="COD">COD</option>
                 </select>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Discount Notes</label>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Discount / Special Terms</label>
                 <input 
                   type="text" 
                   name="regularDiscount" 
-                  placeholder="e.g. 5%, flat ₹50" 
+                  placeholder={isInternational ? "e.g. 5% FCL volume discount" : "e.g. 5%, flat ₹50"} 
                   value={regularDiscount} 
                   onChange={e => setRegularDiscount(e.target.value)} 
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }} 
@@ -639,15 +844,14 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
 
               {employees.length > 0 && (
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Assigned Agent</label>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>Assigned Export / Sales Manager</label>
                   <select 
                     name="salespersonId" 
                     value={salespersonId}
                     onChange={e => setSalespersonId(e.target.value)} 
-                    required 
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc' }}
                   >
-                    <option value="">Select salesperson...</option>
+                    <option value="">-- Unassigned --</option>
                     {employees.map((emp) => (
                       <option key={emp.id} value={emp.id}>{emp.name}</option>
                     ))}
@@ -663,7 +867,7 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
               Cancel
             </button>
             <button type="submit" disabled={loading} style={{ padding: '9px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#2563eb', color: '#ffffff', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}>
-              {loading ? "Creating..." : "Save Customer"}
+              {loading ? "Creating..." : isInternational ? "Save International Client" : "Save Customer"}
             </button>
           </div>
         </form>

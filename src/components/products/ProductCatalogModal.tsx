@@ -54,7 +54,7 @@ export default function ProductCatalogModal({
   companySettings,
   onClose
 }: ProductCatalogModalProps) {
-  const [catalogTitle, setCatalogTitle] = useState('WHOLESALE APPAREL COLLECTION & LOOKBOOK');
+  const [catalogTitle, setCatalogTitle] = useState('R3 EXPORTS - PREMIUM GLASSWARE & TABLEWARE COLLECTION');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>(
@@ -144,7 +144,7 @@ export default function ProductCatalogModal({
     if (selectedProductIds.length > 0 && selectedProductIds.length < products.length) {
       params.set('ids', selectedProductIds.join(','));
     }
-    if (catalogTitle && catalogTitle !== 'WHOLESALE APPAREL COLLECTION & LOOKBOOK') {
+    if (catalogTitle && catalogTitle !== 'R3 EXPORTS - PREMIUM GLASSWARE & TABLEWARE COLLECTION') {
       params.set('title', catalogTitle);
     }
     const qs = params.toString();

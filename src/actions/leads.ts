@@ -77,6 +77,14 @@ export async function createLead(data: {
   whatsappNumber: string;
   shopName?: string;
   assignedSalespersonId?: string;
+  isInternational?: boolean;
+  country?: string;
+  currency?: string;
+  buyerType?: string;
+  destinationPort?: string;
+  targetCapacity?: string;
+  email?: string;
+  notes?: string;
 }) {
   try {
     const orgId = await getTenantOrgId();
@@ -130,6 +138,14 @@ export async function createLead(data: {
         shopName: data.shopName,
         assignedSalespersonId: assignedSalespersonId,
         organizationId: orgId,
+        isInternational: Boolean(data.isInternational),
+        country: data.country || (data.isInternational ? "United States" : "India"),
+        currency: data.currency || (data.isInternational ? "USD" : "INR"),
+        buyerType: data.buyerType || null,
+        destinationPort: data.destinationPort || null,
+        targetCapacity: data.targetCapacity || null,
+        email: data.email || null,
+        notes: data.notes || null,
       }
     });
 
@@ -158,6 +174,14 @@ export async function updateLead(id: string, data: {
   shopName?: string;
   status?: string;
   assignedSalespersonId?: string | null;
+  isInternational?: boolean;
+  country?: string;
+  currency?: string;
+  buyerType?: string;
+  destinationPort?: string;
+  targetCapacity?: string;
+  email?: string;
+  notes?: string;
 }) {
   try {
     const orgId = await getTenantOrgId();
@@ -170,6 +194,14 @@ export async function updateLead(id: string, data: {
     if (data.shopName !== undefined) updateData.shopName = data.shopName;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.assignedSalespersonId !== undefined) updateData.assignedSalespersonId = data.assignedSalespersonId;
+    if (data.isInternational !== undefined) updateData.isInternational = data.isInternational;
+    if (data.country !== undefined) updateData.country = data.country;
+    if (data.currency !== undefined) updateData.currency = data.currency;
+    if (data.buyerType !== undefined) updateData.buyerType = data.buyerType;
+    if (data.destinationPort !== undefined) updateData.destinationPort = data.destinationPort;
+    if (data.targetCapacity !== undefined) updateData.targetCapacity = data.targetCapacity;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.notes !== undefined) updateData.notes = data.notes;
 
     const lead = await prisma.lead.update({
       where: { id, organizationId: orgId },

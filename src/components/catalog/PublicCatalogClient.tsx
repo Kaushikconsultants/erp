@@ -142,10 +142,10 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
         {/* Catalog Title Banner */}
         <div style={{ backgroundColor: "#0f172a", color: "#ffffff", padding: "10px 20px", textAlign: "center" }}>
           <h2 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, letterSpacing: "0.5px" }}>
-            {initialTitle || "WHOLESALE APPAREL COLLECTION & LOOKBOOK"}
+            {initialTitle || "R3 EXPORTS - PREMIUM GLASSWARE & TABLEWARE COLLECTION"}
           </h2>
           <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
-            Verified Wholesale Buyer Portal • MOQ: 12/18 pcs per set
+            Verified Wholesale & Export Buyer Portal • Export Packaging & Worldwide Shipping
           </span>
         </div>
       </header>
