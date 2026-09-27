@@ -5,7 +5,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
   padding: 8px 16px;
-  width: clamp(140px, 24vw, 320px);
+  width: clamp(220px, 30vw, 440px);
   min-width: 0;
   transition: var(--transition);
 }

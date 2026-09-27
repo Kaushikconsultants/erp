@@ -100,18 +100,18 @@ const ENTITY_SCHEMAS: Record<EntityType, { title: string; icon: any; fields: Fie
     title: 'Products & Inventory',
     icon: Package,
     fields: [
-      { key: 'name', label: 'Product Name', required: true, sampleValue: "Men's Polo T-Shirt DryFit", aliases: ['item', 'product', 'item name', 'title', 'description'] },
-      { key: 'sku', label: 'SKU / Item Code', required: false, sampleValue: 'POLO-DRY-BLK-L', aliases: ['code', 'item code', 'barcode', 'item no'] },
-      { key: 'category', label: 'Category', required: false, sampleValue: 'T-Shirts', aliases: ['group', 'item group', 'dept'] },
-      { key: 'hsnCode', label: 'HSN Code', required: false, sampleValue: '6109', aliases: ['hsn', 'sac'] },
-      { key: 'sellingPrice', label: 'Selling Price (₹)', required: true, sampleValue: '499', aliases: ['rate', 'price', 'sale price', 'unit price'] },
-      { key: 'purchasePrice', label: 'Purchase / Cost Price (₹)', required: false, sampleValue: '280', aliases: ['cost', 'cost price', 'buy price'] },
-      { key: 'mrp', label: 'MRP (₹)', required: false, sampleValue: '799', aliases: ['max retail price'] },
-      { key: 'stockQuantity', label: 'Opening Stock Qty', required: false, sampleValue: '150', aliases: ['stock', 'opening stock', 'qty', 'quantity'] },
-      { key: 'minimumStock', label: 'Min Alert Stock', required: false, sampleValue: '20', aliases: ['min stock', 'reorder level'] },
-      { key: 'size', label: 'Size', required: false, sampleValue: 'L', aliases: ['dimension'] },
-      { key: 'color', label: 'Color', required: false, sampleValue: 'Black', aliases: ['shade'] },
-      { key: 'fabric', label: 'Fabric / Material', required: false, sampleValue: '100% Cotton Poly', aliases: ['material'] }
+      { key: 'name', label: 'Product Name', required: true, sampleValue: "Royal Crystal Bordeaux Wine Glass 450ml", aliases: ['item', 'product', 'item name', 'title', 'description'] },
+      { key: 'sku', label: 'SKU / Item Code', required: false, sampleValue: 'WINE-BOR-450', aliases: ['code', 'item code', 'barcode', 'item no'] },
+      { key: 'category', label: 'Category', required: false, sampleValue: 'Wine Glasses', aliases: ['group', 'item group', 'dept'] },
+      { key: 'hsnCode', label: 'HSN Code', required: false, sampleValue: '7013', aliases: ['hsn', 'sac'] },
+      { key: 'sellingPrice', label: 'Selling Price (₹)', required: true, sampleValue: '280', aliases: ['rate', 'price', 'sale price', 'unit price'] },
+      { key: 'purchasePrice', label: 'Purchase / Cost Price (₹)', required: false, sampleValue: '120', aliases: ['cost', 'cost price', 'buy price'] },
+      { key: 'mrp', label: 'MRP (₹)', required: false, sampleValue: '499', aliases: ['max retail price'] },
+      { key: 'stockQuantity', label: 'Opening Stock Qty', required: false, sampleValue: '120', aliases: ['stock', 'opening stock', 'qty', 'quantity'] },
+      { key: 'minimumStock', label: 'Min Alert Stock', required: false, sampleValue: '24', aliases: ['min stock', 'reorder level'] },
+      { key: 'size', label: 'Volume / Capacity', required: false, sampleValue: '450ml', aliases: ['capacity', 'dimension'] },
+      { key: 'color', label: 'Finish / Color', required: false, sampleValue: 'Clear Glass', aliases: ['shade', 'tint'] },
+      { key: 'fabric', label: 'Glass Material', required: false, sampleValue: 'Lead-Free Crystal Glass', aliases: ['material'] }
     ]
   },
   LEDGERS: {

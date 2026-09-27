@@ -923,6 +923,8 @@ export default function CreateQuotationForm({
       (p.articleNumber && p.articleNumber.toLowerCase().includes(term)) ||
       (p.sku && p.sku.toLowerCase().includes(term)) ||
       (p.category && p.category.toLowerCase().includes(term)) ||
+      (p.material && p.material.toLowerCase().includes(term)) ||
+      (p.capacityMl && String(p.capacityMl).includes(term)) ||
       (p.fabric && p.fabric.toLowerCase().includes(term)) ||
       (p.color && p.color.toLowerCase().includes(term))
     );
@@ -2474,7 +2476,9 @@ export default function CreateQuotationForm({
                         Art #: {p.articleNumber || p.sku || 'N/A'}
                       </span>
                       {p.category && <span>• {p.category}</span>}
-                      {p.fabric && <span>• {p.fabric}</span>}
+                      {p.material && <span style={{ color: '#6d28d9' }}>• ✨ {p.material}</span>}
+                      {p.capacityMl && <span style={{ color: '#2563eb' }}>• 🍷 {p.capacityMl}ml</span>}
+                      {!p.material && p.fabric && <span>• {p.fabric}</span>}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>

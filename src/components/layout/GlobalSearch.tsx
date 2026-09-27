@@ -198,7 +198,7 @@ export default function GlobalSearch() {
           position: 'relative', 
           paddingRight: query ? '72px' : '44px',
           width: '100%',
-          maxWidth: '380px',
+          maxWidth: '440px',
           borderColor: isListening ? '#10b981' : undefined,
           boxShadow: isListening ? '0 0 0 3px rgba(16, 185, 129, 0.25)' : undefined
         }}
@@ -214,7 +214,7 @@ export default function GlobalSearch() {
 
         <input 
           type="text" 
-          placeholder={isListening ? "Listening..." : "Search ERP, orders, clients (Ctrl+K)..."}
+          placeholder={isListening ? "Listening..." : "Search ERP, orders, clients..."}
           className="search-input"
           value={query}
           onFocus={() => setShowDropdown(true)}

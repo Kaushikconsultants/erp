@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Grid, Plus, Check, X, Layers } from "lucide-react";
+import { Grid, Plus, Check, X, Layers, Wine } from "lucide-react";
 import { generateProductMatrixVariants } from "@/app/actions/matrixInventoryActions";
 
 interface Props {
@@ -10,21 +10,21 @@ interface Props {
   categories: string[];
 }
 
-const DEFAULT_SIZES = ["S", "M", "L", "XL", "XXL"];
-const DEFAULT_COLORS = ["Black", "Navy Blue", "White", "Olive Green", "Maroon"];
+const DEFAULT_CAPACITIES = ["250ml", "350ml", "450ml", "650ml", "750ml"];
+const DEFAULT_MATERIALS = ["Lead-Free Crystal", "Borosilicate Glass", "Soda-Lime Glass", "Amber Tinted Glass", "Smoky Grey Crystal"];
 
 export default function ProductMatrixModal({ isOpen, onClose, categories }: Props) {
-  const [baseProductName, setBaseProductName] = useState("");
-  const [category, setCategory] = useState(categories[0] || "Men's Apparel");
-  const [baseSkuPrefix, setBaseSkuPrefix] = useState("");
-  const [fabric, setFabric] = useState("100% Combed Cotton");
-  const [hsnCode, setHsnCode] = useState("6109");
-  const [basePurchasePrice, setBasePurchasePrice] = useState(250);
-  const [baseSellingPrice, setBaseSellingPrice] = useState(599);
-  const [baseMrp, setBaseMrp] = useState(999);
+  const [baseProductName, setBaseProductName] = useState("Royal Bordeaux Crystal Wine Glass");
+  const [category, setCategory] = useState(categories.find(c => c.toLowerCase().includes("wine") || c.toLowerCase().includes("glass")) || categories[0] || "Wine Glasses");
+  const [baseSkuPrefix, setBaseSkuPrefix] = useState("WINE-BOR");
+  const [material, setMaterial] = useState("Lead-Free Crystal Glass");
+  const [hsnCode, setHsnCode] = useState("7013");
+  const [basePurchasePrice, setBasePurchasePrice] = useState(120);
+  const [baseSellingPrice, setBaseSellingPrice] = useState(280);
+  const [baseMrp, setBaseMrp] = useState(499);
 
-  const [sizes, setSizes] = useState<string[]>(DEFAULT_SIZES);
-  const [colors, setColors] = useState<string[]>(DEFAULT_COLORS);
+  const [sizes, setSizes] = useState<string[]>(DEFAULT_CAPACITIES);
+  const [colors, setColors] = useState<string[]>(DEFAULT_MATERIALS);
   const [newSize, setNewSize] = useState("");
   const [newColor, setNewColor] = useState("");
 
@@ -43,8 +43,8 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
   };
 
   const handleAddSize = () => {
-    if (newSize.trim() && !sizes.includes(newSize.trim().toUpperCase())) {
-      setSizes([...sizes, newSize.trim().toUpperCase()]);
+    if (newSize.trim() && !sizes.includes(newSize.trim())) {
+      setSizes([...sizes, newSize.trim()]);
       setNewSize("");
     }
   };
@@ -80,7 +80,7 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
       const res = await generateProductMatrixVariants({
         baseProductName,
         category,
-        fabric,
+        fabric: material,
         hsnCode,
         baseSkuPrefix,
         sizes,
@@ -92,7 +92,7 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
       });
 
       if (res.success) {
-        setSuccessMsg(`Successfully generated ${res.totalVariants} product variant SKUs!`);
+        setSuccessMsg(`Successfully generated ${res.totalVariants} glassware variant SKUs!`);
         setTimeout(() => {
           onClose();
           window.location.reload();
@@ -123,20 +123,22 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
       zIndex: 1100,
       padding: "20px"
     }}>
-      <div className="glass-panel" style={{ width: "100%", maxWidth: "860px", padding: "24px", background: "#fff", maxHeight: "92vh", overflowY: "auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Layers size={22} style={{ color: "var(--primary, #4f46e5)" }} />
+      <div className="glass-panel" style={{ width: "100%", maxWidth: "900px", padding: "24px", background: "#fff", maxHeight: "92vh", overflowY: "auto", borderRadius: "12px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", borderBottom: "1px solid #e2e8f0", paddingBottom: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: "#f5f3ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Wine size={20} style={{ color: "#7c3aed" }} />
+            </div>
             <div>
-              <h2 style={{ fontSize: "1.2rem", fontWeight: 700, margin: 0 }}>
-                Apparel Matrix & Parameterized Variant Generator (Size $\times$ Color)
+              <h2 style={{ fontSize: "1.15rem", fontWeight: 700, margin: 0, color: "#0f172a" }}>
+                Glassware Variant & Capacity Matrix Generator (Capacity × Material / Finish)
               </h2>
-              <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                Busy-Style 2D variant generation across sizes and colors
+              <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
+                Batch generate matrix variant SKUs across volumes (ml) and crystal/glass specifications
               </span>
             </div>
           </div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "1.3rem", cursor: "pointer" }}>×</button>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "1.4rem", color: "#64748b", cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
 
         {error && (
@@ -154,10 +156,10 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
           {/* Base Product Info */}
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "10px" }}>
             <div>
-              <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Base Product Name *</label>
+              <label className="form-label" style={{ fontSize: "0.82rem", fontWeight: 600 }}>Base Product Name *</label>
               <input
                 type="text"
-                placeholder="e.g. Classic Oxford Polo T-Shirt"
+                placeholder="e.g. Royal Bordeaux Crystal Wine Glass"
                 value={baseProductName}
                 onChange={(e) => setBaseProductName(e.target.value)}
                 className="form-input"
@@ -165,10 +167,10 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
               />
             </div>
             <div>
-              <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>SKU Prefix *</label>
+              <label className="form-label" style={{ fontSize: "0.82rem", fontWeight: 600 }}>SKU Prefix *</label>
               <input
                 type="text"
-                placeholder="e.g. POLO-OXF"
+                placeholder="e.g. WINE-BOR"
                 value={baseSkuPrefix}
                 onChange={(e) => setBaseSkuPrefix(e.target.value.toUpperCase())}
                 className="form-input"
@@ -176,7 +178,7 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
               />
             </div>
             <div>
-              <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Category</label>
+              <label className="form-label" style={{ fontSize: "0.82rem", fontWeight: 600 }}>Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -192,7 +194,7 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
           {/* Pricing Grid */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "10px" }}>
             <div>
-              <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Purchase Price (₹)</label>
+              <label className="form-label" style={{ fontSize: "0.82rem", fontWeight: 600 }}>Purchase Cost (₹)</label>
               <input
                 type="number"
                 value={basePurchasePrice}
@@ -201,7 +203,7 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
               />
             </div>
             <div>
-              <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>Selling Price (₹)</label>
+              <label className="form-label" style={{ fontSize: "0.82rem", fontWeight: 600 }}>Wholesale Price (₹)</label>
               <input
                 type="number"
                 value={baseSellingPrice}
@@ -210,7 +212,7 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
               />
             </div>
             <div>
-              <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>MRP (₹)</label>
+              <label className="form-label" style={{ fontSize: "0.82rem", fontWeight: 600 }}>MRP (₹)</label>
               <input
                 type="number"
                 value={baseMrp}
@@ -219,7 +221,7 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
               />
             </div>
             <div>
-              <label className="form-label" style={{ fontSize: "0.85rem", fontWeight: 600 }}>HSN Code</label>
+              <label className="form-label" style={{ fontSize: "0.82rem", fontWeight: 600 }}>HSN / Export Code</label>
               <input
                 type="text"
                 value={hsnCode}
@@ -229,32 +231,91 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
             </div>
           </div>
 
-          {/* 2D Matrix Grid: Sizes x Colors */}
-          <div style={{ marginTop: "6px" }}>
+          {/* Add Capacity & Material Tags */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+            <div>
+              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
+                Capacities / Volumes (ml / oz)
+              </label>
+              <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+                <input
+                  type="text"
+                  placeholder="Add capacity (e.g. 500ml)"
+                  value={newSize}
+                  onChange={(e) => setNewSize(e.target.value)}
+                  className="form-input"
+                  style={{ fontSize: "0.8rem", padding: "4px 8px" }}
+                />
+                <button type="button" onClick={handleAddSize} className="action-btn" style={{ fontSize: "0.75rem", padding: "4px 10px" }}>
+                  <Plus size={13} /> Add
+                </button>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                {sizes.map((s) => (
+                  <span key={s} style={{ backgroundColor: "#eff6ff", color: "#1e40af", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    {s}
+                    <X size={12} style={{ cursor: "pointer" }} onClick={() => setSizes(sizes.filter(x => x !== s))} />
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#334155", display: "block", marginBottom: "6px" }}>
+                Materials & Finishes
+              </label>
+              <div style={{ display: "flex", gap: "6px", marginBottom: "8px" }}>
+                <input
+                  type="text"
+                  placeholder="Add material / finish (e.g. Frost Tinted)"
+                  value={newColor}
+                  onChange={(e) => setNewColor(e.target.value)}
+                  className="form-input"
+                  style={{ fontSize: "0.8rem", padding: "4px 8px" }}
+                />
+                <button type="button" onClick={handleAddColor} className="action-btn" style={{ fontSize: "0.75rem", padding: "4px 10px" }}>
+                  <Plus size={13} /> Add
+                </button>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                {colors.map((c) => (
+                  <span key={c} style={{ backgroundColor: "#f5f3ff", color: "#6d28d9", padding: "2px 8px", borderRadius: "4px", fontSize: "0.75rem", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    {c}
+                    <X size={12} style={{ cursor: "pointer" }} onClick={() => setColors(colors.filter(x => x !== c))} />
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 2D Matrix Grid: Capacities x Materials */}
+          <div style={{ marginTop: "4px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <div>
-                <span style={{ fontSize: "0.9rem", fontWeight: 700 }}>2D Matrix Quantities Grid</span>
-                <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginLeft: "8px" }}>
-                  (Total Stock: {totalMatrixStock} units across {sizes.length * colors.length} SKUs)
+                <span style={{ fontSize: "0.88rem", fontWeight: 700, color: "#0f172a" }}>2D Stock Matrix & Initial Batch Quantities</span>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginLeft: "8px" }}>
+                  (Total Stock: <strong>{totalMatrixStock}</strong> units across {sizes.length * colors.length} SKUs)
                 </span>
               </div>
 
               <div style={{ display: "flex", gap: "6px" }}>
                 <button
                   type="button"
-                  onClick={() => handleQuickFill(10)}
+                  onClick={() => handleQuickFill(12)}
                   className="action-btn"
                   style={{ padding: "3px 8px", fontSize: "0.75rem" }}
+                  title="Fill standard dozen pack"
                 >
-                  Fill 10
+                  Fill 12 pcs
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleQuickFill(25)}
+                  onClick={() => handleQuickFill(24)}
                   className="action-btn"
                   style={{ padding: "3px 8px", fontSize: "0.75rem" }}
+                  title="Fill standard carton (24 pcs)"
                 >
-                  Fill 25
+                  Fill 24 pcs (1 Ctn)
                 </button>
                 <button
                   type="button"
@@ -269,19 +330,19 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
 
             {/* Matrix Table */}
             <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.82rem" }}>
                 <thead>
                   <tr style={{ background: "#f8fafc", textAlign: "center", borderBottom: "1px solid #e2e8f0" }}>
-                    <th style={{ padding: "8px 10px", textAlign: "left" }}>Color / Size</th>
+                    <th style={{ padding: "8px 10px", textAlign: "left", color: "#475569", fontWeight: 600 }}>Material / Finish ↓  |  Capacity →</th>
                     {sizes.map(s => (
-                      <th key={s} style={{ padding: "8px 10px", fontWeight: 700 }}>{s}</th>
+                      <th key={s} style={{ padding: "8px 10px", fontWeight: 700, color: "#1e293b" }}>{s}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {colors.map(color => (
                     <tr key={color} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "8px 10px", fontWeight: 600, color: "#1e293b" }}>{color}</td>
+                      <td style={{ padding: "8px 10px", fontWeight: 600, color: "#334155" }}>{color}</td>
                       {sizes.map(size => {
                         const key = `${size}_${color}`;
                         return (
@@ -293,7 +354,7 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
                               value={matrixQuantities[key] || ""}
                               onChange={(e) => handleQtyChange(size, color, parseInt(e.target.value) || 0)}
                               className="form-input"
-                              style={{ width: "70px", padding: "4px 6px", textAlign: "center", fontSize: "0.85rem" }}
+                              style={{ width: "75px", padding: "4px 6px", textAlign: "center", fontSize: "0.82rem" }}
                             />
                           </td>
                         );
@@ -305,12 +366,12 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
             </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "10px", borderTop: "1px solid #e2e8f0", paddingTop: "12px" }}>
             <button
               type="button"
               onClick={onClose}
               className="action-btn"
-              style={{ padding: "8px 16px" }}
+              style={{ padding: "8px 16px", borderRadius: "6px" }}
             >
               Cancel
             </button>
@@ -318,9 +379,9 @@ export default function ProductMatrixModal({ isOpen, onClose, categories }: Prop
               type="submit"
               disabled={isSaving}
               className="primary-btn"
-              style={{ padding: "8px 22px" }}
+              style={{ padding: "8px 22px", borderRadius: "6px", backgroundColor: "#7c3aed", color: "#fff", fontWeight: 600 }}
             >
-              {isSaving ? "Generating Variants..." : `Generate ${sizes.length * colors.length} SKUs`}
+              {isSaving ? "Generating Variants..." : `Generate ${sizes.length * colors.length} Glassware SKUs`}
             </button>
           </div>
         </form>

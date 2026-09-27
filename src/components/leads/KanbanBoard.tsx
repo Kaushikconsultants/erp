@@ -2970,7 +2970,7 @@ export default function KanbanBoard({ initialLeads, employees = [], initialStage
                   Agenda / Call Objective Notes
                 </label>
                 <textarea
-                  placeholder="E.g. Discuss bulk pricing quote, confirm fabric sample selection, verify payment terms..."
+                  placeholder="E.g. Discuss bulk export quote, confirm glass sample selection, verify payment terms..."
                   value={fuNotesInput}
                   onChange={(e) => setFuNotesInput(e.target.value)}
                   rows={3}

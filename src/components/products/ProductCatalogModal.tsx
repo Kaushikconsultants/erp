@@ -54,7 +54,7 @@ export default function ProductCatalogModal({
   companySettings,
   onClose
 }: ProductCatalogModalProps) {
-  const [catalogTitle, setCatalogTitle] = useState('R3 EXPORTS - PREMIUM GLASSWARE & TABLEWARE COLLECTION');
+  const [catalogTitle, setCatalogTitle] = useState('R3 EXPORTS - PREMIUM GLASSWARE & CRYSTAL COLLECTION');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>(
@@ -76,10 +76,10 @@ export default function ProductCatalogModal({
   const [isPrinting, setIsPrinting] = useState(false);
 
   const company = companySettings || {
-    companyName: 'ESPON CLOTHING PRIVATE LIMITED',
-    address: 'Sco 71A, 2nd Floor, Ashoka Plaza, Delhi Road, Rohtak, Haryana',
-    mobile: '+91 7206066678',
-    email: 'clothingespon@gmail.com',
+    companyName: 'R3 EXPORTS ENTERPRISE',
+    address: 'Industrial Area, Export Zone, Rohtak, Haryana',
+    mobile: '+91 9876543210',
+    email: 'exports@r3exports.com',
     gstin: '06AAHCE7721Q1Z4'
   };
 
@@ -639,11 +639,11 @@ export default function ProductCatalogModal({
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.76rem', color: '#334155', cursor: 'pointer', fontWeight: 500 }}>
                 <input type="checkbox" checked={showMoq} onChange={e => setShowMoq(e.target.checked)} />
-                MOQ / Set Ratio
+                MOQ / Master Carton
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.76rem', color: '#334155', cursor: 'pointer', fontWeight: 500 }}>
                 <input type="checkbox" checked={showSpecs} onChange={e => setShowSpecs(e.target.checked)} />
-                Fabric & Specs
+                Material & Specs
               </label>
             </div>
           </div>
@@ -849,7 +849,7 @@ export default function ProductCatalogModal({
                               ) : (
                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: '#94a3b8' }}>
                                   <ImageIcon size={30} />
-                                  <span style={{ fontSize: '0.7rem', marginTop: '4px', fontWeight: 500 }}>4:5 Garment Photo</span>
+                                  <span style={{ fontSize: '0.7rem', marginTop: '4px', fontWeight: 500 }}>Product Photo</span>
                                 </div>
                               )}
 
@@ -881,13 +881,17 @@ export default function ProductCatalogModal({
                               </div>
 
                               <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                                Category: <span style={{ color: '#334155', fontWeight: 500 }}>{product.category || 'Apparel'}</span>
+                                Category: <span style={{ color: '#334155', fontWeight: 500 }}>{product.category || 'Glassware'}</span>
                               </div>
 
                               {showSpecs && (
                                 <div style={{ fontSize: '0.68rem', color: '#64748b', lineHeight: 1.3, backgroundColor: '#f8fafc', padding: '4px 6px', borderRadius: '5px' }}>
-                                  {product.fabric && <div>Fabric: <strong style={{ color: '#334155' }}>{product.fabric}</strong></div>}
-                                  <div>Sizes: <strong style={{ color: '#334155' }}>S, M, L, XL, XXL (Set Ratio)</strong></div>
+                                  {((product as any).material || product.fabric) && <div>Material: <strong style={{ color: '#334155' }}>{(product as any).material || product.fabric}</strong></div>}
+                                  {(product as any).capacityMl ? (
+                                    <div>Capacity: <strong style={{ color: '#334155' }}>{(product as any).capacityMl} ml</strong></div>
+                                  ) : (
+                                    product.size ? <div>Volume/Size: <strong style={{ color: '#334155' }}>{product.size}</strong></div> : null
+                                  )}
                                 </div>
                               )}
 

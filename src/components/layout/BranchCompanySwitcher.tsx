@@ -620,7 +620,7 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. R3 Fabrics"
+                  placeholder="e.g. R3 Glassware"
                   value={newOrgTradeName}
                   onChange={e => setNewOrgTradeName(e.target.value)}
                   className="form-input"

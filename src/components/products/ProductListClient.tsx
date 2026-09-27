@@ -871,10 +871,10 @@ export default function ProductListClient({ products, categories, categoriesData
                     }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ede9fe'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f5f3ff'}
-                    title="Apparel Size x Color Variant Generator"
+                    title="Glassware Variant & Capacity Matrix Generator"
                   >
                     <Layers size={13} color="#6d28d9" />
-                    Size/Color Matrix
+                    Variant & Capacity Matrix
                   </button>
                   <AddProductButton categories={categories} />
                 </>
@@ -889,7 +889,7 @@ export default function ProductListClient({ products, categories, categoriesData
               <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
-                placeholder="Search by product name, SKU, article no, fabric, color..."
+                placeholder="Search by product name, SKU, article no, material, capacity (ml)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
@@ -1906,7 +1906,7 @@ export default function ProductListClient({ products, categories, categoriesData
                   {adjustType === "OUT" && (
                     <>
                       <option value="Manual Dispatch">Manual Dispatch / Offline Sale</option>
-                      <option value="Damaged / Scrap">Damaged / Scrap / Fabric Defect</option>
+                      <option value="Damaged / Scrap">Damaged / Scrap / Glass Defect</option>
                       <option value="Sample Given">Sample Given to Buyer</option>
                       <option value="Inventory Loss">Inventory Shrinkage / Loss</option>
                     </>

@@ -127,13 +127,13 @@ const DEFAULT_TEMPLATES_BY_CATEGORY: Record<string, TemplateConfig[]> = {
       ]
     }),
     createTemplate({
-      id: "quotes-mfg-fabric",
-      name: "Manufacturing Fabric & Apparel Estimate",
+      id: "quotes-mfg-glassware",
+      name: "Glassware & Crystal Export Estimate",
       category: "quotes",
       isDefault: false,
       themeColor: "#2563eb",
       fontFamily: "Outfit",
-      documentTitle: "GARMENT MANUFACTURING ESTIMATE",
+      documentTitle: "EXPORT ESTIMATE & PROFORMA",
       logoPosition: "left",
       logoSize: "large",
       showHsn: true,
@@ -145,8 +145,8 @@ const DEFAULT_TEMPLATES_BY_CATEGORY: Record<string, TemplateConfig[]> = {
       showSignatory: true,
       showTerms: true,
       showNotes: true,
-      termsText: "1. Fabric lab dips approved prior to bulk cutting.\n2. Minimum Order Quantity (MOQ): 50 pcs per style/color.\n3. 50% token advance, balance against dispatch.",
-      notesText: "Fabrics: 220 GSM Bio-Washed Combed Cotton Single Jersey.",
+      termsText: "1. Crystal clarity and rim finishing approved prior to export packing.\n2. Minimum Order Quantity (MOQ): 100 master cartons.\n3. 30% advance with Purchase Order, 70% against Bill of Lading (B/L).",
+      notesText: "Glassware Material: Lead-Free European Standard Crystal Glass with laser-cut rims.",
       layoutStyle: "modern",
       borderStyle: "minimal",
       headerStyle: "modern-stripe",
@@ -154,9 +154,9 @@ const DEFAULT_TEMPLATES_BY_CATEGORY: Record<string, TemplateConfig[]> = {
       watermarkOpacity: 0.1,
       watermarkAngle: -30,
       customFields: [
-        { id: "cf-qmfg1", label: "Fabric Spec", value: "100% Combed Cotton" },
-        { id: "cf-qmfg2", label: "MOQ", value: "50 Pcs per Color" },
-        { id: "cf-qmfg3", label: "Sampling Time", value: "3 Working Days" }
+        { id: "cf-qmfg1", label: "Glass Material", value: "Lead-Free Crystal Glass" },
+        { id: "cf-qmfg2", label: "Master Ctn MOQ", value: "24 Pcs / Carton" },
+        { id: "cf-qmfg3", label: "Production Lead Time", value: "10-14 Working Days" }
       ]
     }),
     createTemplate({

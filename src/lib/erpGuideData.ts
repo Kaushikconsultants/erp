@@ -145,8 +145,8 @@ export const SYSTEM_GUIDE_ARTICLES: GuideArticle[] = [
       },
       {
         stepNumber: 2,
-        instruction: "Enter Article Name/Style Code, Category (e.g. Lower, Shorts, T-Shirt), and Fabric details.",
-        instructionHindi: "आर्टिकल का नाम और कैटेगरी चुनें।",
+        instruction: "Enter Product Name, Category (e.g. Wine Glasses, Tumblers, Decanters), Capacity (ml), and Glass Material.",
+        instructionHindi: "प्रोडक्ट का नाम, ग्लास का प्रकार और क्षमता (ml) चुनें।",
         targetSelector: "#product-name-input"
       },
       {

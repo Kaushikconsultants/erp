@@ -248,7 +248,7 @@ export default function QuickAddProductModal({
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Cotton Lycra Fabric 220 GSM"
+                placeholder="e.g. Bordeaux Crystal Wine Glass 450ml"
                 required
                 className="form-input"
                 autoFocus
@@ -265,7 +265,7 @@ export default function QuickAddProductModal({
                   type="text"
                   value={sku}
                   onChange={(e) => setSku(e.target.value.toUpperCase())}
-                  placeholder="e.g. COT-LYC-01"
+                  placeholder="e.g. WINE-BOR-450"
                   required
                   className="form-input"
                   style={{ textTransform: "uppercase", fontFamily: "monospace", fontWeight: 600 }}

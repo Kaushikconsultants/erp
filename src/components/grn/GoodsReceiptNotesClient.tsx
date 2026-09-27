@@ -1044,7 +1044,7 @@ export default function GoodsReceiptNotesClient({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Visual inspection passed, 2 pieces rejected due to fabric staining."
+                  placeholder="e.g. Visual inspection passed, 2 pieces rejected due to rim chipping or glass bubble."
                   className="grn-search-input"
                   style={{ paddingLeft: "12px !important" }}
                   value={remarks}

@@ -9,14 +9,14 @@ export default function VoiceAiDemoWidget() {
 
   const prompts = [
     {
-      speech: "Create sales order for 50 boxes of Cotton Fabric at ₹1,200 for Sharma Textiles.",
+      speech: "Create export sales order for 50 cartons of Bordeaux Wine Glasses at $48/carton for Global Dining LLC.",
       parsed: {
-        action: "CREATE_SALES_ORDER",
-        customer: "Sharma Textiles",
-        items: [{ item: "Cotton Fabric", qty: "50 Boxes", rate: "₹1,200/box" }],
-        taxRate: "5% GST",
-        total: "₹63,000",
-        status: "Draft Order Ready for 1-Click WhatsApp Dispatch",
+        action: "CREATE_EXPORT_SALES_ORDER",
+        customer: "Global Dining LLC (United States)",
+        items: [{ item: "Bordeaux Crystal Wine Glass 450ml", qty: "50 Master Cartons", rate: "$48.00/ctn" }],
+        taxRate: "0% Export (LUT)",
+        total: "$2,400.00",
+        status: "Draft Export Order Ready with Commercial Invoice & Packing List",
       },
     },
     {
