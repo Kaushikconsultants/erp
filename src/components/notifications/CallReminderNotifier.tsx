@@ -15,10 +15,10 @@ export default function CallReminderNotifier() {
       }
     }
 
-    // Check for upcoming calls periodically (every 45s)
+    // Check for upcoming calls periodically (every 60s)
     const checkUpcomingReminders = async () => {
       try {
-        const res = await fetch("/api/cron/workflows", { method: "GET" }).catch(() => null);
+        const res = await fetch("/api/notifications/poll", { method: "GET" }).catch(() => null);
         if (!res || !res.ok) return;
         const data = await res.json().catch(() => null);
 
@@ -41,7 +41,7 @@ export default function CallReminderNotifier() {
     };
 
     checkUpcomingReminders();
-    const interval = setInterval(checkUpcomingReminders, 45000);
+    const interval = setInterval(checkUpcomingReminders, 60000);
     return () => clearInterval(interval);
   }, []);
 

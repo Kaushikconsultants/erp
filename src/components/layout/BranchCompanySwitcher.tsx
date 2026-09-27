@@ -53,10 +53,13 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
   const [isAddOrgModalOpen, setIsAddOrgModalOpen] = useState(false);
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgTradeName, setNewOrgTradeName] = useState('');
+  const [newOrgIndustry, setNewOrgIndustry] = useState('Glassware & Barware Exporter');
   const [newOrgGstin, setNewOrgGstin] = useState('');
-  const [newOrgCity, setNewOrgCity] = useState('Rohtak');
-  const [newOrgState, setNewOrgState] = useState('Haryana');
+  const [newOrgCity, setNewOrgCity] = useState('Firozabad');
+  const [newOrgState, setNewOrgState] = useState('Uttar Pradesh');
   const [newOrgPhone, setNewOrgPhone] = useState('');
+  const [newOrgEmail, setNewOrgEmail] = useState('');
+  const [autoSwitchOrg, setAutoSwitchOrg] = useState(true);
   const [creatingOrg, setCreatingOrg] = useState(false);
   const [orgModalError, setOrgModalError] = useState<string | null>(null);
 
@@ -143,10 +146,12 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
     const res = await createSisterOrganization({
       companyName: newOrgName.trim(),
       tradeName: newOrgTradeName.trim() || undefined,
+      industry: newOrgIndustry || "Glassware & Barware Exporter",
       gstin: newOrgGstin.trim() || undefined,
-      city: newOrgCity.trim() || "Rohtak",
-      state: newOrgState.trim() || "Haryana",
-      phone: newOrgPhone.trim() || undefined
+      city: newOrgCity.trim() || "Firozabad",
+      state: newOrgState.trim() || "Uttar Pradesh",
+      phone: newOrgPhone.trim() || undefined,
+      email: newOrgEmail.trim() || undefined
     });
 
     setCreatingOrg(false);
@@ -156,11 +161,14 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
       setNewOrgName('');
       setNewOrgTradeName('');
       setNewOrgGstin('');
-      loadData();
-      if (res.organization?.id) {
+      setNewOrgPhone('');
+      setNewOrgEmail('');
+      
+      if (autoSwitchOrg && res.organization?.id) {
         await switchUserOrganization(res.organization.id);
-        window.location.reload();
       }
+      if (onCloseDropdown) onCloseDropdown();
+      window.location.reload();
     } else {
       setOrgModalError(res.error || "Failed to create company");
     }
@@ -306,8 +314,8 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
           }}>
             <button
               type="button"
-              onClick={() => {
-                if (onCloseDropdown) onCloseDropdown();
+              onClick={(e) => {
+                e.stopPropagation();
                 setIsAddOrgModalOpen(true);
               }}
               style={{
@@ -318,8 +326,10 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
                 border: 'none',
                 color: '#4f46e5',
                 fontSize: '0.76rem',
-                fontWeight: 600,
-                cursor: 'pointer'
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '4px 6px',
+                borderRadius: '4px'
               }}
             >
               <Plus size={13} /> Add Company
@@ -446,8 +456,8 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
           }}>
             <button
               type="button"
-              onClick={() => {
-                if (onCloseDropdown) onCloseDropdown();
+              onClick={(e) => {
+                e.stopPropagation();
                 setIsAddBranchModalOpen(true);
               }}
               style={{
@@ -458,8 +468,10 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
                 border: 'none',
                 color: '#4f46e5',
                 fontSize: '0.76rem',
-                fontWeight: 600,
-                cursor: 'pointer'
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '4px 6px',
+                borderRadius: '4px'
               }}
             >
               <Plus size={13} /> Add Branch
@@ -480,7 +492,7 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
                 textDecoration: 'none'
               }}
             >
-              <Settings size={12} /> Manage Branches
+              <Settings size={12} /> Branch Settings
             </Link>
           </div>
         </div>
@@ -488,53 +500,76 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
 
       {/* QUICK ADD BRANCH MODAL */}
       {isAddBranchModalOpen && (
-        <div className="modal-backdrop" style={{ zIndex: 100050, padding: '12px 8px' }}>
-          <div className="modal-content" style={{ maxWidth: '440px', width: '100%', backgroundColor: '#ffffff', borderRadius: '14px' }}>
-            <div className="modal-header">
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div 
+          className="modal-backdrop" 
+          style={{ zIndex: 1000050, padding: '16px 12px' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddBranchModalOpen(false);
+              if (onCloseDropdown) onCloseDropdown();
+            }
+          }}
+        >
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '440px', width: '100%', backgroundColor: '#ffffff', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: '#0f172a' }}>
                 <Store size={18} style={{ color: '#4f46e5' }} /> Add New Branch
               </h3>
-              <button className="modal-close" onClick={() => setIsAddBranchModalOpen(false)}>×</button>
+              <button 
+                type="button" 
+                className="modal-close" 
+                onClick={() => {
+                  setIsAddBranchModalOpen(false);
+                  if (onCloseDropdown) onCloseDropdown();
+                }}
+                style={{ background: 'none', border: 'none', fontSize: '1.4rem', color: '#94a3b8', cursor: 'pointer', lineHeight: 1 }}
+              >
+                ×
+              </button>
             </div>
 
-            <form onSubmit={handleCreateBranch} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <form onSubmit={handleCreateBranch} className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {branchModalError && (
-                <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.8rem' }}>
+                <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.82rem', fontWeight: 500 }}>
                   {branchModalError}
                 </div>
               )}
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
                   Branch Name *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Delhi Hub / Surat Branch"
+                  placeholder="e.g. Delhi Warehouse / Surat Outlet"
                   value={newBranchName}
                   onChange={e => setNewBranchName(e.target.value)}
                   className="form-input"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.86rem', outline: 'none' }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
                     Branch Code
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. DEL"
+                    placeholder="e.g. DEL-01"
                     value={newBranchCode}
                     onChange={e => setNewBranchCode(e.target.value.toUpperCase())}
                     className="form-input"
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.86rem', outline: 'none' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
                     City
                   </label>
                   <input
@@ -543,16 +578,19 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
                     value={newBranchCity}
                     onChange={e => setNewBranchCity(e.target.value)}
                     className="form-input"
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.86rem', outline: 'none' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px', paddingTop: '12px', borderTop: '1px solid #f1f5f9' }}>
                 <button
                   type="button"
-                  onClick={() => setIsAddBranchModalOpen(false)}
-                  style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '0.82rem', cursor: 'pointer' }}
+                  onClick={() => {
+                    setIsAddBranchModalOpen(false);
+                    if (onCloseDropdown) onCloseDropdown();
+                  }}
+                  style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '0.84rem', fontWeight: 600, color: '#475569', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -560,20 +598,21 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
                   type="submit"
                   disabled={creatingBranch || !newBranchName.trim()}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '6px',
+                    padding: '8px 18px',
+                    borderRadius: '8px',
                     border: 'none',
-                    background: '#4f46e5',
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
                     color: '#fff',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
+                    fontSize: '0.84rem',
+                    fontWeight: 700,
                     cursor: creatingBranch ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)'
                   }}
                 >
-                  {creatingBranch ? <Loader2 size={14} className="animate-spin" /> : 'Create Branch'}
+                  {creatingBranch ? <Loader2 size={15} className="animate-spin" /> : 'Create Branch'}
                 </button>
               </div>
             </form>
@@ -583,85 +622,201 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
 
       {/* QUICK ADD ORGANIZATION / SISTER COMPANY MODAL */}
       {isAddOrgModalOpen && (
-        <div className="modal-backdrop" style={{ zIndex: 100050, padding: '12px 8px' }}>
-          <div className="modal-content" style={{ maxWidth: '480px', width: '100%', backgroundColor: '#ffffff', borderRadius: '14px' }}>
-            <div className="modal-header">
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Building2 size={18} style={{ color: '#4f46e5' }} /> Add Sister Company / Entity
-              </h3>
-              <button className="modal-close" onClick={() => setIsAddOrgModalOpen(false)}>×</button>
+        <div 
+          className="modal-backdrop" 
+          style={{ zIndex: 1000050, padding: '16px 12px' }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsAddOrgModalOpen(false);
+              if (onCloseDropdown) onCloseDropdown();
+            }
+          }}
+        >
+          <div 
+            className="modal-content" 
+            style={{ maxWidth: '520px', width: '100%', backgroundColor: '#ffffff', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid #e2e8f0' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5' }}>
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>
+                    Add New Company / Entity
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>
+                    Create a sister organization under your ERP group
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                className="modal-close" 
+                onClick={() => {
+                  setIsAddOrgModalOpen(false);
+                  if (onCloseDropdown) onCloseDropdown();
+                }}
+                style={{ background: 'none', border: 'none', fontSize: '1.4rem', color: '#94a3b8', cursor: 'pointer', lineHeight: 1 }}
+              >
+                ×
+              </button>
             </div>
 
-            <form onSubmit={handleCreateOrganization} className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <form onSubmit={handleCreateOrganization} className="modal-body" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {orgModalError && (
-                <div style={{ padding: '8px 12px', borderRadius: '6px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.8rem' }}>
+                <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', fontSize: '0.82rem', fontWeight: 500 }}>
                   {orgModalError}
                 </div>
               )}
 
+              {/* Company Legal Name */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
                   Company Legal Name *
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. R3 TexFab Pvt Ltd"
+                  placeholder="e.g. R3 Exports / R3 Glassware Pvt Ltd"
                   value={newOrgName}
                   onChange={e => setNewOrgName(e.target.value)}
                   className="form-input"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.88rem', outline: 'none' }}
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                  Trade Name / Brand (Optional)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. R3 Glassware"
-                  value={newOrgTradeName}
-                  onChange={e => setNewOrgTradeName(e.target.value)}
-                  className="form-input"
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+              {/* Trade Name & Industry Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                    GSTIN
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
+                    Brand / Trade Name
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. 06AAAAA0000A1Z5"
+                    placeholder="e.g. R3 Crystal Barware"
+                    value={newOrgTradeName}
+                    onChange={e => setNewOrgTradeName(e.target.value)}
+                    className="form-input"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
+                    Industry / Business
+                  </label>
+                  <select
+                    value={newOrgIndustry}
+                    onChange={e => setNewOrgIndustry(e.target.value)}
+                    style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none', backgroundColor: '#ffffff' }}
+                  >
+                    <option value="Glassware & Barware Exporter">Glassware & Barware Exporter</option>
+                    <option value="Crystal & Tableware">Crystal & Tableware</option>
+                    <option value="Apparel & Garments">Apparel & Garments</option>
+                    <option value="Manufacturing & Export">Manufacturing & Export</option>
+                    <option value="Trading & Distribution">Trading & Distribution</option>
+                    <option value="General Enterprise">General Enterprise</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* GSTIN & State Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
+                    GSTIN (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 06AAHCE7721Q1Z4"
                     value={newOrgGstin}
                     onChange={e => setNewOrgGstin(e.target.value.toUpperCase())}
                     className="form-input"
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none', textTransform: 'uppercase' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
-                    City
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
+                    Registered State *
+                  </label>
+                  <select
+                    value={newOrgState}
+                    onChange={e => setNewOrgState(e.target.value)}
+                    style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.82rem', outline: 'none', backgroundColor: '#ffffff' }}
+                  >
+                    <option value="Delhi">Delhi (07)</option>
+                    <option value="Uttar Pradesh">Uttar Pradesh (09)</option>
+                    <option value="Haryana">Haryana (06)</option>
+                    <option value="Gujarat">Gujarat (24)</option>
+                    <option value="Maharashtra">Maharashtra (27)</option>
+                    <option value="Rajasthan">Rajasthan (08)</option>
+                    <option value="Punjab">Punjab (03)</option>
+                    <option value="Karnataka">Karnataka (29)</option>
+                    <option value="Tamil Nadu">Tamil Nadu (33)</option>
+                    <option value="West Bengal">West Bengal (19)</option>
+                    <option value="Telangana">Telangana (36)</option>
+                    <option value="Andhra Pradesh">Andhra Pradesh (37)</option>
+                    <option value="Kerala">Kerala (32)</option>
+                    <option value="Madhya Pradesh">Madhya Pradesh (23)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* City & Contact Phone */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
+                    City *
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Rohtak"
+                    required
+                    placeholder="e.g. Firozabad / Delhi"
                     value={newOrgCity}
                     onChange={e => setNewOrgCity(e.target.value)}
                     className="form-input"
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#334155', marginBottom: '5px' }}>
+                    Mobile / Phone
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    value={newOrgPhone}
+                    onChange={e => setNewOrgPhone(e.target.value)}
+                    className="form-input"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.85rem', outline: 'none' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' }}>
+              {/* Auto Switch Checkbox */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '2px' }}>
+                <input
+                  type="checkbox"
+                  id="autoSwitchOrg"
+                  checked={autoSwitchOrg}
+                  onChange={e => setAutoSwitchOrg(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: '#4f46e5', cursor: 'pointer' }}
+                />
+                <label htmlFor="autoSwitchOrg" style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 600, cursor: 'pointer' }}>
+                  Switch active ERP session to this company immediately
+                </label>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '6px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>
                 <button
                   type="button"
-                  onClick={() => setIsAddOrgModalOpen(false)}
-                  style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '0.82rem', cursor: 'pointer' }}
+                  onClick={() => {
+                    setIsAddOrgModalOpen(false);
+                    if (onCloseDropdown) onCloseDropdown();
+                  }}
+                  style={{ padding: '9px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '0.84rem', fontWeight: 600, color: '#475569', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -669,20 +824,21 @@ export default function BranchCompanySwitcher({ onCloseDropdown }: BranchCompany
                   type="submit"
                   disabled={creatingOrg || !newOrgName.trim()}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: '6px',
+                    padding: '9px 20px',
+                    borderRadius: '8px',
                     border: 'none',
-                    background: '#4f46e5',
+                    background: 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
                     color: '#fff',
-                    fontSize: '0.82rem',
-                    fontWeight: 600,
+                    fontSize: '0.86rem',
+                    fontWeight: 700,
                     cursor: creatingOrg ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px'
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(79, 70, 229, 0.3)'
                   }}
                 >
-                  {creatingOrg ? <Loader2 size={14} className="animate-spin" /> : 'Create Company'}
+                  {creatingOrg ? <Loader2 size={16} className="animate-spin" /> : 'Create Company'}
                 </button>
               </div>
             </form>
