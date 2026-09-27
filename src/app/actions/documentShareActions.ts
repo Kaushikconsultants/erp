@@ -41,26 +41,31 @@ export async function sendQuotationViaWhatsApp(quotationId: string, customPhone?
     if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.replace(/^0+/, '');
     if (cleanPhone.length === 10) cleanPhone = `91${cleanPhone}`;
 
-    const itemsSummary = quotation.items.map((it, idx) => 
-      `${idx + 1}. *${it.product?.name || 'Item'}* - ${it.quantity} pcs @ ₹${it.rate} = ₹${it.total.toLocaleString('en-IN')}`
-    ).join('\n');
+    const currSymbol = quotation.currency === 'USD' ? '$' : quotation.currency === 'EUR' ? '€' : quotation.currency === 'GBP' ? '£' : quotation.currency === 'AED' ? 'AED ' : '₹';
+    const totalCartons = quotation.items.reduce((sum, it) => sum + Math.ceil((it.quantity || 1) / 12), 0);
 
-    const fmt = (n: number) => (n || 0).toLocaleString('en-IN');
+    const fmt = (n: number) => (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const itemsSummary = quotation.items.map((it, idx) => 
+      `${idx + 1}. *${it.product?.name || 'Item'}* - ${it.quantity} pcs @ ${currSymbol}${it.rate} = ${currSymbol}${it.total ? fmt(it.total) : fmt(it.rate * it.quantity)}`
+    ).join('\n');
 
     const messageText = 
       `*QUOTATION #${quotation.quotationNumber}*\n` +
-      `*From:* ${company?.companyName || 'Espon Sports'}\n` +
-      `*To:* ${quotation.customer?.businessName} (${quotation.customer?.contactPerson})\n` +
-      `*Date:* ${new Date(quotation.date).toLocaleDateString('en-IN')}\n\n` +
-      `*Items Summary:*\n${itemsSummary}\n\n` +
-      `*Sub Total:* ₹${fmt(quotation.taxableAmount || quotation.subtotal)}\n` +
-      `*GST:* ₹${fmt(quotation.taxTotal)}\n` +
-      `*Grand Total:* *₹${fmt(quotation.totalValue)}*\n` +
-      (quotation.receivedAmount > 0 ? `*Payment Received:* ₹${fmt(quotation.receivedAmount)}\n*Balance Due:* *₹${fmt(Math.max(0, quotation.totalValue - quotation.receivedAmount))}*\n` : '') +
-      `\n*Bank Details for Payment:*\n` +
+      `*From:* ${company?.companyName || 'R3 EXPORTS (Glassware & Tableware)'}\n` +
+      `*To:* ${quotation.customer?.businessName || quotation.customer?.contactPerson}\n` +
+      `*Date:* ${new Date(quotation.date).toLocaleDateString('en-GB')}\n` +
+      (quotation.currency !== 'INR' ? `*Currency:* ${quotation.currency} | *Est. Cartons:* ${totalCartons} ctn\n` : '') +
+      `\n*Items Summary:*\n${itemsSummary}\n\n` +
+      `*Sub Total:* ${currSymbol}${fmt(quotation.taxableAmount || quotation.subtotal)}\n` +
+      (quotation.taxTotal > 0 ? `*Tax / GST:* ${currSymbol}${fmt(quotation.taxTotal)}\n` : `*Tax Status:* 0% Export under LUT\n`) +
+      `*Grand Total:* *${currSymbol}${fmt(quotation.totalValue)}*\n` +
+      (quotation.receivedAmount > 0 ? `*Payment Received:* ${currSymbol}${fmt(quotation.receivedAmount)}\n*Balance Due:* *${currSymbol}${fmt(Math.max(0, quotation.totalValue - quotation.receivedAmount))}*\n` : '') +
+      `\n*Bank & Wire Details for Payment:*\n` +
+      `Beneficiary: ${company?.bankAccountName || 'R3 EXPORTS'}\n` +
       `A/C: ${company?.accountNumber || '016805006415'}\n` +
-      `IFSC: ${company?.ifscCode || 'ICIC0000168'} (${company?.bankAccountName || 'ESPON CLOTHING PVT LTD'})\n` +
-      `UPI ID: ${company?.upiId || '7206066678@OKBIZAXIS'}\n\n` +
+      `IFSC / SWIFT: ${company?.ifscCode || 'ICIC0000168'}\n` +
+      (company?.upiId ? `UPI ID: ${company.upiId}\n\n` : '\n') +
       `Please reply to this message to confirm your order. Thank you!`;
 
     // 1. Dispatch via Meta Cloud API if connected

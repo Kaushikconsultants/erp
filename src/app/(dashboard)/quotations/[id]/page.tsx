@@ -91,6 +91,12 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
   const isInterstate = quotation.isInterstate;
 
   // Format currency helpers
+  const currSymbol = quotation.currency === 'USD' ? '$' : quotation.currency === 'EUR' ? '€' : quotation.currency === 'GBP' ? '£' : quotation.currency === 'AED' ? 'AED ' : '₹';
+  const totalCartons = quotation.items.reduce((sum, item) => sum + Math.ceil((item.quantity || 1) / 12), 0);
+  const totalCbm = quotation.items.reduce((sum, item) => sum + (Math.ceil((item.quantity || 1) / 12) * 0.045), 0);
+  const totalNetWeight = quotation.items.reduce((sum, item) => sum + ((item.unitWeight || 0.35) * (item.quantity || 1)), 0);
+  const totalGrossWeight = totalNetWeight + (totalCartons * 1.5);
+
   const fmt = (val?: number | null) => (val ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const getStateCode = (state?: string | null, gstin?: string | null): string => {
@@ -310,7 +316,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                 <tr>
                   <td style={{ color: '#374151', padding: '1.5px 0' }}>Terms</td>
                   <td style={{ color: '#111827', padding: '1.5px 0' }}>:</td>
-                  <td style={{ color: '#111827', fontWeight: 700, padding: '1.5px 0' }}>Due on Receipt</td>
+                  <td style={{ color: '#111827', fontWeight: 700, padding: '1.5px 0' }}>{quotation.paymentTerms || 'Due on Receipt'}</td>
                 </tr>
                 <tr>
                   <td style={{ color: '#374151', padding: '1.5px 0' }}>Valid Till</td>
@@ -330,6 +336,22 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                     {formatPlaceOfSupply(quotation.placeOfSupply, quotation.customer.state, quotation.customer.gstNumber)}
                   </td>
                 </tr>
+                <tr>
+                  <td style={{ color: '#374151', padding: '1.5px 0' }}>Currency</td>
+                  <td style={{ color: '#111827', padding: '1.5px 0' }}>:</td>
+                  <td style={{ color: '#111827', fontWeight: 700, padding: '1.5px 0' }}>
+                    {quotation.currency || 'INR'} ({currSymbol})
+                  </td>
+                </tr>
+                {quotation.currency !== 'INR' && (
+                  <tr>
+                    <td style={{ color: '#374151', padding: '1.5px 0' }}>Packing Est.</td>
+                    <td style={{ color: '#111827', padding: '1.5px 0' }}>:</td>
+                    <td style={{ color: '#1e40af', fontWeight: 700, padding: '1.5px 0' }}>
+                      {totalCartons} Cartons ({totalCbm.toFixed(2)} CBM • {totalGrossWeight.toFixed(1)} kg)
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -352,7 +374,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
               {quotation.customer.city && (
                 <div style={{ color: '#374151' }}>{quotation.customer.city} {quotation.customer.pincode ? `- ${quotation.customer.pincode}` : ''} {quotation.customer.state}</div>
               )}
-              <div style={{ color: '#374151' }}>India</div>
+              <div style={{ color: '#374151' }}>{quotation.customer.country || 'India'}</div>
               {quotation.customer.mobile && (
                 <div style={{ color: '#374151', marginTop: '2px' }}>{quotation.customer.mobile.startsWith('+') ? quotation.customer.mobile : `+91-${quotation.customer.mobile}`}</div>
               )}
@@ -369,7 +391,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             <div style={{ padding: '8px 12px', lineHeight: '1.4', flex: 1 }}>
               <div style={{ color: '#374151' }}>{quotation.shippingAddress || quotation.customer.shippingAddress || quotation.customer.billingAddress || quotation.customer.businessName}</div>
               {quotation.customer.city && <div style={{ color: '#374151' }}>{quotation.customer.city} {quotation.customer.pincode ? `- ${quotation.customer.pincode}` : ''} {quotation.customer.state}</div>}
-              <div style={{ color: '#374151' }}>India</div>
+              <div style={{ color: '#374151' }}>{quotation.customer.country || 'India'}</div>
             </div>
           </div>
         </div>
@@ -390,7 +412,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
               <th style={{ padding: '10px 8px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'left', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>Item &amp; Description</th>
               <th style={{ padding: '10px 4px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'center', width: '58px', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>HSN/SAC</th>
               <th style={{ padding: '10px 6px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'right', width: '54px', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>Qty</th>
-              <th style={{ padding: '10px 6px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'right', width: '62px', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>Rate</th>
+              <th style={{ padding: '10px 6px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'right', width: '62px', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>Rate ({currSymbol})</th>
               {hasItemDiscount && (
                 <th style={{ padding: '10px 6px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'right', width: '58px', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>Discount</th>
               )}
@@ -407,7 +429,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                   <th style={{ padding: '10px 6px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'right', width: '54px', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>SGST Amt</th>
                 </>
               )}
-              <th style={{ padding: '10px 8px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'right', width: '80px', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>Amount</th>
+              <th style={{ padding: '10px 8px', border: '1px solid #cbd5e1', borderTop: '2.5px solid #334155', textAlign: 'right', width: '80px', verticalAlign: 'middle', lineHeight: '1.35', boxSizing: 'border-box' }}>Amount ({currSymbol})</th>
             </tr>
           </thead>
           <tbody>
@@ -432,14 +454,14 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                     </div>
                   </td>
                   <td style={{ padding: '6px 4px', border: '1px solid #cbd5e1', textAlign: 'center', verticalAlign: 'top', color: '#4b5563', boxSizing: 'border-box' }}>
-                    {item.hsnCode || '6107'}
+                    {item.hsnCode || '7013'}
                   </td>
                   <td style={{ padding: '6px 6px', border: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap', boxSizing: 'border-box' }}>
                     <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{item.quantity.toFixed(2)}</div>
                     <div style={{ color: '#6b7280', fontSize: '9px' }}>{item.unit || 'pcs'}</div>
                   </td>
                   <td style={{ padding: '6px 6px', border: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box' }}>
-                    {fmt(item.rate)}
+                    {currSymbol}{fmt(item.rate)}
                   </td>
                   {hasItemDiscount && (
                     <td style={{ padding: '6px 6px', border: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box' }}>
@@ -452,7 +474,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                         {item.gstRate}%
                       </td>
                       <td style={{ padding: '6px 6px', border: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box' }}>
-                        {fmt(igstVal)}
+                        {currSymbol}{fmt(igstVal)}
                       </td>
                     </>
                   ) : (
@@ -461,18 +483,18 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                         {(item.gstRate / 2)}%
                       </td>
                       <td style={{ padding: '6px 6px', border: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box' }}>
-                        {fmt(halfGstVal)}
+                        {currSymbol}{fmt(halfGstVal)}
                       </td>
                       <td style={{ padding: '6px 4px', border: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box' }}>
                         {(item.gstRate / 2)}%
                       </td>
                       <td style={{ padding: '6px 6px', border: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'top', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', boxSizing: 'border-box' }}>
-                        {fmt(item.sgst ?? halfGstVal)}
+                        {currSymbol}{fmt(item.sgst ?? halfGstVal)}
                       </td>
                     </>
                   )}
                   <td style={{ padding: '6px 8px', border: '1px solid #cbd5e1', textAlign: 'right', verticalAlign: 'top', fontWeight: 700, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', color: '#111827', boxSizing: 'border-box' }}>
-                    {fmt(itemTaxable)}
+                    {currSymbol}{fmt(itemTaxable)}
                   </td>
                 </tr>
               );
@@ -495,30 +517,30 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
           <div className="lower-left" style={{ flex: '1 1 58%', borderRight: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               <div style={{ padding: '6px 12px', borderBottom: '1px solid #e5e7eb', fontSize: '10px', color: '#111827', fontWeight: 600 }}>
-                Items in Total {totalUnits.toFixed(2)}
+                Items in Total: {totalUnits.toFixed(2)} pcs {quotation.currency !== 'INR' ? `• Est. ${totalCartons} Master Cartons (${totalCbm.toFixed(2)} m³ • ${totalGrossWeight.toFixed(1)} kg)` : ''}
               </div>
 
               <div style={{ padding: '7px 12px' }}>
                 <div style={{ fontSize: '9px', color: '#6b7280', fontWeight: 500 }}>Total In Words</div>
                 <div style={{ fontStyle: 'italic', fontWeight: 700, color: '#111827', fontSize: '10.5px', marginTop: '2px', lineHeight: '1.35' }}>
-                  {numberToWordsINR(quotation.totalValue)}
+                  {numberToWordsINR(quotation.totalValue)} ({quotation.currency || 'INR'})
                 </div>
               </div>
 
               <div style={{ padding: '6px 12px' }}>
                 <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#111827', marginBottom: '3px' }}>Terms &amp; Conditions</div>
                 <div style={{ whiteSpace: 'pre-line', fontSize: '9px', color: '#4b5563', lineHeight: '1.4' }}>
-                  {quotation.termsConditions || `1. Goods once sold cannot be taken back or exchanged.\n2. 50% advance payment required for custom orders.\n3. Quotation valid for 15 days from date of issue.\n4. Subject to Haryana Jurisdiction.`}
+                  {quotation.termsConditions || `1. Goods once sold cannot be taken back or exchanged.\n2. 50% advance payment required for custom orders.\n3. Quotation valid for 15 days from date of issue.\n4. Subject to local jurisdiction.`}
                 </div>
               </div>
             </div>
 
             <div style={{ padding: '8px 12px 10px 12px', fontSize: '9.5px', color: '#1f2937', lineHeight: '1.45', borderTop: '1px dashed #e5e7eb' }}>
-              <div style={{ fontWeight: 700, marginBottom: '2px', color: '#111827' }}>Bank Details -</div>
-              <div>A/C Name - {company.bankAccountName || 'ESPON CLOTHING PRIVATE LIMITED.'}</div>
+              <div style={{ fontWeight: 700, marginBottom: '2px', color: '#111827' }}>Bank &amp; Wire Transfer Details -</div>
+              <div>Beneficiary: {company.bankAccountName || 'R3 EXPORTS'}</div>
               <div>A/c No. - <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{company.accountNumber || '016805006415'}</span></div>
-              <div>IFSC code - <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{company.ifscCode || 'ICIC0000168'}</span></div>
-              <div>Branch - {company.branch || 'Rohtak.'}</div>
+              <div>IFSC / SWIFT - <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{company.ifscCode || 'ICIC0000168'}</span></div>
+              <div>Branch - {company.branch || 'Main Branch'}</div>
               {company.upiId && <div>UPI ID - {company.upiId}</div>}
             </div>
           </div>
@@ -528,57 +550,57 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
             <div style={{ padding: '6px 12px', fontSize: '10.5px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0' }}>
                 <span style={{ color: '#374151' }}>Sub Total</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{fmt(quotation.subtotal || quotation.taxableAmount)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{currSymbol}{fmt(quotation.subtotal || quotation.taxableAmount)}</span>
               </div>
 
               {quotation.itemDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0', color: '#dc2626' }}>
                   <span>Item Discount</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>(-) {fmt(quotation.itemDiscount)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>(-) {currSymbol}{fmt(quotation.itemDiscount)}</span>
                 </div>
               )}
 
               {quotation.additionalDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0', color: '#dc2626' }}>
                   <span>Additional Discount</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>(-) {fmt(quotation.additionalDiscount)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>(-) {currSymbol}{fmt(quotation.additionalDiscount)}</span>
                 </div>
               )}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0' }}>
                 <span style={{ color: '#374151' }}>Total Taxable Amount</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{fmt(effectiveTaxBase)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{currSymbol}{fmt(effectiveTaxBase)}</span>
               </div>
 
               {isInterstate ? (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0' }}>
                   <span style={{ color: '#374151' }}>IGST{effectiveTaxRate} ({effectiveTaxRate}%)</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{fmt(quotation.igst)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{currSymbol}{fmt(quotation.igst)}</span>
                 </div>
               ) : (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0' }}>
                     <span style={{ color: '#374151' }}>CGST{(effectiveTaxRate / 2).toFixed(1).replace('.0', '')} ({(effectiveTaxRate / 2)}%)</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{fmt(quotation.cgst)}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{currSymbol}{fmt(quotation.cgst)}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0' }}>
                     <span style={{ color: '#374151' }}>SGST{(effectiveTaxRate / 2).toFixed(1).replace('.0', '')} ({(effectiveTaxRate / 2)}%)</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{fmt(quotation.sgst)}</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{currSymbol}{fmt(quotation.sgst)}</span>
                   </div>
                 </>
               )}
 
               {quotation.shippingCharges > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0' }}>
-                  <span style={{ color: '#374151' }}>Shipping Charge</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{fmt(quotation.shippingCharges)}</span>
+                  <span style={{ color: '#374151' }}>Shipping / Freight Charge</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827' }}>{currSymbol}{fmt(quotation.shippingCharges)}</span>
                 </div>
               )}
 
               {rounding !== 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2.5px 0', color: '#4b5563' }}>
                   <span>Rounding</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{rounding > 0 ? `+${fmt(rounding)}` : fmt(rounding)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{rounding > 0 ? `+${currSymbol}${fmt(rounding)}` : `${currSymbol}${fmt(rounding)}`}</span>
                 </div>
               )}
 
@@ -594,13 +616,13 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                 color: '#111827'
               }}>
                 <span>Total</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>₹{fmt(quotation.totalValue)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{currSymbol}{fmt(quotation.totalValue)}</span>
               </div>
 
               {quotation.receivedAmount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', color: '#dc2626', fontSize: '10.5px' }}>
                   <span>Payment Made</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>(-) ₹{fmt(quotation.receivedAmount)}</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>(-) {currSymbol}{fmt(quotation.receivedAmount)}</span>
                 </div>
               )}
 
@@ -616,7 +638,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
                 color: '#111827'
               }}>
                 <span>Balance Due</span>
-                <span style={{ fontVariantNumeric: 'tabular-nums' }}>₹{fmt(balanceDue)}</span>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}>{currSymbol}{fmt(balanceDue)}</span>
               </div>
             </div>
 

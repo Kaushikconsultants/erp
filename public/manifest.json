@@ -1,17 +1,57 @@
 {
   "name": "R3 EXPORTS - Enterprise ERP",
-  "short_name": "R3 EXPORTS",
-  "description": "Comprehensive Multi-Entity Enterprise ERP & CRM Software for R3 EXPORTS",
+  "short_name": "R3 Exports",
+  "description": "Comprehensive Multi-Entity Enterprise ERP & CRM Software for R3 EXPORTS (Glassware & Tableware Exports)",
   "start_url": "/",
+  "id": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#ffffff",
   "theme_color": "#4f46e5",
-  "orientation": "portrait",
+  "orientation": "any",
+  "categories": ["business", "productivity", "finance", "utilities"],
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "/logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/brand-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Products & Stock",
+      "short_name": "Products",
+      "description": "View inventory and glassware catalogue",
+      "url": "/products",
+      "icons": [{ "src": "/logo.jpg", "sizes": "192x192" }]
+    },
+    {
+      "name": "New Quotation",
+      "short_name": "New Quote",
+      "description": "Create a new quotation or export invoice",
+      "url": "/quotations/new",
+      "icons": [{ "src": "/logo.jpg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Sales Orders",
+      "short_name": "Orders",
+      "description": "View and manage sales orders",
+      "url": "/orders",
+      "icons": [{ "src": "/logo.jpg", "sizes": "192x192" }]
     }
   ]
 }
+

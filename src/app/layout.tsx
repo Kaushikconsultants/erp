@@ -5,6 +5,7 @@ import "./globals.css";
 import "@/components/ui/modal.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { getCompanySettings } from "./actions/companyActions";
+import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 
 const outfit = Outfit({ 
   subsets: ["latin"], 
@@ -25,17 +26,21 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#ffffff",
+  themeColor: "#4f46e5",
 };
 
 export const metadata: Metadata = {
   title: "R3 EXPORTS — Enterprise ERP",
-  description: "R3 EXPORTS — Multi-Company Enterprise Operations & ERP Platform",
+  description: "R3 EXPORTS — Multi-Company Enterprise Operations & ERP Platform (Glassware & Tableware Exports)",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "R3 EXPORTS"
+  },
+  icons: {
+    icon: "/logo.jpg",
+    apple: "/logo.jpg"
   }
 };
 
@@ -91,6 +96,11 @@ export default async function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="apple-touch-icon" href="/logo.jpg" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="R3 EXPORTS" />
         <link 
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Lato:wght@400;700;900&family=Montserrat:wght@400;500;600;700;800;900&family=Open+Sans:wght@400;600;700;800&family=Oswald:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Poppins:wght@400;500;600;700;800;900&family=Roboto:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&display=swap" 
           rel="stylesheet" 
@@ -99,6 +109,7 @@ export default async function RootLayout({
       <body className={settings?.useBoldText ? 'global-bold-text' : ''}>
         <AuthProvider>
           {children}
+          <PwaInstallPrompt />
         </AuthProvider>
       </body>
     </html>

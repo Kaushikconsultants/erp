@@ -121,6 +121,11 @@ export default function CreateQuotationForm({
     billingAddress: initialQuotation?.billingAddress || '',
     shippingAddress: initialQuotation?.shippingAddress || '',
     currency: initialQuotation?.currency || 'INR',
+    exchangeRate: initialQuotation?.exchangeRate || 1.0,
+    exportType: initialQuotation?.exportType || 'DOMESTIC',
+    incoterms: initialQuotation?.incoterms || 'FOB Mundra Port',
+    portOfLoading: initialQuotation?.portOfLoading || 'Mundra Port, Gujarat, India',
+    portOfDischarge: initialQuotation?.portOfDischarge || '',
     paymentTerms: initialQuotation?.paymentTerms || 'Net 15',
     priceList: initialQuotation?.priceList || '',
     expectedDeliveryDate: initialQuotation?.expectedDeliveryDate ? new Date(initialQuotation.expectedDeliveryDate).toISOString().split('T')[0] : '',
@@ -141,10 +146,12 @@ export default function CreateQuotationForm({
           productName: i.product?.name || i.product?.articleNumber || '',
           sku: i.sku || i.product?.sku || i.product?.articleNumber || '',
           description: i.description || i.product?.description || '',
-          hsnCode: i.hsnCode || i.product?.hsnCode || '6109',
+          hsnCode: i.hsnCode || i.product?.hsnCode || '7013',
           quantity: Number(i.quantity) || 1,
           rate: Number(i.rate) || 0,
-          unitWeight: Number(i.unitWeight) || (i.product?.weight ? Number(i.product.weight) : 0),
+          unitWeight: Number(i.unitWeight) || (i.product?.weight ? Number(i.product.weight) : 0.35),
+          pcsPerCarton: Number(i.pcsPerCarton) || 12,
+          cbmPerCarton: Number(i.cbmPerCarton) || 0.045,
           discountType: (Number(i.discountPercent) || 0) > 0 ? 'percent' : 'amount',
           discountPercent: Number(i.discountPercent) || 0,
           discountAmount: Number(i.discountAmount) || 0,
@@ -157,10 +164,12 @@ export default function CreateQuotationForm({
             productName: '',
             sku: '',
             description: '',
-            hsnCode: '6109',
+            hsnCode: '7013',
             quantity: 1,
             rate: 0,
-            unitWeight: 0,
+            unitWeight: 0.35,
+            pcsPerCarton: 12,
+            cbmPerCarton: 0.045,
             discountType: 'percent',
             discountPercent: 0,
             discountAmount: 0,
@@ -689,6 +698,18 @@ export default function CreateQuotationForm({
     }
   };
 
+  const getCurrencySymbol = (curr?: string) => {
+    switch (curr) {
+      case 'USD': return '$';
+      case 'EUR': return '€';
+      case 'GBP': return '£';
+      case 'AED': return 'AED ';
+      default: return '₹';
+    }
+  };
+
+  const currSymbol = getCurrencySymbol(formData.currency);
+
   // Calculations
   const calculateTotals = () => {
     let grossSubtotal = 0;
@@ -697,6 +718,8 @@ export default function CreateQuotationForm({
     let taxTotal = 0;
     let totalWeight = 0;
     let totalRateWeighted = 0;
+    let totalCartons = 0;
+    let totalCbm = 0;
 
     items.forEach(item => {
       const qty = Number(item.quantity) || 1;
@@ -718,6 +741,13 @@ export default function CreateQuotationForm({
       taxTotal += tax;
       totalWeight += (Number(item.unitWeight) || 0) * qty;
       totalRateWeighted += taxable * gstRate;
+
+      // Export Master Carton & CBM Calculations
+      const pcsPerBox = Number(item.pcsPerCarton) > 0 ? Number(item.pcsPerCarton) : 12;
+      const numCartons = Math.ceil(qty / pcsPerBox);
+      const cbmRate = Number(item.cbmPerCarton) > 0 ? Number(item.cbmPerCarton) : 0.045;
+      totalCartons += numCartons;
+      totalCbm += (numCartons * cbmRate);
     });
 
     const totalQty = items.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
@@ -739,13 +769,20 @@ export default function CreateQuotationForm({
     const adjustment = Number(formData.adjustment) || 0;
 
     const rawTotal = netTaxableAmount + taxTotal + shippingCharges + adjustment;
-    const finalTotal = Math.round(rawTotal);
+    const finalTotal = Math.round(rawTotal * 100) / 100;
     const roundOff = Math.round((finalTotal - rawTotal) * 100) / 100;
+
+    // Export Container Utilization Metrics
+    const cbm20ftPct = Math.min(100, Math.round((totalCbm / 28.0) * 100));
+    const cbm40ftPct = Math.min(100, Math.round((totalCbm / 58.0) * 100));
+    const totalGrossWeight = totalWeight + (totalCartons * 1.5);
+    const exchangeRate = Number(formData.exchangeRate) || 1.0;
+    const convertedInrTotal = formData.currency !== 'INR' ? (finalTotal * exchangeRate) : finalTotal;
 
     return { 
       grossSubtotal, 
       itemDiscount, 
-      subtotal: taxableAmount, // In Image 2: "Sub Total: 5,525.00"
+      subtotal: taxableAmount,
       taxableAmount: netTaxableAmount, 
       taxTotal, 
       cgst, 
@@ -759,7 +796,14 @@ export default function CreateQuotationForm({
       roundOff, 
       finalTotal, 
       totalWeight,
-      totalQty
+      totalGrossWeight,
+      totalQty,
+      totalCartons,
+      totalCbm,
+      cbm20ftPct,
+      cbm40ftPct,
+      convertedInrTotal,
+      exchangeRate
     };
   };
 
@@ -1599,7 +1643,100 @@ export default function CreateQuotationForm({
               </div>
             </div>
 
-            {/* Row 4: Subject / Headline */}
+            {/* Row 4: Currency & Exchange Rate (R3 Exports Engine) */}
+            <div className="quot-grid-2col">
+              <div>
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Quotation Currency
+                </label>
+                <select 
+                  value={formData.currency} 
+                  onChange={e => {
+                    const nextCurr = e.target.value;
+                    let defaultRate = 1.0;
+                    if (nextCurr === 'USD') defaultRate = 83.5;
+                    else if (nextCurr === 'EUR') defaultRate = 90.5;
+                    else if (nextCurr === 'GBP') defaultRate = 106.0;
+                    else if (nextCurr === 'AED') defaultRate = 22.7;
+                    setFormData(prev => ({
+                      ...prev,
+                      currency: nextCurr,
+                      exchangeRate: defaultRate,
+                      paymentTerms: nextCurr !== 'INR' && (prev.paymentTerms === 'Net 15' || prev.paymentTerms === 'Due on Receipt') 
+                        ? '30% Advance + 70% B/L' 
+                        : prev.paymentTerms
+                    }));
+                  }} 
+                  style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: 700, outline: 'none', cursor: 'pointer' }}
+                >
+                  <option value="INR">🇮🇳 INR - Indian Rupee (₹)</option>
+                  <option value="USD">🇺🇸 USD - US Dollar ($)</option>
+                  <option value="EUR">🇪🇺 EUR - Euro (€)</option>
+                  <option value="GBP">🇬🇧 GBP - British Pound (£)</option>
+                  <option value="AED">🇦🇪 AED - UAE Dirham (د.إ)</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                  Exchange Rate (1 {formData.currency} in INR)
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: formData.currency === 'INR' ? '#f1f5f9' : '#ffffff', overflow: 'hidden' }}>
+                  <span style={{ padding: '0 8px', fontSize: '0.78rem', color: '#64748b', backgroundColor: '#f8fafc', borderRight: '1px solid #cbd5e1', height: '33px', display: 'flex', alignItems: 'center', fontWeight: 700 }}>₹</span>
+                  <input 
+                    type="number" 
+                    step="0.01" 
+                    min="0"
+                    disabled={formData.currency === 'INR'}
+                    placeholder="83.50" 
+                    value={formData.exchangeRate || (formData.currency === 'INR' ? 1.0 : '')} 
+                    onChange={e => setFormData({...formData, exchangeRate: parseFloat(e.target.value) || 1.0})} 
+                    style={{ width: '100%', height: '33px', padding: '0 8px', border: 'none', outline: 'none', fontSize: '0.85rem', backgroundColor: 'transparent', color: '#0f172a', fontWeight: 700 }} 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Export Logistics & Incoterms Box */}
+            {formData.currency !== 'INR' && (
+              <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRadius: '8px', border: '1px solid #bfdbfe', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    🚢 Export Shipping & Incoterms
+                  </span>
+                  <span style={{ fontSize: '0.68rem', backgroundColor: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                    R3 Exports Special
+                  </span>
+                </div>
+                <div className="quot-grid-2col">
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>Incoterms</label>
+                    <select
+                      value={formData.incoterms}
+                      onChange={e => setFormData({ ...formData, incoterms: e.target.value })}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #93c5fd', fontSize: '0.8rem', backgroundColor: '#ffffff', color: '#0f172a' }}
+                    >
+                      <option value="FOB Mundra Port">FOB Mundra Port, India</option>
+                      <option value="CIF Destination Port">CIF Destination Port (Sea)</option>
+                      <option value="CFR Dubai Port">CFR Jebel Ali Dubai</option>
+                      <option value="EXW Factory Firozabad">EXW Factory (Ex-Works Firozabad)</option>
+                      <option value="DDP USA">DDP Door Delivery (USA)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#334155', marginBottom: '2px' }}>Port of Discharge</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Jebel Ali / New York / Rotterdam"
+                      value={formData.portOfDischarge}
+                      onChange={e => setFormData({ ...formData, portOfDischarge: e.target.value })}
+                      style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #93c5fd', fontSize: '0.8rem', backgroundColor: '#ffffff', color: '#0f172a' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Row 5: Subject / Headline */}
             <div>
               <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
                 Subject / Headline
@@ -1616,13 +1753,22 @@ export default function CreateQuotationForm({
 
         </div>
 
-        {/* MIDDLE SECTION: LINE ITEMS TABLE WITH % OR ₹ DISCOUNT */}
+        {/* MIDDLE SECTION: LINE ITEMS TABLE WITH % OR CURRENCY DISCOUNT */}
         <div style={{ marginTop: '32px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <h2 style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', margin: 0, textTransform: 'uppercase', letterSpacing: '0.03em' }}>Item Details</h2>
             </div>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>All prices in INR (₹)</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600, backgroundColor: '#f1f5f9', padding: '2px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                All prices in {formData.currency} ({currSymbol})
+              </span>
+              {formData.currency !== 'INR' && (
+                <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600, backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                  1 {formData.currency} = ₹{totals.exchangeRate.toFixed(2)} INR
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Quick Barcode, Camera & Mobile Wireless Scanner Bar */}
@@ -1640,10 +1786,10 @@ export default function CreateQuotationForm({
                   <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '30px' }}>#</th>
                   <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '36%' }}>Item / Product</th>
                   <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '10%' }}>Quantity</th>
-                  <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '12%' }}>Rate (₹)</th>
-                  <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '14%' }}>Discount (% / ₹)</th>
+                  <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '12%' }}>Rate ({currSymbol})</th>
+                  <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '14%' }}>Discount (% / {currSymbol})</th>
                   <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '10%' }}>Tax (% GST)</th>
-                  <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '14%', textAlign: 'right' }}>Amount</th>
+                  <th style={{ padding: '10px 12px', fontSize: '0.75rem', color: '#475569', fontWeight: 700, textTransform: 'uppercase', width: '14%', textAlign: 'right' }}>Amount ({currSymbol})</th>
                   <th style={{ padding: '10px 12px', width: '36px' }}></th>
                 </tr>
               </thead>
@@ -1689,7 +1835,7 @@ export default function CreateQuotationForm({
                               <input 
                                 ref={(el) => { desktopInputRefs.current[index] = el; }}
                                 type="text" 
-                                placeholder="Search by name, article #, SKU..." 
+                                placeholder="Search glassware, crystal barware, tableware..." 
                                 value={showProductSearch === index ? productSearchTerm : ''}
                                 onChange={(e) => {
                                   setProductSearchTerm(e.target.value);
@@ -1760,36 +1906,20 @@ export default function CreateQuotationForm({
                                        step="0.01" 
                                        value={item.unitWeight !== undefined && item.unitWeight !== null ? item.unitWeight : ''} 
                                        onChange={e => handleItemChange(index, 'unitWeight', parseFloat(e.target.value) || 0)} 
-                                       style={{ width: '60px', padding: '2px 6px', fontSize: '0.78rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#4f46e5', backgroundColor: '#ffffff' }} 
+                                       style={{ width: '56px', padding: '2px 4px', fontSize: '0.78rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#4f46e5', backgroundColor: '#ffffff' }} 
                                      /> kg
                                   </span>
                                   <span>|</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setMatrixTargetIndex(index);
-                                      setShowGarmentMatrix(true);
-                                    }}
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      padding: '2px 8px',
-                                      borderRadius: '4px',
-                                      backgroundColor: '#f5f3ff',
-                                      border: '1px solid #ddd6fe',
-                                      color: '#7c3aed',
-                                      fontSize: '0.72rem',
-                                      fontWeight: 600,
-                                      cursor: 'pointer',
-                                      transition: 'all 0.15s ease'
-                                    }}
-                                    title="Open Garment Size & Color Ratio Matrix for this item"
-                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#ede9fe'}
-                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f5f3ff'}
-                                  >
-                                    📦 Matrix
-                                  </button>
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#059669', fontWeight: 600 }}>
+                                    <Package size={12} /> Box: 
+                                    <input 
+                                       type="number" 
+                                       min="1"
+                                       value={item.pcsPerCarton !== undefined && item.pcsPerCarton !== null ? item.pcsPerCarton : 12} 
+                                       onChange={e => handleItemChange(index, 'pcsPerCarton', parseInt(e.target.value, 10) || 12)} 
+                                       style={{ width: '48px', padding: '2px 4px', fontSize: '0.78rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#059669', backgroundColor: '#ffffff' }} 
+                                     /> pcs
+                                  </span>
                                   <span>|</span>
                                   <span>Stock: <span style={{ color: item.availableStock > 0 ? '#16a34a' : '#dc2626', fontWeight: 600 }}>{item.availableStock} pcs</span></span>
                                 </div>
@@ -1826,7 +1956,7 @@ export default function CreateQuotationForm({
                             {item.description && item.description.includes('\n') ? (
                               <textarea
                                 rows={Math.min(5, (item.description.match(/\n/g) || []).length + 1)}
-                                placeholder="Add item description / specifications (optional)..."
+                                placeholder="Add item description / export specifications..."
                                 value={item.description || ''}
                                 onChange={e => handleItemChange(index, 'description', e.target.value)}
                                 style={{ marginTop: '6px', width: '100%', fontSize: '0.74rem', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', color: '#334155', resize: 'vertical', lineHeight: 1.4 }}
@@ -1834,7 +1964,7 @@ export default function CreateQuotationForm({
                             ) : (
                               <input 
                                 type="text" 
-                                placeholder="Add item description / specifications (optional)..." 
+                                placeholder="Add item description / export specifications..." 
                                 value={item.description || ''} 
                                 onChange={e => handleItemChange(index, 'description', e.target.value)}
                                 style={{ marginTop: '6px', width: '100%', fontSize: '0.78rem', padding: '6px 10px', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff' }}
@@ -1845,12 +1975,15 @@ export default function CreateQuotationForm({
                       </td>
                       <td style={{ padding: '14px 12px', verticalAlign: 'top' }}>
                         <input type="number" min="1" value={item.quantity} onChange={e => handleItemChange(index, 'quantity', e.target.value)} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
+                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '3px' }}>
+                          {Math.ceil((Number(item.quantity) || 1) / (Number(item.pcsPerCarton) || 12))} ctn
+                        </div>
                       </td>
                       <td style={{ padding: '14px 12px', verticalAlign: 'top' }}>
                         <input type="number" step="0.01" value={item.rate} onChange={e => handleItemChange(index, 'rate', e.target.value)} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }} />
                       </td>
                       
-                      {/* MANUAL DISCOUNT (% OR ₹ FIXED AMOUNT) */}
+                      {/* MANUAL DISCOUNT (% OR CURRENCY FIXED AMOUNT) */}
                       <td style={{ padding: '14px 12px', verticalAlign: 'top' }}>
                         <div style={{ display: 'flex', border: '1px solid #cbd5e1', borderRadius: '6px', overflow: 'hidden' }}>
                           <select
@@ -1859,7 +1992,7 @@ export default function CreateQuotationForm({
                             style={{ padding: '4px 6px', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: '0.78rem', backgroundColor: '#f8fafc', fontWeight: 700, color: '#334155', cursor: 'pointer' }}
                           >
                             <option value="percent">%</option>
-                            <option value="amount">₹</option>
+                            <option value="amount">{currSymbol}</option>
                           </select>
                           <input 
                             type="number" 
@@ -1880,7 +2013,7 @@ export default function CreateQuotationForm({
 
                       <td style={{ padding: '14px 12px', verticalAlign: 'top' }}>
                         <select value={item.gstRate} onChange={e => handleItemChange(index, 'gstRate', e.target.value)} style={{ width: '100%', padding: '6px 6px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}>
-                          <option value="0">0%</option>
+                          <option value="0">0% (LUT)</option>
                           <option value="5">5%</option>
                           <option value="12">12%</option>
                           <option value="18">18%</option>
@@ -1888,12 +2021,12 @@ export default function CreateQuotationForm({
                         </select>
                         {tax > 0 && (
                           <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '3px', textAlign: 'right', fontWeight: 600 }}>
-                            +₹{tax.toFixed(2)}
+                            +{currSymbol}{tax.toFixed(2)}
                           </div>
                         )}
                       </td>
                       <td style={{ padding: '14px 12px', verticalAlign: 'top', fontWeight: 700, fontSize: '0.9rem', color: '#0f172a', textAlign: 'right' }}>
-                        ₹{amount.toFixed(2)}
+                        {currSymbol}{amount.toFixed(2)}
                       </td>
                       <td style={{ padding: '14px 12px', verticalAlign: 'top', textAlign: 'center' }}>
                         <button type="button" onClick={() => removeItem(index)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
@@ -2046,7 +2179,7 @@ export default function CreateQuotationForm({
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>Rate (₹)</label>
+                      <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: '#475569', marginBottom: '4px', textTransform: 'uppercase' }}>Rate ({currSymbol})</label>
                       <input
                         type="number" step="0.01"
                         value={item.rate}
@@ -2067,7 +2200,7 @@ export default function CreateQuotationForm({
                           style={{ padding: '9px 6px', border: 'none', borderRight: '1px solid #cbd5e1', fontSize: '0.85rem', backgroundColor: '#f8fafc', fontWeight: 700, color: '#334155', cursor: 'pointer' }}
                         >
                           <option value="percent">%</option>
-                          <option value="amount">₹</option>
+                          <option value="amount">{currSymbol}</option>
                         </select>
                         <input
                           type="number" step="0.01"
@@ -2091,7 +2224,7 @@ export default function CreateQuotationForm({
                         onChange={e => handleItemChange(index, 'gstRate', e.target.value)}
                         style={{ width: '100%', padding: '9px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem', backgroundColor: '#ffffff' }}
                       >
-                        <option value="0">0%</option>
+                        <option value="0">0% (LUT)</option>
                         <option value="5">5%</option>
                         <option value="12">12%</option>
                         <option value="18">18%</option>
@@ -2109,29 +2242,12 @@ export default function CreateQuotationForm({
                       <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 500 }}>Taxable Amount</span>
                       {tax > 0 && (
                         <div style={{ fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>
-                          GST ({item.gstRate}%): +₹{tax.toFixed(2)}
+                          GST ({item.gstRate}%): +{currSymbol}{tax.toFixed(2)}
                         </div>
                       )}
                     </div>
-                    <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>₹{lineAmount.toFixed(2)}</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}>{currSymbol}{lineAmount.toFixed(2)}</span>
                   </div>
-
-                  {/* Garment matrix button */}
-                  {item.productId && (
-                    <button
-                      type="button"
-                      onClick={() => { setMatrixTargetIndex(index); setShowGarmentMatrix(true); }}
-                      style={{
-                        marginTop: '10px', width: '100%',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                        padding: '8px', borderRadius: '8px',
-                        backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe',
-                        color: '#7c3aed', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer'
-                      }}
-                    >
-                      📦 Open Size / Color Matrix
-                    </button>
-                  )}
                 </div>
               );
             })}
@@ -2186,6 +2302,71 @@ export default function CreateQuotationForm({
                 style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #fde68a', backgroundColor: '#fffbeb', fontSize: '0.82rem', resize: 'vertical' }}
               />
             </div>
+
+            {/* EXPORT MASTER CARTON & CONTAINER CBM CALCULATOR */}
+            <div style={{
+              backgroundColor: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: '10px',
+              padding: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Package size={16} color="#4f46e5" />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#1e293b', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    Export Packing &amp; CBM Engine
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.72rem', color: '#4f46e5', backgroundColor: '#eef2ff', padding: '2px 8px', borderRadius: '4px', fontWeight: 700, border: '1px solid #c7d2fe' }}>
+                  {totals.totalCartons} Cartons • {totals.totalCbm.toFixed(2)} m³
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', textAlign: 'center' }}>
+                <div style={{ backgroundColor: '#ffffff', padding: '8px 4px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Total Qty</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0f172a' }}>{totals.totalQty} pcs</div>
+                </div>
+                <div style={{ backgroundColor: '#ffffff', padding: '8px 4px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Master Cartons</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#2563eb' }}>{totals.totalCartons} ctn</div>
+                </div>
+                <div style={{ backgroundColor: '#ffffff', padding: '8px 4px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Total Volume</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#7c3aed' }}>{totals.totalCbm.toFixed(2)} m³</div>
+                </div>
+                <div style={{ backgroundColor: '#ffffff', padding: '8px 4px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Gross Wt. (Est)</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#059669' }}>{totals.totalGrossWeight.toFixed(1)} kg</div>
+                </div>
+              </div>
+
+              {/* Container Fill Bars */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '2px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '2px', color: '#475569' }}>
+                    <span>20ft Container (28 m³ cap.)</span>
+                    <span style={{ fontWeight: 700, color: totals.cbm20ftPct > 100 ? '#dc2626' : '#2563eb' }}>{totals.cbm20ftPct}% ({totals.totalCbm.toFixed(1)} / 28 m³)</span>
+                  </div>
+                  <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, totals.cbm20ftPct)}%`, height: '100%', backgroundColor: totals.cbm20ftPct > 100 ? '#ef4444' : '#3b82f6', borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', marginBottom: '2px', color: '#475569' }}>
+                    <span>40ft HC Container (58 m³ cap.)</span>
+                    <span style={{ fontWeight: 700, color: totals.cbm40ftPct > 100 ? '#dc2626' : '#7c3aed' }}>{totals.cbm40ftPct}% ({totals.totalCbm.toFixed(1)} / 58 m³)</span>
+                  </div>
+                  <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, totals.cbm40ftPct)}%`, height: '100%', backgroundColor: totals.cbm40ftPct > 100 ? '#ef4444' : '#8b5cf6', borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* SUMMARY TOTALS BOX WITH CLEAN ALIGNMENT */}
@@ -2199,39 +2380,39 @@ export default function CreateQuotationForm({
               </span>
             </div>
 
-            {/* TOTAL WEIGHT DISPLAY SECTION */}
+            {/* TOTAL WEIGHT & CBM DISPLAY SECTION */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#eef2ff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 700, color: '#3730a3', fontSize: '0.84rem' }}>
-                <Scale size={16} color="#4f46e5" /> Total Weight:
+                <Scale size={16} color="#4f46e5" /> Total Weight &amp; Volume:
               </span>
-              <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#4f46e5' }}>
-                {totals.totalWeight.toFixed(2)} kg
+              <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#4f46e5' }}>
+                {totals.totalWeight.toFixed(2)} kg ({totals.totalCbm.toFixed(2)} CBM)
               </span>
             </div>
 
             {/* ROWS TABLE / KEY-VALUE LIST WITH UNIFORM ALIGNMENT */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               
-              {/* Sub Total (Taxable subtotal of items after line discounts, exactly like Image 2) */}
+              {/* Sub Total */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '32px' }}>
                 <div>
                   <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>Sub Total</span>
                   {totals.itemDiscount > 0 && (
                     <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                      (Gross: ₹{totals.grossSubtotal.toFixed(2)} | Disc: -₹{totals.itemDiscount.toFixed(2)})
+                      (Gross: {currSymbol}{totals.grossSubtotal.toFixed(2)} | Disc: -{currSymbol}{totals.itemDiscount.toFixed(2)})
                     </div>
                   )}
                 </div>
                 <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                  ₹{totals.subtotal.toFixed(2)}
+                  {currSymbol}{totals.subtotal.toFixed(2)}
                 </span>
               </div>
 
-              {/* Additional Discount (₹) */}
+              {/* Additional Discount */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '34px' }}>
-                <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Additional Discount (₹)</span>
+                <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Additional Discount ({currSymbol})</span>
                 <div style={{ display: 'flex', alignItems: 'center', width: '130px', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
-                  <span style={{ padding: '0 8px', fontSize: '0.8rem', color: '#64748b', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', height: '32px' }}>₹</span>
+                  <span style={{ padding: '0 8px', fontSize: '0.8rem', color: '#64748b', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', height: '32px', fontWeight: 700 }}>{currSymbol}</span>
                   <input 
                     type="number" 
                     step="0.01" 
@@ -2247,7 +2428,7 @@ export default function CreateQuotationForm({
               {/* Tax Divider */}
               <div style={{ borderTop: '1px dashed #cbd5e1', margin: '2px 0' }} />
 
-              {/* DYNAMIC GST / IGST METRICS MATCHING IMAGE 2 */}
+              {/* DYNAMIC GST / IGST METRICS */}
               {totals.isIntrastate ? (
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2255,7 +2436,7 @@ export default function CreateQuotationForm({
                       CGST {totals.effectiveGstRate > 0 ? `(${(totals.effectiveGstRate / 2).toFixed(1)}%)` : ''}
                     </span>
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                      ₹{totals.cgst.toFixed(2)}
+                      {currSymbol}{totals.cgst.toFixed(2)}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2263,7 +2444,7 @@ export default function CreateQuotationForm({
                       SGST {totals.effectiveGstRate > 0 ? `(${(totals.effectiveGstRate / 2).toFixed(1)}%)` : ''}
                     </span>
                     <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                      ₹{totals.sgst.toFixed(2)}
+                      {currSymbol}{totals.sgst.toFixed(2)}
                     </span>
                   </div>
                 </>
@@ -2273,17 +2454,17 @@ export default function CreateQuotationForm({
                     IGST {totals.effectiveGstRate > 0 ? `(${Math.round(totals.effectiveGstRate)}%)` : ''}
                   </span>
                   <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a', fontVariantNumeric: 'tabular-nums' }}>
-                    ₹{totals.igst.toFixed(2)}
+                    {currSymbol}{totals.igst.toFixed(2)}
                   </span>
                 </div>
               )}
 
-              {/* Shipping charge (₹) */}
+              {/* Shipping charge */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '34px' }}>
-                  <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Shipping charge (₹)</span>
+                  <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Shipping / Freight ({currSymbol})</span>
                   <div style={{ display: 'flex', alignItems: 'center', width: '130px', border: '1px solid #cbd5e1', borderRadius: '6px', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
-                    <span style={{ padding: '0 8px', fontSize: '0.8rem', color: '#64748b', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', height: '32px' }}>₹</span>
+                    <span style={{ padding: '0 8px', fontSize: '0.8rem', color: '#64748b', backgroundColor: '#f1f5f9', borderRight: '1px solid #cbd5e1', display: 'flex', alignItems: 'center', height: '32px', fontWeight: 700 }}>{currSymbol}</span>
                     <input 
                       type="number" 
                       step="0.01" 
@@ -2319,12 +2500,12 @@ export default function CreateQuotationForm({
                 </button>
               </div>
 
-              {/* Rounding like Image 2 */}
+              {/* Rounding */}
               {totals.roundOff !== 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: '26px' }}>
                   <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 500 }}>Rounding</span>
                   <span style={{ fontSize: '0.88rem', fontWeight: 600, color: totals.roundOff < 0 ? '#dc2626' : '#059669', fontVariantNumeric: 'tabular-nums' }}>
-                    {totals.roundOff > 0 ? `+${totals.roundOff.toFixed(2)}` : totals.roundOff.toFixed(2)}
+                    {totals.roundOff > 0 ? `+${currSymbol}${totals.roundOff.toFixed(2)}` : `${currSymbol}${totals.roundOff.toFixed(2)}`}
                   </span>
                 </div>
               )}
@@ -2335,13 +2516,21 @@ export default function CreateQuotationForm({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e40af' }}>Total</span>
                 <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#2563eb', fontVariantNumeric: 'tabular-nums' }}>
-                  ₹{totals.finalTotal.toFixed(2)}
+                  {currSymbol}{totals.finalTotal.toFixed(2)}
                 </span>
               </div>
+              
+              {formData.currency !== 'INR' && (
+                <div style={{ marginTop: '4px', fontSize: '0.76rem', color: '#1d4ed8', fontWeight: 700, backgroundColor: 'rgba(255,255,255,0.7)', padding: '3px 8px', borderRadius: '4px', textAlign: 'right' }}>
+                  ≈ ₹{totals.convertedInrTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} INR (@ ₹{totals.exchangeRate}/unit)
+                </div>
+              )}
+
               <div style={{ fontSize: '0.74rem', color: '#1e40af', textAlign: 'right', marginTop: '6px', fontStyle: 'italic', fontWeight: 600 }}>
                 {numberToWords(totals.finalTotal)}
               </div>
             </div>
+
             {/* TOKEN / ADVANCE PAYMENT SECTION */}
             <div style={{
               backgroundColor: '#f0fdf4',
@@ -2354,7 +2543,7 @@ export default function CreateQuotationForm({
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#065f46', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  🪙 Token / Advance Received (₹)
+                  🪙 Advance Received ({currSymbol})
                 </span>
                 <div style={{ display: 'flex', gap: '4px' }}>
                   <button
@@ -2369,13 +2558,13 @@ export default function CreateQuotationForm({
                     onClick={() => setFormData({ ...formData, receivedAmount: 0 })}
                     style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', backgroundColor: '#ffffff', color: '#64748b', cursor: 'pointer', fontWeight: 700 }}
                   >
-                    ₹0 Credit
+                    0 Credit
                   </button>
                 </div>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #86efac', borderRadius: '6px', backgroundColor: '#ffffff', overflow: 'hidden' }}>
-                <span style={{ padding: '0 10px', fontSize: '0.85rem', color: '#059669', backgroundColor: '#ecfdf5', borderRight: '1px solid #86efac', display: 'flex', alignItems: 'center', height: '36px', fontWeight: 700 }}>₹</span>
+                <span style={{ padding: '0 10px', fontSize: '0.85rem', color: '#059669', backgroundColor: '#ecfdf5', borderRight: '1px solid #86efac', display: 'flex', alignItems: 'center', height: '36px', fontWeight: 700 }}>{currSymbol}</span>
                 <input
                   type="number"
                   step="0.01"
@@ -2390,7 +2579,7 @@ export default function CreateQuotationForm({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', paddingTop: '4px', borderTop: '1px dashed #a7f3d0' }}>
                 <span style={{ color: '#065f46', fontWeight: 600 }}>Remaining Due Balance:</span>
                 <span style={{ color: Math.max(0, totals.finalTotal - (Number(formData.receivedAmount) || 0)) > 0 ? '#b45309' : '#059669', fontWeight: 800, fontSize: '0.9rem' }}>
-                  ₹{Math.max(0, totals.finalTotal - (Number(formData.receivedAmount) || 0)).toFixed(2)}
+                  {currSymbol}{Math.max(0, totals.finalTotal - (Number(formData.receivedAmount) || 0)).toFixed(2)}
                 </span>
               </div>
             </div>

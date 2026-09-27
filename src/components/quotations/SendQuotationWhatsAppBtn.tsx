@@ -29,8 +29,10 @@ export default function SendQuotationWhatsAppBtn({
       setTimeout(() => setSent(false), 5000);
     } else {
       // Fallback: Open WhatsApp Web directly if API send encountered an issue
-      const cleanPhone = (customerPhone || '').replace(/\D/g, '');
-      const waUrl = cleanPhone ? `https://wa.me/91${cleanPhone}` : `https://wa.me/`;
+      let cleanPhone = (customerPhone || '').replace(/\D/g, '');
+      if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.replace(/^0+/, '');
+      if (cleanPhone.length === 10) cleanPhone = `91${cleanPhone}`;
+      const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}` : `https://wa.me/`;
       window.open(waUrl, '_blank');
     }
   };

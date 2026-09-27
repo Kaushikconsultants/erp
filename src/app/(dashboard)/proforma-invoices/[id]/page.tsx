@@ -68,6 +68,9 @@ export default async function ProformaDetailPage({ params }: { params: Promise<{
     upiId: "7206066678@OKBIZAXIS"
   };
 
+  const currency = (proforma as any).currency || "INR";
+  const currSymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency === 'AED' ? 'AED ' : '₹';
+
   const isInterstate = proforma.igst > 0 || (
     company.state?.trim().toLowerCase() !== (proforma.customer.state || company.state)?.trim().toLowerCase()
   );
@@ -471,7 +474,7 @@ export default async function ProformaDetailPage({ params }: { params: Promise<{
 
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0 4px 0", borderTop: "1px solid #111827", marginTop: "6px", fontWeight: 800, fontSize: "12px", color: "#111827" }}>
                   <span>Total Proforma Amount</span>
-                  <span style={{ fontVariantNumeric: "tabular-nums" }}>₹{fmt(proforma.totalAmount)}</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>{currSymbol}{fmt(proforma.totalAmount)}</span>
                 </div>
               </div>
 
