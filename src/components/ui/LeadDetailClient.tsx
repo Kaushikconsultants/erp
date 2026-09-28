@@ -615,19 +615,40 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
                   </label>
                 </div>
 
+                {parsedDesign.pictures.some(p => p.startsWith('blob:')) && (
+                  <div style={{ marginTop: '8px', padding: '6px 10px', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '8px', fontSize: '0.72rem', color: '#9f1239', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span>⚠️ Past test photos were temporary browser session blobs. Tap <strong>Add Photo</strong> to attach the real image files.</span>
+                  </div>
+                )}
+
                 {parsedDesign.pictures.length > 0 ? (
                   <div className="lead-photos-grid" style={{ marginTop: '8px' }}>
                     {parsedDesign.pictures.map((pic, idx) => {
                       const isBlob = pic.startsWith("blob:");
+                      if (isBlob) {
+                        return (
+                          <div 
+                            key={idx} 
+                            className="lead-photo-thumb-card"
+                            style={{ background: '#fff1f2', borderColor: '#fecdd3', cursor: 'default' }}
+                          >
+                            <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '6px', textAlign: 'center', color: '#be123c' }}>
+                              <AlertCircle size={18} color="#e11d48" style={{ marginBottom: '3px' }} />
+                              <span style={{ fontSize: '9.5px', fontWeight: 800 }}>Expired Blob</span>
+                              <span style={{ fontSize: '8px', color: '#9f1239', marginTop: '1px', lineHeight: 1.2 }}>Past local session</span>
+                            </div>
+                            <div className="lead-photo-overlay-tag" style={{ background: '#be123c' }}>
+                              #{idx + 1}
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div 
                           key={idx} 
                           className="lead-photo-thumb-card"
-                          onClick={() => {
-                            if (!isBlob) {
-                              setLightboxImage(pic);
-                            }
-                          }}
+                          onClick={() => setLightboxImage(pic)}
                         >
                           <img 
                             src={pic} 
@@ -637,11 +658,11 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
                               const imgEl = e.target as HTMLElement;
                               imgEl.style.display = 'none';
                               const parent = imgEl.parentElement;
-                              if (parent && !parent.querySelector('.blob-fallback')) {
+                              if (parent && !parent.querySelector('.img-error-fallback')) {
                                 const fb = document.createElement('div');
-                                fb.className = 'blob-fallback';
-                                fb.style.cssText = 'height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px; text-align:center; background:#fff1f2; color:#be123c; font-size:9px; font-weight:700;';
-                                fb.innerHTML = '<span>⚠️ Expired Blob</span><span style="font-size:7.5px; opacity:0.8; margin-top:2px;">Re-upload image</span>';
+                                fb.className = 'img-error-fallback';
+                                fb.style.cssText = 'height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px; text-align:center; background:#f8fafc; color:#64748b; font-size:9px; font-weight:700;';
+                                fb.innerHTML = '<span>Image Unavailable</span>';
                                 parent.appendChild(fb);
                               }
                             }}
