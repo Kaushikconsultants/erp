@@ -4,7 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "./globals.css";
 import "@/components/ui/modal.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
-import { getCompanySettings } from "./actions/companyActions";
+import { getCompanySettings } from "@/lib/companySettings";
 import PwaInstallPrompt from "@/components/pwa/PwaInstallPrompt";
 
 const outfit = Outfit({ 
