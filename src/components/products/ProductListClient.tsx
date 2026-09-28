@@ -28,7 +28,8 @@ import {
   CheckCircle2,
   RefreshCw,
   FileSpreadsheet,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react';
 import AddProductButton from '@/components/ui/AddProductButton';
 import ManageCategoriesModal from '@/components/products/ManageCategoriesModal';
