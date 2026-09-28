@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { 
   Search, 
@@ -27,10 +27,26 @@ import {
   FileText,
   Upload,
   MessageCircle,
-  ExternalLink
+  ExternalLink,
+  Globe,
+  User,
+  LogIn,
+  LogOut,
+  ChevronDown,
+  Building2,
+  Lock,
+  Loader2,
+  Eye,
+  EyeOff
 } from "lucide-react";
+import { signIn, signOut } from "next-auth/react";
 import { placeCatalogOrder, CatalogOrderBuyerDetails } from "@/app/actions/catalogActions";
-import { R3_TRADE_SLABS, R3_COMPANY_PROFILE, R3GlasswareProduct } from "@/lib/dummyProducts";
+import { 
+  getCustomerSessionData, 
+  registerCustomerPortalAccount, 
+  submitCustomDesignRequest 
+} from "@/app/actions/portalActions";
+import { R3_TRADE_SLABS, R3_COMPANY_PROFILE } from "@/lib/dummyProducts";
 import "@/app/catalog/catalog.css";
 
 interface Product {
@@ -62,6 +78,9 @@ interface Product {
   shape?: string;
   ship?: number;
   tags?: string[];
+  exportPriceUsd?: number | null;
+  exportPriceEur?: number | null;
+  exportPriceGbp?: number | null;
 }
 
 interface CompanyInfo {
@@ -96,18 +115,17 @@ interface CartItem {
   isSample?: boolean;
 }
 
-const INDIAN_STATES = [
-  "Uttar Pradesh", "Delhi", "Maharashtra", "Gujarat", "Karnataka", "Tamil Nadu",
-  "Haryana", "Rajasthan", "West Bengal", "Telangana", "Punjab", "Madhya Pradesh",
-  "Kerala", "Andhra Pradesh", "Bihar", "Odisha", "Assam", "Chandigarh", "Goa",
-  "Himachal Pradesh", "Jammu and Kashmir", "Jharkhand", "Uttarakhand"
+type CurrencyCode = "INR" | "USD" | "EUR" | "GBP";
+
+const CURRENCIES: { code: CurrencyCode; label: string; symbol: string; flag: string }[] = [
+  { code: "INR", label: "India (INR ₹)", symbol: "₹", flag: "🇮🇳" },
+  { code: "USD", label: "Global / US (USD $)", symbol: "$", flag: "🇺🇸" },
+  { code: "EUR", label: "Europe (EUR €)", symbol: "€", flag: "🇪🇺" },
+  { code: "GBP", label: "UK (GBP £)", symbol: "£", flag: "🇬🇧" }
 ];
 
 // Vector shapes for glassware fallback
 function GlassShapeSvg({ shape = "tumbler" }: { shape?: string }) {
-  const s = 'fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round"';
-  const liq = 'fill="#C9971C" opacity="0.28"';
-
   const shapeMap: Record<string, React.ReactNode> = {
     bottle: (
       <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', color: 'var(--r3-ink)' }} aria-hidden="true">
@@ -195,11 +213,48 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
   const [selectedTagFilter, setSelectedTagFilter] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<"featured" | "popular" | "price" | "margin">("featured");
 
+  // Currency state
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>("INR");
+  const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
+  const currencyRef = useRef<HTMLDivElement>(null);
+
+  // Customer Session & Auth
+  const [customerSession, setCustomerSession] = useState<{
+    isLoggedIn: boolean;
+    customer?: any;
+    userName?: string;
+  }>({ isLoggedIn: false });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<"SIGN_IN" | "REGISTER">("SIGN_IN");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Login form state
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  // Register form state
+  const [regForm, setRegForm] = useState({
+    businessName: "",
+    contactPerson: "",
+    mobile: "",
+    email: "",
+    password: "",
+    shippingAddress: "",
+    city: "Agra",
+    state: "Uttar Pradesh",
+    pincode: "282006",
+    gstin: ""
+  });
+
   // Likes store
   const [likedSkus, setLikedSkus] = useState<Set<string>>(new Set());
   const [likedOnly, setLikedOnly] = useState(false);
 
-  // Card quantities and box pack selections
+  // Card selections
   const [cardSelections, setCardSelections] = useState<Record<string, { qty: number; pack: number }>>({});
 
   // Cart state
@@ -216,6 +271,22 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
   const [isCustomDesignModalOpen, setIsCustomDesignModalOpen] = useState(false);
   const [isQuickOrderModalOpen, setIsQuickOrderModalOpen] = useState(false);
   const [quickOrderText, setQuickOrderText] = useState("R3-BT750, 60\nR3-DW080, 120\nR3-TB300, 240");
+
+  // Custom Design Request Form state
+  const [customDesignForm, setCustomDesignForm] = useState({
+    name: "",
+    company: "",
+    mobile: "",
+    email: "",
+    requestType: "New custom design",
+    sku: "",
+    description: "",
+    pictures: [] as string[],
+    expectedQty: "100–249 pcs",
+    timeline: "Within 1 month"
+  });
+  const [customDesignLoading, setCustomDesignLoading] = useState(false);
+  const [customDesignSuccess, setCustomDesignSuccess] = useState<any>(null);
 
   // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -244,6 +315,76 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Close dropdowns on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (currencyRef.current && !currencyRef.current.contains(event.target as Node)) {
+        setIsCurrencyDropdownOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Detect Country / Timezone on initial mount
+  useEffect(() => {
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      if (tz.includes("America") || tz.includes("US")) {
+        setSelectedCurrency("USD");
+      } else if (tz.includes("London") || tz.includes("Europe/London") || tz.includes("GB")) {
+        setSelectedCurrency("GBP");
+      } else if (tz.includes("Europe") || tz.includes("Paris") || tz.includes("Berlin")) {
+        setSelectedCurrency("EUR");
+      } else {
+        setSelectedCurrency("INR");
+      }
+    } catch {}
+  }, []);
+
+  // Fetch customer session data
+  useEffect(() => {
+    async function loadSession() {
+      const res = await getCustomerSessionData();
+      if (res.isLoggedIn) {
+        setCustomerSession(res);
+        if (res.customer) {
+          setBuyerForm({
+            businessName: res.customer.businessName || "",
+            contactPerson: res.customer.contactPerson || "",
+            mobile: res.customer.mobile || "",
+            whatsappNumber: res.customer.whatsappNumber || res.customer.mobile || "",
+            email: res.customer.email || "",
+            gstin: res.customer.gstNumber || "",
+            shippingAddress: res.customer.shippingAddress || res.customer.billingAddress || "",
+            city: res.customer.city || "Agra",
+            state: res.customer.state || "Uttar Pradesh",
+            pincode: res.customer.pincode || "282006",
+            notes: "",
+            buyingStream: "READY_STOCK",
+            courierType: "R3_COURIER"
+          });
+        }
+      }
+    }
+    loadSession();
+  }, []);
+
+  // Initialize card quantities
+  useEffect(() => {
+    const initMap: Record<string, { qty: number; pack: number }> = {};
+    initialProducts.forEach(p => {
+      const isInStock = p.stockQuantity > 0;
+      const pack = 2;
+      const initialQty = isInStock ? pack * 5 : (p.moq || 100);
+      initMap[p.id] = { qty: initialQty, pack };
+    });
+    setCardSelections(initMap);
+  }, [initialProducts]);
+
   // Helper for pricing slabs
   const calculateSlab = (basePrice: number, qty: number) => {
     let discount = 0;
@@ -262,18 +403,6 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     const markup = (srp / costWithGst).toFixed(1);
     return { costWithGst, marginAmount, marginPct, markup };
   };
-
-  // Initialize card quantities
-  useEffect(() => {
-    const initMap: Record<string, { qty: number; pack: number }> = {};
-    initialProducts.forEach(p => {
-      const isInStock = p.stockQuantity > 0;
-      const pack = (p.masterCartonQty === 12 ? 2 : 2);
-      const initialQty = isInStock ? pack * 5 : (p.moq || 100);
-      initMap[p.id] = { qty: initialQty, pack };
-    });
-    setCardSelections(initMap);
-  }, [initialProducts]);
 
   const toggleLike = (sku: string | null) => {
     if (!sku) return;
@@ -344,22 +473,15 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     return Object.values(cart).filter(item => item.product.stockQuantity <= 0 && !item.isSample);
   }, [cart]);
 
-  const sampleItems = useMemo(() => {
-    return Object.values(cart).filter(item => item.isSample);
-  }, [cart]);
-
   const readyStockSubtotal = readyStockItems.reduce((sum, item) => sum + (item.effectiveRate * item.quantity), 0);
   const madeToOrderSubtotal = madeToOrderItems.reduce((sum, item) => sum + (item.effectiveRate * item.quantity), 0);
-  const samplesSubtotal = sampleItems.reduce((sum, item) => sum + 500, 0);
-
-  const rawSubtotal = readyStockSubtotal + madeToOrderSubtotal + samplesSubtotal;
+  const rawSubtotal = readyStockSubtotal + madeToOrderSubtotal;
   const promoDiscount = appliedPromo === "R3FIRST" ? Math.round(rawSubtotal * 0.05) : 0;
   const netSubtotal = Math.max(0, rawSubtotal - promoDiscount);
   const gstAmount = Math.round(netSubtotal * 0.18);
   const grandTotal = netSubtotal + gstAmount;
 
   const totalCartCount = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
-
   const readyStockMovMet = readyStockItems.length === 0 || readyStockSubtotal >= (company.minOrderValueReadyStock || 15000);
   const madeToOrderMovMet = madeToOrderItems.length === 0 || madeToOrderSubtotal >= (company.minOrderValueMadeToOrder || 50000);
   const canProceedToCheckout = totalCartCount > 0 && readyStockMovMet && madeToOrderMovMet;
@@ -411,6 +533,102 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     });
     return counts;
   }, [initialProducts]);
+
+  // Handle Sign In
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+
+    try {
+      const res = await signIn("credentials", {
+        redirect: false,
+        email: loginIdentifier.trim(),
+        password: loginPassword
+      });
+
+      if (res?.error) {
+        setAuthError(res.error || "Invalid mobile/email or password.");
+      } else {
+        showToast("Signed in successfully!");
+        setIsAuthModalOpen(false);
+        const sessionRes = await getCustomerSessionData();
+        if (sessionRes.isLoggedIn) {
+          setCustomerSession(sessionRes);
+        }
+      }
+    } catch (err: any) {
+      setAuthError(err.message || "Failed to sign in.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Handle Register
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError("");
+
+    try {
+      const res = await registerCustomerPortalAccount(regForm);
+      if (res.success) {
+        showToast("Account created successfully!");
+        // Auto sign in
+        await signIn("credentials", {
+          redirect: false,
+          email: regForm.mobile.trim(),
+          password: regForm.password
+        });
+        setIsAuthModalOpen(false);
+        const sessionRes = await getCustomerSessionData();
+        if (sessionRes.isLoggedIn) {
+          setCustomerSession(sessionRes);
+        }
+      } else {
+        setAuthError(res.error || "Registration failed.");
+      }
+    } catch (err: any) {
+      setAuthError(err.message || "Failed to create account.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Handle Custom Design Submit
+  const handleCustomDesignSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCustomDesignLoading(true);
+
+    try {
+      const res = await submitCustomDesignRequest(customDesignForm);
+      if (res.success) {
+        setCustomDesignSuccess(res);
+      } else {
+        alert(res.error || "Failed to submit request.");
+      }
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setCustomDesignLoading(false);
+    }
+  };
+
+  // Handle picture upload simulation / URL
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const urls: string[] = [];
+      Array.from(files).forEach(file => {
+        const url = URL.createObjectURL(file);
+        urls.push(url);
+      });
+      setCustomDesignForm(prev => ({
+        ...prev,
+        pictures: [...prev.pictures, ...urls]
+      }));
+    }
+  };
 
   // Quick order handler
   const handleQuickOrderAddAll = () => {
@@ -484,9 +702,11 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     }
   };
 
+  const activeCurrency = CURRENCIES.find(c => c.code === selectedCurrency) || CURRENCIES[0];
+
   return (
     <div className="r3-catalog-root">
-      {/* Toast */}
+      {/* Toast Notification */}
       <div className={`r3-toast ${toastMessage ? 'show' : ''}`}>
         {toastMessage}
       </div>
@@ -494,16 +714,19 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
       {/* Top Wholesale Strip */}
       <div className="r3-top-strip">
         <div className="r3-wrap r3-top-strip-inner">
-          <span>Wholesale only. Prices per piece, GST extra. Transit breakage on shipments sent by our courier is credited on your next order, with videos.</span>
-          <span>
-            <a href={`mailto:${company.email || R3_COMPANY_PROFILE.email}`}>{company.email || R3_COMPANY_PROFILE.email}</a>
-            &nbsp;·&nbsp;
-            <a href={`tel:${(company.mobile || R3_COMPANY_PROFILE.mobile).replace(/[^0-9+]/g, '')}`}>{company.mobile || R3_COMPANY_PROFILE.mobile}</a>
-          </span>
+          <span>Wholesale &amp; Export only. Prices per piece, GST extra. Transit breakage on shipments sent by our courier is credited on your next order, with videos.</span>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <span>Agra Factory Dispatch</span>
+            <span>
+              <a href={`mailto:${company.email || R3_COMPANY_PROFILE.email}`}>{company.email || R3_COMPANY_PROFILE.email}</a>
+              &nbsp;·&nbsp;
+              <a href={`tel:${(company.mobile || R3_COMPANY_PROFILE.mobile).replace(/[^0-9+]/g, '')}`}>{company.mobile || R3_COMPANY_PROFILE.mobile}</a>
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Header */}
+      {/* Main Header */}
       <header className="r3-header">
         <div className="r3-wrap r3-header-row">
           <button className="r3-logo" onClick={() => { setSelectedCategory("All"); setSelectedStockFilter("ALL"); setLikedOnly(false); }}>
@@ -511,6 +734,7 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
             <span>Borosilicate glassware manufacturer, Agra</span>
           </button>
 
+          {/* Search Form */}
           <form className="r3-search-form" onSubmit={(e) => { e.preventDefault(); }}>
             <input 
               type="search" 
@@ -521,7 +745,66 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
             <button type="submit">Search</button>
           </form>
 
+          {/* Header Actions */}
           <div className="r3-header-actions">
+            
+            {/* Country / Currency Switcher Dropdown */}
+            <div style={{ position: 'relative' }} ref={currencyRef}>
+              <button 
+                type="button"
+                className="r3-pill-btn"
+                onClick={() => setIsCurrencyDropdownOpen(!isCurrencyDropdownOpen)}
+                title="Switch currency & export view"
+              >
+                <span>{activeCurrency.flag}</span>
+                <span>{activeCurrency.code} ({activeCurrency.symbol})</span>
+                <ChevronDown size={12} />
+              </button>
+
+              {isCurrencyDropdownOpen && (
+                <div style={{
+                  position: 'absolute',
+                  top: '110%',
+                  right: 0,
+                  backgroundColor: '#ffffff',
+                  border: '1px solid var(--r3-rule)',
+                  borderRadius: '10px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  minWidth: '200px',
+                  zIndex: 60,
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '8px 12px', fontSize: '11.5px', fontWeight: 700, color: 'var(--r3-muted)', borderBottom: '1px solid var(--r3-rule)', backgroundColor: 'var(--r3-tint)' }}>
+                    SELECT CURRENCY &amp; MARKET
+                  </div>
+                  {CURRENCIES.map(c => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      onClick={() => { setSelectedCurrency(c.code); setIsCurrencyDropdownOpen(false); showToast(`Switched currency to ${c.label}`); }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        width: '100%',
+                        padding: '9px 12px',
+                        border: 0,
+                        background: selectedCurrency === c.code ? 'var(--r3-gold-soft)' : 'none',
+                        color: 'var(--r3-ink)',
+                        fontSize: '13px',
+                        fontWeight: selectedCurrency === c.code ? 700 : 500,
+                        cursor: 'pointer',
+                        textAlign: 'left'
+                      }}
+                    >
+                      <span>{c.flag} {c.label}</span>
+                      {selectedCurrency === c.code && <Check size={14} color="var(--r3-gold-ink)" />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <button className="r3-pill-btn" onClick={() => setIsTermsModalOpen(true)}>
               Trade terms
             </button>
@@ -541,6 +824,67 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
             <button className="r3-pill-btn" onClick={() => setIsQuickOrderModalOpen(true)}>
               Quick order
             </button>
+
+            {/* Customer Login / My Account Button */}
+            {customerSession.isLoggedIn ? (
+              <div style={{ position: 'relative' }} ref={userMenuRef}>
+                <button
+                  type="button"
+                  className="r3-pill-btn"
+                  style={{ backgroundColor: 'var(--r3-gold-soft)', borderColor: 'var(--r3-gold)', fontWeight: 700 }}
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                >
+                  <User size={13} />
+                  <span>{customerSession.customer?.businessName || customerSession.userName || "My Account"}</span>
+                  <ChevronDown size={12} />
+                </button>
+
+                {isUserMenuOpen && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '110%',
+                    right: 0,
+                    backgroundColor: '#ffffff',
+                    border: '1px solid var(--r3-rule)',
+                    borderRadius: '10px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    minWidth: '220px',
+                    zIndex: 60,
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--r3-rule)', backgroundColor: 'var(--r3-tint)' }}>
+                      <b style={{ display: 'block', fontSize: '13px' }}>{customerSession.customer?.businessName || customerSession.userName}</b>
+                      <span style={{ fontSize: '11.5px', color: 'var(--r3-muted)' }}>{customerSession.customer?.contactPerson}</span>
+                    </div>
+                    <Link
+                      href="/portal"
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', fontSize: '13px', color: 'var(--r3-ink)', textDecoration: 'none', borderBottom: '1px solid var(--r3-rule)' }}
+                    >
+                      <Package size={14} /> My Orders &amp; Invoices ({customerSession.customer?.orderCount || 0})
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => { signOut({ redirect: false }); setCustomerSession({ isLoggedIn: false }); setIsUserMenuOpen(false); showToast("Signed out successfully."); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', fontSize: '13px', color: 'var(--r3-warn)', border: 0, background: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                    >
+                      <LogOut size={14} /> Sign Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button 
+                type="button"
+                className="r3-pill-btn"
+                style={{ backgroundColor: 'var(--r3-ink)', color: 'var(--r3-glass)', borderColor: 'var(--r3-ink)', fontWeight: 600 }}
+                onClick={() => { setIsAuthModalOpen(true); setAuthTab("SIGN_IN"); }}
+              >
+                <LogIn size={13} />
+                <span>Client Login</span>
+              </button>
+            )}
+
+            {/* Cart Order Button */}
             <button className="r3-cart-btn" onClick={() => setIsDrawerOpen(true)}>
               <ShoppingBag size={15} />
               Order ({totalCartCount})
@@ -655,6 +999,7 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
               <span className="r3-card-sku">
                 {filteredProducts.length} {filteredProducts.length === 1 ? "product" : "products"}
                 {selectedStockFilter !== "ALL" ? ` · ${selectedStockFilter === "IN_STOCK" ? "In stock items" : "Made to order"}` : ""}
+                {selectedCurrency !== "INR" ? ` · Export FOB ${selectedCurrency} pricing active` : ""}
               </span>
             </div>
 
@@ -740,9 +1085,17 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
               const margin = calculateMargin(slab.rate, p.mrp);
               const isLiked = p.sku ? likedSkus.has(p.sku) : false;
               const inCartItem = cart[p.id];
-
-              // Allowed pack options (e.g. 2, 4, 6)
               const allowedPacks = (p as any).allowedPacks || [2, 4, 6];
+
+              // Multi-currency rates
+              let exportPriceDisplay = "";
+              if (selectedCurrency === "USD") {
+                exportPriceDisplay = `$${(p.exportPriceUsd || (p.sellingPrice / 75)).toFixed(2)} / pc FOB`;
+              } else if (selectedCurrency === "EUR") {
+                exportPriceDisplay = `€${(p.exportPriceEur || (p.sellingPrice / 80)).toFixed(2)} / pc FOB`;
+              } else if (selectedCurrency === "GBP") {
+                exportPriceDisplay = `£${(p.exportPriceGbp || (p.sellingPrice / 92)).toFixed(2)} / pc FOB`;
+              }
 
               return (
                 <div key={p.id} className="r3-card">
@@ -783,16 +1136,27 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                   <h3 onClick={() => setPdpProduct(p)}>{p.name}</h3>
                   <div className="r3-card-sku">SKU {p.sku} · {p.size || `${p.capacityMl || 350} ml`}</div>
 
-                  {/* Base Trade Rate */}
-                  <div className="r3-card-price">
-                    ₹{p.sellingPrice.toLocaleString("en-IN")}
-                    <small>/ piece + 18% GST</small>
-                  </div>
-
-                  {/* Suggested Retail Price & Margin */}
-                  <div className="r3-srpline">
-                    Suggested retail <b>₹{p.mrp.toLocaleString("en-IN")}</b> · <span className="mg">{margin.marginPct}% margin</span>
-                  </div>
+                  {/* Price display (INR vs Multi-Currency Export) */}
+                  {selectedCurrency === "INR" ? (
+                    <>
+                      <div className="r3-card-price">
+                        ₹{p.sellingPrice.toLocaleString("en-IN")}
+                        <small>/ piece + 18% GST</small>
+                      </div>
+                      <div className="r3-srpline">
+                        Suggested retail <b>₹{p.mrp.toLocaleString("en-IN")}</b> · <span className="mg">{margin.marginPct}% margin</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="r3-card-price" style={{ color: 'var(--r3-sea)' }}>
+                        {exportPriceDisplay}
+                      </div>
+                      <div className="r3-srpline">
+                        Carton: <b>{p.masterCartonQty || 24} pcs</b> · Export MOQ: <b>{p.moq || 100} pcs</b>
+                      </div>
+                    </>
+                  )}
 
                   {/* Quick-Add Section */}
                   <div className="r3-qa">
@@ -805,6 +1169,11 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                         const isSelectedSlab = currentQty >= s.min && currentQty <= s.max;
                         const isNotEnoughStock = isInStock && s.min > p.stockQuantity;
 
+                        let displayVal = `₹${slabRate.toFixed(0)}`;
+                        if (selectedCurrency === "USD") displayVal = `$${((p.exportPriceUsd || 4.2) * (1 - s.off)).toFixed(2)}`;
+                        if (selectedCurrency === "EUR") displayVal = `€${((p.exportPriceEur || 3.9) * (1 - s.off)).toFixed(2)}`;
+                        if (selectedCurrency === "GBP") displayVal = `£${((p.exportPriceGbp || 3.3) * (1 - s.off)).toFixed(2)}`;
+
                         return (
                           <div 
                             key={idx} 
@@ -812,7 +1181,7 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                             title={isNotEnoughStock ? "Not enough ready stock for this slab" : `${s.label} pieces`}
                           >
                             <span>{s.label}</span>
-                            <b>₹{slabRate.toFixed(0)}</b>
+                            <b>{displayVal}</b>
                           </div>
                         );
                       })}
@@ -1098,6 +1467,234 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
         )}
       </aside>
 
+      {/* Customer Login & Registration Modal */}
+      {isAuthModalOpen && (
+        <div className="r3-modal-overlay" onClick={() => setIsAuthModalOpen(false)}>
+          <div className="r3-pdp-modal" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <h2>{authTab === "SIGN_IN" ? "Client Portal Login" : "Register Wholesale Client Profile"}</h2>
+              <button style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => setIsAuthModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '2px solid var(--r3-rule)', marginBottom: '16px' }}>
+              <button
+                type="button"
+                onClick={() => { setAuthTab("SIGN_IN"); setAuthError(""); }}
+                style={{
+                  padding: '10px',
+                  background: 'none',
+                  border: 0,
+                  borderBottom: authTab === "SIGN_IN" ? '3px solid var(--r3-gold)' : 'none',
+                  fontWeight: authTab === "SIGN_IN" ? 700 : 500,
+                  color: authTab === "SIGN_IN" ? 'var(--r3-ink)' : 'var(--r3-muted)',
+                  cursor: 'pointer'
+                }}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthTab("REGISTER"); setAuthError(""); }}
+                style={{
+                  padding: '10px',
+                  background: 'none',
+                  border: 0,
+                  borderBottom: authTab === "REGISTER" ? '3px solid var(--r3-gold)' : 'none',
+                  fontWeight: authTab === "REGISTER" ? 700 : 500,
+                  color: authTab === "REGISTER" ? 'var(--r3-ink)' : 'var(--r3-muted)',
+                  cursor: 'pointer'
+                }}
+              >
+                Create Account
+              </button>
+            </div>
+
+            {authError && (
+              <div style={{ backgroundColor: '#fff1f2', border: '1px solid #fecdd3', color: '#e11d48', padding: '10px 12px', borderRadius: '8px', fontSize: '13px', marginBottom: '14px' }}>
+                {authError}
+              </div>
+            )}
+
+            {authTab === "SIGN_IN" ? (
+              <form onSubmit={handleSignIn} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: '13px', fontWeight: 600 }}>
+                  Mobile Number or Email
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. 9876543210 or sales@mycompany.com"
+                    value={loginIdentifier}
+                    onChange={(e) => setLoginIdentifier(e.target.value)}
+                    style={{ padding: '9px 12px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: '13px', fontWeight: 600 }}>
+                  Password
+                  <div style={{ position: 'relative', marginTop: '4px' }}>
+                    <input
+                      required
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      style={{ width: '100%', padding: '9px 36px 9px 12px', borderRadius: '7px', border: '1px solid var(--r3-rule)' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 0, cursor: 'pointer', color: 'var(--r3-muted)' }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="r3-btn primary"
+                  style={{ marginTop: '8px', padding: '11px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+                >
+                  {authLoading ? <Loader2 size={16} className="animate-spin" /> : "Sign In to Client Portal"}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflowY: 'auto' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                    Business / Hotel Name *
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Blue Tokai Roasters"
+                      value={regForm.businessName}
+                      onChange={(e) => setRegForm({ ...regForm, businessName: e.target.value })}
+                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                    Contact Person *
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. Vikram Sharma"
+                      value={regForm.contactPerson}
+                      onChange={(e) => setRegForm({ ...regForm, contactPerson: e.target.value })}
+                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                    WhatsApp Mobile *
+                    <input
+                      required
+                      type="tel"
+                      placeholder="9876543210"
+                      value={regForm.mobile}
+                      onChange={(e) => setRegForm({ ...regForm, mobile: e.target.value })}
+                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                    Email (Optional)
+                    <input
+                      type="email"
+                      placeholder="procurement@company.com"
+                      value={regForm.email}
+                      onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
+                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                    />
+                  </label>
+                </div>
+
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                  Create Password *
+                  <input
+                    required
+                    type="password"
+                    placeholder="••••••••"
+                    value={regForm.password}
+                    onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
+                    style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                  />
+                </label>
+
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                  Delivery Address *
+                  <input
+                    required
+                    type="text"
+                    placeholder="Street, Industrial Area"
+                    value={regForm.shippingAddress}
+                    onChange={(e) => setRegForm({ ...regForm, shippingAddress: e.target.value })}
+                    style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                  />
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', fontWeight: 600 }}>
+                    City *
+                    <input
+                      required
+                      type="text"
+                      value={regForm.city}
+                      onChange={(e) => setRegForm({ ...regForm, city: e.target.value })}
+                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', fontWeight: 600 }}>
+                    State *
+                    <input
+                      required
+                      type="text"
+                      value={regForm.state}
+                      onChange={(e) => setRegForm({ ...regForm, state: e.target.value })}
+                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                    />
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', fontWeight: 600 }}>
+                    Pincode *
+                    <input
+                      required
+                      type="text"
+                      value={regForm.pincode}
+                      onChange={(e) => setRegForm({ ...regForm, pincode: e.target.value })}
+                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                    />
+                  </label>
+                </div>
+
+                <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                  GSTIN (Optional)
+                  <input
+                    type="text"
+                    placeholder="09AAACR3333E1Z9"
+                    value={regForm.gstin}
+                    onChange={(e) => setRegForm({ ...regForm, gstin: e.target.value.toUpperCase() })}
+                    style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                  />
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="r3-btn primary"
+                  style={{ marginTop: '6px', padding: '10px' }}
+                >
+                  {authLoading ? <Loader2 size={16} className="animate-spin" /> : "Create Account & Sign In"}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Interactive PDP Modal */}
       {pdpProduct && (
         <div className="r3-modal-overlay" onClick={() => setPdpProduct(null)}>
@@ -1119,7 +1716,7 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                   )}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--r3-muted)', marginTop: '8px', textAlign: 'center' }}>
-                  Made in Agra, India · Pure Borosilicate Glass
+                  Made in Agra, India · Pure High Borosilicate Glass
                 </div>
               </div>
 
@@ -1351,37 +1948,221 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
 
       {/* Custom Design Request Modal */}
       {isCustomDesignModalOpen && (
-        <div className="r3-modal-overlay" onClick={() => setIsCustomDesignModalOpen(false)}>
-          <div className="r3-pdp-modal" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="r3-modal-overlay" onClick={() => { setIsCustomDesignModalOpen(false); setCustomDesignSuccess(null); }}>
+          <div className="r3-pdp-modal" style={{ maxWidth: '820px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <h2>Submit Custom Glassware Design Request</h2>
-              <button style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => setIsCustomDesignModalOpen(false)}>
+              <h2>Have a design in mind? Show us.</h2>
+              <button style={{ background: 'none', border: 0, cursor: 'pointer' }} onClick={() => { setIsCustomDesignModalOpen(false); setCustomDesignSuccess(null); }}>
                 <X size={20} />
               </button>
             </div>
-            <p style={{ color: 'var(--r3-muted)', fontSize: '13.5px', marginTop: '-6px', marginBottom: '14px' }}>
-              Upload pictures of the design, sketch, reference product, or logo you want made in Agra. Customised designs start at 100–500 pcs per SKU.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <input type="text" placeholder="Your Name &amp; Company" style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)' }} />
-              <input type="tel" placeholder="WhatsApp / Phone Number" style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)' }} />
-              <textarea placeholder="Describe your design (e.g. 350ml ribbed glass with gold rim and cafe logo, 200 pcs)" rows={3} style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)' }} />
-              <div style={{ border: '2px dashed var(--r3-rule)', padding: '20px', borderRadius: '10px', textAlign: 'center', cursor: 'pointer', background: 'var(--r3-tint)' }}>
-                <Upload size={24} style={{ opacity: 0.5, margin: '0 auto 6px' }} />
-                <div style={{ fontSize: '13px', fontWeight: 600 }}>Tap or drag design photos here</div>
-                <div style={{ fontSize: '11px', color: 'var(--r3-muted)' }}>JPG, PNG, PDF up to 15MB</div>
+
+            {customDesignSuccess ? (
+              <div style={{ textAlign: 'center', padding: '30px 10px' }}>
+                <CheckCircle2 size={54} color="var(--r3-ok)" style={{ margin: '0 auto 12px' }} />
+                <h3 style={{ fontSize: '22px', marginBottom: '8px' }}>Design Request Submitted!</h3>
+                <p style={{ color: 'var(--r3-muted)', fontSize: '14px', maxWidth: '480px', margin: '0 auto 18px' }}>
+                  {customDesignSuccess.message}
+                </p>
+
+                <div style={{ background: 'var(--r3-tint)', padding: '14px', borderRadius: '10px', maxWidth: '420px', margin: '0 auto 20px', textAlign: 'left' }}>
+                  <div><strong>Reference Number:</strong> {customDesignSuccess.referenceNumber}</div>
+                  <div><strong>Saved to ERP:</strong> Enquiries &amp; Leads Desk</div>
+                  <div><strong>Response Time:</strong> Within 2–4 hours</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  {customDesignSuccess.whatsAppUrl && (
+                    <a
+                      href={customDesignSuccess.whatsAppUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="r3-btn primary"
+                    >
+                      <MessageCircle size={16} />
+                      Send Photos on WhatsApp
+                    </a>
+                  )}
+                  <button className="r3-btn" onClick={() => { setIsCustomDesignModalOpen(false); setCustomDesignSuccess(null); }}>
+                    Close
+                  </button>
+                </div>
               </div>
-              <button 
-                className="r3-btn primary" 
-                style={{ marginTop: '8px' }}
-                onClick={() => {
-                  alert("Design request sent! Our Agra factory team will connect on WhatsApp within 2 hours.");
-                  setIsCustomDesignModalOpen(false);
-                }}
-              >
-                Submit Custom Design Request
-              </button>
-            </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '24px', alignItems: 'start' }}>
+                <form onSubmit={handleCustomDesignSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  
+                  {/* Request Type Chips */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>What do you need? *</label>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {["New custom design", "Change existing design", "Logo branding", "Special packaging", "Other"].map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          className={`r3-tag-chip-btn ${customDesignForm.requestType === t ? 'active' : ''}`}
+                          onClick={() => setCustomDesignForm({ ...customDesignForm, requestType: t })}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* SKU Selector (Optional) */}
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '13px', fontWeight: 600 }}>
+                    Based on one of our catalogue products? (Optional)
+                    <select
+                      value={customDesignForm.sku}
+                      onChange={(e) => setCustomDesignForm({ ...customDesignForm, sku: e.target.value })}
+                      style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
+                    >
+                      <option value="">None (Entirely new design)</option>
+                      {initialProducts.map(p => (
+                        <option key={p.id} value={p.sku || p.name}>{p.name} ({p.sku})</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {/* Description */}
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '13px', fontWeight: 600 }}>
+                    Describe your design or requirements *
+                    <textarea
+                      required
+                      rows={3}
+                      maxLength={2000}
+                      placeholder="e.g. 350ml double-wall tumbler with our cafe logo baked in gold rim, 300 pcs, amber tint"
+                      value={customDesignForm.description}
+                      onChange={(e) => setCustomDesignForm({ ...customDesignForm, description: e.target.value })}
+                      style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '4px', fontFamily: 'inherit' }}
+                    />
+                  </label>
+
+                  {/* Pictures Upload */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>
+                      Pictures of the design / logo (Optional, up to 5)
+                    </label>
+                    <label style={{
+                      border: '2px dashed var(--r3-rule)',
+                      borderRadius: '10px',
+                      padding: '16px',
+                      display: 'block',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      background: 'var(--r3-tint)'
+                    }}>
+                      <Upload size={22} style={{ margin: '0 auto 4px', opacity: 0.6 }} />
+                      <div style={{ fontSize: '13px', fontWeight: 600 }}>Tap or drag photos here</div>
+                      <div style={{ fontSize: '11px', color: 'var(--r3-muted)' }}>Photos, sketches, logo files in JPG, PNG, PDF up to 15MB</div>
+                      <input type="file" multiple accept="image/*,application/pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
+                    </label>
+
+                    {customDesignForm.pictures.length > 0 && (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px' }}>
+                        {customDesignForm.pictures.map((pic, idx) => (
+                          <div key={idx} style={{ width: '56px', height: '56px', borderRadius: '6px', overflow: 'hidden', position: 'relative', border: '1px solid var(--r3-rule)' }}>
+                            <img src={pic} alt="Upload preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <button
+                              type="button"
+                              onClick={() => setCustomDesignForm(prev => ({ ...prev, pictures: prev.pictures.filter((_, i) => i !== idx) }))}
+                              style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 0, borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quantity Chips */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>Expected quantity band *</label>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {["100–249 pcs", "250–499 pcs", "500–999 pcs", "1,000+ pcs"].map(q => (
+                        <button
+                          key={q}
+                          type="button"
+                          className={`r3-tag-chip-btn ${customDesignForm.expectedQty === q ? 'active' : ''}`}
+                          onClick={() => setCustomDesignForm({ ...customDesignForm, expectedQty: q })}
+                        >
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Contact Fields */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Your Name *"
+                      value={customDesignForm.name}
+                      onChange={(e) => setCustomDesignForm({ ...customDesignForm, name: e.target.value })}
+                      style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)' }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Company / Brand"
+                      value={customDesignForm.company}
+                      onChange={(e) => setCustomDesignForm({ ...customDesignForm, company: e.target.value })}
+                      style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <input
+                      required
+                      type="tel"
+                      placeholder="WhatsApp / Phone Number *"
+                      value={customDesignForm.mobile}
+                      onChange={(e) => setCustomDesignForm({ ...customDesignForm, mobile: e.target.value })}
+                      style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)' }}
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email Address"
+                      value={customDesignForm.email}
+                      onChange={(e) => setCustomDesignForm({ ...customDesignForm, email: e.target.value })}
+                      style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--r3-rule)' }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={customDesignLoading}
+                    className="r3-btn primary"
+                    style={{ marginTop: '6px', padding: '11px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+                  >
+                    {customDesignLoading ? <Loader2 size={16} className="animate-spin" /> : "Send Design Request to Agra Factory"}
+                  </button>
+                </form>
+
+                {/* Right Side Info Box */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ background: 'var(--r3-tint)', padding: '16px', borderRadius: '12px', border: '1px solid var(--r3-rule)' }}>
+                    <h3 style={{ fontSize: '15.5px', marginBottom: '8px' }}>How it works</h3>
+                    <ol style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', lineHeight: 1.55, color: 'var(--r3-ink)' }}>
+                      <li>Upload pictures and describe what you need.</li>
+                      <li>Our Agra factory team reviews feasibility and mould requirements.</li>
+                      <li>You get a quote with MOQ, piece rate and lead time on WhatsApp.</li>
+                      <li>Confirm with a 30% advance; production takes 20–30 days.</li>
+                    </ol>
+                  </div>
+
+                  <div style={{ background: 'var(--r3-gold-soft)', padding: '16px', borderRadius: '12px', border: '1px solid var(--r3-gold)' }}>
+                    <h3 style={{ fontSize: '15.5px', marginBottom: '8px' }}>Good to know</h3>
+                    <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '13px', lineHeight: 1.55, color: 'var(--r3-ink)' }}>
+                      <li>Customised designs: 100–500 pcs MOQ per design.</li>
+                      <li>Logo ceramic baked decals: +₹30 per piece.</li>
+                      <li>Packaging in 2, 4 or 6-piece gift boxes.</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1487,11 +2268,19 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
             <button onClick={() => setIsTermsModalOpen(true)}>Payment schedule (30/70)</button>
           </div>
           <div>
-            <h3>Company</h3>
-            <p>About R3 Exports</p>
-            <p>Export enquiries (FOB Agra / Mumbai)</p>
-            <p>Catalogue PDF download</p>
-            <Link href="/login" style={{ color: 'var(--r3-gold)', display: 'block', marginTop: '10px', fontWeight: 600 }}>ERP Portal Sign In →</Link>
+            <h3>Client Account</h3>
+            {customerSession.isLoggedIn ? (
+              <>
+                <p>Logged in as: <strong>{customerSession.customer?.businessName || customerSession.userName}</strong></p>
+                <Link href="/portal" style={{ color: 'var(--r3-gold)', display: 'block', marginTop: '6px', fontWeight: 600 }}>Open Client Portal Dashboard →</Link>
+              </>
+            ) : (
+              <>
+                <button onClick={() => { setIsAuthModalOpen(true); setAuthTab("SIGN_IN"); }} style={{ color: 'var(--r3-gold)', fontWeight: 600 }}>Client Sign In →</button>
+                <button onClick={() => { setIsAuthModalOpen(true); setAuthTab("REGISTER"); }}>Register Wholesale Profile</button>
+              </>
+            )}
+            <Link href="/login" style={{ color: '#94a3b8', display: 'block', marginTop: '10px', fontSize: '12px' }}>Staff ERP Login →</Link>
           </div>
         </div>
       </footer>

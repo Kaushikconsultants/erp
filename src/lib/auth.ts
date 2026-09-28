@@ -55,20 +55,30 @@ export const authOptions: NextAuthOptions = {
         }
 
         const inputEmail = credentials.email.trim();
+        const cleanMobile = inputEmail.replace(/[^0-9]/g, "");
         let user: any = null;
 
         try {
           user = await prisma.user.findFirst({
             where: { 
-              email: { equals: inputEmail, mode: 'insensitive' }
+              OR: [
+                { email: { equals: inputEmail, mode: 'insensitive' } },
+                ...(cleanMobile.length >= 10 ? [{ customerProfile: { mobile: cleanMobile } }] : []),
+                ...(cleanMobile.length >= 10 ? [{ email: `${cleanMobile}@customer.r3exports.com` }] : [])
+              ]
             },
-            include: { organization: true }
+            include: { organization: true, customerProfile: true }
           });
         } catch (dbErr) {
           console.error("Database user query error in authorize:", dbErr);
           try {
             user = await prisma.user.findFirst({
-              where: { email: { equals: inputEmail, mode: 'insensitive' } }
+              where: { 
+                OR: [
+                  { email: { equals: inputEmail, mode: 'insensitive' } },
+                  ...(cleanMobile.length >= 10 ? [{ email: `${cleanMobile}@customer.r3exports.com` }] : [])
+                ]
+              }
             });
           } catch (fallbackErr) {
             console.error("Fallback query also failed:", fallbackErr);
