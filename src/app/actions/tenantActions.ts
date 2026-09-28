@@ -898,7 +898,9 @@ export async function deleteSisterOrganization(organizationId: string) {
   }
 }
 
-export const deleteTenantByAdmin = deleteSisterOrganization;
+export async function deleteTenantByAdmin(organizationId: string) {
+  return deleteSisterOrganization(organizationId);
+}
 
 /**
  * Fetch all organizations in the group for switcher and multi-entity administration

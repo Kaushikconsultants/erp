@@ -5,7 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 import { getTenantAIClient } from "@/lib/gemini";
-import { formatTranscriptWithNames } from "@/lib/transcriptUtils";
+import { formatTranscriptWithNames, CRM_OUTCOMES } from "@/lib/transcriptUtils";
 import { revalidatePath } from "next/cache";
 
 
@@ -45,19 +45,6 @@ export interface AnalyzeDebriefPayload {
     isOldCustomer?: boolean;
   };
 }
-
-export const CRM_OUTCOMES = [
-  "Interested / Follow-up Needed",
-  "Order Placed / Deal Closed",
-  "Quotation Requested",
-  "Price Negotiation / Discount Discussion",
-  "No Answer / Busy",
-  "Voicemail / Switched Off",
-  "Callback Scheduled",
-  "Not Interested / Lost",
-  "Wrong / Invalid Number",
-  "Support / General Inquiry"
-];
 
 /**
  * AI Voice Debrief Analyzer

@@ -23,6 +23,19 @@ export interface ParsedTranscriptResult {
   effectiveCustomer: string;
 }
 
+export const CRM_OUTCOMES = [
+  "Interested / Follow-up Needed",
+  "Order Placed / Deal Closed",
+  "Quotation Requested",
+  "Price Negotiation / Discount Discussion",
+  "No Answer / Busy",
+  "Voicemail / Switched Off",
+  "Callback Scheduled",
+  "Not Interested / Lost",
+  "Wrong / Invalid Number",
+  "Support / General Inquiry"
+];
+
 /**
  * Checks if the speakers in a parsed transcript dialogue are inverted
  * (e.g. Sales person speech labeled as Customer, or Customer speech labeled as Sales Rep).
