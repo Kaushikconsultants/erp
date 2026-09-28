@@ -1,9 +1,12 @@
+import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { formatTranscriptWithNames } from "@/lib/transcriptUtils";
 import { getTenantAIClient } from "@/lib/gemini";
+import { CRM_OUTCOMES } from "@/app/actions/callAiActions";
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);

@@ -457,8 +457,8 @@ export default function AddLeadButton({ employees, organizationId, isAdmin }: { 
         <DataImportWizardModal
           isOpen={isImportOpen}
           onClose={() => setIsImportOpen(false)}
-          entityType="leads"
-          onImportComplete={() => {
+          defaultEntityType="LEADS"
+          onSuccess={() => {
             setIsImportOpen(false);
             router.refresh();
           }}

@@ -270,42 +270,61 @@ export async function submitCustomDesignRequest(params: {
       where: {
         OR: [
           { slug: "r3-exports" },
+          { slug: "tinkal-erp" },
           { name: { contains: "R3", mode: "insensitive" } }
         ]
       }
     }) || await prisma.organization.findFirst();
 
-    const organizationId = org?.id;
+    const organizationId = org?.id || null;
 
     // 2. Generate a reference number
     const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, "");
     const randomPart = Math.floor(1000 + Math.random() * 9000);
     const referenceNumber = `CR-${datePart}-${randomPart}`;
 
-    // 3. Save as a Lead in ERP with Custom Design Request details
-    let lead: any = null;
-    if (organizationId) {
-      lead = await prisma.lead.create({
-        data: {
-          organizationId,
-          name: `${name.trim()} (${company?.trim() || 'Custom Glassware Design'})`,
-          whatsappNumber: cleanMobile,
-          email: email?.trim() || null,
-          shopName: company?.trim() || name.trim(),
-          buyerType: "Custom Design / Bespoke Glassware",
-          status: "New",
-          notes: `🎨 [CUSTOM DESIGN REQUEST #${referenceNumber}]\n` +
-                 `• Type: ${requestType || 'New Custom Design'}\n` +
-                 `• Reference SKU: ${sku || 'None'}\n` +
-                 `• Expected Quantity: ${expectedQty || '100–500 pcs'}\n` +
-                 `• Required Timeline: ${timeline || 'Within 1 month'}\n` +
-                 `• Design Details: ${description}\n` +
-                 `• Uploaded Reference Pictures (${pictures.length}):\n${pictures.join('\n')}`
-        }
+    // 3. Save as a Lead in ERP with Custom Design Request details (Always create lead)
+    const formattedNotes = `🎨 [CUSTOM DESIGN REQUEST #${referenceNumber}]\n` +
+      `• Type: ${requestType || 'New Custom Design'}\n` +
+      `• Reference SKU: ${sku || 'None'}\n` +
+      `• Expected Quantity: ${expectedQty || '100–500 pcs'}\n` +
+      `• Required Timeline: ${timeline || 'Within 1 month'}\n` +
+      `• Design Details: ${description}\n` +
+      (pictures.length > 0 ? `• Uploaded Reference Pictures (${pictures.length}):\n${pictures.join('\n')}` : '');
+
+    const lead = await prisma.lead.create({
+      data: {
+        organizationId: organizationId || null,
+        name: `${name.trim()} (${company?.trim() || 'Custom Glassware'})`,
+        whatsappNumber: cleanMobile,
+        email: email?.trim() || null,
+        shopName: company?.trim() || name.trim(),
+        buyerType: "Custom Design / Bespoke Glassware",
+        status: "New",
+        isInternational: false,
+        country: "India",
+        currency: "INR",
+        targetCapacity: `${expectedQty || '100–500 pcs'} • ${requestType || 'Custom Design'}`,
+        notes: formattedNotes
+      }
+    });
+
+    // 4. Send Push Notification to ERP Staff
+    try {
+      const { notifyNewLead } = await import("@/lib/pushNotifications");
+      await notifyNewLead({
+        leadId: lead.id,
+        name: lead.name,
+        shopName: lead.shopName,
+        whatsappNumber: cleanMobile,
+        source: "Storefront Custom Design",
+        organizationId: organizationId || undefined
       });
+    } catch (pushErr) {
+      console.warn("Push notification skipped:", pushErr);
     }
 
-    // 4. Generate WhatsApp notification message
+    // 5. Generate WhatsApp notification message
     const factoryPhone = (org?.phone || "919958173594").replace(/[^0-9]/g, "");
     let waMsg = `*🎨 NEW CUSTOM GLASSWARE DESIGN REQUEST (#${referenceNumber})*\n\n`;
     waMsg += `*Client:* ${name} ${company ? `(${company})` : ''}\n`;
@@ -329,10 +348,12 @@ export async function submitCustomDesignRequest(params: {
 
     try {
       revalidatePath("/leads");
+      revalidatePath("/(dashboard)/leads");
     } catch {}
 
     return {
       success: true,
+      leadId: lead.id,
       referenceNumber,
       whatsAppUrl,
       message: `Your design request #${referenceNumber} has been submitted! Our Agra design engineering team will review it and connect on WhatsApp.`
@@ -382,5 +403,83 @@ export async function acceptQuotationFromPortal(quotationId: string) {
     return { success: true, quotation: updated };
   } catch (error: any) {
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Automatically create or link Portal User credentials for a Customer/Lead
+ */
+export async function createOrLinkPortalUserForCustomer(params: {
+  customerId: string;
+  organizationId?: string | null;
+  mobile: string;
+  email?: string | null;
+  name: string;
+  customPassword?: string;
+}) {
+  try {
+    const { customerId, organizationId, mobile, email, name, customPassword } = params;
+    const cleanMobile = (mobile || "").replace(/\D/g, "");
+    
+    // Auto-generate password if not provided (e.g. R3@8921)
+    const lastDigits = cleanMobile.length >= 4 ? cleanMobile.slice(-4) : "8921";
+    const generatedPassword = customPassword?.trim() || `R3@${lastDigits}`;
+    const accountEmail = email?.trim() ? email.trim().toLowerCase() : (cleanMobile ? `${cleanMobile}@customer.r3exports.com` : `client_${customerId.slice(-6)}@customer.r3exports.com`);
+
+    // Check if user already exists
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: accountEmail },
+          ...(cleanMobile.length >= 10 ? [{ email: `${cleanMobile}@customer.r3exports.com` }] : []),
+          ...(cleanMobile.length >= 10 ? [{ customerProfile: { mobile: cleanMobile } }] : [])
+        ]
+      }
+    });
+
+    const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+
+    if (user) {
+      // Update password & ensure role is PORTAL_USER (preserve admin if staff)
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          plainPassword: generatedPassword,
+          role: user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? user.role : "PORTAL_USER",
+          isActive: true
+        }
+      });
+    } else {
+      // Create new portal user
+      user = await prisma.user.create({
+        data: {
+          organizationId: organizationId || null,
+          name: name || "Valued Client",
+          email: accountEmail,
+          password: hashedPassword,
+          plainPassword: generatedPassword,
+          role: "PORTAL_USER",
+          isActive: true
+        }
+      });
+    }
+
+    // Link customer to portal user
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: { portalUserId: user.id }
+    });
+
+    return {
+      success: true,
+      portalUserId: user.id,
+      loginId: cleanMobile || email || accountEmail,
+      password: generatedPassword,
+      name: name
+    };
+  } catch (err: any) {
+    console.error("Error creating portal user for customer:", err);
+    return { success: false, error: err.message };
   }
 }

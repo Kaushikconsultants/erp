@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getTenantOrgId } from "@/lib/tenant";
 import { getTenantAIClient } from "@/lib/gemini";
+import { formatTranscriptWithNames } from "@/lib/transcriptUtils";
 import { revalidatePath } from "next/cache";
 
 
@@ -45,7 +46,7 @@ export interface AnalyzeDebriefPayload {
   };
 }
 
-const CRM_OUTCOMES = [
+export const CRM_OUTCOMES = [
   "Interested / Follow-up Needed",
   "Order Placed / Deal Closed",
   "Quotation Requested",
@@ -164,15 +165,21 @@ export async function analyzeCallVoiceDebrief(
     const todayStr = today.toISOString().split("T")[0];
     const dayOfWeek = today.toLocaleDateString("en-US", { weekday: "long" });
 
+    let orgId: string | null = null;
+    try {
+      orgId = await getTenantOrgId().catch(() => null);
+    } catch {}
+
+    const { isConfigured } = await getTenantAIClient(orgId);
+
     // Fallback parser if API key is not configured
-    if (!getGeminiApiKey()) {
+    if (!isConfigured && !process.env.GEMINI_API_KEY) {
       const fallbackAnalysis = generateFallbackDebrief(rawText, today, repName, resolvedCustomerName, isOldCustomer);
       return { success: true, analysis: fallbackAnalysis };
     }
 
-    let companyName = "Espon Clothing Private Limited";
+    let companyName = "R3 Exports";
     try {
-      const orgId = await getTenantOrgId().catch(() => null);
       if (orgId) {
         const cSettings = await prisma.companySettings.findFirst({
           where: { OR: [{ organizationId: orgId }, { id: `settings-${orgId}` }] },
@@ -285,8 +292,7 @@ Output strict JSON only conforming to the schema:
       contents = `${systemPrompt}\n\nSpoken Debrief Voice Text:\n"${rawText}"`;
     }
 
-    const orgId = await getTenantOrgId().catch(() => null);
-    const { ai, isConfigured, model: preferredModel } = await getTenantAIClient(orgId);
+    const { ai, model: preferredModel } = await getTenantAIClient(orgId);
 
     const candidateModels = [
       preferredModel,

@@ -1329,7 +1329,7 @@ function PhoneDialerModalContent({
           }
         } else {
           // Outgoing calls <= 25s without native recording are unanswered ring, busy signal, or IVR
-          const isConnectedCall = (finalDur > 25) || hasValidRecording;
+          const isConnectedCall = (finalDur > 25) || Boolean(recordingUrl);
           if (isConnectedCall) {
             setCallDurationSec(finalDur);
             setCallStatus("Completed");

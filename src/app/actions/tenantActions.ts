@@ -869,14 +869,13 @@ export async function deleteSisterOrganization(organizationId: string) {
       await tx.subscriptionInvoice.deleteMany({ where: { organizationId } }).catch(() => {});
       await tx.subscriptionHistory.deleteMany({ where: { organizationId } }).catch(() => {});
       await tx.attendance.deleteMany({ where: { employee: { organizationId } } }).catch(() => {});
-      await tx.task.deleteMany({ where: { organizationId } }).catch(() => {});
+      await tx.task.deleteMany({ where: { creator: { organizationId } } }).catch(() => {});
       await tx.call.deleteMany({ where: { employee: { organizationId } } }).catch(() => {});
       await tx.followUp.deleteMany({ where: { employee: { organizationId } } }).catch(() => {});
       await tx.quotationItem.deleteMany({ where: { quotation: { organizationId } } }).catch(() => {});
       await tx.quotation.deleteMany({ where: { organizationId } }).catch(() => {});
       await tx.proformaInvoiceItem.deleteMany({ where: { proformaInvoice: { organizationId } } }).catch(() => {});
       await tx.proformaInvoice.deleteMany({ where: { organizationId } }).catch(() => {});
-      await tx.invoiceItem.deleteMany({ where: { invoice: { organizationId } } }).catch(() => {});
       await tx.invoice.deleteMany({ where: { organizationId } }).catch(() => {});
       await tx.orderItem.deleteMany({ where: { order: { organizationId } } }).catch(() => {});
       await tx.order.deleteMany({ where: { organizationId } }).catch(() => {});

@@ -16,7 +16,13 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
   const { organizationId, isAdmin } = await getTenantScope();
 
   const lead = await prisma.lead.findFirst({
-    where: { id, organizationId },
+    where: organizationId && organizationId !== "UNAUTHENTICATED" ? {
+      id,
+      OR: [
+        { organizationId },
+        { organizationId: null }
+      ]
+    } : { id },
     include: {
       assignedSalesperson: {
         include: { user: true }

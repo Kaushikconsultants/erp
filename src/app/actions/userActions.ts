@@ -97,7 +97,7 @@ export async function createUser(formData: FormData) {
 
     const quotaCheck = await checkTenantQuota(organizationId, 'USERS');
     if (!quotaCheck.allowed) {
-      return { error: quotaCheck.error };
+      return { error: "User limit reached for current organization plan." };
     }
 
     const existingUser = await prisma.user.findUnique({

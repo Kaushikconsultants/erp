@@ -6,7 +6,7 @@ import { convertLeadToCustomer } from "@/actions/leads";
 import { checkDuplicateEntity } from "@/app/actions/duplicateActions";
 import DuplicateWarningBanner, { DuplicateEntityInfo } from "@/components/ui/DuplicateWarningBanner";
 import { lookupPostalCode } from "@/lib/postalLookup";
-import { UserPlus, Sparkles, CheckCircle2, Loader2, Landmark, Globe, Building2, Anchor } from "lucide-react";
+import { UserPlus, Sparkles, CheckCircle2, Loader2, Landmark, Globe, Building2, Anchor, Copy, Check, MessageCircle, Key, ShieldCheck } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import "@/components/ui/modal.css"; 
 
@@ -90,6 +90,11 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     entity: DuplicateEntityInfo;
   } | null>(null);
   const duplicateTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-Generated Client Portal Credentials State
+  const [createdCredentials, setCreatedCredentials] = useState<{ loginId: string; password: string; name: string } | null>(null);
+  const [createdCustomer, setCreatedCustomer] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleToggleInternational = (intl: boolean) => {
     setIsInternational(intl);
@@ -335,7 +340,10 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
       result = await convertLeadToCustomer(leadToConvert.id, customerData);
       
       if (result.success) {
-        result = { customer: result.data };
+        result = { 
+          customer: result.data,
+          portalCredentials: result.portalCredentials
+        };
       }
     } else {
       result = await createCustomer(formData);
@@ -344,12 +352,132 @@ export default function AddCustomerModal({ onClose, employees = [], zIndex = 100
     if (result?.error) {
       setError(result.error);
       setLoading(false);
+    } else if (result?.portalCredentials) {
+      setCreatedCustomer(result.customer || result.data);
+      setCreatedCredentials(result.portalCredentials);
+      setLoading(false);
     } else {
-      onClose(result.customer);
+      onClose(result.customer || result.data);
     }
   };
 
   const currSymbol = CURRENCIES.find(c => c.code === currency)?.symbol || (isInternational ? "$" : "₹");
+
+  if (createdCredentials) {
+    const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/portal` : 'https://r3exports.com/portal';
+    const waText = `Hi ${createdCredentials.name},\n\nWelcome to R3 Exports! Your B2B Wholesale Portal account is active.\n\n🔗 *Login Portal:* ${loginUrl}\n👤 *Login ID:* ${createdCredentials.loginId}\n🔑 *Password:* ${createdCredentials.password}\n\nYou can log in anytime to view wholesale pricing, place orders, download GST invoices, and track factory shipments.`;
+    const cleanNum = phone.replace(/[^0-9]/g, "");
+    const waUrl = `https://wa.me/${cleanNum}?text=${encodeURIComponent(waText)}`;
+
+    const handleCopy = () => {
+      navigator.clipboard.writeText(`R3 Exports B2B Portal Login\nURL: ${loginUrl}\nLogin ID: ${createdCredentials.loginId}\nPassword: ${createdCredentials.password}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+      <div className="modal-backdrop" style={{ zIndex }}>
+        <div className="modal-content animate-in" style={{ maxWidth: '520px', backgroundColor: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', padding: '28px', textAlign: 'center', zIndex: zIndex + 1 }}>
+          <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <ShieldCheck size={32} />
+          </div>
+          
+          <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#0f172a', marginBottom: '6px' }}>
+            Customer &amp; Portal Account Created!
+          </h2>
+          <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '20px' }}>
+            Wholesale profile for <strong>{createdCredentials.name}</strong> is live. Portal login credentials have been generated:
+          </p>
+
+          {/* Credentials Box */}
+          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', textAlign: 'left', marginBottom: '20px', fontSize: '0.88rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: '#64748b' }}>Portal URL:</span>
+              <strong style={{ color: '#2563eb' }}>{loginUrl}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: '#64748b' }}>Login ID (Mobile/Email):</span>
+              <strong style={{ color: '#0f172a' }}>{createdCredentials.loginId}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ color: '#64748b' }}>Generated Password:</span>
+              <code style={{ backgroundColor: '#e2e8f0', padding: '3px 8px', borderRadius: '5px', fontWeight: 700, color: '#0f172a' }}>
+                {createdCredentials.password}
+              </code>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+            <button
+              type="button"
+              onClick={handleCopy}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                backgroundColor: '#ffffff',
+                color: '#334155',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              {copied ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
+              {copied ? "Copied!" : "Copy Details"}
+            </button>
+
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                flex: 1.3,
+                padding: '10px 14px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: '#25d366',
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                textDecoration: 'none'
+              }}
+            >
+              <MessageCircle size={16} />
+              Share on WhatsApp
+            </a>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onClose(createdCustomer)}
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '8px',
+              border: 'none',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '0.88rem',
+              cursor: 'pointer'
+            }}
+          >
+            Done &amp; View Customer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-backdrop" style={{ zIndex }}>

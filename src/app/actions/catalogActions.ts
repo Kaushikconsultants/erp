@@ -87,7 +87,6 @@ export async function seedR3DummyProductsToDatabase(orgIdOverride?: string) {
           data: {
             organizationId: targetOrgId,
             companyName: "R3 Exports",
-            tradeName: "R3 Exports",
             email: R3_COMPANY_PROFILE.email,
             mobile: R3_COMPANY_PROFILE.mobile,
             gstin: R3_COMPANY_PROFILE.gstin,
@@ -499,7 +498,7 @@ export async function placeCatalogOrder(params: {
     if (organizationId) {
       try {
         orderNumber = await getNextOrderNumber(organizationId);
-        piNumber = await generateNextDocumentNumber(organizationId, 'proformaInvoice');
+        piNumber = await generateNextDocumentNumber(organizationId, 'PROFORMA_INVOICE');
       } catch {
         piNumber = `PI-${orderNumber.replace("ORD-", "")}`;
       }

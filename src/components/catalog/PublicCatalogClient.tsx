@@ -46,6 +46,7 @@ import {
   registerCustomerPortalAccount, 
   submitCustomDesignRequest 
 } from "@/app/actions/portalActions";
+import { lookupPostalCode } from "@/lib/postalLookup";
 import { R3_TRADE_SLABS, R3_COMPANY_PROFILE } from "@/lib/dummyProducts";
 import "@/app/catalog/catalog.css";
 
@@ -222,7 +223,9 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
   const [customerSession, setCustomerSession] = useState<{
     isLoggedIn: boolean;
     customer?: any;
-    userName?: string;
+    userName?: string | null;
+    userEmail?: string | null;
+    userRole?: string;
   }>({ isLoggedIn: false });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"SIGN_IN" | "REGISTER">("SIGN_IN");
@@ -249,6 +252,44 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     pincode: "282006",
     gstin: ""
   });
+
+  // Pincode lookup state for Registration
+  const [regPinLoading, setRegPinLoading] = useState(false);
+  const [regAvailablePostOffices, setRegAvailablePostOffices] = useState<string[]>([]);
+  const [regSelectedPostOffice, setRegSelectedPostOffice] = useState("");
+
+  const handleRegPincodeChange = async (pinInput: string) => {
+    const cleanPin = pinInput.replace(/\D/g, "").slice(0, 6);
+    setRegForm(prev => ({ ...prev, pincode: cleanPin }));
+
+    if (cleanPin.length === 6) {
+      setRegPinLoading(true);
+      try {
+        const res = await lookupPostalCode(cleanPin, "India", false);
+        if (res.success) {
+          setRegForm(prev => ({
+            ...prev,
+            city: res.city || prev.city,
+            state: res.state || prev.state
+          }));
+          if (res.postOffices && res.postOffices.length > 0) {
+            setRegAvailablePostOffices(res.postOffices);
+            setRegSelectedPostOffice(res.postOffices[0]);
+          } else {
+            setRegAvailablePostOffices([]);
+            setRegSelectedPostOffice("");
+          }
+        }
+      } catch (err) {
+        console.error("Postal lookup error:", err);
+      } finally {
+        setRegPinLoading(false);
+      }
+    } else {
+      setRegAvailablePostOffices([]);
+      setRegSelectedPostOffice("");
+    }
+  };
 
   // Likes store
   const [likedSkus, setLikedSkus] = useState<Set<string>>(new Set());
@@ -594,7 +635,14 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     setAuthError("");
 
     try {
-      const res = await registerCustomerPortalAccount(regForm);
+      let finalShippingAddress = regForm.shippingAddress;
+      if (regSelectedPostOffice && !finalShippingAddress.includes(regSelectedPostOffice)) {
+        finalShippingAddress = `${finalShippingAddress}, PO: ${regSelectedPostOffice}`;
+      }
+      const res = await registerCustomerPortalAccount({
+        ...regForm,
+        shippingAddress: finalShippingAddress
+      });
       if (res.success) {
         showToast("Account created successfully!");
         // Auto sign in
@@ -1192,13 +1240,13 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
 
                   {/* Quick-Add Section */}
                   <div className="r3-qa">
-                    <div className="r3-qa-lbl">
-                      <span>Wholesale Quantity Slabs</span>
-                      <span>Click to select</span>
+                    <div className="r3-qa-header">
+                      <span>Wholesale Quantity Tiers</span>
+                      <span style={{ color: 'var(--r3-gold)', fontWeight: 700 }}>Click tier to select</span>
                     </div>
                     
-                    {/* 4-Tier Slab Grid */}
-                    <div className="r3-breaks-grid">
+                    {/* 4-Tier Horizontal Matrix */}
+                    <div className="r3-tier-pills-grid">
                       {R3_TRADE_SLABS.map((s, idx) => {
                         const slabRate = Math.round(p.sellingPrice * (1 - s.off) * 100) / 100;
                         const isSelectedSlab = currentQty >= s.min && currentQty <= s.max;
@@ -1212,8 +1260,8 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                         return (
                           <div 
                             key={idx} 
-                            className={`r3-break-cell ${isSelectedSlab ? 'active' : ''} ${isNotEnoughStock ? 'na' : ''}`}
-                            title={isNotEnoughStock ? "Not enough ready stock for this slab" : `Click to set quantity to ${s.min} pieces (${s.off > 0 ? (s.off * 100) + '% off' : 'Base rate'})`}
+                            className={`r3-tier-pill ${isSelectedSlab ? 'active' : ''} ${isNotEnoughStock ? 'na' : ''}`}
+                            title={isNotEnoughStock ? "Not enough ready stock for this slab" : `Set order quantity to ${s.min} pcs (${s.off > 0 ? (s.off * 100) + '% off' : 'Base trade price'})`}
                             onClick={() => {
                               if (!isNotEnoughStock) {
                                 updateCardQty(p.id, s.min, currentPack, isInStock ? p.stockQuantity : undefined);
@@ -1227,26 +1275,23 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                       })}
                     </div>
 
-                    {/* Box Size Pack Buttons */}
-                    <div className="r3-boxsel-row">
-                      <span className="r3-boxsel-label">Master Box Pack:</span>
-                      <div className="r3-boxsel">
+                    {/* Box Size & Quantity Stepper Controls */}
+                    <div className="r3-config-row">
+                      <div className="r3-pack-chips">
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginRight: '2px' }}>Box:</span>
                         {allowedPacks.map((packOption: number) => (
                           <button
                             key={packOption}
                             type="button"
-                            className={currentPack === packOption ? 'active' : ''}
+                            className={`r3-pack-chip-btn ${currentPack === packOption ? 'active' : ''}`}
                             onClick={() => updateCardPack(p.id, packOption, currentQty, isInStock ? p.stockQuantity : undefined)}
-                            title={`Packed in ${packOption}-piece gift box`}
+                            title={`Packed in ${packOption}-piece master box`}
                           >
-                            📦 {packOption}-pc
+                            {packOption}-pc
                           </button>
                         ))}
                       </div>
-                    </div>
 
-                    {/* Quantity Stepper & Line Total */}
-                    <div className="r3-qarow">
                       <div className="r3-stepper">
                         <button 
                           type="button"
@@ -1268,59 +1313,51 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                           +
                         </button>
                       </div>
+                    </div>
 
-                      <div className="r3-qatotal">
-                        ₹{Math.round(slab.rate * currentQty).toLocaleString("en-IN")} + GST
-                        <small>{currentQty} pcs @ ₹{slab.rate}/pc</small>
+                    {/* Smart Upsell Nudge */}
+                    {currentQty < 100 && (
+                      <div className="r3-upsell-nudge">
+                        💡 Add {100 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.95).toFixed(0)}/pc (5% saving)
                       </div>
-                    </div>
+                    )}
+                    {currentQty >= 100 && currentQty < 300 && (
+                      <div className="r3-upsell-nudge">
+                        💡 Add {300 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.90).toFixed(0)}/pc (10% saving)
+                      </div>
+                    )}
+                    {currentQty >= 300 && currentQty < 500 && (
+                      <div className="r3-upsell-nudge">
+                        💡 Add {500 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.80).toFixed(0)}/pc (20% saving)
+                      </div>
+                    )}
+                    {currentQty >= 500 && (
+                      <div className="r3-upsell-nudge max">
+                        ✓ Max wholesale tier applied (20% off)
+                      </div>
+                    )}
 
-                    {/* Smart Slab Hint / Nudge */}
-                    <div className="r3-qahint">
-                      {currentQty < 100 && (
-                        <div className="r3-qahint-pill">
-                          💡 Add {100 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.95).toFixed(0)}/pc (5% saving)
-                        </div>
-                      )}
-                      {currentQty >= 100 && currentQty < 300 && (
-                        <div className="r3-qahint-pill">
-                          💡 Add {300 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.90).toFixed(0)}/pc (10% saving)
-                        </div>
-                      )}
-                      {currentQty >= 300 && currentQty < 500 && (
-                        <div className="r3-qahint-pill">
-                          💡 Add {500 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.80).toFixed(0)}/pc (20% saving)
-                        </div>
-                      )}
-                      {currentQty >= 500 && (
-                        <div className="r3-qahint-pill success">
-                          ✓ 20% max tier wholesale rate unlocked
-                        </div>
-                      )}
-                    </div>
+                    {/* Single Full-Width Primary CTA with Live Total */}
+                    <button 
+                      type="button"
+                      className="r3-cta-btn"
+                      onClick={() => handleAddToCart(p, currentQty, currentPack)}
+                    >
+                      <ShoppingBag size={15} />
+                      <span>Add {currentQty} pcs • ₹{Math.round(slab.rate * currentQty).toLocaleString("en-IN")}</span>
+                    </button>
 
-                    {/* Action Buttons Duo */}
-                    <div className="r3-card-actions-duo">
-                      <button 
-                        type="button"
-                        className="r3-btn primary r3-qabtn"
-                        onClick={() => handleAddToCart(p, currentQty, currentPack)}
-                      >
-                        Add {currentQty} pcs to order
-                      </button>
-                      
-                      <button 
-                        type="button"
-                        className="r3-sample-btn"
-                        onClick={() => handleAddSampleToCart(p)}
-                        title="Order 1 sample piece. ₹500 sample fee is 100% credited against your next wholesale bulk order."
-                      >
-                        Sample (₹500)
-                      </button>
-                    </div>
+                    {/* Secondary Sample Link */}
+                    <button 
+                      type="button"
+                      className="r3-sample-link-btn"
+                      onClick={() => handleAddSampleToCart(p)}
+                    >
+                      Order 1 pc sample (₹500 auto-credited) →
+                    </button>
 
                     {inCartItem && (
-                      <div className="r3-incart-tag">
+                      <div className="r3-in-order-badge">
                         <span>✓ In your order: <strong>{inCartItem.quantity} pcs</strong></span>
                         <button type="button" onClick={() => setIsDrawerOpen(true)}>View Order →</button>
                       </div>
@@ -1742,121 +1779,178 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '60vh', overflowY: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '72vh', overflowY: 'auto', paddingRight: '4px' }}>
+                {/* 2-Column Responsive Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
-                    Business / Hotel Name *
+                    Business / Company Name *
                     <input
                       required
                       type="text"
                       placeholder="e.g. Blue Tokai Roasters"
                       value={regForm.businessName}
                       onChange={(e) => setRegForm({ ...regForm, businessName: e.target.value })}
-                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                      style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
-                    Contact Person *
+                    Contact Person Name *
                     <input
                       required
                       type="text"
                       placeholder="e.g. Vikram Sharma"
                       value={regForm.contactPerson}
                       onChange={(e) => setRegForm({ ...regForm, contactPerson: e.target.value })}
-                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                      style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
                     />
                   </label>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
                   <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
-                    WhatsApp Mobile *
+                    WhatsApp Mobile Number *
                     <input
                       required
                       type="tel"
-                      placeholder="9876543210"
+                      placeholder="10-digit mobile number"
                       value={regForm.mobile}
                       onChange={(e) => setRegForm({ ...regForm, mobile: e.target.value })}
-                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                      style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
-                    Email (Optional)
+                    Email Address (Optional)
                     <input
                       type="email"
                       placeholder="procurement@company.com"
                       value={regForm.email}
                       onChange={(e) => setRegForm({ ...regForm, email: e.target.value })}
-                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                      style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
                     />
                   </label>
                 </div>
 
-                <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
-                  Create Password *
-                  <input
-                    required
-                    type="password"
-                    placeholder="••••••••"
-                    value={regForm.password}
-                    onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
-                    style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
-                  />
-                </label>
-
-                <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
-                  Delivery Address *
-                  <input
-                    required
-                    type="text"
-                    placeholder="Street, Industrial Area"
-                    value={regForm.shippingAddress}
-                    onChange={(e) => setRegForm({ ...regForm, shippingAddress: e.target.value })}
-                    style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
-                  />
-                </label>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', fontWeight: 600 }}>
-                    City *
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                    Create Password *
                     <input
                       required
-                      type="text"
-                      value={regForm.city}
-                      onChange={(e) => setRegForm({ ...regForm, city: e.target.value })}
-                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                      type="password"
+                      placeholder="Minimum 6 characters"
+                      value={regForm.password}
+                      onChange={(e) => setRegForm({ ...regForm, password: e.target.value })}
+                      style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
                     />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', fontWeight: 600 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                    GSTIN (Optional)
+                    <input
+                      type="text"
+                      placeholder="09AAACR3333E1Z9"
+                      value={regForm.gstin}
+                      onChange={(e) => setRegForm({ ...regForm, gstin: e.target.value.toUpperCase() })}
+                      style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
+                    />
+                  </label>
+                </div>
+
+                {/* Pincode & City/State Auto Lookup */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                    Delivery Pincode *
+                    <div style={{ position: 'relative', marginTop: '4px' }}>
+                      <input
+                        required
+                        type="text"
+                        maxLength={6}
+                        placeholder="e.g. 282006"
+                        value={regForm.pincode}
+                        onChange={(e) => handleRegPincodeChange(e.target.value)}
+                        style={{ width: '100%', padding: '8px 32px 8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)' }}
+                      />
+                      {regPinLoading && (
+                        <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
+                          <Loader2 size={15} className="animate-spin" color="var(--r3-gold)" />
+                        </span>
+                      )}
+                    </div>
+                  </label>
+
+                  {/* Selectable Post Office if available */}
+                  {regAvailablePostOffices.length > 0 ? (
+                    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                      Select Post Office (Branch)
+                      <select
+                        value={regSelectedPostOffice}
+                        onChange={(e) => setRegSelectedPostOffice(e.target.value)}
+                        style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
+                      >
+                        {regAvailablePostOffices.map((po, idx) => (
+                          <option key={idx} value={po}>{po}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                      City / District *
+                      <input
+                        required
+                        type="text"
+                        value={regForm.city}
+                        onChange={(e) => setRegForm({ ...regForm, city: e.target.value })}
+                        style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
+                      />
+                    </label>
+                  )}
+                </div>
+
+                {regAvailablePostOffices.length > 0 && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
+                    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                      City / District *
+                      <input
+                        required
+                        type="text"
+                        value={regForm.city}
+                        onChange={(e) => setRegForm({ ...regForm, city: e.target.value })}
+                        style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
+                      State *
+                      <input
+                        required
+                        type="text"
+                        value={regForm.state}
+                        onChange={(e) => setRegForm({ ...regForm, state: e.target.value })}
+                        style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
+                      />
+                    </label>
+                  </div>
+                )}
+
+                {regAvailablePostOffices.length === 0 && (
+                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
                     State *
                     <input
                       required
                       type="text"
                       value={regForm.state}
                       onChange={(e) => setRegForm({ ...regForm, state: e.target.value })}
-                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                      style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
                     />
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12px', fontWeight: 600 }}>
-                    Pincode *
-                    <input
-                      required
-                      type="text"
-                      value={regForm.pincode}
-                      onChange={(e) => setRegForm({ ...regForm, pincode: e.target.value })}
-                      style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
-                    />
-                  </label>
-                </div>
+                )}
 
                 <label style={{ display: 'flex', flexDirection: 'column', fontSize: '12.5px', fontWeight: 600 }}>
-                  GSTIN (Optional)
+                  Delivery / Billing Address *
                   <input
+                    required
                     type="text"
-                    placeholder="09AAACR3333E1Z9"
-                    value={regForm.gstin}
-                    onChange={(e) => setRegForm({ ...regForm, gstin: e.target.value.toUpperCase() })}
-                    style={{ padding: '7px 9px', borderRadius: '6px', border: '1px solid var(--r3-rule)', marginTop: '2px' }}
+                    placeholder="Shop/Unit No., Street name, Area landmark"
+                    value={regForm.shippingAddress}
+                    onChange={(e) => setRegForm({ ...regForm, shippingAddress: e.target.value })}
+                    style={{ padding: '8px 10px', borderRadius: '7px', border: '1px solid var(--r3-rule)', marginTop: '4px' }}
                   />
                 </label>
 
@@ -1864,7 +1958,7 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                   type="submit"
                   disabled={authLoading}
                   className="r3-btn primary"
-                  style={{ marginTop: '6px', padding: '10px' }}
+                  style={{ marginTop: '8px', padding: '11px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
                 >
                   {authLoading ? <Loader2 size={16} className="animate-spin" /> : "Create Account & Sign In"}
                 </button>
@@ -2409,12 +2503,30 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
         </div>
       )}
 
+      {/* Sticky Mobile Cart Bar */}
+      {totalCartCount > 0 && (
+        <div className="r3-mobile-cart-bar">
+          <div className="r3-mobile-cart-info">
+            <b>🛒 {totalCartCount} pcs in order</b>
+            <small>Total: ₹{grandTotal.toLocaleString("en-IN")} (incl. GST)</small>
+          </div>
+          <button 
+            type="button"
+            className="r3-mobile-cart-action"
+            onClick={() => setIsDrawerOpen(true)}
+          >
+            Review Order →
+          </button>
+        </div>
+      )}
+
       {/* Floating WhatsApp Button */}
       <a 
         href={`https://wa.me/919958173594?text=${encodeURIComponent("Hi Rahul, I am browsing the R3 Exports glassware catalogue and would like to connect.")}`}
         target="_blank"
         rel="noreferrer"
         className="r3-floating-wa"
+        style={{ bottom: totalCartCount > 0 ? '70px' : '24px' }}
       >
         <MessageCircle size={18} />
         <span>WhatsApp us</span>

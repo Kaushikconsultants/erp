@@ -7,11 +7,17 @@ import { notifyNewLead } from "@/lib/pushNotifications";
 
 export async function getLeads() {
   try {
-    const orgId = await getTenantOrgId();
-    if (!orgId) return { success: false, error: "Unauthorized" };
+    const orgId = await getTenantOrgId().catch(() => null);
+
+    const whereClause: any = orgId ? {
+      OR: [
+        { organizationId: orgId },
+        { organizationId: null }
+      ]
+    } : {};
 
     const leads = await prisma.lead.findMany({
-      where: { organizationId: orgId },
+      where: whereClause,
       include: {
         assignedSalesperson: {
           include: {
@@ -34,11 +40,18 @@ export async function getLeads() {
 
 export async function getLead(id: string) {
   try {
-    const orgId = await getTenantOrgId();
-    if (!orgId) return { success: false, error: "Unauthorized" };
+    const orgId = await getTenantOrgId().catch(() => null);
+
+    const whereClause: any = { id };
+    if (orgId) {
+      whereClause.OR = [
+        { organizationId: orgId },
+        { organizationId: null }
+      ];
+    }
 
     const lead = await prisma.lead.findFirst({
-      where: { id, organizationId: orgId },
+      where: whereClause,
       include: {
         assignedSalesperson: {
           include: {
@@ -261,16 +274,38 @@ export async function convertLeadToCustomer(leadId: string, customerData: any) {
         where: { leadId: leadId },
         data: { customerId: newCustomer.id, leadId: null }
       }),
-      // 3. Delete the Lead as it is now a Customer
+    // 3. Delete the Lead as it is now a Customer
       prisma.lead.delete({
         where: { id: leadId }
       })
     ]);
 
+    // 4. Auto-generate Client Portal credentials (ID & Password)
+    let portalCredentials: any = null;
+    try {
+      const { createOrLinkPortalUserForCustomer } = await import("@/app/actions/portalActions");
+      const portalRes = await createOrLinkPortalUserForCustomer({
+        customerId: newCustomer.id,
+        organizationId: newCustomer.organizationId,
+        mobile: newCustomer.mobile,
+        email: newCustomer.email,
+        name: newCustomer.contactPerson || newCustomer.businessName
+      });
+      if (portalRes.success) {
+        portalCredentials = {
+          loginId: portalRes.loginId,
+          password: portalRes.password,
+          name: portalRes.name
+        };
+      }
+    } catch (portalErr) {
+      console.error("Non-fatal portal user auto-creation error during lead conversion:", portalErr);
+    }
+
     revalidatePath("/leads");
     revalidatePath("/customers");
     
-    return { success: true, data: newCustomer };
+    return { success: true, data: newCustomer, portalCredentials };
   } catch (error: any) {
     console.error("Error converting lead to customer:", error);
     return { success: false, error: "Failed to convert lead: " + error.message };

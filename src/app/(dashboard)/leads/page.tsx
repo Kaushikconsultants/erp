@@ -18,10 +18,24 @@ export default async function LeadsPage() {
 
   const { organizationId, isAdmin, employeeId } = await getTenantScope();
 
-  let whereClause: any = { organizationId };
+  let whereClause: any = {};
+  
+  if (organizationId && organizationId !== 'UNAUTHENTICATED') {
+    whereClause.OR = [
+      { organizationId },
+      { organizationId: null }
+    ];
+  }
 
-  if (!isAdmin) {
-    whereClause.assignedSalespersonId = employeeId || 'unassigned';
+  if (!isAdmin && employeeId) {
+    whereClause.AND = [
+      {
+        OR: [
+          { assignedSalespersonId: employeeId },
+          { assignedSalespersonId: null }
+        ]
+      }
+    ];
   }
 
   let leads: any[] = [];

@@ -309,6 +309,8 @@ export async function createCustomer(formData: FormData) {
   const isInternational = formData.get("isInternational") === "true" || formData.get("isInternational") === "on";
   const country = (formData.get("country") as string)?.trim() || (isInternational ? "United States" : "India");
   const currency = (formData.get("currency") as string)?.trim() || (isInternational ? "USD" : "INR");
+  const pan = (formData.get("pan") as string)?.trim()?.toUpperCase() || (gstNumber && gstNumber.length === 15 ? gstNumber.slice(2, 12) : null);
+  const creditHoldReason = (formData.get("creditHoldReason") as string)?.trim() || null;
   const taxId = (formData.get("taxId") as string)?.trim() || null;
   const portOfDischarge = (formData.get("portOfDischarge") as string)?.trim() || null;
   const incoterms = (formData.get("incoterms") as string)?.trim() || null;
@@ -401,8 +403,30 @@ export async function createCustomer(formData: FormData) {
       },
     });
 
+    // Auto-generate Client Portal credentials (ID & Password)
+    let portalCredentials: any = null;
+    try {
+      const { createOrLinkPortalUserForCustomer } = await import("./portalActions");
+      const portalRes = await createOrLinkPortalUserForCustomer({
+        customerId: customer.id,
+        organizationId: customer.organizationId,
+        mobile: customer.mobile,
+        email: customer.email,
+        name: customer.contactPerson || customer.businessName
+      });
+      if (portalRes.success) {
+        portalCredentials = {
+          loginId: portalRes.loginId,
+          password: portalRes.password,
+          name: portalRes.name
+        };
+      }
+    } catch (portalErr) {
+      console.error("Non-fatal portal user auto-creation error:", portalErr);
+    }
+
     revalidatePath("/customers");
-    return { success: true, customer };
+    return { success: true, customer, portalCredentials };
   } catch (error) {
     console.error("Failed to create customer:", error);
     return { error: "Failed to create customer. Please try again." };
