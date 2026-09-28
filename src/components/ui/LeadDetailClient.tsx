@@ -32,15 +32,121 @@ import {
   Mail,
   Ship,
   Package,
-  FileText
+  FileText,
+  Eye,
+  Download,
+  ExternalLink,
+  Upload,
+  Maximize2,
+  Sparkles,
+  Palette,
+  Layers,
+  Image as ImageIcon
 } from 'lucide-react';
 import './leadDetail.css';
+
+// Helper to compress uploaded images to Base64
+function compressImageToBase64(file: File): Promise<string> {
+  return new Promise((resolve) => {
+    if (file.type === "application/pdf") {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string || "");
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.82));
+        } else {
+          resolve(e.target?.result as string || "");
+        }
+      };
+      img.onerror = () => resolve(e.target?.result as string || "");
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+}
+
+function parseLeadNotes(notes: string) {
+  if (!notes) return { isCustomDesign: false, refNumber: "", reqType: "", refSku: "", expectedQty: "", timeline: "", designDetails: "", pictures: [] as string[], cleanNotes: "" };
+
+  const isCustomDesign = notes.includes("CUSTOM DESIGN REQUEST") || notes.includes("CR-");
+  let refNumber = "";
+  const refMatch = notes.match(/CUSTOM DESIGN REQUEST\s*#?([A-Z0-9-]+)\]/i);
+  if (refMatch) refNumber = refMatch[1];
+
+  let reqType = "";
+  const typeMatch = notes.match(/•\s*Type:\s*([^\n]+)/i);
+  if (typeMatch) reqType = typeMatch[1].trim();
+
+  let refSku = "";
+  const skuMatch = notes.match(/•\s*Reference SKU:\s*([^\n]+)/i);
+  if (skuMatch) refSku = skuMatch[1].trim();
+
+  let expectedQty = "";
+  const qtyMatch = notes.match(/•\s*Expected Quantity:\s*([^\n]+)/i);
+  if (qtyMatch) expectedQty = qtyMatch[1].trim();
+
+  let timeline = "";
+  const timeMatch = notes.match(/•\s*Required Timeline:\s*([^\n]+)/i);
+  if (timeMatch) timeline = timeMatch[1].trim();
+
+  let designDetails = "";
+  const detailsMatch = notes.match(/•\s*Design Details:\s*([\s\S]*?)(?:•\s*Uploaded Reference Pictures|$)/i);
+  if (detailsMatch) designDetails = detailsMatch[1].trim();
+
+  const pictures: string[] = [];
+  const lines = notes.split('\n');
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("data:image/") || trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("blob:")) {
+      pictures.push(trimmed);
+    }
+  });
+
+  return {
+    isCustomDesign,
+    refNumber,
+    reqType,
+    refSku,
+    expectedQty,
+    timeline,
+    designDetails,
+    pictures,
+    cleanNotes: notes
+  };
+}
 
 export default function LeadDetailClient({ lead: initialLead, employees }: { lead: any, employees: any[] }) {
   const router = useRouter();
   const [lead, setLead] = useState<any>(initialLead);
   const [isConverting, setIsConverting] = useState(false);
   const [isLoggingCall, setIsLoggingCall] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   // Inline Lead Name Editing State
   const [isEditingName, setIsEditingName] = useState(false);
@@ -99,6 +205,39 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
       alert("Error deleting call: " + (err?.message || "Unknown error"));
     }
   };
+
+  const handleAttachPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setIsUploadingPhoto(true);
+    try {
+      const base64List: string[] = [];
+      for (const file of Array.from(files)) {
+        const b64 = await compressImageToBase64(file);
+        if (b64) base64List.push(b64);
+      }
+      if (base64List.length > 0) {
+        const currentNotes = lead.notes || "";
+        const updatedNotes = currentNotes
+          ? `${currentNotes}\n• Uploaded Reference Pictures (${base64List.length}):\n${base64List.join('\n')}`
+          : `• Uploaded Reference Pictures (${base64List.length}):\n${base64List.join('\n')}`;
+        const res = await updateLead(lead.id, { notes: updatedNotes });
+        if (res && res.success) {
+          setLead((prev: any) => ({ ...prev, notes: updatedNotes }));
+          setToastMsg("✅ Reference photo attached!");
+          setTimeout(() => setToastMsg(''), 2500);
+        } else {
+          alert(res?.error || "Failed to attach photo");
+        }
+      }
+    } catch (err: any) {
+      alert("Error attaching photo: " + (err?.message || "Unknown error"));
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
+
+  const parsedDesign = parseLeadNotes(lead.notes);
 
   return (
     <div className="lead-detail-wrapper">
@@ -389,7 +528,7 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
               </div>
             )}
 
-            {lead.notes && (
+            {lead.notes && !parsedDesign.isCustomDesign && parsedDesign.pictures.length === 0 && (
               <div className="lead-info-row" style={{ alignItems: 'flex-start' }}>
                 <span className="lead-info-label">
                   <FileText size={13} /> Sourcing Notes
@@ -397,6 +536,128 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
                 <span className="lead-info-value" style={{ fontSize: '0.76rem', color: '#475569', whiteSpace: 'pre-wrap' }}>
                   {lead.notes}
                 </span>
+              </div>
+            )}
+
+            {/* Custom Design / Bespoke Request Highlight Card */}
+            {parsedDesign.isCustomDesign && (
+              <div className="lead-design-request-card" style={{ marginTop: '8px' }}>
+                <div className="lead-design-header">
+                  <span className="lead-design-badge">
+                    <Sparkles size={12} /> Custom Design {parsedDesign.refNumber ? `#${parsedDesign.refNumber}` : ''}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#86198f', fontWeight: 700 }}>
+                    Bespoke Glassware
+                  </span>
+                </div>
+
+                <div className="lead-design-grid-specs">
+                  {parsedDesign.reqType && (
+                    <div className="lead-design-spec-pill">
+                      <span className="lead-design-spec-label">Request Type</span>
+                      <span className="lead-design-spec-val">{parsedDesign.reqType}</span>
+                    </div>
+                  )}
+                  {parsedDesign.expectedQty && (
+                    <div className="lead-design-spec-pill">
+                      <span className="lead-design-spec-label">Target Qty</span>
+                      <span className="lead-design-spec-val">{parsedDesign.expectedQty}</span>
+                    </div>
+                  )}
+                  {parsedDesign.timeline && (
+                    <div className="lead-design-spec-pill">
+                      <span className="lead-design-spec-label">Timeline</span>
+                      <span className="lead-design-spec-val">{parsedDesign.timeline}</span>
+                    </div>
+                  )}
+                  {parsedDesign.refSku && parsedDesign.refSku !== "None" && (
+                    <div className="lead-design-spec-pill">
+                      <span className="lead-design-spec-label">Reference SKU</span>
+                      <span className="lead-design-spec-val">{parsedDesign.refSku}</span>
+                    </div>
+                  )}
+                </div>
+
+                {parsedDesign.designDetails && (
+                  <div className="lead-design-desc-box">
+                    <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#86198f', textTransform: 'uppercase', marginBottom: '2px' }}>
+                      Design Specifications
+                    </div>
+                    {parsedDesign.designDetails}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Reference Photos & Drawings Gallery */}
+            {(parsedDesign.pictures.length > 0 || parsedDesign.isCustomDesign) && (
+              <div style={{ marginTop: '8px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '12px' }}>
+                <div className="lead-photos-gallery-title">
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <ImageIcon size={14} color="#6366f1" /> Reference Photos ({parsedDesign.pictures.length})
+                  </span>
+
+                  <label style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '4px', 
+                    fontSize: '0.72rem', 
+                    fontWeight: 700, 
+                    color: '#4f46e5', 
+                    background: '#eef2ff', 
+                    border: '1px solid #c7d2fe', 
+                    borderRadius: '6px', 
+                    padding: '3px 8px', 
+                    cursor: 'pointer' 
+                  }}>
+                    <Upload size={11} /> {isUploadingPhoto ? 'Attaching...' : 'Add Photo'}
+                    <input type="file" multiple accept="image/*" onChange={handleAttachPhoto} disabled={isUploadingPhoto} style={{ display: 'none' }} />
+                  </label>
+                </div>
+
+                {parsedDesign.pictures.length > 0 ? (
+                  <div className="lead-photos-grid" style={{ marginTop: '8px' }}>
+                    {parsedDesign.pictures.map((pic, idx) => {
+                      const isBlob = pic.startsWith("blob:");
+                      return (
+                        <div 
+                          key={idx} 
+                          className="lead-photo-thumb-card"
+                          onClick={() => {
+                            if (!isBlob) {
+                              setLightboxImage(pic);
+                            }
+                          }}
+                        >
+                          <img 
+                            src={pic} 
+                            alt={`Reference Photo ${idx + 1}`} 
+                            className="lead-photo-thumb-img"
+                            onError={(e) => {
+                              const imgEl = e.target as HTMLElement;
+                              imgEl.style.display = 'none';
+                              const parent = imgEl.parentElement;
+                              if (parent && !parent.querySelector('.blob-fallback')) {
+                                const fb = document.createElement('div');
+                                fb.className = 'blob-fallback';
+                                fb.style.cssText = 'height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:6px; text-align:center; background:#fff1f2; color:#be123c; font-size:9px; font-weight:700;';
+                                fb.innerHTML = '<span>⚠️ Expired Blob</span><span style="font-size:7.5px; opacity:0.8; margin-top:2px;">Re-upload image</span>';
+                                parent.appendChild(fb);
+                              }
+                            }}
+                          />
+                          <div className="lead-photo-overlay-tag">
+                            #{idx + 1}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ padding: '8px', textAlign: 'center', fontSize: '0.74rem', color: '#94a3b8' }}>
+                    No reference pictures uploaded yet. Tap "Add Photo" above to attach sketches, CAD drawings, or client samples.
+                  </div>
+                )}
               </div>
             )}
 
@@ -621,6 +882,62 @@ export default function LeadDetailClient({ lead: initialLead, employees }: { lea
           leadName={lead.name}
           onCallLogged={() => router.refresh()}
         />
+      )}
+
+      {/* ── LIGHTBOX FULLSCREEN IMAGE PREVIEW ── */}
+      {lightboxImage && (
+        <div className="lead-lightbox-backdrop" onClick={() => setLightboxImage(null)}>
+          <div className="lead-lightbox-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="lead-lightbox-header">
+              <span style={{ fontSize: '0.88rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ImageIcon size={16} /> Reference Picture Preview
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <a 
+                  href={lightboxImage} 
+                  download="reference-design.jpg" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    background: '#334155',
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    textDecoration: 'none'
+                  }}
+                >
+                  <Download size={12} /> Download
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setLightboxImage(null)}
+                  style={{
+                    background: '#334155',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="lead-lightbox-img-wrap">
+              <img src={lightboxImage} alt="Reference Design Large Preview" />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -685,18 +685,60 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     }
   };
 
-  // Handle picture upload simulation / URL
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Convert & compress image files to persistent Base64 Data URLs
+  const compressImageToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      if (file.type === "application/pdf") {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string || "");
+        reader.onerror = () => resolve("");
+        reader.readAsDataURL(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1200;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL("image/jpeg", 0.82));
+          } else {
+            resolve(e.target?.result as string || "");
+          }
+        };
+        img.onerror = () => resolve(e.target?.result as string || "");
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve("");
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle picture upload into persistent data URLs
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const urls: string[] = [];
-      Array.from(files).forEach(file => {
-        const url = URL.createObjectURL(file);
-        urls.push(url);
-      });
+      const base64Promises = Array.from(files).map(file => compressImageToBase64(file));
+      const base64List = (await Promise.all(base64Promises)).filter(Boolean);
       setCustomDesignForm(prev => ({
         ...prev,
-        pictures: [...prev.pictures, ...urls]
+        pictures: [...prev.pictures, ...base64List]
       }));
     }
   };
