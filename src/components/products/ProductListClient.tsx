@@ -140,6 +140,30 @@ export default function ProductListClient({ products, categories, categoriesData
   const [adjustLoading, setAdjustLoading] = useState(false);
   const [adjustSuccess, setAdjustSuccess] = useState<string | null>(null);
 
+  // R3 Exports Seeding state
+  const [isSeedingR3, setIsSeedingR3] = useState(false);
+
+  const handleSeedR3Products = async () => {
+    if (!confirm("Load/Sync official R3 Exports glassware products into Product Master with high-res images, live stock, and 4-tier wholesale pricing?")) {
+      return;
+    }
+    setIsSeedingR3(true);
+    try {
+      const { seedR3CatalogueProductsAction } = await import('@/app/actions/productActions');
+      const res = await seedR3CatalogueProductsAction();
+      if (res.success) {
+        alert("✅ Success! " + (res.message || "R3 Exports products synced into database."));
+        window.location.reload();
+      } else {
+        alert("Error: " + (res.error || "Failed to sync products."));
+      }
+    } catch (err: any) {
+      alert("Failed to sync products: " + err.message);
+    } finally {
+      setIsSeedingR3(false);
+    }
+  };
+
   useEffect(() => {
     const s = searchParams?.get('search');
     if (s !== null && s !== undefined) {
@@ -825,6 +849,43 @@ export default function ProductListClient({ products, categories, categoriesData
               >
                 <Download size={13} color="#16a34a" />
                 Import Excel / CSV
+              </button>
+
+              {/* Official R3 Exports Glassware Products Seeder Button */}
+              <button
+                onClick={handleSeedR3Products}
+                disabled={isSeedingR3}
+                style={{
+                  height: '32px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '0 11px',
+                  borderRadius: '7px',
+                  border: '1px solid #c9971c',
+                  backgroundColor: '#fbf4e2',
+                  color: '#17191b',
+                  fontSize: '0.76rem',
+                  fontWeight: 700,
+                  cursor: isSeedingR3 ? 'not-allowed' : 'pointer',
+                  opacity: isSeedingR3 ? 0.7 : 1,
+                  transition: 'all 0.15s ease'
+                }}
+                onMouseEnter={(e) => { if (!isSeedingR3) e.currentTarget.style.backgroundColor = '#f3e6c0'; }}
+                onMouseLeave={(e) => { if (!isSeedingR3) e.currentTarget.style.backgroundColor = '#fbf4e2'; }}
+                title="Load & Sync Official R3 Exports Catalogue Products into Database"
+              >
+                {isSeedingR3 ? (
+                  <>
+                    <Loader2 size={13} className="animate-spin" color="#17191b" />
+                    <span>Syncing R3 Products...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={13} color="#c9971c" />
+                    <span>Sync R3 Products</span>
+                  </>
+                )}
               </button>
 
               {canManage && (

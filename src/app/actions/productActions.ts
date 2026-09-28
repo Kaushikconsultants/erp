@@ -932,3 +932,13 @@ export async function getArticleTransactionHistory(articleOrSkuOrId: string, fil
     return { error: "Failed to fetch article transaction history: " + error.message };
   }
 }
+
+/**
+ * Seed official R3 Exports glassware products into Product Master
+ */
+export async function seedR3CatalogueProductsAction() {
+  const { seedR3DummyProductsToDatabase } = await import("./catalogActions");
+  const orgId = await getTenantOrgId();
+  return await seedR3DummyProductsToDatabase(orgId || undefined);
+}
+

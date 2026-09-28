@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getNextOrderNumber } from "./quotationActions";
 import { generateNextDocumentNumber } from "@/lib/documentNumbering";
 import { calculateItemGst } from "@/lib/gstUtils";
-import { DUMMY_GLASSWARE_PRODUCTS } from "@/lib/dummyProducts";
+import { R3_HANDOVER_PRODUCTS, R3_COMPANY_PROFILE, DUMMY_GLASSWARE_PRODUCTS } from "@/lib/dummyProducts";
 
 export interface CatalogOrderBuyerDetails {
   businessName: string;
@@ -28,6 +28,178 @@ export interface CatalogOrderItemPayload {
   quantity: number;
   boxPackOption?: number; // e.g. 2, 4, 6, 24
   notes?: string;
+}
+
+/**
+ * Seed or update the official 10 R3 Exports Glassware products directly into Product Master (prisma.product)
+ */
+export async function seedR3DummyProductsToDatabase(orgIdOverride?: string) {
+  try {
+    // 1. Find or create the primary organization
+    let org: any = null;
+    if (orgIdOverride) {
+      org = await prisma.organization.findUnique({ where: { id: orgIdOverride } });
+    }
+
+    if (!org) {
+      org = await prisma.organization.findFirst({
+        where: {
+          OR: [
+            { slug: "r3-exports" },
+            { name: { contains: "R3", mode: "insensitive" } },
+            { email: { contains: "r3exports", mode: "insensitive" } }
+          ]
+        }
+      });
+    }
+
+    if (!org) {
+      org = await prisma.organization.findFirst();
+    }
+
+    if (!org) {
+      org = await prisma.organization.create({
+        data: {
+          name: "R3 Exports",
+          slug: "r3-exports",
+          tradeName: "R3 Exports",
+          email: R3_COMPANY_PROFILE.email,
+          phone: R3_COMPANY_PROFILE.mobile,
+          gstin: R3_COMPANY_PROFILE.gstin,
+          address: R3_COMPANY_PROFILE.factoryAddress,
+          city: R3_COMPANY_PROFILE.city,
+          state: R3_COMPANY_PROFILE.state,
+          pincode: R3_COMPANY_PROFILE.pincode,
+          country: "India",
+          businessType: "Manufacturing & Wholesale Exporter",
+          industry: "Borosilicate Glassware"
+        }
+      });
+    }
+
+    const targetOrgId = org.id;
+
+    // 2. Ensure company settings exist with R3 details
+    try {
+      const existingSettings = await prisma.companySettings.findFirst({ where: { organizationId: targetOrgId } });
+      if (!existingSettings) {
+        await prisma.companySettings.create({
+          data: {
+            organizationId: targetOrgId,
+            companyName: "R3 Exports",
+            tradeName: "R3 Exports",
+            email: R3_COMPANY_PROFILE.email,
+            mobile: R3_COMPANY_PROFILE.mobile,
+            gstin: R3_COMPANY_PROFILE.gstin,
+            address: R3_COMPANY_PROFILE.factoryAddress,
+            city: R3_COMPANY_PROFILE.city,
+            state: R3_COMPANY_PROFILE.state,
+            pincode: R3_COMPANY_PROFILE.pincode,
+            country: "India"
+          }
+        });
+      }
+    } catch {}
+
+    // 3. Upsert each official R3 Product into Product Master
+    const insertedProducts: any[] = [];
+    for (const item of R3_HANDOVER_PRODUCTS) {
+      const existing = await prisma.product.findFirst({
+        where: {
+          sku: item.sku,
+          organizationId: targetOrgId
+        }
+      });
+
+      if (existing) {
+        const updated = await prisma.product.update({
+          where: { id: existing.id },
+          data: {
+            name: item.name,
+            articleNumber: item.articleNumber,
+            category: item.category,
+            subCategory: item.subCategory,
+            material: item.material,
+            capacityMl: item.capacityMl,
+            size: item.size,
+            diameterMm: item.diameterMm,
+            heightMm: item.heightMm,
+            weight: item.weight,
+            masterCartonQty: item.masterCartonQty,
+            cbm: item.cbm,
+            moq: item.moq,
+            hsnCode: item.hsnCode,
+            purchasePrice: item.purchasePrice,
+            sellingPrice: item.sellingPrice,
+            mrp: item.mrp,
+            exportPriceUsd: item.exportPriceUsd,
+            exportPriceEur: item.exportPriceEur,
+            exportPriceGbp: item.exportPriceGbp,
+            stockQuantity: item.stockQuantity,
+            minimumStock: item.minimumStock,
+            customizationOptions: item.customizationOptions,
+            description: item.description,
+            images: item.images,
+            status: "Active"
+          }
+        });
+        insertedProducts.push(updated);
+      } else {
+        const created = await prisma.product.create({
+          data: {
+            organizationId: targetOrgId,
+            name: item.name,
+            sku: item.sku,
+            articleNumber: item.articleNumber,
+            category: item.category,
+            subCategory: item.subCategory,
+            material: item.material,
+            capacityMl: item.capacityMl,
+            size: item.size,
+            diameterMm: item.diameterMm,
+            heightMm: item.heightMm,
+            weight: item.weight,
+            masterCartonQty: item.masterCartonQty,
+            cbm: item.cbm,
+            moq: item.moq,
+            hsnCode: item.hsnCode,
+            purchasePrice: item.purchasePrice,
+            sellingPrice: item.sellingPrice,
+            mrp: item.mrp,
+            exportPriceUsd: item.exportPriceUsd,
+            exportPriceEur: item.exportPriceEur,
+            exportPriceGbp: item.exportPriceGbp,
+            stockQuantity: item.stockQuantity,
+            minimumStock: item.minimumStock,
+            customizationOptions: item.customizationOptions,
+            description: item.description,
+            images: item.images,
+            status: "Active"
+          }
+        });
+        insertedProducts.push(created);
+      }
+    }
+
+    try {
+      revalidatePath("/products");
+      revalidatePath("/catalog");
+      revalidatePath("/price-list");
+    } catch {}
+
+    return {
+      success: true,
+      message: `Successfully synced ${insertedProducts.length} official R3 Exports products into Product Master!`,
+      count: insertedProducts.length,
+      products: insertedProducts
+    };
+  } catch (err: any) {
+    console.error("Failed to seed R3 products:", err);
+    return {
+      success: false,
+      error: err.message || "Failed to seed products into database."
+    };
+  }
 }
 
 export async function getPublicCatalogData(productIds?: string[]) {
@@ -64,15 +236,23 @@ export async function getPublicCatalogData(productIds?: string[]) {
         }),
         orgId ? prisma.companySettings.findFirst({ where: { organizationId: orgId } }) : null
       ]);
+
+      // If database has 0 products, automatically seed the 10 R3 products into the database
+      if (products.length === 0 && orgId) {
+        const seedRes = await seedR3DummyProductsToDatabase(orgId);
+        if (seedRes.success && seedRes.products) {
+          products = seedRes.products;
+        }
+      }
     } catch {
       products = [];
     }
 
-    // If database has 0 products, fall back to rich dummy products
+    // If database query failed or still 0, fall back to rich dummy products
     if (products.length === 0) {
-      products = DUMMY_GLASSWARE_PRODUCTS;
+      products = R3_HANDOVER_PRODUCTS;
       if (productIds && productIds.length > 0) {
-        products = products.filter(p => productIds.includes(p.id));
+        products = products.filter(p => productIds.includes(p.id) || productIds.includes(p.sku));
       }
     }
 
@@ -81,42 +261,42 @@ export async function getPublicCatalogData(productIds?: string[]) {
     return {
       success: true,
       products: JSON.parse(JSON.stringify(products)),
-      categories,
+      categories: categories.length > 0 ? categories : Array.from(new Set(R3_HANDOVER_PRODUCTS.map(p => p.category))),
       company: {
         organizationId: orgId,
-        companyName: companySettings?.companyName || defaultOrg?.name || "R3 EXPORTS",
-        tradeName: defaultOrg?.tradeName || "R3 EXPORTS",
-        address: companySettings?.address || defaultOrg?.address || "F-12, Industrial Area, Phase 2, Mayapuri, New Delhi, Delhi 110064",
-        city: companySettings?.city || defaultOrg?.city || "New Delhi",
-        state: companySettings?.state || defaultOrg?.state || "Delhi",
-        mobile: companySettings?.mobile || defaultOrg?.phone || "+91 9876543210",
-        email: companySettings?.email || defaultOrg?.email || "sales@r3exports.com",
-        gstin: companySettings?.gstin || defaultOrg?.gstin || "07AAACR3333E1Z9",
-        minOrderValueReadyStock: 15000,
-        minOrderValueMadeToOrder: 50000,
-        leadTimeReadyStockDays: 2,
-        leadTimeMadeToOrderDays: 30
+        companyName: companySettings?.companyName || defaultOrg?.name || R3_COMPANY_PROFILE.companyName,
+        tradeName: defaultOrg?.tradeName || R3_COMPANY_PROFILE.tradeName,
+        address: companySettings?.address || defaultOrg?.address || R3_COMPANY_PROFILE.factoryAddress,
+        city: companySettings?.city || defaultOrg?.city || R3_COMPANY_PROFILE.city,
+        state: companySettings?.state || defaultOrg?.state || R3_COMPANY_PROFILE.state,
+        mobile: companySettings?.mobile || defaultOrg?.phone || R3_COMPANY_PROFILE.mobile,
+        email: companySettings?.email || defaultOrg?.email || R3_COMPANY_PROFILE.email,
+        gstin: companySettings?.gstin || defaultOrg?.gstin || R3_COMPANY_PROFILE.gstin,
+        minOrderValueReadyStock: R3_COMPANY_PROFILE.minOrderValueReadyStock,
+        minOrderValueMadeToOrder: R3_COMPANY_PROFILE.minOrderValueMadeToOrder,
+        leadTimeReadyStockDays: R3_COMPANY_PROFILE.leadTimeReadyStockDays,
+        leadTimeMadeToOrderDays: R3_COMPANY_PROFILE.leadTimeMadeToOrderDays
       }
     };
   } catch (err: any) {
     console.error("Failed to load public catalog:", err);
     return {
       success: true,
-      products: DUMMY_GLASSWARE_PRODUCTS,
-      categories: Array.from(new Set(DUMMY_GLASSWARE_PRODUCTS.map(p => p.category))),
+      products: R3_HANDOVER_PRODUCTS,
+      categories: Array.from(new Set(R3_HANDOVER_PRODUCTS.map(p => p.category))),
       company: {
-        companyName: "R3 EXPORTS",
-        tradeName: "R3 EXPORTS",
-        address: "F-12, Industrial Area, Phase 2, Mayapuri, New Delhi, Delhi 110064",
-        city: "New Delhi",
-        state: "Delhi",
-        mobile: "+91 9876543210",
-        email: "sales@r3exports.com",
-        gstin: "07AAACR3333E1Z9",
-        minOrderValueReadyStock: 15000,
-        minOrderValueMadeToOrder: 50000,
-        leadTimeReadyStockDays: 2,
-        leadTimeMadeToOrderDays: 30
+        companyName: R3_COMPANY_PROFILE.companyName,
+        tradeName: R3_COMPANY_PROFILE.tradeName,
+        address: R3_COMPANY_PROFILE.factoryAddress,
+        city: R3_COMPANY_PROFILE.city,
+        state: R3_COMPANY_PROFILE.state,
+        mobile: R3_COMPANY_PROFILE.mobile,
+        email: R3_COMPANY_PROFILE.email,
+        gstin: R3_COMPANY_PROFILE.gstin,
+        minOrderValueReadyStock: R3_COMPANY_PROFILE.minOrderValueReadyStock,
+        minOrderValueMadeToOrder: R3_COMPANY_PROFILE.minOrderValueMadeToOrder,
+        leadTimeReadyStockDays: R3_COMPANY_PROFILE.leadTimeReadyStockDays,
+        leadTimeMadeToOrderDays: R3_COMPANY_PROFILE.leadTimeMadeToOrderDays
       }
     };
   }
@@ -157,7 +337,7 @@ export async function placeCatalogOrder(params: {
 
     const organizationId = defaultOrg?.id;
     const companySettings = organizationId ? await prisma.companySettings.findFirst({ where: { organizationId } }) : null;
-    const companyState = companySettings?.state || defaultOrg?.state || "Delhi";
+    const companyState = companySettings?.state || defaultOrg?.state || "Uttar Pradesh";
 
     // 2. Fetch products and calculate 4-tier wholesale pricing
     const productIds = items.map(i => i.productId);
@@ -165,7 +345,13 @@ export async function placeCatalogOrder(params: {
     if (organizationId) {
       try {
         dbProducts = await prisma.product.findMany({
-          where: { id: { in: productIds }, organizationId }
+          where: {
+            OR: [
+              { id: { in: productIds } },
+              { sku: { in: productIds } }
+            ],
+            ...(organizationId ? { organizationId } : {})
+          }
         });
       } catch {
         dbProducts = [];
@@ -173,8 +359,10 @@ export async function placeCatalogOrder(params: {
     }
 
     // Merge with dummy products map if DB has missing products
-    const dummyMap = new Map(DUMMY_GLASSWARE_PRODUCTS.map(p => [p.id, p]));
+    const dummyMap = new Map(R3_HANDOVER_PRODUCTS.map(p => [p.id, p]));
+    R3_HANDOVER_PRODUCTS.forEach(p => dummyMap.set(p.sku, p));
     const productMap = new Map(dbProducts.map(p => [p.id, p]));
+    dbProducts.forEach(p => { if (p.sku) productMap.set(p.sku, p); });
 
     let orderSubtotal = 0;
     let totalQuantity = 0;
@@ -358,7 +546,7 @@ export async function placeCatalogOrder(params: {
               notes: `Storefront Web Order (${buyer.buyingStream || 'READY_STOCK'}) • Transporter: ${buyer.courierType || 'R3_COURIER'} • ${buyer.notes || ''}`,
               items: {
                 create: computedItems
-                  .filter(it => it.product.id && !it.product.id.startsWith("r3-prod-"))
+                  .filter(it => it.product.id && !it.product.id.startsWith("r3-prod-") && !it.product.id.startsWith("r3-bt") && !it.product.id.startsWith("r3-dw"))
                   .map(item => ({
                     productId: item.product.id,
                     quantity: item.quantity,
@@ -377,7 +565,7 @@ export async function placeCatalogOrder(params: {
 
           // Deduct live stock
           for (const item of computedItems) {
-            if (item.product.id && !item.product.id.startsWith("r3-prod-") && item.product.stockQuantity > 0) {
+            if (item.product.id && !item.product.id.startsWith("r3-prod-") && !item.product.id.startsWith("r3-bt") && item.product.stockQuantity > 0) {
               const deductQty = Math.min(item.quantity, item.product.stockQuantity);
               await prisma.product.update({
                 where: { id: item.product.id },
@@ -410,14 +598,14 @@ export async function placeCatalogOrder(params: {
     } catch {}
 
     // 6. Generate WhatsApp Order Booking Message
-    const companyPhone = (companySettings?.mobile || defaultOrg?.phone || "+91 9876543210").replace(/[^0-9]/g, "");
+    const companyPhone = (companySettings?.mobile || defaultOrg?.phone || R3_COMPANY_PROFILE.mobile).replace(/[^0-9]/g, "");
     let waMsg = `*🚨 NEW WHOLESALE ORDER BOOKED (#${orderNumber})*\n\n`;
     waMsg += `*Buyer:* ${buyer.businessName} (${buyer.contactPerson})\n`;
     waMsg += `*Mobile:* ${buyer.mobile}\n`;
     if (buyer.gstin) waMsg += `*GSTIN:* ${buyer.gstin}\n`;
     waMsg += `*Delivery To:* ${buyer.city}, ${buyer.state} - ${buyer.pincode}\n`;
     waMsg += `*Fulfillment:* ${buyer.buyingStream === 'MADE_TO_ORDER' ? '🏭 Made to Order (20-30 Days)' : '⚡ Ready Stock (Ship in 48h)'}\n`;
-    waMsg += `*Logistics:* ${buyer.courierType === 'OWN_TRANSPORTER' ? 'Own Transporter (₹0 Freight)' : 'R3 Courier (Breakage Covered)'}\n\n`;
+    waMsg += `*Logistics:* ${buyer.courierType === 'OWN_TRANSPORTER' ? 'Own Transporter (Agra Collection / ₹0 Freight)' : 'R3 Courier (Breakage Covered)'}\n\n`;
     waMsg += `*ITEMS ORDERED:*\n`;
 
     computedItems.forEach((it, idx) => {
