@@ -450,10 +450,28 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
         quantity,
         boxOption,
         effectiveRate: slab.rate,
-        discountPercent: slab.discount
+        discountPercent: slab.discount,
+        isSample: false
       }
     }));
     showToast(`Added ${quantity} pcs of ${product.name} to order!`);
+  };
+
+  const handleAddSampleToCart = (product: Product) => {
+    const samplePrice = 500;
+    setCart(prev => ({
+      ...prev,
+      [`sample_${product.id}`]: {
+        product: { ...product, name: `[Sample Piece] ${product.name}` },
+        quantity: 1,
+        boxOption: 1,
+        effectiveRate: samplePrice,
+        discountPercent: 0,
+        isSample: true
+      }
+    }));
+    showToast(`Sample piece of ${product.name} added (₹500 auto-credited on next bulk order)!`);
+    setIsDrawerOpen(true);
   };
 
   const handleRemoveFromCart = (productId: string) => {
@@ -464,7 +482,7 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     });
   };
 
-  // Group Cart items into Ready Stock and Made to Order
+  // Group Cart items into Ready Stock, Made to Order, and Samples
   const readyStockItems = useMemo(() => {
     return Object.values(cart).filter(item => item.product.stockQuantity > 0 && !item.isSample);
   }, [cart]);
@@ -473,9 +491,14 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
     return Object.values(cart).filter(item => item.product.stockQuantity <= 0 && !item.isSample);
   }, [cart]);
 
+  const sampleItems = useMemo(() => {
+    return Object.values(cart).filter(item => item.isSample);
+  }, [cart]);
+
   const readyStockSubtotal = readyStockItems.reduce((sum, item) => sum + (item.effectiveRate * item.quantity), 0);
   const madeToOrderSubtotal = madeToOrderItems.reduce((sum, item) => sum + (item.effectiveRate * item.quantity), 0);
-  const rawSubtotal = readyStockSubtotal + madeToOrderSubtotal;
+  const sampleSubtotal = sampleItems.reduce((sum, item) => sum + (item.effectiveRate * item.quantity), 0);
+  const rawSubtotal = readyStockSubtotal + madeToOrderSubtotal + sampleSubtotal;
   const promoDiscount = appliedPromo === "R3FIRST" ? Math.round(rawSubtotal * 0.05) : 0;
   const netSubtotal = Math.max(0, rawSubtotal - promoDiscount);
   const gstAmount = Math.round(netSubtotal * 0.18);
@@ -1113,7 +1136,7 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                     onClick={() => toggleLike(p.sku)}
                     title={isLiked ? "Remove like" : "Like this product"}
                   >
-                    <Heart size={13} fill={isLiked ? "currentColor" : "none"} />
+                    <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
                   </button>
 
                   {/* Picture */}
@@ -1123,6 +1146,11 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                     ) : (
                       <GlassShapeSvg shape={p.shape || "tumbler"} />
                     )}
+                    <div className="r3-quick-view-overlay">
+                      <button className="r3-quick-view-btn" type="button">
+                        <Eye size={13} /> Quick Specs
+                      </button>
+                    </div>
                   </div>
 
                   {/* Stock Badge */}
@@ -1133,34 +1161,41 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                   )}
 
                   {/* Name & SKU */}
-                  <h3 onClick={() => setPdpProduct(p)}>{p.name}</h3>
+                  <h3 onClick={() => setPdpProduct(p)} title={p.name}>{p.name}</h3>
                   <div className="r3-card-sku">SKU {p.sku} · {p.size || `${p.capacityMl || 350} ml`}</div>
 
                   {/* Price display (INR vs Multi-Currency Export) */}
-                  {selectedCurrency === "INR" ? (
-                    <>
-                      <div className="r3-card-price">
-                        ₹{p.sellingPrice.toLocaleString("en-IN")}
-                        <small>/ piece + 18% GST</small>
-                      </div>
-                      <div className="r3-srpline">
-                        Suggested retail <b>₹{p.mrp.toLocaleString("en-IN")}</b> · <span className="mg">{margin.marginPct}% margin</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="r3-card-price" style={{ color: 'var(--r3-sea)' }}>
-                        {exportPriceDisplay}
-                      </div>
-                      <div className="r3-srpline">
-                        Carton: <b>{p.masterCartonQty || 24} pcs</b> · Export MOQ: <b>{p.moq || 100} pcs</b>
-                      </div>
-                    </>
-                  )}
+                  <div className="r3-card-price-block">
+                    {selectedCurrency === "INR" ? (
+                      <>
+                        <div className="r3-card-price">
+                          ₹{p.sellingPrice.toLocaleString("en-IN")}
+                          <small>/ pc + 18% GST</small>
+                        </div>
+                        <div className="r3-srpline">
+                          <span>SRP: <b>₹{p.mrp.toLocaleString("en-IN")}</b></span>
+                          <span className="r3-margin-pill">{margin.marginPct}% Margin</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="r3-card-price" style={{ color: 'var(--r3-sea)' }}>
+                          {exportPriceDisplay}
+                        </div>
+                        <div className="r3-srpline">
+                          <span>Carton: <b>{p.masterCartonQty || 24} pcs</b></span>
+                          <span className="r3-margin-pill">MOQ {p.moq || 100} pcs</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
                   {/* Quick-Add Section */}
                   <div className="r3-qa">
-                    <div className="r3-qa-lbl">Price per piece by quantity:</div>
+                    <div className="r3-qa-lbl">
+                      <span>Wholesale Quantity Slabs</span>
+                      <span>Click to select</span>
+                    </div>
                     
                     {/* 4-Tier Slab Grid */}
                     <div className="r3-breaks-grid">
@@ -1178,7 +1213,12 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                           <div 
                             key={idx} 
                             className={`r3-break-cell ${isSelectedSlab ? 'active' : ''} ${isNotEnoughStock ? 'na' : ''}`}
-                            title={isNotEnoughStock ? "Not enough ready stock for this slab" : `${s.label} pieces`}
+                            title={isNotEnoughStock ? "Not enough ready stock for this slab" : `Click to set quantity to ${s.min} pieces (${s.off > 0 ? (s.off * 100) + '% off' : 'Base rate'})`}
+                            onClick={() => {
+                              if (!isNotEnoughStock) {
+                                updateCardQty(p.id, s.min, currentPack, isInStock ? p.stockQuantity : undefined);
+                              }
+                            }}
                           >
                             <span>{s.label}</span>
                             <b>{displayVal}</b>
@@ -1188,23 +1228,30 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                     </div>
 
                     {/* Box Size Pack Buttons */}
-                    <div className="r3-boxsel">
-                      {allowedPacks.map((packOption: number) => (
-                        <button
-                          key={packOption}
-                          className={currentPack === packOption ? 'active' : ''}
-                          onClick={() => updateCardPack(p.id, packOption, currentQty, isInStock ? p.stockQuantity : undefined)}
-                        >
-                          {packOption}-pc box
-                        </button>
-                      ))}
+                    <div className="r3-boxsel-row">
+                      <span className="r3-boxsel-label">Master Box Pack:</span>
+                      <div className="r3-boxsel">
+                        {allowedPacks.map((packOption: number) => (
+                          <button
+                            key={packOption}
+                            type="button"
+                            className={currentPack === packOption ? 'active' : ''}
+                            onClick={() => updateCardPack(p.id, packOption, currentQty, isInStock ? p.stockQuantity : undefined)}
+                            title={`Packed in ${packOption}-piece gift box`}
+                          >
+                            📦 {packOption}-pc
+                          </button>
+                        ))}
+                      </div>
                     </div>
 
                     {/* Quantity Stepper & Line Total */}
                     <div className="r3-qarow">
                       <div className="r3-stepper">
                         <button 
+                          type="button"
                           onClick={() => updateCardQty(p.id, currentQty - currentPack, currentPack, isInStock ? p.stockQuantity : undefined)}
+                          title={`Decrease by ${currentPack} pcs`}
                         >
                           −
                         </button>
@@ -1214,7 +1261,9 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                           onChange={(e) => updateCardQty(p.id, parseInt(e.target.value, 10) || currentPack, currentPack, isInStock ? p.stockQuantity : undefined)}
                         />
                         <button 
+                          type="button"
                           onClick={() => updateCardQty(p.id, currentQty + currentPack, currentPack, isInStock ? p.stockQuantity : undefined)}
+                          title={`Increase by ${currentPack} pcs`}
                         >
                           +
                         </button>
@@ -1229,37 +1278,129 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                     {/* Smart Slab Hint / Nudge */}
                     <div className="r3-qahint">
                       {currentQty < 100 && (
-                        <span className="good">Add {100 - currentQty} more pcs for ₹{(p.sellingPrice * 0.95).toFixed(0)}/pc (5% saving)</span>
+                        <div className="r3-qahint-pill">
+                          💡 Add {100 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.95).toFixed(0)}/pc (5% saving)
+                        </div>
                       )}
                       {currentQty >= 100 && currentQty < 300 && (
-                        <span className="good">Add {300 - currentQty} more pcs for ₹{(p.sellingPrice * 0.90).toFixed(0)}/pc (10% saving)</span>
+                        <div className="r3-qahint-pill">
+                          💡 Add {300 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.90).toFixed(0)}/pc (10% saving)
+                        </div>
                       )}
                       {currentQty >= 300 && currentQty < 500 && (
-                        <span className="good">Add {500 - currentQty} more pcs for ₹{(p.sellingPrice * 0.80).toFixed(0)}/pc (20% saving)</span>
+                        <div className="r3-qahint-pill">
+                          💡 Add {500 - currentQty} more pcs to get ₹{(p.sellingPrice * 0.80).toFixed(0)}/pc (20% saving)
+                        </div>
                       )}
                       {currentQty >= 500 && (
-                        <span className="good">✓ Max tier wholesale rate unlocked (20% off)</span>
+                        <div className="r3-qahint-pill success">
+                          ✓ 20% max tier wholesale rate unlocked
+                        </div>
                       )}
                     </div>
 
-                    {/* Add to Order Button */}
-                    <button 
-                      className="r3-btn primary r3-qabtn"
-                      onClick={() => handleAddToCart(p, currentQty, currentPack)}
-                    >
-                      Add {currentQty} pcs to order
-                    </button>
+                    {/* Action Buttons Duo */}
+                    <div className="r3-card-actions-duo">
+                      <button 
+                        type="button"
+                        className="r3-btn primary r3-qabtn"
+                        onClick={() => handleAddToCart(p, currentQty, currentPack)}
+                      >
+                        Add {currentQty} pcs to order
+                      </button>
+                      
+                      <button 
+                        type="button"
+                        className="r3-sample-btn"
+                        onClick={() => handleAddSampleToCart(p)}
+                        title="Order 1 sample piece. ₹500 sample fee is 100% credited against your next wholesale bulk order."
+                      >
+                        Sample (₹500)
+                      </button>
+                    </div>
 
                     {inCartItem && (
                       <div className="r3-incart-tag">
-                        ✓ In your order: {inCartItem.quantity} pcs
-                        <button onClick={() => setIsDrawerOpen(true)}>View order</button>
+                        <span>✓ In your order: <strong>{inCartItem.quantity} pcs</strong></span>
+                        <button type="button" onClick={() => setIsDrawerOpen(true)}>View Order →</button>
                       </div>
                     )}
                   </div>
                 </div>
               );
             })}
+          </div>
+        </section>
+
+        {/* Dedicated Factory Verification & Direct Contact Desk */}
+        <section className="r3-sec">
+          <div className="r3-factory-card">
+            <div className="r3-factory-grid">
+              <div>
+                <span className="r3-factory-badge">Direct Agra Factory Works &amp; B2B Export Desk</span>
+                <h2 className="r3-factory-title">Need custom branding, container quotes, or a factory visit?</h2>
+                <p className="r3-factory-desc">
+                  Connect directly with Rahul Gupta and our Agra production engineering team. We manufacture 100% food-grade borosilicate glassware for luxury hotels, cafés, corporate gifting, and overseas distributors.
+                </p>
+
+                <div className="r3-contact-items-grid">
+                  <div className="r3-contact-item-box">
+                    <span>Direct Call &amp; WhatsApp</span>
+                    <strong><a href="tel:+919958173594">+91 99581 73594</a></strong>
+                  </div>
+
+                  <div className="r3-contact-item-box">
+                    <span>Official Email</span>
+                    <strong><a href="mailto:sales@r3exports.com">sales@r3exports.com</a></strong>
+                  </div>
+
+                  <div className="r3-contact-item-box">
+                    <span>Factory Works Location</span>
+                    <strong>Agra Industrial Complex, Foundry Nagar, Agra, UP 282006</strong>
+                  </div>
+
+                  <div className="r3-contact-item-box">
+                    <span>GSTIN &amp; Export Ports</span>
+                    <strong>09AAACR3333E1Z9 · FOB Agra / Mumbai (JNPT)</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div className="r3-factory-actions-column">
+                <h3>Connect in 60 Seconds</h3>
+                <p>Have a custom sketch or logo reference? Chat with our Agra master moulds team on WhatsApp for instant quote &amp; lead time.</p>
+                
+                <a 
+                  href={`https://wa.me/919958173594?text=${encodeURIComponent("Hi Rahul, I am looking to place a B2B glassware inquiry with R3 Exports Agra factory.")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="r3-btn primary"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px' }}
+                >
+                  <MessageCircle size={18} />
+                  Chat on WhatsApp (+91 99581 73594)
+                </a>
+
+                <button 
+                  type="button"
+                  className="r3-btn"
+                  onClick={() => setIsCustomDesignModalOpen(true)}
+                  style={{ background: 'rgba(255,255,255,0.08)', color: '#ffffff', borderColor: 'rgba(255,255,255,0.2)' }}
+                >
+                  <Sparkles size={16} color="var(--r3-gold)" />
+                  Submit Custom Mould Request
+                </button>
+
+                <Link
+                  href="/price-list"
+                  className="r3-btn"
+                  style={{ background: 'rgba(255,255,255,0.08)', color: '#ffffff', borderColor: 'rgba(255,255,255,0.2)' }}
+                >
+                  <FileText size={16} color="var(--r3-gold)" />
+                  Download Full Wholesale Price List
+                </Link>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -1393,6 +1534,44 @@ export default function PublicCatalogClient({ initialProducts, categories, compa
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <b style={{ display: 'block' }}>₹{Math.round(item.effectiveRate * item.quantity).toLocaleString("en-IN")}</b>
+                        <button 
+                          style={{ background: 'none', border: 0, color: 'var(--r3-warn)', fontSize: '11.5px', cursor: 'pointer', padding: 0 }}
+                          onClick={() => handleRemoveFromCart(item.product.id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sample Evaluation Group */}
+              {sampleItems.length > 0 && (
+                <div className="r3-cart-group" style={{ borderColor: 'var(--r3-sea)', background: 'rgba(47, 111, 115, 0.05)' }}>
+                  <h3>
+                    <span>Evaluation Samples (₹500 / pc)</span>
+                    <small>₹{sampleSubtotal.toLocaleString("en-IN")}</small>
+                  </h3>
+                  <div style={{ fontSize: '11.5px', color: 'var(--r3-sea)', fontWeight: 600, margin: '4px 0 8px' }}>
+                    ✓ 100% of sample fees (₹{sampleSubtotal.toLocaleString("en-IN")}) will be credited on your next bulk wholesale order!
+                  </div>
+
+                  {sampleItems.map(item => (
+                    <div key={item.product.id} className="r3-cart-line">
+                      <div className="r3-cart-line-pic">
+                        {item.product.images && item.product.images.length > 0 ? (
+                          <img src={item.product.images[0]} alt={item.product.name} />
+                        ) : (
+                          <GlassShapeSvg shape={item.product.shape} />
+                        )}
+                      </div>
+                      <div>
+                        <b>{item.product.name}</b>
+                        <small>{item.quantity} sample pc @ ₹{item.effectiveRate} (Individual Safety Packaging)</small>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <b style={{ display: 'block' }}>₹{item.effectiveRate}</b>
                         <button 
                           style={{ background: 'none', border: 0, color: 'var(--r3-warn)', fontSize: '11.5px', cursor: 'pointer', padding: 0 }}
                           onClick={() => handleRemoveFromCart(item.product.id)}
